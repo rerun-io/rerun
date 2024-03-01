@@ -1,4 +1,4 @@
-use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
+use super::{large_text_button, url_large_text_button};
 use egui::{NumExt, Ui};
 use re_entity_db::EntityDb;
 use re_log_types::{
@@ -6,6 +6,7 @@ use re_log_types::{
 };
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
+use re_viewer_context::CommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 use std::collections::HashMap;
 
@@ -36,42 +37,37 @@ const RUST_CONNECT_CODE_EXAMPLE: &str =
 const RUST_SPAWN_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
 
-/// Show the welcome page.
-///
-/// Return `true` if the user wants to switch to the example page.
-pub(super) fn welcome_page_ui(
+/// Show the welcome section.
+pub(super) fn welcome_section_ui(
     ui: &mut egui::Ui,
     rx: &ReceiveSet<LogMsg>,
     command_sender: &re_viewer_context::CommandSender,
-) -> WelcomeScreenResponse {
+) {
     ui.vertical(|ui| {
         let accepts_connections = rx.accepts_tcp_connections();
-        onboarding_content_ui(ui, command_sender, accepts_connections)
-    })
-    .inner
+        onboarding_content_ui(ui, command_sender, accepts_connections);
+    });
 }
 
-struct WelcomePagePanel<'a> {
+struct Panel {
     title: &'static str,
     body: &'static str,
     image: &'static re_ui::Icon,
-    add_buttons: Box<dyn Fn(&mut egui::Ui) -> bool + 'a>, // returns true if example must be shown
+    add_buttons: PanelButtonsCallback,
 }
 
-fn onboarding_content_ui(
-    ui: &mut Ui,
-    command_sender: &re_viewer_context::CommandSender,
-    accepts_connections: bool,
-) -> WelcomeScreenResponse {
+type PanelButtonsCallback = Box<dyn Fn(&mut egui::Ui, &CommandSender) + 'static>;
+
+fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_connections: bool) {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
     let panels = [
-        WelcomePagePanel {
+        Panel {
             title: "Connect to live data",
             body: "Use the Rerun SDK to stream data from your code to the Rerun Viewer. \
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(move |ui, command_sender| {
                 if large_text_button(ui, "C++").clicked() {
                     let (markdown, code) = if accepts_connections {
                         (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
@@ -129,51 +125,33 @@ fn onboarding_content_ui(
                         "rust_quick_start",
                     );
                 }
-
-                false
             }),
         },
-        WelcomePagePanel {
+        Panel {
             title: "Load recorded data",
             body:
                 "Open and visualize recorded data from previous Rerun sessions (.rrd) as well as \
                 data in other formats like .gltf and .jpg. Files can be local or remote.",
             image: &re_ui::icons::WELCOME_SCREEN_RECORDED_DATA,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(|ui, command_sender| {
                 if large_text_button(ui, "Open file…").clicked() {
                     command_sender.send_ui(re_ui::UICommand::Open);
                 }
-
-                false
             }),
         },
-        WelcomePagePanel {
+        Panel {
             title: "Build your views",
             body: "Add and rearrange views. Configure what data is shown and how. Design \
                 interactively in the viewer or (coming soon) directly from code in the SDK.",
             image: &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
+            add_buttons: Box::new(|ui, _| {
                 url_large_text_button(ui, "Learn about Views", SPACE_VIEWS_HELP);
-
-                false
-            }),
-        },
-        WelcomePagePanel {
-            title: "Start with an example",
-            body: "Load pre-built examples to explore what you can build with Rerun. Each example \
-                comes with easy to run code so you can see how it's done.",
-            image: &re_ui::icons::WELCOME_SCREEN_EXAMPLES,
-            add_buttons: Box::new(|ui: &mut egui::Ui| {
-                large_text_button(ui, "View Examples").clicked()
             }),
         },
     ];
 
     // Shrink images if needed so user can see all the content buttons
     let max_image_height = ui.available_height() - 300.0;
-
-    let centering_vspace = (ui.available_height() - 650.0) / 2.0;
-    ui.add_space(centering_vspace.at_least(0.0));
 
     let panel_count = panels.len();
 
@@ -182,20 +160,27 @@ fn onboarding_content_ui(
 
     let grid_spacing = egui::vec2(12.0, 16.0);
 
-    let mut column_count = (((ui.available_width() + grid_spacing.x)
+    let column_count = (((ui.available_width() + grid_spacing.x)
         / (MIN_COLUMN_WIDTH + grid_spacing.x))
         .floor() as usize)
         .clamp(1, panels.len());
-
-    // we either display 4, 2, or a single column, because 3 columns is ugly with 4 panels.
-    if column_count == 3 {
-        column_count = 2;
-    }
 
     let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
         - grid_spacing.x)
         .floor()
         .at_most(MAX_COLUMN_WIDTH);
+
+    ui.horizontal(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.add(egui::Label::new(
+                egui::RichText::new("Welcome")
+                    .strong()
+                    .line_height(Some(32.0))
+                    .text_style(re_ui::ReUi::welcome_screen_h1()),
+            ))
+        });
+    });
+    ui.end_row();
 
     ui.horizontal(|ui| {
         // this space is added on the left so that the grid is centered
@@ -206,31 +191,14 @@ fn onboarding_content_ui(
         ui.add_space(centering_hspace.at_least(0.0));
 
         ui.vertical(|ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.add(egui::Label::new(
-                    egui::RichText::new("Welcome.")
-                        .strong()
-                        .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h1()),
-                ));
-
-                ui.add(egui::Label::new(
-                    egui::RichText::new("Visualize multimodal data.")
-                        .line_height(Some(32.0))
-                        .text_style(re_ui::ReUi::welcome_screen_h1()),
-                ));
-            });
-
             ui.add_space(32.0);
 
-            let grid = egui::Grid::new("welcome_screen_grid")
+            let grid = egui::Grid::new("welcome_section_grid")
                 .spacing(grid_spacing)
                 .min_col_width(column_width)
                 .max_col_width(column_width);
 
             grid.show(ui, |ui| {
-                let mut show_example = false;
-
                 for panels in panels.chunks(column_count) {
                     if column_count == panel_count {
                         for panel in panels {
@@ -257,32 +225,18 @@ fn onboarding_content_ui(
                                     .text_style(re_ui::ReUi::welcome_screen_h3()),
                             );
                             ui.label(egui::RichText::new(panel.body).line_height(Some(19.0)));
-                        });
-                    }
-
-                    ui.end_row();
-
-                    for panel in panels {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 4.0;
-                            if (panel.add_buttons)(ui) {
-                                show_example = true;
-                            }
+                            ui.horizontal(|ui| {
+                                ui.spacing_mut().item_spacing.x = 4.0;
+                                (panel.add_buttons)(ui, command_sender);
+                            });
                         });
                     }
 
                     ui.end_row();
                 }
-
-                WelcomeScreenResponse {
-                    go_to_example_page: show_example,
-                }
-            })
-            .inner
-        })
-        .inner
-    })
-    .inner
+            });
+        });
+    });
 }
 
 fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_image_height: f32) {

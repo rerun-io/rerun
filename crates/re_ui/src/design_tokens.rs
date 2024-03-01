@@ -92,6 +92,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         .text_styles
         .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(15.0));
     egui_style.text_styles.insert(
+        ReUi::welcome_screen_example_title(),
+        egui::FontId::proportional(16.0),
+    );
+    egui_style.text_styles.insert(
         ReUi::welcome_screen_body(),
         egui::FontId::proportional(13.0),
     );
