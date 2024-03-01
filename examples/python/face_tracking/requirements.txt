@@ -1,6 +1,6 @@
 mediapipe>=0.10.1; python_version <= '3.11' # no 3.12 version yet (https://pypi.org/project/mediapipe/)
 numpy
-opencv-python<4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https://github.com/opencv/opencv/issues/22088)
+opencv-python>4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https://github.com/opencv/opencv/issues/22088)
 requests
 rerun-sdk
 tqdm
