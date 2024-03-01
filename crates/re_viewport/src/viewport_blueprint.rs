@@ -12,7 +12,7 @@ use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId
 
 use crate::{
     blueprint::components::{
-        AutoLayout, AutoSpaceViews, IncludedSpaceViews, RootContainer, SpaceViewMaximized,
+        AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
         ViewportLayout,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
@@ -88,7 +88,7 @@ impl ViewportBlueprint {
         };
 
         let space_view_ids: Vec<SpaceViewId> =
-            arch.space_views.0.iter().map(|id| (*id).into()).collect();
+            arch.space_views.iter().map(|id| id.0.into()).collect();
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
@@ -221,14 +221,12 @@ impl ViewportBlueprint {
         }
 
         // Filter the space-view from the included space-views
-        let component = IncludedSpaceViews(
-            self.space_views
-                .keys()
-                .filter(|id| id != &space_view_id)
-                .map(|id| (*id).into())
-                .collect(),
-        );
-        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+        let components = self
+            .space_views
+            .keys()
+            .filter(|id| id != &space_view_id)
+            .map(|id| IncludedSpaceView((*id).into()));
+        ctx.save_blueprint_component_iter(&VIEWPORT_PATH.into(), components);
     }
 
     /// Duplicates a space view and its entity property overrides.
@@ -328,12 +326,13 @@ impl ViewportBlueprint {
                 ));
             }
 
-            let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();
+            let components = self
+                .space_views
+                .keys()
+                .chain(new_ids.iter())
+                .map(|id| IncludedSpaceView((*id).into()));
 
-            let component =
-                IncludedSpaceViews(updated_ids.into_iter().map(|id| (*id).into()).collect());
-
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            ctx.save_blueprint_component_iter(&VIEWPORT_PATH.into(), components);
         }
 
         new_ids

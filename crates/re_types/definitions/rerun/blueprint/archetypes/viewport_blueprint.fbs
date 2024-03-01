@@ -16,7 +16,7 @@ table ViewportBlueprint (
     // --- Required ---
 
     /// All of the space-views that belong to the viewport.
-    space_views: rerun.blueprint.components.IncludedSpaceViews ("attr.rerun.component_required", order: 1000);
+    space_views: [rerun.blueprint.components.IncludedSpaceView] ("attr.rerun.component_required", order: 1000);
 
     // --- Optional ---
 
