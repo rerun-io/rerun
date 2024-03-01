@@ -15,7 +15,7 @@ import rerun as rr  # pip install rerun-sdk
 # If you use it, the data will end up in the same recording as all other plugins interested in
 # that file, otherwise you can just create a dedicated recording for it. Or both.
 #
-# Check out `re_data_source::RecommendedLoadSettings` documentation for an exhaustive listing of
+# Check out `re_data_source::DataLoaderSettings` documentation for an exhaustive listing of
 # the available CLI parameters.
 parser = argparse.ArgumentParser(
     description="""
