@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import rerun as rr
+from rerun.datatypes.uuid import UuidBatch
 
-from tests.unit.common_arrays import uuid_bytes0, uuids_arrays, uuids_expected
+from tests.unit.common_arrays import none_empty_or_value, uuid_bytes0, uuids_arrays
+
+
+def uuids_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, uuids_arrays[-1])
+    return UuidBatch._optional(expected)
 
 
 def test_uuid() -> None:

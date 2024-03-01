@@ -32,7 +32,6 @@ from rerun.datatypes import (
     Utf8ArrayLike,
     Uuid,
     UuidArrayLike,
-    UuidBatch,
     Vec2D,
     Vec2DArrayLike,
     Vec2DBatch,
@@ -466,6 +465,8 @@ uuids_arrays: list[UuidArrayLike] = [
     [uuid_bytes0, uuid_bytes1],
     # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], Sequence[int]
     [np.array(uuid_bytes0, dtype=np.uint8), uuid_bytes1],
+    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8]
+    np.array([uuid_bytes0, uuid_bytes1], dtype=np.uint8),
     # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], npt.ArrayLike
     [np.array(uuid_bytes0, dtype=np.uint8), np.array(uuid_bytes1, dtype=np.uint32)],
     # UuidArrayLike: Sequence[UuidLike]: Uuid
@@ -473,8 +474,3 @@ uuids_arrays: list[UuidArrayLike] = [
     # UuidArrayLike: Sequence[UuidLike]: Bytes
     [bytes(uuid_bytes0), bytes(uuid_bytes1)],
 ]
-
-
-def uuids_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, [uuid_bytes0, uuid_bytes1])
-    return UuidBatch._optional(expected)
