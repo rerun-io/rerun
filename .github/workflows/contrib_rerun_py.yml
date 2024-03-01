@@ -100,6 +100,11 @@ jobs:
         shell: bash
         run: cd rerun_py/tests && pytest -c ../pyproject.toml
 
+      # TODO(#5332): only run this nightly or on main
+      - name: Run Python tests on all Python versions
+        shell: bash
+        run: nox -s tests
+
       - name: Run e2e test
         shell: bash
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
