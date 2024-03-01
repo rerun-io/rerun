@@ -1,4 +1,4 @@
-mediapipe==0.10.9 # For mac also you may need to run this: export SYSTEM_VERSION_COMPAT=0
+mediapipe==0.10.9; python_version <= '3.11' # no 3.12 version yet (https://pypi.org/project/mediapipe/) # For mac also you may need to run this: export SYSTEM_VERSION_COMPAT=0
 numpy
 opencv-python>4.9
 requests>=2.31,<3
