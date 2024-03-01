@@ -1,6 +1,6 @@
 numpy
 opencv-python
-pycollad
+pycollada
 rerun-sdk
 scipy
-yourdf
+yourdfpy
