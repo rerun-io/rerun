@@ -1,4 +1,4 @@
 numpy
-pyrealsense2-mac; sys_platform == 'darwin'
-pyrealsense2; sys_platform != 'darwin'
+pyrealsense2-mac; sys_platform == 'darwin' and python_version <= '3.11' # no 3.12 version yet (https://pypi.org/project/pyrealsense2-mac/)
+pyrealsense2; sys_platform != 'darwin' and python_version <= '3.11' # no 3.12 version yet (https://pypi.org/project/pyrealsense2-mac/)
 rerun-sdk

@@ -1,6 +1,6 @@
 betterproto[compiler]
 numpy
-opencv-python<4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https://github.com/opencv/opencv/issues/22088)
+opencv-python>4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https://github.com/opencv/opencv/issues/22088)
 requests>=2.31,<3
 rerun-sdk
 scipy

@@ -87,6 +87,9 @@ toml-fmt = "taplo fmt"
 ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
+
+# Run the Python tests.
+# Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
@@ -163,7 +166,7 @@ numpy = ">=1.23,<2"
 pip = ">=23"
 pyarrow = "14.0.2"
 pytest = ">=7"
-python = ">=3.8,<3.12"
+python = "=3.11"             # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.2.2"
 semver = ">=2.13,<2.14"
 taplo = "=0.8.1"
