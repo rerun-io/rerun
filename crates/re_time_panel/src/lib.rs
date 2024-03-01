@@ -61,7 +61,7 @@ impl TimePanelItem {
         if let Some(component_name) = component_name {
             Item::ComponentPath(ComponentPath::new(entity_path.clone(), *component_name))
         } else {
-            Item::InstancePath(None, InstancePath::entity_splat(entity_path.clone()))
+            Item::InstancePath(InstancePath::entity_splat(entity_path.clone()))
         }
     }
 }

@@ -330,17 +330,22 @@ impl ApplicationSelectionState {
                         test_component_path == component_path
                     }
 
-                    Item::InstancePath(_, test_instance_path) => {
+                    Item::InstancePath(test_instance_path) => {
                         !test_instance_path.instance_key.is_specific()
                             && test_instance_path.entity_path == component_path.entity_path
                     }
+                    Item::DataResult(_, test_instance_path) => {
+                        test_instance_path.entity_path == component_path.entity_path
+                    }
                 },
 
-                Item::InstancePath(current_space_view_id, current_instance_path) => {
-                    if let Item::InstancePath(test_space_view_id, test_instance_path) = test {
-                        // For both space view id and instance index we want to be inclusive,
-                        // but if both are set to Some, and set to different, then we count that
-                        // as a miss.
+                Item::InstancePath(current_instance_path) => match test {
+                    Item::StoreId(_)
+                    | Item::ComponentPath(_)
+                    | Item::SpaceView(_)
+                    | Item::Container(_) => false,
+                    Item::InstancePath(test_instance_path)
+                    | Item::DataResult(_, test_instance_path) => {
                         fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
                             a.is_none() || b.is_none() || a == b
                         }
@@ -350,11 +355,27 @@ impl ApplicationSelectionState {
                                 &current_instance_path.instance_key.specific_index(),
                                 &test_instance_path.instance_key.specific_index(),
                             )
-                            && either_none_or_same(current_space_view_id, test_space_view_id)
-                    } else {
-                        false
                     }
-                }
+                },
+
+                Item::DataResult(_current_space_view_id, current_instance_path) => match test {
+                    Item::StoreId(_)
+                    | Item::ComponentPath(_)
+                    | Item::SpaceView(_)
+                    | Item::Container(_) => false,
+                    Item::InstancePath(test_instance_path)
+                    | Item::DataResult(_, test_instance_path) => {
+                        fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+                            a.is_none() || b.is_none() || a == b
+                        }
+
+                        current_instance_path.entity_path == test_instance_path.entity_path
+                            && either_none_or_same(
+                                &current_instance_path.instance_key.specific_index(),
+                                &test_instance_path.instance_key.specific_index(),
+                            )
+                    }
+                },
             });
         if hovered {
             HoverHighlight::Hovered

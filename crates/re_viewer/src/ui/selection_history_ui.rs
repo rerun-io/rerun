@@ -182,15 +182,26 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> 
 fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::StoreId(store_id) => store_id.to_string(),
-        Item::SpaceView(sid) => {
+        Item::SpaceView(space_view_id) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
-            if let Some(space_view) = blueprint.space_view(sid) {
+            if let Some(space_view) = blueprint.space_view(space_view_id) {
                 space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed Space View>".to_owned()
             }
         }
-        Item::InstancePath(_, entity_path) => entity_path.to_string(),
+        Item::InstancePath(instance_path) => instance_path.to_string(),
+        Item::DataResult(space_view_id, instance_path) => {
+            // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
+            let space_view_display_name =
+                if let Some(space_view) = blueprint.space_view(space_view_id) {
+                    space_view.display_name_or_default().as_ref().to_owned()
+                } else {
+                    "<removed Space View>".to_owned()
+                };
+
+            format!("{instance_path} in {space_view_display_name}")
+        }
         Item::ComponentPath(path) => {
             format!("{}:{}", path.entity_path, path.component_name.short_name(),)
         }

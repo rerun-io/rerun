@@ -277,10 +277,7 @@ fn color_space_ui(
                     ctx.entity_db.store(),
                 );
             });
-            ctx.select_hovered_on_click(
-                &interact,
-                Item::InstancePath(Some(query.space_view_id), instance),
-            );
+            ctx.select_hovered_on_click(&interact, Item::DataResult(query.space_view_id, instance));
         }
     }
 

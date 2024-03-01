@@ -10,9 +10,20 @@ use crate::{ContainerId, SpaceViewId};
 pub enum Item {
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),
+
+    /// A component of an entity from the data store.
     ComponentPath(ComponentPath),
+
+    /// A space view.
     SpaceView(SpaceViewId),
-    InstancePath(Option<SpaceViewId>, InstancePath),
+
+    /// An entity or instance from the data store.
+    InstancePath(InstancePath),
+
+    /// An entity or instance in the context of a space view's data results.
+    DataResult(SpaceViewId, InstancePath),
+
+    /// A container.
     Container(ContainerId),
 }
 
@@ -21,7 +32,9 @@ impl Item {
         match self {
             Item::ComponentPath(component_path) => Some(&component_path.entity_path),
             Item::SpaceView(_) | Item::Container(_) | Item::StoreId(_) => None,
-            Item::InstancePath(_, instance_path) => Some(&instance_path.entity_path),
+            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
+                Some(&instance_path.entity_path)
+            }
         }
     }
 }
@@ -43,14 +56,7 @@ impl From<ComponentPath> for Item {
 impl From<InstancePath> for Item {
     #[inline]
     fn from(instance_path: InstancePath) -> Self {
-        Self::InstancePath(None, instance_path)
-    }
-}
-
-impl From<EntityPath> for Item {
-    #[inline]
-    fn from(entity_path: EntityPath) -> Self {
-        Self::InstancePath(None, InstancePath::from(entity_path))
+        Self::InstancePath(instance_path)
     }
 }
 
@@ -71,18 +77,15 @@ impl std::str::FromStr for Item {
                     instance_key,
                 ))
             }
-            (Some(instance_key), None) => Ok(Item::InstancePath(
-                None,
-                InstancePath::instance(entity_path, instance_key),
-            )),
+            (Some(instance_key), None) => Ok(Item::InstancePath(InstancePath::instance(
+                entity_path,
+                instance_key,
+            ))),
             (None, Some(component_name)) => Ok(Item::ComponentPath(ComponentPath {
                 entity_path,
                 component_name,
             })),
-            (None, None) => Ok(Item::InstancePath(
-                None,
-                InstancePath::entity_splat(entity_path),
-            )),
+            (None, None) => Ok(Item::InstancePath(InstancePath::entity_splat(entity_path))),
         }
     }
 }
@@ -93,7 +96,10 @@ impl std::fmt::Debug for Item {
             Item::StoreId(store_id) => store_id.fmt(f),
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
-            Item::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
+            Item::InstancePath(path) => write!(f, "{path}"),
+            Item::DataResult(space_view_id, instance_path) => {
+                write!(f, "({space_view_id:?}, {instance_path}")
+            }
             Item::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
     }
@@ -106,20 +112,23 @@ impl Item {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
-            Item::InstancePath(space_view_id, instance_path) => {
-                match (
-                    instance_path.instance_key.is_specific(),
-                    space_view_id.is_some(),
-                ) {
-                    (true, true) => "Entity Instance Blueprint",
-                    (true, false) => "Entity Instance",
-                    (false, true) => "Entity Blueprint",
-                    (false, false) => "Entity",
+            Item::InstancePath(instance_path) => {
+                if instance_path.instance_key.is_specific() {
+                    "Entity Instance"
+                } else {
+                    "Entity"
                 }
             }
             Item::ComponentPath(_) => "Entity Component",
             Item::SpaceView(_) => "Space View",
             Item::Container(_) => "Container",
+            Item::DataResult(_, instance_path) => {
+                if instance_path.instance_key.is_specific() {
+                    "Data Result Instance"
+                } else {
+                    "Data Result Entity"
+                }
+            }
         }
     }
 }
@@ -132,9 +141,12 @@ pub fn resolve_mono_instance_path_item(
 ) -> Item {
     // Resolve to entity path if there's only a single instance.
     match item {
-        Item::InstancePath(space_view, instance) => Item::InstancePath(
-            *space_view,
-            resolve_mono_instance_path(query, store, instance),
+        Item::InstancePath(instance_path) => {
+            Item::InstancePath(resolve_mono_instance_path(query, store, instance_path))
+        }
+        Item::DataResult(space_view_id, instance_path) => Item::DataResult(
+            *space_view_id,
+            resolve_mono_instance_path(query, store, instance_path),
         ),
         Item::StoreId(_) | Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {
             item.clone()
