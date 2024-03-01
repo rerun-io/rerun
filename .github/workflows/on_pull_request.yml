@@ -53,6 +53,7 @@ jobs:
               - '**/*.hpp'
               - '**/*.cpp'
               - '**/CMakeLists.txt'
+              - '**/*cmake'
 
   rust-checks:
     name: "Rust Checks"
