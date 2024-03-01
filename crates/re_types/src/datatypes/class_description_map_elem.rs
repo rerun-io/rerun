@@ -60,18 +60,16 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "class_id".to_owned(),
-                data_type: <crate::datatypes::ClassId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "class_description".to_owned(),
-                data_type: <crate::datatypes::ClassDescription>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "class_id",
+                <crate::datatypes::ClassId>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "class_description",
+                <crate::datatypes::ClassDescription>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 
@@ -174,23 +172,9 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "class_id".to_owned(),
-                                data_type: <crate::datatypes::ClassId>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "class_description".to_owned(),
-                                data_type: <crate::datatypes::ClassDescription>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.ClassDescriptionMapElem")?;
             if arrow_data.is_empty() {
@@ -216,10 +200,9 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt16,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt16;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_id")?
                         .into_iter()

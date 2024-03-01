@@ -63,24 +63,17 @@ impl ::re_types_core::Loggable for Rotation3D {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Quaternion".to_owned(),
-                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "AxisAngle".to_owned(),
-                    data_type: <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new(
+                    "Quaternion",
+                    <crate::datatypes::Quaternion>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "AxisAngle",
+                    <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,
@@ -104,132 +97,126 @@ impl ::re_types_core::Loggable for Rotation3D {
                     datum
                 })
                 .collect();
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(Rotation3D::Quaternion(_)) => 1i8,
+                    Some(Rotation3D::AxisAngle(_)) => 2i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, quaternion): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::Quaternion(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let quaternion_inner_data: Vec<_> = quaternion
+                            .iter()
+                            .map(|datum| {
+                                datum
+                                    .map(|datum| {
+                                        let crate::datatypes::Quaternion(data0) = datum;
+                                        data0
+                                    })
+                                    .unwrap_or_default()
+                            })
+                            .flatten()
+                            .map(Some)
+                            .collect();
+                        let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            quaternion_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(4usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                        FixedSizeListArray::new(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                                4usize,
+                            ),
+                            PrimitiveArray::new(
+                                DataType::Float32,
+                                quaternion_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                quaternion_inner_bitmap,
+                            )
+                            .boxed(),
+                            quaternion_bitmap,
+                        )
+                        .boxed()
+                    }
+                },
+                {
+                    let (somes, axis_angle): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Rotation3D::AxisAngle(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    {
+                        _ = axis_angle_bitmap;
+                        crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
+                    }
+                },
+            ];
+            let offsets = Some({
+                let mut quaternion_offset = 0;
+                let mut axis_angle_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(Rotation3D::Quaternion(_)) => {
+                            let offset = quaternion_offset;
+                            quaternion_offset += 1;
+                            offset
+                        }
+                        Some(Rotation3D::AxisAngle(_)) => {
+                            let offset = axis_angle_offset;
+                            axis_angle_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
             UnionArray::new(
                 <crate::datatypes::Rotation3D>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(Rotation3D::Quaternion(_)) => 1i8,
-                        Some(Rotation3D::AxisAngle(_)) => 2i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
-                    {
-                        let (somes, quaternion): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(Rotation3D::Quaternion(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Rotation3D::Quaternion(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let quaternion_inner_data: Vec<_> = quaternion
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Quaternion(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
-                                .flatten()
-                                .map(Some)
-                                .collect();
-                            let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                quaternion_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(4usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    4usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float32,
-                                    quaternion_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    quaternion_inner_bitmap,
-                                )
-                                .boxed(),
-                                quaternion_bitmap,
-                            )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, axis_angle): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| {
-                                matches!(datum.as_deref(), Some(Rotation3D::AxisAngle(_)))
-                            })
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Rotation3D::AxisAngle(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = axis_angle_bitmap;
-                            crate::datatypes::RotationAxisAngle::to_arrow_opt(axis_angle)?
-                        }
-                    },
-                ],
-                Some({
-                    let mut quaternion_offset = 0;
-                    let mut axis_angle_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(Rotation3D::Quaternion(_)) => {
-                                let offset = quaternion_offset;
-                                quaternion_offset += 1;
-                                offset
-                            }
-                            Some(Rotation3D::AxisAngle(_)) => {
-                                let offset = axis_angle_offset;
-                                axis_angle_offset += 1;
-                                offset
-                            }
-                        })
-                        .collect()
-                }),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })
@@ -249,34 +236,9 @@ impl ::re_types_core::Loggable for Rotation3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Quaternion".to_owned(),
-                                    data_type: <crate::datatypes::Quaternion>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "AxisAngle".to_owned(),
-                                    data_type:
-                                        <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Rotation3D")?;
             if arrow_data.is_empty() {
@@ -287,10 +249,9 @@ impl ::re_types_core::Loggable for Rotation3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Rotation3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -310,18 +271,16 @@ impl ::re_types_core::Loggable for Rotation3D {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        4usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    4usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.Rotation3D#Quaternion")?;
                         if arrow_data.is_empty() {
@@ -336,10 +295,9 @@ impl ::re_types_core::Loggable for Rotation3D {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                     .into_iter()
@@ -435,8 +393,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Rotation3D");
+                                    ));
                                 }
                             }))
                         }

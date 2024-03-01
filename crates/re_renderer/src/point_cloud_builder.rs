@@ -1,87 +1,71 @@
-use itertools::izip;
+use itertools::{izip, Itertools};
 
 use re_log::ResultExt;
 
 use crate::{
-    allocator::CpuWriteGpuReadBuffer,
+    allocator::DataTextureSource,
     draw_phases::PickingLayerObjectId,
     renderer::{
-        data_texture_source_buffer_element_count, PointCloudBatchFlags, PointCloudBatchInfo,
-        PointCloudDrawData, PointCloudDrawDataError, PositionRadius,
+        gpu_data::PositionRadius, PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData,
+        PointCloudDrawDataError,
     },
-    Color32, DebugLabel, DepthOffset, OutlineMaskPreference, PickingLayerInstanceId, RenderContext,
-    Size,
+    Color32, CpuWriteGpuReadError, DebugLabel, DepthOffset, OutlineMaskPreference,
+    PickingLayerInstanceId, RenderContext, Size,
 };
 
 /// Builder for point clouds, making it easy to create [`crate::renderer::PointCloudDrawData`].
-pub struct PointCloudBuilder {
-    // Size of `point`/color` must be equal.
-    pub vertices: Vec<PositionRadius>,
+pub struct PointCloudBuilder<'ctx> {
+    pub(crate) ctx: &'ctx RenderContext,
 
-    pub(crate) color_buffer: CpuWriteGpuReadBuffer<Color32>,
-    pub(crate) picking_instance_ids_buffer: CpuWriteGpuReadBuffer<PickingLayerInstanceId>,
+    // Size of `point`/color` must be equal.
+    pub(crate) position_radius_buffer: DataTextureSource<'ctx, PositionRadius>,
+
+    pub(crate) color_buffer: DataTextureSource<'ctx, Color32>,
+    pub(crate) picking_instance_ids_buffer: DataTextureSource<'ctx, PickingLayerInstanceId>,
 
     pub(crate) batches: Vec<PointCloudBatchInfo>,
 
     pub(crate) radius_boost_in_ui_points_for_outlines: f32,
-
-    max_num_points: usize,
 }
 
-impl PointCloudBuilder {
-    pub fn new(ctx: &RenderContext, max_num_points: u32) -> Self {
-        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
-
-        let color_buffer = ctx
-            .cpu_write_gpu_read_belt
-            .lock()
-            .allocate::<Color32>(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                data_texture_source_buffer_element_count(
-                    PointCloudDrawData::COLOR_TEXTURE_FORMAT,
-                    max_num_points,
-                    max_texture_dimension_2d,
-                ),
-            )
-            .expect("Failed to allocate color buffer"); // TODO(#3408): Should never happen but should propagate error anyways
-
-        let picking_instance_ids_buffer = ctx
-            .cpu_write_gpu_read_belt
-            .lock()
-            .allocate::<PickingLayerInstanceId>(
-                &ctx.device,
-                &ctx.gpu_resources.buffers,
-                data_texture_source_buffer_element_count(
-                    PointCloudDrawData::PICKING_INSTANCE_ID_TEXTURE_FORMAT,
-                    max_num_points,
-                    max_texture_dimension_2d,
-                ),
-            )
-            .expect("Failed to allocate picking layer buffer"); // TODO(#3408): Should never happen but should propagate error anyways
-
+impl<'ctx> PointCloudBuilder<'ctx> {
+    pub fn new(ctx: &'ctx RenderContext) -> Self {
         Self {
-            vertices: Vec::with_capacity(max_num_points as usize),
-            color_buffer,
-            picking_instance_ids_buffer,
+            ctx,
+            position_radius_buffer: DataTextureSource::new(ctx),
+            color_buffer: DataTextureSource::new(ctx),
+            picking_instance_ids_buffer: DataTextureSource::new(ctx),
             batches: Vec::with_capacity(16),
             radius_boost_in_ui_points_for_outlines: 0.0,
-            max_num_points: max_num_points as usize,
         }
+    }
+
+    /// Returns number of points that can be added without reallocation.
+    /// This may be smaller than the requested number if the maximum number of strips is reached.
+    pub fn reserve(
+        &mut self,
+        expected_number_of_additional_points: usize,
+    ) -> Result<usize, CpuWriteGpuReadError> {
+        // We know that the maximum number is independent of datatype, so we can use the same value for all.
+        self.position_radius_buffer
+            .reserve(expected_number_of_additional_points)?;
+        self.color_buffer
+            .reserve(expected_number_of_additional_points)?;
+        self.picking_instance_ids_buffer
+            .reserve(expected_number_of_additional_points)
     }
 
     /// Boosts the size of the points by the given amount of ui-points for the purpose of drawing outlines.
     pub fn radius_boost_in_ui_points_for_outlines(
-        mut self,
+        &mut self,
         radius_boost_in_ui_points_for_outlines: f32,
-    ) -> Self {
+    ) {
         self.radius_boost_in_ui_points_for_outlines = radius_boost_in_ui_points_for_outlines;
-        self
     }
 
     /// Start of a new batch.
     #[inline]
-    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_> {
+    pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_, 'ctx> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
             world_from_obj: glam::Affine3A::IDENTITY,
@@ -96,36 +80,15 @@ impl PointCloudBuilder {
         PointCloudBatchBuilder(self)
     }
 
-    // Iterate over all batches, yielding the batch info and a point vertex iterator.
-    pub fn iter_vertices_by_batch(
-        &self,
-    ) -> impl Iterator<Item = (&PointCloudBatchInfo, impl Iterator<Item = &PositionRadius>)> {
-        let mut vertex_offset = 0;
-        self.batches.iter().map(move |batch| {
-            let out = (
-                batch,
-                self.vertices
-                    .iter()
-                    .skip(vertex_offset)
-                    .take(batch.point_count as usize),
-            );
-            vertex_offset += batch.point_count as usize;
-            out
-        })
-    }
-
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
-    pub fn into_draw_data(
-        self,
-        ctx: &crate::context::RenderContext,
-    ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
-        PointCloudDrawData::new(ctx, self)
+    pub fn into_draw_data(self) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
+        PointCloudDrawData::new(self)
     }
 }
 
-pub struct PointCloudBatchBuilder<'a>(&'a mut PointCloudBuilder);
+pub struct PointCloudBatchBuilder<'a, 'ctx>(&'a mut PointCloudBuilder<'ctx>);
 
-impl<'a> Drop for PointCloudBatchBuilder<'a> {
+impl<'a, 'ctx> Drop for PointCloudBatchBuilder<'a, 'ctx> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().point_count == 0 {
@@ -134,7 +97,7 @@ impl<'a> Drop for PointCloudBatchBuilder<'a> {
     }
 }
 
-impl<'a> PointCloudBatchBuilder<'a> {
+impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
     #[inline]
     fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
         self.0
@@ -179,28 +142,38 @@ impl<'a> PointCloudBatchBuilder<'a> {
         colors: &[Color32],
         picking_ids: &[PickingLayerInstanceId],
     ) -> Self {
-        // TODO(jleibs): Figure out if we can plumb-through proper support for `Iterator::size_hints()`
-        // or potentially make `FixedSizedIterator` work correctly. This should be possible size the
-        // underlying arrow structures are of known-size, but carries some complexity with the amount of
-        // chaining, joining, filtering, etc. that happens along the way.
         re_tracing::profile_function!();
 
-        let mut num_points = positions.len();
-
-        debug_assert_eq!(self.0.vertices.len(), self.0.color_buffer.num_written());
         debug_assert_eq!(
-            self.0.vertices.len(),
-            self.0.picking_instance_ids_buffer.num_written()
+            self.0.position_radius_buffer.len(),
+            self.0.color_buffer.len()
+        );
+        debug_assert_eq!(
+            self.0.position_radius_buffer.len(),
+            self.0.picking_instance_ids_buffer.len()
         );
 
-        if num_points + self.0.vertices.len() > self.0.max_num_points {
+        // Do a reserve ahead of time, to check whether we're hitting the data texture limit.
+        // The limit is the same for all data textures, so we only need to check one.
+        let Some(num_available_points) = self
+            .0
+            .position_radius_buffer
+            .reserve(positions.len())
+            .ok_or_log_error()
+        else {
+            return self;
+        };
+
+        let num_points = if positions.len() > num_available_points {
             re_log::error_once!(
-                "Reserved space for {} points, but reached {}. Clamping to previously set maximum",
-                self.0.max_num_points,
-                num_points + self.0.vertices.len()
+                "Reached maximum number of points for point cloud of {}. Ignoring all excess points.",
+                self.0.position_radius_buffer.len() + num_available_points
             );
-            num_points = self.0.max_num_points - self.0.vertices.len();
-        }
+            num_available_points
+        } else {
+            positions.len()
+        };
+
         if num_points == 0 {
             return self;
         }
@@ -215,13 +188,20 @@ impl<'a> PointCloudBatchBuilder<'a> {
 
         {
             re_tracing::profile_scope!("positions & radii");
-            self.0.vertices.extend(
-                izip!(
-                    positions.iter().copied(),
-                    radii.iter().copied().chain(std::iter::repeat(Size::AUTO))
-                )
-                .map(|(pos, radius)| PositionRadius { pos, radius }),
-            );
+
+            // TODO(andreas): It would be nice to pass on the iterator as is so we don't have to do yet another
+            // copy of the data and instead write into the buffers directly - if done right this should be the fastest.
+            // But it's surprisingly tricky to do this effectively.
+            let vertices = izip!(
+                positions.iter().copied(),
+                radii.iter().copied().chain(std::iter::repeat(Size::AUTO))
+            )
+            .map(|(pos, radius)| PositionRadius { pos, radius })
+            .collect_vec();
+            self.0
+                .position_radius_buffer
+                .extend_from_slice(&vertices)
+                .ok_or_log_error();
         }
         {
             re_tracing::profile_scope!("colors");
@@ -230,11 +210,9 @@ impl<'a> PointCloudBatchBuilder<'a> {
                 .color_buffer
                 .extend_from_slice(colors)
                 .ok_or_log_error();
-
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .color_buffer
-                .fill_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
+                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len()))
                 .ok_or_log_error();
         }
         {
@@ -244,11 +222,9 @@ impl<'a> PointCloudBatchBuilder<'a> {
                 .picking_instance_ids_buffer
                 .extend_from_slice(picking_ids)
                 .ok_or_log_error();
-
-            // Fill up with defaults. Doing this in a separate step is faster than chaining the iterator.
             self.0
                 .picking_instance_ids_buffer
-                .fill_n(
+                .add_n(
                     PickingLayerInstanceId::default(),
                     num_points.saturating_sub(picking_ids.len()),
                 )

@@ -14,7 +14,6 @@ use crate::{
     app_blueprint::AppBlueprint,
     background_tasks::BackgroundTasks,
     store_hub::{StoreHub, StoreHubStats},
-    viewer_analytics::ViewerAnalytics,
     AppState,
 };
 
@@ -138,7 +137,7 @@ pub struct App {
     command_receiver: CommandReceiver,
     cmd_palette: re_ui::CommandPalette,
 
-    analytics: ViewerAnalytics,
+    analytics: crate::viewer_analytics::ViewerAnalytics,
 
     /// All known space view types.
     space_view_class_registry: SpaceViewClassRegistry,
@@ -154,6 +153,9 @@ impl App {
         storage: Option<&dyn eframe::Storage>,
     ) -> Self {
         re_tracing::profile_function!();
+
+        let analytics =
+            crate::viewer_analytics::ViewerAnalytics::new(&startup_options, app_env.clone());
 
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         if re_log::add_boxed_logger(Box::new(logger)).is_err() {
@@ -184,9 +186,6 @@ impl App {
             AppState::default()
         };
 
-        let mut analytics = ViewerAnalytics::new(&startup_options);
-        analytics.on_viewer_started(&build_info, app_env);
-
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
         if let Err(err) = populate_space_view_class_registry_with_builtin(
             &mut space_view_class_registry,
@@ -215,6 +214,8 @@ impl App {
         let long_time_ago = web_time::Instant::now()
             .checked_sub(web_time::Duration::from_secs(1_000_000_000))
             .unwrap_or(web_time::Instant::now());
+
+        analytics.on_viewer_started(build_info);
 
         Self {
             build_info,
@@ -430,6 +431,7 @@ impl App {
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint");
                 store_hub.clear_current_blueprint();
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
@@ -819,7 +821,7 @@ impl App {
         &mut self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let frame = egui::Frame {
             fill: ui.visuals().panel_fill,
@@ -876,7 +878,7 @@ impl App {
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
-        store_stats: &StoreHubStats,
+        store_stats: Option<&StoreHubStats>,
     ) {
         let mut main_panel_frame = egui::Frame::default();
         if re_ui::CUSTOM_WINDOW_DECORATIONS {
@@ -1007,8 +1009,6 @@ impl App {
 
             let store_id = msg.store_id();
 
-            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
-
             let entity_db = store_hub.entity_db_mut(store_id);
 
             if entity_db.data_source.is_none() {
@@ -1018,13 +1018,6 @@ impl App {
             if let Err(err) = entity_db.add(&msg) {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
-
-            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
-                // Do analytics after ingesting the new message,
-                // because thats when the `entity_db.store_info` is set,
-                // which we use in the analytics call.
-                self.analytics.on_open_recording(entity_db);
-            }
 
             // Set the recording-id after potentially creating the store in the
             // hub. This ordering is important because the `StoreHub` internally
@@ -1044,6 +1037,15 @@ impl App {
                         );
                     }
                 }
+            }
+
+            // Do analytics after ingesting the new message,
+            // because thats when the `entity_db.store_info` is set,
+            // which we use in the analytics call.
+            let entity_db = store_hub.entity_db_mut(store_id);
+            let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
+            if is_new_store && entity_db.store_kind() == StoreKind::Recording {
+                self.analytics.on_open_recording(entity_db);
             }
 
             if start.elapsed() > web_time::Duration::from_millis(10) {
@@ -1289,8 +1291,11 @@ impl eframe::App for App {
             }
         }
 
+        // NOTE: GPU resource stats are cheap to compute so we always do.
         // TODO(andreas): store the re_renderer somewhere else.
         let gpu_resource_stats = {
+            re_tracing::profile_scope!("gpu_resource_stats");
+
             let egui_renderer = {
                 let render_state = frame.wgpu_render_state().unwrap();
                 &mut render_state.renderer.read()
@@ -1304,10 +1309,15 @@ impl eframe::App for App {
             render_ctx.gpu_resources.statistics()
         };
 
-        let store_stats = store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled());
+        // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
+        // is opened.
+        let store_stats = self
+            .memory_panel_open
+            .then(|| store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled()));
 
         // do early, before doing too many allocations
-        self.memory_panel.update(&gpu_resource_stats, &store_stats);
+        self.memory_panel
+            .update(&gpu_resource_stats, store_stats.as_ref());
 
         self.check_keyboard_shortcuts(egui_ctx);
 
@@ -1345,7 +1355,7 @@ impl eframe::App for App {
             &app_blueprint,
             &gpu_resource_stats,
             store_context.as_ref(),
-            &store_stats,
+            store_stats.as_ref(),
         );
 
         if re_ui::CUSTOM_WINDOW_DECORATIONS {

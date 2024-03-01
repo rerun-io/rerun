@@ -66,12 +66,11 @@ impl crate::Loggable for VisualizerOverrides {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: DataType::Utf8,
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            DataType::Utf8,
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -165,15 +164,9 @@ impl crate::Loggable for VisualizerOverrides {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Utf8,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.VisualizerOverrides#value")?;
             if arrow_data.is_empty() {
@@ -186,10 +179,9 @@ impl crate::Loggable for VisualizerOverrides {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::Utf8,
-                                    arrow_data_inner.data_type().clone(),
-                                )
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data_inner.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.components.VisualizerOverrides#value")?;
                         let arrow_data_inner_buf = arrow_data_inner.values();

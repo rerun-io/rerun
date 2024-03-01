@@ -40,13 +40,13 @@ pub enum ResourceManagerError {
     #[error("The passed resource handle was null")]
     NullHandle,
 
-    #[error("Failed accessing resource pools")]
+    #[error("Failed accessing resource pools: {0}")]
     ResourcePoolError(PoolError),
 
-    #[error("Invalid mesh given as input")]
+    #[error("Invalid mesh given as input: {0}")]
     InvalidMesh(#[from] crate::mesh::MeshError),
 
-    #[error("Failed to transfer data to the GPU")]
+    #[error("Failed to transfer data to the GPU: {0}")]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
 }
 

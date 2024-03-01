@@ -12,7 +12,7 @@ namespace rerun.datatypes;
 union Transform3D (
   "attr.rust.derive": "Copy, PartialEq"
 ) {
-  TranslationAndMat3x3: TranslationAndMat3x3 (order: 100),
-  TranslationRotationScale: TranslationRotationScale3D (order: 200),
+  TranslationAndMat3x3: TranslationAndMat3x3,
+  TranslationRotationScale: TranslationRotationScale3D,
   // TODO(andreas): Raw 4x4 matrix.
 }

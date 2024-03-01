@@ -21,42 +21,40 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The kind of a blueprint container.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ContainerKind(
-    /// Which kind of container this is.
-    ///
-    /// Allowed values:
-    ///  - Tabs = 1
-    ///  - Horizontal = 2
-    ///  - Vertical = 3
-    ///  - Grid = 4
-    pub u8,
-);
+/// **Component**: The kind of a blueprint container (tabs, grid, …).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ContainerKind {
+    Tabs = 1,
+    Horizontal = 2,
+    Vertical = 3,
+    Grid = 4,
+}
+
+impl ContainerKind {
+    /// All the different enum variants.
+    pub const ALL: [Self; 4] = [Self::Tabs, Self::Horizontal, Self::Vertical, Self::Grid];
+}
 
 impl ::re_types_core::SizeBytes for ContainerKind {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <u8>::is_pod()
+        true
     }
 }
 
-impl From<u8> for ContainerKind {
-    #[inline]
-    fn from(kind: u8) -> Self {
-        Self(kind)
-    }
-}
-
-impl From<ContainerKind> for u8 {
-    #[inline]
-    fn from(value: ContainerKind) -> Self {
-        value.0
+impl std::fmt::Display for ContainerKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Tabs => write!(f, "Tabs"),
+            Self::Horizontal => write!(f, "Horizontal"),
+            Self::Vertical => write!(f, "Vertical"),
+            Self::Grid => write!(f, "Grid"),
+        }
     }
 }
 
@@ -74,7 +72,17 @@ impl ::re_types_core::Loggable for ContainerKind {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::UInt8
+        DataType::Union(
+            std::sync::Arc::new(vec![
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("Tabs", DataType::Null, false),
+                Field::new("Horizontal", DataType::Null, false),
+                Field::new("Vertical", DataType::Null, false),
+                Field::new("Grid", DataType::Null, false),
+            ]),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
+            UnionMode::Sparse,
+        )
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -87,25 +95,30 @@ impl ::re_types_core::Loggable for ContainerKind {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
+                .collect();
+            let num_variants = 4usize;
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(value) => *value as i8,
+                })
+                .collect();
+            let fields: Vec<_> =
+                std::iter::repeat(NullArray::new(DataType::Null, data.len()).boxed())
+                    .take(1 + num_variants)
+                    .collect();
+            UnionArray::new(
+                <crate::blueprint::components::ContainerKind>::arrow_datatype(),
+                types,
+                fields,
+                None,
             )
             .boxed()
         })
@@ -120,54 +133,33 @@ impl ::re_types_core::Loggable for ContainerKind {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt8Array>()
-            .ok_or_else(|| {
-                DeserializationError::datatype_mismatch(
-                    DataType::UInt8,
-                    arrow_data.data_type().clone(),
-                )
-            })
-            .with_context("rerun.blueprint.components.ContainerKind#kind")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.ContainerKind#kind")
-            .with_context("rerun.blueprint.components.ContainerKind")?)
-    }
-
-    #[allow(clippy::wildcard_imports)]
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        if let Some(validity) = arrow_data.validity() {
-            if validity.unset_bits() != 0 {
-                return Err(DeserializationError::missing_data());
-            }
-        }
         Ok({
-            let slice = arrow_data
+            let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<UInt8Array>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::UInt8,
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.blueprint.components.ContainerKind#kind")?
-                .values()
-                .as_slice();
-            {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
-            }
+                .with_context("rerun.blueprint.components.ContainerKind")?;
+            let arrow_data_types = arrow_data.types();
+            arrow_data_types
+                .iter()
+                .map(|typ| match typ {
+                    0 => Ok(None),
+                    1 => Ok(Some(ContainerKind::Tabs)),
+                    2 => Ok(Some(ContainerKind::Horizontal)),
+                    3 => Ok(Some(ContainerKind::Vertical)),
+                    4 => Ok(Some(ContainerKind::Grid)),
+                    _ => Err(DeserializationError::missing_union_arm(
+                        Self::arrow_datatype(),
+                        "<invalid>",
+                        *typ as _,
+                    )),
+                })
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.components.ContainerKind")?
         })
     }
 }

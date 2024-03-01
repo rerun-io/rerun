@@ -32,12 +32,11 @@ all-features = true
 [features]
 ## ONLY FOR CI!
 ##
-## When set: will skip building the Web Viewer Wasm.
-## This makes the CI much faster, but the resulting web server
-## will crash if you try to run it!
+## When set, the crate builds despite the `.wasm` being missing, but will panic at runtime.
+## For instance: when the CI builds the docs for all crates, it uses `--all-features`, which means
+## it can build the docs for this crate without having to build the web-viewer first.
 ##
-## BONUS: If you configure rust-analyzer to use `--all-features,
-## you will also have rust-analyzer opting-out of building wasm!
+## When not set, you must build the `.wasm` before building the crate, using `cargo run -p re_build_web_viewer`.
 __ci = []
 
 ## Enable telemetry using our analytics SDK.
@@ -62,9 +61,3 @@ webbrowser.workspace = true
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
-
-
-[build-dependencies]
-re_build_tools.workspace = true
-re_build_web_viewer.workspace = true
-re_error.workspace = true

@@ -45,7 +45,7 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 * [Tensor](types/archetypes/tensor.md)
 
 ## Time Series **Archetypes**
-* [Scalar](types/archetypes/time_series_scalar.md): a single scalar / metric value.
+* [Scalar](types/archetypes/scalar.md): a single scalar / metric value.
 * [SeriesPoint](types/archetypes/series_point.md): define the style properties for a point series in a chart.
 * [SeriesLine](types/archetypes/series_line.md): define the style properties for a line series in a chart.
 * [TimeSeriesScalar (deprecated)](types/archetypes/time_series_scalar.md): a single scalar / metric value as well as styling options. Can be viewed in the `TimeSeries` space view.

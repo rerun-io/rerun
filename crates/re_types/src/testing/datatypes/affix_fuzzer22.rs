@@ -66,20 +66,14 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "fixed_sized_native".to_owned(),
-            data_type: DataType::FixedSizeList(
-                std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::UInt8,
-                    is_nullable: false,
-                    metadata: [].into(),
-                }),
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "fixed_sized_native",
+            DataType::FixedSizeList(
+                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                 4usize,
             ),
-            is_nullable: false,
-            metadata: [].into(),
-        }]))
+            false,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -145,12 +139,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                                 4usize,
                             ),
                             PrimitiveArray::new(
@@ -187,23 +176,9 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![Field {
-                            name: "fixed_sized_native".to_owned(),
-                            data_type: DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::UInt8,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
-                                4usize,
-                            ),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.datatypes.AffixFuzzer22")?;
             if arrow_data.is_empty() {
@@ -230,18 +205,12 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::UInt8,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        4usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                                    4usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
                                 "rerun.testing.datatypes.AffixFuzzer22#fixed_sized_native",
@@ -252,23 +221,23 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             let offsets = (0..)
                                 .step_by(4usize)
                                 .zip((4usize..).step_by(4usize).take(arrow_data.len()));
-                            let arrow_data_inner =
-                                {
-                                    let arrow_data_inner = &**arrow_data.values();
-                                    arrow_data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        let expected = DataType::UInt8;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
+                                    })
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer22#fixed_sized_native",
                                     )?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
-                                };
+                            };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
                                 arrow_data.validity(),

@@ -85,12 +85,13 @@ pub fn color_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
-    re_tracing::profile_function!();
-
     let texture_key = hash(tensor_data_row_id);
     let [height, width, depth] = texture_height_width_channels(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
+        // Profile creation of the texture, but not cache hits (those take close to no time, which would just add profiler overhead).
+        re_tracing::profile_function!();
+
         let (data, format) = match (depth, &tensor.buffer) {
             (3, TensorBuffer::Nv12(buf) | TensorBuffer::Yuy2(buf)) => {
                 (cast_slice_to_cow(buf.as_slice()), TextureFormat::R8Uint)

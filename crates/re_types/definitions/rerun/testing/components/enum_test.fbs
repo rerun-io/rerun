@@ -1,0 +1,22 @@
+namespace rerun.testing.components;
+
+/// A test of the enum type.
+enum EnumTest: byte {
+    /// Great film.
+    Up,
+
+    /// Feeling blue.
+    Down,
+
+    /// Correct.
+    Right (default),
+
+    /// It's what's remaining.
+    Left,
+
+    /// It's the only way to go.
+    Forward,
+
+    /// Baby's got it.
+    Back,
+}

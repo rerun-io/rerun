@@ -67,12 +67,7 @@ impl ::re_types_core::Loggable for UVec2D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::UInt32,
-                is_nullable: false,
-                metadata: [].into(),
-            }),
+            std::sync::Arc::new(Field::new("item", DataType::UInt32, false)),
             2usize,
         )
     }
@@ -155,18 +150,9 @@ impl ::re_types_core::Loggable for UVec2D {
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                            2usize,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.UVec2D#xy")?;
             if arrow_data.is_empty() {
@@ -181,10 +167,9 @@ impl ::re_types_core::Loggable for UVec2D {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt32,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::UInt32;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.UVec2D#xy")?
                         .into_iter()

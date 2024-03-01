@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
+
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_query::query_archetype;
@@ -42,10 +44,13 @@ pub struct ViewportBlueprint {
     /// Whether the viewport layout is determined automatically.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
-    pub auto_layout: bool,
+    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
+    auto_layout: AtomicBool,
 
-    /// Whether or not space views should be created automatically.
-    pub auto_space_views: bool,
+    /// Whether space views should be created automatically.
+    ///
+    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
+    auto_space_views: AtomicBool,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -139,8 +144,8 @@ impl ViewportBlueprint {
             root_container,
             tree,
             maximized,
-            auto_layout,
-            auto_space_views,
+            auto_layout: auto_layout.into(),
+            auto_space_views: auto_space_views.into(),
             tree_action_sender,
         }
 
@@ -239,7 +244,17 @@ impl ViewportBlueprint {
         let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
 
-        self.add_space_views(std::iter::once(new_space_view), ctx, None);
+        let parent_and_pos =
+            self.find_parent_and_position_index(&Contents::SpaceView(*space_view_id));
+
+        self.add_space_views(
+            std::iter::once(new_space_view),
+            ctx,
+            parent_and_pos.map(|(parent, _)| parent),
+            parent_and_pos.map(|(_, pos)| pos),
+        );
+
+        self.mark_user_interaction(ctx);
 
         Some(new_space_view_id)
     }
@@ -252,10 +267,6 @@ impl ViewportBlueprint {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, query_id, _entity_path) => self
-                .space_views
-                .get(space_view_id)
-                .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
@@ -267,7 +278,7 @@ impl ViewportBlueprint {
     }
 
     pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {
-        if self.auto_layout {
+        if self.auto_layout() {
             re_log::trace!("User edits - will no longer auto-layout");
         }
 
@@ -294,6 +305,7 @@ impl ViewportBlueprint {
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
         ctx: &ViewerContext<'_>,
         parent_container: Option<ContainerId>,
+        position_in_parent: Option<usize>,
     ) -> Vec<SpaceViewId> {
         let mut new_ids: Vec<_> = vec![];
 
@@ -309,7 +321,11 @@ impl ViewportBlueprint {
 
         if !new_ids.is_empty() {
             for id in &new_ids {
-                self.send_tree_action(TreeAction::AddSpaceView(*id, parent_container));
+                self.send_tree_action(TreeAction::AddSpaceView(
+                    *id,
+                    parent_container,
+                    position_in_parent,
+                ));
             }
 
             let updated_ids: Vec<_> = self.space_views.keys().chain(new_ids.iter()).collect();
@@ -556,7 +572,7 @@ impl ViewportBlueprint {
             Contents::Container(container_id) => {
                 if let Some(container) = self.container(container_id) {
                     if visible != container.visible {
-                        if self.auto_layout {
+                        if self.auto_layout() {
                             re_log::trace!(
                                 "Container visibility changed - will no longer auto-layout"
                             );
@@ -574,7 +590,7 @@ impl ViewportBlueprint {
             Contents::SpaceView(space_view_id) => {
                 if let Some(space_view) = self.space_view(space_view_id) {
                     if visible != space_view.visible {
-                        if self.auto_layout {
+                        if self.auto_layout() {
                             re_log::trace!(
                                 "Space-view visibility changed - will no longer auto-layout"
                             );
@@ -602,11 +618,7 @@ impl ViewportBlueprint {
             .iter()
             .filter_map(|(space_view_id, space_view)| {
                 let query_result = ctx.lookup_query_result(space_view.query_id());
-                if query_result
-                    .tree
-                    .lookup_result_by_path_and_group(path, false)
-                    .is_some()
-                {
+                if query_result.tree.lookup_result_by_path(path).is_some() {
                     Some(*space_view_id)
                 } else {
                     None
@@ -617,18 +629,32 @@ impl ViewportBlueprint {
 
     #[inline]
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_layout != value {
+        let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
+
+        if old_value != value {
             let component = AutoLayout(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }
 
     #[inline]
+    pub fn auto_layout(&self) -> bool {
+        self.auto_layout.load(Ordering::SeqCst)
+    }
+
+    #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
-        if self.auto_space_views != value {
+        let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
+
+        if old_value != value {
             let component = AutoSpaceViews(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
+    }
+
+    #[inline]
+    pub fn auto_space_views(&self) -> bool {
+        self.auto_space_views.load(Ordering::SeqCst)
     }
 
     #[inline]

@@ -43,6 +43,7 @@ namespace rerun {
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,
+        RecordingStreamRuntimeFailure,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
         RecordingStreamStdoutFailure,

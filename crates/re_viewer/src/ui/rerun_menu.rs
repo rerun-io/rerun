@@ -396,18 +396,18 @@ fn experimental_feature_ui(
     re_ui
         .checkbox(
             ui,
-            &mut app_options.experimental_entity_filter_editor,
-            "Entity filter DSL",
-        )
-        .on_hover_text("Show an entity filter DSL when selecting a space-view.");
-
-    re_ui
-        .checkbox(
-            ui,
             &mut app_options.experimental_plot_query_clamping,
             "Plots: query clamping",
         )
         .on_hover_text("Toggle query clamping for the plot visualizers.");
+
+    re_ui
+        .checkbox(
+            ui,
+            &mut app_options.experimental_visualizer_selection,
+            "Visualizer selection for all views",
+        )
+        .on_hover_text("Enables explicit visualizer selection for all views, not just Time Series where it's default enabled.");
 }
 
 #[cfg(debug_assertions)]
@@ -437,10 +437,6 @@ fn egui_debug_options_ui(re_ui: &re_ui::ReUi, ui: &mut egui::Ui) {
             "Show interactive widgets",
         )
         .on_hover_text("Show an overlay on all interactive widgets")
-        .changed();
-    any_clicked |= re_ui
-        .checkbox(ui, &mut debug.show_blocking_widget, "Show blocking widgets")
-        .on_hover_text("Show what widget blocks the interaction of another widget")
         .changed();
 
     if any_clicked {

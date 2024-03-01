@@ -1,12 +1,12 @@
+use egui::vec2;
+use egui::Color32;
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_log_types::LogMsg;
-use re_smart_channel::ReceiveSet;
+use re_ui::icons::ARROW_DOWN;
+use re_ui::ReUi;
 use re_viewer_context::SystemCommandSender;
-
-use super::WelcomeScreenResponse;
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -23,7 +23,6 @@ struct ExampleDesc {
     /// human readable version of the example name
     title: String,
 
-    description: String,
     tags: Vec<String>,
 
     rrd_url: String,
@@ -36,8 +35,7 @@ const MAX_COLUMN_WIDTH: f32 = 340.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 24.0;
 const TITLE_TO_GRID_VSPACE: f32 = 32.0;
-const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 10.0;
-const DESCRIPTION_TO_TAGS_VSPACE: f32 = 10.0;
+const THUMBNAIL_TO_DESCRIPTION_VSPACE: f32 = 8.0;
 const ROW_VSPACE: f32 = 32.0;
 const THUMBNAIL_RADIUS: f32 = 4.0;
 
@@ -172,7 +170,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
     promise
 }
 
-pub(super) struct ExamplePage {
+pub(super) struct ExampleSection {
     id: egui::Id,
     manifest_url: String,
     examples: Option<ManifestPromise>,
@@ -211,17 +209,17 @@ fn default_manifest_url() -> String {
     }
 }
 
-impl Default for ExamplePage {
+impl Default for ExampleSection {
     fn default() -> Self {
         Self {
-            id: egui::Id::new("example_page"),
+            id: egui::Id::new("example_section"),
             manifest_url: default_manifest_url(),
             examples: None,
         }
     }
 }
 
-impl ExamplePage {
+impl ExampleSection {
     pub fn set_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         if self.manifest_url != url {
             self.manifest_url = url.clone();
@@ -233,29 +231,28 @@ impl ExamplePage {
         &mut self,
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
-        rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
-    ) -> WelcomeScreenResponse {
+    ) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
             ui.spinner();
-            return WelcomeScreenResponse::default();
+            return;
         };
 
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
                 ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
-                return WelcomeScreenResponse::default();
+                return;
             }
         };
 
         if examples.is_empty() {
             ui.label("No examples found.");
-            return WelcomeScreenResponse::default();
+            return;
         }
 
         // vertical spacing isn't homogeneous so it's handled manually
@@ -269,97 +266,90 @@ impl ExamplePage {
             .floor()
             .at_most(MAX_COLUMN_WIDTH);
 
-        // this space is added on the left so that the grid is centered
-        let centering_hspace = (ui.available_width()
-            - column_count as f32 * column_width
-            - (column_count - 1) as f32 * grid_spacing.x)
-            .max(0.0)
-            / 2.0;
+        // cursor is currently at the top of the section,
+        // so we use it to check for visibility of the whole section.
+        let example_section_rect = ui.cursor();
+        let examples_visible = ui.is_rect_visible(ui.cursor().translate(vec2(0.0, 16.0)));
 
-        ui.horizontal(|ui| {
-            ui.add_space(centering_hspace);
-
-            ui.vertical(|ui| {
-                ui.horizontal_wrapped(|ui| {
+        let title_response = ui
+            .horizontal(|ui| {
+                ui.vertical_centered(|ui| {
                     ui.add(egui::Label::new(
-                        egui::RichText::new("Examples.")
+                        egui::RichText::new("Examples")
                             .strong()
                             .line_height(Some(32.0))
                             .text_style(re_ui::ReUi::welcome_screen_h1()),
-                    ));
+                    ))
+                })
+                .inner
+            })
+            .inner;
+        ui.end_row();
 
-                    ui.add(egui::Label::new(
-                        egui::RichText::new("Explore what you can build.")
-                            .line_height(Some(32.0))
-                            .text_style(re_ui::ReUi::welcome_screen_h1()),
-                    ));
-                });
+        ui.horizontal(|ui| {
+            // this space is added on the left so that the grid is centered
+            let centering_hspace = (ui.available_width()
+                - column_count as f32 * column_width
+                - (column_count - 1) as f32 * grid_spacing.x)
+                .max(0.0)
+                / 2.0;
+            ui.add_space(centering_hspace);
 
+            ui.vertical(|ui| {
                 ui.add_space(TITLE_TO_GRID_VSPACE);
 
-                egui::Grid::new("example_page_grid")
+                egui::Grid::new("example_section_grid")
                     .spacing(grid_spacing)
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
-                        examples
-                            .chunks_mut(column_count)
-                            .for_each(|example_layouts| {
-                                for example in &mut *example_layouts {
-                                    // this is the beginning of the first cell for this example
-                                    example.set_top_left(ui.cursor().min);
+                        for example_layouts in examples.chunks_mut(column_count) {
+                            for example in &mut *example_layouts {
+                                // this is the beginning of the first cell for this example
+                                example.set_top_left(ui.cursor().min);
 
-                                    let thumbnail = &example.desc.thumbnail;
-                                    let width = thumbnail.width as f32;
-                                    let height = thumbnail.height as f32;
-                                    ui.vertical(|ui| {
-                                        let size =
-                                            egui::vec2(column_width, height * column_width / width);
+                                let thumbnail = &example.desc.thumbnail;
+                                let width = thumbnail.width as f32;
+                                let height = thumbnail.height as f32;
+                                ui.vertical(|ui| {
+                                    let size =
+                                        egui::vec2(column_width, height * column_width / width);
 
-                                        example_thumbnail(
-                                            ui,
-                                            rx,
-                                            &example.desc,
-                                            size,
-                                            example.hovered(ui, self.id),
-                                        );
+                                    example_thumbnail(
+                                        ui,
+                                        &example.desc,
+                                        size,
+                                        example.hovered(ui, self.id),
+                                    );
+                                });
+                            }
 
-                                        ui.add_space(THUMBNAIL_TO_DESCRIPTION_VSPACE);
-                                    });
-                                }
+                            ui.end_row();
 
-                                ui.end_row();
+                            for example in &mut *example_layouts {
+                                ui.vertical(|ui| {
+                                    example_title(ui, example);
+                                });
+                            }
 
-                                for example in &mut *example_layouts {
-                                    ui.vertical(|ui| {
-                                        example_description(
-                                            ui,
-                                            example,
-                                            example.hovered(ui, self.id),
-                                        );
+                            ui.end_row();
 
-                                        ui.add_space(DESCRIPTION_TO_TAGS_VSPACE);
-                                    });
-                                }
+                            for example in &mut *example_layouts {
+                                ui.vertical(|ui| {
+                                    example_tags(ui, &example.desc);
 
-                                ui.end_row();
+                                    // this is the end of the last cell for this example
+                                    example.set_bottom_right(egui::pos2(
+                                        ui.cursor().min.x + column_width,
+                                        ui.cursor().min.y,
+                                    ));
 
-                                for example in &mut *example_layouts {
-                                    ui.vertical(|ui| {
-                                        example_tags(ui, &example.desc);
+                                    ui.add_space(ROW_VSPACE);
+                                });
+                            }
 
-                                        // this is the end of the last cell for this example
-                                        example.set_bottom_right(egui::pos2(
-                                            ui.cursor().min.x + column_width,
-                                            ui.cursor().min.y,
-                                        ));
-
-                                        ui.add_space(ROW_VSPACE);
-                                    });
-                                }
-
-                                ui.end_row();
-                            });
+                            ui.end_row();
+                        }
                     });
 
                 for example in examples {
@@ -379,34 +369,80 @@ impl ExamplePage {
             });
         });
 
-        WelcomeScreenResponse::default()
-    }
-}
+        if !examples_visible {
+            let screen_rect = ui.ctx().screen_rect();
+            let indicator_rect = example_section_rect
+                .with_min_y(screen_rect.bottom() - 125.0)
+                .with_max_y(screen_rect.bottom());
 
-fn is_loading(rx: &ReceiveSet<LogMsg>, example: &ExampleDesc) -> bool {
-    rx.sources().iter().any(|s| {
-        if let re_smart_channel::SmartChannelSource::RrdHttpStream { url } = s.as_ref() {
-            url == &example.rrd_url
-        } else {
-            false
+            let mut ui = ui.child_ui(
+                indicator_rect,
+                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+            );
+
+            ui.vertical_centered(|ui| {
+                ui.add_space(16.0);
+
+                ui.scope(|ui| {
+                    ui.spacing_mut().button_padding = vec2(16.0, 8.0);
+                    let response = ui.add(
+                        egui::Button::image_and_text(
+                            ARROW_DOWN
+                                .as_image()
+                                .tint(egui::Color32::BLACK)
+                                .fit_to_exact_size(ReUi::small_icon_size()),
+                            egui::RichText::new("See examples").color(egui::Color32::BLACK),
+                        )
+                        .rounding(16.0)
+                        .fill(egui::Color32::from_gray(0xfa)),
+                    );
+                    if response.clicked() {
+                        title_response.scroll_to_me(Some(egui::Align::Min));
+                    }
+                })
+            });
         }
-    })
+    }
 }
 
 fn example_thumbnail(
     ui: &mut Ui,
-    rx: &ReceiveSet<LogMsg>,
     example: &ExampleDesc,
-    size: egui::Vec2,
+    thumbnail_size: egui::Vec2,
     hovered: bool,
 ) {
-    let rounding = egui::Rounding::same(THUMBNAIL_RADIUS);
+    const ASPECT_RATIO: f32 = 16.0 / 6.75; // same as `rerun.io/examples`
+    const PADDING_PCT: f32 = 0.07; // 7%
 
-    let response = ui.add(
-        egui::Image::new(&example.thumbnail.url)
-            .rounding(rounding)
-            .fit_to_exact_size(size),
+    let rounding = egui::Rounding {
+        nw: THUMBNAIL_RADIUS,
+        ne: THUMBNAIL_RADIUS,
+        sw: 0.0,
+        se: 0.0,
+    };
+
+    let clip_width = thumbnail_size.x;
+    let clip_height = thumbnail_size.x / ASPECT_RATIO;
+    let padding = thumbnail_size.x * PADDING_PCT;
+
+    let clip_top_left = ui.cursor().left_top();
+    let bottom_right = clip_top_left + vec2(clip_width, clip_height);
+    let clip_rect = egui::Rect::from_min_max(clip_top_left, bottom_right);
+
+    let thumbnail_top_left = clip_top_left + vec2(padding, 0.0);
+    let thumbnail_rect = egui::Rect::from_min_max(
+        thumbnail_top_left,
+        thumbnail_top_left + thumbnail_size - vec2(padding * 2.0, padding * 2.0 / ASPECT_RATIO),
     );
+
+    // manually clip the rect and paint the image
+    let orig_clip_rect = ui.clip_rect();
+    ui.set_clip_rect(orig_clip_rect.intersect(clip_rect));
+    egui::Image::new(&example.thumbnail.url)
+        .rounding(rounding)
+        .paint_at(ui, thumbnail_rect);
+    ui.advance_cursor_after_rect(clip_rect.expand2(vec2(0.0, THUMBNAIL_TO_DESCRIPTION_VSPACE)));
+    ui.set_clip_rect(orig_clip_rect);
 
     // TODO(ab): use design tokens
     let border_color = if hovered {
@@ -415,36 +451,27 @@ fn example_thumbnail(
         egui::Color32::from_gray(44)
     };
 
-    ui.painter()
-        .rect_stroke(response.rect, rounding, (1.0, border_color));
-
-    // Show spinner overlay while loading the example:
-    if is_loading(rx, example) {
-        ui.painter().rect_filled(
-            response.rect,
-            rounding,
-            egui::Color32::BLACK.gamma_multiply(0.75),
-        );
-
-        let spinner_size = response.rect.size().min_elem().at_most(72.0);
-        let spinner_rect =
-            egui::Rect::from_center_size(response.rect.center(), egui::Vec2::splat(spinner_size));
-        ui.allocate_ui_at_rect(spinner_rect, |ui| {
-            ui.add(egui::Spinner::new().size(spinner_size));
-        });
-    }
+    // paint border
+    ui.painter().rect_stroke(
+        clip_rect.intersect(thumbnail_rect),
+        rounding,
+        (1.0, border_color),
+    );
+    ui.painter().line_segment(
+        [clip_rect.left_bottom(), clip_rect.right_bottom()],
+        (1.0, border_color),
+    );
 }
 
-fn example_description(ui: &mut Ui, example: &ExampleDescLayout, hovered: bool) {
-    let desc = &example.desc;
-
-    let title = egui::RichText::new(desc.title.clone())
+fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
+    let title = egui::RichText::new(example.desc.title.clone())
         .strong()
         .line_height(Some(22.0))
-        .text_style(re_ui::ReUi::welcome_screen_body());
+        .color(Color32::from_rgb(178, 178, 187))
+        .text_style(re_ui::ReUi::welcome_screen_example_title());
 
     ui.horizontal(|ui| {
-        ui.label(title);
+        ui.add(egui::Label::new(title).wrap(true));
 
         if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -453,14 +480,7 @@ fn example_description(ui: &mut Ui, example: &ExampleDescLayout, hovered: bool) 
         }
     });
 
-    ui.add_space(4.0);
-
-    let mut desc_text = egui::RichText::new(desc.description.clone()).line_height(Some(19.0));
-    if hovered {
-        desc_text = desc_text.strong();
-    }
-
-    ui.add(egui::Label::new(desc_text).wrap(true));
+    ui.add_space(1.0);
 }
 
 fn example_tags(ui: &mut Ui, example: &ExampleDesc) {

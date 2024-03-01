@@ -20,6 +20,7 @@ examples = [
   "dicom_mri",
   "face_tracking",
   "human_pose_tracking",
+  "gesture_detection",
   "lidar",
   "live_camera_edge_detection",
   "live_depth_sensor",
@@ -74,6 +75,7 @@ examples = [
   "slahmr",
   "tapir",
   "widebaseline",
+  "arflow",
 ]
 
 [categories.setup]

@@ -73,18 +73,16 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "p".to_owned(),
-                data_type: <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "s".to_owned(),
-                data_type: <crate::testing::datatypes::StringComponent>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "p",
+                <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "s",
+                <crate::testing::datatypes::StringComponent>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 

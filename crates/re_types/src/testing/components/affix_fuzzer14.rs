@@ -74,49 +74,26 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "degrees".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "radians".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "craziness".to_owned(),
-                    data_type: DataType::List(std::sync::Arc::new(Field {
-                        name: "item".to_owned(),
-                        data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                        is_nullable: false,
-                        metadata: [].into(),
-                    })),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "fixed_size_shenanigans".to_owned(),
-                    data_type: DataType::FixedSizeList(
-                        std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }),
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("degrees", DataType::Float32, false),
+                Field::new("radians", DataType::Float32, false),
+                Field::new(
+                    "craziness",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "fixed_size_shenanigans",
+                    DataType::FixedSizeList(
+                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                         3usize,
                     ),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                    false,
+                ),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,

@@ -153,12 +153,13 @@ pub use self::codegen::{
 };
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
 pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
+    Attributes, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
 };
 pub use self::report::{Report, Reporter};
 
 // --- Attributes ---
 
+pub const ATTR_DEFAULT: &str = "default";
 pub const ATTR_NULLABLE: &str = "nullable";
 pub const ATTR_ORDER: &str = "order";
 pub const ATTR_TRANSPARENT: &str = "transparent";
@@ -202,15 +203,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `output_dir_path`: output directory, where the binary schemas will be stored.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
-///
-/// E.g.:
-/// ```no_run
-/// re_types_builder::compile_binary_schemas(
-///     "definitions/",
-///     "out/",
-///     "definitions/rerun/archetypes.fbs",
-/// );
-/// ```
 pub fn compile_binary_schemas(
     include_dir_path: impl AsRef<Utf8Path>,
     output_dir_path: impl AsRef<Utf8Path>,
@@ -243,6 +235,7 @@ pub fn compile_binary_schemas(
 /// - `include_dir_path`: path to the root directory of the fbs definition tree.
 /// - `entrypoint_path`: path to the root file of the fbs definition tree.
 pub fn generate_lang_agnostic(
+    reporter: &Reporter,
     include_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
@@ -271,6 +264,7 @@ pub fn generate_lang_agnostic(
 
     // semantic pass: high level objects from low-level reflection data
     let mut objects = Objects::from_buf(
+        reporter,
         include_dir_path,
         sh.read_binary_file(tmp_path.join(binary_entrypoint_path))
             .unwrap()
@@ -432,23 +426,6 @@ fn generate_code(
 /// Panics on error.
 ///
 /// - `output_path`: path to the root of the output.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_cpp_code(
-///     &reporter,
-///     ".",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
-/// ```
 pub fn generate_cpp_code(
     reporter: &Reporter,
     output_path: impl AsRef<Utf8Path>,
@@ -482,23 +459,6 @@ pub fn generate_cpp_code(
 /// If `check` is true, this will run a comparison check instead of writing files to disk.
 ///
 /// Panics on error.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_rust_code(
-///     &reporter,
-///     ".",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
-/// ```
 pub fn generate_rust_code(
     reporter: &Reporter,
     workspace_path: impl Into<Utf8PathBuf>,
@@ -529,24 +489,6 @@ pub fn generate_rust_code(
 /// Panics on error.
 ///
 /// - `output_pkg_path`: path to the root of the output package.
-///
-/// E.g.:
-/// ```no_run
-/// let (objects, arrow_registry) = re_types_builder::generate_lang_agnostic(
-///     "./definitions",
-///     "./definitions/rerun/archetypes.fbs",
-/// );
-/// # let reporter = re_types_builder::report::init().1;
-/// # let check = false;
-/// re_types_builder::generate_python_code(
-///     &reporter,
-///     "./rerun_py/rerun_sdk",
-///     "./rerun_py/tests",
-///     &objects,
-///     &arrow_registry,
-///     check,
-/// );
-/// ```
 pub fn generate_python_code(
     reporter: &Reporter,
     output_pkg_path: impl AsRef<Utf8Path>,
@@ -600,7 +542,9 @@ pub fn generate_docs(
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
     let workspace_root = if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir);
+        let manifest_dir = camino::Utf8PathBuf::from(manifest_dir)
+            .canonicalize_utf8()
+            .unwrap();
         manifest_dir
             .parent()
             .unwrap()
@@ -608,8 +552,12 @@ pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
             .unwrap()
             .to_path_buf()
     } else {
-        let file_path = camino::Utf8PathBuf::from(file!());
+        let file_path = camino::Utf8PathBuf::from(file!())
+            .canonicalize_utf8()
+            .unwrap();
         file_path
+            .parent()
+            .unwrap()
             .parent()
             .unwrap()
             .parent()

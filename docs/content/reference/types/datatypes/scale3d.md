@@ -4,9 +4,10 @@ title: "Scale3D"
 
 3D scaling factor, part of a transform representation.
 
-## Fields
+## Variants
 
 * ThreeD: [`Vec3D`](../datatypes/vec3d.md)
+* Uniform: `f32`
 
 ## Links
  * 🌊 [C++ API docs for `Scale3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Scale3D.html)

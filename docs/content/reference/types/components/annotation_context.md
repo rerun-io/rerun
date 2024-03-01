@@ -12,7 +12,7 @@ path.
 
 ## Fields
 
-* class_map: [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
+* class_map: list of [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
 
 ## Links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AnnotationContext.html)

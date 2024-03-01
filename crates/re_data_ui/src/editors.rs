@@ -257,7 +257,7 @@ fn edit_marker_shape_ui(
 
     let mut edit_marker = current_marker;
 
-    let marker_text = edit_marker.as_str();
+    let marker_text = edit_marker.to_string();
 
     egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
@@ -270,8 +270,8 @@ fn edit_marker_shape_ui(
                     .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
             );
 
-            for marker in MarkerShape::all_markers() {
-                let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.as_str())
+            for marker in MarkerShape::ALL {
+                let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.to_string())
                     .with_icon_fn(|_re_ui, ui, rect, visuals| {
                         paint_marker(ui, marker.into(), rect, visuals.text_color());
                     })

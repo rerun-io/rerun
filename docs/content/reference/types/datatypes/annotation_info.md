@@ -9,6 +9,7 @@ The id refers either to a class or key-point id
 
 ## Fields
 
+* id: `u16`
 * label: [`Utf8`](../datatypes/utf8.md)
 * color: [`Rgba32`](../datatypes/rgba32.md)
 

@@ -54,7 +54,6 @@ pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::
     std::env::set_current_dir(workspace_root())?;
 
     eprintln!("Building web viewer wasm…");
-    eprintln!("We assume you've already run ./scripts/setup_web.sh");
 
     let crate_name = "re_viewer";
 

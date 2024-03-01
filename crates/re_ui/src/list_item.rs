@@ -322,8 +322,12 @@ impl<'a> ListItem<'a> {
             state.toggle(ui);
         }
 
-        let body_response =
-            state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui));
+        let body_response = ui
+            .scope(|ui| {
+                ui.spacing_mut().indent = ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
+                state.show_body_indented(&response.response, ui, |ui| add_body(re_ui, ui))
+            })
+            .inner;
 
         ShowCollapsingResponse {
             item_response: response.response,
@@ -333,7 +337,7 @@ impl<'a> ListItem<'a> {
 
     fn ui(mut self, ui: &mut Ui, id: Option<egui::Id>) -> ListItemResponse {
         let collapse_extra = if self.collapse_openness.is_some() {
-            ReUi::collapsing_triangle_size().x + ReUi::text_to_icon_padding()
+            ReUi::collapsing_triangle_area().x + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
@@ -435,16 +439,16 @@ impl<'a> ListItem<'a> {
             if let Some(openness) = self.collapse_openness {
                 let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x,
-                    rect.center().y - 0.5 * ReUi::collapsing_triangle_size().y,
+                    rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
                 ));
                 let triangle_rect =
-                    egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_size());
+                    egui::Rect::from_min_size(triangle_pos, ReUi::collapsing_triangle_area());
                 let triangle_response = ui.interact(
                     triangle_rect.expand(3.0), // make it easier to click
                     id.unwrap_or(ui.id()).with("collapsing_triangle"),
                     egui::Sense::click(),
                 );
-                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect, &triangle_response);
+                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect.center(), &visuals);
                 collapse_response = Some(triangle_response);
             }
 

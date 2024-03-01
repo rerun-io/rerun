@@ -287,7 +287,7 @@ fn add_series_runs(
 /// The identity `x.next_up() == -(-x).next_down()` holds for all non-NaN `x`. When `x`
 /// is finite `x == x.next_up().next_down()` also holds.
 ///
-/// ```rust
+/// ```ignore
 /// #![feature(float_next_up_down)]
 /// // f64::EPSILON is the difference between 1.0 and the next number up.
 /// assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);

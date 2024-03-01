@@ -62,18 +62,8 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "axis".to_owned(),
-                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "angle".to_owned(),
-                data_type: <crate::datatypes::Angle>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new("axis", <crate::datatypes::Vec3D>::arrow_datatype(), false),
+            Field::new("angle", <crate::datatypes::Angle>::arrow_datatype(), false),
         ]))
     }
 
@@ -142,12 +132,11 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 ),
                                 PrimitiveArray::new(
@@ -205,23 +194,9 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "axis".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "angle".to_owned(),
-                                data_type: <crate::datatypes::Angle>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.RotationAxisAngle")?;
             if arrow_data.is_empty() {
@@ -248,18 +223,16 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    3usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.RotationAxisAngle#axis")?;
                         if arrow_data.is_empty() {
@@ -274,10 +247,9 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.RotationAxisAngle#axis")?
                                     .into_iter()

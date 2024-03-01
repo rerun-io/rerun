@@ -32,5 +32,4 @@ include "./datatypes/vec2d.fbs";
 include "./datatypes/vec3d.fbs";
 include "./datatypes/vec4d.fbs";
 
-
 namespace rerun.datatypes;

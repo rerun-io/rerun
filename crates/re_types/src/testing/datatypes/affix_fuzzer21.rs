@@ -55,23 +55,16 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "single_half".to_owned(),
-                data_type: DataType::Float16,
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "many_halves".to_owned(),
-                data_type: DataType::List(std::sync::Arc::new(Field {
-                    name: "item".to_owned(),
-                    data_type: DataType::Float16,
-                    is_nullable: false,
-                    metadata: [].into(),
-                })),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new("single_half", DataType::Float16, false),
+            Field::new(
+                "many_halves",
+                DataType::List(std::sync::Arc::new(Field::new(
+                    "item",
+                    DataType::Float16,
+                    false,
+                ))),
+                false,
+            ),
         ]))
     }
 
@@ -159,12 +152,11 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             .unwrap()
                             .into();
                             ListArray::new(
-                                DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float16,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
+                                DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    DataType::Float16,
+                                    false,
+                                ))),
                                 offsets,
                                 PrimitiveArray::new(
                                     DataType::Float16,
@@ -198,28 +190,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "single_half".to_owned(),
-                                data_type: DataType::Float16,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "many_halves".to_owned(),
-                                data_type: DataType::List(std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float16,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                })),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.datatypes.AffixFuzzer21")?;
             if arrow_data.is_empty() {
@@ -245,10 +218,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         .as_any()
                         .downcast_ref::<Float16Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float16,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float16;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.AffixFuzzer21#single_half")?
                         .into_iter()
@@ -268,15 +240,13 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float16,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    DataType::Float16,
+                                    false,
+                                )));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.testing.datatypes.AffixFuzzer21#many_halves")?;
                         if arrow_data.is_empty() {
@@ -288,10 +258,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                     .as_any()
                                     .downcast_ref::<Float16Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float16,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float16;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer21#many_halves",

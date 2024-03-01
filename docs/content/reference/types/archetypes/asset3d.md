@@ -2,7 +2,7 @@
 title: "Asset3D"
 ---
 
-A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
+A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
 ## Components
 

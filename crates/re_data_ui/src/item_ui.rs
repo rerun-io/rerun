@@ -5,9 +5,7 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
-use re_viewer_context::{
-    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
-};
+use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use super::DataUi;
 
@@ -31,9 +29,6 @@ use super::DataUi;
 //         Item::InstancePath(space_view_id, instance_path) => {
 //             instance_path_button_to(ctx, ui, *space_view_id, instance_path, text)
 //         }
-//         Item::DataBlueprintGroup(space_view_id, group_handle) => {
-//             data_blueprint_group_button_to(ctx, ui, text, *space_view_id, *group_handle)
-//         }
 //     }
 // }
 
@@ -55,6 +50,37 @@ pub fn entity_path_button(
         &InstancePath::entity_splat(entity_path.clone()),
         entity_path.syntax_highlighted(ui.style()),
     )
+}
+
+/// Show the different parts of an entity path and make them selectable.
+pub fn entity_path_parts_buttons(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    ui: &mut egui::Ui,
+    space_view_id: Option<SpaceViewId>,
+    entity_path: &EntityPath,
+) -> egui::Response {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
+        let mut accumulated = Vec::new();
+        for part in entity_path.iter() {
+            accumulated.push(part.clone());
+
+            ui.strong("/");
+            entity_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                &accumulated.clone().into(),
+                part.syntax_highlighted(ui.style()),
+            );
+        }
+    })
+    .response
 }
 
 /// Show an entity path and make it selectable.
@@ -110,13 +136,64 @@ pub fn instance_path_button_to(
 ) -> egui::Response {
     let item = Item::InstancePath(space_view_id, instance_path.clone());
 
-    let response = ui
-        .selectable_label(ctx.selection().contains_item(&item), text)
+    let response = ctx
+        .re_ui
+        .selectable_label_with_icon(
+            ui,
+            &re_ui::icons::ENTITY,
+            text,
+            ctx.selection().contains_item(&item),
+            re_ui::LabelStyle::Normal,
+        )
         .on_hover_ui(|ui| {
             instance_hover_card_ui(ui, ctx, query, store, instance_path);
         });
 
     cursor_interact_with_selectable(ctx, response, item)
+}
+
+/// Show the different parts of an instance path and make them selectable.
+pub fn instance_path_parts_buttons(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    ui: &mut egui::Ui,
+    space_view_id: Option<SpaceViewId>,
+    instance_path: &InstancePath,
+) -> egui::Response {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+
+        let mut accumulated = Vec::new();
+        for part in instance_path.entity_path.iter() {
+            accumulated.push(part.clone());
+
+            ui.strong("/");
+            entity_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                &accumulated.clone().into(),
+                part.syntax_highlighted(ui.style()),
+            );
+        }
+
+        if !instance_path.instance_key.is_splat() {
+            ui.strong("/");
+            instance_path_button_to(
+                ctx,
+                query,
+                store,
+                ui,
+                space_view_id,
+                instance_path,
+                instance_path.instance_key.syntax_highlighted(ui.style()),
+            );
+        }
+    })
+    .response
 }
 
 fn entity_tree_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, tree: &EntityTree) {
@@ -219,29 +296,13 @@ pub fn component_path_button_to(
     component_path: &ComponentPath,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let response = ui.selectable_label(ctx.selection().contains_item(&item), text);
-    cursor_interact_with_selectable(ctx, response, item)
-}
-
-pub fn data_blueprint_group_button_to(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    text: impl Into<egui::WidgetText>,
-    space_view_id: SpaceViewId,
-    query_id: DataQueryId,
-    entity_path: EntityPath,
-) -> egui::Response {
-    let item = Item::DataBlueprintGroup(space_view_id, query_id, entity_path);
-    let response = ctx
-        .re_ui
-        .selectable_label_with_icon(
-            ui,
-            &re_ui::icons::GROUP,
-            text,
-            ctx.selection().contains_item(&item),
-            re_ui::LabelStyle::Normal,
-        )
-        .on_hover_text("Group");
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &re_ui::icons::COMPONENT,
+        text,
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
     cursor_interact_with_selectable(ctx, response, item)
 }
 
@@ -348,6 +409,11 @@ pub fn instance_hover_card_ui(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
+    if !ctx.entity_db.is_known_entity(&instance_path.entity_path) {
+        ui.label("Unknown entity.");
+        return;
+    }
+
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {

@@ -9,37 +9,22 @@
 #include <memory>
 
 namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
     class Array;
     class DataType;
-    class UInt8Type;
-    using UInt8Builder = NumericBuilder<UInt8Type>;
+    class SparseUnionBuilder;
 } // namespace arrow
 
 namespace rerun::blueprint::components {
     /// **Component**: One of four 2D corners, typically used to align objects.
-    struct Corner2D {
-        /// Where should the legend be located.
-        ///
-        /// Allowed values:
-        ///  - LeftTop = 1,
-        ///  - RightTop = 2,
-        ///  - LeftBottom = 3,
-        ///  - RightBottom = 4
-        uint8_t location;
+    enum class Corner2D : uint8_t {
 
-      public:
-        Corner2D() = default;
+        LeftTop = 1,
 
-        Corner2D(uint8_t location_) : location(location_) {}
+        RightTop = 2,
 
-        Corner2D& operator=(uint8_t location_) {
-            location = location_;
-            return *this;
-        }
+        LeftBottom = 3,
+
+        RightBottom = 4,
     };
 } // namespace rerun::blueprint::components
 
@@ -57,7 +42,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt8Builder* builder, const blueprint::components::Corner2D* elements,
+            arrow::SparseUnionBuilder* builder, const blueprint::components::Corner2D* elements,
             size_t num_elements
         );
 

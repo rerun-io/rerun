@@ -9,6 +9,7 @@ namespace rerun.archetypes;
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
 /// \example pinhole_simple title="Simple Pinhole Camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png"
+/// \example pinhole_perspective title="Perspective Pinhole Camera" image="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1200w.png"
 table Pinhole (
   "attr.rust.derive": "PartialEq"
 ) {

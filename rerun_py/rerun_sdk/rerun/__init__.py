@@ -63,6 +63,7 @@ __all__ = [
     "ViewCoordinates",
     "archetypes",
     "bindings",
+    "blueprint",
     "components",
     "connect",
     "datatypes",
@@ -76,8 +77,10 @@ __all__ = [
     "get_recording_id",
     "get_thread_local_data_recording",
     "is_enabled",
-    "log_components",
     "log",
+    "log_components",
+    "log_file_from_contents",
+    "log_file_from_path",
     "memory_recording",
     "new_entity_path",
     "reset_time",
@@ -104,6 +107,8 @@ from ._log import (
     escape_entity_path_part,
     log,
     log_components,
+    log_file_from_contents,
+    log_file_from_path,
     new_entity_path,
 )
 from .any_value import AnyValues
@@ -181,7 +186,7 @@ from .time import (
 
 # Import experimental last
 from . import experimental  # isort: skip
-
+from . import blueprint
 
 # =====================================
 # UTILITIES
@@ -573,6 +578,7 @@ def start_web_viewer_server(port: int = 0) -> None:
     ----------
     port
         Port to serve assets on. Defaults to 0 (random port).
+
     """
 
     if not bindings.is_enabled():

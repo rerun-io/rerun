@@ -7,6 +7,9 @@ An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear 
 The color is stored as a 32-bit integer, where the most significant
 byte is `R` and the least significant byte is `A`.
 
+## Fields
+
+* rgba: `u32`
 
 ## Links
  * 🌊 [C++ API docs for `Rgba32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Rgba32.html)

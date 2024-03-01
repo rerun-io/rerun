@@ -107,7 +107,6 @@
 use std::{num::NonZeroU64, ops::Range};
 
 use bitflags::bitflags;
-use bytemuck::Zeroable;
 use enumset::{enum_set, EnumSet};
 use re_tracing::profile_function;
 use smallvec::smallvec;
@@ -116,18 +115,17 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    size::Size,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, PoolError,
-        RenderPipelineDesc, TextureDesc,
+        RenderPipelineDesc,
     },
-    Color32, DebugLabel, DepthOffset, LineStripSeriesBuilder, OutlineMaskPreference,
-    PickingLayerObjectId, PickingLayerProcessor,
+    DebugLabel, DepthOffset, LineDrawableBuilder, OutlineMaskPreference, PickingLayerObjectId,
+    PickingLayerProcessor,
 };
 
-use super::{DrawData, DrawError, LineVertex, RenderContext, Renderer};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 pub mod gpu_data {
     // Don't use `wgsl_buffer_types` since none of this data goes into a buffer, so its alignment rules don't apply.
@@ -147,6 +145,17 @@ pub mod gpu_data {
     // (unlike the fields in a uniform buffer)
     static_assertions::assert_eq_size!(LineVertex, glam::Vec4);
 
+    impl LineVertex {
+        /// Sentinel vertex used at the start and the end of the line vertex data texture to facilitate caps.
+        pub const SENTINEL: LineVertex = LineVertex {
+            position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
+            strip_index: u32::MAX,
+        };
+
+        /// Number of sentinel vertices, one at the start and one at the end.
+        pub const NUM_SENTINEL_VERTICES: usize = 2;
+    }
+
     #[repr(C, packed)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct LineStripInfo {
@@ -156,6 +165,17 @@ pub mod gpu_data {
         pub radius: SizeHalf,
     }
     static_assertions::assert_eq_size!(LineStripInfo, [u32; 2]);
+
+    impl Default for LineStripInfo {
+        fn default() -> Self {
+            Self {
+                radius: crate::Size::AUTO.into(),
+                color: Color32::WHITE,
+                stippling: 0,
+                flags: LineStripFlags::empty(),
+            }
+        }
+    }
 
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C, align(256))]
@@ -309,74 +329,41 @@ impl Default for LineBatchInfo {
     }
 }
 
-/// Style information for a line strip.
-#[derive(Clone)]
-pub struct LineStripInfo {
-    /// Radius of the line strip in world space
-    pub radius: Size,
-
-    /// srgb color. Alpha unused right now
-    pub color: Color32,
-
-    /// Additional properties for the linestrip.
-    pub flags: LineStripFlags,
-    // Value from 0 to 1. 0 makes a line invisible, 1 is filled out, 0.5 is half dashes.
-    // TODO(andreas): unsupported right now.
-    //pub stippling: f32,
-}
-
-impl Default for LineStripInfo {
-    fn default() -> Self {
-        Self {
-            radius: Size::AUTO,
-            color: Color32::WHITE,
-            flags: LineStripFlags::empty(),
-        }
-    }
-}
-
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum LineDrawDataError {
     #[error("Line vertex refers to unknown line strip.")]
     InvalidStripIndex,
 
-    #[error("A resource failed to resolve.")]
+    #[error(transparent)]
     PoolError(#[from] PoolError),
 
-    #[error("Failed to transfer data to the GPU")]
+    #[error(transparent)]
     FailedTransferringDataToGpu(#[from] crate::allocator::CpuWriteGpuReadError),
+
+    #[error(transparent)]
+    DataTextureSourceWriteError(#[from] crate::allocator::DataTextureSourceWriteError),
 }
 
-// Textures are 2D since 1D textures are very limited in size (8k typically).
-// Need to keep these values in sync with lines.wgsl!
-const POSITION_TEXTURE_SIZE: u32 = 512; // 512 x 512 x vec4<f32> == 4MiB, 262144 PositionRadius
-const LINE_STRIP_TEXTURE_SIZE: u32 = 256; // 256 x 256 x vec2<u32> == 0.5MiB, 65536 line strips
-
 impl LineDrawData {
-    /// Total maximum number of line vertices per [`LineDrawData`].
-    ///
-    /// TODO(#3076): Get rid of this limit!.
-    pub const MAX_NUM_VERTICES: usize =
-        (POSITION_TEXTURE_SIZE * POSITION_TEXTURE_SIZE - 2) as usize; // Subtract sentinels
-
-    /// Total maximum number of line strips per [`LineDrawData`].
-    ///
-    /// TODO(#3076): Get rid of this limit!.
-    pub const MAX_NUM_STRIPS: usize = (LINE_STRIP_TEXTURE_SIZE * LINE_STRIP_TEXTURE_SIZE) as usize;
-
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
     /// Try to bundle all line strips into a single draw data instance whenever possible.
     /// If you pass zero lines instances, subsequent drawing will do nothing.
     ///
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
-    pub fn new(
-        ctx: &RenderContext,
-        line_builder: LineStripSeriesBuilder,
-    ) -> Result<Self, LineDrawDataError> {
+    pub fn new(line_builder: LineDrawableBuilder<'_>) -> Result<Self, LineDrawDataError> {
+        let LineDrawableBuilder {
+            ctx,
+            vertices_buffer,
+            batches,
+            strips_buffer,
+            picking_instance_ids_buffer,
+            radius_boost_in_ui_points_for_outlines,
+        } = line_builder;
+
         let line_renderer = ctx.renderer::<LineRenderer>();
 
-        if line_builder.strips.is_empty() {
+        if strips_buffer.is_empty() {
             return Ok(LineDrawData {
                 bind_group_all_lines: None,
                 bind_group_all_lines_outline_mask: None,
@@ -384,211 +371,34 @@ impl LineDrawData {
             });
         }
 
-        let LineStripSeriesBuilder {
-            vertices,
-            batches,
-            strips,
-            mut picking_instance_ids_buffer,
-            radius_boost_in_ui_points_for_outlines,
-        } = line_builder;
-
         let batches = if batches.is_empty() {
             vec![LineBatchInfo {
                 label: "LineDrawData::fallback_batch".into(),
-                line_vertex_count: vertices.len() as _,
+                line_vertex_count: vertices_buffer.len() as _,
                 ..Default::default()
             }]
         } else {
             batches
         };
 
-        // Make sure the size of a row is a multiple of the row byte alignment to make buffer copies easier.
-        static_assertions::const_assert_eq!(
-            POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
-        static_assertions::const_assert_eq!(
-            LINE_STRIP_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineStripInfo>() as u32
-                % wgpu::COPY_BYTES_PER_ROW_ALIGNMENT,
-            0
-        );
+        const NUM_SENTINEL_VERTICES: usize = 2;
 
-        let vertices = if vertices.len() >= Self::MAX_NUM_VERTICES {
-            re_log::error_once!("Reached maximum number of supported line vertices. Clamping down to {}, passed were {}. \
-                                See also https://github.com/rerun-io/rerun/issues/957", Self::MAX_NUM_VERTICES, vertices.len() );
-            &vertices[..Self::MAX_NUM_VERTICES]
-        } else {
-            &vertices[..]
-        };
-        let strips = if strips.len() > Self::MAX_NUM_STRIPS {
-            re_log::error_once!("Reached maximum number of supported line strips. Clamping down to {}, passed were {}. \
-                                 This may lead to rendering artifacts. \
-                                 See also https://github.com/rerun-io/rerun/issues/957",
-                                 Self::MAX_NUM_STRIPS, strips.len());
-            &strips[..Self::MAX_NUM_STRIPS]
-        } else {
-            // Can only check for strip index validity if we haven't clamped the strips!
-            if vertices
-                .iter()
-                .any(|v| v.strip_index >= strips.len() as u32)
-            {
-                return Err(LineDrawDataError::InvalidStripIndex);
-            }
-            &strips[..]
-        };
+        let max_texture_dimension_2d = ctx.device.limits().max_texture_dimension_2d;
+        let max_num_texels = max_texture_dimension_2d as usize * max_texture_dimension_2d as usize;
+        let max_num_vertices = max_num_texels - NUM_SENTINEL_VERTICES;
 
-        let num_strips = strips.len() as u32;
-        // Add a sentinel vertex both at the beginning and the end to make cap calculation easier.
-        let num_segments = vertices.len() as u32 + 2;
-
-        // TODO(andreas): We want a "stack allocation" here that lives for one frame.
-        //                  Note also that this doesn't protect against sharing the same texture with several LineDrawData!
-        let position_data_texture_desc = TextureDesc {
-            label: "LineDrawData::position_data_texture".into(),
-            size: wgpu::Extent3d {
-                width: POSITION_TEXTURE_SIZE,
-                height: POSITION_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        };
-        let position_data_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &position_data_texture_desc);
-
-        let line_strip_texture_desc = TextureDesc {
-            label: "LineDrawData::line_strip_texture".into(),
-            size: wgpu::Extent3d {
-                width: LINE_STRIP_TEXTURE_SIZE,
-                height: LINE_STRIP_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            },
-            format: wgpu::TextureFormat::Rg32Uint,
-            ..position_data_texture_desc
-        };
-        let line_strip_texture = ctx
-            .gpu_resources
-            .textures
-            .alloc(&ctx.device, &line_strip_texture_desc);
-        let picking_instance_id_texture = ctx.gpu_resources.textures.alloc(
-            &ctx.device,
-            &TextureDesc {
-                label: "LineDrawData::picking_instance_id_texture".into(),
-                format: wgpu::TextureFormat::Rg32Uint,
-                ..line_strip_texture_desc
-            },
-        );
-
-        // Upload position data.
-        {
-            // To make the data upload simpler (and have it be done in one go), we always update full rows of each of our textures
-            let mut position_data_staging = Vec::with_capacity(wgpu::util::align_to(
-                num_segments,
-                POSITION_TEXTURE_SIZE,
-            ) as usize);
-            // sentinel at the beginning to facilitate caps.
-            position_data_staging.push(LineVertex {
-                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-                strip_index: u32::MAX,
-            });
-            position_data_staging.extend(vertices.iter());
-            // placeholder at the end to facilitate caps.
-            position_data_staging.push(LineVertex {
-                position: glam::vec3(f32::MAX, f32::MAX, f32::MAX),
-                strip_index: u32::MAX,
-            });
-            position_data_staging.extend(std::iter::repeat(gpu_data::LineVertex::zeroed()).take(
-                (wgpu::util::align_to(num_segments, POSITION_TEXTURE_SIZE) - num_segments) as usize,
-            ));
-
-            // TODO(andreas): Use staging belt here.
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &position_data_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&position_data_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(
-                        POSITION_TEXTURE_SIZE * std::mem::size_of::<gpu_data::LineVertex>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                wgpu::Extent3d {
-                    width: POSITION_TEXTURE_SIZE,
-                    height: (num_segments + POSITION_TEXTURE_SIZE - 1) / POSITION_TEXTURE_SIZE,
-                    depth_or_array_layers: 1,
-                },
-            );
-        }
-
-        // Upload strip data.
-        {
-            let mut line_strip_info_staging = Vec::with_capacity(wgpu::util::align_to(
-                num_strips,
-                LINE_STRIP_TEXTURE_SIZE,
-            ) as usize);
-            line_strip_info_staging.extend(strips.iter().map(|line_strip| {
-                gpu_data::LineStripInfo {
-                    color: line_strip.color,
-                    radius: line_strip.radius.into(),
-                    stippling: 0, //(line_strip.stippling.clamp(0.0, 1.0) * 255.0) as u8,
-                    flags: line_strip.flags,
-                }
-            }));
-            let num_strips_padding =
-                (wgpu::util::align_to(num_strips, LINE_STRIP_TEXTURE_SIZE) - num_strips) as usize;
-            line_strip_info_staging.extend(
-                std::iter::repeat(gpu_data::LineStripInfo::zeroed()).take(num_strips_padding),
-            );
-
-            let strip_texture_extent = wgpu::Extent3d {
-                width: LINE_STRIP_TEXTURE_SIZE,
-                height: (num_strips + LINE_STRIP_TEXTURE_SIZE - 1) / LINE_STRIP_TEXTURE_SIZE,
-                depth_or_array_layers: 1,
-            };
-
-            // TODO(andreas): Use staging belt here.
-            ctx.queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &line_strip_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&line_strip_info_staging),
-                wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(
-                        LINE_STRIP_TEXTURE_SIZE
-                            * std::mem::size_of::<gpu_data::LineStripInfo>() as u32,
-                    ),
-                    rows_per_image: None,
-                },
-                strip_texture_extent,
-            );
-
-            picking_instance_ids_buffer.fill_n(Default::default(), num_strips_padding)?;
-            picking_instance_ids_buffer.copy_to_texture2d(
-                ctx.active_frame.before_view_builder_encoder.lock().get(),
-                wgpu::ImageCopyTexture {
-                    texture: &picking_instance_id_texture.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                strip_texture_extent,
-            )?;
-        }
+        let position_data_texture = vertices_buffer.finish(
+            wgpu::TextureFormat::Rgba32Float,
+            "LineDrawData::position_data_texture",
+        )?;
+        let line_strip_texture = strips_buffer.finish(
+            wgpu::TextureFormat::Rg32Uint,
+            "LineDrawData::line_strip_texture",
+        )?;
+        let picking_instance_id_texture = picking_instance_ids_buffer.finish(
+            wgpu::TextureFormat::Rg32Uint,
+            "LineDrawData::picking_instance_id_texture",
+        )?;
 
         let draw_data_uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
             ctx,
@@ -691,7 +501,7 @@ impl LineDrawData {
             {
                 let line_vertex_range_end = (start_vertex_for_next_batch
                     + batch_info.line_vertex_count)
-                    .min(Self::MAX_NUM_VERTICES as u32);
+                    .min(max_num_vertices as u32);
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
                 // Does the entire batch participate in the outline mask phase?
                 if batch_info.overall_outline_mask_ids.is_some() {
@@ -717,11 +527,6 @@ impl LineDrawData {
                 }
 
                 start_vertex_for_next_batch = line_vertex_range_end;
-
-                // Should happen only if the number of vertices was clamped.
-                if start_vertex_for_next_batch >= vertices.len() as u32 {
-                    break;
-                }
             }
         }
 

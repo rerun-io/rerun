@@ -63,24 +63,9 @@ impl ::re_types_core::Loggable for Scale3D {
         use arrow2::datatypes::*;
         DataType::Union(
             std::sync::Arc::new(vec![
-                Field {
-                    name: "_null_markers".to_owned(),
-                    data_type: DataType::Null,
-                    is_nullable: true,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "ThreeD".to_owned(),
-                    data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
-                Field {
-                    name: "Uniform".to_owned(),
-                    data_type: DataType::Float32,
-                    is_nullable: false,
-                    metadata: [].into(),
-                },
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("ThreeD", <crate::datatypes::Vec3D>::arrow_datatype(), false),
+                Field::new("Uniform", DataType::Float32, false),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
             UnionMode::Dense,
@@ -104,130 +89,128 @@ impl ::re_types_core::Loggable for Scale3D {
                     datum
                 })
                 .collect();
-            UnionArray::new(
-                <crate::datatypes::Scale3D>::arrow_datatype(),
-                data.iter()
-                    .map(|a| match a.as_deref() {
-                        None => 0,
-                        Some(Scale3D::ThreeD(_)) => 1i8,
-                        Some(Scale3D::Uniform(_)) => 2i8,
-                    })
-                    .collect(),
-                vec![
-                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
-                        .boxed(),
+            let types = data
+                .iter()
+                .map(|a| match a.as_deref() {
+                    None => 0,
+                    Some(Scale3D::ThreeD(_)) => 1i8,
+                    Some(Scale3D::Uniform(_)) => 2i8,
+                })
+                .collect();
+            let fields = vec![
+                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                {
+                    let (somes, three_d): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::ThreeD(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Scale3D::ThreeD(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
+                        })
+                        .unzip();
+                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
                     {
-                        let (somes, three_d): (Vec<_>, Vec<_>) = data
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        let three_d_inner_data: Vec<_> = three_d
                             .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::ThreeD(_))))
                             .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Scale3D::ThreeD(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
+                                datum
+                                    .map(|datum| {
+                                        let crate::datatypes::Vec3D(data0) = datum;
+                                        data0
+                                    })
+                                    .unwrap_or_default()
                             })
-                            .unzip();
-                        let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let three_d_inner_data: Vec<_> = three_d
-                                .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
-                                .flatten()
-                                .map(Some)
-                                .collect();
-                            let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                three_d_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float32,
-                                    three_d_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
-                                    three_d_inner_bitmap,
-                                )
-                                .boxed(),
-                                three_d_bitmap,
+                            .flatten()
+                            .map(Some)
+                            .collect();
+                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            three_d_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(3usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
+                        FixedSizeListArray::new(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                                3usize,
+                            ),
+                            PrimitiveArray::new(
+                                DataType::Float32,
+                                three_d_inner_data
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect(),
+                                three_d_inner_bitmap,
                             )
-                            .boxed()
-                        }
-                    },
-                    {
-                        let (somes, uniform): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::Uniform(_))))
-                            .map(|datum| {
-                                let datum = match datum.as_deref() {
-                                    Some(Scale3D::Uniform(v)) => Some(v.clone()),
-                                    _ => None,
-                                };
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Float32,
-                            uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            uniform_bitmap,
+                            .boxed(),
+                            three_d_bitmap,
                         )
                         .boxed()
-                    },
-                ],
-                Some({
-                    let mut three_d_offset = 0;
-                    let mut uniform_offset = 0;
-                    let mut nulls_offset = 0;
-                    data.iter()
-                        .map(|v| match v.as_deref() {
-                            None => {
-                                let offset = nulls_offset;
-                                nulls_offset += 1;
-                                offset
-                            }
-                            Some(Scale3D::ThreeD(_)) => {
-                                let offset = three_d_offset;
-                                three_d_offset += 1;
-                                offset
-                            }
-                            Some(Scale3D::Uniform(_)) => {
-                                let offset = uniform_offset;
-                                uniform_offset += 1;
-                                offset
-                            }
+                    }
+                },
+                {
+                    let (somes, uniform): (Vec<_>, Vec<_>) = data
+                        .iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::Uniform(_))))
+                        .map(|datum| {
+                            let datum = match datum.as_deref() {
+                                Some(Scale3D::Uniform(v)) => Some(v.clone()),
+                                _ => None,
+                            };
+                            (datum.is_some(), datum)
                         })
-                        .collect()
-                }),
+                        .unzip();
+                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let any_nones = somes.iter().any(|some| !*some);
+                        any_nones.then(|| somes.into())
+                    };
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        uniform_bitmap,
+                    )
+                    .boxed()
+                },
+            ];
+            let offsets = Some({
+                let mut three_d_offset = 0;
+                let mut uniform_offset = 0;
+                let mut nulls_offset = 0;
+                data.iter()
+                    .map(|v| match v.as_deref() {
+                        None => {
+                            let offset = nulls_offset;
+                            nulls_offset += 1;
+                            offset
+                        }
+                        Some(Scale3D::ThreeD(_)) => {
+                            let offset = three_d_offset;
+                            three_d_offset += 1;
+                            offset
+                        }
+                        Some(Scale3D::Uniform(_)) => {
+                            let offset = uniform_offset;
+                            uniform_offset += 1;
+                            offset
+                        }
+                    })
+                    .collect()
+            });
+            UnionArray::new(
+                <crate::datatypes::Scale3D>::arrow_datatype(),
+                types,
+                fields,
+                offsets,
             )
             .boxed()
         })
@@ -247,33 +230,9 @@ impl ::re_types_core::Loggable for Scale3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Union(
-                            std::sync::Arc::new(vec![
-                                Field {
-                                    name: "_null_markers".to_owned(),
-                                    data_type: DataType::Null,
-                                    is_nullable: true,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "ThreeD".to_owned(),
-                                    data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                                Field {
-                                    name: "Uniform".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                },
-                            ]),
-                            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
-                            UnionMode::Dense,
-                        ),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.Scale3D")?;
             if arrow_data.is_empty() {
@@ -284,10 +243,9 @@ impl ::re_types_core::Loggable for Scale3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        DeserializationError::datatype_mismatch(
-                            Self::arrow_datatype(),
-                            arrow_data.data_type().clone(),
-                        )
+                        let expected = Self::arrow_datatype();
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Scale3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
@@ -307,18 +265,16 @@ impl ::re_types_core::Loggable for Scale3D {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    3usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.Scale3D#ThreeD")?;
                         if arrow_data.is_empty() {
@@ -333,10 +289,9 @@ impl ::re_types_core::Loggable for Scale3D {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                     .into_iter()
@@ -387,10 +342,9 @@ impl ::re_types_core::Loggable for Scale3D {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.Scale3D#Uniform")?
                         .into_iter()
@@ -441,8 +395,7 @@ impl ::re_types_core::Loggable for Scale3D {
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
-                                    ))
-                                    .with_context("rerun.datatypes.Scale3D");
+                                    ));
                                 }
                             }))
                         }

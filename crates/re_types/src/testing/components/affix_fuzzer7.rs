@@ -58,12 +58,11 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -138,15 +137,9 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?;
             if arrow_data.is_empty() {

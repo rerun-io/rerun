@@ -56,6 +56,5 @@ fi
 
 # Needed to compile and check the code:
 rustup install 1.74.0
-./scripts/setup_web.sh
 
 echo "setup.sh completed!"

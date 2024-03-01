@@ -21,6 +21,7 @@ class ClearExt:
         ----------
         recursive:
              Whether to recursively clear all children.
+
         """
 
         # Enforce named parameter and rename parameter to just `recursive`.

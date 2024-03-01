@@ -70,48 +70,48 @@ union TensorBuffer (
   "attr.rust.derive_only": "Clone, PartialEq"
 ) {
   /// 8bit unsigned integer.
-  U8: U8Buffer (transparent, order:100),
+  U8: U8Buffer (transparent),
 
   /// 16bit unsigned integer.
-  U16: U16Buffer (transparent, order:200),
+  U16: U16Buffer (transparent),
 
   /// 32bit unsigned integer.
-  U32: U32Buffer (transparent, order:300),
+  U32: U32Buffer (transparent),
 
   /// 64bit unsigned integer.
-  U64: U64Buffer (transparent, order:400),
+  U64: U64Buffer (transparent),
 
   /// 8bit signed integer.
-  I8: I8Buffer (transparent, order:500),
+  I8: I8Buffer (transparent),
 
   /// 16bit signed integer.
-  I16: I16Buffer (transparent, order:600),
+  I16: I16Buffer (transparent),
 
   /// 32bit signed integer.
-  I32: I32Buffer (transparent, order:700),
+  I32: I32Buffer (transparent),
 
   /// 64bit signed integer.
-  I64: I64Buffer (transparent, order:800),
+  I64: I64Buffer (transparent),
 
   /// 16bit IEEE-754 floating point, also known as `half`.
-  F16: F16Buffer (transparent, order:900),
+  F16: F16Buffer (transparent),
 
   /// 32bit IEEE-754 floating point, also known as `float` or `single`.
-  F32: F32Buffer (transparent, order:1000),
+  F32: F32Buffer (transparent),
 
   /// 64bit IEEE-754 floating point, also known as `double`.
-  F64: F64Buffer (transparent, order:1200),
+  F64: F64Buffer (transparent),
 
   /// Raw bytes of a JPEG file.
-  JPEG: JPEGBuffer (transparent, order:1300),
+  JPEG: JPEGBuffer (transparent),
 
   /// NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
   ///
   /// First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
-  NV12: NV12Buffer (transparent, order:1400),
+  NV12: NV12Buffer (transparent),
 
   /// YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
   ///
   /// The order of the channels is Y0, U0, Y1, V0.
-  YUY2: YUY2Buffer (transparent, order:1500),
+  YUY2: YUY2Buffer (transparent),
 }

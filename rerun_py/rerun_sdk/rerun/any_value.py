@@ -56,6 +56,7 @@ class AnyBatchValue(ComponentBatchLike):
         drop_untyped_nones:
             If True, any components that are None will be dropped unless they have been
             previously logged with a type.
+
         """
         np_type, pa_type = ANY_VALUE_TYPE_REGISTRY.get(name, (None, None))
 
@@ -105,6 +106,7 @@ class AnyValues(AsComponents):
         ),
     )
     ```
+
     """
 
     def __init__(self, drop_untyped_nones: bool = True, **kwargs: Any) -> None:

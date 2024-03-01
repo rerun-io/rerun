@@ -68,12 +68,11 @@ impl ::re_types_core::Loggable for ColumnShares {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: DataType::Float32,
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            DataType::Float32,
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -145,15 +144,9 @@ impl ::re_types_core::Loggable for ColumnShares {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: DataType::Float32,
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.blueprint.components.ColumnShares#shares")?;
             if arrow_data.is_empty() {
@@ -165,10 +158,9 @@ impl ::re_types_core::Loggable for ColumnShares {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Float32,
-                                arrow_data_inner.data_type().clone(),
-                            )
+                            let expected = DataType::Float32;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.blueprint.components.ColumnShares#shares")?
                         .values()

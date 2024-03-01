@@ -73,30 +73,18 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "translation".to_owned(),
-                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "rotation".to_owned(),
-                data_type: <crate::datatypes::Rotation3D>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "scale".to_owned(),
-                data_type: <crate::datatypes::Scale3D>::arrow_datatype(),
-                is_nullable: true,
-                metadata: [].into(),
-            },
-            Field {
-                name: "from_parent".to_owned(),
-                data_type: DataType::Boolean,
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "translation",
+                <crate::datatypes::Vec3D>::arrow_datatype(),
+                true,
+            ),
+            Field::new(
+                "rotation",
+                <crate::datatypes::Rotation3D>::arrow_datatype(),
+                true,
+            ),
+            Field::new("scale", <crate::datatypes::Scale3D>::arrow_datatype(), true),
+            Field::new("from_parent", DataType::Boolean, false),
         ]))
     }
 
@@ -168,12 +156,11 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
                                     3usize,
                                 ),
                                 PrimitiveArray::new(
@@ -282,35 +269,9 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "translation".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "rotation".to_owned(),
-                                data_type: <crate::datatypes::Rotation3D>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "scale".to_owned(),
-                                data_type: <crate::datatypes::Scale3D>::arrow_datatype(),
-                                is_nullable: true,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "from_parent".to_owned(),
-                                data_type: DataType::Boolean,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.TranslationRotationScale3D")?;
             if arrow_data.is_empty() {
@@ -337,18 +298,16 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    3usize,
+                                );
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context(
                                 "rerun.datatypes.TranslationRotationScale3D#translation",
@@ -359,23 +318,23 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                             let offsets = (0..)
                                 .step_by(3usize)
                                 .zip((3usize..).step_by(3usize).take(arrow_data.len()));
-                            let arrow_data_inner =
-                                {
-                                    let arrow_data_inner = &**arrow_data.values();
-                                    arrow_data_inner
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
+                                    })
                                     .with_context(
                                         "rerun.datatypes.TranslationRotationScale3D#translation",
                                     )?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
-                                };
+                            };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                 offsets,
                                 arrow_data.validity(),
@@ -449,10 +408,9 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::Boolean,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::Boolean;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.TranslationRotationScale3D#from_parent")?
                         .into_iter()

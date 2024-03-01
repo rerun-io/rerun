@@ -70,17 +70,15 @@ impl ::re_types_core::Loggable for MeshProperties {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "indices".to_owned(),
-            data_type: DataType::List(std::sync::Arc::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::UInt32,
-                is_nullable: false,
-                metadata: [].into(),
-            })),
-            is_nullable: true,
-            metadata: [].into(),
-        }]))
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "indices",
+            DataType::List(std::sync::Arc::new(Field::new(
+                "item",
+                DataType::UInt32,
+                false,
+            ))),
+            true,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -144,12 +142,11 @@ impl ::re_types_core::Loggable for MeshProperties {
                         .unwrap()
                         .into();
                         ListArray::new(
-                            DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
+                            DataType::List(std::sync::Arc::new(Field::new(
+                                "item",
+                                DataType::UInt32,
+                                false,
+                            ))),
                             offsets,
                             PrimitiveArray::new(
                                 DataType::UInt32,
@@ -182,20 +179,9 @@ impl ::re_types_core::Loggable for MeshProperties {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![Field {
-                            name: "indices".to_owned(),
-                            data_type: DataType::List(std::sync::Arc::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::UInt32,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        }])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.MeshProperties")?;
             if arrow_data.is_empty() {
@@ -222,15 +208,13 @@ impl ::re_types_core::Loggable for MeshProperties {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::List(std::sync::Arc::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::UInt32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    })),
-                                    arrow_data.data_type().clone(),
-                                )
+                                let expected = DataType::List(std::sync::Arc::new(Field::new(
+                                    "item",
+                                    DataType::UInt32,
+                                    false,
+                                )));
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.datatypes.MeshProperties#indices")?;
                         if arrow_data.is_empty() {
@@ -242,10 +226,9 @@ impl ::re_types_core::Loggable for MeshProperties {
                                     .as_any()
                                     .downcast_ref::<UInt32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::UInt32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::UInt32;
+                                        let actual = arrow_data_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.datatypes.MeshProperties#indices")?
                                     .values()

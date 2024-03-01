@@ -18,7 +18,6 @@ use super::{
     ui::{create_labels, picking, screenshot_context_menu},
 };
 use crate::{
-    contexts::SharedRenderBuilders,
     query_pinhole,
     ui::{outline_config, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
@@ -325,7 +324,7 @@ pub fn view_2d(
             SpatialSpaceViewKind::TwoD,
         );
 
-        if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+        if ui.ctx().dragged_id().is_none() {
             response = picking(
                 ctx,
                 response,
@@ -345,11 +344,6 @@ pub fn view_2d(
 
         for draw_data in draw_data {
             view_builder.queue_draw(draw_data);
-        }
-        if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
-            for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
-                view_builder.queue_draw(draw_data);
-            }
         }
 
         // ------------------------------------------------------------------------

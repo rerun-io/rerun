@@ -183,7 +183,67 @@ pub fn quote_arrow_serializer(
                 }}
             }
 
+            DataType::Union(_, _, arrow2::datatypes::UnionMode::Sparse) => {
+                // We use sparse unions for enums, which means only 8 bits is required for each field,
+                // and nulls are encoded with a special 0-index `_null_markers` variant.
+
+                let quoted_data_collect = quote! {
+                    let #data_src: Vec<_> = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            datum
+                        })
+                        .collect();
+                };
+
+                let quoted_types = quote! {
+                    #data_src
+                        .iter()
+                        .map(|a| match a.as_deref() {
+                            None => 0,
+                            Some(value) => *value as i8,
+                        })
+                        .collect()
+                };
+
+                let num_variants = obj.fields.len();
+
+                quote! {{
+                    #quoted_data_collect
+
+                    let num_variants = #num_variants;
+
+                    let types = #quoted_types;
+
+                    let fields: Vec<_> = std::iter::repeat(
+                            NullArray::new(
+                                DataType::Null,
+                                #data_src.len(),
+                            ).boxed()
+                        ).take(1 + num_variants) // +1 for the virtual `nulls` arm
+                        .collect();
+
+                    UnionArray::new(
+                        #quoted_datatype,
+                        types,
+                        fields,
+                        None,
+                    ).boxed()
+                }}
+            }
+
             DataType::Union(_, _, arrow2::datatypes::UnionMode::Dense) => {
+                let quoted_data_collect = quote! {
+                    let #data_src: Vec<_> = #data_src
+                        .into_iter()
+                        .map(|datum| {
+                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                            datum
+                        })
+                        .collect();
+                };
+
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let data_dst = format_ident!("{}", obj_field.snake_case_name());
                     let bitmap_dst = format_ident!("{data_dst}_bitmap");
@@ -229,10 +289,20 @@ pub fn quote_arrow_serializer(
                     }}
                 });
 
+                let quoted_fields = quote! {
+                    vec![
+                        NullArray::new(
+                            DataType::Null,
+                            #data_src.iter().filter(|v| v.is_none()).count(),
+                        ).boxed(),
+                        #(#quoted_field_serializers,)*
+                    ]
+                };
+
                 let quoted_types = {
                     let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
-                        let i = i as i8 + 1; // NOTE: +1 to account for `nulls` virtual arm
+                        let i = 1 + i as i8; // NOTE: +1 to account for `nulls` virtual arm
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.pascal_case_name());
 
@@ -292,28 +362,21 @@ pub fn quote_arrow_serializer(
                 };
 
                 quote! {{
-                    let #data_src: Vec<_> = #data_src
-                        .into_iter()
-                        .map(|datum| {
-                            let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                            datum
-                        })
-                        .collect();
+                    #quoted_data_collect
+
+                    let types = #quoted_types;
+                    let fields = #quoted_fields;
+                    let offsets = Some(#quoted_offsets);
 
                     UnionArray::new(
                         #quoted_datatype,
-                        #quoted_types,
-                        vec![
-                            NullArray::new(
-                                DataType::Null,
-                                #data_src.iter().filter(|v| v.is_none()).count(),
-                            ).boxed(),
-                            #(#quoted_field_serializers,)*
-                        ],
-                        Some(#quoted_offsets),
+                        types,
+                        fields,
+                        offsets,
                     ).boxed()
                 }}
             }
+
             _ => unimplemented!("{datatype:#?}"),
         }
     }

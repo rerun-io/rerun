@@ -125,7 +125,7 @@ fn space_view_space_origin_widget_editing_ui(
         selected_suggestion = selected_suggestion
             .saturating_add(arrow_down)
             .saturating_sub(arrow_up);
-        if !space_view_suggestions.is_empty() {
+        if !space_view_suggestions.is_empty() && !filtered_space_view_suggestions.is_empty() {
             selected_suggestion =
                 selected_suggestion.at_most(filtered_space_view_suggestions.len() - 1);
         }

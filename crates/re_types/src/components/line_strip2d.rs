@@ -68,12 +68,11 @@ impl ::re_types_core::Loggable for LineStrip2D {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::List(std::sync::Arc::new(Field {
-            name: "item".to_owned(),
-            data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
-            is_nullable: false,
-            metadata: [].into(),
-        }))
+        DataType::List(std::sync::Arc::new(Field::new(
+            "item",
+            <crate::datatypes::Vec2D>::arrow_datatype(),
+            false,
+        )))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -147,12 +146,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             });
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
-                                std::sync::Arc::new(Field {
-                                    name: "item".to_owned(),
-                                    data_type: DataType::Float32,
-                                    is_nullable: false,
-                                    metadata: [].into(),
-                                }),
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 2usize,
                             ),
                             PrimitiveArray::new(
@@ -189,15 +183,9 @@ impl ::re_types_core::Loggable for LineStrip2D {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::List(std::sync::Arc::new(Field {
-                            name: "item".to_owned(),
-                            data_type: <crate::datatypes::Vec2D>::arrow_datatype(),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        })),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.components.LineStrip2D#points")?;
             if arrow_data.is_empty() {
@@ -210,18 +198,16 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        std::sync::Arc::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        2usize,
-                                    ),
-                                    arrow_data_inner.data_type().clone(),
-                                )
+                                let expected = DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    2usize,
+                                );
+                                let actual = arrow_data_inner.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
                             })
                             .with_context("rerun.components.LineStrip2D#points")?;
                         if arrow_data_inner.is_empty() {
@@ -236,10 +222,9 @@ impl ::re_types_core::Loggable for LineStrip2D {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner_inner.data_type().clone(),
-                                        )
+                                        let expected = DataType::Float32;
+                                        let actual = arrow_data_inner_inner.data_type().clone();
+                                        DeserializationError::datatype_mismatch(expected, actual)
                                     })
                                     .with_context("rerun.components.LineStrip2D#points")?
                                     .into_iter()

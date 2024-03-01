@@ -6,7 +6,7 @@ use web_time::Instant;
 use re_log_types::EntityPath;
 use re_renderer::{
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    LineStripSeriesBuilder, Size,
+    LineDrawableBuilder, Size,
 };
 use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
@@ -19,7 +19,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::SharedRenderBuilders,
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
@@ -30,13 +29,13 @@ use crate::{
     },
 };
 
-use super::eye::{Eye, OrbitEye};
+use super::eye::{Eye, ViewEye};
 
 // ---
 
 #[derive(Clone)]
 pub struct View3DState {
-    pub orbit_eye: Option<OrbitEye>,
+    pub view_eye: Option<ViewEye>,
 
     /// Used to show the orbit center of the eye-camera when the user interacts.
     /// None: user has never interacted with the eye-camera.
@@ -69,7 +68,7 @@ pub struct View3DState {
 impl Default for View3DState {
     fn default() -> Self {
         Self {
-            orbit_eye: Default::default(),
+            view_eye: Default::default(),
             last_eye_interaction: None,
             tracked_entity: None,
             camera_before_tracked_entity: None,
@@ -98,7 +97,7 @@ impl View3DState {
         // Mark as interaction since we want to stop doing any automatic interpolations,
         // even if this is caused by a full reset.
         self.last_eye_interaction = Some(Instant::now());
-        self.interpolate_to_orbit_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
+        self.interpolate_to_view_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;
     }
@@ -109,12 +108,12 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
-    ) -> OrbitEye {
+    ) -> ViewEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that grow over time.
         if self.last_eye_interaction.is_none() {
-            self.interpolate_to_orbit_eye(default_eye(
+            self.interpolate_to_view_eye(default_eye(
                 &bounding_boxes.accumulated,
                 scene_view_coordinates,
             ));
@@ -122,7 +121,7 @@ impl View3DState {
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
         if scene_view_coordinates != self.scene_view_coordinates {
-            self.interpolate_to_orbit_eye(default_eye(
+            self.interpolate_to_view_eye(default_eye(
                 &bounding_boxes.accumulated,
                 scene_view_coordinates,
             ));
@@ -134,10 +133,10 @@ impl View3DState {
             if let Some(target_eye) = find_camera(space_cameras, &tracked_entity) {
                 // For cameras, we want to exactly track the camera pose once we're done interpolating.
                 if let Some(eye_interpolation) = &mut self.eye_interpolation {
-                    eye_interpolation.target_orbit = None;
+                    eye_interpolation.target_view_eye = None;
                     eye_interpolation.target_eye = Some(target_eye);
-                } else if let Some(orbit_eye) = &mut self.orbit_eye {
-                    orbit_eye.copy_from_eye(&target_eye);
+                } else if let Some(view_eye) = &mut self.view_eye {
+                    view_eye.copy_from_eye(&target_eye);
                 }
             } else {
                 // For other entities we keep interpolating, so when the entity jumps, we follow smoothly.
@@ -145,12 +144,12 @@ impl View3DState {
             }
         }
 
-        let orbit_eye = self.orbit_eye.get_or_insert_with(|| {
+        let view_eye = self.view_eye.get_or_insert_with(|| {
             default_eye(&bounding_boxes.accumulated, scene_view_coordinates)
         });
 
         if self.spin {
-            orbit_eye.rotate(egui::vec2(
+            view_eye.rotate(egui::vec2(
                 -response.ctx.input(|i| i.stable_dt).at_most(0.1) * 150.0,
                 0.0,
             ));
@@ -164,11 +163,11 @@ impl View3DState {
             let t = t.clamp(0.0, 1.0);
             let t = ease_out(t);
 
-            if let Some(target_orbit) = &cam_interpolation.target_orbit {
-                *orbit_eye = cam_interpolation.start.lerp(target_orbit, t);
+            if let Some(target_orbit) = &cam_interpolation.target_view_eye {
+                *view_eye = cam_interpolation.start.lerp(target_orbit, t);
             } else if let Some(target_eye) = &cam_interpolation.target_eye {
                 let camera = cam_interpolation.start.to_eye().lerp(target_eye, t);
-                orbit_eye.copy_from_eye(&camera);
+                view_eye.copy_from_eye(&camera);
             } else {
                 self.eye_interpolation = None;
             }
@@ -185,24 +184,24 @@ impl View3DState {
         // If we're tracking a camera right now, we want to make it slightly sticky,
         // so that a click on some entity doesn't immediately break the tracked state.
         // (Threshold is in amount of ui points the mouse was moved.)
-        let orbit_eye_drag_threshold = if self.tracked_entity.is_some() {
+        let view_eye_drag_threshold = if self.tracked_entity.is_some() {
             4.0
         } else {
             0.0
         };
 
-        if orbit_eye.update(response, orbit_eye_drag_threshold) {
+        if view_eye.update(response, view_eye_drag_threshold, bounding_boxes) {
             self.last_eye_interaction = Some(Instant::now());
             self.eye_interpolation = None;
             self.tracked_entity = None;
             self.camera_before_tracked_entity = None;
         }
 
-        *orbit_eye
+        *view_eye
     }
 
     fn interpolate_to_eye(&mut self, target: Eye) {
-        if let Some(start) = self.orbit_eye.as_mut() {
+        if let Some(start) = self.view_eye.as_mut() {
             // the user wants to move the camera somewhere, so stop spinning
             self.spin = false;
 
@@ -211,14 +210,14 @@ impl View3DState {
                     elapsed_time: 0.0,
                     target_time,
                     start: *start,
-                    target_orbit: None,
+                    target_view_eye: None,
                     target_eye: Some(target),
                 });
             } else {
                 start.copy_from_eye(&target);
             }
         } else {
-            // shouldn't really happen (`self.orbit_eye` is only `None` for the first frame).
+            // shouldn't really happen (`self.view_eye` is only `None` for the first frame).
         }
     }
 
@@ -245,42 +244,46 @@ impl View3DState {
         if let Some(tracked_camera) = find_camera(space_cameras, entity_path) {
             self.interpolate_to_eye(tracked_camera);
         } else if let Some(entity_bbox) = bounding_boxes.per_entity.get(&entity_path.hash()) {
-            let Some(mut new_orbit_eye) = self.orbit_eye else {
+            let Some(mut new_view_eye) = self.view_eye else {
                 // Happens only the first frame when there's no eye set up yet.
                 return;
             };
 
             let radius = entity_bbox.centered_bounding_sphere_radius() * 1.5;
-            if radius < 0.0001 {
-                // Bounding box may be zero size.
-                new_orbit_eye.orbit_radius =
-                    (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5)
-                        .at_least(0.01);
+            let orbit_radius = if radius < 0.0001 {
+                // Handle zero-sized bounding boxes:
+                (bounding_boxes.accumulated.centered_bounding_sphere_radius() * 1.5).at_least(0.01)
             } else {
-                new_orbit_eye.orbit_radius = radius;
-            }
-            new_orbit_eye.orbit_center = entity_bbox.center();
+                radius
+            };
 
-            self.interpolate_to_orbit_eye(new_orbit_eye);
+            new_view_eye.set_orbit_center_and_radius(entity_bbox.center(), orbit_radius);
+
+            self.interpolate_to_view_eye(new_view_eye);
         }
     }
 
-    fn interpolate_to_orbit_eye(&mut self, target: OrbitEye) {
+    /// The taregt mode will be ignored, and the mode of the current eye will be kept unchanged.
+    fn interpolate_to_view_eye(&mut self, mut target: ViewEye) {
+        if let Some(view_eye) = &self.view_eye {
+            target.set_mode(view_eye.mode());
+        }
+
         // the user wants to move the camera somewhere, so stop spinning
         self.spin = false;
 
-        if self.orbit_eye == Some(target) {
+        if self.view_eye == Some(target) {
             return; // We're already there.
         }
 
         // Don't restart interpolation if we're already on it.
         if let Some(eye_interpolation) = &self.eye_interpolation {
-            if eye_interpolation.target_orbit == Some(target) {
+            if eye_interpolation.target_view_eye == Some(target) {
                 return;
             }
         }
 
-        if let Some(start) = self.orbit_eye {
+        if let Some(start) = self.view_eye {
             if let Some(target_time) =
                 EyeInterpolation::target_time(&start.to_eye(), &target.to_eye())
             {
@@ -288,14 +291,14 @@ impl View3DState {
                     elapsed_time: 0.0,
                     target_time,
                     start,
-                    target_orbit: Some(target),
+                    target_view_eye: Some(target),
                     target_eye: None,
                 });
             } else {
-                self.orbit_eye = Some(target);
+                self.view_eye = Some(target);
             }
         } else {
-            self.orbit_eye = Some(target);
+            self.view_eye = Some(target);
         }
     }
 
@@ -311,7 +314,7 @@ impl View3DState {
 
         re_log::debug!("3D view tracks now {:?}", entity_path);
         self.tracked_entity = Some(entity_path.clone());
-        self.camera_before_tracked_entity = self.orbit_eye.map(|eye| eye.to_eye());
+        self.camera_before_tracked_entity = self.view_eye.map(|eye| eye.to_eye());
 
         self.interpolate_eye_to_entity(entity_path, bounding_boxes, space_cameras);
     }
@@ -332,8 +335,8 @@ impl View3DState {
 struct EyeInterpolation {
     elapsed_time: f32,
     target_time: f32,
-    start: OrbitEye,
-    target_orbit: Option<OrbitEye>,
+    start: ViewEye,
+    target_view_eye: Option<ViewEye>,
     target_eye: Option<Eye>,
 }
 
@@ -453,16 +456,20 @@ pub fn view_3d(
         return Ok(()); // protect against problems with zero-sized views
     }
 
-    let orbit_eye = state.state_3d.update_eye(
+    let view_eye = state.state_3d.update_eye(
         &response,
         &state.bounding_boxes,
         space_cameras,
         scene_view_coordinates,
     );
-    let eye = orbit_eye.to_eye();
+    let eye = view_eye.to_eye();
 
-    let mut line_builder = LineStripSeriesBuilder::new(ctx.render_ctx)
-        .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // Various ui interactions draw additional lines.
+    let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
+    line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+    // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
+    line_builder.reserve_strips(32)?;
+    line_builder.reserve_vertices(64)?;
 
     // Origin gizmo if requested.
     // TODO(andreas): Move this to the transform3d_arrow scene part.
@@ -522,7 +529,7 @@ pub fn view_3d(
         SpatialSpaceViewKind::ThreeD,
     );
 
-    if !re_ui::egui_helpers::is_anything_being_dragged(ui.ctx()) {
+    if ui.ctx().dragged_id().is_none() {
         response = picking(
             ctx,
             response,
@@ -543,7 +550,7 @@ pub fn view_3d(
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
         let focused_entity = match focused_item {
-            Item::StoreId(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => None,
+            Item::StoreId(_) | Item::Container(_) => None,
 
             Item::SpaceView(space_view_id) => {
                 if space_view_id == &query.space_view_id {
@@ -624,134 +631,37 @@ pub fn view_3d(
         );
     }
 
-    {
-        let mut box_batch = line_builder.batch("scene_bbox");
-        if state.state_3d.show_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
-        }
-        if state.state_3d.show_accumulated_bbox {
-            box_batch
-                .add_box_outline(&state.bounding_boxes.accumulated)
-                .map(|lines| {
-                    lines
-                        .radius(Size::AUTO)
-                        .color(egui::Color32::from_gray(170))
-                });
-        }
+    if state.state_3d.show_bbox {
+        line_builder
+            .batch("scene_bbox_current")
+            .add_box_outline(&state.bounding_boxes.current)
+            .map(|lines| lines.radius(Size::AUTO).color(egui::Color32::WHITE));
+    }
+    if state.state_3d.show_accumulated_bbox {
+        line_builder
+            .batch("scene_bbox_accumulated")
+            .add_box_outline(&state.bounding_boxes.accumulated)
+            .map(|lines| {
+                lines
+                    .radius(Size::AUTO)
+                    .color(egui::Color32::from_gray(170))
+            });
     }
 
-    // Show center of orbit camera when interacting with camera (it's quite helpful).
-    {
-        const FADE_DURATION: f32 = 0.1;
-
-        let ui_time = ui.input(|i| i.time);
-        let any_mouse_button_down = ui.input(|i| i.pointer.any_down());
-
-        let should_show_center_of_orbit_camera = state
-            .state_3d
-            .last_eye_interaction
-            .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
-
-        if !state.state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
-            // Any interaction immediately causes fade in to start if it's not already on.
-            state.state_3d.eye_interact_fade_change_time = ui_time;
-            state.state_3d.eye_interact_fade_in = true;
-        }
-        if state.state_3d.eye_interact_fade_in
-            && !should_show_center_of_orbit_camera
-            // Don't start fade-out while dragging, even if mouse is still
-            && !any_mouse_button_down
-        {
-            state.state_3d.eye_interact_fade_change_time = ui_time;
-            state.state_3d.eye_interact_fade_in = false;
-        }
-
-        pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-            let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-            t * t * (3.0 - t * 2.0)
-        }
-
-        // Compute smooth fade.
-        let time_since_fade_change =
-            (ui_time - state.state_3d.eye_interact_fade_change_time) as f32;
-        let orbit_center_fade = if state.state_3d.eye_interact_fade_in {
-            // Fade in.
-            smoothstep(0.0, FADE_DURATION, time_since_fade_change)
-        } else {
-            // Fade out.
-            smoothstep(FADE_DURATION, 0.0, time_since_fade_change)
-        };
-
-        if orbit_center_fade > 0.001 {
-            let half_line_length = orbit_eye.orbit_radius * 0.03;
-            let half_line_length = half_line_length * orbit_center_fade;
-
-            // We distinguish the eye up-axis from the other two axes:
-            // Default to RFU
-            let up = orbit_eye.eye_up.try_normalize().unwrap_or(glam::Vec3::Z);
-
-            // For the other two axes, try to use the scene view coordinates if available:
-            let right = scene_view_coordinates
-                .and_then(|vc| vc.right())
-                .map_or(glam::Vec3::X, Vec3::from);
-            let forward = up
-                .cross(right)
-                .try_normalize()
-                .unwrap_or_else(|| up.any_orthogonal_vector());
-            let right = forward.cross(up);
-
-            line_builder
-                .batch("center orbit orientation help")
-                .add_segments(
-                    [
-                        (
-                            orbit_eye.orbit_center,
-                            orbit_eye.orbit_center + 0.5 * up * half_line_length,
-                        ),
-                        (
-                            orbit_eye.orbit_center - right * half_line_length,
-                            orbit_eye.orbit_center + right * half_line_length,
-                        ),
-                        (
-                            orbit_eye.orbit_center - forward * half_line_length,
-                            orbit_eye.orbit_center + forward * half_line_length,
-                        ),
-                    ]
-                    .into_iter(),
-                )
-                .radius(Size::new_points(0.75))
-                // TODO(andreas): Fade this out.
-                .color(re_renderer::Color32::WHITE);
-
-            // TODO(andreas): Idea for nice depth perception:
-            // Render the lines once with additive blending and depth test enabled
-            // and another time without depth test. In both cases it needs to be rendered last,
-            // something re_renderer doesn't support yet for primitives within renderers.
-
-            ui.ctx().request_repaint(); // show it for a bit longer.
-        }
-    }
+    show_orbit_eye_center(
+        ui.ctx(),
+        &mut state.state_3d,
+        &mut line_builder,
+        &view_eye,
+        scene_view_coordinates,
+    );
 
     for draw_data in draw_data {
         view_builder.queue_draw(draw_data);
     }
-    if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {
-        for draw_data in shared_render_builders.queuable_draw_data(ctx.render_ctx) {
-            view_builder.queue_draw(draw_data);
-        }
-    }
 
     // Commit ui induced lines.
-    match line_builder.into_draw_data(ctx.render_ctx) {
-        Ok(line_draw_data) => {
-            view_builder.queue_draw(line_draw_data);
-        }
-        Err(err) => {
-            re_log::error_once!("Failed to create draw data for lines from ui interaction: {err}");
-        }
-    }
+    view_builder.queue_draw(line_builder.into_draw_data()?);
 
     // Composite viewbuilder into egui.
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
@@ -770,8 +680,108 @@ pub fn view_3d(
     Ok(())
 }
 
+/// Show center of orbit camera when interacting with camera (it's quite helpful).
+fn show_orbit_eye_center(
+    egui_ctx: &egui::Context,
+    state_3d: &mut View3DState,
+    line_builder: &mut LineDrawableBuilder<'_>,
+    view_eye: &ViewEye,
+    scene_view_coordinates: Option<ViewCoordinates>,
+) {
+    let Some(orbit_center) = view_eye.orbit_center() else {
+        return;
+    };
+    let Some(orbit_radius) = view_eye.orbit_radius() else {
+        return;
+    };
+
+    const FADE_DURATION: f32 = 0.1;
+
+    let ui_time = egui_ctx.input(|i| i.time);
+    let any_mouse_button_down = egui_ctx.input(|i| i.pointer.any_down());
+
+    let should_show_center_of_orbit_camera = state_3d
+        .last_eye_interaction
+        .map_or(false, |d| d.elapsed().as_secs_f32() < 0.35);
+
+    if !state_3d.eye_interact_fade_in && should_show_center_of_orbit_camera {
+        // Any interaction immediately causes fade in to start if it's not already on.
+        state_3d.eye_interact_fade_change_time = ui_time;
+        state_3d.eye_interact_fade_in = true;
+    }
+    if state_3d.eye_interact_fade_in
+            && !should_show_center_of_orbit_camera
+            // Don't start fade-out while dragging, even if mouse is still
+            && !any_mouse_button_down
+    {
+        state_3d.eye_interact_fade_change_time = ui_time;
+        state_3d.eye_interact_fade_in = false;
+    }
+
+    pub fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+        let t = f32::clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+        t * t * (3.0 - t * 2.0)
+    }
+
+    // Compute smooth fade.
+    let time_since_fade_change = (ui_time - state_3d.eye_interact_fade_change_time) as f32;
+    let orbit_center_fade = if state_3d.eye_interact_fade_in {
+        // Fade in.
+        smoothstep(0.0, FADE_DURATION, time_since_fade_change)
+    } else {
+        // Fade out.
+        smoothstep(FADE_DURATION, 0.0, time_since_fade_change)
+    };
+
+    if orbit_center_fade > 0.001 {
+        let half_line_length = orbit_radius * 0.03;
+        let half_line_length = half_line_length * orbit_center_fade;
+
+        // We distinguish the eye up-axis from the other two axes:
+        // Default to RFU
+        let up = view_eye.eye_up().unwrap_or(glam::Vec3::Z);
+
+        // For the other two axes, try to use the scene view coordinates if available:
+        let right = scene_view_coordinates
+            .and_then(|vc| vc.right())
+            .map_or(glam::Vec3::X, Vec3::from);
+        let forward = up
+            .cross(right)
+            .try_normalize()
+            .unwrap_or_else(|| up.any_orthogonal_vector());
+        let right = forward.cross(up);
+
+        line_builder
+            .batch("center orbit orientation help")
+            .add_segments(
+                [
+                    (orbit_center, orbit_center + 0.5 * up * half_line_length),
+                    (
+                        orbit_center - right * half_line_length,
+                        orbit_center + right * half_line_length,
+                    ),
+                    (
+                        orbit_center - forward * half_line_length,
+                        orbit_center + forward * half_line_length,
+                    ),
+                ]
+                .into_iter(),
+            )
+            .radius(Size::new_points(0.75))
+            // TODO(andreas): Fade this out.
+            .color(re_renderer::Color32::WHITE);
+
+        // TODO(andreas): Idea for nice depth perception:
+        // Render the lines once with additive blending and depth test enabled
+        // and another time without depth test. In both cases it needs to be rendered last,
+        // something re_renderer doesn't support yet for primitives within renderers.
+
+        egui_ctx.request_repaint(); // show it for a bit longer.
+    }
+}
+
 fn show_projections_from_2d_space(
-    line_builder: &mut LineStripSeriesBuilder,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
     space_context: &SelectedSpaceContext,
@@ -846,7 +856,7 @@ fn show_projections_from_2d_space(
 }
 
 fn add_picking_ray(
-    line_builder: &mut LineStripSeriesBuilder,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     ray: macaw::Ray3,
     scene_bbox_accum: &BoundingBox,
     thick_ray_length: f32,
@@ -873,7 +883,7 @@ fn add_picking_ray(
 fn default_eye(
     bounding_box: &macaw::BoundingBox,
     scene_view_coordinates: Option<ViewCoordinates>,
-) -> OrbitEye {
+) -> ViewEye {
     // Defaults to RFU.
     let scene_right = scene_view_coordinates
         .and_then(|vc| vc.right())
@@ -907,7 +917,7 @@ fn default_eye(
 
     let eye_pos = center - radius * eye_dir;
 
-    OrbitEye::new(
+    ViewEye::new_orbital(
         center,
         radius,
         Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),

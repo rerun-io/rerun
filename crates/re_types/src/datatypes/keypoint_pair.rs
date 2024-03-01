@@ -58,18 +58,16 @@ impl ::re_types_core::Loggable for KeypointPair {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field {
-                name: "keypoint0".to_owned(),
-                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
-            Field {
-                name: "keypoint1".to_owned(),
-                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                is_nullable: false,
-                metadata: [].into(),
-            },
+            Field::new(
+                "keypoint0",
+                <crate::datatypes::KeypointId>::arrow_datatype(),
+                false,
+            ),
+            Field::new(
+                "keypoint1",
+                <crate::datatypes::KeypointId>::arrow_datatype(),
+                false,
+            ),
         ]))
     }
 
@@ -182,23 +180,9 @@ impl ::re_types_core::Loggable for KeypointPair {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![
-                            Field {
-                                name: "keypoint0".to_owned(),
-                                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                            Field {
-                                name: "keypoint1".to_owned(),
-                                data_type: <crate::datatypes::KeypointId>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            },
-                        ])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.datatypes.KeypointPair")?;
             if arrow_data.is_empty() {
@@ -224,10 +208,9 @@ impl ::re_types_core::Loggable for KeypointPair {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt16,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt16;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint0")?
                         .into_iter()
@@ -247,10 +230,9 @@ impl ::re_types_core::Loggable for KeypointPair {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            DeserializationError::datatype_mismatch(
-                                DataType::UInt16,
-                                arrow_data.data_type().clone(),
-                            )
+                            let expected = DataType::UInt16;
+                            let actual = arrow_data.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.datatypes.KeypointPair#keypoint1")?
                         .into_iter()

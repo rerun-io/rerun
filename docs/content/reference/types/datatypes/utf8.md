@@ -4,6 +4,9 @@ title: "Utf8"
 
 A string of text, encoded as UTF-8.
 
+## Fields
+
+* value: `string`
 
 ## Links
  * 🌊 [C++ API docs for `Utf8`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Utf8.html)

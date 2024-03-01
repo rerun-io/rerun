@@ -569,7 +569,7 @@ impl ImageVisualizer {
         // Place the cloud at the pinhole's location. Note that this means we ignore any 2D transforms that might be there.
         let world_from_view = transforms.reference_from_entity_ignoring_pinhole(
             parent_pinhole_path,
-            ctx.entity_db.store(),
+            ctx.entity_db,
             &ctx.current_query(),
         );
         let Some(world_from_view) = world_from_view else {

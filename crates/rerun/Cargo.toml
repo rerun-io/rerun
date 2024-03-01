@@ -20,7 +20,16 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 
 [features]
-default = ["analytics", "demo", "glam", "image", "log", "sdk", "server"]
+default = [
+  "analytics",
+  "data_loaders",
+  "demo",
+  "glam",
+  "image",
+  "log",
+  "sdk",
+  "server",
+]
 
 ## Enable telemetry using our analytics SDK.
 analytics = [
@@ -32,6 +41,12 @@ analytics = [
 
 ## Integration with `clap`.
 clap = ["dep:clap", "dep:tokio"]
+
+## Support for using Rerun's data-loaders directly from the SDK.
+##
+## See our `log_file` example and <https://www.rerun.io/docs/howto/open-any-file>
+## for more information.
+data_loaders = ["re_sdk?/data_loaders"]
 
 ## Demo helpers for examples.
 demo = []
@@ -84,8 +99,6 @@ sdk = ["dep:re_sdk", "dep:re_types"]
 ##
 ## However, when building from source in the repository, this feature adds quite a bit
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
-## You also need to install some additional tools, which you can do by running
-## [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
 web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 
 [dependencies]

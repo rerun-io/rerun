@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::{
@@ -22,9 +22,9 @@ use crate::{
         StringExt as _,
     },
     format_path,
-    objects::ObjectType,
+    objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -40,8 +40,6 @@ use super::{
 // once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
-
-type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 pub struct RustCodeGenerator {
     pub workspace_path: Utf8PathBuf,
@@ -110,13 +108,7 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let mut code = match generate_object_file(reporter, objects, arrow_registry, obj) {
-                Ok(code) => code,
-                Err(err) => {
-                    reporter.error(&obj.virtpath, &obj.fqname, err);
-                    continue;
-                }
-            };
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -151,7 +143,7 @@ fn generate_object_file(
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
     obj: &Object,
-) -> Result<String> {
+) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
@@ -189,10 +181,10 @@ fn generate_object_file(
     // inject some of our own when writing to file… while making sure that don't inject
     // random spacing into doc comments that look like code!
 
-    let quoted_obj = match obj.typ() {
-        crate::objects::ObjectType::Struct => quote_struct(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Union => quote_union(reporter, arrow_registry, objects, obj),
-        crate::objects::ObjectType::Enum => anyhow::bail!("Enums are not implemented in Rust"),
+    let quoted_obj = match obj.class {
+        crate::objects::ObjectClass::Struct => quote_struct(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Union => quote_union(reporter, arrow_registry, objects, obj),
+        crate::objects::ObjectClass::Enum => quote_enum(reporter, arrow_registry, objects, obj),
     };
 
     let mut tokens = quoted_obj.into_iter();
@@ -200,11 +192,11 @@ fn generate_object_file(
         match &token {
             // If this is a doc-comment block, be smart about it.
             proc_macro2::TokenTree::Punct(punct) if punct.as_char() == '#' => {
-                code.push_text(string_from_quoted(&acc), 1, 0);
+                code.push_indented(0, string_from_quoted(&acc), 1);
                 acc = TokenStream::new();
 
                 acc.extend([token, tokens.next().unwrap()]);
-                code.push_text(acc.to_string(), 1, 0);
+                code.push_indented(0, acc.to_string(), 1);
                 acc = TokenStream::new();
             }
             _ => {
@@ -213,9 +205,9 @@ fn generate_object_file(
         }
     }
 
-    code.push_text(string_from_quoted(&acc), 1, 0);
+    code.push_indented(0, string_from_quoted(&acc), 1);
 
-    Ok(replace_doc_attrb_with_doc_comment(&code))
+    replace_doc_attrb_with_doc_comment(&code)
 }
 
 fn generate_mod_file(
@@ -462,7 +454,7 @@ fn quote_union(
     objects: &Objects,
     obj: &Object,
 ) -> TokenStream {
-    assert_eq!(obj.typ(), ObjectType::Union);
+    assert_eq!(obj.class, ObjectClass::Union);
 
     let Object { name, fields, .. } = obj;
 
@@ -547,6 +539,123 @@ fn quote_union(
         }
 
         #quoted_heap_size_bytes
+
+        #quoted_trait_impls
+    };
+
+    tokens
+}
+
+// Pure C-style enum
+fn quote_enum(
+    reporter: &Reporter,
+    arrow_registry: &ArrowRegistry,
+    objects: &Objects,
+    obj: &Object,
+) -> TokenStream {
+    assert_eq!(obj.class, ObjectClass::Enum);
+
+    let Object { name, fields, .. } = obj;
+
+    let name = format_ident!("{name}");
+
+    let quoted_doc = quote_obj_docs(reporter, obj);
+    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+
+    let mut derives = vec!["Clone", "Copy", "Debug", "PartialEq", "Eq"];
+
+    match fields
+        .iter()
+        .filter(|field| field.attrs.has(ATTR_DEFAULT))
+        .count()
+    {
+        0 => {}
+        1 => {
+            derives.push("Default");
+        }
+        _ => {
+            reporter.error(
+                &obj.virtpath,
+                &obj.fqname,
+                "Enums can only have one default value",
+            );
+        }
+    };
+    let derives = derives.iter().map(|&derive| {
+        let derive = format_ident!("{derive}");
+        quote!(#derive)
+    });
+
+    let quoted_fields = fields.iter().enumerate().map(|(i, field)| {
+        let name = format_ident!("{}", field.pascal_case_name());
+
+        let quoted_doc = quote_field_docs(reporter, field);
+
+        // We assign the arrow type index to the enum fields to make encoding simpler and faster:
+        let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(1 + i); // 0 is reserved for `_null_markers`
+
+        let default_attr = if field.attrs.has(ATTR_DEFAULT) {
+            quote!(#[default])
+        } else {
+            quote!()
+        };
+
+        quote! {
+            #quoted_doc
+            #default_attr
+            #name = #arrow_type_index
+        }
+    });
+
+    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+
+    let count = Literal::usize_unsuffixed(fields.len());
+    let all = fields.iter().map(|field| {
+        let name = format_ident!("{}", field.pascal_case_name());
+        quote!(Self::#name)
+    });
+    let declare_const_all = quote! {
+        /// All the different enum variants.
+        pub const ALL: [Self; #count] = [#(#all),*];
+    };
+
+    let display_match_arms = fields.iter().map(|field| {
+        let name = field.pascal_case_name();
+        let quoted_name = format_ident!("{name}");
+        quote!(Self::#quoted_name => write!(f, #name))
+    });
+
+    let tokens = quote! {
+        #quoted_doc
+        #[derive( #(#derives,)* )]
+        #quoted_custom_clause
+        pub enum #name {
+            #(#quoted_fields,)*
+        }
+
+        impl #name {
+            #declare_const_all
+        }
+
+        impl ::re_types_core::SizeBytes for #name {
+            #[inline]
+            fn heap_size_bytes(&self) -> u64 {
+                0
+            }
+
+            #[inline]
+            fn is_pod() -> bool {
+                true
+            }
+        }
+
+        impl std::fmt::Display for #name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    #(#display_match_arms,)*
+                }
+            }
+        }
 
         #quoted_trait_impls
     };
@@ -731,6 +840,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let Self { typ, unwrap } = self;
         match typ {
+            Type::Unit => quote!(()),
             Type::UInt8 => quote!(u8),
             Type::UInt16 => quote!(u16),
             Type::UInt32 => quote!(u32),

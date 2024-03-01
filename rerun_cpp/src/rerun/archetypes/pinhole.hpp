@@ -12,7 +12,9 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -20,7 +22,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ### Simple Pinhole Camera
     /// ![image](https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png)
@@ -44,6 +46,31 @@ namespace rerun::archetypes {
     ///     });
     ///
     ///     rec.log("world/image", rerun::Image({3, 3, 3}, random_data));
+    /// }
+    /// ```
+    ///
+    /// ### Perspective Pinhole Camera
+    /// ![image](https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     const float fov_y = 0.7853982f;
+    ///     const float aspect_ratio = 1.7777778f;
+    ///     rec.log(
+    ///         "world/cam",
+    ///         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
+    ///             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
+    ///     );
+    ///
+    ///     rec.log(
+    ///         "world/points",
+    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}})
+    ///     );
     /// }
     /// ```
     struct Pinhole {
@@ -119,6 +146,18 @@ namespace rerun::archetypes {
             float focal_length, const datatypes::Vec2D& resolution
         ) {
             return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
+        }
+
+        /// Creates a pinhole from the camera vertical field of view (in radians) and aspect ratio (width/height).
+        ///
+        /// Assumes the principal point to be in the middle of the sensor.
+        static Pinhole from_fov_and_aspect_ratio(float fov_y, float aspect_ratio) {
+            const float EPSILON = std::numeric_limits<float>::epsilon();
+            const float focal_length_y = 0.5f / std::tan(std::max(fov_y * 0.5f, EPSILON));
+            return from_focal_length_and_resolution(
+                {focal_length_y, focal_length_y},
+                {aspect_ratio, 1.0}
+            );
         }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.

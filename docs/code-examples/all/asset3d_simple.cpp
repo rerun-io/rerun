@@ -8,7 +8,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_asset.[gltf|glb|obj]>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <path_to_asset.[gltf|glb|obj|stl]>" << std::endl;
         return 1;
     }
 

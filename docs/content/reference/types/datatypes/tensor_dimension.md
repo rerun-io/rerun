@@ -4,6 +4,10 @@ title: "TensorDimension"
 
 A single dimension within a multi-dimensional tensor.
 
+## Fields
+
+* size: `u64`
+* name: `string`
 
 ## Links
  * 🌊 [C++ API docs for `TensorDimension`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimension.html)

@@ -1,13 +1,11 @@
-use crate::codegen::common::ExampleInfo;
-use crate::objects::FieldKind;
-use crate::CodeGenerator;
-use crate::GeneratedFiles;
-use crate::Object;
-use crate::ObjectKind;
-use crate::Objects;
-use crate::Reporter;
-use camino::Utf8PathBuf;
 use std::fmt::Write;
+
+use camino::Utf8PathBuf;
+
+use crate::{
+    codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
+    ObjectKind, Objects, Reporter, Type,
+};
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
 
@@ -272,25 +270,71 @@ fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
         return;
     }
 
+    fn type_info(object_map: &ObjectMap, ty: &Type) -> String {
+        fn atomic(name: &str) -> String {
+            format!("`{name}`")
+        }
+
+        match ty {
+            Type::Unit => unreachable!("Should be handled elsewhere"),
+
+            Type::UInt8 => atomic("u8"),
+            Type::UInt16 => atomic("u16"),
+            Type::UInt32 => atomic("u32"),
+            Type::UInt64 => atomic("u64"),
+            Type::Int8 => atomic("i8"),
+            Type::Int16 => atomic("i16"),
+            Type::Int32 => atomic("i32"),
+            Type::Int64 => atomic("i64"),
+            Type::Bool => atomic("bool"),
+            Type::Float16 => atomic("f16"),
+            Type::Float32 => atomic("f32"),
+            Type::Float64 => atomic("f64"),
+            Type::String => atomic("string"),
+
+            Type::Array { elem_type, length } => {
+                format!(
+                    "{length}x {}",
+                    type_info(object_map, &Type::from(elem_type.clone()))
+                )
+            }
+            Type::Vector { elem_type } => {
+                format!(
+                    "list of {}",
+                    type_info(object_map, &Type::from(elem_type.clone()))
+                )
+            }
+            Type::Object(fqname) => {
+                let ty = object_map.get(fqname).unwrap();
+                format!(
+                    "[`{}`](../{}/{}.md)",
+                    ty.name,
+                    ty.kind.plural_snake_case(),
+                    ty.snake_case_name()
+                )
+            }
+        }
+    }
+
     let mut fields = Vec::new();
     for field in &object.fields {
-        let Some(fqname) = field.typ.fqname() else {
-            continue;
-        };
-        let Some(ty) = object_map.get(fqname) else {
-            continue;
-        };
-        fields.push(format!(
-            "* {}: [`{}`](../{}/{}.md)",
-            field.name,
-            ty.name,
-            ty.kind.plural_snake_case(),
-            ty.snake_case_name()
-        ));
+        if object.is_enum() || field.typ == Type::Unit {
+            fields.push(format!("* {}", field.name));
+        } else {
+            fields.push(format!(
+                "* {}: {}",
+                field.name,
+                type_info(object_map, &field.typ)
+            ));
+        }
     }
 
     if !fields.is_empty() {
-        putln!(o, "## Fields");
+        let heading = match object.class {
+            crate::ObjectClass::Struct => "## Fields",
+            crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
+        };
+        putln!(o, "{heading}");
         putln!(o);
         for field in fields {
             putln!(o, "{field}");

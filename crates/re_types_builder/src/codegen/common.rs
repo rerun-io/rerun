@@ -293,18 +293,29 @@ pub fn collect_examples_for_api_docs<'a>(
 }
 
 pub trait StringExt {
-    fn push_text(&mut self, text: impl AsRef<str>, linefeeds: usize, indent: usize) -> &mut Self;
-    fn push_unindented_text(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self;
+    fn push_indented(
+        &mut self,
+        indent_level: usize,
+        text: impl AsRef<str>,
+        linefeeds: usize,
+    ) -> &mut Self;
+
+    fn push_unindented(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self;
 }
 
 impl StringExt for String {
-    fn push_text(&mut self, text: impl AsRef<str>, linefeeds: usize, indent: usize) -> &mut Self {
-        self.push_str(&indent::indent_all_by(indent, text.as_ref()));
+    fn push_indented(
+        &mut self,
+        indent_level: usize,
+        text: impl AsRef<str>,
+        linefeeds: usize,
+    ) -> &mut Self {
+        self.push_str(&indent::indent_all_by(indent_level * 4, text.as_ref()));
         self.push_str(&vec!["\n"; linefeeds].join(""));
         self
     }
 
-    fn push_unindented_text(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self {
+    fn push_unindented(&mut self, text: impl AsRef<str>, linefeeds: usize) -> &mut Self {
         self.push_str(&unindent::unindent(text.as_ref()));
         self.push_str(&vec!["\n"; linefeeds].join(""));
         self

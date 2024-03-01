@@ -7,15 +7,21 @@ use crate::{ElementType, Object, ObjectKind, Type, ATTR_RUST_TUPLE_STRUCT};
 // ---
 
 pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
-    let is_tuple_struct = obj.kind == ObjectKind::Component
-        || (obj.is_struct() && obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some());
+    if !obj.is_struct() {
+        return false;
+    }
 
-    assert!(
-        !is_tuple_struct || obj.fields.len() == 1,
-        "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
-        obj.fqname,
-        obj.fields.len(),
-    );
+    let is_tuple_struct = obj.kind == ObjectKind::Component
+        || obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
+
+    if is_tuple_struct {
+        assert!(
+            obj.fields.len() == 1,
+            "`{ATTR_RUST_TUPLE_STRUCT}` is only supported for objects with a single field, but {} has {}",
+            obj.fqname,
+            obj.fields.len(),
+        );
+    }
 
     is_tuple_struct
 }

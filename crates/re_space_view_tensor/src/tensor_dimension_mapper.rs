@@ -63,7 +63,7 @@ fn tensor_dimension_ui(
 ) {
     let frame = egui::Frame::default().inner_margin(4.0);
 
-    let (_response, dropped) = ui.dnd_drop_zone::<DragDropAddress>(frame, |ui| {
+    let (_response, dropped) = ui.dnd_drop_zone::<DragDropAddress, _>(frame, |ui| {
         ui.set_min_size(egui::vec2(80., 15.));
 
         if let Some(dim_idx) = bound_dim_idx {

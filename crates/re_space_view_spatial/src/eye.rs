@@ -6,7 +6,7 @@ use re_space_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER,
 };
 
-use crate::space_camera_3d::SpaceCamera3D;
+use crate::{scene_bounding_boxes::SceneBoundingBoxes, space_camera_3d::SpaceCamera3D};
 
 /// An eye in a 3D view.
 ///
@@ -149,14 +149,39 @@ impl Eye {
 
 // ----------------------------------------------------------------------------
 
+/// The mode of an [`ViewEye`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub enum EyeMode {
+    FirstPerson,
+
+    #[default]
+    Orbital,
+}
+
+/// An eye (camera) in 3D space, controlled by the user.
+///
+/// This is either a first person camera or an orbital camera,
+/// controlled by [`EyeMode`].
+/// We combine these two modes in one struct because they share a lot of state and logic.
+///
 /// Note: we use "eye" so we don't confuse this with logged camera.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct OrbitEye {
-    pub orbit_center: Vec3,
-    pub orbit_radius: f32,
+pub struct ViewEye {
+    /// First person or orbital?
+    mode: EyeMode,
 
-    pub world_from_view_rot: Quat,
-    pub fov_y: f32,
+    /// Center of orbit, or camera position in first person mode.
+    center: Vec3,
+
+    /// Ignored for [`EyeMode::FirstPerson`],
+    /// but kept for if/when the user switches to orbital mode.
+    orbit_radius: f32,
+
+    /// Rotate to world-space from view-space (RUB).
+    world_from_view_rot: Quat,
+
+    /// Vertical field of view in radians.
+    fov_y: f32,
 
     /// The up-axis of the eye itself, in world-space.
     ///
@@ -167,24 +192,25 @@ pub struct OrbitEye {
     ///
     /// A value of `Vec3::ZERO` is valid and will result in 3 degrees of freedom, although we never
     /// use it at the moment.
-    pub eye_up: Vec3,
+    eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
-    pub velocity: Vec3,
+    velocity: Vec3,
 }
 
-impl OrbitEye {
+impl ViewEye {
     /// Avoids zentith/nadir singularity.
     const MAX_PITCH: f32 = 0.99 * 0.25 * std::f32::consts::TAU;
 
-    pub fn new(
+    pub fn new_orbital(
         orbit_center: Vec3,
         orbit_radius: f32,
         world_from_view_rot: Quat,
         eye_up: Vec3,
     ) -> Self {
-        OrbitEye {
-            orbit_center,
+        ViewEye {
+            mode: EyeMode::Orbital,
+            center: orbit_center,
             orbit_radius,
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
@@ -193,8 +219,65 @@ impl OrbitEye {
         }
     }
 
+    pub fn mode(&self) -> EyeMode {
+        self.mode
+    }
+
+    pub fn set_mode(&mut self, new_mode: EyeMode) {
+        if self.mode != new_mode {
+            // Keep the same position:
+            match new_mode {
+                EyeMode::FirstPerson => self.center = self.position(),
+                EyeMode::Orbital => {
+                    self.center = self.position() + self.orbit_radius * self.fwd();
+                }
+            }
+
+            self.mode = new_mode;
+        }
+    }
+
+    /// If in orbit mode, what are we orbiting around?
+    pub fn orbit_center(&self) -> Option<Vec3> {
+        match self.mode {
+            EyeMode::FirstPerson => None,
+            EyeMode::Orbital => Some(self.center),
+        }
+    }
+
+    /// If in orbit mode, how far from the orbit center are we?
+    pub fn orbit_radius(&self) -> Option<f32> {
+        match self.mode {
+            EyeMode::FirstPerson => None,
+            EyeMode::Orbital => Some(self.orbit_radius),
+        }
+    }
+
+    /// Set what we orbit around, and at what distance.
+    ///
+    /// If we are not in orbit mode, the state will still be set and used if the user switches to orbit mode.
+    pub fn set_orbit_center_and_radius(&mut self, orbit_center: Vec3, orbit_radius: f32) {
+        // Temporarily switch to orbital, set the values, and then switch back.
+        // This ensures the camera position will be set correctly, even if we
+        // were in first-person mode:
+        let old_mode = self.mode();
+        self.set_mode(EyeMode::Orbital);
+        self.center = orbit_center;
+        self.orbit_radius = orbit_radius;
+        self.set_mode(old_mode);
+    }
+
+    /// The world-space position of the eye.
     pub fn position(&self) -> Vec3 {
-        self.orbit_center + self.world_from_view_rot * vec3(0.0, 0.0, self.orbit_radius)
+        match self.mode {
+            EyeMode::FirstPerson => self.center,
+            EyeMode::Orbital => self.center - self.orbit_radius * self.fwd(),
+        }
+    }
+
+    /// The local up-axis, if set
+    pub fn eye_up(&self) -> Option<Vec3> {
+        self.eye_up.try_normalize()
     }
 
     pub fn to_eye(self) -> Eye {
@@ -207,15 +290,23 @@ impl OrbitEye {
         }
     }
 
-    /// Create an [`OrbitEye`] from a [`Eye`].
+    /// Create an [`ViewEye`] from a [`Eye`].
     pub fn copy_from_eye(&mut self, eye: &Eye) {
-        // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
-        let distance = eye
-            .forward_in_world()
-            .dot(self.orbit_center - eye.pos_in_world())
-            .abs();
-        self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
-        self.orbit_center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
+        match self.mode {
+            EyeMode::FirstPerson => {
+                self.center = eye.pos_in_world();
+            }
+
+            EyeMode::Orbital => {
+                // The hard part is finding a good center. Let's try to keep the same, and see how that goes:
+                let distance = eye
+                    .forward_in_world()
+                    .dot(self.center - eye.pos_in_world())
+                    .abs();
+                self.orbit_radius = distance.at_least(self.orbit_radius / 5.0);
+                self.center = eye.pos_in_world() + self.orbit_radius * eye.forward_in_world();
+            }
+        }
         self.world_from_view_rot = eye.world_from_rub_view.rotation();
         self.fov_y = eye.fov_y.unwrap_or(Eye::DEFAULT_FOV_Y);
         self.velocity = Vec3::ZERO;
@@ -229,7 +320,8 @@ impl OrbitEye {
             *other // avoid rounding errors
         } else {
             Self {
-                orbit_center: self.orbit_center.lerp(other.orbit_center, t),
+                mode: other.mode,
+                center: self.center.lerp(other.center, t),
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
                 fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
@@ -247,7 +339,7 @@ impl OrbitEye {
         self.world_from_view_rot * -Vec3::Z // view-coordinates are RUB
     }
 
-    /// Only valid if we have an up vector.
+    /// Only valid if we have an up-vector set.
     ///
     /// `[-tau/4, +tau/4]`
     fn pitch(&self) -> Option<f32> {
@@ -260,7 +352,28 @@ impl OrbitEye {
 
     /// Returns `true` if interaction occurred.
     /// I.e. the camera changed via user input.
-    pub fn update(&mut self, response: &egui::Response, drag_threshold: f32) -> bool {
+    pub fn update(
+        &mut self,
+        response: &egui::Response,
+        drag_threshold: f32,
+        bounding_boxes: &SceneBoundingBoxes,
+    ) -> bool {
+        let mut speed = match self.mode {
+            EyeMode::FirstPerson => 0.1 * bounding_boxes.current.size().length(), // TODO(emilk): user controlled speed
+            EyeMode::Orbital => self.orbit_radius,
+        };
+
+        // Modify speed based on modifiers:
+        let os = response.ctx.os();
+        response.ctx.input(|input| {
+            if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
+                speed *= 10.0;
+            }
+            if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
+                speed *= 0.1;
+            }
+        });
+
         // Dragging even below the [`drag_threshold`] should be considered interaction.
         // Otherwise we flicker in and out of "has interacted" too quickly.
         let mut did_interact = response.drag_delta().length() > 0.0;
@@ -278,35 +391,44 @@ impl OrbitEye {
             } else if response.dragged_by(ROTATE3D_BUTTON) {
                 self.rotate(response.drag_delta());
             } else if response.dragged_by(DRAG_PAN3D_BUTTON) {
-                self.translate(response.drag_delta());
+                // The pan speed is selected to make the panning feel natural for orbit mode,
+                // but it should probably take FOV and screen size into account
+                let pan_speed = 0.001 * speed;
+                let delta_in_view = pan_speed * response.drag_delta();
+
+                self.translate(delta_in_view);
             }
         }
 
-        let (zoom_delta, scroll_delta) = if response.hovered() {
-            did_interact |= self.keyboard_navigation(&response.ctx);
-            response
-                .ctx
-                .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
-        } else {
-            (1.0, 0.0)
-        };
-        if zoom_delta != 1.0 || scroll_delta.abs() > 0.1 {
-            did_interact = true;
+        if response.hovered() {
+            did_interact |= self.keyboard_navigation(&response.ctx, speed);
         }
 
-        let zoom_factor = zoom_delta * (scroll_delta / 200.0).exp();
-        if zoom_factor != 1.0 {
-            let new_radius = self.orbit_radius / zoom_factor;
+        if self.mode == EyeMode::Orbital {
+            let (zoom_delta, scroll_delta) = if response.hovered() {
+                response
+                    .ctx
+                    .input(|i| (i.zoom_delta(), i.smooth_scroll_delta.y))
+            } else {
+                (1.0, 0.0)
+            };
 
-            // The user may be scrolling to move the camera closer, but are not realizing
-            // the radius is now tiny.
-            // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
-            // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
+            let zoom_factor = zoom_delta * (scroll_delta / 200.0).exp();
+            if zoom_factor != 1.0 {
+                let new_radius = self.orbit_radius / zoom_factor;
 
-            // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
-            // Max value is chosen with some generous margin of an observed crash due to infinity.
-            if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
-                self.orbit_radius = new_radius;
+                // The user may be scrolling to move the camera closer, but are not realizing
+                // the radius is now tiny.
+                // TODO(emilk): inform the users somehow that scrolling won't help, and that they should use WSAD instead.
+                // It might be tempting to start moving the camera here on scroll, but that would is bad for other reasons.
+
+                // Don't let radius go too small or too big because this might cause infinity/nan in some calculations.
+                // Max value is chosen with some generous margin of an observed crash due to infinity.
+                if f32::MIN_POSITIVE < new_radius && new_radius < 1.0e17 {
+                    self.orbit_radius = new_radius;
+                }
+
+                did_interact = true;
             }
         }
 
@@ -316,13 +438,11 @@ impl OrbitEye {
     /// Listen to WSAD and QE to move the eye.
     ///
     /// Returns `true` if we did anything.
-    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context) -> bool {
+    fn keyboard_navigation(&mut self, egui_ctx: &egui::Context, speed: f32) -> bool {
         let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
         if anything_has_focus {
             return false; // e.g. we're typing in a TextField
         }
-
-        let os = egui_ctx.os();
 
         let mut did_interact = false;
         let mut requires_repaint = false;
@@ -340,24 +460,13 @@ impl OrbitEye {
             local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
             local_movement = local_movement.normalize_or_zero();
 
-            let speed = self.orbit_radius
-                * (if input.modifiers.contains(SPEED_UP_3D_MODIFIER) {
-                    10.0
-                } else {
-                    1.0
-                })
-                * (if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
-                    0.1
-                } else {
-                    1.0
-                });
             let world_movement = self.world_from_view_rot * (speed * local_movement);
 
             self.velocity = egui::lerp(
                 self.velocity..=world_movement,
                 egui::emath::exponential_smooth_factor(0.90, 0.2, dt),
             );
-            self.orbit_center += self.velocity * dt;
+            self.center += self.velocity * dt;
 
             did_interact = local_movement != Vec3::ZERO;
             requires_repaint =
@@ -418,15 +527,13 @@ impl OrbitEye {
         self.eye_up = self.eye_up.normalize_or_zero();
     }
 
-    /// Translate based on a certain number of pixel delta.
-    fn translate(&mut self, delta: egui::Vec2) {
-        let delta = delta * self.orbit_radius * 0.001; // TODO(emilk): take fov and screen size into account?
-
+    /// Given a delta in view-space, translate the eye.
+    fn translate(&mut self, delta_in_view: egui::Vec2) {
         let up = self.world_from_view_rot * Vec3::Y;
         let right = self.world_from_view_rot * -Vec3::X; // TODO(emilk): why do we need a negation here? O.o
 
-        let translate = delta.x * right + delta.y * up;
+        let translate = delta_in_view.x * right + delta_in_view.y * up;
 
-        self.orbit_center += translate;
+        self.center += translate;
     }
 }

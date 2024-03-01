@@ -92,6 +92,10 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
         .text_styles
         .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(15.0));
     egui_style.text_styles.insert(
+        ReUi::welcome_screen_example_title(),
+        egui::FontId::proportional(16.0),
+    );
+    egui_style.text_styles.insert(
         ReUi::welcome_screen_body(),
         egui::FontId::proportional(13.0),
     );
@@ -184,6 +188,8 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.spacing.scroll.bar_inner_margin = 2.0;
     egui_style.spacing.scroll.bar_width = 6.0;
     egui_style.spacing.scroll.bar_outer_margin = 2.0;
+
+    egui_style.spacing.tooltip_width = 720.0;
 
     // don't color hyperlinks #2733
     egui_style.visuals.hyperlink_color = default;

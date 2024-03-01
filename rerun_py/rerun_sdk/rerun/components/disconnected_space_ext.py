@@ -25,6 +25,7 @@ class DisconnectedSpaceExt:
             Whether or not the entity should be disconnected from the rest of the scene.
             Set to `True` to disconnect the entity from its parent.
             Set to `False` to disable the effects of this component, (re-)connecting the entity to its parent again.
+
         """
         self.__attrs_init__(is_disconnected=is_disconnected)
 

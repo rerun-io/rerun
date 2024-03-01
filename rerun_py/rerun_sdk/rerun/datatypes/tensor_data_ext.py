@@ -77,6 +77,7 @@ class TensorDataExt:
             A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
         dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
+
         """
         if array is None and buffer is None:
             raise ValueError("Must provide one of 'array' or 'buffer'")

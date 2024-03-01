@@ -76,12 +76,11 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field {
-            name: "single_optional_union".to_owned(),
-            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-            is_nullable: true,
-            metadata: [].into(),
-        }]))
+        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+            "single_optional_union",
+            <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
+            true,
+        )]))
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -155,15 +154,9 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    DeserializationError::datatype_mismatch(
-                        DataType::Struct(std::sync::Arc::new(vec![Field {
-                            name: "single_optional_union".to_owned(),
-                            data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-                            is_nullable: true,
-                            metadata: [].into(),
-                        }])),
-                        arrow_data.data_type().clone(),
-                    )
+                    let expected = Self::arrow_datatype();
+                    let actual = arrow_data.data_type().clone();
+                    DeserializationError::datatype_mismatch(expected, actual)
                 })
                 .with_context("rerun.testing.datatypes.AffixFuzzer5")?;
             if arrow_data.is_empty() {

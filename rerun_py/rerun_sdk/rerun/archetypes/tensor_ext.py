@@ -37,6 +37,7 @@ class TensorExt:
             A TensorData object, or type that can be converted to a numpy array.
         dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
+
         """
         from ..datatypes import TensorData
 

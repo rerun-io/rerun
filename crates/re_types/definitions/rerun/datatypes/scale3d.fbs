@@ -27,8 +27,8 @@ union Scale3D (
   "attr.rust.derive": "Copy, PartialEq"
 ) {
   /// Individual scaling factors for each axis, distorting the original object.
-  ThreeD: rerun.datatypes.Vec3D (order: 100),
+  ThreeD: rerun.datatypes.Vec3D,
 
   /// Uniform scaling factor along all axis.
-  Uniform: rerun.datatypes.Float32 (order: 200, transparent),
+  Uniform: rerun.datatypes.Float32 (transparent),
 }

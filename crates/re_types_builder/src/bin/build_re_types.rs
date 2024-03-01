@@ -110,7 +110,7 @@ fn main() {
     let (report, reporter) = re_types_builder::report::init();
 
     let (objects, arrow_registry) =
-        re_types_builder::generate_lang_agnostic(definitions_dir_path, entrypoint_path);
+        re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join!(
