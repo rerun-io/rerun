@@ -39,7 +39,7 @@ class Uuid(UuidExt):
 
 
 if TYPE_CHECKING:
-    UuidLike = Union[Uuid, npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int]]
+    UuidLike = Union[Uuid, npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes]
 else:
     UuidLike = Any
 

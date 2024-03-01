@@ -30,6 +30,9 @@ from rerun.datatypes import (
     RotationAxisAngle,
     Utf8,
     Utf8ArrayLike,
+    Uuid,
+    UuidArrayLike,
+    UuidBatch,
     Vec2D,
     Vec2DArrayLike,
     Vec2DBatch,
@@ -451,3 +454,27 @@ instance_keys_arrays = [
 def instance_keys_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
     return InstanceKeyBatch._optional(expected)
+
+
+uuid_bytes0 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+uuid_bytes1 = [16, 17, 127, 3, 4, 255, 6, 7, 21, 9, 10, 11, 12, 0, 14, 15]
+
+uuids_arrays: list[UuidArrayLike] = [
+    [],
+    np.array([]),
+    # UuidArrayLike: Sequence[UuidLike]: Sequence[int]
+    [uuid_bytes0, uuid_bytes1],
+    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], Sequence[int]
+    [np.array(uuid_bytes0, dtype=np.uint8), uuid_bytes1],
+    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], npt.ArrayLike
+    [np.array(uuid_bytes0, dtype=np.uint8), np.array(uuid_bytes1, dtype=np.uint32)],
+    # UuidArrayLike: Sequence[UuidLike]: Uuid
+    [Uuid(uuid_bytes0), Uuid(uuid_bytes1)],
+    # UuidArrayLike: Sequence[UuidLike]: Bytes
+    [bytes(uuid_bytes0), bytes(uuid_bytes1)],
+]
+
+
+def uuids_expected(obj: Any) -> Any:
+    expected = none_empty_or_value(obj, [uuid_bytes0, uuid_bytes1])
+    return UuidBatch._optional(expected)
