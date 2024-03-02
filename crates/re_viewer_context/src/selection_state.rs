@@ -346,10 +346,6 @@ impl ApplicationSelectionState {
                     | Item::Container(_) => false,
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
-                        fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
-                            a.is_none() || b.is_none() || a == b
-                        }
-
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
                                 &current_instance_path.instance_key.specific_index(),
@@ -365,10 +361,6 @@ impl ApplicationSelectionState {
                     | Item::Container(_) => false,
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
-                        fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
-                            a.is_none() || b.is_none() || a == b
-                        }
-
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
                                 &current_instance_path.instance_key.specific_index(),
@@ -383,4 +375,8 @@ impl ApplicationSelectionState {
             HoverHighlight::None
         }
     }
+}
+
+fn either_none_or_same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
+    a.is_none() || b.is_none() || a == b
 }
