@@ -418,20 +418,15 @@ impl eframe::App for ExampleApp {
                         self.re_ui
                             .list_item("Collapsing list item with icon")
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D)
-                            .show_collapsing(
-                                ui,
-                                "collapsing example".into(),
-                                true,
-                                |_re_ui, ui| {
-                                    self.re_ui.list_item("Sub-item").show(ui);
-                                    self.re_ui.list_item("Sub-item").show(ui);
-                                    self.re_ui
-                                        .list_item("Sub-item with icon")
-                                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                        .show(ui);
-                                    self.re_ui.list_item("Sub-item").show(ui);
-                                },
-                            );
+                            .show_collapsing(ui, "collapsing example", true, |_re_ui, ui| {
+                                self.re_ui.list_item("Sub-item").show(ui);
+                                self.re_ui.list_item("Sub-item").show(ui);
+                                self.re_ui
+                                    .list_item("Sub-item with icon")
+                                    .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                    .show(ui);
+                                self.re_ui.list_item("Sub-item").show(ui);
+                            });
                     });
                 });
             });
@@ -1055,7 +1050,7 @@ mod hierarchical_drag_and_drop {
                 .selected(self.selected(item_id))
                 .draggable(true)
                 .drop_target_style(self.target_container == Some(item_id))
-                .show_collapsing(ui, item_id.into(), true, |re_ui, ui| {
+                .show_collapsing(ui, item_id, true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
                 });
 

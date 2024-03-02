@@ -296,10 +296,12 @@ impl<'a> ListItem<'a> {
     pub fn show_collapsing<R>(
         mut self,
         ui: &mut Ui,
-        id: egui::Id,
+        id: impl Into<egui::Id>,
         default_open: bool,
         add_body: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
+        let id = id.into();
+
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             id,
