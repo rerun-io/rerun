@@ -1,6 +1,7 @@
 use egui::{Response, Ui};
 
 use itertools::Itertools;
+use re_entity_db::InstancePath;
 
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
@@ -283,50 +284,58 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             })
-            .show_collapsing(ui, BlueprintCollapsedId::SpaceView(*space_view_id), default_open, |_, ui| {
-                // Always show the origin hierarchy first.
-                Self::space_view_entity_hierarchy_ui(
-                    ctx,
-                    ui,
-                    query_result,
-                    &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
-                    space_view,
-                    space_view_visible,
-                    false,
-                );
+            .show_collapsing(
+                ui,
+                BlueprintCollapsedId::SpaceView(*space_view_id),
+                default_open,
+                |_, ui| {
+                    // Always show the origin hierarchy first.
+                    Self::space_view_entity_hierarchy_ui(
+                        ctx,
+                        ui,
+                        query_result,
+                        &DataResultNodeOrPath::from_path_lookup(
+                            result_tree,
+                            &space_view.space_origin,
+                        ),
+                        space_view,
+                        space_view_visible,
+                        false,
+                    );
 
-                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
-                let mut projections = Vec::new();
-                result_tree.visit(&mut |node| {
-                    if !node
-                        .data_result
-                        .entity_path
-                        .starts_with(&space_view.space_origin)
-                        && node.data_result.direct_included
-                    {
-                        projections.push(node);
-                        false
-                    } else {
-                        true
-                    }
-                });
-                if !projections.is_empty() {
-                    ui.label(egui::RichText::new("Projections:").italics());
+                    // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
+                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    let mut projections = Vec::new();
+                    result_tree.visit(&mut |node| {
+                        if !node
+                            .data_result
+                            .entity_path
+                            .starts_with(&space_view.space_origin)
+                            && node.data_result.direct_included
+                        {
+                            projections.push(node);
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                    if !projections.is_empty() {
+                        ui.label(egui::RichText::new("Projections:").italics());
 
-                    for projection in projections {
-                        Self::space_view_entity_hierarchy_ui(
-                            ctx,
-                            ui,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(projection),
-                            space_view,
-                            space_view_visible,
-                            true,
-                        );
+                        for projection in projections {
+                            Self::space_view_entity_hierarchy_ui(
+                                ctx,
+                                ui,
+                                query_result,
+                                &DataResultNodeOrPath::DataResultNode(projection),
+                                space_view,
+                                space_view_visible,
+                                true,
+                            );
+                        }
                     }
-                }
-            });
+                },
+            );
 
         response = response.on_hover_text("Space View");
 
@@ -381,8 +390,8 @@ impl Viewport<'_, '_> {
                 )
                 .clicked()
             {
-                ctx.selection_state().set_selection(Item::InstancePath(
-                    Some(space_view.id),
+                ctx.selection_state().set_selection(Item::DataResult(
+                    space_view.id,
                     InstancePath::entity_splat(entity_path.clone()),
                 ));
             }
