@@ -563,11 +563,11 @@ pub fn view_3d(
 
             Item::ComponentPath(component_path) => Some(&component_path.entity_path),
 
-            Item::InstancePath(space_view, path) => {
-                // If this is about a specific space view, focus only if it's this one.
-                // (if it's about any space view, focus regardless of which one)
-                if space_view.is_none() || space_view == &Some(query.space_view_id) {
-                    Some(&path.entity_path)
+            Item::InstancePath(instance_path) => Some(&instance_path.entity_path),
+
+            Item::DataResult(space_view_id, instance_path) => {
+                if *space_view_id == query.space_view_id {
+                    Some(&instance_path.entity_path)
                 } else {
                     None
                 }

@@ -2,7 +2,6 @@ use egui::{Response, Ui};
 
 use itertools::Itertools;
 
-use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
@@ -392,10 +391,7 @@ impl Viewport<'_, '_> {
 
         let data_result_node = node_or_path.data_result_node();
 
-        let item = Item::InstancePath(
-            Some(space_view.id),
-            InstancePath::entity_splat(entity_path.clone()),
-        );
+        let item = Item::DataResult(space_view.id, entity_path.clone().into());
         let is_selected = ctx.selection().contains_item(&item);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;

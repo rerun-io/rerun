@@ -610,10 +610,7 @@ pub fn picking(
             instance_path.instance_key = InstanceKey::SPLAT;
         }
 
-        hovered_items.push(Item::InstancePath(
-            Some(query.space_view_id),
-            instance_path.clone(),
-        ));
+        hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));
 
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords

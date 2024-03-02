@@ -1,5 +1,6 @@
 use egui::NumExt;
 use nohash_hasher::IntMap;
+use re_entity_db::InstancePath;
 
 use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
@@ -29,6 +30,18 @@ pub fn highlights_for_space_view(
         OutlineMaskPreference::some(0, selection_mask_index)
     };
 
+    let mut add_highlight_and_mask =
+        |entity_hash: EntityPathHash, instance: InstancePath, highlight: SelectionHighlight| {
+            highlighted_entity_paths
+                .entry(entity_hash)
+                .or_default()
+                .add_selection(&instance, highlight);
+            outlines_masks
+                .entry(entity_hash)
+                .or_default()
+                .add(&instance, next_selection_mask());
+        };
+
     for current_selection in ctx.selection_state().current().iter_items() {
         match current_selection {
             Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
@@ -37,32 +50,23 @@ pub fn highlights_for_space_view(
                 let entity_hash = component_path.entity_path.hash();
                 let instance = component_path.entity_path.clone().into();
 
-                highlighted_entity_paths
-                    .entry(entity_hash)
-                    .or_default()
-                    .add_selection(&instance, SelectionHighlight::SiblingSelection);
-                outlines_masks
-                    .entry(entity_hash)
-                    .or_default()
-                    .add(&instance, next_selection_mask());
+                add_highlight_and_mask(entity_hash, instance, SelectionHighlight::SiblingSelection);
             }
 
-            Item::InstancePath(selected_space_view_context, selected_instance) => {
+            Item::InstancePath(selected_instance) => {
                 let entity_hash = selected_instance.entity_path.hash();
+                let highlight = SelectionHighlight::SiblingSelection;
+                add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
+            }
 
-                let highlight = if *selected_space_view_context == Some(space_view_id) {
+            Item::DataResult(selected_space_view_context, selected_instance) => {
+                let entity_hash = selected_instance.entity_path.hash();
+                let highlight = if *selected_space_view_context == space_view_id {
                     SelectionHighlight::Selection
                 } else {
                     SelectionHighlight::SiblingSelection
                 };
-                highlighted_entity_paths
-                    .entry(entity_hash)
-                    .or_default()
-                    .add_selection(selected_instance, highlight);
-                outlines_masks
-                    .entry(entity_hash)
-                    .or_default()
-                    .add(selected_instance, next_selection_mask());
+                add_highlight_and_mask(entity_hash, selected_instance.clone(), highlight);
             }
         };
     }
@@ -92,7 +96,7 @@ pub fn highlights_for_space_view(
                     .add(&instance, next_hover_mask());
             }
 
-            Item::InstancePath(_, selected_instance) => {
+            Item::InstancePath(selected_instance) | Item::DataResult(_, selected_instance) => {
                 let entity_hash = selected_instance.entity_path.hash();
                 highlighted_entity_paths
                     .entry(entity_hash)
