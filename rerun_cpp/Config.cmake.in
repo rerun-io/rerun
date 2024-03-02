@@ -31,7 +31,7 @@ if(@RERUN_DOWNLOAD_AND_BUILD_ARROW@ AND NOT @RERUN_ARROW_LINK_SHARED@)
     set_target_properties(arrow_targetBundledDeps PROPERTIES IMPORTED_LOCATION "${RERUN_LIB_DIR}/${RERUN_ARROW_DEPS_LIB_NAME}")
     target_link_libraries(rerun_arrow_target INTERFACE arrow_targetBundledDeps)
 else()
-    if(@RERUN_ARROW_LINK_SHARED@)
+    if(@RERUN_DOWNLOAD_AND_BUILD_ARROW@ AND @RERUN_ARROW_LINK_SHARED@)
         message(WARNING
             "Rerun got built with an automatically downloaded version of libArrow,"
             "but it was not bundled as part of the install since export of shared libArrow is not supported yet."
@@ -42,9 +42,8 @@ else()
     find_package(Arrow REQUIRED)
 
     message(STATUS "Rerun is using a system installed libArrow.")
-    option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" @RERUN_ARROW_LINK_SHARED_DEFAULT@)
 
-    if(RERUN_ARROW_LINK_SHARED)
+    if(@RERUN_ARROW_LINK_SHARED@)
         add_library(rerun_arrow_target ALIAS Arrow::arrow_shared)
     else()
         add_library(rerun_arrow_target ALIAS Arrow::arrow_static)
