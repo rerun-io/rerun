@@ -552,8 +552,8 @@ It can greatly improve performance (and readability) in such situations as it pr
             if let Some(hovered) = hovered_plot_item
                 .and_then(|hovered_plot_item| plot_item_id_to_entity_path.get(&hovered_plot_item))
                 .map(|entity_path| {
-                    re_viewer_context::Item::InstancePath(
-                        Some(query.space_view_id),
+                    re_viewer_context::Item::DataResult(
+                        query.space_view_id,
                         entity_path.clone().into(),
                     )
                 })

@@ -270,8 +270,8 @@ impl SpaceViewClass for BarChartSpaceView {
             {
                 ctx.select_hovered_on_click(
                     &response,
-                    re_viewer_context::Item::InstancePath(
-                        Some(query.space_view_id),
+                    re_viewer_context::Item::DataResult(
+                        query.space_view_id,
                         entity_path.clone().into(),
                     ),
                 );
