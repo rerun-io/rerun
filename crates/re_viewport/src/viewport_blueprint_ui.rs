@@ -1,6 +1,7 @@
 use egui::{Response, Ui};
 
 use itertools::Itertools;
+use re_entity_db::InstancePath;
 
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
@@ -376,8 +377,8 @@ impl Viewport<'_, '_> {
                 )
                 .clicked()
             {
-                ctx.selection_state().set_selection(Item::InstancePath(
-                    Some(space_view.id),
+                ctx.selection_state().set_selection(Item::DataResult(
+                    space_view.id,
                     InstancePath::entity_splat(entity_path.clone()),
                 ));
             }
