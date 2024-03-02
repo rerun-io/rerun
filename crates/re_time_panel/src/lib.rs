@@ -20,7 +20,7 @@ use re_log_types::{
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
-    HoverHighlight, Item, RecordingConfig, StreamsCollapsedId, TimeControl, TimeView, ViewerContext,
+    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
 };
 
 use time_axis::TimelineAxis;
@@ -579,7 +579,7 @@ impl TimePanel {
             .force_hovered(is_item_hovered)
             .show_collapsing(
                 ui,
-                StreamsCollapsedId::Entity(tree.path.clone()),
+                CollapseScope::StreamsTree.entity(tree.path.clone()),
                 default_open,
                 |_, ui| {
                     self.show_children(

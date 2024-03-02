@@ -13,7 +13,7 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, BlueprintCollapsedId,
+    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, CollapseScope,
     ContainerId, HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId,
     SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
@@ -705,12 +705,12 @@ fn container_top_level_properties(
                 viewport
                     .blueprint
                     .visit_contents_in_container(container_id, &mut |contents| match contents {
-                        Contents::Container(container_id) => {
-                            BlueprintCollapsedId::Container(*container_id).set_open(ui.ctx(), true)
-                        }
-                        Contents::SpaceView(space_view_id) => {
-                            BlueprintCollapsedId::SpaceView(*space_view_id).set_open(ui.ctx(), true)
-                        }
+                        Contents::Container(container_id) => CollapseScope::BlueprintTree
+                            .container(*container_id)
+                            .set_open(ui.ctx(), true),
+                        Contents::SpaceView(space_view_id) => CollapseScope::BlueprintTree
+                            .space_view(*space_view_id)
+                            .set_open(ui.ctx(), true),
                     });
             }
             ui.end_row();
@@ -718,13 +718,12 @@ fn container_top_level_properties(
                 viewport
                     .blueprint
                     .visit_contents_in_container(container_id, &mut |contents| match contents {
-                        Contents::Container(container_id) => {
-                            BlueprintCollapsedId::Container(*container_id).set_open(ui.ctx(), false)
-                        }
-                        Contents::SpaceView(space_view_id) => {
-                            BlueprintCollapsedId::SpaceView(*space_view_id)
-                                .set_open(ui.ctx(), false)
-                        }
+                        Contents::Container(container_id) => CollapseScope::BlueprintTree
+                            .container(*container_id)
+                            .set_open(ui.ctx(), false),
+                        Contents::SpaceView(space_view_id) => CollapseScope::BlueprintTree
+                            .space_view(*space_view_id)
+                            .set_open(ui.ctx(), false),
                     });
             }
         });

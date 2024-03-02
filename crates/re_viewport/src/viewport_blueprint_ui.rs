@@ -1,16 +1,14 @@
 use egui::{Response, Ui};
-
 use itertools::Itertools;
-use re_entity_db::InstancePath;
 
+use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
-use re_viewer_context::DataResultTree;
+use re_viewer_context::{CollapseScope, DataResultTree};
 use re_viewer_context::{
-    BlueprintCollapsedId, ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item,
-    SpaceViewId, ViewerContext,
+    ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::{container::Contents, context_menu_ui_for_item, SelectionUpdateBehavior, Viewport};
@@ -107,7 +105,7 @@ impl Viewport<'_, '_> {
     /// Display the root container.
     ///
     /// The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
-    /// collapsed, so it's drawn without a collapsing triangle..
+    /// collapsed, so it's drawn without a collapsing triangle.
     fn root_container_tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let Some(container_id) = self.blueprint.root_container else {
             // nothing to draw if there is no root container
@@ -202,7 +200,7 @@ impl Viewport<'_, '_> {
         })
         .show_collapsing(
             ui,
-            BlueprintCollapsedId::Container(*container_id),
+            CollapseScope::BlueprintTree.container(*container_id),
             default_open,
             |_, ui| {
                 for child in &container_blueprint.contents {
@@ -286,7 +284,7 @@ impl Viewport<'_, '_> {
             })
             .show_collapsing(
                 ui,
-                BlueprintCollapsedId::SpaceView(*space_view_id),
+                CollapseScope::BlueprintTree.space_view(*space_view_id),
                 default_open,
                 |_, ui| {
                     // Always show the origin hierarchy first.
@@ -470,10 +468,8 @@ impl Viewport<'_, '_> {
             let response = list_item
                 .show_collapsing(
                     ui,
-                    BlueprintCollapsedId::DataResult(
-                        space_view.id,
-                        node.data_result.entity_path.clone(),
-                    ),
+                    CollapseScope::BlueprintTree
+                        .data_result(space_view.id, node.data_result.entity_path.clone()),
                     default_open,
                     |_, ui| {
                         for child in node.children.iter().sorted_by_key(|c| {
