@@ -293,6 +293,7 @@ impl Viewport<'_, '_> {
                     &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
                     space_view,
                     space_view_visible,
+                    false,
                 );
 
                 // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
@@ -322,6 +323,7 @@ impl Viewport<'_, '_> {
                             &DataResultNodeOrPath::DataResultNode(projection),
                             space_view,
                             space_view_visible,
+                            true,
                         );
                     }
                 }
@@ -362,10 +364,32 @@ impl Viewport<'_, '_> {
         node_or_path: &DataResultNodeOrPath<'_>,
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
+        projection_mode: bool,
     ) {
         let store = ctx.entity_db.store();
 
         let entity_path = node_or_path.path();
+
+        if projection_mode && entity_path == &space_view.space_origin {
+            if ListItem::new(ctx.re_ui, "$origin")
+                .subdued(true)
+                .italics(true)
+                .with_icon(&re_ui::icons::LINK)
+                .show(ui)
+                .on_hover_text(
+                    "This subtree corresponds to the Space View's origin, and is displayed above \
+                    the 'Projections' section. Click to select it.",
+                )
+                .clicked()
+            {
+                ctx.selection_state().set_selection(Item::InstancePath(
+                    Some(space_view.id),
+                    InstancePath::entity_splat(entity_path.clone()),
+                ));
+            }
+            return;
+        }
+
         let data_result_node = node_or_path.data_result_node();
 
         let item = Item::InstancePath(
@@ -468,6 +492,7 @@ impl Viewport<'_, '_> {
                                 &DataResultNodeOrPath::DataResultNode(child_node),
                                 space_view,
                                 space_view_visible,
+                                projection_mode,
                             );
                         }
                     },

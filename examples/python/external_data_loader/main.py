@@ -14,6 +14,9 @@ import rerun as rr  # pip install rerun-sdk
 # It is up to you whether you make use of that shared recording ID or not.
 # If you use it, the data will end up in the same recording as all other plugins interested in
 # that file, otherwise you can just create a dedicated recording for it. Or both.
+#
+# Check out `re_data_source::DataLoaderSettings` documentation for an exhaustive listing of
+# the available CLI parameters.
 parser = argparse.ArgumentParser(
     description="""
 This is an example executable data-loader plugin for the Rerun Viewer.
@@ -28,7 +31,23 @@ file with Rerun (`rerun file.py`).
 """
 )
 parser.add_argument("filepath", type=str)
-parser.add_argument("--recording-id", type=str)
+parser.add_argument("--recording-id", type=str, help="optional recommended ID for the recording")
+parser.add_argument("--entity-path-prefix", type=str, help="optional prefix for all entity paths")
+parser.add_argument(
+    "--timeless", action="store_true", default=False, help="optionally mark data to be logged as timeless"
+)
+parser.add_argument(
+    "--time",
+    type=str,
+    action="append",
+    help="optional timestamps to log at (e.g. `--time sim_time=1709203426`)",
+)
+parser.add_argument(
+    "--sequence",
+    type=str,
+    action="append",
+    help="optional sequences to log at (e.g. `--sequence sim_frame=42`)",
+)
 args = parser.parse_args()
 
 
@@ -44,10 +63,34 @@ def main() -> None:
     # The most important part of this: log to standard output so the Rerun Viewer can ingest it!
     rr.stdout()
 
+    set_time_from_args()
+
+    if args.entity_path_prefix:
+        entity_path = f"{args.entity_path_prefix}/{args.filepath}"
+    else:
+        entity_path = args.filepath
+
     with open(args.filepath) as file:
         body = file.read()
         text = f"""## Some Python code\n```python\n{body}\n```\n"""
-        rr.log(args.filepath, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN), timeless=True)
+        rr.log(entity_path, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN), timeless=args.timeless)
+
+
+def set_time_from_args() -> None:
+    if not args.timeless and args.time is not None:
+        for time_str in args.time:
+            parts = time_str.split("=")
+            if len(parts) != 2:
+                continue
+            timeline_name, time = parts
+            rr.set_time_seconds(timeline_name, float(time))
+
+        for time_str in args.time:
+            parts = time_str.split("=")
+            if len(parts) != 2:
+                continue
+            timeline_name, time = parts
+            rr.set_time_sequence(timeline_name, int(time))
 
 
 if __name__ == "__main__":

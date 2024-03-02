@@ -37,7 +37,7 @@ struct Args {
     #[argh(option)]
     entity_path_prefix: Option<String>,
 
-    /// optional mark data to be logged as timeless
+    /// optionally mark data to be logged as timeless
     #[argh(switch)]
     timeless: bool,
 

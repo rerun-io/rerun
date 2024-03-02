@@ -34,12 +34,12 @@ rr.script_setup(args, "rerun_example_log_file")
 for filepath in args.filepaths:
     if not args.from_contents:
         # Either log the file using its path…
-        rr.log_file_from_path(filepath)
+        rr.log_file_from_path(filepath, entity_path_prefix="log_file_example")
     else:
         # …or using its contents if you already have them loaded for some reason.
         try:
             with open(filepath, "rb") as file:
-                rr.log_file_from_contents(filepath, file.read())
+                rr.log_file_from_contents(filepath, file.read(), entity_path_prefix="log_file_example")
         except Exception:
             pass
 
