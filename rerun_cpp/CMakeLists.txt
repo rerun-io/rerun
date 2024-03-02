@@ -123,13 +123,22 @@ install(TARGETS rerun_sdk
     INCLUDES DESTINATION include
 )
 
-# Add all headers to the install.
-install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+# Add all C++ headers to the install.
+install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp")
 
-# Add rerun_c to the lib folder.
-# CMake doesn't allow installing imported targets which is why we need to add this as a file.
-get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
-install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
+option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
+# if rerun_sdk is a static library it is compulsory to install rerun_c
+get_target_property(rerun_sdk_TYPE rerun_sdk TYPE)
+if(rerun_sdk_TYPE STREQUAL "STATIC_LIBRARY")
+    message(FATAL_ERROR "It is not possible to disable RERUN_INSTALL_RERUN_C option if rerun_sdk is compiled as static library.")
+endif()
+
+if(RERUN_INSTALL_RERUN_C)
+    # CMake doesn't allow installing imported targets which is why we need to add this as a file.
+    get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
+    install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.h")
+    install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
+endif()
 
 # Similarly, we bundle the arrow library that was used during the build.
 # For the moment we only support this when building with the downloaded, static libarrow.
