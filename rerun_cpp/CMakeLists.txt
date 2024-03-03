@@ -129,7 +129,7 @@ install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN
 option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
 # if rerun_sdk is a static library it is compulsory to install rerun_c
 get_target_property(rerun_sdk_TYPE rerun_sdk TYPE)
-if(rerun_sdk_TYPE STREQUAL "STATIC_LIBRARY")
+if(rerun_sdk_TYPE STREQUAL "STATIC_LIBRARY" AND NOT RERUN_INSTALL_RERUN_C)
     message(FATAL_ERROR "It is not possible to disable RERUN_INSTALL_RERUN_C option if rerun_sdk is compiled as static library.")
 endif()
 
