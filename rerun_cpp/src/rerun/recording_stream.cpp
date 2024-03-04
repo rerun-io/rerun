@@ -257,7 +257,9 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::try_log_file_from_path(const std::filesystem::path& filepath) const {
+    Error RecordingStream::try_log_file_from_path(
+        const std::filesystem::path& filepath, std::string_view entity_path_prefix, bool timeless
+    ) const {
         if (!is_enabled()) {
             return Error::ok();
         }
@@ -266,6 +268,8 @@ namespace rerun {
         rr_recording_stream_log_file_from_path(
             _id,
             detail::to_rr_string(filepath.string()),
+            detail::to_rr_string(entity_path_prefix),
+            timeless,
             &status
         );
 
@@ -273,7 +277,8 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_file_from_contents(
-        const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
+        const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
+        std::string_view entity_path_prefix, bool timeless
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -288,6 +293,8 @@ namespace rerun {
             _id,
             detail::to_rr_string(filepath.string()),
             data,
+            detail::to_rr_string(entity_path_prefix),
+            timeless,
             &status
         );
 
