@@ -85,7 +85,7 @@ def set_time_from_args() -> None:
             timeline_name, time = parts
             rr.set_time_seconds(timeline_name, float(time))
 
-        for time_str in args.time:
+        for time_str in args.sequence:
             parts = time_str.split("=")
             if len(parts) != 2:
                 continue
