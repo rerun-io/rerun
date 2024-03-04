@@ -11,7 +11,9 @@ namespace rerun.blueprint.components;
 
 /// The origin of a `SpaceView`.
 table SpaceViewOrigin (
+    "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
+    "attr.python.aliases": "str",
     "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent"
 ) {

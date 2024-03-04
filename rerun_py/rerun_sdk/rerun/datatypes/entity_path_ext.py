@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Sequence
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import Utf8ArrayLike
+    from . import EntityPathArrayLike
 
 
-class Utf8Ext:
-    """Extension for [Utf8][rerun.datatypes.Utf8]."""
+class EntityPathExt:
+    """Extension for [EntityPath][rerun.datatypes.EntityPath]."""
 
     @staticmethod
-    def native_to_pa_array_override(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(data: EntityPathArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
             array = [data]
         elif isinstance(data, Sequence):
