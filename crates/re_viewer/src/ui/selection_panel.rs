@@ -402,7 +402,7 @@ fn what_is_selected_ui(
                 ctx.re_ui,
                 ui,
                 name,
-                Some(&re_ui::icons::ENTITY),
+                Some(guess_instance_path_icon(ctx, instance_path)),
                 &format!("{typ} '{instance_path}'"),
             );
 
