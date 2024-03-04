@@ -29,6 +29,10 @@ struct Args {
     #[argh(positional)]
     filepath: std::path::PathBuf,
 
+    /// optional recommended ID for the application
+    #[argh(option)]
+    application_id: Option<String>,
+
     /// optional recommended ID for the recording
     #[argh(option)]
     recording_id: Option<String>,
@@ -74,7 +78,11 @@ fn main() -> anyhow::Result<()> {
     let text = format!("## Some Rust code\n```rust\n{body}\n```\n");
 
     let rec = {
-        let mut rec = rerun::RecordingStreamBuilder::new("rerun_example_external_data_loader");
+        let mut rec = rerun::RecordingStreamBuilder::new(
+            args.application_id
+                .as_deref()
+                .unwrap_or("rerun_example_external_data_loader"),
+        );
         if let Some(recording_id) = args.recording_id.as_ref() {
             rec = rec.recording_id(recording_id);
         };
