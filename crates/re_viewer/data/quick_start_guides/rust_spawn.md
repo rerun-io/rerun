@@ -17,7 +17,7 @@ Note that the Rerun SDK requires a working installation of Rust 1.74+.
 Add the following code to your `main.rs` file:
 
 ```rust
-${EXAMPLE_CODE}
+${EXAMPLE_CODE_RUST_SPAWN}
 ```
 
 You can now run your application:

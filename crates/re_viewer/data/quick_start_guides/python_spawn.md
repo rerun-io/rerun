@@ -15,7 +15,7 @@ pip install rerun-sdk
 Copy and paste the following snippet in a new Python file and execute it to create a recording in a new viewer:
 
 ```python
-${EXAMPLE_CODE}
+${EXAMPLE_CODE_PYTHON_SPAWN}
 ```
 
 This will spawn a new viewer and open a new recording that looks like this:
