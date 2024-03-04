@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class VisibleExt:
-    """Extension for [Visible][rerun.components.Visible]."""
+    """Extension for [Visible][rerun.blueprint.components.Visible]."""
 
     @staticmethod
     def native_to_pa_array_override(data: VisibleArrayLike, data_type: pa.DataType) -> pa.Array:
