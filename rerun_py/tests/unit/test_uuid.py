@@ -19,9 +19,9 @@ def test_uuid() -> None:
     uuids = [uuid_bytes0, np.array(uuid_bytes0, dtype=np.uint8), np.array(uuid_bytes0, dtype=np.uint32)]
     expected = rr.datatypes.UuidBatch([uuid_bytes0]).as_arrow_array()
     for uuid in uuids:
-        assert rr.datatypes.UuidBatch([uuid]).as_arrow_array() == expected
+        assert rr.datatypes.UuidBatch([uuid]).as_arrow_array() == expected  # type: ignore[arg-type]
 
     # Several uuids.
-    for uuids in uuids_arrays:
+    for uuids in uuids_arrays:  # type: ignore[assignment]
         expected = uuids_expected(uuids)
-        assert rr.datatypes.UuidBatch(uuids).as_arrow_array() == expected.as_arrow_array()
+        assert rr.datatypes.UuidBatch(uuids).as_arrow_array() == expected.as_arrow_array()  # type: ignore[arg-type]

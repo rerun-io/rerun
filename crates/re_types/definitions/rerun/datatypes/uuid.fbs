@@ -13,7 +13,8 @@ namespace rerun.datatypes;
 /// A 16-byte uuid.
 struct Uuid  (
   "attr.arrow.transparent",
-  "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",
+  "attr.python.aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[int], bytes",
+  "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int], Sequence[bytes]",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {

@@ -463,12 +463,10 @@ uuids_arrays: list[UuidArrayLike] = [
     np.array([]),
     # UuidArrayLike: Sequence[UuidLike]: Sequence[int]
     [uuid_bytes0, uuid_bytes1],
-    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], Sequence[int]
-    [np.array(uuid_bytes0, dtype=np.uint8), uuid_bytes1],
     # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8]
     np.array([uuid_bytes0, uuid_bytes1], dtype=np.uint8),
-    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint8], npt.ArrayLike
-    [np.array(uuid_bytes0, dtype=np.uint8), np.array(uuid_bytes1, dtype=np.uint32)],
+    # UuidArrayLike: Sequence[UuidLike]: npt.NDArray[np.uint32]
+    np.array([uuid_bytes0, uuid_bytes1], dtype=np.uint32),
     # UuidArrayLike: Sequence[UuidLike]: Uuid
     [Uuid(uuid_bytes0), Uuid(uuid_bytes1)],
     # UuidArrayLike: Sequence[UuidLike]: Bytes
