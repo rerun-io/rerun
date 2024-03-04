@@ -13,7 +13,6 @@ use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
-        ViewportLayout,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     viewport::TreeAction,
@@ -682,15 +681,6 @@ impl ViewportBlueprint {
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
             let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
-        }
-    }
-
-    #[inline]
-    pub fn set_tree(&self, tree: &egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
-        if &self.tree != tree {
-            re_log::trace!("Updating the layout tree");
-            let component = ViewportLayout(tree.clone());
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
         }
     }

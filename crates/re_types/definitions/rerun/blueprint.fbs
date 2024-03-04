@@ -16,7 +16,6 @@ include "./blueprint/components/row_shares.fbs";
 include "./blueprint/components/space_view_class.fbs";
 include "./blueprint/components/space_view_maximized.fbs";
 include "./blueprint/components/space_view_origin.fbs";
-include "./blueprint/components/viewport_layout.fbs";
 include "./blueprint/components/visible.fbs";
 include "./blueprint/components/corner_2d.fbs";
 include "./blueprint/components/lock_range_during_zoom.fbs";

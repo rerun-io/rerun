@@ -16,7 +16,7 @@ from .common_arrays import none_empty_or_value, uuids_arrays, uuid_bytes0, uuid_
 
 def test_viewport_blueprint() -> None:
     space_views_arrays = uuids_arrays
-    # layout_arrays = []
+    layout_arrays = []
     root_container_arrays = [
         None,
         uuid_bytes0,
@@ -30,20 +30,20 @@ def test_viewport_blueprint() -> None:
 
     all_arrays = itertools.zip_longest(
         space_views_arrays,
-        # layout_arrays,
+        layout_arrays,
         root_container_arrays,
         maximized_arrays,
         auto_layout_arrays,
         auto_space_views_arrays,
     )
 
-    for space_views, root_container, maximized, auto_layout, auto_space_view in all_arrays:
+    for space_views, layout, root_container, maximized, auto_layout, auto_space_view in all_arrays:
         space_views = space_views if space_views is not None else space_views_arrays[-1]
 
         print(
             "rr.ViewportBlueprint(\n",
             f"    space_views={space_views!r}\n",
-            # f"    layout={layout!r}\n",
+            f"    layout={layout!r}\n",
             f"    root_container={root_container!r}\n",
             f"    maximized={maximized!r}\n",
             f"    auto_layout={auto_layout!r}\n",
@@ -52,7 +52,7 @@ def test_viewport_blueprint() -> None:
         )
         arch = ViewportBlueprint(
             space_views,
-            # layout=layout,
+            layout=layout,
             root_container=root_container,
             maximized=maximized,
             auto_layout=auto_layout,
@@ -61,6 +61,7 @@ def test_viewport_blueprint() -> None:
         print(f"{arch}\n")
 
         assert arch.space_views == IncludedSpaceViewBatch._optional(none_empty_or_value(space_views, uuids_arrays[-1]))
+        assert arch.root_container == RootContainerBatch._optional(none_empty_or_value(root_container, uuid_bytes0))
         assert arch.root_container == RootContainerBatch._optional(none_empty_or_value(root_container, uuid_bytes0))
         assert arch.maximized == SpaceViewMaximizedBatch._optional(none_empty_or_value(maximized, uuid_bytes1))
         assert arch.auto_layout == AutoLayoutBatch._optional(none_empty_or_value(auto_layout, True))

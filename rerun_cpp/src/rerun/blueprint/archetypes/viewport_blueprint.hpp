@@ -8,7 +8,6 @@
 #include "../../blueprint/components/included_space_view.hpp"
 #include "../../blueprint/components/root_container.hpp"
 #include "../../blueprint/components/space_view_maximized.hpp"
-#include "../../blueprint/components/viewport_layout.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -25,9 +24,6 @@ namespace rerun::blueprint::archetypes {
     struct ViewportBlueprint {
         /// All of the space-views that belong to the viewport.
         Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
-
-        /// The layout of the space-views
-        std::optional<rerun::blueprint::components::ViewportLayout> layout;
 
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::RootContainer> root_container;
@@ -58,13 +54,6 @@ namespace rerun::blueprint::archetypes {
             Collection<rerun::blueprint::components::IncludedSpaceView> _space_views
         )
             : space_views(std::move(_space_views)) {}
-
-        /// The layout of the space-views
-        ViewportBlueprint with_layout(rerun::blueprint::components::ViewportLayout _layout) && {
-            layout = std::move(_layout);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// The layout of the space-views
         ViewportBlueprint with_root_container(
