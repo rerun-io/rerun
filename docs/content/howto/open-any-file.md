@@ -14,7 +14,7 @@ All these file loading methods support loading a single file, many files at once
 
 ⚠ Drag-and-drop of folders does [not yet work](https://github.com/rerun-io/rerun/issues/4528) on the web version of the Rerun Viewer ⚠
 
-As for the SDK, check out the `log_file_from_path` and `log_file_from_contents` methods ([C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#SOME_HASH_TBD?speculative-link), [Python](https://ref.rerun.io/docs/python/stable/common/other_classes_and_functions/#rerun.log_file_from_path?speculative-link), [Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)) and the associated examples ([C++](https://github.com/rerun-io/rerun/blob/main/examples/cpp/log_file/main.cpp), [Python](https://github.com/rerun-io/rerun/blob/main/examples/python/log_file/main.py), [Rust](https://github.com/rerun-io/rerun/blob/main/examples/rust/log_file/src/main.rs)).  
+As for the SDK, check out the `log_file_from_path` and `log_file_from_contents` methods ([C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#SOME_HASH_TBD?speculative-link), [Python](https://ref.rerun.io/docs/python/stable/common/other_classes_and_functions/#rerun.log_file_from_path?speculative-link), [Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)) and the associated examples ([C++](https://github.com/rerun-io/rerun/blob/main/examples/cpp/log_file/main.cpp), [Python](https://github.com/rerun-io/rerun/blob/main/examples/python/log_file/main.py), [Rust](https://github.com/rerun-io/rerun/blob/main/examples/rust/log_file/src/main.rs)).
 
 Note: when calling these APIs from the SDK, the data will be loaded by the process running the SDK, not the Viewer!
 
