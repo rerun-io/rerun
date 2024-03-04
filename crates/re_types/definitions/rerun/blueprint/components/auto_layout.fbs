@@ -15,6 +15,7 @@ namespace rerun.blueprint.components;
 struct AutoLayout (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "bool",
   "attr.rust.derive": "Copy",
   "attr.rust.override_crate": "re_viewport",
   "attr.rust.repr": "transparent",

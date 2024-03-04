@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -33,7 +33,11 @@ class AutoLayout(AutoLayoutExt):
     auto_layout: bool = field(converter=bool)
 
 
-AutoLayoutLike = AutoLayout
+if TYPE_CHECKING:
+    AutoLayoutLike = Union[AutoLayout, bool]
+else:
+    AutoLayoutLike = Any
+
 AutoLayoutArrayLike = Union[
     AutoLayout,
     Sequence[AutoLayoutLike],

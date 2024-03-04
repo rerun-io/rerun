@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -39,7 +39,11 @@ class AutoSpaceViews(AutoSpaceViewsExt):
     auto_space_views: bool = field(converter=bool)
 
 
-AutoSpaceViewsLike = AutoSpaceViews
+if TYPE_CHECKING:
+    AutoSpaceViewsLike = Union[AutoSpaceViews, bool]
+else:
+    AutoSpaceViewsLike = Any
+
 AutoSpaceViewsArrayLike = Union[
     AutoSpaceViews,
     Sequence[AutoSpaceViewsLike],
