@@ -8,7 +8,6 @@ use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
 use re_viewer_context::CommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
-use std::collections::HashMap;
 
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
@@ -36,6 +35,77 @@ const RUST_CONNECT_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.rs");
 const RUST_SPAWN_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
+
+struct Placeholder<'a> {
+    key: &'a str,
+    value: &'a str,
+}
+
+const PLACEHOLDERS: &[Placeholder<'_>] = &[
+    Placeholder {
+        key: "HOW_DOES_IT_WORK",
+        value: HOW_DOES_IT_WORK_MARKDOWN,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_CPP_CONNECT",
+        value: CPP_CONNECT_CODE_EXAMPLE,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_CPP_SPAWN",
+        value: CPP_SPAWN_CODE_EXAMPLE,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_PYTHON_CONNECT",
+        value: PYTHON_CONNECT_CODE_EXAMPLE,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_PYTHON_SPAWN",
+        value: PYTHON_SPAWN_CODE_EXAMPLE,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_RUST_CONNECT",
+        value: RUST_CONNECT_CODE_EXAMPLE,
+    },
+    Placeholder {
+        key: "EXAMPLE_CODE_RUST_SPAWN",
+        value: RUST_SPAWN_CODE_EXAMPLE,
+    },
+];
+
+struct QuickStartEntry<'a> {
+    entity_path: &'a str,
+    markdown: &'a str,
+}
+
+const QUICK_START_ENTRIES_CONNECT: &[QuickStartEntry<'_>] = &[
+    QuickStartEntry {
+        entity_path: "cpp_quick_start",
+        markdown: CPP_CONNECT_MARKDOWN,
+    },
+    QuickStartEntry {
+        entity_path: "python_quick_start",
+        markdown: PYTHON_CONNECT_MARKDOWN,
+    },
+    QuickStartEntry {
+        entity_path: "rust_quick_start",
+        markdown: RUST_CONNECT_MARKDOWN,
+    },
+];
+
+const QUICK_START_ENTRIES_SPAWN: &[QuickStartEntry<'_>] = &[
+    QuickStartEntry {
+        entity_path: "cpp_quick_start",
+        markdown: CPP_SPAWN_MARKDOWN,
+    },
+    QuickStartEntry {
+        entity_path: "python_quick_start",
+        markdown: PYTHON_SPAWN_MARKDOWN,
+    },
+    QuickStartEntry {
+        entity_path: "rust_quick_start",
+        markdown: RUST_SPAWN_MARKDOWN,
+    },
+];
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(
@@ -68,62 +138,16 @@ fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_co
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(move |ui, command_sender| {
-                if large_text_button(ui, "C++").clicked() {
-                    let (markdown, code) = if accepts_connections {
-                        (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
+                if large_text_button(ui, "Quick Start").clicked() {
+                    let entries = if accepts_connections {
+                        QUICK_START_ENTRIES_CONNECT
                     } else {
-                        (CPP_SPAWN_MARKDOWN, CPP_SPAWN_CODE_EXAMPLE)
+                        QUICK_START_ENTRIES_SPAWN
                     };
 
-                    open_quick_start(
-                        command_sender,
-                        markdown,
-                        [
-                            ("EXAMPLE_CODE", code),
-                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                        ]
-                        .into(),
-                        "C++ Quick Start",
-                        "cpp_quick_start",
-                    );
-                }
-                if large_text_button(ui, "Python").clicked() {
-                    let (markdown, code) = if accepts_connections {
-                        (PYTHON_CONNECT_MARKDOWN, PYTHON_CONNECT_CODE_EXAMPLE)
-                    } else {
-                        (PYTHON_SPAWN_MARKDOWN, PYTHON_SPAWN_CODE_EXAMPLE)
-                    };
-
-                    open_quick_start(
-                        command_sender,
-                        markdown,
-                        [
-                            ("EXAMPLE_CODE", code),
-                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                        ]
-                        .into(),
-                        "Python Quick Start",
-                        "python_quick_start",
-                    );
-                }
-                if large_text_button(ui, "Rust").clicked() {
-                    let (markdown, code) = if accepts_connections {
-                        (RUST_CONNECT_MARKDOWN, RUST_CONNECT_CODE_EXAMPLE)
-                    } else {
-                        (RUST_SPAWN_MARKDOWN, RUST_SPAWN_CODE_EXAMPLE)
-                    };
-
-                    open_quick_start(
-                        command_sender,
-                        markdown,
-                        [
-                            ("EXAMPLE_CODE", code),
-                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                        ]
-                        .into(),
-                        "Rust Quick Start",
-                        "rust_quick_start",
-                    );
+                    if let Err(err) = open_quick_start(command_sender, entries, PLACEHOLDERS) {
+                        re_log::error!("Failed to load quick start: {}", err);
+                    }
                 }
             }),
         },
@@ -259,41 +283,30 @@ fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_im
 /// with the corresponding value from the `placeholder_content` hash map.
 fn open_quick_start(
     command_sender: &re_viewer_context::CommandSender,
-    markdown: &str,
-    placeholder_content: HashMap<&'static str, &'static str>,
-    app_id: &str,
-    entity_path: &str,
-) {
-    let mut markdown = markdown.to_owned();
-
-    for (key, value) in placeholder_content {
-        markdown = markdown.replace(format!("${{{key}}}").as_str(), value);
-    }
-
-    let res = open_markdown_recording(command_sender, markdown.as_str(), app_id, entity_path);
-    if let Err(err) = res {
-        re_log::error!("Failed to load quick start: {}", err);
-    }
-}
-
-fn open_markdown_recording(
-    command_sender: &re_viewer_context::CommandSender,
-    markdown: &str,
-    app_id: &str,
-    entity_path: &str,
+    entries: &[QuickStartEntry<'_>],
+    placeholders: &[Placeholder<'_>],
 ) -> anyhow::Result<()> {
-    let text_doc = re_types::archetypes::TextDocument::new(markdown)
-        .with_media_type(re_types::components::MediaType::markdown());
+    let mut rows = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let mut markdown = entry.markdown.to_owned();
+        for Placeholder { key, value } in placeholders {
+            markdown = markdown.replace(&format!("${{{key}}}"), value);
+        }
 
-    let row = DataRow::from_archetype(
-        RowId::new(),
-        TimePoint::timeless(),
-        EntityPath::from(entity_path),
-        &text_doc,
-    )?;
+        let text_doc = re_types::archetypes::TextDocument::new(markdown)
+            .with_media_type(re_types::components::MediaType::markdown());
+
+        let row = DataRow::from_archetype(
+            RowId::new(),
+            TimePoint::timeless(),
+            EntityPath::from(entry.entity_path),
+            &text_doc,
+        )?;
+        rows.push(row);
+    }
 
     let store_info = StoreInfo {
-        application_id: app_id.into(),
+        application_id: "Quick Start".into(),
         store_id: StoreId::random(StoreKind::Recording),
         is_official_example: true,
         started: Time::now(),
@@ -301,7 +314,7 @@ fn open_markdown_recording(
         store_kind: StoreKind::Recording,
     };
 
-    let entity_db = EntityDb::from_info_and_rows(store_info, [row])?;
+    let entity_db = EntityDb::from_info_and_rows(store_info, rows)?;
     command_sender.send_system(SystemCommand::LoadStoreDb(entity_db));
 
     Ok(())
