@@ -11,7 +11,7 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 /// The loader is free to ignore some or all of these.
 ///
 /// External [`DataLoader`]s will be passed the following CLI parameters:
-/// * `--application-id <store_id>`
+/// * `--application-id <application_id>`
 /// * `--opened-application-id <opened_application_id>` (if set)
 /// * `--recording-id <store_id>`
 /// * `--opened-recording-id <opened_store_id>` (if set)
