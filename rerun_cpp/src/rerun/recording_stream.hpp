@@ -414,7 +414,6 @@ namespace rerun {
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
-        /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log, try_log, log_timeless, try_log_timeless
         template <typename... Ts>
