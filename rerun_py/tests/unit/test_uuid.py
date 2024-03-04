@@ -6,7 +6,7 @@ import numpy as np
 import rerun as rr
 from rerun.datatypes.uuid import UuidBatch
 
-from tests.unit.common_arrays import none_empty_or_value, uuid_bytes0, uuids_arrays
+from .common_arrays import none_empty_or_value, uuid_bytes0, uuids_arrays
 
 
 def uuids_expected(obj: Any) -> Any:
