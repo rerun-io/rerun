@@ -23,7 +23,7 @@ class ViewportBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        space_views: blueprint_components.IncludedSpaceViewsLike,
+        space_views: datatypes.UuidArrayLike,
         *,
         layout: blueprint_components.ViewportLayoutLike | None = None,
         root_container: datatypes.UuidLike | None = None,
@@ -84,9 +84,9 @@ class ViewportBlueprint(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    space_views: blueprint_components.IncludedSpaceViewsBatch = field(
+    space_views: blueprint_components.IncludedSpaceViewBatch = field(
         metadata={"component": "required"},
-        converter=blueprint_components.IncludedSpaceViewsBatch._required,  # type: ignore[misc]
+        converter=blueprint_components.IncludedSpaceViewBatch._required,  # type: ignore[misc]
     )
     # All of the space-views that belong to the viewport.
     #

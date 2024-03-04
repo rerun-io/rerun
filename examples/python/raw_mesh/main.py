@@ -51,7 +51,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
 
         # Log this node's mesh, if it has one.
         mesh = cast(trimesh.Trimesh, scene.geometry.get(node_data[1]))
-        if mesh:
+        if mesh is not None:
             vertex_colors = None
             vertex_texcoords = None
             mesh_material = None
@@ -87,7 +87,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                 rr.Mesh3D(
                     vertex_positions=mesh.vertices,
                     vertex_colors=vertex_colors,
-                    vertex_normals=mesh.vertex_normals,
+                    vertex_normals=mesh.vertex_normals,  # type: ignore[arg-type]
                     vertex_texcoords=vertex_texcoords,
                     albedo_texture=albedo_texture,
                     indices=mesh.faces,

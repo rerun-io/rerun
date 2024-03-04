@@ -19,7 +19,7 @@ pub use re_viewport::blueprint::components::AutoLayout;
 pub use re_viewport::blueprint::components::AutoSpaceViews;
 pub use re_viewport::blueprint::components::ContainerKind;
 pub use re_viewport::blueprint::components::GridColumns;
-pub use re_viewport::blueprint::components::IncludedSpaceViews;
+pub use re_viewport::blueprint::components::IncludedSpaceView;
 pub use re_viewport::blueprint::components::RootContainer;
 pub use re_viewport::blueprint::components::SpaceViewMaximized;
 pub use re_viewport::blueprint::components::ViewportLayout;
@@ -39,7 +39,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContents>(blueprint)
         && validate_component::<IncludedQueries>(blueprint)
-        && validate_component::<IncludedSpaceViews>(blueprint)
+        && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelView>(blueprint)
         && validate_component::<QueryExpressions>(blueprint)

@@ -49,13 +49,7 @@ from .included_queries import (
     IncludedQueriesLike,
     IncludedQueriesType,
 )
-from .included_space_views import (
-    IncludedSpaceViews,
-    IncludedSpaceViewsArrayLike,
-    IncludedSpaceViewsBatch,
-    IncludedSpaceViewsLike,
-    IncludedSpaceViewsType,
-)
+from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .lock_range_during_zoom import (
     LockRangeDuringZoom,
     LockRangeDuringZoomArrayLike,
@@ -145,11 +139,9 @@ __all__ = [
     "IncludedQueriesBatch",
     "IncludedQueriesLike",
     "IncludedQueriesType",
-    "IncludedSpaceViews",
-    "IncludedSpaceViewsArrayLike",
-    "IncludedSpaceViewsBatch",
-    "IncludedSpaceViewsLike",
-    "IncludedSpaceViewsType",
+    "IncludedSpaceView",
+    "IncludedSpaceViewBatch",
+    "IncludedSpaceViewType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomArrayLike",
     "LockRangeDuringZoomBatch",

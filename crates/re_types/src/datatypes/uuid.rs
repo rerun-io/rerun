@@ -68,14 +68,10 @@ impl ::re_types_core::Loggable for Uuid {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
-            "bytes",
-            DataType::FixedSizeList(
-                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                16usize,
-            ),
-            false,
-        )]))
+        DataType::FixedSizeList(
+            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+            16usize,
+        )
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -88,77 +84,57 @@ impl ::re_types_core::Loggable for Uuid {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let (somes, bytes): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| {
+                        let Self { bytes } = datum.into_owned();
+                        bytes
+                    });
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let bytes_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                <crate::datatypes::Uuid>::arrow_datatype(),
-                vec![{
-                    let (somes, bytes): (Vec<_>, Vec<_>) = data
-                        .iter()
-                        .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self { bytes, .. } = &**datum;
-                                bytes.clone()
-                            });
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let bytes_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let bytes_inner_data: Vec<_> = bytes
+            {
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let bytes_inner_data: Vec<_> = bytes
+                    .iter()
+                    .flat_map(|v| match v {
+                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                        None => itertools::Either::Right(
+                            std::iter::repeat(Default::default()).take(16usize),
+                        ),
+                    })
+                    .map(Some)
+                    .collect();
+                let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                    bytes_bitmap.as_ref().map(|bitmap| {
+                        bitmap
                             .iter()
-                            .flat_map(|v| match v {
-                                Some(v) => itertools::Either::Left(v.iter().cloned()),
-                                None => itertools::Either::Right(
-                                    std::iter::repeat(Default::default()).take(16usize),
-                                ),
-                            })
-                            .map(Some)
-                            .collect();
-                        let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            bytes_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(16usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
-                        FixedSizeListArray::new(
-                            DataType::FixedSizeList(
-                                std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                                16usize,
-                            ),
-                            PrimitiveArray::new(
-                                DataType::UInt8,
-                                bytes_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
-                                bytes_inner_bitmap,
-                            )
-                            .boxed(),
-                            bytes_bitmap,
-                        )
-                        .boxed()
-                    }
-                }],
-                bitmap,
-            )
-            .boxed()
+                            .map(|i| std::iter::repeat(i).take(16usize))
+                            .flatten()
+                            .collect::<Vec<_>>()
+                            .into()
+                    });
+                FixedSizeListArray::new(
+                    Self::arrow_datatype(),
+                    PrimitiveArray::new(
+                        DataType::UInt8,
+                        bytes_inner_data
+                            .into_iter()
+                            .map(|v| v.unwrap_or_default())
+                            .collect(),
+                        bytes_inner_bitmap,
+                    )
+                    .boxed(),
+                    bytes_bitmap,
+                )
+                .boxed()
+            }
         })
     }
 
@@ -174,112 +150,65 @@ impl ::re_types_core::Loggable for Uuid {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
                     let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.Uuid")?;
+                .with_context("rerun.datatypes.Uuid#bytes")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name.as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
-                let bytes = {
-                    if !arrays_by_name.contains_key("bytes") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "bytes",
-                        ))
-                        .with_context("rerun.datatypes.Uuid");
-                    }
-                    let arrow_data = &**arrays_by_name["bytes"];
-                    {
-                        let arrow_data = arrow_data
-                            .as_any()
-                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                let expected = DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                                    16usize,
-                                );
-                                let actual = arrow_data.data_type().clone();
-                                DeserializationError::datatype_mismatch(expected, actual)
-                            })
-                            .with_context("rerun.datatypes.Uuid#bytes")?;
-                        if arrow_data.is_empty() {
-                            Vec::new()
-                        } else {
-                            let offsets = (0..)
-                                .step_by(16usize)
-                                .zip((16usize..).step_by(16usize).take(arrow_data.len()));
-                            let arrow_data_inner = {
-                                let arrow_data_inner = &**arrow_data.values();
-                                arrow_data_inner
-                                    .as_any()
-                                    .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| {
-                                        let expected = DataType::UInt8;
-                                        let actual = arrow_data_inner.data_type().clone();
-                                        DeserializationError::datatype_mismatch(expected, actual)
-                                    })
-                                    .with_context("rerun.datatypes.Uuid#bytes")?
-                                    .into_iter()
-                                    .map(|opt| opt.copied())
-                                    .collect::<Vec<_>>()
-                            };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 16usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
-
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
-                                })
-                                .transpose()
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                        }
+                let offsets = (0..)
+                    .step_by(16usize)
+                    .zip((16usize..).step_by(16usize).take(arrow_data.len()));
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<UInt8Array>()
+                        .ok_or_else(|| {
+                            let expected = DataType::UInt8;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
+                        })
+                        .with_context("rerun.datatypes.Uuid#bytes")?
                         .into_iter()
-                    }
+                        .map(|opt| opt.copied())
+                        .collect::<Vec<_>>()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(bytes),
+                    offsets,
                     arrow_data.validity(),
                 )
-                .map(|opt| {
-                    opt.map(|(bytes)| {
-                        Ok(Self {
-                            bytes: bytes
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.Uuid#bytes")?,
-                        })
+                .map(|elem| {
+                    elem.map(|(start, end)| {
+                        debug_assert!(end - start == 16usize);
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
+
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data.iter().cloned().map(Option::unwrap_or_default);
+                        let arr = array_init::from_iter(data).unwrap();
+                        Ok(arr)
                     })
                     .transpose()
                 })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.Uuid")?
+                .collect::<DeserializationResult<Vec<Option<_>>>>()?
             }
-        })
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+        .map(|res| res.map(|bytes| Some(Self { bytes })))
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
+        .with_context("rerun.datatypes.Uuid#bytes")
+        .with_context("rerun.datatypes.Uuid")?)
     }
 }

@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct ViewportBlueprint {
     /// All of the space-views that belong to the viewport.
-    pub space_views: crate::blueprint::components::IncludedSpaceViews,
+    pub space_views: Vec<crate::blueprint::components::IncludedSpaceView>,
 
     /// The layout of the space-views
     pub layout: Option<crate::blueprint::components::ViewportLayout>,
@@ -58,7 +58,7 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::components::IncludedSpaceViews>::is_pod()
+        <Vec<crate::blueprint::components::IncludedSpaceView>>::is_pod()
             && <Option<crate::blueprint::components::ViewportLayout>>::is_pod()
             && <Option<crate::blueprint::components::RootContainer>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
@@ -68,7 +68,7 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.IncludedSpaceViews".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.IncludedSpaceView".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewportBlueprintIndicator".into()]);
@@ -88,7 +88,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.IncludedSpaceViews".into(),
+            "rerun.blueprint.components.IncludedSpaceView".into(),
             "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
@@ -152,15 +152,14 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             .collect();
         let space_views = {
             let array = arrays_by_name
-                .get("rerun.blueprint.components.IncludedSpaceViews")
+                .get("rerun.blueprint.components.IncludedSpaceView")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?;
-            <crate::blueprint::components::IncludedSpaceViews>::from_arrow_opt(&**array)
+            <crate::blueprint::components::IncludedSpaceView>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
                 .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
         };
         let layout =
@@ -255,14 +254,18 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
 
     #[inline]
     fn num_instances(&self) -> usize {
-        1
+        self.space_views.len()
     }
 }
 
 impl ViewportBlueprint {
-    pub fn new(space_views: impl Into<crate::blueprint::components::IncludedSpaceViews>) -> Self {
+    pub fn new(
+        space_views: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::IncludedSpaceView>,
+        >,
+    ) -> Self {
         Self {
-            space_views: space_views.into(),
+            space_views: space_views.into_iter().map(Into::into).collect(),
             layout: None,
             root_container: None,
             maximized: None,

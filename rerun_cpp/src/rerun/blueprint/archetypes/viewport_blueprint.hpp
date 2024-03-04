@@ -5,7 +5,7 @@
 
 #include "../../blueprint/components/auto_layout.hpp"
 #include "../../blueprint/components/auto_space_views.hpp"
-#include "../../blueprint/components/included_space_views.hpp"
+#include "../../blueprint/components/included_space_view.hpp"
 #include "../../blueprint/components/root_container.hpp"
 #include "../../blueprint/components/space_view_maximized.hpp"
 #include "../../blueprint/components/viewport_layout.hpp"
@@ -24,7 +24,7 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: The top-level description of the Viewport.
     struct ViewportBlueprint {
         /// All of the space-views that belong to the viewport.
-        rerun::blueprint::components::IncludedSpaceViews space_views;
+        Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
 
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::ViewportLayout> layout;
@@ -54,7 +54,9 @@ namespace rerun::blueprint::archetypes {
         ViewportBlueprint() = default;
         ViewportBlueprint(ViewportBlueprint&& other) = default;
 
-        explicit ViewportBlueprint(rerun::blueprint::components::IncludedSpaceViews _space_views)
+        explicit ViewportBlueprint(
+            Collection<rerun::blueprint::components::IncludedSpaceView> _space_views
+        )
             : space_views(std::move(_space_views)) {}
 
         /// The layout of the space-views
@@ -102,7 +104,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {
-            return 1;
+            return space_views.size();
         }
     };
 

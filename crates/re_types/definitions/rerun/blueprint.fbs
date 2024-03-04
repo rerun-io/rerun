@@ -8,7 +8,7 @@ include "./blueprint/components/entity_properties_component.fbs";
 include "./blueprint/components/grid_columns.fbs";
 include "./blueprint/components/included_contents.fbs";
 include "./blueprint/components/included_queries.fbs";
-include "./blueprint/components/included_space_views.fbs";
+include "./blueprint/components/included_space_view.fbs";
 include "./blueprint/components/panel_view.fbs";
 include "./blueprint/components/query_expressions.fbs";
 include "./blueprint/components/root_container.fbs";
