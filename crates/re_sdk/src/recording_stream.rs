@@ -1143,6 +1143,8 @@ impl RecordingStream {
         );
 
         let settings = crate::DataLoaderSettings {
+            application_id: Some(store_info.application_id.clone()),
+            opened_application_id: None,
             store_id: store_info.store_id,
             opened_store_id: None,
             entity_path_prefix,
