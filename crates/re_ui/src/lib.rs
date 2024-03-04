@@ -120,6 +120,11 @@ impl ReUi {
     }
 
     #[inline]
+    pub fn welcome_screen_example_title() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-example-title".into())
+    }
+
+    #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-body".into())
     }
@@ -705,7 +710,12 @@ impl ReUi {
                 );
 
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(ui, openness, icon_rect.center(), &icon_response);
+                Self::paint_collapsing_triangle(
+                    ui,
+                    openness,
+                    icon_rect.center(),
+                    ui.style().interact(&icon_response),
+                );
             }
 
             ui.painter().galley(text_pos, galley, visuals.text_color());
@@ -810,7 +820,12 @@ impl ReUi {
                     egui::Vec2::splat(icon_width),
                 );
                 let icon_response = header_response.clone().with_new_rect(icon_rect);
-                Self::paint_collapsing_triangle(ui, openness, icon_rect.center(), &icon_response);
+                Self::paint_collapsing_triangle(
+                    ui,
+                    openness,
+                    icon_rect.center(),
+                    ui.style().interact(&icon_response),
+                );
 
                 let visuals = ui.style().interact(&header_response);
 
@@ -862,10 +877,8 @@ impl ReUi {
         ui: &egui::Ui,
         openness: f32,
         center: egui::Pos2,
-        response: &egui::Response,
+        visuals: &egui::style::WidgetVisuals,
     ) {
-        let visuals = ui.style().interact(response);
-
         // This value is hard coded because, from a UI perspective, the size of the triangle is
         // given and fixed, and shouldn't vary based on the area it's in.
         static TRIANGLE_SIZE: f32 = 8.0;

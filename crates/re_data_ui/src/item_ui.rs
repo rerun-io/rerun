@@ -187,7 +187,11 @@ pub fn instance_path_button_to(
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
-    let item = Item::InstancePath(space_view_id, instance_path.clone());
+    let item = if let Some(space_view_id) = space_view_id {
+        Item::DataResult(space_view_id, instance_path.clone())
+    } else {
+        Item::InstancePath(instance_path.clone())
+    };
 
     let response = ctx
         .re_ui
@@ -368,8 +372,8 @@ pub fn data_blueprint_button_to(
     space_view_id: SpaceViewId,
     entity_path: &EntityPath,
 ) -> egui::Response {
-    let item = Item::InstancePath(
-        Some(space_view_id),
+    let item = Item::DataResult(
+        space_view_id,
         InstancePath::entity_splat(entity_path.clone()),
     );
     let response = ui

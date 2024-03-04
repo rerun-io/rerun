@@ -296,10 +296,12 @@ impl<'a> ListItem<'a> {
     pub fn show_collapsing<R>(
         mut self,
         ui: &mut Ui,
-        id: egui::Id,
+        id: impl Into<egui::Id>,
         default_open: bool,
         add_body: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
+        let id = id.into();
+
         let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
             ui.ctx(),
             id,
@@ -448,12 +450,7 @@ impl<'a> ListItem<'a> {
                     id.unwrap_or(ui.id()).with("collapsing_triangle"),
                     egui::Sense::click(),
                 );
-                ReUi::paint_collapsing_triangle(
-                    ui,
-                    openness,
-                    triangle_rect.center(),
-                    &triangle_response,
-                );
+                ReUi::paint_collapsing_triangle(ui, openness, triangle_rect.center(), &visuals);
                 collapse_response = Some(triangle_response);
             }
 

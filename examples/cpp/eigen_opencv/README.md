@@ -6,10 +6,9 @@ thumbnail = "https://static.rerun.io/cpp-example-opencv-eigen/2fc6355fd87fbb4d07
 thumbnail_dimensions = [480, 267]
 -->
 
-
 This is a minimal CMake project that shows how to use Rerun in your code in conjunction with [Eigen](https://eigen.tuxfamily.org/) and [OpenCV](https://opencv.org/).
 
-You can find the example at <https://github.com/rerun-io/cpp-example-opencv-eigen/edit/main/README.md>.
+You can find the example at <https://github.com/rerun-io/cpp-example-opencv-eigen/blob/main/README.md>.
 
 <picture>
   <img src="https://static.rerun.io/cpp-example-opencv-eigen/2fc6355fd87fbb4d07cda384ee8805edb68b5e01/full.png" alt="">

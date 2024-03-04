@@ -283,10 +283,14 @@ def log_components(
     )
 
 
+# TODO(#3841): expose timepoint settings once we implement stateless APIs
 @catch_and_log_exceptions()
 def log_file_from_path(
     file_path: str | Path,
     *,
+    recording_id: str | None = None,
+    entity_path_prefix: str | None = None,
+    timeless: bool | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
@@ -304,6 +308,15 @@ def log_file_from_path(
     file_path:
         Path to the file to be logged.
 
+    recording_id:
+        The recommended `RecordingId` to log the data to.
+
+    entity_path_prefix:
+        What should the logged entity paths be prefixed with?
+
+    timeless:
+        Should the logged data be timeless?
+
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
         defaults to the current active data recording, if there is one. See
@@ -311,14 +324,24 @@ def log_file_from_path(
 
     """
 
-    bindings.log_file_from_path(Path(file_path), recording=recording)
+    bindings.log_file_from_path(
+        Path(file_path),
+        recording_id=recording_id,
+        entity_path_prefix=entity_path_prefix,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
+# TODO(cmc): expose timepoint settings once we implement stateless APIs
 @catch_and_log_exceptions()
 def log_file_from_contents(
     file_path: str | Path,
     file_contents: bytes,
     *,
+    recording_id: str | None = None,
+    entity_path_prefix: str | None = None,
+    timeless: bool | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
@@ -339,6 +362,15 @@ def log_file_from_contents(
     file_contents:
         Contents to be logged.
 
+    recording_id:
+        The recommended `RecordingId` to log the data to.
+
+    entity_path_prefix:
+        What should the logged entity paths be prefixed with?
+
+    timeless:
+        Should the logged data be timeless?
+
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
         defaults to the current active data recording, if there is one. See
@@ -346,7 +378,14 @@ def log_file_from_contents(
 
     """
 
-    bindings.log_file_from_contents(Path(file_path), file_contents, recording=recording)
+    bindings.log_file_from_contents(
+        Path(file_path),
+        file_contents,
+        recording_id=recording_id,
+        entity_path_prefix=entity_path_prefix,
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 def escape_entity_path_part(part: str) -> str:

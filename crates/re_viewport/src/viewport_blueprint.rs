@@ -262,11 +262,10 @@ impl ViewportBlueprint {
     /// If `false`, the item is referring to data that is not present in this blueprint.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
-            Item::StoreId(_) | Item::ComponentPath(_) => true,
-            Item::InstancePath(space_view_id, _) => space_view_id
-                .map(|space_view_id| self.space_view(&space_view_id).is_some())
-                .unwrap_or(true),
-            Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
+            Item::StoreId(_) | Item::ComponentPath(_) | Item::InstancePath(_) => true,
+            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
+                self.space_view(space_view_id).is_some()
+            }
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
@@ -349,6 +348,29 @@ impl ViewportBlueprint {
                     .keys()
                     .map(|container_id| Contents::Container(*container_id)),
             )
+    }
+
+    /// Walk the subtree defined by the provided container id and call `visitor` for each
+    /// [`Contents`].
+    ///
+    /// Note: `visitor` is first called for the container passed in argument.
+    pub fn visit_contents_in_container(
+        &self,
+        container_id: &ContainerId,
+        visitor: &mut impl FnMut(&Contents),
+    ) {
+        visitor(&Contents::Container(*container_id));
+        if let Some(container) = self.container(container_id) {
+            for contents in &container.contents {
+                visitor(contents);
+                match contents {
+                    Contents::Container(container_id) => {
+                        self.visit_contents_in_container(container_id, visitor);
+                    }
+                    Contents::SpaceView(_) => {}
+                }
+            }
+        }
     }
 
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root

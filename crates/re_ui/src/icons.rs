@@ -35,6 +35,8 @@ pub const ARROW_RIGHT: Icon = Icon::new(
     "arrow_right",
     include_bytes!("../data/icons/arrow_right.png"),
 );
+pub const ARROW_DOWN: Icon =
+    Icon::new("arrow_down", include_bytes!("../data/icons/arrow_down.png"));
 pub const LOOP: Icon = Icon::new("loop", include_bytes!("../data/icons/loop.png"));
 
 pub const RIGHT_PANEL_TOGGLE: Icon = Icon::new(
@@ -138,6 +140,7 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
     "entity_empty",
     include_bytes!("../data/icons/entity_empty.png"),
 );
+pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
 pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
 
 pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.png"));

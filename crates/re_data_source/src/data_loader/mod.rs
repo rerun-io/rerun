@@ -30,7 +30,7 @@ pub struct DataLoaderSettings {
     // TODO(#5350): actually support this
     pub opened_store_id: Option<re_log_types::StoreId>,
 
-    /// What should the entity paths be prefixed with?
+    /// What should the logged entity paths be prefixed with?
     pub entity_path_prefix: Option<EntityPath>,
 
     /// At what time(s) should the data be logged to?

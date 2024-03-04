@@ -8,5 +8,5 @@ requests>=2.31,<3
 rerun-sdk
 scipy
 #TODO(#4704): clean that up when pytorch is available for 3.12
-torch>1.13.0; python_version < "3.12"
+torch>1.13.0 ; python_version < "3.12"
 transformers>=4.26.0

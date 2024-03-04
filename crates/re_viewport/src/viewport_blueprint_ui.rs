@@ -1,5 +1,4 @@
 use egui::{Response, Ui};
-
 use itertools::Itertools;
 use re_data_ui::item_ui::guess_instance_path_icon;
 
@@ -8,7 +7,7 @@ use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
-use re_viewer_context::DataResultTree;
+use re_viewer_context::{CollapseScope, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
@@ -107,7 +106,7 @@ impl Viewport<'_, '_> {
     /// Display the root container.
     ///
     /// The root container is different from other containers in that it cannot be removed or dragged, and it cannot be
-    /// collapsed, so it's drawn without a collapsing triangle..
+    /// collapsed, so it's drawn without a collapsing triangle.
     fn root_container_tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let Some(container_id) = self.blueprint.root_container else {
             // nothing to draw if there is no root container
@@ -200,11 +199,16 @@ impl Viewport<'_, '_> {
 
             remove_response | vis_response
         })
-        .show_collapsing(ui, ui.id().with(container_id), default_open, |_, ui| {
-            for child in &container_blueprint.contents {
-                self.contents_ui(ctx, ui, child, container_visible);
-            }
-        });
+        .show_collapsing(
+            ui,
+            CollapseScope::BlueprintTree.container(*container_id),
+            default_open,
+            |_, ui| {
+                for child in &container_blueprint.contents {
+                    self.contents_ui(ctx, ui, child, container_visible);
+                }
+            },
+        );
 
         context_menu_ui_for_item(
             ctx,
@@ -252,7 +256,6 @@ impl Viewport<'_, '_> {
         // empty space views should display as open by default to highlight the fact that they are empty
         let default_open = root_node.map_or(true, Self::default_open_for_data_result);
 
-        let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
@@ -280,48 +283,58 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             })
-            .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                // Always show the origin hierarchy first.
-                Self::space_view_entity_hierarchy_ui(
-                    ctx,
-                    ui,
-                    query_result,
-                    &DataResultNodeOrPath::from_path_lookup(result_tree, &space_view.space_origin),
-                    space_view,
-                    space_view_visible,
-                );
+            .show_collapsing(
+                ui,
+                CollapseScope::BlueprintTree.space_view(*space_view_id),
+                default_open,
+                |_, ui| {
+                    // Always show the origin hierarchy first.
+                    Self::space_view_entity_hierarchy_ui(
+                        ctx,
+                        ui,
+                        query_result,
+                        &DataResultNodeOrPath::from_path_lookup(
+                            result_tree,
+                            &space_view.space_origin,
+                        ),
+                        space_view,
+                        space_view_visible,
+                        false,
+                    );
 
-                // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
-                let mut projections = Vec::new();
-                result_tree.visit(&mut |node| {
-                    if !node
-                        .data_result
-                        .entity_path
-                        .starts_with(&space_view.space_origin)
-                        && node.data_result.direct_included
-                    {
-                        projections.push(node);
-                        false
-                    } else {
-                        true
-                    }
-                });
-                if !projections.is_empty() {
-                    ui.label(egui::RichText::new("Projections:").italics());
+                    // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
+                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    let mut projections = Vec::new();
+                    result_tree.visit(&mut |node| {
+                        if !node
+                            .data_result
+                            .entity_path
+                            .starts_with(&space_view.space_origin)
+                            && node.data_result.direct_included
+                        {
+                            projections.push(node);
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                    if !projections.is_empty() {
+                        ui.label(egui::RichText::new("Projections:").italics());
 
-                    for projection in projections {
-                        Self::space_view_entity_hierarchy_ui(
-                            ctx,
-                            ui,
-                            query_result,
-                            &DataResultNodeOrPath::DataResultNode(projection),
-                            space_view,
-                            space_view_visible,
-                        );
+                        for projection in projections {
+                            Self::space_view_entity_hierarchy_ui(
+                                ctx,
+                                ui,
+                                query_result,
+                                &DataResultNodeOrPath::DataResultNode(projection),
+                                space_view,
+                                space_view_visible,
+                                true,
+                            );
+                        }
                     }
-                }
-            });
+                },
+            );
 
         response = response.on_hover_text("Space View");
 
@@ -358,16 +371,35 @@ impl Viewport<'_, '_> {
         node_or_path: &DataResultNodeOrPath<'_>,
         space_view: &SpaceViewBlueprint,
         space_view_visible: bool,
+        projection_mode: bool,
     ) {
         let store = ctx.entity_db.store();
 
         let entity_path = node_or_path.path();
+
+        if projection_mode && entity_path == &space_view.space_origin {
+            if ListItem::new(ctx.re_ui, "$origin")
+                .subdued(true)
+                .italics(true)
+                .with_icon(&re_ui::icons::LINK)
+                .show(ui)
+                .on_hover_text(
+                    "This subtree corresponds to the Space View's origin, and is displayed above \
+                    the 'Projections' section. Click to select it.",
+                )
+                .clicked()
+            {
+                ctx.selection_state().set_selection(Item::DataResult(
+                    space_view.id,
+                    InstancePath::entity_splat(entity_path.clone()),
+                ));
+            }
+            return;
+        }
+
         let data_result_node = node_or_path.data_result_node();
 
-        let item = Item::InstancePath(
-            Some(space_view.id),
-            InstancePath::entity_splat(entity_path.clone()),
-        );
+        let item = Item::DataResult(space_view.id, entity_path.clone().into());
         let is_selected = ctx.selection().contains_item(&item);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
@@ -440,7 +472,8 @@ impl Viewport<'_, '_> {
             let response = list_item
                 .show_collapsing(
                     ui,
-                    ui.id().with(&node.data_result.entity_path),
+                    CollapseScope::BlueprintTree
+                        .data_result(space_view.id, node.data_result.entity_path.clone()),
                     default_open,
                     |_, ui| {
                         for child in node.children.iter().sorted_by_key(|c| {
@@ -464,6 +497,7 @@ impl Viewport<'_, '_> {
                                 &DataResultNodeOrPath::DataResultNode(child_node),
                                 space_view,
                                 space_view_visible,
+                                projection_mode,
                             );
                         }
                     },
