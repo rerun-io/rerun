@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint> // uint32_t etc.
 #include <filesystem>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -413,6 +414,26 @@ namespace rerun {
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
+        ///
+        /// @see log, try_log, log_timeless, try_log_timeless
+        template <typename... Ts>
+        void log_with_timeless(
+            std::string_view entity_path, bool timeless, const Ts&... archetypes_or_collectiones
+        ) const {
+            try_log_with_timeless(entity_path, timeless, archetypes_or_collectiones...).handle();
+        }
+
+        /// Logs one or more archetype and/or component batches optionally timeless, returning an error.
+        ///
+        /// See `log`/`log_timeless` for more information.
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param timeless If true, the logged components will be timeless.
+        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log, try_log, log_timeless, try_log_timeless
@@ -505,10 +526,15 @@ namespace rerun {
         /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
         ///
         /// \param filepath Path to the file to be logged.
+        /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param timeless Should the logged data be timeless?
         ///
         /// \see `try_log_file_from_path`
-        void log_file_from_path(const std::filesystem::path& filepath) const {
-            try_log_file_from_path(filepath).handle();
+        void log_file_from_path(
+            const std::filesystem::path& filepath,
+            std::string_view entity_path_prefix = std::string_view(), bool timeless = false
+        ) const {
+            try_log_file_from_path(filepath, entity_path_prefix, timeless).handle();
         }
 
         /// Logs the file at the given `path` using all `DataLoader`s available.
@@ -521,9 +547,14 @@ namespace rerun {
         /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
         ///
         /// \param filepath Path to the file to be logged.
+        /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param timeless Should the logged data be timeless?
         ///
         /// \see `log_file_from_path`
-        Error try_log_file_from_path(const std::filesystem::path& filepath) const;
+        Error try_log_file_from_path(
+            const std::filesystem::path& filepath,
+            std::string_view entity_path_prefix = std::string_view(), bool timeless = false
+        ) const;
 
         /// Logs the given `contents` using all `DataLoader`s available.
         ///
@@ -537,12 +568,22 @@ namespace rerun {
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
+        /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param timeless Should the logged data be timeless?
         ///
         /// \see `try_log_file_from_contents`
         void log_file_from_contents(
-            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
+            std::string_view entity_path_prefix = std::string_view(), bool timeless = false
         ) const {
-            try_log_file_from_contents(filepath, contents, contents_size).handle();
+            try_log_file_from_contents(
+                filepath,
+                contents,
+                contents_size,
+                entity_path_prefix,
+                timeless
+            )
+                .handle();
         }
 
         /// Logs the given `contents` using all `DataLoader`s available.
@@ -557,10 +598,13 @@ namespace rerun {
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
+        /// \param entity_path_prefix What should the logged entity paths be prefixed with?
+        /// \param timeless Should the logged data be timeless?
         ///
         /// \see `log_file_from_contents`
         Error try_log_file_from_contents(
-            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size
+            const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
+            std::string_view entity_path_prefix = std::string_view(), bool timeless = false
         ) const;
 
         /// @}
