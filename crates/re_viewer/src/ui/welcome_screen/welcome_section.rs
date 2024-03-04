@@ -79,30 +79,30 @@ struct QuickStartEntry<'a> {
 
 const QUICK_START_ENTRIES_CONNECT: &[QuickStartEntry<'_>] = &[
     QuickStartEntry {
-        entity_path: "cpp_quick_start",
+        entity_path: "quick_start/cpp",
         markdown: CPP_CONNECT_MARKDOWN,
     },
     QuickStartEntry {
-        entity_path: "python_quick_start",
+        entity_path: "quick_start/python",
         markdown: PYTHON_CONNECT_MARKDOWN,
     },
     QuickStartEntry {
-        entity_path: "rust_quick_start",
+        entity_path: "quick_start/rust",
         markdown: RUST_CONNECT_MARKDOWN,
     },
 ];
 
 const QUICK_START_ENTRIES_SPAWN: &[QuickStartEntry<'_>] = &[
     QuickStartEntry {
-        entity_path: "cpp_quick_start",
+        entity_path: "quick_start/cpp",
         markdown: CPP_SPAWN_MARKDOWN,
     },
     QuickStartEntry {
-        entity_path: "python_quick_start",
+        entity_path: "quick_start/python",
         markdown: PYTHON_SPAWN_MARKDOWN,
     },
     QuickStartEntry {
-        entity_path: "rust_quick_start",
+        entity_path: "quick_start/rust",
         markdown: RUST_SPAWN_MARKDOWN,
     },
 ];
