@@ -5117,6 +5117,8 @@ name = "re_viewport"
 version = "0.15.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "array-init",
+ "bytemuck",
  "egui",
  "egui_tiles",
  "glam",

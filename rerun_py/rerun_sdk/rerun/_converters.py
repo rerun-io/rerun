@@ -22,7 +22,7 @@ and more compact alternatives:
 
 from __future__ import annotations
 
-from typing import SupportsFloat, SupportsInt, overload
+from typing import Sequence, SupportsFloat, SupportsInt, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -111,7 +111,7 @@ def str_or_none(data: str | None) -> str | None:
     return str(data)
 
 
-def to_np_uint8(data: npt.ArrayLike | bytes) -> npt.NDArray[np.uint8]:
+def to_np_uint8(data: npt.ArrayLike | bytes | Sequence[bytes]) -> npt.NDArray[np.uint8]:
     """
     Convert some data to a numpy uint8 array.
 
@@ -120,6 +120,9 @@ def to_np_uint8(data: npt.ArrayLike | bytes) -> npt.NDArray[np.uint8]:
 
     if isinstance(data, bytes):
         return np.frombuffer(data, dtype=np.uint8)
+    elif isinstance(data, Sequence) and len(data) > 0 and isinstance(data[0], bytes):
+        data = cast(Sequence[bytes], data)
+        return np.frombuffer(b"".join(data), dtype=np.uint8)
     else:
         return np.asarray(data, dtype=np.uint8)
 

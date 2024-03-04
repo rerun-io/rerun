@@ -18,7 +18,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<blueprint::components::RootContainer>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const blueprint::components::RootContainer* elements,
+        arrow::FixedSizeListBuilder* builder, const blueprint::components::RootContainer* elements,
         size_t num_elements
     ) {
         static_assert(
@@ -44,7 +44,7 @@ namespace rerun {
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(
                 Loggable<blueprint::components::RootContainer>::fill_arrow_array_builder(
-                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    static_cast<arrow::FixedSizeListBuilder*>(builder.get()),
                     instances,
                     num_instances
                 )

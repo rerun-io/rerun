@@ -13,7 +13,7 @@
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_contents.hpp"
 #include "blueprint/components/included_queries.hpp"
-#include "blueprint/components/included_space_views.hpp"
+#include "blueprint/components/included_space_view.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
 #include "blueprint/components/panel_view.hpp"
 #include "blueprint/components/query_expressions.hpp"

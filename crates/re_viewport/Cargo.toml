@@ -37,7 +37,9 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
+array-init.workspace = true
 arrow2.workspace = true
+bytemuck.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 glam.workspace = true

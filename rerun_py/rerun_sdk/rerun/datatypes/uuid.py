@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -16,12 +16,13 @@ from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_uint8,
 )
+from .uuid_ext import UuidExt
 
 __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike", "UuidType"]
 
 
 @define(init=False)
-class Uuid:
+class Uuid(UuidExt):
     """**Datatype**: A 16-byte uuid."""
 
     def __init__(self: Any, bytes: UuidLike):
@@ -37,10 +38,13 @@ class Uuid:
         return np.asarray(self.bytes, dtype=dtype)
 
 
-UuidLike = Uuid
+if TYPE_CHECKING:
+    UuidLike = Union[Uuid, npt.NDArray[Any], npt.ArrayLike, Sequence[int], bytes]
+else:
+    UuidLike = Any
+
 UuidArrayLike = Union[
-    Uuid,
-    Sequence[UuidLike],
+    Uuid, Sequence[UuidLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int], Sequence[bytes]
 ]
 
 
@@ -49,18 +53,7 @@ class UuidType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self,
-            pa.struct(
-                [
-                    pa.field(
-                        "bytes",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
-                        nullable=False,
-                        metadata={},
-                    )
-                ]
-            ),
-            self._TYPE_NAME,
+            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16), self._TYPE_NAME
         )
 
 
@@ -69,4 +62,4 @@ class UuidBatch(BaseBatch[UuidArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UuidArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in uuid_ext.py
+        return UuidExt.native_to_pa_array_override(data, data_type)
