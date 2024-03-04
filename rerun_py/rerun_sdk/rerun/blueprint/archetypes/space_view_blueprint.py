@@ -23,7 +23,7 @@ class SpaceViewBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        class_identifier: blueprint_components.SpaceViewClassLike,
+        class_identifier: datatypes.Utf8Like,
         *,
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,

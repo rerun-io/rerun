@@ -67,13 +67,7 @@ from .query_expressions import (
 )
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_shares import RowShares, RowSharesArrayLike, RowSharesBatch, RowSharesLike, RowSharesType
-from .space_view_class import (
-    SpaceViewClass,
-    SpaceViewClassArrayLike,
-    SpaceViewClassBatch,
-    SpaceViewClassLike,
-    SpaceViewClassType,
-)
+from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
@@ -159,9 +153,7 @@ __all__ = [
     "RowSharesLike",
     "RowSharesType",
     "SpaceViewClass",
-    "SpaceViewClassArrayLike",
     "SpaceViewClassBatch",
-    "SpaceViewClassLike",
     "SpaceViewClassType",
     "SpaceViewMaximized",
     "SpaceViewMaximizedBatch",

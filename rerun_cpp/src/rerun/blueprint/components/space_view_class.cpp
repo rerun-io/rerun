@@ -3,6 +3,8 @@
 
 #include "space_view_class.hpp"
 
+#include "../../datatypes/utf8.hpp"
+
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -11,7 +13,7 @@ namespace rerun::blueprint::components {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>&
         Loggable<blueprint::components::SpaceViewClass>::arrow_datatype() {
-        static const auto datatype = arrow::utf8();
+        static const auto datatype = Loggable<rerun::datatypes::Utf8>::arrow_datatype();
         return datatype;
     }
 
@@ -19,20 +21,14 @@ namespace rerun {
         arrow::StringBuilder* builder, const blueprint::components::SpaceViewClass* elements,
         size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
-        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-            ARROW_RETURN_NOT_OK(builder->Append(elements[elem_idx].value));
-        }
+        static_assert(
+            sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::SpaceViewClass)
+        );
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+            builder,
+            reinterpret_cast<const rerun::datatypes::Utf8*>(elements),
+            num_elements
+        ));
 
         return Error::ok();
     }
