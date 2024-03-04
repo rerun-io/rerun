@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -32,11 +32,12 @@ class EntityPath(EntityPathExt):
         return str(self.path)
 
 
-EntityPathLike = EntityPath
-EntityPathArrayLike = Union[
-    EntityPath,
-    Sequence[EntityPathLike],
-]
+if TYPE_CHECKING:
+    EntityPathLike = Union[EntityPath, str]
+else:
+    EntityPathLike = Any
+
+EntityPathArrayLike = Union[EntityPath, Sequence[EntityPathLike], Sequence[str]]
 
 
 class EntityPathType(BaseExtensionType):
