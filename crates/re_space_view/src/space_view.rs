@@ -317,7 +317,7 @@ impl SpaceViewBlueprint {
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
+        ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
 
         for query in &self.queries {
             query.clear(ctx);
@@ -328,7 +328,7 @@ impl SpaceViewBlueprint {
     pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
         if !self.entities_determined_by_user {
             let component = EntitiesDeterminedByUser(true);
-            ctx.save_blueprint_component(&self.entity_path(), component);
+            ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
 
@@ -338,7 +338,7 @@ impl SpaceViewBlueprint {
             match name {
                 Some(name) => {
                     let component = Name(name.into());
-                    ctx.save_blueprint_component(&self.entity_path(), component);
+                    ctx.save_blueprint_component(&self.entity_path(), &component);
                 }
                 None => {
                     ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
@@ -351,7 +351,7 @@ impl SpaceViewBlueprint {
     pub fn set_origin(&self, ctx: &ViewerContext<'_>, origin: &EntityPath) {
         if origin != &self.space_origin {
             let component = SpaceViewOrigin(origin.into());
-            ctx.save_blueprint_component(&self.entity_path(), component);
+            ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
 
@@ -359,7 +359,7 @@ impl SpaceViewBlueprint {
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible(visible);
-            ctx.save_blueprint_component(&self.entity_path(), component);
+            ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
 

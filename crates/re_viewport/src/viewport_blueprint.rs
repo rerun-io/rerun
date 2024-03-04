@@ -226,7 +226,7 @@ impl ViewportBlueprint {
             .filter(|id| id != &space_view_id)
             .map(|id| IncludedSpaceView((*id).into()))
             .collect::<Vec<_>>();
-        ctx.save_blueprint_component_batch(&VIEWPORT_PATH.into(), &components);
+        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
     }
 
     /// Duplicates a space view and its entity property overrides.
@@ -331,7 +331,7 @@ impl ViewportBlueprint {
                 .chain(new_ids.iter())
                 .map(|id| IncludedSpaceView((*id).into()))
                 .collect::<Vec<_>>();
-            ctx.save_blueprint_component_batch(&VIEWPORT_PATH.into(), &components);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
         }
 
         new_ids
@@ -654,7 +654,7 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let component = AutoLayout(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
 
@@ -669,7 +669,7 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let component = AutoSpaceViews(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
 
@@ -682,7 +682,7 @@ impl ViewportBlueprint {
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
             let component_batch = space_view_id.map(|id| SpaceViewMaximized(id.into()));
-            ctx.save_blueprint_component_batch(&VIEWPORT_PATH.into(), &component_batch);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component_batch);
         }
     }
 
@@ -782,7 +782,7 @@ impl ViewportBlueprint {
             .and_then(|contents| contents.as_container_id())
             .map(|container_id| RootContainer((container_id).into()))
         {
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
         } else {
             ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
         }

@@ -45,7 +45,7 @@ fn edit_color_ui(
         let [r, g, b, a] = edit_color.to_array();
         let new_color = Color::from_unmultiplied_rgba(r, g, b, a);
 
-        ctx.save_blueprint_component(override_path, new_color);
+        ctx.save_blueprint_component(override_path, &new_color);
     }
 }
 
@@ -86,7 +86,7 @@ fn edit_text_ui(
     if edit_text != current_text {
         let new_text = Text::from(edit_text);
 
-        ctx.save_blueprint_component(override_path, new_text);
+        ctx.save_blueprint_component(override_path, &new_text);
     }
 }
 
@@ -126,7 +126,7 @@ fn edit_name_ui(
     if edit_text != current_text {
         let new_text = Name::from(edit_text);
 
-        ctx.save_blueprint_component(override_path, new_text);
+        ctx.save_blueprint_component(override_path, &new_text);
     }
 }
 
@@ -175,7 +175,7 @@ fn edit_scatter_ui(
     if edit_scatter != current_scatter {
         let new_scatter = ScalarScattering::from(edit_scatter);
 
-        ctx.save_blueprint_component(override_path, new_scatter);
+        ctx.save_blueprint_component(override_path, &new_scatter);
     }
 }
 
@@ -222,7 +222,7 @@ fn edit_radius_ui(
     if edit_radius != current_radius {
         let new_radius = Radius::from(edit_radius);
 
-        ctx.save_blueprint_component(override_path, new_radius);
+        ctx.save_blueprint_component(override_path, &new_radius);
     }
 }
 
@@ -283,7 +283,7 @@ fn edit_marker_shape_ui(
         });
 
     if edit_marker != current_marker {
-        ctx.save_blueprint_component(override_path, edit_marker);
+        ctx.save_blueprint_component(override_path, &edit_marker);
     }
 }
 
@@ -352,7 +352,7 @@ fn edit_stroke_width_ui(
     if edit_stroke_width != current_stroke_width {
         let new_stroke_width = StrokeWidth::from(edit_stroke_width);
 
-        ctx.save_blueprint_component(override_path, new_stroke_width);
+        ctx.save_blueprint_component(override_path, &new_stroke_width);
     }
 }
 
@@ -399,7 +399,7 @@ fn edit_marker_size_ui(
     if edit_marker_size != current_marker_size {
         let new_marker_size = MarkerSize::from(edit_marker_size);
 
-        ctx.save_blueprint_component(override_path, new_marker_size);
+        ctx.save_blueprint_component(override_path, &new_marker_size);
     }
 }
 

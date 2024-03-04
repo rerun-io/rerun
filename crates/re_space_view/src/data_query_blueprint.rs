@@ -122,9 +122,9 @@ impl DataQueryBlueprint {
                 self.pending_writes.clone(),
             ));
 
-        ctx.save_blueprint_component::<QueryExpressions>(
+        ctx.save_blueprint_component(
             &self.id.as_entity_path(),
-            QueryExpressions::from(&self.entity_path_filter),
+            &QueryExpressions::from(&self.entity_path_filter),
         );
     }
 
@@ -175,7 +175,7 @@ impl DataQueryBlueprint {
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.id.as_entity_path(), clear.is_recursive);
+        ctx.save_blueprint_component(&self.id.as_entity_path(), &clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(
