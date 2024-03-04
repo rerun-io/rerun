@@ -139,6 +139,9 @@ impl crate::DataLoader for ExternalLoader {
                 re_tracing::profile_function!(exe.to_string_lossy());
 
                 let child = Command::new(exe)
+                    // Make sure the child dataloader doesn't think it's a Rerun Viewer, otherwise
+                    // it's never gonna be able to log anything.
+                    .env_remove("RERUN_APP_ONLY")
                     .arg(filepath.clone())
                     .args(args)
                     .stdout(Stdio::piped())
