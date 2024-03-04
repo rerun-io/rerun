@@ -15,8 +15,8 @@ README = """
 * Right-click on any space view and check for context menu content:
     - Hide
     - Remove
-    - Move to new container
     - Clone
+    - Move to new container
 * Check all work as expected.
 * Right-click on a space view's tab title widget and check:
     - It should show the same actions are above.
@@ -28,12 +28,17 @@ README = """
 * Right-click on the container and check for context menu content:
     - Hide
     - Remove
-    - Move to new container
     - Add Container
     - Add Space View
+    - Move to new container
 * Select a container and, in the Selection Panel, right click on either space view or container children:
     - The context menu action should be the same as before.
     - The selection state is not affected by the right-click.
+
+### Show/Hide
+
+* Hide a space view and check that its context menu shows "Show" instead of "Hide".
+* Select multiple space views with homogeneous or heterogeneous visibility states. Check that either or both of "Show All" and "Hide All" are showed as appropriate.
 
 ### Selection behavior
 
@@ -56,7 +61,7 @@ README = """
 
 ### Invalid sub-container kind
 
-* Single-select a horizontal container, check that it disallow adding an horizontal container inside it.
+* Single-select a horizontal container, check that it disallow adding a horizontal container inside it.
 * Same for a vertical container.
 * Single select a space view inside a horizontal container, check that it disallow moving to a new horizontal container.
 * Same for a space view inside a vertical container.

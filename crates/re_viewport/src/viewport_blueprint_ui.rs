@@ -12,7 +12,8 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, context_menu_ui_for_item, SelectionUpdateBehavior, Viewport};
+use crate::context_menu::context_menu_ui_for_item;
+use crate::{container::Contents, SelectionUpdateBehavior, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
@@ -303,7 +304,7 @@ impl Viewport<'_, '_> {
                     );
 
                     // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    // The hlater is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                     let mut projections = Vec::new();
                     result_tree.visit(&mut |node| {
                         if !node

@@ -1,21 +1,19 @@
-use std::rc::Rc;
-
 use itertools::Itertools;
+use once_cell::sync::OnceCell;
 
+use re_entity_db::InstancePath;
 use re_viewer_context::{ContainerId, Item, Selection, SpaceViewId, ViewerContext};
 
-use crate::{Contents, ViewportBlueprint};
+use crate::ViewportBlueprint;
 
-mod container_and_space_view_actions;
-//mod space_view_data;
-mod utils;
+mod actions;
+mod sub_menu;
 
-use container_and_space_view_actions::{
-    AddContainer, AddSpaceView, CloneSpaceViewItem, ContentRemove, ContentVisibilityToggle,
-    MoveContentsToNewContainer,
+use actions::{
+    AddContainerAction, AddSpaceViewAction, CloneSpaceViewAction, HideAction,
+    MoveContentsToNewContainerAction, RemoveAction, ShowAction,
 };
-//use space_view_data::SpaceViewData;
-use utils::{Separator, SubMenu};
+use sub_menu::SubMenu;
 
 /// Controls how [`context_menu_ui_for_item`] should handle the current selection state.
 #[derive(Debug, Clone, Copy)]
@@ -44,8 +42,18 @@ pub fn context_menu_ui_for_item(
             return;
         }
 
+        let mut show_context_menu = |selection: &Selection| {
+            let context_menu_ctx = ContextMenuContext {
+                viewer_context: ctx,
+                viewport_blueprint,
+                selection,
+                clicked_item: item,
+            };
+            show_context_menu_for_selection(&context_menu_ctx, ui);
+        };
+
         // handle selection
-        let selection_summary = match selection_update_behavior {
+        match selection_update_behavior {
             SelectionUpdateBehavior::UseSelection => {
                 if !ctx.selection().contains_item(item) {
                     // When the context menu is triggered open, we check if we're part of the selection,
@@ -54,12 +62,12 @@ pub fn context_menu_ui_for_item(
                         ctx.selection_state()
                             .set_selection(std::iter::once(item.clone()));
 
-                        summarize_selection(&Selection::from(item.clone()))
+                        show_context_menu(&Selection::from(item.clone()));
                     } else {
-                        summarize_selection(ctx.selection())
+                        show_context_menu(ctx.selection());
                     }
                 } else {
-                    summarize_selection(ctx.selection())
+                    show_context_menu(ctx.selection());
                 }
             }
 
@@ -69,232 +77,219 @@ pub fn context_menu_ui_for_item(
                         .set_selection(std::iter::once(item.clone()));
                 }
 
-                summarize_selection(&Selection::from(item.clone()))
+                show_context_menu(&Selection::from(item.clone()));
             }
 
-            SelectionUpdateBehavior::Ignore => summarize_selection(&Selection::from(item.clone())),
+            SelectionUpdateBehavior::Ignore => show_context_menu(&Selection::from(item.clone())),
         };
+    });
+}
 
-        let actions = context_menu_items_for_selection_summary(
-            ctx,
-            viewport_blueprint,
-            item,
-            selection_summary,
-        );
+/// Returns the (statically-defined) list of action, grouped in sections.
+///
+/// Sections are group of actions that should be displayed together, with a separator displayed
+/// between sections.
+fn action_list(
+    ctx: &ViewerContext<'_>,
+) -> &'static Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>> {
+    static CONTEXT_MENU_ACTIONS: OnceCell<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
+        OnceCell::new();
 
-        if actions.is_empty() {
-            ui.label(
-                egui::RichText::from("No action available for the current selection").italics(),
-            );
-        }
+    CONTEXT_MENU_ACTIONS.get_or_init(|| {
+        vec![
+            vec![
+                Box::new(ShowAction),
+                Box::new(HideAction),
+                Box::new(RemoveAction),
+            ],
+            vec![Box::new(CloneSpaceViewAction)],
+            vec![
+                Box::new(SubMenu {
+                    label: "Add Container".to_owned(),
+                    actions: vec![
+                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Tabs)),
+                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Horizontal)),
+                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Vertical)),
+                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Grid)),
+                    ],
+                }),
+                Box::new(SubMenu {
+                    label: "Add Space View".to_owned(),
+                    actions: ctx
+                        .space_view_class_registry
+                        .iter_registry()
+                        .sorted_by_key(|entry| entry.class.display_name())
+                        .map(|entry| {
+                            Box::new(AddSpaceViewAction(entry.class.identifier()))
+                                as Box<dyn ContextMenuAction + Sync + Send>
+                        })
+                        .collect(),
+                }),
+            ],
+            vec![Box::new(SubMenu {
+                label: "Move to new container".to_owned(),
+                actions: vec![
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Tabs,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Horizontal,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Vertical,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Grid,
+                    )),
+                ],
+            })],
+        ]
+    })
+}
 
-        for action in actions {
-            let response = action.ui(ctx, viewport_blueprint, ui);
+/// Display every action that accepts the provided selection.
+fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) {
+    let mut should_display_separator = false;
+    for action_section in action_list(ctx.viewer_context) {
+        let mut any_action_displayed = false;
+
+        for action in action_section {
+            if !action.supports_selection(ctx) {
+                continue;
+            }
+
+            any_action_displayed = true;
+
+            if should_display_separator {
+                ui.separator();
+                should_display_separator = false;
+            }
+
+            let response = action.ui(ctx, ui);
             if response.clicked() {
                 ui.close_menu();
             }
         }
-    });
+
+        should_display_separator |= any_action_displayed;
+    }
 }
 
-// ---
+/// Context information provided to context menu actions
+struct ContextMenuContext<'a> {
+    viewer_context: &'a ViewerContext<'a>,
+    viewport_blueprint: &'a ViewportBlueprint,
+    selection: &'a Selection,
+    clicked_item: &'a Item,
+}
 
-/// Trait for things that can populate a context menu
-trait ContextMenuItem {
-    // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires
-    // changes to the context menu UI code to support full-span highlighting.
-    fn label(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) -> String {
-        String::new()
+/// Context menu actions must implement this trait.
+///
+/// Actions must do three things, corresponding to three core methods:
+/// 1. Decide if it can operate a given [`Selection`] ([`Self::supports_selection`]).
+/// 2. If so, draw some UI in the context menu ([`Self::ui`]).
+/// 3. If clicked, actually process the [`Selection`] ([`Sef::process_selection`]).
+///
+/// For convenience, these core methods have default implementations which delegates to simpler
+/// methods (see their respective docstrings). Implementor may either implement the core method for
+/// complex cases, or one or more of the helper methods.
+trait ContextMenuAction {
+    /// Check if the action is able to operate on the provided selection.
+    ///
+    /// The default implementation delegates to [`Self::supports_multi_selection`] and
+    /// [`Self::supports_item`].
+    fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
+        if ctx.selection.len() > 1 && !self.supports_multi_selection(ctx) {
+            return false;
+        }
+
+        ctx.selection
+            .iter()
+            .all(|(item, _)| self.supports_item(ctx, item))
     }
 
-    fn run(&self, _ctx: &ViewerContext<'_>, _viewport_blueprint: &ViewportBlueprint) {}
+    /// Returns whether this action supports multi-selections.
+    fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
+        false
+    }
 
-    /// run from inside of [`egui::Response.context_menu()`]
-    fn ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        viewport_blueprint: &ViewportBlueprint,
-        ui: &mut egui::Ui,
-    ) -> egui::Response {
-        let label = self.label(ctx, viewport_blueprint);
+    /// Returns whether this action supports operation on a selection containing this [`Item`].
+    fn supports_item(&self, _ctx: &ContextMenuContext<'_>, _item: &Item) -> bool {
+        false
+    }
+
+    // ---
+
+    /// Draw the context menu UI for this action.
+    ///
+    /// The default implementation delegates to [`Self::label`].
+    ///
+    /// Note: this is run from inside a [`egui::Response.context_menu()`] closure and must call
+    /// [`Self::process_selection`] when triggered by the user.
+    fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) -> egui::Response {
+        let label = self.label(ctx);
         let response = ui.button(label);
         if response.clicked() {
-            self.run(ctx, viewport_blueprint);
+            self.process_selection(ctx);
         }
         response
     }
-}
 
-fn context_menu_items_for_selection_summary(
-    ctx: &ViewerContext<'_>,
-    viewport_blueprint: &ViewportBlueprint,
-    item: &Item,
-    selection_summary: SelectionSummary,
-) -> Vec<Box<dyn ContextMenuItem>> {
-    match selection_summary {
-        SelectionSummary::SingleContainerItem(container_id) => {
-            // We want all the actions available for collections of contents…
-            let mut items = context_menu_items_for_selection_summary(
-                ctx,
-                viewport_blueprint,
-                item,
-                SelectionSummary::ContentsItems(vec![Contents::Container(container_id)]),
-            );
+    // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires
+    // changes to the context menu UI code to support full-span highlighting.
+    /// Returns the label displayed by [`Self::ui`]'s default implementation.
+    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+        String::new()
+    }
 
-            if !items.is_empty() {
-                items.push(Separator::item());
-            }
+    // ---
 
-            // …plus some more that apply to single container only.
-            items.extend([
-                SubMenu::item(
-                    "Add Container",
-                    possible_child_container_kind(viewport_blueprint, container_id)
-                        .map(|kind| AddContainer::item(container_id, kind)),
-                ),
-                SubMenu::item(
-                    "Add Space View",
-                    ctx.space_view_class_registry
-                        .iter_registry()
-                        .sorted_by_key(|entry| entry.class.display_name())
-                        .map(|entry| AddSpaceView::item(container_id, entry.class.identifier())),
-                ),
-            ]);
-
-            items
-        }
-        SelectionSummary::SingleSpaceView(space_view_id) => {
-            // We want all the actions available for collections of contents…
-            let mut items = context_menu_items_for_selection_summary(
-                ctx,
-                viewport_blueprint,
-                item,
-                SelectionSummary::ContentsItems(vec![Contents::SpaceView(space_view_id)]),
-            );
-
-            items.push(CloneSpaceViewItem::item(space_view_id));
-
-            items
-        }
-        SelectionSummary::ContentsItems(contents) => {
-            // exclude the root container from the list of contents, as it cannot be shown/hidden
-            // nor removed
-            let contents: Rc<Vec<_>> = Rc::new(
-                contents
-                    .into_iter()
-                    .filter(|c| {
-                        Some(*c) != viewport_blueprint.root_container.map(Contents::Container)
-                    })
-                    .collect(),
-            );
-
-            if contents.is_empty() {
-                vec![]
-            } else if let Some(root_container_id) = viewport_blueprint.root_container {
-                // The new container should be created in place of the right-clicked content, so we
-                // look for its parent and position, and fall back to the root container.
-                let clicked_content = match item {
-                    Item::Container(container_id) => Some(Contents::Container(*container_id)),
-                    Item::SpaceView(space_view_id) => Some(Contents::SpaceView(*space_view_id)),
-                    _ => None,
-                };
-                let (target_container_id, target_position) = clicked_content
-                    .and_then(|c| viewport_blueprint.find_parent_and_position_index(&c))
-                    .unwrap_or((root_container_id, 0));
-
-                vec![
-                    ContentVisibilityToggle::item(viewport_blueprint, contents.clone()),
-                    ContentRemove::item(contents.clone()),
-                    Separator::item(),
-                    SubMenu::item(
-                        "Move to new container",
-                        possible_child_container_kind(viewport_blueprint, target_container_id).map(
-                            |kind| {
-                                MoveContentsToNewContainer::item(
-                                    target_container_id,
-                                    target_position,
-                                    kind,
-                                    contents.clone(),
-                                )
-                            },
-                        ),
-                    ),
-                ]
-            } else {
-                vec![]
+    /// Process the provided [`Selection`].
+    ///
+    /// The default implementation dispatches to [`Self::process_store_id`] and friends.
+    fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
+        for (item, _) in ctx.selection.iter() {
+            match item {
+                Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
+                Item::ComponentPath(component_path) => {
+                    self.process_component_path(ctx, component_path);
+                }
+                Item::SpaceView(space_view_id) => self.process_space_view(ctx, space_view_id),
+                Item::InstancePath(instance_path) => self.process_instance_path(ctx, instance_path),
+                Item::DataResult(space_view_id, instance_path) => {
+                    self.process_data_result(ctx, space_view_id, instance_path);
+                }
+                Item::Container(container_id) => self.process_container(ctx, container_id),
             }
         }
-        SelectionSummary::Heterogeneous | SelectionSummary::Empty => vec![],
-    }
-}
-
-/// Helper that returns the allowable containers
-fn possible_child_container_kind(
-    viewport_blueprint: &ViewportBlueprint,
-    container_id: ContainerId,
-) -> impl Iterator<Item = egui_tiles::ContainerKind> + 'static {
-    let container_kind = viewport_blueprint
-        .container(&container_id)
-        .map(|c| c.container_kind);
-
-    static ALL_CONTAINERS: &[egui_tiles::ContainerKind] = &[
-        egui_tiles::ContainerKind::Tabs,
-        egui_tiles::ContainerKind::Horizontal,
-        egui_tiles::ContainerKind::Vertical,
-        egui_tiles::ContainerKind::Grid,
-    ];
-
-    ALL_CONTAINERS
-        .iter()
-        .copied()
-        .filter(move |kind| match kind {
-            egui_tiles::ContainerKind::Horizontal | egui_tiles::ContainerKind::Vertical => {
-                container_kind != Some(*kind)
-            }
-            _ => true,
-        })
-}
-
-// ================================================================================================
-// Selection summary
-// ================================================================================================
-
-// TODO(ab): this summary is somewhat ad hoc to the context menu needs. Could it be generalised and
-// moved to the Selection itself?
-#[derive(Debug, Clone)]
-enum SelectionSummary {
-    SingleContainerItem(ContainerId),
-    SingleSpaceView(SpaceViewId),
-    ContentsItems(Vec<Contents>),
-    Heterogeneous,
-    Empty,
-}
-
-fn summarize_selection(selection: &Selection) -> SelectionSummary {
-    if selection.is_empty() {
-        return SelectionSummary::Empty;
     }
 
-    if selection.len() == 1 {
-        if let Some(Item::Container(container_id)) = selection.first_item() {
-            return SelectionSummary::SingleContainerItem(*container_id);
-        } else if let Some(Item::SpaceView(space_view_id)) = selection.first_item() {
-            return SelectionSummary::SingleSpaceView(*space_view_id);
-        }
+    /// Process a single recording.
+    fn process_store_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &re_log_types::StoreId) {}
+
+    /// Process a single component.
+    fn process_component_path(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _component_path: &re_log_types::ComponentPath,
+    ) {
     }
 
-    // check if we have only space views or containers
-    let only_space_view_or_container: Option<Vec<_>> = selection
-        .iter()
-        .map(|(item, _)| match item {
-            Item::Container(container_id) => Some(Contents::Container(*container_id)),
-            Item::SpaceView(space_view_id) => Some(Contents::SpaceView(*space_view_id)),
-            _ => None,
-        })
-        .collect();
-    if let Some(contents) = only_space_view_or_container {
-        return SelectionSummary::ContentsItems(contents);
+    /// Process a single space view.
+    fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &SpaceViewId) {}
+
+    /// Process a single instance.
+    fn process_instance_path(&self, _ctx: &ContextMenuContext<'_>, _instance_path: &InstancePath) {}
+
+    /// Process a single data result.
+    fn process_data_result(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _space_view_id: &SpaceViewId,
+        _instance_path: &InstancePath,
+    ) {
     }
 
-    SelectionSummary::Heterogeneous
+    /// Process a single container.
+    fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
 }
