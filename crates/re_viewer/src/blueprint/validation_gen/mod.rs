@@ -5,13 +5,13 @@ pub use re_entity_db::blueprint::components::EntityPropertiesComponent;
 use re_entity_db::EntityDb;
 pub use re_space_view::blueprint::components::QueryExpressions;
 pub use re_types::blueprint::components::ActiveTab;
-pub use re_types::blueprint::components::ColumnShares;
+pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::EntitiesDeterminedByUser;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::IncludedQueries;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
-pub use re_types::blueprint::components::RowShares;
+pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::Visible;
@@ -30,7 +30,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     validate_component::<ActiveTab>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoSpaceViews>(blueprint)
-        && validate_component::<ColumnShares>(blueprint)
+        && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
         && validate_component::<EntitiesDeterminedByUser>(blueprint)
@@ -43,7 +43,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<PanelView>(blueprint)
         && validate_component::<QueryExpressions>(blueprint)
         && validate_component::<RootContainer>(blueprint)
-        && validate_component::<RowShares>(blueprint)
+        && validate_component::<RowShare>(blueprint)
         && validate_component::<SpaceViewClass>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)
         && validate_component::<SpaceViewOrigin>(blueprint)

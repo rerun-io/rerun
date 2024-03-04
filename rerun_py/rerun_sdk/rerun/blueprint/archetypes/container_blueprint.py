@@ -27,8 +27,8 @@ class ContainerBlueprint(Archetype):
         *,
         display_name: datatypes.Utf8Like | None = None,
         contents: datatypes.EntityPathArrayLike | None = None,
-        col_shares: blueprint_components.ColumnSharesLike | None = None,
-        row_shares: blueprint_components.RowSharesLike | None = None,
+        col_shares: blueprint_components.ColumnShareArrayLike | None = None,
+        row_shares: blueprint_components.RowShareArrayLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         grid_columns: blueprint_components.GridColumnsLike | None = None,
@@ -134,10 +134,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    col_shares: blueprint_components.ColumnSharesBatch | None = field(
+    col_shares: blueprint_components.ColumnShareBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.ColumnSharesBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ColumnShareBatch._optional,  # type: ignore[misc]
     )
     # The layout shares of each column in the container.
     #
@@ -147,10 +147,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    row_shares: blueprint_components.RowSharesBatch | None = field(
+    row_shares: blueprint_components.RowShareBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.RowSharesBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.RowShareBatch._optional,  # type: ignore[misc]
     )
     # The layout shares of each row of the container.
     #
