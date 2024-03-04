@@ -30,14 +30,14 @@ table ContainerBlueprint (
     /// For `Horizontal` containers, the length of this list should always match the number of contents.
     ///
     /// Ignored for `Vertical` containers.
-    col_shares: rerun.blueprint.components.ColumnShares ("attr.rerun.component_optional", nullable, order: 400);
+    col_shares: [rerun.blueprint.components.ColumnShare] ("attr.rerun.component_optional", nullable, order: 400);
 
     /// The layout shares of each row of the container.
     ///
     /// For `Vertical` containers, the length of this list should always match the number of contents.
     ///
     /// Ignored for `Horizontal` containers.
-    row_shares: rerun.blueprint.components.RowShares ("attr.rerun.component_optional", nullable, order: 500);
+    row_shares: [rerun.blueprint.components.RowShare] ("attr.rerun.component_optional", nullable, order: 500);
 
     /// Which tab is active.
     ///

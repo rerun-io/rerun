@@ -10,11 +10,13 @@ namespace rerun.blueprint.components;
 // ---
 
 
-/// The layout shares of each column in the container.
-table ColumnShares (
+/// The layout share of a column in the container.
+table ColumnShare (
+    "attr.python.aliases": "float",
+    "attr.python.array_aliases": "npt.NDArray[np.float64]",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
-    /// The layout shares of each column in the container.
-    shares: [float] (order: 100);
+    /// The layout shares of a column in the container.
+    share: float (order: 100);
 }
