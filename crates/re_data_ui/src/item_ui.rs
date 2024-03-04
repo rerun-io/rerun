@@ -125,8 +125,12 @@ pub fn instance_path_button(
     )
 }
 
+/// Return the instance path icon.
+///
+/// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
+/// _on the current timeline_.
 pub fn instance_path_icon(
-    query: &re_data_store::LatestAtQuery,
+    timeline: &re_data_store::Timeline,
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) -> &'static re_ui::icons::Icon {
@@ -135,7 +139,7 @@ pub fn instance_path_icon(
     }
 
     if store
-        .all_components(&query.timeline, &instance_path.entity_path)
+        .all_components(timeline, &instance_path.entity_path)
         .is_some()
     {
         &re_ui::icons::ENTITY
@@ -174,7 +178,7 @@ pub fn guess_instance_path_icon(
     instance_path: &InstancePath,
 ) -> &'static re_ui::icons::Icon {
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query, store, instance_path)
+    instance_path_icon(&query.timeline, store, instance_path)
 }
 
 /// Show an instance id and make it selectable.
@@ -197,7 +201,7 @@ pub fn instance_path_button_to(
         .re_ui
         .selectable_label_with_icon(
             ui,
-            instance_path_icon(query, store, instance_path),
+            instance_path_icon(&query.timeline, store, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
