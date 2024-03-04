@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class AutoSpaceViewsExt:
-    """Extension for [AutoSpaceViews][rerun.blueprint.components.AutoSpaceViews]."""
+    """Extension for [AutoSpaceViews][rerun.components.AutoSpaceViews]."""
 
     @staticmethod
     def native_to_pa_array_override(data: AutoSpaceViewsArrayLike, data_type: pa.DataType) -> pa.Array:

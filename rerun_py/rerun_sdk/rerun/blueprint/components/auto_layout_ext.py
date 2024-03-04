@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class AutoLayoutExt:
-    """Extension for [AutoLayout][rerun.blueprint.components.AutoLayout]."""
+    """Extension for [AutoLayout][rerun.components.AutoLayout]."""
 
     @staticmethod
     def native_to_pa_array_override(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:

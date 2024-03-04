@@ -33,7 +33,8 @@ namespace rerun::blueprint::archetypes {
 
         /// Whether the viewport layout is determined automatically.
         ///
-        /// Set to `false` the first time the user messes around with the viewport blueprint.
+        /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+        /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
         std::optional<rerun::blueprint::components::AutoLayout> auto_layout;
 
         /// Whether or not space views should be created automatically.
@@ -74,7 +75,8 @@ namespace rerun::blueprint::archetypes {
 
         /// Whether the viewport layout is determined automatically.
         ///
-        /// Set to `false` the first time the user messes around with the viewport blueprint.
+        /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+        /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
         ViewportBlueprint with_auto_layout(rerun::blueprint::components::AutoLayout _auto_layout
         ) && {
             auto_layout = std::move(_auto_layout);
