@@ -17,7 +17,7 @@ void set_time_from_args(const rerun::RecordingStream& rec, cxxopts::ParseResult&
             if (pos != std::string::npos) {
                 auto timeline_name = time_str.substr(0, pos);
                 int64_t time = std::stol(time_str.substr(pos + 1));
-                rec.set_time_seconds(timeline_name, time);
+                rec.set_time_seconds(timeline_name, static_cast<double>(time));
             }
         }
     }
