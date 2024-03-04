@@ -1095,10 +1095,11 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
-        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
+        entity_path_prefix: Option<EntityPath>,
+        timeless: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(settings, filepath, None)
+        self.log_file(filepath, None, entity_path_prefix, timeless)
     }
 
     /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
@@ -1112,20 +1113,27 @@ impl RecordingStream {
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,
-        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
+        entity_path_prefix: Option<EntityPath>,
+        timeless: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(settings, filepath, Some(contents))
+        self.log_file(filepath, Some(contents), entity_path_prefix, timeless)
     }
 
     #[cfg(feature = "data_loaders")]
     fn log_file(
         &self,
-        settings: &re_data_source::DataLoaderSettings,
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
+        entity_path_prefix: Option<EntityPath>,
+        timeless: bool,
     ) -> RecordingStreamResult<()> {
+        let Some(store_info) = self.store_info().clone() else {
+            re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
+            return Ok(());
+        };
+
         let filepath = filepath.as_ref();
         let has_contents = contents.is_some();
 
@@ -1134,16 +1142,45 @@ impl RecordingStream {
             re_smart_channel::SmartChannelSource::File(filepath.into()),
         );
 
+        let settings = crate::DataLoaderSettings {
+            application_id: Some(store_info.application_id.clone()),
+            opened_application_id: None,
+            store_id: store_info.store_id,
+            opened_store_id: None,
+            entity_path_prefix,
+            timepoint: (!timeless).then(|| {
+                self.with(|inner| {
+                    // Get the current time on all timelines, for the current recording, on the current
+                    // thread…
+                    let mut now = self.now();
+
+                    // …and then also inject the current recording tick into it.
+                    let tick = inner
+                        .tick
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    now.insert(Timeline::log_tick(), tick.into());
+
+                    now
+                })
+                .unwrap_or_default()
+            }), // timepoint: self.time,
+        };
+
         if let Some(contents) = contents {
             re_data_source::load_from_file_contents(
-                settings,
+                &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
                 contents,
                 &tx,
             )?;
         } else {
-            re_data_source::load_from_path(settings, re_log_types::FileSource::Sdk, filepath, &tx)?;
+            re_data_source::load_from_path(
+                &settings,
+                re_log_types::FileSource::Sdk,
+                filepath,
+                &tx,
+            )?;
         }
         drop(tx);
 
