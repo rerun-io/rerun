@@ -5,7 +5,7 @@ import itertools
 from rerun.blueprint.archetypes.viewport_blueprint import ViewportBlueprint
 from rerun.blueprint.components.included_space_view import IncludedSpaceViewBatch
 
-from tests.unit.common_arrays import none_empty_or_value, uuids_arrays
+from .common_arrays import none_empty_or_value, uuids_arrays
 
 # TODO(andreas): We're obviously nowhere near done with this.
 
@@ -29,7 +29,7 @@ def test_viewport_blueprint() -> None:
 
     # for space_views, layout, root_container, maximized, auto_layout, auto_space_views in all_arrays:
     for (space_views,) in all_arrays:
-        space_views = space_views if space_views is not None else space_views_arrays[-1]
+        # space_views = space_views if space_views is not None else space_views_arrays[-1]
 
         print(
             "rr.ViewportBlueprint(\n",
