@@ -171,9 +171,8 @@ impl ContainerBlueprint {
 
         let contents = contents
             .unwrap_or_default()
-            .0
             .into_iter()
-            .filter_map(|id| Contents::try_from(&id.into()))
+            .filter_map(|id| Contents::try_from(&id.0.into()))
             .collect();
 
         let col_shares = col_shares.unwrap_or_default().0.iter().cloned().collect();
