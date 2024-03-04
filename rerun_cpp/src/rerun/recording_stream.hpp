@@ -527,7 +527,6 @@ namespace rerun {
         /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
         ///
         /// \param filepath Path to the file to be logged.
-        /// \param recording_id The recommended `RecordingId` to log the data to.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
         /// \param timeless Should the logged data be timeless?
         ///
@@ -600,7 +599,6 @@ namespace rerun {
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
-        /// \param recording_id The recommended `RecordingId` to log the data to.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
         /// \param timeless Should the logged data be timeless?
         ///
