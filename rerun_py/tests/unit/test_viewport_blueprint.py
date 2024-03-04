@@ -3,11 +3,11 @@ from __future__ import annotations
 import itertools
 
 from rerun.blueprint.archetypes.viewport_blueprint import ViewportBlueprint
+from rerun.blueprint.components.auto_layout import AutoLayoutBatch
+from rerun.blueprint.components.auto_space_views import AutoSpaceViewsBatch
 from rerun.blueprint.components.included_space_view import IncludedSpaceViewBatch
 from rerun.blueprint.components.root_container import RootContainerBatch
 from rerun.blueprint.components.space_view_maximized import SpaceViewMaximizedBatch
-from rerun.blueprint.components.auto_layout import AutoLayoutBatch
-from rerun.blueprint.components.auto_space_views import AutoSpaceViewsBatch
 
 from .common_arrays import none_empty_or_value, uuids_arrays, uuid_bytes0, uuid_bytes1
 
