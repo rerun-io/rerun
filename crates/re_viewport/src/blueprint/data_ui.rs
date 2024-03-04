@@ -28,15 +28,8 @@ impl DataUi for SpaceViewMaximized {
         query: &re_data_store::LatestAtQuery,
         store: &re_data_store::DataStore,
     ) {
-        match self.0 {
-            Some(space_view) => {
-                let space_view: SpaceViewId = space_view.into();
-                space_view.data_ui(ctx, ui, verbosity, query, store);
-            }
-            None => {
-                ui.label("None");
-            }
-        }
+        let space_view: SpaceViewId = self.0.into();
+        space_view.data_ui(ctx, ui, verbosity, query, store);
     }
 }
 

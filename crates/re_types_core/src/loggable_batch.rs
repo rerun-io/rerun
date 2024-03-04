@@ -147,6 +147,36 @@ impl<D: Datatype> DatatypeBatch for D {}
 
 impl<C: Component> ComponentBatch for C {}
 
+// --- Unary Option ---
+
+impl<L: Clone + Loggable> LoggableBatch for Option<L> {
+    type Name = L::Name;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        L::name()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.is_some() as usize
+    }
+
+    #[inline]
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        L::arrow_field()
+    }
+
+    #[inline]
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
+    }
+}
+
+impl<D: Datatype> DatatypeBatch for Option<D> {}
+
+impl<C: Component> ComponentBatch for Option<C> {}
+
 // --- Vec ---
 
 impl<L: Clone + Loggable> LoggableBatch for Vec<L> {

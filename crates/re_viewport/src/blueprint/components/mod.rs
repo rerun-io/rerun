@@ -9,7 +9,6 @@ mod grid_columns;
 mod included_space_view;
 mod root_container;
 mod space_view_maximized;
-mod space_view_maximized_ext;
 
 pub use self::auto_layout::AutoLayout;
 pub use self::auto_space_views::AutoSpaceViews;

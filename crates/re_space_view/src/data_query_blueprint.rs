@@ -122,7 +122,7 @@ impl DataQueryBlueprint {
                 self.pending_writes.clone(),
             ));
 
-        ctx.save_blueprint_component(
+        ctx.save_blueprint_component::<QueryExpressions>(
             &self.id.as_entity_path(),
             QueryExpressions::from(&self.entity_path_filter),
         );

@@ -2,7 +2,7 @@ use re_log_types::{
     external::arrow2::datatypes::DataType, DataCell, DataRow, EntityPath, RowId, Time, TimePoint,
     Timeline,
 };
-use re_types::{components::InstanceKey, ComponentName};
+use re_types::{components::InstanceKey, ComponentBatch, ComponentName};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -27,18 +27,17 @@ impl ViewerContext<'_> {
         self.save_blueprint_component_data_cell(entity_path, [component].into(), 1);
     }
 
-    /// Helper to save an iterator of components to the blueprint store.
-    pub fn save_blueprint_component_iter<'a, C>(
+    /// Helper to save a component batch to the blueprint store.
+    pub fn save_blueprint_component_batch(
         &self,
         entity_path: &EntityPath,
-        components: impl Iterator<Item = C>,
-    ) where
-        C: re_types::Component + Clone + 'a,
-        std::borrow::Cow<'a, C>: std::convert::From<C>,
-    {
-        let components = components.collect::<Vec<_>>();
-        let num_instances = components.len() as u32;
-        self.save_blueprint_component_data_cell(entity_path, components.into(), num_instances);
+        components: &dyn ComponentBatch,
+    ) {
+        self.save_blueprint_component_data_cell(
+            entity_path,
+            DataCell::from_component_batch(components).unwrap(),
+            components.num_instances() as u32,
+        );
     }
 
     fn save_blueprint_component_data_cell(
