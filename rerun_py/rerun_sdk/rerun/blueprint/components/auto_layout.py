@@ -11,12 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .auto_layout_ext import AutoLayoutExt
 
 __all__ = ["AutoLayout", "AutoLayoutArrayLike", "AutoLayoutBatch", "AutoLayoutLike", "AutoLayoutType"]
 
 
 @define(init=False)
-class AutoLayout:
+class AutoLayout(AutoLayoutExt):
     """
     **Component**: Whether the viewport layout is determined automatically.
 
@@ -51,4 +52,4 @@ class AutoLayoutBatch(BaseBatch[AutoLayoutArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in auto_layout_ext.py
+        return AutoLayoutExt.native_to_pa_array_override(data, data_type)

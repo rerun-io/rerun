@@ -11,6 +11,7 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .auto_space_views_ext import AutoSpaceViewsExt
 
 __all__ = [
     "AutoSpaceViews",
@@ -22,7 +23,7 @@ __all__ = [
 
 
 @define(init=False)
-class AutoSpaceViews:
+class AutoSpaceViews(AutoSpaceViewsExt):
     """
     **Component**: Whether or not space views should be created automatically.
 
@@ -57,4 +58,4 @@ class AutoSpaceViewsBatch(BaseBatch[AutoSpaceViewsArrayLike], ComponentBatchMixi
 
     @staticmethod
     def _native_to_pa_array(data: AutoSpaceViewsArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in auto_space_views_ext.py
+        return AutoSpaceViewsExt.native_to_pa_array_override(data, data_type)

@@ -24,9 +24,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Whether a space view is maximized.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 #[repr(transparent)]
-pub struct SpaceViewMaximized(pub Option<crate::datatypes::Uuid>);
+pub struct SpaceViewMaximized(pub crate::datatypes::Uuid);
 
 impl ::re_types_core::SizeBytes for SpaceViewMaximized {
     #[inline]
@@ -36,28 +36,28 @@ impl ::re_types_core::SizeBytes for SpaceViewMaximized {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::datatypes::Uuid>>::is_pod()
+        <crate::datatypes::Uuid>::is_pod()
     }
 }
 
-impl<T: Into<Option<crate::datatypes::Uuid>>> From<T> for SpaceViewMaximized {
+impl<T: Into<crate::datatypes::Uuid>> From<T> for SpaceViewMaximized {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<Option<crate::datatypes::Uuid>> for SpaceViewMaximized {
+impl std::borrow::Borrow<crate::datatypes::Uuid> for SpaceViewMaximized {
     #[inline]
-    fn borrow(&self) -> &Option<crate::datatypes::Uuid> {
+    fn borrow(&self) -> &crate::datatypes::Uuid {
         &self.0
     }
 }
 
 impl std::ops::Deref for SpaceViewMaximized {
-    type Target = Option<crate::datatypes::Uuid>;
+    type Target = crate::datatypes::Uuid;
 
     #[inline]
-    fn deref(&self) -> &Option<crate::datatypes::Uuid> {
+    fn deref(&self) -> &crate::datatypes::Uuid {
         &self.0
     }
 }
@@ -96,12 +96,10 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum
-                        .map(|datum| {
-                            let Self(data0) = datum.into_owned();
-                            data0
-                        })
-                        .flatten();
+                    let datum = datum.map(|datum| {
+                        let Self(data0) = datum.into_owned();
+                        data0
+                    });
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -224,10 +222,65 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
             }
             .into_iter()
         }
-        .map(Ok)
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.blueprint.components.SpaceViewMaximized#space_view_id")
         .with_context("rerun.blueprint.components.SpaceViewMaximized")?)
+    }
+
+    #[allow(clippy::wildcard_imports)]
+    #[inline]
+    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = arrow_data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(DeserializationError::missing_data());
+            }
+        }
+        Ok({
+            let slice = {
+                let arrow_data = arrow_data
+                    .as_any()
+                    .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                    .ok_or_else(|| {
+                        let expected = DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                            16usize,
+                        );
+                        let actual = arrow_data.data_type().clone();
+                        DeserializationError::datatype_mismatch(expected, actual)
+                    })
+                    .with_context("rerun.blueprint.components.SpaceViewMaximized#space_view_id")?;
+                let arrow_data_inner = &**arrow_data.values();
+                bytemuck::cast_slice::<_, [_; 16usize]>(
+                    arrow_data_inner
+                        .as_any()
+                        .downcast_ref::<UInt8Array>()
+                        .ok_or_else(|| {
+                            let expected = DataType::UInt8;
+                            let actual = arrow_data_inner.data_type().clone();
+                            DeserializationError::datatype_mismatch(expected, actual)
+                        })
+                        .with_context(
+                            "rerun.blueprint.components.SpaceViewMaximized#space_view_id",
+                        )?
+                        .values()
+                        .as_slice(),
+                )
+            };
+            {
+                slice
+                    .iter()
+                    .copied()
+                    .map(|bytes| crate::datatypes::Uuid { bytes })
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
+            }
+        })
     }
 }

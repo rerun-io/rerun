@@ -21,15 +21,14 @@ namespace rerun {
         arrow::FixedSizeListBuilder* builder,
         const blueprint::components::SpaceViewMaximized* elements, size_t num_elements
     ) {
-        (void)builder;
-        (void)elements;
-        (void)num_elements;
-        if (true) {
-            return rerun::Error(
-                ErrorCode::NotImplemented,
-                "TODO(andreas) Handle nullable extensions"
-            );
-        }
+        static_assert(
+            sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::SpaceViewMaximized)
+        );
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
+            builder,
+            reinterpret_cast<const rerun::datatypes::Uuid*>(elements),
+            num_elements
+        ));
 
         return Error::ok();
     }

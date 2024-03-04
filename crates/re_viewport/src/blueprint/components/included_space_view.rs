@@ -167,7 +167,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_ids")?;
+                .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_id")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
@@ -184,9 +184,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                             let actual = arrow_data_inner.data_type().clone();
                             DeserializationError::datatype_mismatch(expected, actual)
                         })
-                        .with_context(
-                            "rerun.blueprint.components.IncludedSpaceView#space_view_ids",
-                        )?
+                        .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_id")?
                         .into_iter()
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
@@ -225,7 +223,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
         .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_ids")
+        .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_id")
         .with_context("rerun.blueprint.components.IncludedSpaceView")?)
     }
 
@@ -255,7 +253,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
-                    .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_ids")?;
+                    .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_id")?;
                 let arrow_data_inner = &**arrow_data.values();
                 bytemuck::cast_slice::<_, [_; 16usize]>(
                     arrow_data_inner
@@ -266,9 +264,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                             let actual = arrow_data_inner.data_type().clone();
                             DeserializationError::datatype_mismatch(expected, actual)
                         })
-                        .with_context(
-                            "rerun.blueprint.components.IncludedSpaceView#space_view_ids",
-                        )?
+                        .with_context("rerun.blueprint.components.IncludedSpaceView#space_view_id")?
                         .values()
                         .as_slice(),
                 )
