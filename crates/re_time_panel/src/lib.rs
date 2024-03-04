@@ -13,6 +13,7 @@ mod time_selection_ui;
 use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, TimeInt,
@@ -573,7 +574,10 @@ impl TimePanel {
             item_response: response,
             body_response,
         } = ListItem::new(ctx.re_ui, text)
-            .with_icon(&re_ui::icons::ENTITY)
+            .with_icon(guess_instance_path_icon(
+                ctx,
+                &InstancePath::from(tree.path.clone()),
+            ))
             .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)

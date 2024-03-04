@@ -3,6 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
+use re_log_types::external::re_types_core::components::InstanceKey;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
@@ -124,6 +125,62 @@ pub fn instance_path_button(
     )
 }
 
+/// Return the instance path icon.
+///
+/// The choice of icon is based on whether the instance is "empty" as in hasn't any logged component
+/// _on the current timeline_.
+pub fn instance_path_icon(
+    timeline: &re_data_store::Timeline,
+    store: &re_data_store::DataStore,
+    instance_path: &InstancePath,
+) -> &'static re_ui::icons::Icon {
+    if instance_path.instance_key != InstanceKey::SPLAT {
+        return &re_ui::icons::ENTITY;
+    }
+
+    if store
+        .all_components(timeline, &instance_path.entity_path)
+        .is_some()
+    {
+        &re_ui::icons::ENTITY
+    } else {
+        &re_ui::icons::ENTITY_EMPTY
+    }
+}
+
+/// The current time query, based on the current time control and an `entity_path`
+///
+/// If the user is inspecting the blueprint, and the `entity_path` is on the blueprint
+/// timeline, then use the blueprint. Otherwise, use the recording.
+// TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
+// directly from the entity_path.
+pub fn guess_query_and_store_for_selected_entity<'a>(
+    ctx: &'a ViewerContext<'_>,
+    entity_path: &EntityPath,
+) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
+    if ctx.app_options.inspect_blueprint_timeline
+        && ctx.store_context.blueprint.is_logged_entity(entity_path)
+    {
+        (
+            ctx.blueprint_cfg.time_ctrl.read().current_query(),
+            ctx.store_context.blueprint.store(),
+        )
+    } else {
+        (
+            ctx.rec_cfg.time_ctrl.read().current_query(),
+            ctx.entity_db.store(),
+        )
+    }
+}
+
+pub fn guess_instance_path_icon(
+    ctx: &ViewerContext<'_>,
+    instance_path: &InstancePath,
+) -> &'static re_ui::icons::Icon {
+    let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+    instance_path_icon(&query.timeline, store, instance_path)
+}
+
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
     ctx: &ViewerContext<'_>,
@@ -144,7 +201,7 @@ pub fn instance_path_button_to(
         .re_ui
         .selectable_label_with_icon(
             ui,
-            &re_ui::icons::ENTITY,
+            instance_path_icon(&query.timeline, store, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
