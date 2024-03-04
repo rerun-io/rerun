@@ -32,7 +32,7 @@ target_link_libraries(your_executable PRIVATE rerun_sdk)
 Put the following code to your `main.cpp`:
 
 ```cpp
-${EXAMPLE_CODE}
+${EXAMPLE_CODE_CPP_CONNECT}
 ```
 
 Start the rerun viewer (`rerun`) and then build and run your C++ program.
