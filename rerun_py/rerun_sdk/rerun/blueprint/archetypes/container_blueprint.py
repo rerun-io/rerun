@@ -26,7 +26,7 @@ class ContainerBlueprint(Archetype):
         container_kind: blueprint_components.ContainerKindLike,
         *,
         display_name: datatypes.Utf8Like | None = None,
-        contents: blueprint_components.IncludedContentsLike | None = None,
+        contents: datatypes.EntityPathArrayLike | None = None,
         col_shares: blueprint_components.ColumnSharesLike | None = None,
         row_shares: blueprint_components.RowSharesLike | None = None,
         active_tab: datatypes.EntityPathLike | None = None,
@@ -125,10 +125,10 @@ class ContainerBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    contents: blueprint_components.IncludedContentsBatch | None = field(
+    contents: blueprint_components.IncludedContentBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.IncludedContentsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.IncludedContentBatch._optional,  # type: ignore[misc]
     )
     # `ContainerIds`s or `SpaceViewId`s that are children of this container.
     #

@@ -31,7 +31,7 @@ pub struct ContainerBlueprint {
     pub display_name: Option<crate::components::Name>,
 
     /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
-    pub contents: Option<crate::blueprint::components::IncludedContents>,
+    pub contents: Option<Vec<crate::blueprint::components::IncludedContent>>,
 
     /// The layout shares of each column in the container.
     ///
@@ -82,7 +82,7 @@ impl ::re_types_core::SizeBytes for ContainerBlueprint {
     fn is_pod() -> bool {
         <crate::blueprint::components::ContainerKind>::is_pod()
             && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::blueprint::components::IncludedContents>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::IncludedContent>>>::is_pod()
             && <Option<crate::blueprint::components::ColumnShares>>::is_pod()
             && <Option<crate::blueprint::components::RowShares>>::is_pod()
             && <Option<crate::blueprint::components::ActiveTab>>::is_pod()
@@ -105,7 +105,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.ActiveTab".into(),
             "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
-            "rerun.blueprint.components.IncludedContents".into(),
+            "rerun.blueprint.components.IncludedContent".into(),
             "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
@@ -121,7 +121,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.blueprint.components.ActiveTab".into(),
             "rerun.blueprint.components.ColumnShares".into(),
             "rerun.blueprint.components.GridColumns".into(),
-            "rerun.blueprint.components.IncludedContents".into(),
+            "rerun.blueprint.components.IncludedContent".into(),
             "rerun.blueprint.components.RowShares".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
@@ -203,17 +203,19 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         } else {
             None
         };
-        let contents = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.IncludedContents")
-        {
-            <crate::blueprint::components::IncludedContents>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let contents =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedContent") {
+                Some({
+                    <crate::blueprint::components::IncludedContent>::from_arrow_opt(&**array)
+                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
+                })
+            } else {
+                None
+            };
         let col_shares =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ColumnShares") {
                 <crate::blueprint::components::ColumnShares>::from_arrow_opt(&**array)
@@ -289,7 +291,7 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.contents
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.col_shares
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -340,9 +342,9 @@ impl ContainerBlueprint {
     #[inline]
     pub fn with_contents(
         mut self,
-        contents: impl Into<crate::blueprint::components::IncludedContents>,
+        contents: impl IntoIterator<Item = impl Into<crate::blueprint::components::IncludedContent>>,
     ) -> Self {
-        self.contents = Some(contents.into());
+        self.contents = Some(contents.into_iter().map(Into::into).collect());
         self
     }
 

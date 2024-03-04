@@ -7,7 +7,7 @@
 #include "../../blueprint/components/column_shares.hpp"
 #include "../../blueprint/components/container_kind.hpp"
 #include "../../blueprint/components/grid_columns.hpp"
-#include "../../blueprint/components/included_contents.hpp"
+#include "../../blueprint/components/included_content.hpp"
 #include "../../blueprint/components/row_shares.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
@@ -32,7 +32,7 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::components::Name> display_name;
 
         /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
-        std::optional<rerun::blueprint::components::IncludedContents> contents;
+        std::optional<Collection<rerun::blueprint::components::IncludedContent>> contents;
 
         /// The layout shares of each column in the container.
         ///
@@ -87,7 +87,8 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
-        ContainerBlueprint with_contents(rerun::blueprint::components::IncludedContents _contents
+        ContainerBlueprint with_contents(
+            Collection<rerun::blueprint::components::IncludedContent> _contents
         ) && {
             contents = std::move(_contents);
             // See: https://github.com/rerun-io/rerun/issues/4027
