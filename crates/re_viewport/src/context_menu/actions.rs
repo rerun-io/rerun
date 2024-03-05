@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, EntityPathFilter};
-use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
+use re_space_view::SpaceViewBlueprint;
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
 use super::{ContextMenuAction, ContextMenuContext};
@@ -211,11 +211,8 @@ impl ContextMenuAction for AddSpaceViewAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let space_view = SpaceViewBlueprint::new(
-            self.0,
-            &EntityPath::root(),
-            DataQueryBlueprint::new(self.0, EntityPathFilter::default()),
-        );
+        let space_view =
+            SpaceViewBlueprint::new(self.0, &EntityPath::root(), EntityPathFilter::default());
 
         ctx.viewport_blueprint.add_space_views(
             std::iter::once(space_view),

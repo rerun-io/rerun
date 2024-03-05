@@ -1,6 +1,4 @@
-use re_viewer_context::{
-    BlueprintId, BlueprintIdRegistry, DataQueryId, UiVerbosity, ViewerContext,
-};
+use re_viewer_context::{BlueprintId, BlueprintIdRegistry, UiVerbosity, ViewerContext};
 
 use crate::{item_ui::entity_path_button_to, DataUi};
 

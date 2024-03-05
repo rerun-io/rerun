@@ -9,34 +9,45 @@ use re_entity_db::{
 use re_log_types::{
     path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
 };
+use re_types::{
+    blueprint::{
+        archetypes as blueprint_archetypes,
+        components::{EntitiesDeterminedByUser, QueryExpression},
+    },
+    Archetype as _,
+};
 use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
-    DataResultNode, DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides,
-    SpaceViewClassIdentifier, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
+    blueprint_timepoint_for_writes, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
+    DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
+    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
     VisualizableEntities,
 };
 
 use crate::{
-    blueprint::components::QueryExpressions, DataQuery, EntityOverrideContext, PropertyResolver,
+    query_space_view_sub_archetype, DataQuery, EntityOverrideContext, PropertyResolver,
     SpaceViewBlueprint,
 };
 
-/// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
+/// An implementation of [`DataQuery`] that is built from a [`blueprint_archetypes::SpaceViewContents`].
 ///
 /// During execution it will walk an [`EntityTree`] and return a [`DataResultTree`]
-/// containing any entities that match a [`EntityPathFilter`]s.
+/// containing any entities that match a [`EntityPathFilter`].
 ///
-/// Note: [`DataQueryBlueprint`] doesn't implement Clone because it stores an internal
-/// uuid used for identifying the path of its data in the blueprint store. It's ambiguous
+/// Note: [`DataQueryBlueprint`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
+/// used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`DataQueryBlueprint::duplicate`].
 pub struct DataQueryBlueprint {
-    pub id: DataQueryId,
+    pub blueprint_entity_path: EntityPath,
+
     pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
+
+    /// True if the user is expected to add entities themselves. False otherwise.
+    pub entities_determined_by_user: bool,
 
     /// Pending blueprint writes for nested components from duplicate.
     pending_writes: Vec<DataRow>,
@@ -75,37 +86,49 @@ impl DataQueryBlueprint {
     /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
+        id: SpaceViewId,
         space_view_class_identifier: SpaceViewClassIdentifier,
         entity_path_filter: EntityPathFilter,
     ) -> Self {
+        // Don't use `entity_path_for_space_view_sub_archetype` here because this will do a search in the future,
+        // thus needing the entity tree.
+        let blueprint_entity_path = id.as_entity_path().join(&EntityPath::from_single_string(
+            blueprint_archetypes::SpaceViewContents::name().short_name(),
+        ));
+
         Self {
-            id: DataQueryId::random(),
+            blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
+            entities_determined_by_user: false,
             pending_writes: Default::default(),
         }
     }
 
     /// Attempt to load a [`DataQueryBlueprint`] from the blueprint store.
-    pub fn try_from_db(
-        id: DataQueryId,
+    pub fn from_db_or_default(
+        id: SpaceViewId,
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
         space_view_class_identifier: SpaceViewClassIdentifier,
-    ) -> Option<Self> {
-        let expressions = blueprint_db
-            .store()
-            .query_latest_component::<QueryExpressions>(&id.as_entity_path(), query)
-            .map(|c| c.value)?;
+    ) -> Self {
+        let (
+            blueprint_archetypes::SpaceViewContents {
+                query,
+                entities_determined_by_user,
+            },
+            blueprint_entity_path,
+        ) = query_space_view_sub_archetype(id, blueprint_db, query);
 
-        let entity_path_filter = EntityPathFilter::from(&expressions);
+        let entity_path_filter = EntityPathFilter::parse_forgiving(query.0.as_str());
 
-        Some(Self {
-            id,
+        Self {
+            blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
+            entities_determined_by_user: entities_determined_by_user.map_or(false, |b| b.0),
             pending_writes: Default::default(),
-        })
+        }
     }
 
     /// Persist the entire [`DataQueryBlueprint`] to the blueprint store.
@@ -122,27 +145,59 @@ impl DataQueryBlueprint {
                 self.pending_writes.clone(),
             ));
 
+        // TODO(andreas): There should be a save_blueprint_archetype
         ctx.save_blueprint_component(
-            &self.id.as_entity_path(),
-            &QueryExpressions::from(&self.entity_path_filter),
+            &self.blueprint_entity_path,
+            &QueryExpression(self.entity_path_filter.formatted().into()),
+        );
+        ctx.save_blueprint_component(
+            &self.blueprint_entity_path,
+            &EntitiesDeterminedByUser(self.entities_determined_by_user),
         );
     }
 
-    /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`DataQueryId`]
-    pub fn duplicate(&self, blueprint: &EntityDb, query: &LatestAtQuery) -> Self {
+    pub fn set_entity_path_filter(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path_filter: &EntityPathFilter,
+    ) {
+        if &self.entity_path_filter == entity_path_filter {
+            return;
+        }
+
+        ctx.save_blueprint_component(
+            &self.blueprint_entity_path,
+            &QueryExpression(self.entity_path_filter.formatted().into()),
+        );
+
+        if !self.entities_determined_by_user {
+            ctx.save_blueprint_component(
+                &self.blueprint_entity_path,
+                &EntitiesDeterminedByUser(true),
+            );
+        }
+    }
+
+    /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`SpaceViewId`]
+    pub fn duplicate(
+        &self,
+        new_id: SpaceViewId,
+        blueprint: &EntityDb,
+        query: &LatestAtQuery,
+    ) -> Self {
         let mut pending_writes = Vec::new();
 
-        let current_path = self.id.as_entity_path();
-        let new_id = DataQueryId::random();
-        let new_path = new_id.as_entity_path();
+        let new_blueprint_path = crate::entity_path_for_space_view_sub_archetype::<
+            blueprint_archetypes::SpaceViewContents,
+        >(new_id, blueprint.tree());
 
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+        if let Some(tree) = blueprint.tree().subtree(&self.blueprint_entity_path) {
             tree.visit_children_recursively(&mut |path, info| {
-                let sub_path: EntityPath = new_path
+                let sub_path: EntityPath = new_blueprint_path
                     .iter()
-                    .chain(&path[current_path.len()..])
+                    .chain(&path[self.blueprint_entity_path.len()..])
                     .cloned()
                     .collect();
 
@@ -166,16 +221,17 @@ impl DataQueryBlueprint {
         }
 
         Self {
-            id: new_id,
+            blueprint_entity_path: new_blueprint_path,
             space_view_class_identifier: self.space_view_class_identifier,
             entity_path_filter: self.entity_path_filter.clone(),
+            entities_determined_by_user: self.entities_determined_by_user,
             pending_writes,
         }
     }
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.id.as_entity_path(), &clear.is_recursive);
+        ctx.save_blueprint_component(&self.blueprint_entity_path, &clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(
@@ -186,7 +242,7 @@ impl DataQueryBlueprint {
         visualizable_entities_per_visualizer: &'a PerVisualizer<VisualizableEntities>,
         indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
     ) -> DataQueryPropertyResolver<'a> {
-        let base_override_root = self.id.as_entity_path().clone();
+        let base_override_root = &self.blueprint_entity_path;
         let individual_override_root =
             base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
         let recursive_override_root =
@@ -195,7 +251,7 @@ impl DataQueryBlueprint {
             space_view_class_registry,
             space_view,
             auto_properties,
-            default_stack: vec![space_view.entity_path(), self.id.as_entity_path()],
+            default_stack: vec![space_view.entity_path(), self.blueprint_entity_path.clone()],
             individual_override_root,
             recursive_override_root,
             visualizable_entities_per_visualizer,
@@ -203,45 +259,24 @@ impl DataQueryBlueprint {
         }
     }
 
-    fn save_expressions(&self, ctx: &ViewerContext<'_>, entity_path_filter: &EntityPathFilter) {
-        let timepoint = blueprint_timepoint_for_writes();
-
-        let expressions_component = QueryExpressions::from(entity_path_filter);
-
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            self.id.as_entity_path(),
-            timepoint.clone(),
-            1,
-            [expressions_component],
-        )
-        .unwrap();
-
-        ctx.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                ctx.store_context.blueprint.store_id().clone(),
-                vec![row],
-            ));
-    }
-
     pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
-        let mut entity_path_filter = self.entity_path_filter.clone();
-        entity_path_filter.add_rule(RuleEffect::Exclude, rule);
-        self.save_expressions(ctx, &entity_path_filter);
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
     pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
-        let mut entity_path_filter = self.entity_path_filter.clone();
-        entity_path_filter.add_rule(RuleEffect::Include, rule);
-        self.save_expressions(ctx, &entity_path_filter);
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.add_rule(RuleEffect::Include, rule);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
     pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
-        let mut entity_path_filter = self.entity_path_filter.clone();
-        entity_path_filter.remove_rule_for(ent_path);
-        self.save_expressions(ctx, &entity_path_filter);
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.remove_rule_for(ent_path);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 }
 
@@ -269,7 +304,6 @@ impl DataQuery for DataQueryBlueprint {
         });
 
         DataQueryResult {
-            id: self.id,
             tree: DataResultTree::new(data_results, root_handle),
         }
     }

@@ -22,12 +22,12 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The contents of a `SpaceView`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SpaceViewContents {
     /// Ids of the `DataQuery`s that make up this `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
-    pub query: Option<crate::blueprint::components::QueryExpression>,
+    pub query: crate::blueprint::components::QueryExpression,
 
     /// True if the user is has added entities themselves. False otherwise.
     /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
@@ -42,7 +42,7 @@ impl ::re_types_core::SizeBytes for SpaceViewContents {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::QueryExpression>>::is_pod()
+        <crate::blueprint::components::QueryExpression>::is_pod()
             && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
     }
 }
@@ -122,16 +122,19 @@ impl ::re_types_core::Archetype for SpaceViewContents {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let query =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.QueryExpression") {
-                <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let query = {
+            let array = arrays_by_name
+                .get("rerun.blueprint.components.QueryExpression")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?;
+            <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
+        };
         let entities_determined_by_user = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.EntitiesDeterminedByUser")
         {
@@ -158,9 +161,7 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.query
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            Some((&self.query as &dyn ComponentBatch).into()),
             self.entities_determined_by_user
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -177,20 +178,11 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
 }
 
 impl SpaceViewContents {
-    pub fn new() -> Self {
+    pub fn new(query: impl Into<crate::blueprint::components::QueryExpression>) -> Self {
         Self {
-            query: None,
+            query: query.into(),
             entities_determined_by_user: None,
         }
-    }
-
-    #[inline]
-    pub fn with_query(
-        mut self,
-        query: impl Into<crate::blueprint::components::QueryExpression>,
-    ) -> Self {
-        self.query = Some(query.into());
-        self
     }
 
     #[inline]

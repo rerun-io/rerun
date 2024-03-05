@@ -8,7 +8,7 @@ use re_data_ui::{
 use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
-use re_log_types::{DataRow, EntityPathFilter, RowId};
+use re_log_types::EntityPathFilter;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -17,14 +17,12 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, gpu_bridge::colormap_dropdown_button_ui, ContainerId,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, ContainerId, HoverHighlight, Item, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
-    context_menu_ui_for_item, external::re_space_view::blueprint::components::QueryExpressions,
-    icon_for_container_kind, space_view_name_style, Contents, SelectionUpdateBehavior, Viewport,
-    ViewportBlueprint,
+    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style, Contents,
+    SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 
 use crate::ui::override_ui::override_ui;
@@ -805,33 +803,18 @@ fn blueprint_ui_for_space_view(
     space_view_id: &SpaceViewId,
 ) {
     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-        if let Some(query) = space_view.queries.first() {
-            if let Some(new_entity_path_filter) =
-                entity_path_filter_ui(ui, viewport, space_view_id, &query.entity_path_filter)
-            {
-                let timepoint = blueprint_timepoint_for_writes();
-                let expressions_component = QueryExpressions::from(&new_entity_path_filter);
-
-                let row = DataRow::from_cells1_sized(
-                    RowId::new(),
-                    query.id.as_entity_path(),
-                    timepoint,
-                    1,
-                    [expressions_component],
-                )
-                .unwrap();
-
-                ctx.command_sender
-                    .send_system(SystemCommand::UpdateBlueprint(
-                        ctx.store_context.blueprint.store_id().clone(),
-                        vec![row],
-                    ));
-
-                space_view.set_entity_determined_by_user(ctx);
-            }
-
-            ui.add_space(ui.spacing().item_spacing.y);
+        if let Some(new_entity_path_filter) = entity_path_filter_ui(
+            ui,
+            viewport,
+            space_view_id,
+            &space_view.query.entity_path_filter,
+        ) {
+            space_view
+                .query
+                .set_entity_path_filter(ctx, &new_entity_path_filter);
         }
+
+        ui.add_space(ui.spacing().item_spacing.y);
     }
 
     if ui
@@ -908,7 +891,7 @@ fn blueprint_ui_for_data_result(
             let space_view_class = *space_view.class_identifier();
             let entity_path = &instance_path.entity_path;
 
-            let query_result = ctx.lookup_query_result(space_view.query_id());
+            let query_result = ctx.lookup_query_result(space_view.id);
             if let Some(data_result) = query_result
                 .tree
                 .lookup_result_by_path(entity_path)

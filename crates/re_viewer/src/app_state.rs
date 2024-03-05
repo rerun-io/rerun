@@ -189,7 +189,7 @@ impl AppState {
                 .blueprint
                 .space_views
                 .values()
-                .flat_map(|space_view| {
+                .map(|space_view| {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
@@ -202,16 +202,12 @@ impl AppState {
                         &space_view.space_origin,
                     );
 
-                    space_view
-                        .queries
-                        .iter()
-                        .map(|query| {
-                            (
-                                query.id,
-                                query.execute_query(store_context, &visualizable_entities),
-                            )
-                        })
-                        .collect::<Vec<_>>()
+                    (
+                        space_view.id,
+                        space_view
+                            .query
+                            .execute_query(store_context, &visualizable_entities),
+                    )
                 })
                 .collect::<_>()
         };
@@ -244,30 +240,28 @@ impl AppState {
             re_tracing::profile_scope!("updated_query_results");
 
             for space_view in viewport.blueprint.space_views.values() {
-                for query in &space_view.queries {
-                    if let Some(query_result) = query_results.get_mut(&query.id) {
-                        // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
-                        // Note that right now we determine *all* visualizable entities, not just the queried ones.
-                        // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
-                        let visualizable_entities = determine_visualizable_entities(
-                            &applicable_entities_per_visualizer,
-                            entity_db,
-                            &space_view_class_registry
-                                .new_visualizer_collection(*space_view.class_identifier()),
-                            space_view.class(space_view_class_registry),
-                            &space_view.space_origin,
-                        );
+                if let Some(query_result) = query_results.get_mut(&space_view.id) {
+                    // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
+                    // Note that right now we determine *all* visualizable entities, not just the queried ones.
+                    // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
+                    let visualizable_entities = determine_visualizable_entities(
+                        &applicable_entities_per_visualizer,
+                        entity_db,
+                        &space_view_class_registry
+                            .new_visualizer_collection(*space_view.class_identifier()),
+                        space_view.class(space_view_class_registry),
+                        &space_view.space_origin,
+                    );
 
-                        let props = viewport.state.space_view_props(space_view.id);
-                        let resolver = query.build_resolver(
-                            space_view_class_registry,
-                            space_view,
-                            props,
-                            &visualizable_entities,
-                            &indicated_entities_per_visualizer,
-                        );
-                        resolver.update_overrides(store_context, &blueprint_query, query_result);
-                    }
+                    let props = viewport.state.space_view_props(space_view.id);
+                    let resolver = space_view.query.build_resolver(
+                        space_view_class_registry,
+                        space_view,
+                        props,
+                        &visualizable_entities,
+                        &indicated_entities_per_visualizer,
+                    );
+                    resolver.update_overrides(store_context, &blueprint_query, query_result);
                 }
             }
         };

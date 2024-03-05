@@ -56,7 +56,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct QueryExpression(pub crate::datatypes::Utf8);
 

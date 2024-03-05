@@ -2,13 +2,13 @@
 //!
 //! Types & utilities for defining Space View classes and communicating with the Viewport.
 
-pub mod blueprint;
 pub mod controls;
 mod data_query;
 mod data_query_blueprint;
 mod heuristics;
 mod screenshot;
 mod space_view;
+mod sub_archetypes; // TODO(andreas): better name before `sub_archetype` sticks around?
 mod visualizable;
 
 pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
@@ -16,6 +16,9 @@ pub use data_query_blueprint::DataQueryBlueprint;
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use screenshot::ScreenshotMode;
 pub use space_view::{SpaceViewBlueprint, SpaceViewName};
+pub use sub_archetypes::{
+    entity_path_for_space_view_sub_archetype, query_space_view_sub_archetype,
+};
 pub use visualizable::determine_visualizable_entities;
 
 // -----------

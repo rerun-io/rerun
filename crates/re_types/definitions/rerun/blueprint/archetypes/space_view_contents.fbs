@@ -9,14 +9,15 @@ namespace rerun.blueprint.archetypes;
 
 /// The contents of a `SpaceView`.
 table SpaceViewContents (
-    "attr.rerun.scope": "blueprint"
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
 )  {
     // --- Required ---
 
     /// Ids of the `DataQuery`s that make up this `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
-    query: rerun.blueprint.components.QueryExpression ("attr.rerun.component_required", nullable, order: 1000);
+    query: rerun.blueprint.components.QueryExpression ("attr.rerun.component_required", order: 1000);
 
     // --- Optional ---
 

@@ -59,8 +59,8 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &Spac
 
     let tree = &ctx.entity_db.tree();
     // TODO(jleibs): Avoid clone
-    let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
-    let entity_path_filter = space_view.entity_path_filter();
+    let query_result = ctx.lookup_query_result(space_view.id).clone();
+    let entity_path_filter = &space_view.query.entity_path_filter;
     let entities_add_info = create_entity_add_info(ctx, tree, space_view, &query_result);
 
     add_entities_tree_ui(
@@ -70,7 +70,7 @@ fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &Spac
         tree,
         space_view,
         &query_result,
-        &entity_path_filter,
+        entity_path_filter,
         &entities_add_info,
     );
 }
@@ -195,7 +195,9 @@ fn add_entities_line_ui(
                 let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
 
                 if response.clicked() {
-                    space_view.remove_filter_rule_for(ctx, &entity_tree.path);
+                    space_view
+                        .query
+                        .remove_filter_rule_for(ctx, &entity_tree.path);
                 }
 
                 if is_explicitly_excluded {
@@ -209,7 +211,7 @@ fn add_entities_line_ui(
                 let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
                 if response.clicked() {
-                    space_view.add_entity_exclusion(
+                    space_view.query.add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_tree.path.clone()),
                     );
@@ -228,7 +230,7 @@ fn add_entities_line_ui(
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
 
                     if response.clicked() {
-                        space_view.add_entity_inclusion(
+                        space_view.query.add_entity_inclusion(
                             ctx,
                             EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );

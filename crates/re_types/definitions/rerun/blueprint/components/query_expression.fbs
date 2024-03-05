@@ -48,7 +48,7 @@ table QueryExpression (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent"
 ) {
   filter: rerun.datatypes.Utf8 (order: 100);

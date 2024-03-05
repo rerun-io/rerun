@@ -23,8 +23,8 @@ class SpaceViewContents(Archetype):
 
     def __init__(
         self: Any,
+        query: datatypes.Utf8Like,
         *,
-        query: datatypes.Utf8Like | None = None,
         entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserLike | None = None,
     ):
         """
@@ -62,10 +62,9 @@ class SpaceViewContents(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    query: blueprint_components.QueryExpressionBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.QueryExpressionBatch._optional,  # type: ignore[misc]
+    query: blueprint_components.QueryExpressionBatch = field(
+        metadata={"component": "required"},
+        converter=blueprint_components.QueryExpressionBatch._required,  # type: ignore[misc]
     )
     # Ids of the `DataQuery`s that make up this `SpaceView`.
     #

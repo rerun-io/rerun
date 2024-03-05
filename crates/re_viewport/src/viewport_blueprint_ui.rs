@@ -245,7 +245,7 @@ impl Viewport<'_, '_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        let query_result = ctx.lookup_query_result(space_view.query_id());
+        let query_result = ctx.lookup_query_result(space_view.id);
         let result_tree = &query_result.tree;
 
         let mut visible = space_view.visible;
@@ -454,7 +454,7 @@ impl Viewport<'_, '_> {
                     "Remove Group and all its children from the Space View",
                 );
                 if response.clicked() {
-                    space_view.add_entity_exclusion(
+                    space_view.query.add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_path.clone()),
                     );

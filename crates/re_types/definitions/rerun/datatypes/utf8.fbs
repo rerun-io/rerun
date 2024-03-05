@@ -14,7 +14,7 @@ table Utf8 (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
-  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
   "attr.rust.override_crate": "re_types_core",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"

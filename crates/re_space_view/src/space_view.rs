@@ -4,17 +4,17 @@ use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use crate::DataQueryBlueprint;
-use re_log_types::{DataRow, EntityPathFilter, EntityPathRule, RowId};
+use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
-    blueprint::components::{EntitiesDeterminedByUser, SpaceViewOrigin, Visible},
+    blueprint::components::{SpaceViewOrigin, Visible},
     components::Name,
 };
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataQueryId, DataResult, DynSpaceViewClass, PerSystemEntities,
+    blueprint_timepoint_for_writes, DataResult, DynSpaceViewClass, PerSystemEntities,
     PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
@@ -63,11 +63,8 @@ pub struct SpaceViewBlueprint {
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_origin: EntityPath,
 
-    /// The data queries that are part of this space view.
-    pub queries: Vec<DataQueryBlueprint>,
-
-    /// True if the user is expected to add entities themselves. False otherwise.
-    pub entities_determined_by_user: bool,
+    /// The content of this space view as defined by its queries.
+    pub query: DataQueryBlueprint,
 
     /// True if this space view is visible in the UI.
     pub visible: bool,
@@ -84,7 +81,7 @@ impl SpaceViewBlueprint {
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
         space_path: &EntityPath,
-        query: DataQueryBlueprint,
+        content: EntityPathFilter,
     ) -> Self {
         let id = SpaceViewId::random();
 
@@ -93,8 +90,7 @@ impl SpaceViewBlueprint {
             class_identifier: space_view_class,
             id,
             space_origin: space_path.clone(),
-            queries: vec![query],
-            entities_determined_by_user: false,
+            query: DataQueryBlueprint::new(id, space_view_class, content),
             visible: true,
             pending_writes: Default::default(),
         }
@@ -151,8 +147,6 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            entities_determined_by_user,
-            contents,
             visible,
         } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
             .and_then(|arch| arch.to_archetype())
@@ -168,22 +162,11 @@ impl SpaceViewBlueprint {
             .ok()?;
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
-
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
-
         let display_name = display_name.map(|v| v.0.to_string());
 
-        let queries = contents
-            .unwrap_or_default()
-            .into_iter()
-            .map(|included| DataQueryId::from(included.0))
-            .filter_map(|id| {
-                DataQueryBlueprint::try_from_db(id, blueprint_db, query, class_identifier)
-            })
-            .collect();
-
-        let entities_determined_by_user = entities_determined_by_user.unwrap_or_default().0;
-
+        let content =
+            DataQueryBlueprint::from_db_or_default(id, blueprint_db, query, class_identifier);
         let visible = visible.map_or(true, |v| v.0);
 
         Some(Self {
@@ -191,8 +174,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            queries,
-            entities_determined_by_user,
+            query: content,
             visible,
             pending_writes: Default::default(),
         })
@@ -212,16 +194,13 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            queries,
-            entities_determined_by_user,
+            query,
             visible,
             pending_writes,
         } = self;
 
         let mut arch = blueprint_archetypes::SpaceViewBlueprint::new(class_identifier.as_str())
             .with_space_origin(space_origin)
-            .with_entities_determined_by_user(*entities_determined_by_user)
-            .with_contents(queries.iter().map(|q| q.id))
             .with_visible(*visible);
 
         if let Some(display_name) = display_name {
@@ -239,9 +218,7 @@ impl SpaceViewBlueprint {
             deltas.push(row);
         }
 
-        for query in &self.queries {
-            query.save_to_blueprint_store(ctx);
-        }
+        query.save_to_blueprint_store(ctx);
 
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(
@@ -303,12 +280,7 @@ impl SpaceViewBlueprint {
             display_name: self.display_name.clone(),
             class_identifier: self.class_identifier,
             space_origin: self.space_origin.clone(),
-            queries: self
-                .queries
-                .iter()
-                .map(|q| q.duplicate(blueprint, query))
-                .collect(),
-            entities_determined_by_user: self.entities_determined_by_user,
+            query: self.query.duplicate(new_id, blueprint, query),
             visible: self.visible,
             pending_writes,
         }
@@ -317,18 +289,7 @@ impl SpaceViewBlueprint {
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
         ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
-
-        for query in &self.queries {
-            query.clear(ctx);
-        }
-    }
-
-    #[inline]
-    pub fn set_entity_determined_by_user(&self, ctx: &ViewerContext<'_>) {
-        if !self.entities_determined_by_user {
-            let component = EntitiesDeterminedByUser(true);
-            ctx.save_blueprint_component(&self.entity_path(), &component);
-        }
+        self.query.clear(ctx);
     }
 
     #[inline]
@@ -379,7 +340,7 @@ impl SpaceViewBlueprint {
         view_state: &mut dyn SpaceViewState,
         view_props: &mut EntityPropertyMap,
     ) {
-        let query_result = ctx.lookup_query_result(self.query_id()).clone();
+        let query_result = ctx.lookup_query_result(self.id).clone();
 
         let mut per_system_entities = PerSystemEntities::default();
         {
@@ -432,14 +393,6 @@ impl SpaceViewBlueprint {
         self.id.as_entity_path()
     }
 
-    #[inline]
-    pub fn query_id(&self) -> DataQueryId {
-        // TODO(jleibs): Return all queries
-        self.queries
-            .first()
-            .map_or(DataQueryId::invalid(), |q| q.id)
-    }
-
     pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
         let entity_path = self.entity_path();
 
@@ -484,58 +437,11 @@ impl SpaceViewBlueprint {
             }),
         }
     }
-
-    // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        if let Some(query) = self.queries.first() {
-            query.add_entity_exclusion(ctx, rule);
-        }
-        self.set_entity_determined_by_user(ctx);
-    }
-
-    // TODO(jleibs): Get rid of mut by sending blueprint update
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        if let Some(query) = self.queries.first() {
-            query.add_entity_inclusion(ctx, rule);
-        }
-        self.set_entity_determined_by_user(ctx);
-    }
-
-    pub fn remove_filter_rule_for(&self, ctx: &ViewerContext<'_>, ent_path: &EntityPath) {
-        if let Some(query) = self.queries.first() {
-            query.remove_filter_rule_for(ctx, ent_path);
-        }
-        self.set_entity_determined_by_user(ctx);
-    }
-
-    pub fn entity_path_filter(&self) -> EntityPathFilter {
-        self.queries
-            .iter()
-            .map(|q| q.entity_path_filter.clone())
-            .sum()
-    }
-
-    pub fn entity_path_filter_is_superset_of(&self, other: &Self) -> bool {
-        // TODO(jleibs): Handle multi-query-aggregation
-
-        // If other has no query, by definition we contain all entities from it.
-        let Some(q_other) = other.queries.first() else {
-            return true;
-        };
-
-        // If other has any query, but self has no query, we clearly can't contain it
-        let Some(q_self) = self.queries.first() else {
-            return false;
-        };
-
-        // If this query fully contains the other, then we have all its entities
-        q_self.entity_path_filter_is_superset_of(q_other)
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{DataQuery as _, PropertyResolver as _};
+    use crate::data_query::{DataQuery, PropertyResolver};
     use re_entity_db::EntityDb;
     use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
     use re_types::archetypes::Points3D;
@@ -581,15 +487,12 @@ mod tests {
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
             &EntityPath::root(),
-            DataQueryBlueprint::new(
-                "3D".into(),
-                EntityPathFilter::parse_forgiving(
-                    r"
+            EntityPathFilter::parse_forgiving(
+                r"
                     + parent
                     + parent/skip/child1
                     + parent/skip/child2
                 ",
-                ),
             ),
         );
 
@@ -618,7 +521,7 @@ mod tests {
         );
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-        let query = space_view.queries.first().unwrap();
+        let query = &space_view.query;
 
         let resolver = query.build_resolver(
             &space_view_class_registry,
