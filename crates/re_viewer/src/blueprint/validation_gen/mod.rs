@@ -22,7 +22,6 @@ pub use re_viewport::blueprint::components::GridColumns;
 pub use re_viewport::blueprint::components::IncludedSpaceView;
 pub use re_viewport::blueprint::components::RootContainer;
 pub use re_viewport::blueprint::components::SpaceViewMaximized;
-pub use re_viewport::blueprint::components::ViewportLayout;
 
 /// Because blueprints are both read and written the schema must match what
 /// we expect to find or else we will run into all kinds of problems.
@@ -48,6 +47,5 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewClass>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)
         && validate_component::<SpaceViewOrigin>(blueprint)
-        && validate_component::<ViewportLayout>(blueprint)
         && validate_component::<Visible>(blueprint)
 }

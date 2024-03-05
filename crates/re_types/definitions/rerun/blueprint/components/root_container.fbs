@@ -12,9 +12,11 @@ namespace rerun.blueprint.components;
 
 /// The container that sits at the root of a viewport.
 table RootContainer (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default",
-    "attr.rust.override_crate": "re_viewport"
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",
+  "attr.rust.derive": "Default",
+  "attr.rust.override_crate": "re_viewport",
+  "attr.rust.repr": "transparent"
 ) {
     /// `ContainerId` for the root.
     id: rerun.datatypes.Uuid (order: 100);

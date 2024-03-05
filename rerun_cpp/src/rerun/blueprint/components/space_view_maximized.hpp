@@ -9,7 +9,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <optional>
 
 namespace arrow {
     class Array;
@@ -22,15 +21,14 @@ namespace rerun::blueprint::components {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewMaximized {
-        std::optional<rerun::datatypes::Uuid> space_view_id;
+        rerun::datatypes::Uuid space_view_id;
 
       public:
         SpaceViewMaximized() = default;
 
-        SpaceViewMaximized(std::optional<rerun::datatypes::Uuid> space_view_id_)
-            : space_view_id(space_view_id_) {}
+        SpaceViewMaximized(rerun::datatypes::Uuid space_view_id_) : space_view_id(space_view_id_) {}
 
-        SpaceViewMaximized& operator=(std::optional<rerun::datatypes::Uuid> space_view_id_) {
+        SpaceViewMaximized& operator=(rerun::datatypes::Uuid space_view_id_) {
             space_view_id = space_view_id_;
             return *this;
         }
@@ -43,7 +41,7 @@ namespace rerun::blueprint::components {
         }
 
         /// Cast to the underlying Uuid datatype
-        operator std::optional<rerun::datatypes::Uuid>() const {
+        operator rerun::datatypes::Uuid() const {
             return space_view_id;
         }
     };

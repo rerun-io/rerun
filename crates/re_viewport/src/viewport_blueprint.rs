@@ -13,7 +13,6 @@ use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
-        ViewportLayout,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     viewport::TreeAction,
@@ -130,7 +129,7 @@ impl ViewportBlueprint {
             |auto| auto.0,
         );
 
-        let maximized = arch.maximized.and_then(|id| id.0.map(|id| id.into()));
+        let maximized = arch.maximized.map(|id| id.0.into());
 
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
@@ -225,8 +224,9 @@ impl ViewportBlueprint {
             .space_views
             .keys()
             .filter(|id| id != &space_view_id)
-            .map(|id| IncludedSpaceView((*id).into()));
-        ctx.save_blueprint_component_iter(&VIEWPORT_PATH.into(), components);
+            .map(|id| IncludedSpaceView((*id).into()))
+            .collect::<Vec<_>>();
+        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
     }
 
     /// Duplicates a space view and its entity property overrides.
@@ -329,9 +329,9 @@ impl ViewportBlueprint {
                 .space_views
                 .keys()
                 .chain(new_ids.iter())
-                .map(|id| IncludedSpaceView((*id).into()));
-
-            ctx.save_blueprint_component_iter(&VIEWPORT_PATH.into(), components);
+                .map(|id| IncludedSpaceView((*id).into()))
+                .collect::<Vec<_>>();
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
         }
 
         new_ids
@@ -654,7 +654,7 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let component = AutoLayout(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
 
@@ -669,7 +669,7 @@ impl ViewportBlueprint {
 
         if old_value != value {
             let component = AutoSpaceViews(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
     }
 
@@ -681,17 +681,8 @@ impl ViewportBlueprint {
     #[inline]
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
-            let component = SpaceViewMaximized(space_view_id.map(|id| id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
-        }
-    }
-
-    #[inline]
-    pub fn set_tree(&self, tree: &egui_tiles::Tree<SpaceViewId>, ctx: &ViewerContext<'_>) {
-        if &self.tree != tree {
-            re_log::trace!("Updating the layout tree");
-            let component = ViewportLayout(tree.clone());
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), component);
+            let component_batch = space_view_id.map(|id| SpaceViewMaximized(id.into()));
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component_batch);
         }
     }
 
@@ -791,7 +782,7 @@ impl ViewportBlueprint {
             .and_then(|contents| contents.as_container_id())
             .map(|container_id| RootContainer((container_id).into()))
         {
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), root_container);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
         } else {
             ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
         }

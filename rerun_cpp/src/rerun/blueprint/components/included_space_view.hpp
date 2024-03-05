@@ -21,29 +21,28 @@ namespace rerun::blueprint::components {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct IncludedSpaceView {
-        rerun::datatypes::Uuid space_view_ids;
+        rerun::datatypes::Uuid space_view_id;
 
       public:
         IncludedSpaceView() = default;
 
-        IncludedSpaceView(rerun::datatypes::Uuid space_view_ids_)
-            : space_view_ids(space_view_ids_) {}
+        IncludedSpaceView(rerun::datatypes::Uuid space_view_id_) : space_view_id(space_view_id_) {}
 
-        IncludedSpaceView& operator=(rerun::datatypes::Uuid space_view_ids_) {
-            space_view_ids = space_view_ids_;
+        IncludedSpaceView& operator=(rerun::datatypes::Uuid space_view_id_) {
+            space_view_id = space_view_id_;
             return *this;
         }
 
-        IncludedSpaceView(std::array<uint8_t, 16> bytes_) : space_view_ids(bytes_) {}
+        IncludedSpaceView(std::array<uint8_t, 16> bytes_) : space_view_id(bytes_) {}
 
         IncludedSpaceView& operator=(std::array<uint8_t, 16> bytes_) {
-            space_view_ids = bytes_;
+            space_view_id = bytes_;
             return *this;
         }
 
         /// Cast to the underlying Uuid datatype
         operator rerun::datatypes::Uuid() const {
-            return space_view_ids;
+            return space_view_id;
         }
     };
 } // namespace rerun::blueprint::components

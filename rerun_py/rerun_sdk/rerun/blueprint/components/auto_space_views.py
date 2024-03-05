@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .auto_space_views_ext import AutoSpaceViewsExt
 
 __all__ = [
     "AutoSpaceViews",
@@ -22,7 +23,7 @@ __all__ = [
 
 
 @define(init=False)
-class AutoSpaceViews:
+class AutoSpaceViews(AutoSpaceViewsExt):
     """
     **Component**: Whether or not space views should be created automatically.
 
@@ -38,7 +39,11 @@ class AutoSpaceViews:
     auto_space_views: bool = field(converter=bool)
 
 
-AutoSpaceViewsLike = AutoSpaceViews
+if TYPE_CHECKING:
+    AutoSpaceViewsLike = Union[AutoSpaceViews, bool]
+else:
+    AutoSpaceViewsLike = Any
+
 AutoSpaceViewsArrayLike = Union[
     AutoSpaceViews,
     Sequence[AutoSpaceViewsLike],
@@ -57,4 +62,4 @@ class AutoSpaceViewsBatch(BaseBatch[AutoSpaceViewsArrayLike], ComponentBatchMixi
 
     @staticmethod
     def _native_to_pa_array(data: AutoSpaceViewsArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in auto_space_views_ext.py
+        return AutoSpaceViewsExt.native_to_pa_array_override(data, data_type)

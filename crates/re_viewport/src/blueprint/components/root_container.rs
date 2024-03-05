@@ -23,6 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The container that sits at the root of a viewport.
 #[derive(Clone, Debug, Default)]
+#[repr(transparent)]
 pub struct RootContainer(
     /// `ContainerId` for the root.
     pub crate::datatypes::Uuid,

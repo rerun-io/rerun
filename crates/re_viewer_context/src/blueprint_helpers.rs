@@ -1,8 +1,5 @@
-use re_log_types::{
-    external::arrow2::datatypes::DataType, DataCell, DataRow, EntityPath, RowId, Time, TimePoint,
-    Timeline,
-};
-use re_types::{components::InstanceKey, ComponentName};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
+use re_types::{components::InstanceKey, ComponentBatch, ComponentName};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -18,38 +15,26 @@ pub fn blueprint_timepoint_for_writes() -> TimePoint {
 }
 
 impl ViewerContext<'_> {
-    /// Helper to save a component to the blueprint store.
-    pub fn save_blueprint_component<'a, C>(&self, entity_path: &EntityPath, component: C)
-    where
-        C: re_types::Component + Clone + 'a,
-        std::borrow::Cow<'a, C>: std::convert::From<C>,
-    {
-        self.save_blueprint_component_data_cell(entity_path, [component].into(), 1);
-    }
-
-    /// Helper to save an iterator of components to the blueprint store.
-    pub fn save_blueprint_component_iter<'a, C>(
+    /// Helper to save a component batch to the blueprint store.
+    pub fn save_blueprint_component(
         &self,
         entity_path: &EntityPath,
-        components: impl Iterator<Item = C>,
-    ) where
-        C: re_types::Component + Clone + 'a,
-        std::borrow::Cow<'a, C>: std::convert::From<C>,
-    {
-        let components = components.collect::<Vec<_>>();
-        let num_instances = components.len() as u32;
-        self.save_blueprint_component_data_cell(entity_path, components.into(), num_instances);
-    }
-
-    fn save_blueprint_component_data_cell(
-        &self,
-        entity_path: &EntityPath,
-        mut data_cell: DataCell,
-        num_instances: u32,
+        components: &dyn ComponentBatch,
     ) {
-        let timepoint = blueprint_timepoint_for_writes();
-
+        let mut data_cell = match DataCell::from_component_batch(components) {
+            Ok(data_cell) => data_cell,
+            Err(err) => {
+                re_log::error_once!(
+                    "Failed to create DataCell for blueprint components: {}",
+                    err
+                );
+                return;
+            }
+        };
         data_cell.compute_size_bytes();
+
+        let num_instances = components.num_instances() as u32;
+        let timepoint = blueprint_timepoint_for_writes();
 
         let data_row_result = if num_instances == 1 {
             let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
@@ -80,21 +65,37 @@ impl ViewerContext<'_> {
                     vec![row],
                 )),
             Err(err) => {
-                // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
-                re_log::error_once!("Failed to create DataRow for blueprint component: {}", err);
+                re_log::error_once!("Failed to create DataRow for blueprint components: {}", err);
             }
         }
     }
 
-    /// Helper for `save_empty_blueprint_component` and `save_empty_blueprint_component_name`.
-    fn save_empty_blueprint_component_impl(
+    /// Helper to save a component to the blueprint store.
+    pub fn save_empty_blueprint_component<'a, C>(&self, entity_path: &EntityPath)
+    where
+        C: re_types::Component + 'a,
+    {
+        let empty: [C; 0] = [];
+        self.save_blueprint_component(entity_path, &empty);
+    }
+
+    /// Helper to save a component to the blueprint store.
+    pub fn save_empty_blueprint_component_name(
         &self,
+        store: &re_data_store::DataStore,
         entity_path: &EntityPath,
         component_name: ComponentName,
-        datatype: DataType,
     ) {
+        let Some(datatype) = store.lookup_datatype(&component_name) else {
+            re_log::error_once!(
+                "Tried to clear a component with unknown type: {}",
+                component_name
+            );
+            return;
+        };
+
         let timepoint = blueprint_timepoint_for_writes();
-        let cell = DataCell::from_arrow_empty(component_name, datatype);
+        let cell = DataCell::from_arrow_empty(component_name, datatype.clone());
 
         match DataRow::from_cells1(
             RowId::new(),
@@ -110,38 +111,8 @@ impl ViewerContext<'_> {
                     vec![row],
                 )),
             Err(err) => {
-                // TODO(emilk): statically check that the component is a mono-component - then this cannot fail!
                 re_log::error_once!("Failed to create DataRow for blueprint component: {}", err);
             }
-        }
-    }
-
-    /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component<'a, C>(&self, entity_path: &EntityPath)
-    where
-        C: re_types::Component + 'a,
-    {
-        self.save_empty_blueprint_component_impl(
-            entity_path,
-            C::name(),
-            C::arrow_datatype().clone(),
-        );
-    }
-
-    /// Helper to save a component to the blueprint store.
-    pub fn save_empty_blueprint_component_name(
-        &self,
-        store: &re_data_store::DataStore,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-    ) {
-        if let Some(datatype) = store.lookup_datatype(&component_name) {
-            self.save_empty_blueprint_component_impl(entity_path, component_name, datatype.clone());
-        } else {
-            re_log::error_once!(
-                "Tried to clear a component with unknown type: {}",
-                component_name
-            );
         }
     }
 }

@@ -379,7 +379,7 @@ pub fn override_visualizer_ui(
                                         .collect::<Vec<_>>(),
                                 );
 
-                                ctx.save_blueprint_component(override_path, component);
+                                ctx.save_blueprint_component(override_path, &component);
                             }
                         });
                         // Visualizer label
@@ -462,7 +462,7 @@ pub fn add_new_visualizer(
                                 .collect::<Vec<_>>(),
                         );
 
-                        ctx.save_blueprint_component(override_path, component);
+                        ctx.save_blueprint_component(override_path, &component);
 
                         ui.close_menu();
                     }

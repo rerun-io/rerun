@@ -21,19 +21,20 @@ table ViewportBlueprint (
     // --- Optional ---
 
     /// The layout of the space-views
-    layout: rerun.blueprint.components.ViewportLayout ("attr.rerun.component_optional", nullable, order: 2000);
-
-    /// The layout of the space-views
     root_container: rerun.blueprint.components.RootContainer ("attr.rerun.component_optional", nullable, order: 2500);
 
     /// Show one tab as maximized?
     maximized: rerun.blueprint.components.SpaceViewMaximized ("attr.rerun.component_optional", nullable, order: 3000);
 
+    // TODO(andreas): This is to be removed in the future, all new space views without an explicit container
+    // should always insert themselves using a heuristic.
     /// Whether the viewport layout is determined automatically.
     ///
-    /// Set to `false` the first time the user messes around with the viewport blueprint.
+    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     auto_layout: rerun.blueprint.components.AutoLayout ("attr.rerun.component_optional", nullable, order: 4000);
 
+    // TODO(jleibs): This should come with an optional container id that specifies where to insert new space views.
     /// Whether or not space views should be created automatically.
     auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
 }

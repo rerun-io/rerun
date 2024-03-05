@@ -625,7 +625,7 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
                 let mut edit_visibility = visible;
                 ctx.re_ui.checkbox(ui, &mut edit_visibility.0, "Visible");
                 if visible != edit_visibility {
-                    ctx.save_blueprint_component(&blueprint_path, edit_visibility);
+                    ctx.save_blueprint_component(&blueprint_path, &edit_visibility);
                 }
 
                 let corner = corner.unwrap_or(DEFAULT_LEGEND_CORNER.into());
@@ -658,7 +658,7 @@ fn legend_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui:
                         );
                     });
                 if corner != edit_corner {
-                    ctx.save_blueprint_component(&blueprint_path, edit_corner);
+                    ctx.save_blueprint_component(&blueprint_path, &edit_corner);
                 }
             });
 
@@ -726,7 +726,7 @@ fn axis_ui(
                         });
 
                         if y_range != Some(range_edit) {
-                            ctx.save_blueprint_component(&blueprint_path, range_edit);
+                            ctx.save_blueprint_component(&blueprint_path, &range_edit);
                         }
                     } else if y_range.is_some() {
                         ctx.save_empty_blueprint_component::<Range1D>(&blueprint_path);
@@ -751,7 +751,7 @@ fn axis_ui(
                             "If set, when zooming, the Y axis range will remain locked to the specified range.",
                         );
                         if y_lock_zoom != edit_locked {
-                            ctx.save_blueprint_component(&blueprint_path, edit_locked);
+                            ctx.save_blueprint_component(&blueprint_path, &edit_locked);
                         }
                     })
                 });

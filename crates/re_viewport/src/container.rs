@@ -340,7 +340,7 @@ impl ContainerBlueprint {
     pub fn set_visible(&self, ctx: &ViewerContext<'_>, visible: bool) {
         if visible != self.visible {
             let component = Visible(visible);
-            ctx.save_blueprint_component(&self.entity_path(), component);
+            ctx.save_blueprint_component(&self.entity_path(), &component);
         }
     }
 
@@ -349,7 +349,7 @@ impl ContainerBlueprint {
         if grid_columns != self.grid_columns {
             if let Some(grid_columns) = grid_columns {
                 let component = GridColumns(grid_columns);
-                ctx.save_blueprint_component(&self.entity_path(), component);
+                ctx.save_blueprint_component(&self.entity_path(), &component);
             } else {
                 ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());
             }
@@ -360,7 +360,7 @@ impl ContainerBlueprint {
     // TODO(jleibs): Should this be a recursive clear?
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.entity_path(), clear.is_recursive);
+        ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
     }
 
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {

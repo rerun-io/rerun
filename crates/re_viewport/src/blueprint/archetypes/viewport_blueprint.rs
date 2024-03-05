@@ -28,9 +28,6 @@ pub struct ViewportBlueprint {
     pub space_views: Vec<crate::blueprint::components::IncludedSpaceView>,
 
     /// The layout of the space-views
-    pub layout: Option<crate::blueprint::components::ViewportLayout>,
-
-    /// The layout of the space-views
     pub root_container: Option<crate::blueprint::components::RootContainer>,
 
     /// Show one tab as maximized?
@@ -38,7 +35,8 @@ pub struct ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
-    /// Set to `false` the first time the user messes around with the viewport blueprint.
+    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     pub auto_layout: Option<crate::blueprint::components::AutoLayout>,
 
     /// Whether or not space views should be created automatically.
@@ -49,7 +47,6 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.space_views.heap_size_bytes()
-            + self.layout.heap_size_bytes()
             + self.root_container.heap_size_bytes()
             + self.maximized.heap_size_bytes()
             + self.auto_layout.heap_size_bytes()
@@ -59,7 +56,6 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::blueprint::components::IncludedSpaceView>>::is_pod()
-            && <Option<crate::blueprint::components::ViewportLayout>>::is_pod()
             && <Option<crate::blueprint::components::RootContainer>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
             && <Option<crate::blueprint::components::AutoLayout>>::is_pod()
@@ -73,19 +69,18 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewportBlueprintIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
-            "rerun.blueprint.components.ViewportLayout".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.IncludedSpaceView".into(),
@@ -94,13 +89,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.AutoSpaceViews".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
-            "rerun.blueprint.components.ViewportLayout".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl ViewportBlueprint {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`ViewportBlueprint`] [`::re_types_core::Archetype`]
@@ -162,16 +156,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
         };
-        let layout =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ViewportLayout") {
-                <crate::blueprint::components::ViewportLayout>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#layout")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
         let root_container =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
@@ -215,7 +199,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             };
         Ok(Self {
             space_views,
-            layout,
             root_container,
             maximized,
             auto_layout,
@@ -231,9 +214,6 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
         [
             Some(Self::indicator()),
             Some((&self.space_views as &dyn ComponentBatch).into()),
-            self.layout
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.root_container
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -266,21 +246,11 @@ impl ViewportBlueprint {
     ) -> Self {
         Self {
             space_views: space_views.into_iter().map(Into::into).collect(),
-            layout: None,
             root_container: None,
             maximized: None,
             auto_layout: None,
             auto_space_views: None,
         }
-    }
-
-    #[inline]
-    pub fn with_layout(
-        mut self,
-        layout: impl Into<crate::blueprint::components::ViewportLayout>,
-    ) -> Self {
-        self.layout = Some(layout.into());
-        self
     }
 
     #[inline]

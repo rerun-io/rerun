@@ -25,7 +25,6 @@ class ViewportBlueprint(Archetype):
         self: Any,
         space_views: datatypes.UuidArrayLike,
         *,
-        layout: blueprint_components.ViewportLayoutLike | None = None,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: blueprint_components.AutoLayoutLike | None = None,
@@ -38,8 +37,6 @@ class ViewportBlueprint(Archetype):
         ----------
         space_views:
             All of the space-views that belong to the viewport.
-        layout:
-            The layout of the space-views
         root_container:
             The layout of the space-views
         maximized:
@@ -47,7 +44,8 @@ class ViewportBlueprint(Archetype):
         auto_layout:
             Whether the viewport layout is determined automatically.
 
-            Set to `false` the first time the user messes around with the viewport blueprint.
+            If `true`, the container layout will be reset whenever a new space view is added or removed.
+            This defaults to `false` and is automatically set to `false` when there is user determined layout.
         auto_space_views:
             Whether or not space views should be created automatically.
 
@@ -57,7 +55,6 @@ class ViewportBlueprint(Archetype):
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 space_views=space_views,
-                layout=layout,
                 root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
@@ -70,7 +67,6 @@ class ViewportBlueprint(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             space_views=None,  # type: ignore[arg-type]
-            layout=None,  # type: ignore[arg-type]
             root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
@@ -89,15 +85,6 @@ class ViewportBlueprint(Archetype):
         converter=blueprint_components.IncludedSpaceViewBatch._required,  # type: ignore[misc]
     )
     # All of the space-views that belong to the viewport.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    layout: blueprint_components.ViewportLayoutBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.ViewportLayoutBatch._optional,  # type: ignore[misc]
-    )
-    # The layout of the space-views
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -126,7 +113,8 @@ class ViewportBlueprint(Archetype):
     )
     # Whether the viewport layout is determined automatically.
     #
-    # Set to `false` the first time the user messes around with the viewport blueprint.
+    # If `true`, the container layout will be reset whenever a new space view is added or removed.
+    # This defaults to `false` and is automatically set to `false` when there is user determined layout.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
