@@ -72,6 +72,26 @@ impl Contents {
     }
 }
 
+impl TryFrom<Item> for Contents {
+    type Error = ();
+
+    fn try_from(item: Item) -> Result<Self, Self::Error> {
+        (&item).try_into()
+    }
+}
+
+impl TryFrom<&Item> for Contents {
+    type Error = ();
+
+    fn try_from(item: &Item) -> Result<Self, Self::Error> {
+        match item {
+            Item::Container(id) => Ok(Self::Container(*id)),
+            Item::SpaceView(id) => Ok(Self::SpaceView(*id)),
+            _ => Err(()),
+        }
+    }
+}
+
 #[inline]
 pub fn blueprint_id_to_tile_id<T: BlueprintIdRegistry>(id: &BlueprintId<T>) -> TileId {
     TileId::from_u64(id.hash())

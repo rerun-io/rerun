@@ -12,7 +12,8 @@ use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::Contents, context_menu_ui_for_item, SelectionUpdateBehavior, Viewport};
+use crate::context_menu::context_menu_ui_for_item;
+use crate::{container::Contents, SelectionUpdateBehavior, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
 pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
