@@ -23,9 +23,10 @@ def test_clear_factory_methods() -> None:
 def test_truthiness() -> None:
     assert ClearIsRecursive(recursive=True)
     assert not ClearIsRecursive(recursive=False)
+
     assert np.array_equal(
         np.array([ClearIsRecursive(recursive=True), ClearIsRecursive(recursive=False)], dtype=np.bool_),
-        np.array([True, False], dtype=np.bool_)
+        np.array([True, False], dtype=np.bool_),
     )
 
 
