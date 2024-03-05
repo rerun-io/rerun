@@ -33,6 +33,7 @@ README = """
     - Move to new container
 * Right-click on a data result and check for the context menu content:
     - Hide (or Show, depending on visibility)
+    - Remove
 * Select a container and, in the Selection Panel, right click on either space view or container children:
     - The context menu action should be the same as before.
     - The selection state is not affected by the right-click.
@@ -62,6 +63,7 @@ README = """
 * Select a mix of containers, space views, and data results, and check for context menu content:
     - Hide All (if any are visible)
     - Show All (if any are hidden)
+    - Remove
 
 ### Invalid sub-container kind
 
