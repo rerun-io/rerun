@@ -3,12 +3,15 @@ from __future__ import annotations
 import itertools
 
 from rerun.blueprint.archetypes.space_view_blueprint import SpaceViewBlueprint
-from rerun.blueprint.components.entities_determined_by_user import EntitiesDeterminedByUserBatch, EntitiesDeterminedByUser
-from rerun.blueprint.components.included_query import IncludedQueryBatch, IncludedQuery
-from rerun.blueprint.components.space_view_class import SpaceViewClassBatch, SpaceViewClass
-from rerun.blueprint.components.space_view_origin import SpaceViewOriginBatch, SpaceViewOrigin
-from rerun.blueprint.components.visible import VisibleBatch, Visible
-from rerun.components.name import NameBatch, Name
+from rerun.blueprint.components.entities_determined_by_user import (
+    EntitiesDeterminedByUser,
+    EntitiesDeterminedByUserBatch,
+)
+from rerun.blueprint.components.included_query import IncludedQuery, IncludedQueryBatch
+from rerun.blueprint.components.space_view_class import SpaceViewClass, SpaceViewClassBatch
+from rerun.blueprint.components.space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
+from rerun.blueprint.components.visible import Visible, VisibleBatch
+from rerun.components.name import Name, NameBatch
 
 from .common_arrays import none_empty_or_value, uuid_bytes0, uuid_bytes1
 
