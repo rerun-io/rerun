@@ -6,13 +6,13 @@ import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import AutoLayoutArrayLike
+    from . import VisibleArrayLike
 
 
-class AutoLayoutExt:
-    """Extension for [AutoLayout][rerun.blueprint.components.AutoLayout]."""
+class VisibleExt:
+    """Extension for [Visible][rerun.blueprint.components.Visible]."""
 
     @staticmethod
-    def native_to_pa_array_override(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(data: VisibleArrayLike, data_type: pa.DataType) -> pa.Array:
         array = np.asarray(data, dtype=np.bool_).flatten()
         return pa.array(array, type=data_type)

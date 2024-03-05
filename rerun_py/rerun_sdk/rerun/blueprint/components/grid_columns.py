@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,12 +13,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .grid_columns_ext import GridColumnsExt
 
 __all__ = ["GridColumns", "GridColumnsArrayLike", "GridColumnsBatch", "GridColumnsLike", "GridColumnsType"]
 
 
 @define(init=False)
-class GridColumns:
+class GridColumns(GridColumnsExt):
     """**Component**: How many columns a grid container should have."""
 
     def __init__(self: Any, columns: GridColumnsLike):
@@ -48,7 +49,11 @@ class GridColumns:
         return int(self.columns)
 
 
-GridColumnsLike = GridColumns
+if TYPE_CHECKING:
+    GridColumnsLike = Union[GridColumns, int]
+else:
+    GridColumnsLike = Any
+
 GridColumnsArrayLike = Union[
     GridColumns,
     Sequence[GridColumnsLike],
@@ -67,4 +72,4 @@ class GridColumnsBatch(BaseBatch[GridColumnsArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: GridColumnsArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in grid_columns_ext.py
+        return GridColumnsExt.native_to_pa_array_override(data, data_type)

@@ -11,7 +11,7 @@ from .auto_space_views import (
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
 )
-from .column_shares import ColumnShares, ColumnSharesArrayLike, ColumnSharesBatch, ColumnSharesLike, ColumnSharesType
+from .column_share import ColumnShare, ColumnShareArrayLike, ColumnShareBatch, ColumnShareLike, ColumnShareType
 from .container_kind import (
     ContainerKind,
     ContainerKindArrayLike,
@@ -35,13 +35,7 @@ from .entity_properties_component import (
     EntityPropertiesComponentType,
 )
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
-from .included_contents import (
-    IncludedContents,
-    IncludedContentsArrayLike,
-    IncludedContentsBatch,
-    IncludedContentsLike,
-    IncludedContentsType,
-)
+from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_queries import (
     IncludedQueries,
     IncludedQueriesArrayLike,
@@ -66,7 +60,7 @@ from .query_expressions import (
     QueryExpressionsType,
 )
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
-from .row_shares import RowShares, RowSharesArrayLike, RowSharesBatch, RowSharesLike, RowSharesType
+from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
 from .space_view_class import (
     SpaceViewClass,
     SpaceViewClassArrayLike,
@@ -92,11 +86,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
-    "ColumnShares",
-    "ColumnSharesArrayLike",
-    "ColumnSharesBatch",
-    "ColumnSharesLike",
-    "ColumnSharesType",
+    "ColumnShare",
+    "ColumnShareArrayLike",
+    "ColumnShareBatch",
+    "ColumnShareLike",
+    "ColumnShareType",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
@@ -122,11 +116,9 @@ __all__ = [
     "GridColumnsBatch",
     "GridColumnsLike",
     "GridColumnsType",
-    "IncludedContents",
-    "IncludedContentsArrayLike",
-    "IncludedContentsBatch",
-    "IncludedContentsLike",
-    "IncludedContentsType",
+    "IncludedContent",
+    "IncludedContentBatch",
+    "IncludedContentType",
     "IncludedQueries",
     "IncludedQueriesArrayLike",
     "IncludedQueriesBatch",
@@ -153,11 +145,11 @@ __all__ = [
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
-    "RowShares",
-    "RowSharesArrayLike",
-    "RowSharesBatch",
-    "RowSharesLike",
-    "RowSharesType",
+    "RowShare",
+    "RowShareArrayLike",
+    "RowShareBatch",
+    "RowShareLike",
+    "RowShareType",
     "SpaceViewClass",
     "SpaceViewClassArrayLike",
     "SpaceViewClassBatch",

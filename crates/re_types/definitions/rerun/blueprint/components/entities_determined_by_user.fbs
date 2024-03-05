@@ -11,9 +11,11 @@ namespace rerun.blueprint.components;
 
 /// Whether the space view entities were manually edited.
 table EntitiesDeterminedByUser (
+    "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent"
+    "attr.rust.repr": "transparent",
+    "attr.rust.tuple_struct"
 ) {
     value: bool (order: 100);
 }

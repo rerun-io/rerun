@@ -5,18 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
+from .entity_path_ext import EntityPathExt
 
 __all__ = ["EntityPath", "EntityPathArrayLike", "EntityPathBatch", "EntityPathLike", "EntityPathType"]
 
 
 @define(init=False)
-class EntityPath:
+class EntityPath(EntityPathExt):
     """**Datatype**: A path to an entity in the `DataStore`."""
 
     def __init__(self: Any, path: EntityPathLike):
@@ -31,11 +32,12 @@ class EntityPath:
         return str(self.path)
 
 
-EntityPathLike = EntityPath
-EntityPathArrayLike = Union[
-    EntityPath,
-    Sequence[EntityPathLike],
-]
+if TYPE_CHECKING:
+    EntityPathLike = Union[EntityPath, str]
+else:
+    EntityPathLike = Any
+
+EntityPathArrayLike = Union[EntityPath, Sequence[EntityPathLike], Sequence[str]]
 
 
 class EntityPathType(BaseExtensionType):
@@ -50,4 +52,4 @@ class EntityPathBatch(BaseBatch[EntityPathArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: EntityPathArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in entity_path_ext.py
+        return EntityPathExt.native_to_pa_array_override(data, data_type)

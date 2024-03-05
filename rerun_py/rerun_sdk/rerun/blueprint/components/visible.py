@@ -5,18 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .visible_ext import VisibleExt
 
 __all__ = ["Visible", "VisibleArrayLike", "VisibleBatch", "VisibleLike", "VisibleType"]
 
 
 @define(init=False)
-class Visible:
+class Visible(VisibleExt):
     """**Component**: Whether the container, space view, entity or instance is currently visible."""
 
     def __init__(self: Any, visible: VisibleLike):
@@ -31,7 +32,11 @@ class Visible:
     visible: bool = field(converter=bool)
 
 
-VisibleLike = Visible
+if TYPE_CHECKING:
+    VisibleLike = Union[Visible, bool]
+else:
+    VisibleLike = Any
+
 VisibleArrayLike = Union[
     Visible,
     Sequence[VisibleLike],
@@ -50,4 +55,4 @@ class VisibleBatch(BaseBatch[VisibleArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: VisibleArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in visible_ext.py
+        return VisibleExt.native_to_pa_array_override(data, data_type)

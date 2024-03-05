@@ -200,8 +200,14 @@ impl ExtensionClass {
                 .with_context(|| format!("couldn't load overrides module at {ext_filepath:?}"))
                 .unwrap();
 
+            let scope = if let Some(scope) = obj.scope() {
+                format!("{scope}.")
+            } else {
+                String::new()
+            };
+
             let mandatory_docstring = format!(
-                r#""""Extension for [{name}][rerun.{kind}.{name}].""""#,
+                r#""""Extension for [{name}][rerun.{scope}{kind}.{name}].""""#,
                 name = obj.name,
                 kind = obj.kind.plural_snake_case()
             );

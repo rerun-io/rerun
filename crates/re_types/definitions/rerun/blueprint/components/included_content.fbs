@@ -11,7 +11,7 @@ namespace rerun.blueprint.components;
 
 
 /// All the contents in the container.
-table IncludedContents (
+table IncludedContent (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
@@ -20,5 +20,5 @@ table IncludedContents (
     /// This must be a path in the blueprint store.
     /// Typically structure as `<blueprint_registry>/<uuid>`.
     // TODO(jleibs): Maybe make this a typed UUID in the future.
-    contents: [rerun.datatypes.EntityPath] (order: 100);
+    contents: rerun.datatypes.EntityPath (order: 100);
 }
