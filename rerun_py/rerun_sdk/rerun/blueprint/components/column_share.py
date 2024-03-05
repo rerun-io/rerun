@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 else:
     ColumnShareLike = Any
 
-ColumnShareArrayLike = Union[ColumnShare, Sequence[ColumnShareLike], npt.NDArray[np.float64]]
+ColumnShareArrayLike = Union[ColumnShare, Sequence[ColumnShareLike], npt.ArrayLike]
 
 
 class ColumnShareType(BaseExtensionType):

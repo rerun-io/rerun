@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 else:
     RowShareLike = Any
 
-RowShareArrayLike = Union[RowShare, Sequence[RowShareLike], npt.NDArray[np.float64]]
+RowShareArrayLike = Union[RowShare, Sequence[RowShareLike], npt.ArrayLike]
 
 
 class RowShareType(BaseExtensionType):
