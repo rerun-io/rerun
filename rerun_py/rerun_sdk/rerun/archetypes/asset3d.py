@@ -105,4 +105,4 @@ class Asset3D(Asset3DExt, Archetype):
     # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
-    __repr__ = Archetype.__repr__
+    __repr__ = Archetype.__repr__  # type: ignore[assignment]

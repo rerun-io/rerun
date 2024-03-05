@@ -42,6 +42,9 @@ class ClearIsRecursive(ClearIsRecursiveExt):
         # You can define your own __init__ function as a member of ClearIsRecursiveExt in clear_is_recursive_ext.py
         self.__attrs_init__(recursive=recursive)
 
+    def __bool__(self) -> bool:
+        return self.recursive
+
     recursive: bool = field(converter=bool)
     # If true, also clears all recursive children entities.
     #

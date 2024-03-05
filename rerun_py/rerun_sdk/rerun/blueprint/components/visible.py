@@ -25,6 +25,9 @@ class Visible:
         # You can define your own __init__ function as a member of VisibleExt in visible_ext.py
         self.__attrs_init__(visible=visible)
 
+    def __bool__(self) -> bool:
+        return self.visible
+
     visible: bool = field(converter=bool)
 
 

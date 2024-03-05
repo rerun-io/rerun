@@ -29,6 +29,9 @@ class PanelView:
         # You can define your own __init__ function as a member of PanelViewExt in panel_view_ext.py
         self.__attrs_init__(is_expanded=is_expanded)
 
+    def __bool__(self) -> bool:
+        return self.is_expanded
+
     is_expanded: bool = field(converter=bool)
 
 

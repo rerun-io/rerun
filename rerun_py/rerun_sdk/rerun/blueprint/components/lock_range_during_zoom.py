@@ -35,6 +35,9 @@ class LockRangeDuringZoom:
         # You can define your own __init__ function as a member of LockRangeDuringZoomExt in lock_range_during_zoom_ext.py
         self.__attrs_init__(lock_range=lock_range)
 
+    def __bool__(self) -> bool:
+        return self.lock_range
+
     lock_range: bool = field(converter=bool)
 
 

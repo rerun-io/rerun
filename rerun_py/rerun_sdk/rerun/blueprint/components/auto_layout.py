@@ -30,6 +30,9 @@ class AutoLayout(AutoLayoutExt):
         # You can define your own __init__ function as a member of AutoLayoutExt in auto_layout_ext.py
         self.__attrs_init__(auto_layout=auto_layout)
 
+    def __bool__(self) -> bool:
+        return self.auto_layout
+
     auto_layout: bool = field(converter=bool)
 
 

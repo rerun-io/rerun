@@ -31,6 +31,9 @@ class EntitiesDeterminedByUser:
         # You can define your own __init__ function as a member of EntitiesDeterminedByUserExt in entities_determined_by_user_ext.py
         self.__attrs_init__(value=value)
 
+    def __bool__(self) -> bool:
+        return self.value
+
     value: bool = field(converter=bool)
 
 
