@@ -113,16 +113,15 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LineStrip3D".into(),
@@ -130,13 +129,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
             "rerun.components.LineStrips3DIndicator".into(),
             "rerun.components.Radius".into(),
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl LineStrips3D {
-    pub const NUM_COMPONENTS: usize = 7usize;
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`LineStrips3D`] [`::re_types_core::Archetype`]

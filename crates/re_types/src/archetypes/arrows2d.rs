@@ -112,18 +112,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector2D".into(),
@@ -131,14 +130,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.components.Position2D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Arrows2D {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`Arrows2D`] [`::re_types_core::Archetype`]

@@ -100,27 +100,21 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Color".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Text".into(),
             "rerun.components.TextLogIndicator".into(),
             "rerun.components.TextLogLevel".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl TextLog {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`TextLog`] [`::re_types_core::Archetype`]

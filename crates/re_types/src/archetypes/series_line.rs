@@ -108,29 +108,27 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesLineIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesLineIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
             "rerun.components.StrokeWidth".into(),
         ]
     });
 
 impl SeriesLine {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`SeriesLine`] [`::re_types_core::Archetype`]

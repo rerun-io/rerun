@@ -156,27 +156,21 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.InstanceKey".into(),
-            "rerun.components.ViewCoordinates".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinates".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeProjection".into(),
             "rerun.components.PinholeIndicator".into(),
             "rerun.components.Resolution".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.ViewCoordinates".into(),
         ]
     });
 
 impl Pinhole {
-    pub const NUM_COMPONENTS: usize = 5usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Pinhole`] [`::re_types_core::Archetype`]

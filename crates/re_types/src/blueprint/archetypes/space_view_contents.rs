@@ -80,25 +80,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewContentsIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.blueprint.components.QueryExpression".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.QueryExpression".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.SpaceViewContentsIndicator".into(),
             "rerun.blueprint.components.QueryExpression".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl SpaceViewContents {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`SpaceViewContents`] [`::re_types_core::Archetype`]

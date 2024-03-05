@@ -95,10 +95,9 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer4Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 18usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
@@ -120,11 +119,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer4Indicator".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.testing.components.AffixFuzzer1".into(),
             "rerun.testing.components.AffixFuzzer10".into(),
             "rerun.testing.components.AffixFuzzer11".into(),
@@ -147,7 +145,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
     });
 
 impl AffixFuzzer4 {
-    pub const NUM_COMPONENTS: usize = 20usize;
+    pub const NUM_COMPONENTS: usize = 19usize;
 }
 
 /// Indicator component for the [`AffixFuzzer4`] [`::re_types_core::Archetype`]

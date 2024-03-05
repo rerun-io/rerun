@@ -99,7 +99,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ActiveTab".into(),
@@ -108,12 +108,11 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.IncludedContent".into(),
             "rerun.blueprint.components.RowShare".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ContainerKind".into(),
@@ -124,13 +123,12 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
             "rerun.blueprint.components.IncludedContent".into(),
             "rerun.blueprint.components.RowShare".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
 impl ContainerBlueprint {
-    pub const NUM_COMPONENTS: usize = 10usize;
+    pub const NUM_COMPONENTS: usize = 9usize;
 }
 
 /// Indicator component for the [`ContainerBlueprint`] [`::re_types_core::Archetype`]

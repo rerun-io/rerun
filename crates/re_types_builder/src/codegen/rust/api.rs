@@ -1087,14 +1087,8 @@ fn quote_trait_impls_from_obj(
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
             let (num_recommended, recommended) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
-            let (num_optional, optional) = compute_components(
-                obj,
-                ATTR_RERUN_COMPONENT_OPTIONAL,
-                // NOTE: Our internal query systems always need to query for instance keys, and
-                // they need to do so using a compile-time array, so make sure it's there at
-                // compile-time even for archetypes that don't use it.
-                ["rerun.components.InstanceKey".to_owned()],
-            );
+            let (num_optional, optional) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
             let num_all = num_required + num_recommended + num_optional;
 

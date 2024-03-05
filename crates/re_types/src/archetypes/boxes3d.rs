@@ -123,17 +123,16 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes3D".into(),
@@ -142,14 +141,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Position3D".into(),
             "rerun.components.Rotation3D".into(),
             "rerun.components.ClassId".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Boxes3D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Boxes3D`] [`::re_types_core::Archetype`]

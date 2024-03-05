@@ -71,30 +71,28 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
         || ["rerun.blueprint.components.SpaceViewBlueprintIndicator".into()],
     );
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.SpaceViewClass".into(),
             "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Name".into(),
         ]
     });
 
 impl SpaceViewBlueprint {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SpaceViewBlueprint`] [`::re_types_core::Archetype`]

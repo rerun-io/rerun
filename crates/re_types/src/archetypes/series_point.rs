@@ -117,23 +117,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.SeriesPointIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
             "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.SeriesPointIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.MarkerShape".into(),
             "rerun.components.MarkerSize".into(),
             "rerun.components.Name".into(),
@@ -141,7 +139,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl SeriesPoint {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`SeriesPoint`] [`::re_types_core::Archetype`]
