@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/entities_determined_by_user.hpp"
-#include "../../blueprint/components/included_queries.hpp"
+#include "../../blueprint/components/included_query.hpp"
 #include "../../blueprint/components/space_view_class.hpp"
 #include "../../blueprint/components/space_view_origin.hpp"
 #include "../../blueprint/components/visible.hpp"
@@ -40,10 +40,10 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::blueprint::components::EntitiesDeterminedByUser>
             entities_determined_by_user;
 
-        /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+        /// Ids of the `DataQuery`s that make up this `SpaceView`.
         ///
-        /// It determines which entities are part of the spaceview.
-        std::optional<rerun::blueprint::components::IncludedQueries> contents;
+        /// They determine which entities are part of the spaceview.
+        std::optional<Collection<rerun::blueprint::components::IncludedQuery>> contents;
 
         /// Whether this space view is visible.
         ///
@@ -93,10 +93,11 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+        /// Ids of the `DataQuery`s that make up this `SpaceView`.
         ///
-        /// It determines which entities are part of the spaceview.
-        SpaceViewBlueprint with_contents(rerun::blueprint::components::IncludedQueries _contents
+        /// They determine which entities are part of the spaceview.
+        SpaceViewBlueprint with_contents(
+            Collection<rerun::blueprint::components::IncludedQuery> _contents
         ) && {
             contents = std::move(_contents);
             // See: https://github.com/rerun-io/rerun/issues/4027

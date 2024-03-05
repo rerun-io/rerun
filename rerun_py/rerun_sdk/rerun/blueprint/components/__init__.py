@@ -42,13 +42,7 @@ from .included_contents import (
     IncludedContentsLike,
     IncludedContentsType,
 )
-from .included_queries import (
-    IncludedQueries,
-    IncludedQueriesArrayLike,
-    IncludedQueriesBatch,
-    IncludedQueriesLike,
-    IncludedQueriesType,
-)
+from .included_query import IncludedQuery, IncludedQueryBatch, IncludedQueryType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .lock_range_during_zoom import (
     LockRangeDuringZoom,
@@ -121,11 +115,9 @@ __all__ = [
     "IncludedContentsBatch",
     "IncludedContentsLike",
     "IncludedContentsType",
-    "IncludedQueries",
-    "IncludedQueriesArrayLike",
-    "IncludedQueriesBatch",
-    "IncludedQueriesLike",
-    "IncludedQueriesType",
+    "IncludedQuery",
+    "IncludedQueryBatch",
+    "IncludedQueryType",
     "IncludedSpaceView",
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",

@@ -9,7 +9,7 @@ pub use re_types::blueprint::components::ColumnShares;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::EntitiesDeterminedByUser;
 pub use re_types::blueprint::components::IncludedContents;
-pub use re_types::blueprint::components::IncludedQueries;
+pub use re_types::blueprint::components::IncludedQuery;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::RowShares;
 pub use re_types::blueprint::components::SpaceViewClass;
@@ -37,7 +37,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<EntityPropertiesComponent>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContents>(blueprint)
-        && validate_component::<IncludedQueries>(blueprint)
+        && validate_component::<IncludedQuery>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelView>(blueprint)
