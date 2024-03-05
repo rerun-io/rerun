@@ -188,7 +188,7 @@ struct ContextMenuContext<'a> {
 /// Actions must do three things, corresponding to three core methods:
 /// 1. Decide if it can operate a given [`Selection`] ([`Self::supports_selection`]).
 /// 2. If so, draw some UI in the context menu ([`Self::ui`]).
-/// 3. If clicked, actually process the [`Selection`] ([`Sef::process_selection`]).
+/// 3. If clicked, actually process the [`Selection`] ([`Self::process_selection`]).
 ///
 /// For convenience, these core methods have default implementations which delegates to simpler
 /// methods (see their respective docstrings). Implementor may either implement the core method for
@@ -267,19 +267,11 @@ trait ContextMenuAction {
     /// Process a single recording.
     fn process_store_id(&self, _ctx: &ContextMenuContext<'_>, _store_id: &re_log_types::StoreId) {}
 
-    /// Process a single component.
-    fn process_component_path(
-        &self,
-        _ctx: &ContextMenuContext<'_>,
-        _component_path: &re_log_types::ComponentPath,
-    ) {
-    }
+    /// Process a single container.
+    fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
 
     /// Process a single space view.
     fn process_space_view(&self, _ctx: &ContextMenuContext<'_>, _space_view_id: &SpaceViewId) {}
-
-    /// Process a single instance.
-    fn process_instance_path(&self, _ctx: &ContextMenuContext<'_>, _instance_path: &InstancePath) {}
 
     /// Process a single data result.
     fn process_data_result(
@@ -290,6 +282,14 @@ trait ContextMenuAction {
     ) {
     }
 
-    /// Process a single container.
-    fn process_container(&self, _ctx: &ContextMenuContext<'_>, _container_id: &ContainerId) {}
+    /// Process a single instance.
+    fn process_instance_path(&self, _ctx: &ContextMenuContext<'_>, _instance_path: &InstancePath) {}
+
+    /// Process a single component.
+    fn process_component_path(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _component_path: &re_log_types::ComponentPath,
+    ) {
+    }
 }
