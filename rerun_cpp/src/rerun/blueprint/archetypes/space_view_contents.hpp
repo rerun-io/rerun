@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/entities_determined_by_user.hpp"
-#include "../../blueprint/components/query_expressions.hpp"
+#include "../../blueprint/components/query_expression.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -22,7 +22,7 @@ namespace rerun::blueprint::archetypes {
         /// Ids of the `DataQuery`s that make up this `SpaceView`.
         ///
         /// They determine which entities are part of the spaceview.
-        std::optional<rerun::blueprint::components::QueryExpressions> query;
+        std::optional<rerun::blueprint::components::QueryExpression> query;
 
         /// True if the user is has added entities themselves. False otherwise.
         /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
@@ -43,7 +43,7 @@ namespace rerun::blueprint::archetypes {
         /// Ids of the `DataQuery`s that make up this `SpaceView`.
         ///
         /// They determine which entities are part of the spaceview.
-        SpaceViewContents with_query(rerun::blueprint::components::QueryExpressions _query) && {
+        SpaceViewContents with_query(rerun::blueprint::components::QueryExpression _query) && {
             query = std::move(_query);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

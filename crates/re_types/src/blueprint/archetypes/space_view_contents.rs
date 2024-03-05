@@ -27,7 +27,7 @@ pub struct SpaceViewContents {
     /// Ids of the `DataQuery`s that make up this `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
-    pub query: Option<crate::blueprint::components::QueryExpressions>,
+    pub query: Option<crate::blueprint::components::QueryExpression>,
 
     /// True if the user is has added entities themselves. False otherwise.
     /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
@@ -42,13 +42,13 @@ impl ::re_types_core::SizeBytes for SpaceViewContents {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::QueryExpressions>>::is_pod()
+        <Option<crate::blueprint::components::QueryExpression>>::is_pod()
             && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
     }
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.QueryExpressions".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.QueryExpression".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewContentsIndicator".into()]);
@@ -64,7 +64,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.QueryExpressions".into(),
+            "rerun.blueprint.components.QueryExpression".into(),
             "rerun.blueprint.components.SpaceViewContentsIndicator".into(),
             "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
             "rerun.components.InstanceKey".into(),
@@ -122,17 +122,16 @@ impl ::re_types_core::Archetype for SpaceViewContents {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let query = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.QueryExpressions")
-        {
-            <crate::blueprint::components::QueryExpressions>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
+        let query =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.QueryExpression") {
+                <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let entities_determined_by_user = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.EntitiesDeterminedByUser")
         {
@@ -188,7 +187,7 @@ impl SpaceViewContents {
     #[inline]
     pub fn with_query(
         mut self,
-        query: impl Into<crate::blueprint::components::QueryExpressions>,
+        query: impl Into<crate::blueprint::components::QueryExpression>,
     ) -> Self {
         self.query = Some(query.into());
         self

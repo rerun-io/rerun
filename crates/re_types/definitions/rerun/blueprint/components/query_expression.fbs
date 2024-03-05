@@ -43,10 +43,13 @@ namespace rerun.blueprint.components;
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-table QueryExpressions (
+table QueryExpression (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq",
-  "attr.rust.override_crate": "re_space_view"
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str, Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
 ) {
-  filter: string (order: 100);
+  filter: rerun.datatypes.Utf8 (order: 100);
 }

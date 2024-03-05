@@ -9,6 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import Archetype
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -23,7 +24,7 @@ class SpaceViewContents(Archetype):
     def __init__(
         self: Any,
         *,
-        query: blueprint_components.QueryExpressionsLike | None = None,
+        query: datatypes.Utf8Like | None = None,
         entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserLike | None = None,
     ):
         """
@@ -61,10 +62,10 @@ class SpaceViewContents(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    query: blueprint_components.QueryExpressionsBatch | None = field(
+    query: blueprint_components.QueryExpressionBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.QueryExpressionsBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.QueryExpressionBatch._optional,  # type: ignore[misc]
     )
     # Ids of the `DataQuery`s that make up this `SpaceView`.
     #
