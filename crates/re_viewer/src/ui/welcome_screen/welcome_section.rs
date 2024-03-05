@@ -179,7 +179,7 @@ fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_co
 
     let panel_count = panels.len();
 
-    const MAX_COLUMN_WIDTH: f32 = 255.0;
+    const MAX_COLUMN_WIDTH: f32 = 280.0;
     const MIN_COLUMN_WIDTH: f32 = 164.0;
 
     let grid_spacing = egui::vec2(12.0, 16.0);

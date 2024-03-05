@@ -147,20 +147,15 @@ pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.p
 
 pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
     "welcome_screen_configure",
-    include_bytes!("../data/images/onboarding-configure.png"),
+    include_bytes!("../data/images/configure-card.png"),
 );
 
 pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
     "welcome_screen_live_data",
-    include_bytes!("../data/images/onboarding-live-data.png"),
+    include_bytes!("../data/images/live-data-card.png"),
 );
 
 pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
     "welcome_screen_recorded_data",
-    include_bytes!("../data/images/onboarding-recorded-data.png"),
-);
-
-pub const WELCOME_SCREEN_EXAMPLES: Icon = Icon::new(
-    "welcome_screen_examples",
-    include_bytes!("../data/images/onboarding-examples.jpg"),
+    include_bytes!("../data/images/recorded-data-card.png"),
 );
