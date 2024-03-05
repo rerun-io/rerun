@@ -13,6 +13,8 @@ namespace rerun.datatypes;
 /// A path to an entity in the `DataStore`.
 table EntityPath  (
   "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "Sequence[str]",
   "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",

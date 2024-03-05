@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class EntitiesDeterminedByUserExt:
-    """Extension for [EntitiesDeterminedByUser][rerun.components.EntitiesDeterminedByUser]."""
+    """Extension for [EntitiesDeterminedByUser][rerun.blueprint.components.EntitiesDeterminedByUser]."""
 
     @staticmethod
     def native_to_pa_array_override(data: EntitiesDeterminedByUserArrayLike, data_type: pa.DataType) -> pa.Array:

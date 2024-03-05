@@ -6,7 +6,7 @@ use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
-use re_types_core::{archetypes::Clear, ArrowBuffer};
+use re_types_core::archetypes::Clear;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, Item,
     SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
@@ -171,14 +171,21 @@ impl ContainerBlueprint {
 
         let contents = contents
             .unwrap_or_default()
-            .0
             .into_iter()
-            .filter_map(|id| Contents::try_from(&id.into()))
+            .filter_map(|id| Contents::try_from(&id.0.into()))
             .collect();
 
-        let col_shares = col_shares.unwrap_or_default().0.iter().cloned().collect();
+        let col_shares = col_shares
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| v.into())
+            .collect();
 
-        let row_shares = row_shares.unwrap_or_default().0.iter().cloned().collect();
+        let row_shares = row_shares
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| v.into())
+            .collect();
 
         let active_tab = active_tab.and_then(|id| Contents::try_from(&id.0.into()));
 
@@ -226,14 +233,11 @@ impl ContainerBlueprint {
 
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
-        let col_shares: ArrowBuffer<_> = col_shares.clone().into();
-        let row_shares: ArrowBuffer<_> = row_shares.clone().into();
-
         let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
             .with_display_name(display_name.clone())
             .with_contents(&contents)
-            .with_col_shares(col_shares)
-            .with_row_shares(row_shares)
+            .with_col_shares(col_shares.clone())
+            .with_row_shares(row_shares.clone())
             .with_visible(*visible);
 
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
