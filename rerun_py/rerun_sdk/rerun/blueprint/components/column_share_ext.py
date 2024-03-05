@@ -14,5 +14,5 @@ class ColumnShareExt:
 
     @staticmethod
     def native_to_pa_array_override(data: ColumnShareArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.float64).flatten()
+        array = np.asarray(data, dtype=np.float32).flatten()
         return pa.array(array, type=data_type)

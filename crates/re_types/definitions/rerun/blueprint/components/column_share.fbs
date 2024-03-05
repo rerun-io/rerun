@@ -13,7 +13,7 @@ namespace rerun.blueprint.components;
 /// The layout share of a column in the container.
 table ColumnShare (
     "attr.python.aliases": "float",
-    "attr.python.array_aliases": "npt.NDArray[np.float64]",
+    "attr.python.array_aliases": "npt.ArrayLike",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
