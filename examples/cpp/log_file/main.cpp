@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
         for (const auto& filepath : filepaths) {
             if (!from_contents) {
                 // Either log the file using its path…
-                rec.log_file_from_path(filepath);
+                rec.log_file_from_path(filepath, "log_file_example");
             } else {
                 // …or using its contents if you already have them loaded for some reason.
                 if (std::filesystem::is_regular_file(filepath)) {
@@ -70,7 +70,8 @@ int main(int argc, char** argv) {
                     rec.log_file_from_contents(
                         filepath,
                         reinterpret_cast<const std::byte*>(data.c_str()),
-                        data.size()
+                        data.size(),
+                        "log_file_example"
                     );
                 }
             }

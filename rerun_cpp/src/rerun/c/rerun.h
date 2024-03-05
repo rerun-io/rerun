@@ -141,6 +141,30 @@ typedef struct rr_spawn_options {
     rr_string executable_path;
 } rr_spawn_options;
 
+/// Recommended settings for the [`DataLoader`].
+///
+/// The loader is free to ignore some or all of these.
+///
+/// Refer to the field-level documentation for more information about each individual options.
+//
+// TODO(#3841): expose timepoint settings once we implement stateless APIs
+typedef struct rr_data_loader_settings {
+    /// The recommended `RecordingId` to log the data to.
+    ///
+    /// Unspecified by default.
+    rr_string recording_id;
+
+    /// What should the logged entity paths be prefixed with?
+    ///
+    /// Unspecified by default.
+    rr_string entity_path_prefix;
+
+    /// Should the logged data be timeless?
+    ///
+    /// Defaults to `false` if not set.
+    bool timeless;
+} rr_data_loader_settings;
+
 typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     rr_string application_id;
@@ -432,7 +456,8 @@ extern void rr_recording_stream_log(
 ///
 /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
 extern void rr_recording_stream_log_file_from_path(
-    rr_recording_stream stream, rr_string path, rr_error* error
+    rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool timeless,
+    rr_error* error
 );
 
 /// Logs the given `contents` using all `DataLoader`s available.
@@ -444,7 +469,8 @@ extern void rr_recording_stream_log_file_from_path(
 ///
 /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
 extern void rr_recording_stream_log_file_from_contents(
-    rr_recording_stream stream, rr_string path, rr_bytes contents, rr_error* error
+    rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
+    bool timeless, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

@@ -11,6 +11,8 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 /// The loader is free to ignore some or all of these.
 ///
 /// External [`DataLoader`]s will be passed the following CLI parameters:
+/// * `--application-id <application_id>`
+/// * `--opened-application-id <opened_application_id>` (if set)
 /// * `--recording-id <store_id>`
 /// * `--opened-recording-id <opened_store_id>` (if set)
 /// * `--entity-path-prefix <entity_path_prefix>` (if set)
@@ -19,13 +21,21 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 /// * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
 #[derive(Debug, Clone)]
 pub struct DataLoaderSettings {
-    /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
-    pub store_id: re_log_types::StoreId,
+    /// The recommended [`re_log_types::ApplicationId`] to log the data to, based on the surrounding context.
+    pub application_id: Option<re_log_types::ApplicationId>,
 
-    /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
+    /// The [`re_log_types::ApplicationId`] that is currently opened in the viewer, if any.
+    //
+    // TODO(#5350): actually support this
+    pub opened_application_id: Option<re_log_types::ApplicationId>,
+
+    /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
     ///
     /// Log data to this recording if you want it to appear in a new recording shared by all
     /// data-loaders for the current loading session.
+    pub store_id: re_log_types::StoreId,
+
+    /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
     //
     // TODO(#5350): actually support this
     pub opened_store_id: Option<re_log_types::StoreId>,
@@ -41,6 +51,8 @@ impl DataLoaderSettings {
     #[inline]
     pub fn recommended(store_id: impl Into<re_log_types::StoreId>) -> Self {
         Self {
+            application_id: Default::default(),
+            opened_application_id: Default::default(),
             store_id: store_id.into(),
             opened_store_id: Default::default(),
             entity_path_prefix: Default::default(),
@@ -51,6 +63,8 @@ impl DataLoaderSettings {
     /// Generates CLI flags from these settings, for external data loaders.
     pub fn to_cli_args(&self) -> Vec<String> {
         let Self {
+            application_id,
+            opened_application_id,
             store_id,
             opened_store_id,
             entity_path_prefix,
@@ -59,8 +73,17 @@ impl DataLoaderSettings {
 
         let mut args = Vec::new();
 
+        if let Some(application_id) = application_id {
+            args.extend(["--application-id".to_owned(), format!("{application_id}")]);
+        }
         args.extend(["--recording-id".to_owned(), format!("{store_id}")]);
 
+        if let Some(opened_application_id) = opened_application_id {
+            args.extend([
+                "--opened-application-id".to_owned(),
+                format!("{opened_application_id}"),
+            ]);
+        }
         if let Some(opened_store_id) = opened_store_id {
             args.extend([
                 "--opened-recording-id".to_owned(),

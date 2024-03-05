@@ -731,23 +731,16 @@ pub unsafe extern "C" fn rr_recording_stream_log(
 fn rr_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
+    entity_path_prefix: CStringView,
+    timeless: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let recording_id = stream
-        .store_info()
-        .ok_or_else(|| {
-            CError::new(
-                CErrorCode::RecordingStreamRuntimeFailure,
-                &format!("Couldn't load file {filepath:?}: no recording available"),
-            )
-        })?
-        .store_id;
-    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
-
     let filepath = filepath.as_str("filepath")?;
+    let entity_path_prefix = entity_path_prefix.as_str("entity_path_prefix").ok();
+
     stream
-        .log_file_from_path(&settings, filepath)
+        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), timeless)
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,
@@ -763,9 +756,11 @@ fn rr_log_file_from_path_impl(
 pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     stream: CRecordingStream,
     filepath: CStringView,
+    entity_path_prefix: CStringView,
+    timeless: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_path_impl(stream, filepath) {
+    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, timeless) {
         err.write_error(error);
     }
 }
@@ -776,25 +771,22 @@ fn rr_log_file_from_contents_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     contents: CBytesView,
+    entity_path_prefix: CStringView,
+    timeless: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let recording_id = stream
-        .store_info()
-        .ok_or_else(|| {
-            CError::new(
-                CErrorCode::RecordingStreamRuntimeFailure,
-                &format!("Couldn't load file {filepath:?}: no recording available"),
-            )
-        })?
-        .store_id;
-    let settings = re_sdk::DataLoaderSettings::recommended(recording_id);
-
     let filepath = filepath.as_str("filepath")?;
     let contents = contents.as_bytes("contents")?;
+    let entity_path_prefix = entity_path_prefix.as_str("entity_path_prefix").ok();
 
     stream
-        .log_file_from_contents(&settings, filepath, std::borrow::Cow::Borrowed(contents))
+        .log_file_from_contents(
+            filepath,
+            std::borrow::Cow::Borrowed(contents),
+            entity_path_prefix.map(Into::into),
+            timeless,
+        )
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,
@@ -811,9 +803,13 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     stream: CRecordingStream,
     filepath: CStringView,
     contents: CBytesView,
+    entity_path_prefix: CStringView,
+    timeless: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_contents_impl(stream, filepath, contents) {
+    if let Err(err) =
+        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, timeless)
+    {
         err.write_error(error);
     }
 }
