@@ -13,7 +13,7 @@ README = """
 
 * Reset the blueprint.
 * Right-click on any space view and check for context menu content:
-    - Hide
+    - Hide (or Show, depending on visibility)
     - Remove
     - Clone
     - Move to new container
@@ -26,19 +26,17 @@ README = """
     - Add Space View
 * Add a container via the context menu, check the container appears at then end of the list.
 * Right-click on the container and check for context menu content:
-    - Hide
+    - Hide (or Show, depending on visibility)
     - Remove
     - Add Container
     - Add Space View
     - Move to new container
+* Right-click on a data result and check for the context menu content:
+    - Hide (or Show, depending on visibility)
 * Select a container and, in the Selection Panel, right click on either space view or container children:
     - The context menu action should be the same as before.
     - The selection state is not affected by the right-click.
 
-### Show/Hide
-
-* Hide a space view and check that its context menu shows "Show" instead of "Hide".
-* Select multiple space views with homogeneous or heterogeneous visibility states. Check that either or both of "Show All" and "Hide All" are showed as appropriate.
 
 ### Selection behavior
 
@@ -52,12 +50,18 @@ README = """
 ### Multi-selection checks
 
 * Select multiple space views, right-click, and check for context menu content:
-    - Hide
+    - Hide All (if any are visible)
+    - Show All (if any are hidden)
     - Remove
     - Move to new container
 * Same as above, but with only containers selected.
 * Same as above, but with both space views and containers selected.
-* Same as above, but with the viewport selected as well. The context menu should be identical, but none of its actions should apply to the viewport.
+* Same as above, but with the viewport selected as well, and check for context menu content. These should not affect the Viewport.
+    - Hide All (if any are visible)
+    - Show All (if any are hidden)
+* Select a mix of containers, space views, and data results, and check for context menu content:
+    - Hide All (if any are visible)
+    - Show All (if any are hidden)
 
 ### Invalid sub-container kind
 
