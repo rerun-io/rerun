@@ -30,18 +30,18 @@ impl ContextMenuAction for ShowAction {
         }
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
-        ctx.viewport_blueprint.set_content_visibility(
-            ctx.viewer_context,
-            &Contents::SpaceView(*space_view_id),
-            true,
-        );
-    }
-
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         ctx.viewport_blueprint.set_content_visibility(
             ctx.viewer_context,
             &Contents::Container(*container_id),
+            true,
+        );
+    }
+
+    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
+        ctx.viewport_blueprint.set_content_visibility(
+            ctx.viewer_context,
+            &Contents::SpaceView(*space_view_id),
             true,
         );
     }
@@ -74,18 +74,18 @@ impl ContextMenuAction for HideAction {
         }
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
-        ctx.viewport_blueprint.set_content_visibility(
-            ctx.viewer_context,
-            &Contents::SpaceView(*space_view_id),
-            false,
-        );
-    }
-
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         ctx.viewport_blueprint.set_content_visibility(
             ctx.viewer_context,
             &Contents::Container(*container_id),
+            false,
+        );
+    }
+
+    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
+        ctx.viewport_blueprint.set_content_visibility(
+            ctx.viewer_context,
+            &Contents::SpaceView(*space_view_id),
             false,
         );
     }
@@ -115,18 +115,18 @@ impl ContextMenuAction for RemoveAction {
         "Remove".to_owned()
     }
 
-    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
-        ctx.viewport_blueprint
-            .mark_user_interaction(ctx.viewer_context);
-        ctx.viewport_blueprint
-            .remove_contents(Contents::SpaceView(*space_view_id));
-    }
-
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         ctx.viewport_blueprint
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
             .remove_contents(Contents::Container(*container_id));
+    }
+
+    fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
+        ctx.viewport_blueprint
+            .mark_user_interaction(ctx.viewer_context);
+        ctx.viewport_blueprint
+            .remove_contents(Contents::SpaceView(*space_view_id));
     }
 }
 

@@ -304,7 +304,7 @@ impl Viewport<'_, '_> {
                     );
 
                     // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                    // The hlater is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                     let mut projections = Vec::new();
                     result_tree.visit(&mut |node| {
                         if !node
