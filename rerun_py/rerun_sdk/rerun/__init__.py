@@ -527,8 +527,9 @@ def _register_on_fork() -> None:
     try:
         import os
 
-        os.register_at_fork(after_in_child=cleanup_if_forked_child)
+        os.register_at_fork(after_in_child=cleanup_if_forked_child) # type: ignore[attr-defined]
     except AttributeError:
+        # not defined on all OSes
         pass
 
 

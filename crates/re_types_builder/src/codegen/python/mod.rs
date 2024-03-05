@@ -736,7 +736,11 @@ fn code_for_struct(
 
         if *kind == ObjectKind::Archetype {
             code.push_indented(1, "__str__ = Archetype.__str__", 1);
-            code.push_indented(1, "__repr__ = Archetype.__repr__", 1);
+            code.push_indented(
+                1,
+                "__repr__ = Archetype.__repr__ # type: ignore[assignment] ",
+                1,
+            );
         }
 
         code.push_indented(1, quote_array_method_from_obj(ext_class, objects, obj), 1);
