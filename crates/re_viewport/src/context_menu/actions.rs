@@ -8,14 +8,6 @@ use crate::Contents;
 pub(super) struct ShowAction;
 
 impl ContextMenuAction for ShowAction {
-    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
-        if ctx.selection.len() > 1 {
-            "Show All".to_owned()
-        } else {
-            "Show".to_owned()
-        }
-    }
-
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         ctx.selection.iter().any(|(item, _)| match item {
             Item::SpaceView(space_view_id) => !ctx
@@ -28,6 +20,14 @@ impl ContextMenuAction for ShowAction {
             }
             _ => false,
         })
+    }
+
+    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
+        if ctx.selection.len() > 1 {
+            "Show All".to_owned()
+        } else {
+            "Show".to_owned()
+        }
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
@@ -52,14 +52,6 @@ impl ContextMenuAction for ShowAction {
 pub(super) struct HideAction;
 
 impl ContextMenuAction for HideAction {
-    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
-        if ctx.selection.len() > 1 {
-            "Hide All".to_owned()
-        } else {
-            "Hide".to_owned()
-        }
-    }
-
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         ctx.selection.iter().any(|(item, _)| match item {
             Item::SpaceView(space_view_id) => ctx
@@ -72,6 +64,14 @@ impl ContextMenuAction for HideAction {
             }
             _ => false,
         })
+    }
+
+    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
+        if ctx.selection.len() > 1 {
+            "Hide All".to_owned()
+        } else {
+            "Hide".to_owned()
+        }
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
@@ -97,10 +97,6 @@ impl ContextMenuAction for HideAction {
 pub(super) struct RemoveAction;
 
 impl ContextMenuAction for RemoveAction {
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        "Remove".to_owned()
-    }
-
     fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
         true
     }
@@ -113,6 +109,10 @@ impl ContextMenuAction for RemoveAction {
             }
             _ => false,
         }
+    }
+
+    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+        "Remove".to_owned()
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
@@ -136,12 +136,12 @@ impl ContextMenuAction for RemoveAction {
 pub(super) struct CloneSpaceViewAction;
 
 impl ContextMenuAction for CloneSpaceViewAction {
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        "Clone".to_owned()
-    }
-
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         matches!(item, Item::SpaceView(_))
+    }
+
+    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+        "Clone".to_owned()
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
@@ -164,10 +164,6 @@ impl ContextMenuAction for CloneSpaceViewAction {
 pub(super) struct AddContainerAction(pub egui_tiles::ContainerKind);
 
 impl ContextMenuAction for AddContainerAction {
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        format!("{:?}", self.0)
-    }
-
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         if let Some(Item::Container(container_id)) = ctx.selection.single_item() {
             if let Some(container) = ctx.viewport_blueprint.container(container_id) {
@@ -184,6 +180,10 @@ impl ContextMenuAction for AddContainerAction {
         }
     }
 
+    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+        format!("{:?}", self.0)
+    }
+
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         ctx.viewport_blueprint
             .add_container(self.0, Some(*container_id));
@@ -198,16 +198,16 @@ impl ContextMenuAction for AddContainerAction {
 pub(super) struct AddSpaceViewAction(pub SpaceViewClassIdentifier);
 
 impl ContextMenuAction for AddSpaceViewAction {
+    fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
+        matches!(item, Item::Container(_))
+    }
+
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         ctx.viewer_context
             .space_view_class_registry
             .get_class_or_log_error(&self.0)
             .display_name()
             .to_owned()
-    }
-
-    fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        matches!(item, Item::Container(_))
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
@@ -234,24 +234,6 @@ impl ContextMenuAction for AddSpaceViewAction {
 pub(super) struct MoveContentsToNewContainerAction(pub egui_tiles::ContainerKind);
 
 impl ContextMenuAction for MoveContentsToNewContainerAction {
-    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        format!("{:?}", self.0)
-    }
-
-    fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
-        true
-    }
-
-    fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        match item {
-            Item::SpaceView(_) => true,
-            Item::Container(container_id) => {
-                ctx.viewport_blueprint.root_container != Some(*container_id)
-            }
-            _ => false,
-        }
-    }
-
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         if let Some((parent_container_id, _)) = Self::target_container_id_and_position(ctx) {
             if let Some(parent_container) = ctx.viewport_blueprint.container(&parent_container_id) {
@@ -272,6 +254,24 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
             }
             _ => false,
         })
+    }
+
+    fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
+        true
+    }
+
+    fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
+        match item {
+            Item::SpaceView(_) => true,
+            Item::Container(container_id) => {
+                ctx.viewport_blueprint.root_container != Some(*container_id)
+            }
+            _ => false,
+        }
+    }
+
+    fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
+        format!("{:?}", self.0)
     }
 
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
