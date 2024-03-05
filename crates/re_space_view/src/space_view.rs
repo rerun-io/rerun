@@ -175,9 +175,8 @@ impl SpaceViewBlueprint {
 
         let queries = contents
             .unwrap_or_default()
-            .0
             .into_iter()
-            .map(DataQueryId::from)
+            .map(|included| DataQueryId::from(included.0))
             .filter_map(|id| {
                 DataQueryBlueprint::try_from_db(id, blueprint_db, query, class_identifier)
             })

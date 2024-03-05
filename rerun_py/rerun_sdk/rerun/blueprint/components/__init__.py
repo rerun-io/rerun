@@ -36,13 +36,7 @@ from .entity_properties_component import (
 )
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
-from .included_queries import (
-    IncludedQueries,
-    IncludedQueriesArrayLike,
-    IncludedQueriesBatch,
-    IncludedQueriesLike,
-    IncludedQueriesType,
-)
+from .included_query import IncludedQuery, IncludedQueryBatch, IncludedQueryType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .lock_range_during_zoom import (
     LockRangeDuringZoom,
@@ -61,13 +55,7 @@ from .query_expressions import (
 )
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
-from .space_view_class import (
-    SpaceViewClass,
-    SpaceViewClassArrayLike,
-    SpaceViewClassBatch,
-    SpaceViewClassLike,
-    SpaceViewClassType,
-)
+from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
@@ -119,11 +107,9 @@ __all__ = [
     "IncludedContent",
     "IncludedContentBatch",
     "IncludedContentType",
-    "IncludedQueries",
-    "IncludedQueriesArrayLike",
-    "IncludedQueriesBatch",
-    "IncludedQueriesLike",
-    "IncludedQueriesType",
+    "IncludedQuery",
+    "IncludedQueryBatch",
+    "IncludedQueryType",
     "IncludedSpaceView",
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
@@ -151,9 +137,7 @@ __all__ = [
     "RowShareLike",
     "RowShareType",
     "SpaceViewClass",
-    "SpaceViewClassArrayLike",
     "SpaceViewClassBatch",
-    "SpaceViewClassLike",
     "SpaceViewClassType",
     "SpaceViewMaximized",
     "SpaceViewMaximizedBatch",

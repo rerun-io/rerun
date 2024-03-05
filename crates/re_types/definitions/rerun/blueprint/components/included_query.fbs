@@ -10,13 +10,13 @@ namespace rerun.blueprint.components;
 // ---
 
 
-/// All the queries belonging to a given `SpaceView`.
+/// Each query id refers to a `QueryExpression` component.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-table IncludedQueries (
+table IncludedQuery (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "Default",
   "attr.rust.repr": "transparent"
 ) {
-  query_ids: [rerun.datatypes.Uuid] (order: 100);
+  query_id: rerun.datatypes.Uuid (order: 100);
 }

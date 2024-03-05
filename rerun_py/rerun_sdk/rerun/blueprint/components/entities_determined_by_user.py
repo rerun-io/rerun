@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
+from .entities_determined_by_user_ext import EntitiesDeterminedByUserExt
 
 __all__ = [
     "EntitiesDeterminedByUser",
@@ -22,7 +23,7 @@ __all__ = [
 
 
 @define(init=False)
-class EntitiesDeterminedByUser:
+class EntitiesDeterminedByUser(EntitiesDeterminedByUserExt):
     """**Component**: Whether the space view entities were manually edited."""
 
     def __init__(self: Any, value: EntitiesDeterminedByUserLike):
@@ -37,7 +38,11 @@ class EntitiesDeterminedByUser:
     value: bool = field(converter=bool)
 
 
-EntitiesDeterminedByUserLike = EntitiesDeterminedByUser
+if TYPE_CHECKING:
+    EntitiesDeterminedByUserLike = Union[EntitiesDeterminedByUser, bool]
+else:
+    EntitiesDeterminedByUserLike = Any
+
 EntitiesDeterminedByUserArrayLike = Union[
     EntitiesDeterminedByUser,
     Sequence[EntitiesDeterminedByUserLike],
@@ -56,4 +61,4 @@ class EntitiesDeterminedByUserBatch(BaseBatch[EntitiesDeterminedByUserArrayLike]
 
     @staticmethod
     def _native_to_pa_array(data: EntitiesDeterminedByUserArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in entities_determined_by_user_ext.py
+        return EntitiesDeterminedByUserExt.native_to_pa_array_override(data, data_type)

@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The top-level description of the Viewport.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SpaceViewBlueprint {
     /// The class of the view.
     pub class_identifier: crate::blueprint::components::SpaceViewClass,
@@ -40,10 +40,10 @@ pub struct SpaceViewBlueprint {
     /// True if the user is has added entities themselves. False otherwise.
     pub entities_determined_by_user: Option<crate::blueprint::components::EntitiesDeterminedByUser>,
 
-    /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+    /// Ids of the `DataQuery`s that make up this `SpaceView`.
     ///
-    /// It determines which entities are part of the spaceview.
-    pub contents: Option<crate::blueprint::components::IncludedQueries>,
+    /// They determine which entities are part of the spaceview.
+    pub contents: Option<Vec<crate::blueprint::components::IncludedQuery>>,
 
     /// Whether this space view is visible.
     ///
@@ -68,7 +68,7 @@ impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
             && <Option<crate::components::Name>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewOrigin>>::is_pod()
             && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
-            && <Option<crate::blueprint::components::IncludedQueries>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::IncludedQuery>>>::is_pod()
             && <Option<crate::blueprint::components::Visible>>::is_pod()
     }
 }
@@ -85,7 +85,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
-            "rerun.blueprint.components.IncludedQueries".into(),
+            "rerun.blueprint.components.IncludedQuery".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
@@ -99,7 +99,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
             "rerun.blueprint.components.SpaceViewClass".into(),
             "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
             "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
-            "rerun.blueprint.components.IncludedQueries".into(),
+            "rerun.blueprint.components.IncludedQuery".into(),
             "rerun.blueprint.components.SpaceViewOrigin".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.components.InstanceKey".into(),
@@ -205,12 +205,15 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
             None
         };
         let contents =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedQueries") {
-                <crate::blueprint::components::IncludedQueries>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
-                    .into_iter()
-                    .next()
-                    .flatten()
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedQuery") {
+                Some({
+                    <crate::blueprint::components::IncludedQuery>::from_arrow_opt(&**array)
+                        .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#contents")?
+                })
             } else {
                 None
             };
@@ -253,7 +256,7 @@ impl ::re_types_core::AsComponents for SpaceViewBlueprint {
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.contents
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.visible
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -308,9 +311,9 @@ impl SpaceViewBlueprint {
     #[inline]
     pub fn with_contents(
         mut self,
-        contents: impl Into<crate::blueprint::components::IncludedQueries>,
+        contents: impl IntoIterator<Item = impl Into<crate::blueprint::components::IncludedQuery>>,
     ) -> Self {
-        self.contents = Some(contents.into());
+        self.contents = Some(contents.into_iter().map(Into::into).collect());
         self
     }
 

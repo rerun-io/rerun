@@ -13,7 +13,8 @@ namespace rerun.blueprint.components;
 table EntitiesDeterminedByUser (
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.python.aliases": "bool",
+    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {

@@ -23,12 +23,12 @@ class SpaceViewBlueprint(Archetype):
 
     def __init__(
         self: Any,
-        class_identifier: blueprint_components.SpaceViewClassLike,
+        class_identifier: datatypes.Utf8Like,
         *,
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
         entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserLike | None = None,
-        contents: blueprint_components.IncludedQueriesLike | None = None,
+        contents: datatypes.UuidArrayLike | None = None,
         visible: blueprint_components.VisibleLike | None = None,
     ):
         """
@@ -49,9 +49,9 @@ class SpaceViewBlueprint(Archetype):
         entities_determined_by_user:
             True if the user is has added entities themselves. False otherwise.
         contents:
-            `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+            Ids of the `DataQuery`s that make up this `SpaceView`.
 
-            It determines which entities are part of the spaceview.
+            They determine which entities are part of the spaceview.
         visible:
             Whether this space view is visible.
 
@@ -129,14 +129,14 @@ class SpaceViewBlueprint(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    contents: blueprint_components.IncludedQueriesBatch | None = field(
+    contents: blueprint_components.IncludedQueryBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.IncludedQueriesBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.IncludedQueryBatch._optional,  # type: ignore[misc]
     )
-    # `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+    # Ids of the `DataQuery`s that make up this `SpaceView`.
     #
-    # It determines which entities are part of the spaceview.
+    # They determine which entities are part of the spaceview.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

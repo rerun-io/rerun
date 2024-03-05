@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -19,16 +20,28 @@ namespace arrow {
 namespace rerun::blueprint::components {
     /// **Component**: The class of a `SpaceView`.
     struct SpaceViewClass {
-        std::string value;
+        rerun::datatypes::Utf8 value;
 
       public:
         SpaceViewClass() = default;
+
+        SpaceViewClass(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
+
+        SpaceViewClass& operator=(rerun::datatypes::Utf8 value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
         SpaceViewClass(std::string value_) : value(std::move(value_)) {}
 
         SpaceViewClass& operator=(std::string value_) {
             value = std::move(value_);
             return *this;
+        }
+
+        /// Cast to the underlying Utf8 datatype
+        operator rerun::datatypes::Utf8() const {
+            return value;
         }
     };
 } // namespace rerun::blueprint::components

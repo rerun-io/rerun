@@ -39,7 +39,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// (`/world/**` matches both `/world` and `/world/car/driver`).
 /// Other uses of `*` are not (yet) supported.
 ///
-/// `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+/// Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
 /// This means the last matching rule is also the most specific one.
 /// For instance:
 ///

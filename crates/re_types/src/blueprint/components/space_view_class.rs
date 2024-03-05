@@ -22,9 +22,9 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The class of a `SpaceView`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct SpaceViewClass(pub ::re_types_core::ArrowString);
+pub struct SpaceViewClass(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::SizeBytes for SpaceViewClass {
     #[inline]
@@ -34,21 +34,29 @@ impl ::re_types_core::SizeBytes for SpaceViewClass {
 
     #[inline]
     fn is_pod() -> bool {
-        <::re_types_core::ArrowString>::is_pod()
+        <crate::datatypes::Utf8>::is_pod()
     }
 }
 
-impl From<::re_types_core::ArrowString> for SpaceViewClass {
-    #[inline]
-    fn from(value: ::re_types_core::ArrowString) -> Self {
-        Self(value)
+impl<T: Into<crate::datatypes::Utf8>> From<T> for SpaceViewClass {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<SpaceViewClass> for ::re_types_core::ArrowString {
+impl std::borrow::Borrow<crate::datatypes::Utf8> for SpaceViewClass {
     #[inline]
-    fn from(value: SpaceViewClass) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for SpaceViewClass {
+    type Target = crate::datatypes::Utf8;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Utf8 {
+        &self.0
     }
 }
 
@@ -95,15 +103,25 @@ impl ::re_types_core::Loggable for SpaceViewClass {
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: arrow2::buffer::Buffer<u8> =
-                    data0.iter().flatten().flat_map(|s| s.0.clone()).collect();
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
-                )
-                .unwrap()
-                .into();
+                let inner_data: arrow2::buffer::Buffer<u8> = data0
+                    .iter()
+                    .flatten()
+                    .flat_map(|datum| {
+                        let crate::datatypes::Utf8(data0) = datum;
+                        data0.0.clone()
+                    })
+                    .collect();
+                let offsets =
+                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
+                        opt.as_ref()
+                            .map(|datum| {
+                                let crate::datatypes::Utf8(data0) = datum;
+                                data0.0.len()
+                            })
+                            .unwrap_or_default()
+                    }))
+                    .unwrap()
+                    .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
@@ -162,7 +180,9 @@ impl ::re_types_core::Loggable for SpaceViewClass {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| {
+                    res_or_opt.map(|v| crate::datatypes::Utf8(::re_types_core::ArrowString(v)))
+                })
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.SpaceViewClass#value")?

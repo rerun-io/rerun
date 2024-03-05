@@ -11,9 +11,11 @@ namespace rerun.blueprint.components;
 
 /// The class of a `SpaceView`.
 table SpaceViewClass (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
-    "attr.rust.repr": "transparent"
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "str",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
 ) {
-    value: string (order: 100);
+  value: rerun.datatypes.Utf8 (order: 100);
 }

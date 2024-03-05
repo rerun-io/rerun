@@ -33,7 +33,7 @@ def test_viewport_blueprint() -> None:
         auto_space_views_arrays,
     )
 
-    for space_views, root_container, maximized, auto_layout, auto_space_view in all_arrays:
+    for space_views, root_container, maximized, auto_layout, auto_space_views in all_arrays:
         space_views = space_views if space_views is not None else space_views_arrays[-1]
 
         print(
@@ -42,7 +42,7 @@ def test_viewport_blueprint() -> None:
             f"    root_container={root_container!r}\n",
             f"    maximized={maximized!r}\n",
             f"    auto_layout={auto_layout!r}\n",
-            f"    auto_space_views={auto_space_view!r}\n",
+            f"    auto_space_views={auto_space_views!r}\n",
             ")",
         )
         arch = ViewportBlueprint(
@@ -50,7 +50,7 @@ def test_viewport_blueprint() -> None:
             root_container=root_container,
             maximized=maximized,
             auto_layout=auto_layout,
-            auto_space_views=auto_space_view,
+            auto_space_views=auto_space_views,
         )
         print(f"{arch}\n")
 
@@ -58,4 +58,4 @@ def test_viewport_blueprint() -> None:
         assert arch.root_container == RootContainerBatch._optional(none_empty_or_value(root_container, uuid_bytes0))
         assert arch.maximized == SpaceViewMaximizedBatch._optional(none_empty_or_value(maximized, uuid_bytes1))
         assert arch.auto_layout == AutoLayoutBatch._optional(none_empty_or_value(auto_layout, True))
-        assert arch.auto_space_views == AutoSpaceViewsBatch._optional(none_empty_or_value(auto_space_view, False))
+        assert arch.auto_space_views == AutoSpaceViewsBatch._optional(none_empty_or_value(auto_space_views, False))

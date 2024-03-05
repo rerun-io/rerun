@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Whether or not space views should be created automatically.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone, Debug, Copy, Default)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct AutoSpaceViews(pub bool);
 
