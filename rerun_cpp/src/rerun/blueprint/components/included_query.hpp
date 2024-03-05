@@ -17,7 +17,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: Each query id refers to a [`QueryExpressions`] component.
+    /// **Component**: Each query id refers to a `QueryExpression` component.
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct IncludedQuery {
