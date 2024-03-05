@@ -10,7 +10,6 @@ from rerun.components import (
     Color,
     ColorBatch,
     DrawOrderLike,
-    InstanceKeyArrayLike,
     Position2DBatch,
     RadiusArrayLike,
 )
@@ -23,8 +22,6 @@ from .common_arrays import (
     colors_expected,
     draw_order_expected,
     draw_orders,
-    instance_keys_arrays,
-    instance_keys_expected,
     keypoint_ids_arrays,
     keypoint_ids_expected,
     labels_arrays,
@@ -49,10 +46,9 @@ def test_points2d() -> None:
         draw_orders,
         class_ids_arrays,
         keypoint_ids_arrays,
-        instance_keys_arrays,
     )
 
-    for positions, radii, colors, labels, draw_order, class_ids, keypoint_ids, instance_keys in all_arrays:
+    for positions, radii, colors, labels, draw_order, class_ids, keypoint_ids in all_arrays:
         positions = positions if positions is not None else positions_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
@@ -63,7 +59,6 @@ def test_points2d() -> None:
         draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[KeypointIdArrayLike], keypoint_ids)
-        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"rr.Points2D(\n"
@@ -74,7 +69,6 @@ def test_points2d() -> None:
             f"    draw_order={draw_order!r}\n"
             f"    class_ids={class_ids!r}\n"
             f"    keypoint_ids={keypoint_ids!r}\n"
-            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Points2D(
@@ -85,7 +79,6 @@ def test_points2d() -> None:
             draw_order=draw_order,
             class_ids=class_ids,
             keypoint_ids=keypoint_ids,
-            instance_keys=instance_keys,
         )
         print(f"{arch}\n")
 
@@ -96,7 +89,6 @@ def test_points2d() -> None:
         assert arch.draw_order == draw_order_expected(draw_order)
         assert arch.class_ids == class_ids_expected(class_ids)
         assert arch.keypoint_ids == keypoint_ids_expected(keypoint_ids)
-        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(

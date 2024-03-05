@@ -4,7 +4,7 @@ import itertools
 from typing import Optional, cast
 
 import rerun as rr
-from rerun.components import InstanceKeyArrayLike, Position3DBatch, RadiusArrayLike, Vector3DBatch
+from rerun.components import Position3DBatch, RadiusArrayLike, Vector3DBatch
 from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
 
 from .common_arrays import (
@@ -12,8 +12,6 @@ from .common_arrays import (
     class_ids_expected,
     colors_arrays,
     colors_expected,
-    instance_keys_arrays,
-    instance_keys_expected,
     labels_arrays,
     labels_expected,
     radii_arrays,
@@ -34,10 +32,9 @@ def test_arrows3d() -> None:
         colors_arrays,
         labels_arrays,
         class_ids_arrays,
-        instance_keys_arrays,
     )
 
-    for vectors, origins, radii, colors, labels, class_ids, instance_keys in all_arrays:
+    for vectors, origins, radii, colors, labels, class_ids in all_arrays:
         vectors = vectors if vectors is not None else vectors_arrays[-1]
         origins = origins if origins is not None else origins_arrays[-1]
 
@@ -48,7 +45,6 @@ def test_arrows3d() -> None:
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"E: rr.Arrows3D(\n"
@@ -58,7 +54,6 @@ def test_arrows3d() -> None:
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Arrows3D(
@@ -68,7 +63,6 @@ def test_arrows3d() -> None:
             colors=colors,
             labels=labels,
             class_ids=class_ids,
-            instance_keys=instance_keys,
         )
         print(f"A: {arch}\n")
 
@@ -78,7 +72,6 @@ def test_arrows3d() -> None:
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
-        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 if __name__ == "__main__":

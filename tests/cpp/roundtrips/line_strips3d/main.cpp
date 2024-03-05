@@ -15,6 +15,5 @@ int main(int, char** argv) {
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
             .with_class_ids({126, 127})
-            .with_instance_keys({66, 666})
     );
 }

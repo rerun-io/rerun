@@ -18,7 +18,6 @@ class Points3DExt:
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
-        instance_keys: components.InstanceKeyArrayLike | None = None,
     ):
         """
         Create a new instance of the Points3D archetype.
@@ -49,8 +48,6 @@ class Points3DExt:
              with `class_id`).
              E.g. the classification might be 'Person' and the keypoints refer to joints on a
              detected skeleton.
-        instance_keys:
-             Unique identifiers for each individual point in the batch.
 
         """
 
@@ -65,7 +62,6 @@ class Points3DExt:
                 labels=labels,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
-                instance_keys=instance_keys,
             )
             return
         self.__attrs_clear__()

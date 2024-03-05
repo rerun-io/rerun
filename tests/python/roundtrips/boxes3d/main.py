@@ -25,7 +25,6 @@ def main() -> None:
     radii = np.array([0.1, 0.01], dtype=np.float32)
     labels = ["hello", "friend"]
     class_ids = np.array([126, 127], dtype=np.uint64)
-    instance_keys = np.array([66, 666], dtype=np.uint64)
 
     boxes3d = rr.Boxes3D(
         half_sizes=half_sizes,
@@ -35,7 +34,6 @@ def main() -> None:
         labels=labels,
         radii=radii,
         class_ids=class_ids,
-        instance_keys=instance_keys,
     )
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

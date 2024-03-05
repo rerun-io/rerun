@@ -161,8 +161,7 @@ def log_point_cloud(point_cloud: ARPointCloud) -> None:
     """Logs a point cloud from an `ARFrame` using the Rerun SDK."""
 
     positions = np.array([[p.x, p.y, p.z] for p in point_cloud.point]).astype(np.float32)
-    identifiers = point_cloud.identifier
-    rr.log("world/points", rr.Points3D(positions, instance_keys=identifiers, colors=[255, 255, 255, 255]))
+    rr.log("world/points", rr.Points3D(positions, colors=[255, 255, 255, 255]))
 
 
 def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:

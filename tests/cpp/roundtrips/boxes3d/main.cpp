@@ -21,6 +21,5 @@ int main(int, char** argv) {
             .with_labels({"hello", "friend"})
             .with_radii({0.1f, 0.01f})
             .with_class_ids({126, 127})
-            .with_instance_keys({66, 666})
     );
 }

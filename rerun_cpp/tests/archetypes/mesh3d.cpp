@@ -19,8 +19,7 @@ SCENARIO(
                 .with_vertex_colors({{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}})
                 .with_mesh_properties(MeshProperties::from_triangle_indices({1, 2, 3, 4, 5, 6}))
                 .with_mesh_material(Material::from_albedo_factor(0xEE112233))
-                .with_class_ids({126, 127})
-                .with_instance_keys({123ull, 124ull});
+                .with_class_ids({126, 127});
 
         rerun::datatypes::MeshProperties mesh_properties_inner_manual;
         mesh_properties_inner_manual.indices = {1, 2, 3, 4, 5, 6};
@@ -41,7 +40,6 @@ SCENARIO(
         from_manual.mesh_properties = {mesh_properties_manual};
         from_manual.mesh_material = {mesh_material_manual};
         from_manual.class_ids = {126, 127};
-        from_manual.instance_keys = {123ull, 124ull};
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

@@ -102,7 +102,6 @@ impl LoadedMesh {
             vertex_texcoords,
             mesh_material,
             class_ids: _,
-            instance_keys: _,
             albedo_texture,
         } = mesh3d;
 

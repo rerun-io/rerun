@@ -22,8 +22,7 @@ SCENARIO(
                                 .with_colors({0xAA0000CC, 0x00BB00DD})
                                 .with_labels({"hello", "friend"})
                                 .with_radii({0.1f, 1.0f})
-                                .with_class_ids({126, 127})
-                                .with_instance_keys({66, 666});
+                                .with_class_ids({126, 127});
 
         Boxes3D from_manual;
         from_manual.half_sizes = {{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}};
@@ -36,7 +35,6 @@ SCENARIO(
         from_manual.labels = {"hello", "friend"};
         from_manual.radii = {0.1f, 1.0f};
         from_manual.class_ids = {126, 127};
-        from_manual.instance_keys = {66ull, 666ull};
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

@@ -98,7 +98,6 @@ impl Mesh3DVisualizer {
                 mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
                 albedo_texture: arch_view.raw_optional_mono_component::<TensorData>()?,
                 class_ids: None,
-                instance_keys: None,
             }
         };
 

@@ -23,7 +23,6 @@ class Boxes3DExt:
         radii: components.RadiusArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-        instance_keys: components.InstanceKeyArrayLike | None = None,
     ) -> None:
         """
         Create a new instance of the Boxes3D archetype.
@@ -52,8 +51,6 @@ class Boxes3DExt:
             Optional `ClassId`s for the boxes.
 
             The class ID provides colors and labels if not specified explicitly.
-        instance_keys:
-            Unique identifiers for each individual boxes in the batch.
 
         """
 
@@ -86,7 +83,6 @@ class Boxes3DExt:
                 radii=radii,
                 labels=labels,
                 class_ids=class_ids,
-                instance_keys=instance_keys,
             )
             return
 

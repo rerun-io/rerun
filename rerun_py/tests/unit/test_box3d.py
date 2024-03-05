@@ -4,7 +4,7 @@ import itertools
 from typing import Optional, cast
 
 import rerun as rr
-from rerun.components import HalfSizes3DBatch, InstanceKeyArrayLike, Position3DBatch, RadiusArrayLike, Rotation3DBatch
+from rerun.components import HalfSizes3DBatch, Position3DBatch, RadiusArrayLike, Rotation3DBatch
 from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Rotation3DArrayLike, Utf8ArrayLike
 from rerun.datatypes.vec3d import Vec3DArrayLike
 
@@ -14,8 +14,6 @@ from .common_arrays import (
     colors_arrays,
     colors_expected,
     expected_rotations,
-    instance_keys_arrays,
-    instance_keys_expected,
     labels_arrays,
     labels_expected,
     radii_arrays,
@@ -45,10 +43,9 @@ def test_boxes3d() -> None:
         radii_arrays,
         labels_arrays,
         class_ids_arrays,
-        instance_keys_arrays,
     )
 
-    for half_sizes, centers, rotations, colors, radii, labels, class_ids, instance_keys in all_arrays:
+    for half_sizes, centers, rotations, colors, radii, labels, class_ids in all_arrays:
         half_sizes = half_sizes if half_sizes is not None else half_sizes_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
@@ -59,7 +56,6 @@ def test_boxes3d() -> None:
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"rr.Boxes3D(\n"
@@ -70,7 +66,6 @@ def test_boxes3d() -> None:
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.Boxes3D(
@@ -81,7 +76,6 @@ def test_boxes3d() -> None:
             colors=colors,
             labels=labels,
             class_ids=class_ids,
-            instance_keys=instance_keys,
         )
         print(f"{arch}\n")
 
@@ -92,7 +86,6 @@ def test_boxes3d() -> None:
         assert arch.radii == radii_expected(radii)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
-        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 def test_with_sizes() -> None:
