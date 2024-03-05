@@ -4517,6 +4517,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_query2"
+version = "0.15.0-alpha.2"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "document-features",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "rand",
+ "re_arrow2",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "serde",
+ "similar-asserts",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "re_query_cache"
 version = "0.15.0-alpha.2"
 dependencies = [
@@ -4533,6 +4561,34 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "seq-macro",
+ "similar-asserts",
+ "web-time",
+]
+
+[[package]]
+name = "re_query_cache2"
+version = "0.15.0-alpha.2"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "indent",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "parking_lot",
+ "paste",
+ "rand",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query2",
  "re_tracing",
  "re_types",
  "re_types_core",

@@ -140,28 +140,30 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.components.InstanceKey".into(),
             "rerun.components.ScalarScattering".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Scalar".into(),
             "rerun.components.Color".into(),
             "rerun.components.Radius".into(),
             "rerun.components.TimeSeriesScalarIndicator".into(),
+            "rerun.components.InstanceKey".into(),
             "rerun.components.ScalarScattering".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl TimeSeriesScalar {
-    pub const NUM_COMPONENTS: usize = 6usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`TimeSeriesScalar`] [`::re_types_core::Archetype`]

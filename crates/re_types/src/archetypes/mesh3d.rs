@@ -127,18 +127,19 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
+            "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -147,6 +148,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Vector3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
+            "rerun.components.InstanceKey".into(),
             "rerun.components.Material".into(),
             "rerun.components.TensorData".into(),
             "rerun.components.Texcoord2D".into(),
@@ -154,7 +156,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     });
 
 impl Mesh3D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    pub const NUM_COMPONENTS: usize = 10usize;
 }
 
 /// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
