@@ -968,8 +968,6 @@ impl RecordingStream {
     /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
     /// The number of instances will be determined by the longest batch in the bundle.
-    /// All of the batches should have the same number of instances, or length 1 if the component is
-    /// a splat, or 0 if the component is being cleared.
     ///
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
