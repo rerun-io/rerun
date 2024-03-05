@@ -41,24 +41,9 @@ class AsComponents(Protocol):
         Returns an iterable of `ComponentBatchLike` objects.
 
         Each object in the iterable must adhere to the `ComponentBatchLike`
-        interface. All of the batches should have the same length as the value
-        returned by `num_instances`, or length 1 if the component is a splat.,
-        or 0 if the component is being cleared.
+        interface.
         """
         ...
-
-    # def num_instances(self) -> int | None:
-    #     """
-    #     (Optional) The number of instances in each batch.
-    #
-    #     If not implemented, the number of instances will be determined by the longest
-    #     batch in the bundle.
-    #
-    #     Each batch returned by `as_component_batches` should have this number of
-    #     elements, or 1 in the case it is a splat, or 0 in the case that
-    #     component is being cleared.
-    #     """
-    #     return None
 
 
 @define
