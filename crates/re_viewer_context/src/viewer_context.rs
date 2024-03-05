@@ -45,7 +45,7 @@ pub struct ViewerContext<'a> {
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
     /// All the query results for this frame
-    pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
+    pub query_results: &'a HashMap<DataQueryId, DataQueryResult>, // TODO: space view id
 
     /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,

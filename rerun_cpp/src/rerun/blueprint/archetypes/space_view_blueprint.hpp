@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "../../blueprint/components/entities_determined_by_user.hpp"
-#include "../../blueprint/components/included_query.hpp"
 #include "../../blueprint/components/space_view_class.hpp"
 #include "../../blueprint/components/space_view_origin.hpp"
 #include "../../blueprint/components/visible.hpp"
@@ -31,19 +29,12 @@ namespace rerun::blueprint::archetypes {
 
         /// The "anchor point" of this space view.
         ///
+        /// Defaults to the root path '/' if not specified.
+        ///
         /// The transform at this path forms the reference point for all scene->world transforms in this space view.
         /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
         /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
         std::optional<rerun::blueprint::components::SpaceViewOrigin> space_origin;
-
-        /// True if the user is has added entities themselves. False otherwise.
-        std::optional<rerun::blueprint::components::EntitiesDeterminedByUser>
-            entities_determined_by_user;
-
-        /// Ids of the `DataQuery`s that make up this `SpaceView`.
-        ///
-        /// They determine which entities are part of the spaceview.
-        std::optional<Collection<rerun::blueprint::components::IncludedQuery>> contents;
 
         /// Whether this space view is visible.
         ///
@@ -73,6 +64,8 @@ namespace rerun::blueprint::archetypes {
 
         /// The "anchor point" of this space view.
         ///
+        /// Defaults to the root path '/' if not specified.
+        ///
         /// The transform at this path forms the reference point for all scene->world transforms in this space view.
         /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
         /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
@@ -80,26 +73,6 @@ namespace rerun::blueprint::archetypes {
             rerun::blueprint::components::SpaceViewOrigin _space_origin
         ) && {
             space_origin = std::move(_space_origin);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// True if the user is has added entities themselves. False otherwise.
-        SpaceViewBlueprint with_entities_determined_by_user(
-            rerun::blueprint::components::EntitiesDeterminedByUser _entities_determined_by_user
-        ) && {
-            entities_determined_by_user = std::move(_entities_determined_by_user);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Ids of the `DataQuery`s that make up this `SpaceView`.
-        ///
-        /// They determine which entities are part of the spaceview.
-        SpaceViewBlueprint with_contents(
-            Collection<rerun::blueprint::components::IncludedQuery> _contents
-        ) && {
-            contents = std::move(_contents);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
