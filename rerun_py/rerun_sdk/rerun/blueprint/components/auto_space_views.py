@@ -36,6 +36,9 @@ class AutoSpaceViews(AutoSpaceViewsExt):
         # You can define your own __init__ function as a member of AutoSpaceViewsExt in auto_space_views_ext.py
         self.__attrs_init__(auto_space_views=auto_space_views)
 
+    def __bool__(self) -> bool:
+        return self.auto_space_views
+
     auto_space_views: bool = field(converter=bool)
 
 

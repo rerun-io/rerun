@@ -633,6 +633,20 @@ fn code_for_struct(
         code.push_indented(1, quote_init_method(reporter, obj, ext_class, objects), 2);
     }
 
+    // Generate __bool__ operator if this is a single field struct with a bool field.
+    if fields.len() == 1 && fields[0].typ == Type::Bool {
+        code.push_indented(
+            1,
+            format!(
+                "def __bool__(self) -> bool:
+    return self.{}
+",
+                fields[0].name
+            ),
+            2,
+        );
+    }
+
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
     }

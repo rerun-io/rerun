@@ -37,6 +37,9 @@ class DisconnectedSpace(DisconnectedSpaceExt):
 
     # __init__ can be found in disconnected_space_ext.py
 
+    def __bool__(self) -> bool:
+        return self.is_disconnected
+
     is_disconnected: bool = field(converter=bool)
     # Whether the entity path at which this is logged is disconnected from its parent.
     #
