@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Each query id referes to a [`QueryExpressions`] component.
+/// **Component**: Each query id refers to a [`QueryExpressions`] component.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Default)]

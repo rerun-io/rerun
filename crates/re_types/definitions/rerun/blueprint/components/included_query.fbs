@@ -10,7 +10,7 @@ namespace rerun.blueprint.components;
 // ---
 
 
-/// Each query id referes to a [`QueryExpressions`] component.
+/// Each query id refers to a [`QueryExpressions`] component.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table IncludedQuery (

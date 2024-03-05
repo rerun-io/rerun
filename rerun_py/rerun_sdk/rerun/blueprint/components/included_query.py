@@ -13,7 +13,7 @@ __all__ = ["IncludedQuery", "IncludedQueryBatch", "IncludedQueryType"]
 
 class IncludedQuery(datatypes.Uuid):
     """
-    **Component**: Each query id referes to a [`QueryExpressions`] component.
+    **Component**: Each query id refers to a [`QueryExpressions`] component.
 
     Unstable. Used for the ongoing blueprint experimentations.
     """
