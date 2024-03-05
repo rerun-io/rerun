@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy.typing as npt
 
-from .. import components, datatypes
+from .. import datatypes
 from ..error_utils import catch_and_log_exceptions
 
 
@@ -23,7 +23,6 @@ class Mesh3DExt:
         albedo_texture: datatypes.TensorDataLike | None = None,
         mesh_material: datatypes.MaterialLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-        instance_keys: components.InstanceKeyArrayLike | None = None,
     ):
         """
         Create a new instance of the Mesh3D archetype.
@@ -57,8 +56,6 @@ class Mesh3DExt:
         class_ids:
             Optional class Ids for the vertices.
             The class ID provides colors and labels if not specified explicitly.
-        instance_keys:
-            Unique identifiers for each individual vertex in the mesh.
 
         """
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -77,7 +74,6 @@ class Mesh3DExt:
                 albedo_texture=albedo_texture,
                 mesh_material=mesh_material,
                 class_ids=class_ids,
-                instance_keys=instance_keys,
             )
             return
 

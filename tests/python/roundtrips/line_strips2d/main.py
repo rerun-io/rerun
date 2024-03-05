@@ -23,7 +23,6 @@ def main() -> None:
     labels = ["hello", "friend"]
     draw_order = 300
     class_ids = np.array([126, 127], dtype=np.uint64)
-    instance_keys = np.array([66, 666], dtype=np.uint64)
 
     line_strips2d = rr.LineStrips2D(
         points,
@@ -32,7 +31,6 @@ def main() -> None:
         labels=labels,
         draw_order=draw_order,
         class_ids=class_ids,
-        instance_keys=instance_keys,
     )
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, DrawOrder, InstanceKey, LineStrip2D, Radius},
+    components::{ClassId, Color, DrawOrder, LineStrip2D, Radius},
     Archetype as _, AsComponents as _,
 };
 
@@ -31,10 +31,6 @@ fn roundtrip() {
             ClassId::from(126), //
             ClassId::from(127), //
         ]),
-        instance_keys: Some(vec![
-            InstanceKey(u64::MAX - 1), //
-            InstanceKey(u64::MAX),
-        ]),
     };
 
     #[rustfmt::skip]
@@ -47,8 +43,7 @@ fn roundtrip() {
         .with_colors([0xAA0000CC, 0x00BB00DD])
         .with_labels(["hello", "friend"])
         .with_draw_order(300.0)
-        .with_class_ids([126, 127])
-        .with_instance_keys([u64::MAX - 1, u64::MAX]);
+        .with_class_ids([126, 127]);
     similar_asserts::assert_eq!(expected, arch);
 
     let expected_extensions: HashMap<_, _> = [
@@ -59,7 +54,6 @@ fn roundtrip() {
         ("draw_order", vec!["rerun.components.DrawOrder"]),
         ("class_ids", vec!["rerun.components.ClassId"]),
         ("keypoint_ids", vec!["rerun.components.KeypointId"]),
-        ("instance_keys", vec!["rerun.components.InstanceKey"]),
     ]
     .into();
 

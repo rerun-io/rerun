@@ -10,7 +10,7 @@ title: "Boxes3D"
 
 **Recommended**: [`Position3D`](../components/position3d.md), [`Rotation3D`](../components/rotation3d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
+**Optional**: [`Radius`](../components/radius.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Links
  * 🌊 [C++ API docs for `Boxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Boxes3D.html)

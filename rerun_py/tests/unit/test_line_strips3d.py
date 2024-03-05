@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import rerun as rr
 import torch
-from rerun.components.instance_key import InstanceKeyArrayLike
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.components.radius import RadiusArrayLike
 from rerun.datatypes import Vec3D
@@ -20,8 +19,6 @@ from .common_arrays import (
     class_ids_expected,
     colors_arrays,
     colors_expected,
-    instance_keys_arrays,
-    instance_keys_expected,
     labels_arrays,
     labels_expected,
     none_empty_or_value,
@@ -78,10 +75,9 @@ def test_line_strips3d() -> None:
         colors_arrays,
         labels_arrays,
         class_ids_arrays,
-        instance_keys_arrays,
     )
 
-    for strips, radii, colors, labels, class_ids, instance_keys in all_arrays:
+    for strips, radii, colors, labels, class_ids in all_arrays:
         strips = strips if strips is not None else strips_arrays[-1]
 
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
@@ -90,7 +86,6 @@ def test_line_strips3d() -> None:
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"rr.LineStrips3D(\n"
@@ -99,7 +94,6 @@ def test_line_strips3d() -> None:
             f"    colors={colors!r}\n"
             f"    labels={labels!r}\n"
             f"    class_ids={class_ids!r}\n"
-            f"    instance_keys={instance_keys!r}\n"
             f")"
         )
         arch = rr.LineStrips3D(
@@ -108,7 +102,6 @@ def test_line_strips3d() -> None:
             colors=colors,
             labels=labels,
             class_ids=class_ids,
-            instance_keys=instance_keys,
         )
         print(f"{arch}\n")
 
@@ -117,7 +110,6 @@ def test_line_strips3d() -> None:
         assert arch.colors == colors_expected(colors)
         assert arch.labels == labels_expected(labels)
         assert arch.class_ids == class_ids_expected(class_ids)
-        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 @pytest.mark.parametrize(

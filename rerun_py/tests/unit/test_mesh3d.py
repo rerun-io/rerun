@@ -4,7 +4,7 @@ import itertools
 from typing import Any, Optional, cast
 
 import rerun as rr
-from rerun.components import InstanceKeyArrayLike, MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
+from rerun.components import MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
@@ -22,8 +22,6 @@ from .common_arrays import (
     class_ids_expected,
     colors_arrays,
     colors_expected,
-    instance_keys_arrays,
-    instance_keys_expected,
     none_empty_or_value,
     vec2ds_arrays,
     vec2ds_expected,
@@ -69,7 +67,6 @@ def test_mesh3d() -> None:
         mesh_properties_objects,
         mesh_materials,
         class_ids_arrays,
-        instance_keys_arrays,
     )
 
     for (
@@ -80,7 +77,6 @@ def test_mesh3d() -> None:
         mesh_properties,
         mesh_material,
         class_ids,
-        instance_keys,
     ) in all_arrays:
         vertex_positions = vertex_positions if vertex_positions is not None else vertex_positions_arrays[-1]
 
@@ -92,7 +88,6 @@ def test_mesh3d() -> None:
         mesh_properties = cast(Optional[MeshPropertiesLike], mesh_properties)
         mesh_material = cast(Optional[MaterialLike], mesh_material)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
-        instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
 
         print(
             f"E: rr.Mesh3D(\n"
@@ -103,7 +98,6 @@ def test_mesh3d() -> None:
             f"    mesh_properties={mesh_properties_objects}\n"
             f"    mesh_material={mesh_material}\n"
             f"    class_ids={class_ids}\n"
-            f"    instance_keys={instance_keys}\n"
             f")"
         )
         arch = rr.Mesh3D(
@@ -114,7 +108,6 @@ def test_mesh3d() -> None:
             mesh_properties=mesh_properties,
             mesh_material=mesh_material,
             class_ids=class_ids,
-            instance_keys=instance_keys,
         )
         print(f"A: {arch}\n")
 
@@ -125,7 +118,6 @@ def test_mesh3d() -> None:
         assert arch.mesh_properties == mesh_properties_expected(mesh_properties)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
         assert arch.class_ids == class_ids_expected(class_ids)
-        assert arch.instance_keys == instance_keys_expected(instance_keys)
 
 
 def test_nullable_albedo_factor() -> None:

@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/instance_key.hpp"
 #include "../components/keypoint_id.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
@@ -92,9 +91,6 @@ namespace rerun::archetypes {
         /// detected skeleton.
         std::optional<Collection<rerun::components::KeypointId>> keypoint_ids;
 
-        /// Unique identifiers for each individual point in the batch.
-        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
-
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Points3DIndicator";
 
@@ -148,13 +144,6 @@ namespace rerun::archetypes {
         /// detected skeleton.
         Points3D with_keypoint_ids(Collection<rerun::components::KeypointId> _keypoint_ids) && {
             keypoint_ids = std::move(_keypoint_ids);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Unique identifiers for each individual point in the batch.
-        Points3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
-            instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

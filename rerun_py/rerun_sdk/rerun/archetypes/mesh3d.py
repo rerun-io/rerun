@@ -64,7 +64,6 @@ class Mesh3D(Mesh3DExt, Archetype):
             mesh_material=None,  # type: ignore[arg-type]
             albedo_texture=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
-            instance_keys=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -152,15 +151,6 @@ class Mesh3D(Mesh3DExt, Archetype):
     # Optional class Ids for the vertices.
     #
     # The class ID provides colors and labels if not specified explicitly.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    instance_keys: components.InstanceKeyBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
-    )
-    # Unique identifiers for each individual vertex in the mesh.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

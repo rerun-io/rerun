@@ -189,7 +189,6 @@ fn log_feature_points(
     timepoint: rerun::TimePoint,
     points: &objectron::ArPointCloud,
 ) -> anyhow::Result<()> {
-    let ids = points.identifier.iter();
     let points = points.point.iter();
 
     rec.set_timepoint(timepoint);
@@ -202,7 +201,6 @@ fn log_feature_points(
                 p.z.unwrap_or_default(),
             )
         }))
-        .with_instance_keys(ids.map(|id| rerun::InstanceKey(*id as _)))
         .with_colors([rerun::Color::from_rgb(255, 255, 255)]),
     )?;
 
@@ -217,15 +215,11 @@ fn log_frame_annotations(
     for ann in &annotations.annotations {
         // TODO(cmc): we shouldn't be using those preprojected 2D points to begin with, Rerun is
         // capable of projecting the actual 3D points in real time now.
-        let (ids, points): (Vec<_>, Vec<_>) = ann
+        let points: Vec<_> = ann
             .keypoints
             .iter()
-            .filter_map(|kp| {
-                kp.point_2d
-                    .as_ref()
-                    .map(|p| (rerun::InstanceKey(kp.id as _), [p.x * 1440.0, p.y * 1920.0]))
-            })
-            .unzip();
+            .filter_map(|kp| kp.point_2d.as_ref().map(|p| [p.x * 1440.0, p.y * 1920.0]))
+            .collect();
 
         rec.set_timepoint(timepoint.clone());
 
@@ -269,9 +263,7 @@ fn log_frame_annotations(
         } else {
             rec.log(
                 ent_path,
-                &rerun::Points2D::new(points)
-                    .with_instance_keys(ids)
-                    .with_colors([rerun::Color::from_rgb(130, 160, 250)]),
+                &rerun::Points2D::new(points).with_colors([rerun::Color::from_rgb(130, 160, 250)]),
             )?;
         }
     }

@@ -10,7 +10,7 @@ title: "LineStrips2D"
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
+**Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md)
 
 ## Links
  * 🌊 [C++ API docs for `LineStrips2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1LineStrips2D.html)

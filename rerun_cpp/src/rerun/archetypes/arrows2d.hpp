@@ -7,7 +7,6 @@
 #include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/instance_key.hpp"
 #include "../components/position2d.hpp"
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
@@ -72,9 +71,6 @@ namespace rerun::archetypes {
         /// The class ID provides colors and labels if not specified explicitly.
         std::optional<Collection<rerun::components::ClassId>> class_ids;
 
-        /// Unique identifiers for each individual point in the batch.
-        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
-
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Arrows2DIndicator";
 
@@ -133,13 +129,6 @@ namespace rerun::archetypes {
         /// The class ID provides colors and labels if not specified explicitly.
         Arrows2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Unique identifiers for each individual point in the batch.
-        Arrows2D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
-            instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -22,7 +22,6 @@ def main() -> None:
     )
     labels = ["hello", "friend"]
     class_ids = np.array([126, 127], dtype=np.uint64)
-    instance_keys = np.array([66, 666], dtype=np.uint64)
 
     line_strips3d = rr.LineStrips3D(
         points,
@@ -30,7 +29,6 @@ def main() -> None:
         colors=colors,
         labels=labels,
         class_ids=class_ids,
-        instance_keys=instance_keys,
     )
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")

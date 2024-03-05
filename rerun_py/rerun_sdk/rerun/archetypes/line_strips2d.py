@@ -66,7 +66,6 @@ class LineStrips2D(Archetype):
         labels: datatypes.Utf8ArrayLike | None = None,
         draw_order: components.DrawOrderLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
-        instance_keys: components.InstanceKeyArrayLike | None = None,
     ):
         """
         Create a new instance of the LineStrips2D archetype.
@@ -89,21 +88,13 @@ class LineStrips2D(Archetype):
             Optional `ClassId`s for the lines.
 
             The class ID provides colors and labels if not specified explicitly.
-        instance_keys:
-            Unique identifiers for each individual line strip in the batch.
 
         """
 
         # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                strips=strips,
-                radii=radii,
-                colors=colors,
-                labels=labels,
-                draw_order=draw_order,
-                class_ids=class_ids,
-                instance_keys=instance_keys,
+                strips=strips, radii=radii, colors=colors, labels=labels, draw_order=draw_order, class_ids=class_ids
             )
             return
         self.__attrs_clear__()
@@ -117,7 +108,6 @@ class LineStrips2D(Archetype):
             labels=None,  # type: ignore[arg-type]
             draw_order=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
-            instance_keys=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -181,15 +171,6 @@ class LineStrips2D(Archetype):
     # Optional `ClassId`s for the lines.
     #
     # The class ID provides colors and labels if not specified explicitly.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    instance_keys: components.InstanceKeyBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
-    )
-    # Unique identifiers for each individual line strip in the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

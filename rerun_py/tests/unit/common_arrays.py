@@ -12,8 +12,6 @@ from rerun.components import (
     DrawOrder,
     DrawOrderBatch,
     DrawOrderLike,
-    InstanceKey,
-    InstanceKeyBatch,
     KeypointId,
     KeypointIdBatch,
     Radius,
@@ -436,23 +434,6 @@ keypoint_ids_arrays = [
 def keypoint_ids_expected(obj: Any) -> Any:
     expected = none_empty_or_value(obj, [2, 3])
     return KeypointIdBatch._optional(expected)
-
-
-instance_keys_arrays = [
-    [],
-    np.array([]),
-    # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: int
-    [U64_MAX_MINUS_1, U64_MAX],
-    # InstanceKeyArrayLike: Sequence[InstanceKeyLike]: InstanceKey
-    [InstanceKey(U64_MAX_MINUS_1), InstanceKey(U64_MAX)],
-    # InstanceKeyArrayLike: np.NDArray[np.uint64]
-    np.array([U64_MAX_MINUS_1, U64_MAX], dtype=np.uint64),
-]
-
-
-def instance_keys_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, [U64_MAX_MINUS_1, U64_MAX])
-    return InstanceKeyBatch._optional(expected)
 
 
 uuid_bytes0 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

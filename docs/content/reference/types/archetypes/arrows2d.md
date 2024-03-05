@@ -10,7 +10,7 @@ title: "Arrows2D"
 
 **Recommended**: [`Position2D`](../components/position2d.md)
 
-**Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
+**Optional**: [`Radius`](../components/radius.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ClassId`](../components/class_id.md)
 
 ## Links
  * 🌊 [C++ API docs for `Arrows2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Arrows2D.html)

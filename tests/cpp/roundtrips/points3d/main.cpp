@@ -13,6 +13,5 @@ int main(int, char** argv) {
             .with_labels({"hello", "friend"})
             .with_class_ids({126, 127})
             .with_keypoint_ids({2, 3})
-            .with_instance_keys({66, 666})
     );
 }

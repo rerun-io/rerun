@@ -90,9 +90,6 @@ pub struct Points2D {
     /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
     /// detected skeleton.
     pub keypoint_ids: Option<Vec<crate::components::KeypointId>>,
-
-    /// Unique identifiers for each individual point in the batch.
-    pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
 impl ::re_types_core::SizeBytes for Points2D {
@@ -105,7 +102,6 @@ impl ::re_types_core::SizeBytes for Points2D {
             + self.draw_order.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
             + self.keypoint_ids.heap_size_bytes()
-            + self.instance_keys.heap_size_bytes()
     }
 
     #[inline]
@@ -117,7 +113,6 @@ impl ::re_types_core::SizeBytes for Points2D {
             && <Option<crate::components::DrawOrder>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
             && <Option<Vec<crate::components::KeypointId>>>::is_pod()
-            && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
     }
 }
 
@@ -291,19 +286,6 @@ impl ::re_types_core::Archetype for Points2D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
-        {
-            Some({
-                <crate::components::InstanceKey>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Points2D#instance_keys")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Points2D#instance_keys")?
-            })
-        } else {
-            None
-        };
         Ok(Self {
             positions,
             radii,
@@ -312,7 +294,6 @@ impl ::re_types_core::Archetype for Points2D {
             draw_order,
             class_ids,
             keypoint_ids,
-            instance_keys,
         })
     }
 }
@@ -342,9 +323,6 @@ impl ::re_types_core::AsComponents for Points2D {
             self.keypoint_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.instance_keys
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -369,7 +347,6 @@ impl Points2D {
             draw_order: None,
             class_ids: None,
             keypoint_ids: None,
-            instance_keys: None,
         }
     }
 
@@ -421,15 +398,6 @@ impl Points2D {
         keypoint_ids: impl IntoIterator<Item = impl Into<crate::components::KeypointId>>,
     ) -> Self {
         self.keypoint_ids = Some(keypoint_ids.into_iter().map(Into::into).collect());
-        self
-    }
-
-    #[inline]
-    pub fn with_instance_keys(
-        mut self,
-        instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,
-    ) -> Self {
-        self.instance_keys = Some(instance_keys.into_iter().map(Into::into).collect());
         self
     }
 }
