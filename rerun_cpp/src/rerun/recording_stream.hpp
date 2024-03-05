@@ -482,10 +482,6 @@ namespace rerun {
         /// This is a more low-level API than `log`/`log_timeless\ and requires you to already serialize the data
         /// ahead of time.
         ///
-        /// The number of instances in each batch must either be equal to the maximum or:
-        /// - zero instances - implies a clear
-        /// - single instance (but other instances have more) - causes a splat
-        ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param timeless If true, the logged components will be timeless.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.

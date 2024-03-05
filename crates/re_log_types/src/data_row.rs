@@ -12,18 +12,6 @@ use crate::{DataCell, DataCellError, DataTable, EntityPath, NumInstances, TableI
 #[derive(thiserror::Error, Debug)]
 pub enum DataReadError {
     #[error(
-        "Each cell must contain either 0, 1 or `num_instances` instances, \
-        but cell '{component}' in '{entity_path}' holds {num_instances} instances \
-        (expected {expected_num_instances})"
-    )]
-    WrongNumberOfInstances {
-        entity_path: EntityPath,
-        component: ComponentName,
-        expected_num_instances: u32,
-        num_instances: u32,
-    },
-
-    #[error(
         "Same component type present multiple times within a single row: \
         '{component}' in '{entity_path}'"
     )]
@@ -388,19 +376,6 @@ impl DataRow {
                     entity_path,
                     component,
                 });
-            }
-
-            match cell.num_instances() {
-                0 | 1 => {}
-                n if n == num_instances => {}
-                n => {
-                    return Err(DataReadError::WrongNumberOfInstances {
-                        entity_path,
-                        component,
-                        expected_num_instances: num_instances,
-                        num_instances: n,
-                    })
-                }
             }
         }
 
