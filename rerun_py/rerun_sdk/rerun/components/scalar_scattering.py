@@ -34,6 +34,9 @@ class ScalarScattering(ScalarScatteringExt):
         # You can define your own __init__ function as a member of ScalarScatteringExt in scalar_scattering_ext.py
         self.__attrs_init__(scattered=scattered)
 
+    def __bool__(self) -> bool:
+        return self.scattered
+
     scattered: bool = field(converter=bool)
 
 

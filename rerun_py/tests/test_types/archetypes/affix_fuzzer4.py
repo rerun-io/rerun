@@ -188,4 +188,4 @@ class AffixFuzzer4(Archetype):
         converter=components.AffixFuzzer18Batch._optional,  # type: ignore[misc]
     )
     __str__ = Archetype.__str__
-    __repr__ = Archetype.__repr__
+    __repr__ = Archetype.__repr__  # type: ignore[assignment]
