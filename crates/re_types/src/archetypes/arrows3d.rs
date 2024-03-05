@@ -90,9 +90,6 @@ pub struct Arrows3D {
     ///
     /// The class ID provides colors and labels if not specified explicitly.
     pub class_ids: Option<Vec<crate::components::ClassId>>,
-
-    /// Unique identifiers for each individual point in the batch.
-    pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
 impl ::re_types_core::SizeBytes for Arrows3D {
@@ -104,7 +101,6 @@ impl ::re_types_core::SizeBytes for Arrows3D {
             + self.colors.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.class_ids.heap_size_bytes()
-            + self.instance_keys.heap_size_bytes()
     }
 
     #[inline]
@@ -115,7 +111,6 @@ impl ::re_types_core::SizeBytes for Arrows3D {
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<Vec<crate::components::ClassId>>>::is_pod()
-            && <Option<Vec<crate::components::InstanceKey>>>::is_pod()
     }
 }
 
@@ -278,19 +273,6 @@ impl ::re_types_core::Archetype for Arrows3D {
         } else {
             None
         };
-        let instance_keys = if let Some(array) = arrays_by_name.get("rerun.components.InstanceKey")
-        {
-            Some({
-                <crate::components::InstanceKey>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Arrows3D#instance_keys")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Arrows3D#instance_keys")?
-            })
-        } else {
-            None
-        };
         Ok(Self {
             vectors,
             origins,
@@ -298,7 +280,6 @@ impl ::re_types_core::Archetype for Arrows3D {
             colors,
             labels,
             class_ids,
-            instance_keys,
         })
     }
 }
@@ -325,9 +306,6 @@ impl ::re_types_core::AsComponents for Arrows3D {
             self.class_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.instance_keys
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -351,7 +329,6 @@ impl Arrows3D {
             colors: None,
             labels: None,
             class_ids: None,
-            instance_keys: None,
         }
     }
 
@@ -397,15 +374,6 @@ impl Arrows3D {
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
     ) -> Self {
         self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
-        self
-    }
-
-    #[inline]
-    pub fn with_instance_keys(
-        mut self,
-        instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,
-    ) -> Self {
-        self.instance_keys = Some(instance_keys.into_iter().map(Into::into).collect());
         self
     }
 }

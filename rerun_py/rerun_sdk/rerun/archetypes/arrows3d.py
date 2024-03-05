@@ -61,7 +61,6 @@ class Arrows3D(Arrows3DExt, Archetype):
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             class_ids=None,  # type: ignore[arg-type]
-            instance_keys=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -128,15 +127,6 @@ class Arrows3D(Arrows3DExt, Archetype):
     # Optional class Ids for the points.
     #
     # The class ID provides colors and labels if not specified explicitly.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    instance_keys: components.InstanceKeyBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
-    )
-    # Unique identifiers for each individual point in the batch.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
