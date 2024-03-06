@@ -126,37 +126,24 @@ fn action_list(
                         .collect(),
                 }),
             ],
-            vec![
-                Box::new(SubMenu {
-                    label: "Move to new container".to_owned(),
-                    actions: vec![
-                        Box::new(MoveContentsToNewContainerAction(
-                            egui_tiles::ContainerKind::Tabs,
-                        )),
-                        Box::new(MoveContentsToNewContainerAction(
-                            egui_tiles::ContainerKind::Horizontal,
-                        )),
-                        Box::new(MoveContentsToNewContainerAction(
-                            egui_tiles::ContainerKind::Vertical,
-                        )),
-                        Box::new(MoveContentsToNewContainerAction(
-                            egui_tiles::ContainerKind::Grid,
-                        )),
-                    ],
-                }),
-                Box::new(SubMenu {
-                    label: "Add to new space view".to_owned(),
-                    actions: ctx
-                        .space_view_class_registry
-                        .iter_registry()
-                        .sorted_by_key(|entry| entry.class.display_name())
-                        .map(|entry| {
-                            Box::new(AddEntitiesToNewSpaceViewAction(entry.class.identifier()))
-                                as Box<dyn ContextMenuAction + Sync + Send>
-                        })
-                        .collect(),
-                }),
-            ],
+            vec![Box::new(SubMenu {
+                label: "Move to new container".to_owned(),
+                actions: vec![
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Tabs,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Horizontal,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Vertical,
+                    )),
+                    Box::new(MoveContentsToNewContainerAction(
+                        egui_tiles::ContainerKind::Grid,
+                    )),
+                ],
+            })],
+            vec![Box::new(AddEntitiesToNewSpaceViewAction)],
         ]
     })
 }

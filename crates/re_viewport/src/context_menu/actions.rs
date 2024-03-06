@@ -1,6 +1,10 @@
+use egui::{Response, Ui};
+use itertools::Itertools;
+use nohash_hasher::IntSet;
+
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
-use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
+use re_space_view::{determine_visualizable_entities, DataQueryBlueprint, SpaceViewBlueprint};
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
 use super::{ContextMenuAction, ContextMenuContext};
@@ -391,7 +395,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
 /// Create a new space view containing the selected entities.
 ///
 /// The space view is created next to the clicked item's parent view (if a data result was clicked).
-pub(super) struct AddEntitiesToNewSpaceViewAction(pub SpaceViewClassIdentifier);
+pub(super) struct AddEntitiesToNewSpaceViewAction;
 
 impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
     fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
@@ -402,42 +406,122 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
         matches!(item, Item::DataResult(_, _) | Item::InstancePath(_))
     }
 
-    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
-        ctx.viewer_context
-            .space_view_class_registry
-            .get_class_or_log_error(&self.0)
-            .display_name()
-            .to_owned()
+    fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut Ui) -> Response {
+        let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
+
+        let recommended_space_view_classes = recommended_space_views_for_selection(ctx);
+        let other_space_view_classes: IntSet<_> = space_view_class_registry
+            .iter_registry()
+            .map(|entry| entry.class.identifier())
+            .collect::<IntSet<SpaceViewClassIdentifier>>()
+            .difference(&recommended_space_view_classes)
+            .cloned()
+            .collect();
+
+        ui.menu_button("Add to new space view", |ui| {
+            let buttons_for_space_view_classes =
+                |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
+                    for (identifier, display_name) in space_view_classes
+                        .iter()
+                        .map(|identifier| {
+                            (
+                                identifier,
+                                space_view_class_registry
+                                    .get_class_or_log_error(&identifier)
+                                    .display_name(),
+                            )
+                        })
+                        .sorted_by_key(|(_, display_name)| display_name.to_owned())
+                    {
+                        if ui.button(display_name).clicked() {
+                            create_space_view_with_entities(ctx, *identifier);
+                        }
+                    }
+                };
+
+            ui.label(egui::WidgetText::from("Recommended:").italics());
+            buttons_for_space_view_classes(ui, &recommended_space_view_classes);
+            ui.label(egui::WidgetText::from("Others:").italics());
+            buttons_for_space_view_classes(ui, &other_space_view_classes);
+        })
+        .response
     }
+}
 
-    fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
-        let root = EntityPath::root();
-        let origin = ctx.clicked_item.entity_path().unwrap_or(&root);
+/// Builds a list of compatible space views for the provided selection.
+fn recommended_space_views_for_selection(
+    ctx: &ContextMenuContext<'_>,
+) -> IntSet<SpaceViewClassIdentifier> {
+    let entities_of_interest = ctx
+        .selection
+        .iter()
+        .filter_map(|(item, _)| item.entity_path())
+        .collect::<Vec<_>>();
 
-        let mut filter = EntityPathFilter::subtree_entity_filter(origin);
-        ctx.selection
-            .iter()
-            .filter_map(|(item, _)| item.entity_path())
-            .filter(|path| !path.is_child_of(origin))
-            .for_each(|path| {
-                filter.add_rule(
-                    RuleEffect::Include,
-                    EntityPathRule::including_subtree(path.clone()),
-                );
-            });
+    let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
 
-        let target_container_id = ctx.clicked_item_parent_id_and_position().map(|(id, _)| id);
+    let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
+    let entity_db = ctx.viewer_context.entity_db;
+    let applicable_entities_per_visualizer =
+        space_view_class_registry.applicable_entities_for_visualizer_systems(entity_db.store_id());
 
-        let space_view =
-            SpaceViewBlueprint::new(self.0, origin, DataQueryBlueprint::new(self.0, filter));
-
-        ctx.viewport_blueprint.add_space_views(
-            std::iter::once(space_view),
-            ctx.viewer_context,
-            target_container_id,
-            None,
+    for entry in space_view_class_registry.iter_registry() {
+        let visualizable_entities = determine_visualizable_entities(
+            &applicable_entities_per_visualizer,
+            entity_db,
+            &space_view_class_registry.new_visualizer_collection(entry.class.identifier()),
+            &*entry.class,
+            &EntityPath::root(),
         );
-        ctx.viewport_blueprint
-            .mark_user_interaction(ctx.viewer_context);
+
+        let covered = entities_of_interest.iter().all(|entity| {
+            visualizable_entities
+                .0
+                .iter()
+                .any(|(_, entities)| entities.0.contains(*entity))
+        });
+
+        if covered {
+            output.insert(entry.class.identifier());
+        }
     }
+
+    output
+}
+
+/// Creates a space view of the give class, with root set as origin, and a filter set to include all
+/// selected entities.
+fn create_space_view_with_entities(
+    ctx: &ContextMenuContext<'_>,
+    identifier: SpaceViewClassIdentifier,
+) {
+    let origin = EntityPath::root();
+
+    let mut filter = EntityPathFilter::default();
+    ctx.selection
+        .iter()
+        .filter_map(|(item, _)| item.entity_path())
+        .for_each(|path| {
+            filter.add_rule(
+                RuleEffect::Include,
+                EntityPathRule::including_subtree(path.clone()),
+            );
+        });
+
+    let target_container_id = ctx.clicked_item_parent_id_and_position().map(|(id, _)| id);
+
+    let space_view = SpaceViewBlueprint::new(
+        identifier,
+        &origin,
+        DataQueryBlueprint::new(identifier, filter),
+    );
+
+    ctx.viewport_blueprint.add_space_views(
+        std::iter::once(space_view),
+        ctx.viewer_context,
+        target_container_id,
+        None,
+    );
+    ctx.viewport_blueprint
+        .mark_user_interaction(ctx.viewer_context);
 }
