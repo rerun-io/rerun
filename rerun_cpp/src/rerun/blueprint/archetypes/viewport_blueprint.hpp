@@ -26,9 +26,12 @@ namespace rerun::blueprint::archetypes {
         /// All of the space-views that belong to the viewport.
         Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
 
-        /// True if the user is has added entities themselves. False otherwise.
+        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
         ///
-        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+        /// This is an internal field and should not be set usually.
+        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        ///
+        /// The viewer uses this to determine whether it should keep adding space views.
         std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
             viewer_recommendation_hashes;
 
@@ -67,9 +70,12 @@ namespace rerun::blueprint::archetypes {
         )
             : space_views(std::move(_space_views)) {}
 
-        /// True if the user is has added entities themselves. False otherwise.
+        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
         ///
-        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+        /// This is an internal field and should not be set usually.
+        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        ///
+        /// The viewer uses this to determine whether it should keep adding space views.
         ViewportBlueprint with_viewer_recommendation_hashes(
             Collection<rerun::blueprint::components::ViewerRecommendationHash>
                 _viewer_recommendation_hashes

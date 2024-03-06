@@ -39,9 +39,12 @@ class ViewportBlueprint(Archetype):
         space_views:
             All of the space-views that belong to the viewport.
         viewer_recommendation_hashes:
-            True if the user is has added entities themselves. False otherwise.
+            Hashes of all recommended space views the viewer has already added and that should not be added again.
 
-            This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+            This is an internal field and should not be set usually.
+            If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+
+            The viewer uses this to determine whether it should keep adding space views.
         root_container:
             The layout of the space-views
         maximized:
@@ -104,9 +107,12 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
     )
-    # True if the user is has added entities themselves. False otherwise.
+    # Hashes of all recommended space views the viewer has already added and that should not be added again.
     #
-    # This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+    # This is an internal field and should not be set usually.
+    # If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    #
+    # The viewer uses this to determine whether it should keep adding space views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

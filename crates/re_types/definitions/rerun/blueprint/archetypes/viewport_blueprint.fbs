@@ -42,8 +42,11 @@ table ViewportBlueprint (
     /// (as identified by `viewer_recommendation_hashes`).
     auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
 
-    /// True if the user is has added entities themselves. False otherwise.
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     ///
-    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+    /// This is an internal field and should not be set usually.
+    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    ///
+    /// The viewer uses this to determine whether it should keep adding space views.
     viewer_recommendation_hashes: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 2000);
 }

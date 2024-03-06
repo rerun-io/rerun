@@ -27,9 +27,12 @@ pub struct ViewportBlueprint {
     /// All of the space-views that belong to the viewport.
     pub space_views: Vec<crate::blueprint::components::IncludedSpaceView>,
 
-    /// True if the user is has added entities themselves. False otherwise.
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     ///
-    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+    /// This is an internal field and should not be set usually.
+    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    ///
+    /// The viewer uses this to determine whether it should keep adding space views.
     pub viewer_recommendation_hashes:
         Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 
