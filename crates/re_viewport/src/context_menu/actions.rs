@@ -1,5 +1,5 @@
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
 use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
@@ -168,7 +168,7 @@ fn set_data_result_visible(
 
 // ---
 
-/// Remove a container or space view
+/// Remove a container, space view, or data result.
 pub(super) struct RemoveAction;
 
 impl ContextMenuAction for RemoveAction {
@@ -182,6 +182,7 @@ impl ContextMenuAction for RemoveAction {
             Item::Container(container_id) => {
                 ctx.viewport_blueprint.root_container != Some(*container_id)
             }
+            Item::DataResult(_, instance_path) => instance_path.is_splat(),
             _ => false,
         }
     }
@@ -202,6 +203,20 @@ impl ContextMenuAction for RemoveAction {
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
             .remove_contents(Contents::SpaceView(*space_view_id));
+    }
+
+    fn process_data_result(
+        &self,
+        ctx: &ContextMenuContext<'_>,
+        space_view_id: &SpaceViewId,
+        instance_path: &InstancePath,
+    ) {
+        if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
+            space_view.add_entity_exclusion(
+                ctx.viewer_context,
+                EntityPathRule::including_subtree(instance_path.entity_path.clone()),
+            );
+        }
     }
 }
 
