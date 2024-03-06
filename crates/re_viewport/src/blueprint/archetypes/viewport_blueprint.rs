@@ -84,7 +84,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewportBlueprintIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.AutoLayout".into(),
