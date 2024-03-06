@@ -139,14 +139,10 @@ impl SpaceViewContents {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        // TODO(andreas): There should be a save_blueprint_archetype
-        ctx.save_blueprint_component(
-            &self.blueprint_entity_path,
-            &QueryExpression(self.entity_path_filter.formatted().into()),
-        );
-        ctx.save_blueprint_component(
-            &self.blueprint_entity_path,
-            &EntitiesDeterminedByUser(self.entities_determined_by_user),
+        ctx.save_blueprint_archetype(
+            self.blueprint_entity_path.clone(),
+            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted())
+                .with_entities_determined_by_user(self.entities_determined_by_user),
         );
     }
 

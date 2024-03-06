@@ -1,5 +1,5 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
-use re_types::{components::InstanceKey, ComponentBatch, ComponentName};
+use re_types::{components::InstanceKey, AsComponents, ComponentBatch, ComponentName};
 
 use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -15,6 +15,29 @@ pub fn blueprint_timepoint_for_writes() -> TimePoint {
 }
 
 impl ViewerContext<'_> {
+    pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
+        let timepoint = blueprint_timepoint_for_writes();
+
+        let data_row =
+            match DataRow::from_archetype(RowId::new(), timepoint.clone(), entity_path, components)
+            {
+                Ok(data_cell) => data_cell,
+                Err(err) => {
+                    re_log::error_once!(
+                        "Failed to create DataRow for blueprint components: {}",
+                        err
+                    );
+                    return;
+                }
+            };
+
+        self.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                self.store_context.blueprint.store_id().clone(),
+                vec![data_row],
+            ));
+    }
+
     /// Helper to save a component batch to the blueprint store.
     pub fn save_blueprint_component(
         &self,
