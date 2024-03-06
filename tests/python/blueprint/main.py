@@ -7,10 +7,9 @@ from rerun.blueprint.components.container_kind import ContainerKind
 
 
 class Container:
-    def __init__(self, kind, name, contents):
+    def __init__(self, kind, contents):
         self.id = uuid.uuid4()
         self.kind = kind
-        self.name = name
         self.contents = contents
 
     def path(self):
@@ -20,11 +19,8 @@ class Container:
         for sub in self.contents:
             sub.log(stream)
 
-        print(f"Creating container: {self.kind}: {self.name}")
-
         bp = ContainerBlueprint(
             container_kind=self.kind,
-            display_name=self.name,
             contents=[sub.path() for sub in self.contents],
             col_shares=[1 for _ in self.contents],
             row_shares=[1 for _ in self.contents],
@@ -35,13 +31,13 @@ class Container:
 
 
 class Horizontal(Container):
-    def __init__(self, name, contents):
-        super().__init__(ContainerKind.Horizontal, name, contents)
+    def __init__(self, *contents):
+        super().__init__(ContainerKind.Horizontal, contents)
 
 
 class Vertical(Container):
-    def __init__(self, name, contents):
-        super().__init__(ContainerKind.Vertical, name, contents)
+    def __init__(self, *contents):
+        super().__init__(ContainerKind.Vertical, contents)
 
 
 class Viewport:
@@ -78,11 +74,8 @@ if __name__ == "__main__":
     rr.init("rerun_example_blueprint_test", spawn=True)
     rr.log("test", rr.Points3D([1, 2, 3]))
     root = Horizontal(
-        "root",
-        [
-            Vertical("left", []),
-            Vertical("right", []),
-        ],
+        Vertical(),
+        Vertical(),
     )
     viewport = Viewport(root)
     create_blueprint(viewport)
