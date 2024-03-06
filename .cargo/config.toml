@@ -14,7 +14,6 @@ IS_IN_RERUN_WORKSPACE = "yes"
 
 # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses,
 # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-# as well as WebGPU apis.
 # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 [target.wasm32-unknown-unknown]
 rustflags = ["--cfg=web_sys_unstable_apis"]
