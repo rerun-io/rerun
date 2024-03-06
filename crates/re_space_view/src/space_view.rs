@@ -275,12 +275,20 @@ impl SpaceViewBlueprint {
             });
         }
 
+        // SpaceViewContents is saved as an archetype in the space view's entity hierarchy.
+        // This means, that the above already copied the space view contents!
+        let contents = SpaceViewContents::new(
+            new_id,
+            self.class_identifier,
+            self.contents.entity_path_filter.clone(),
+        );
+
         Self {
             id: new_id,
             display_name: self.display_name.clone(),
             class_identifier: self.class_identifier,
             space_origin: self.space_origin.clone(),
-            contents: self.contents.duplicate(new_id, blueprint, query),
+            contents,
             visible: self.visible,
             pending_writes,
         }

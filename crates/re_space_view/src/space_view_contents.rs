@@ -6,9 +6,7 @@ use re_entity_db::{
     external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
     EntityPropertyMap, EntityTree,
 };
-use re_log_types::{
-    path::RuleEffect, DataRow, EntityPath, EntityPathFilter, EntityPathRule, RowId, StoreKind,
-};
+use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, StoreKind};
 use re_types::{
     blueprint::{
         archetypes as blueprint_archetypes,
@@ -18,10 +16,9 @@ use re_types::{
 };
 use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
-    DataResultTree, IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
-    SpaceViewId, StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
-    VisualizableEntities,
+    DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
+    IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
+    StoreContext, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -39,7 +36,7 @@ use crate::{
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`SpaceViewContents::duplicate`].
+/// [`SpaceView::duplicate`].
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
@@ -48,9 +45,6 @@ pub struct SpaceViewContents {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
-
-    /// Pending blueprint writes for nested components from duplicate.
-    pending_writes: Vec<DataRow>,
 }
 
 impl SpaceViewContents {
@@ -101,7 +95,6 @@ impl SpaceViewContents {
             space_view_class_identifier,
             entity_path_filter,
             entities_determined_by_user: false,
-            pending_writes: Default::default(),
         }
     }
 
@@ -136,7 +129,6 @@ impl SpaceViewContents {
             space_view_class_identifier,
             entity_path_filter,
             entities_determined_by_user: entities_determined_by_user.map_or(false, |b| b.0),
-            pending_writes: Default::default(),
         }
     }
 
@@ -147,13 +139,6 @@ impl SpaceViewContents {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        // Save any pending writes from a duplication.
-        ctx.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                ctx.store_context.blueprint.store_id().clone(),
-                self.pending_writes.clone(),
-            ));
-
         // TODO(andreas): There should be a save_blueprint_archetype
         ctx.save_blueprint_component(
             &self.blueprint_entity_path,
@@ -184,57 +169,6 @@ impl SpaceViewContents {
                 &self.blueprint_entity_path,
                 &EntitiesDeterminedByUser(true),
             );
-        }
-    }
-
-    /// Creates a new [`SpaceViewContents`] with a the same contents, but a different [`SpaceViewId`]
-    pub fn duplicate(
-        &self,
-        new_id: SpaceViewId,
-        blueprint: &EntityDb,
-        query: &LatestAtQuery,
-    ) -> Self {
-        let mut pending_writes = Vec::new();
-
-        let new_blueprint_path = crate::entity_path_for_space_view_sub_archetype::<
-            blueprint_archetypes::SpaceViewContents,
-        >(new_id, blueprint.tree());
-
-        // Create pending write operations to duplicate the entire subtree
-        // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&self.blueprint_entity_path) {
-            tree.visit_children_recursively(&mut |path, info| {
-                let sub_path: EntityPath = new_blueprint_path
-                    .iter()
-                    .chain(&path[self.blueprint_entity_path.len()..])
-                    .cloned()
-                    .collect();
-
-                if let Ok(row) = DataRow::from_cells(
-                    RowId::new(),
-                    blueprint_timepoint_for_writes(),
-                    sub_path,
-                    1,
-                    info.components.keys().filter_map(|component| {
-                        blueprint
-                            .store()
-                            .latest_at(query, path, *component, &[*component])
-                            .and_then(|result| result.2[0].clone())
-                    }),
-                ) {
-                    if row.num_cells() > 0 {
-                        pending_writes.push(row);
-                    }
-                }
-            });
-        }
-
-        Self {
-            blueprint_entity_path: new_blueprint_path,
-            space_view_class_identifier: self.space_view_class_identifier,
-            entity_path_filter: self.entity_path_filter.clone(),
-            entities_determined_by_user: self.entities_determined_by_user,
-            pending_writes,
         }
     }
 
