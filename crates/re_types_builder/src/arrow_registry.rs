@@ -115,7 +115,9 @@ impl ArrowRegistry {
             .chain(obj.fields.iter_mut().map(|field| LazyField {
                 name: field.name.clone(),
                 datatype: self.arrow_datatype_from_type(field.typ.clone(), field),
-                is_nullable: false,
+                // NOTE: The spec doesn't allow a `Null` array to be non-nullable.
+                // We map Unit -> Null in enum fields, so this must be nullable.
+                is_nullable: field.typ == Type::Unit,
                 metadata: Default::default(),
             }))
             .collect();
