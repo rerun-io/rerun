@@ -159,15 +159,15 @@ impl DataQueryBlueprint {
     pub fn set_entity_path_filter(
         &self,
         ctx: &ViewerContext<'_>,
-        entity_path_filter: &EntityPathFilter,
+        new_entity_path_filter: &EntityPathFilter,
     ) {
-        if &self.entity_path_filter == entity_path_filter {
+        if &self.entity_path_filter == new_entity_path_filter {
             return;
         }
 
         ctx.save_blueprint_component(
             &self.blueprint_entity_path,
-            &QueryExpression(self.entity_path_filter.formatted().into()),
+            &QueryExpression(new_entity_path_filter.formatted().into()),
         );
 
         if !self.entities_determined_by_user {
