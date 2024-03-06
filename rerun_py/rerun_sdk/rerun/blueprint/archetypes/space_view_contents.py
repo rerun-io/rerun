@@ -38,7 +38,8 @@ class SpaceViewContents(Archetype):
             They determine which entities are part of the spaceview.
         entities_determined_by_user:
             True if the user is has added entities themselves. False otherwise.
-            TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
+
+            This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
 
         """
 
@@ -78,7 +79,8 @@ class SpaceViewContents(Archetype):
         converter=blueprint_components.EntitiesDeterminedByUserBatch._optional,  # type: ignore[misc]
     )
     # True if the user is has added entities themselves. False otherwise.
-    # TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
+    #
+    # This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -25,7 +25,8 @@ namespace rerun::blueprint::archetypes {
         rerun::blueprint::components::QueryExpression query;
 
         /// True if the user is has added entities themselves. False otherwise.
-        /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
+        ///
+        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
         std::optional<rerun::blueprint::components::EntitiesDeterminedByUser>
             entities_determined_by_user;
 
@@ -44,7 +45,8 @@ namespace rerun::blueprint::archetypes {
             : query(std::move(_query)) {}
 
         /// True if the user is has added entities themselves. False otherwise.
-        /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
+        ///
+        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
         SpaceViewContents with_entities_determined_by_user(
             rerun::blueprint::components::EntitiesDeterminedByUser _entities_determined_by_user
         ) && {

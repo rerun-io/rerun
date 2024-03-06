@@ -30,7 +30,8 @@ pub struct SpaceViewContents {
     pub query: crate::blueprint::components::QueryExpression,
 
     /// True if the user is has added entities themselves. False otherwise.
-    /// TODO: doc what this actually does. Is this only used by the viewer? what happens when I set it yada
+    ///
+    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
     pub entities_determined_by_user: Option<crate::blueprint::components::EntitiesDeterminedByUser>,
 }
 
