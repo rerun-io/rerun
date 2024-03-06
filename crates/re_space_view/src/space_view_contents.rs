@@ -40,7 +40,7 @@ use crate::{
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`DataQueryBlueprint::duplicate`].
-pub struct DataQueryBlueprint {
+pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
     pub space_view_class_identifier: SpaceViewClassIdentifier,
@@ -53,8 +53,8 @@ pub struct DataQueryBlueprint {
     pending_writes: Vec<DataRow>,
 }
 
-impl DataQueryBlueprint {
-    pub fn is_equivalent(&self, other: &DataQueryBlueprint) -> bool {
+impl SpaceViewContents {
+    pub fn is_equivalent(&self, other: &SpaceViewContents) -> bool {
         self.space_view_class_identifier
             .eq(&other.space_view_class_identifier)
             && self.entity_path_filter.eq(&other.entity_path_filter)
@@ -68,7 +68,7 @@ impl DataQueryBlueprint {
     /// This is a conservative estimate, and may return `false` in situations where the
     /// query does in fact cover the other query. However, it should never return `true`
     /// in a case where the other query would not be fully covered.
-    pub fn entity_path_filter_is_superset_of(&self, other: &DataQueryBlueprint) -> bool {
+    pub fn entity_path_filter_is_superset_of(&self, other: &SpaceViewContents) -> bool {
         // A query can't fully contain another if their space-view classes don't match
         if self.space_view_class_identifier != other.space_view_class_identifier {
             return false;
@@ -80,7 +80,7 @@ impl DataQueryBlueprint {
     }
 }
 
-impl DataQueryBlueprint {
+impl SpaceViewContents {
     /// Creates a new [`DataQueryBlueprint`].
     ///
     /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
@@ -280,7 +280,7 @@ impl DataQueryBlueprint {
     }
 }
 
-impl DataQuery for DataQueryBlueprint {
+impl DataQuery for SpaceViewContents {
     /// Build up the initial [`DataQueryResult`] for this [`DataQueryBlueprint`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
@@ -321,7 +321,7 @@ struct QueryExpressionEvaluator<'a> {
 
 impl<'a> QueryExpressionEvaluator<'a> {
     fn new(
-        blueprint: &'a DataQueryBlueprint,
+        blueprint: &'a SpaceViewContents,
         visualizable_entities_for_visualizer_systems: &'a PerVisualizer<VisualizableEntities>,
     ) -> Self {
         re_tracing::profile_function!();
@@ -772,7 +772,7 @@ mod tests {
         ];
 
         for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
-            let query = DataQueryBlueprint {
+            let query = SpaceViewContents {
                 id: DataQueryId::random(),
                 space_view_class_identifier: "3D".into(),
                 entity_path_filter: EntityPathFilter::parse_forgiving(filter),

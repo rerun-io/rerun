@@ -454,7 +454,7 @@ impl Viewport<'_, '_> {
                     "Remove Group and all its children from the Space View",
                 );
                 if response.clicked() {
-                    space_view.query.add_entity_exclusion(
+                    space_view.contents.add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_path.clone()),
                     );

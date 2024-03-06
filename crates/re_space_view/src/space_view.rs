@@ -3,7 +3,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
-use crate::DataQueryBlueprint;
+use crate::SpaceViewContents;
 use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
@@ -64,7 +64,7 @@ pub struct SpaceViewBlueprint {
     pub space_origin: EntityPath,
 
     /// The content of this space view as defined by its queries.
-    pub query: DataQueryBlueprint,
+    pub contents: SpaceViewContents,
 
     /// True if this space view is visible in the UI.
     pub visible: bool,
@@ -90,7 +90,7 @@ impl SpaceViewBlueprint {
             class_identifier: space_view_class,
             id,
             space_origin: space_path.clone(),
-            query: DataQueryBlueprint::new(id, space_view_class, content),
+            contents: SpaceViewContents::new(id, space_view_class, content),
             visible: true,
             pending_writes: Default::default(),
         }
@@ -166,7 +166,7 @@ impl SpaceViewBlueprint {
         let display_name = display_name.map(|v| v.0.to_string());
 
         let content =
-            DataQueryBlueprint::from_db_or_default(id, blueprint_db, query, class_identifier);
+            SpaceViewContents::from_db_or_default(id, blueprint_db, query, class_identifier);
         let visible = visible.map_or(true, |v| v.0);
 
         Some(Self {
@@ -174,7 +174,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            query: content,
+            contents: content,
             visible,
             pending_writes: Default::default(),
         })
@@ -194,7 +194,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            query,
+            contents: query,
             visible,
             pending_writes,
         } = self;
@@ -280,7 +280,7 @@ impl SpaceViewBlueprint {
             display_name: self.display_name.clone(),
             class_identifier: self.class_identifier,
             space_origin: self.space_origin.clone(),
-            query: self.query.duplicate(new_id, blueprint, query),
+            contents: self.contents.duplicate(new_id, blueprint, query),
             visible: self.visible,
             pending_writes,
         }
@@ -289,7 +289,7 @@ impl SpaceViewBlueprint {
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
         ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
-        self.query.clear(ctx);
+        self.contents.clear(ctx);
     }
 
     #[inline]
@@ -521,9 +521,9 @@ mod tests {
         );
 
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-        let query = &space_view.query;
+        let contents = &space_view.contents;
 
-        let resolver = query.build_resolver(
+        let resolver = contents.build_resolver(
             &space_view_class_registry,
             &space_view,
             &auto_properties,
@@ -539,7 +539,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
+            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -581,7 +581,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
+            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent_group = query_result
@@ -629,7 +629,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
+            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -678,7 +678,7 @@ mod tests {
                 recording: Some(&recording),
                 all_recordings: vec![],
             };
-            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
+            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result
@@ -720,7 +720,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let mut query_result = query.execute_query(&ctx, &visualizable_entities);
+            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
             resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
 
             let parent = query_result

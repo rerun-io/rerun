@@ -351,7 +351,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 .space_views
                 .values()
                 .filter(|space_view| space_view.class_identifier() == &class_id)
-                .map(|space_view| &space_view.query.entity_path_filter)
+                .map(|space_view| &space_view.contents.entity_path_filter)
                 .collect::<Vec<_>>();
             let recommended_space_views = spawn_heuristics
                 .recommended_space_views

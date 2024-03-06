@@ -807,10 +807,10 @@ fn blueprint_ui_for_space_view(
             ui,
             viewport,
             space_view_id,
-            &space_view.query.entity_path_filter,
+            &space_view.contents.entity_path_filter,
         ) {
             space_view
-                .query
+                .contents
                 .set_entity_path_filter(ctx, &new_entity_path_filter);
         }
 

@@ -205,7 +205,7 @@ impl AppState {
                     (
                         space_view.id,
                         space_view
-                            .query
+                            .contents
                             .execute_query(store_context, &visualizable_entities),
                     )
                 })
@@ -254,7 +254,7 @@ impl AppState {
                     );
 
                     let props = viewport.state.space_view_props(space_view.id);
-                    let resolver = space_view.query.build_resolver(
+                    let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
                         space_view,
                         props,
