@@ -8,10 +8,7 @@ use re_entity_db::{
 };
 use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, StoreKind};
 use re_types::{
-    blueprint::{
-        archetypes as blueprint_archetypes,
-        components::{EntitiesDeterminedByUser, QueryExpression},
-    },
+    blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
 };
 use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
@@ -42,9 +39,6 @@ pub struct SpaceViewContents {
 
     pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
-
-    /// True if the user is expected to add entities themselves. False otherwise.
-    pub entities_determined_by_user: bool,
 }
 
 impl SpaceViewContents {
@@ -94,7 +88,6 @@ impl SpaceViewContents {
             blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
-            entities_determined_by_user: false,
         }
     }
 
@@ -109,10 +102,7 @@ impl SpaceViewContents {
             blueprint_archetypes::SpaceViewContents,
         >(id, blueprint_db, query);
 
-        let blueprint_archetypes::SpaceViewContents {
-            query,
-            entities_determined_by_user,
-        } = contents.unwrap_or_else(|err| {
+        let blueprint_archetypes::SpaceViewContents { query } = contents.unwrap_or_else(|err| {
             re_log::warn_once!(
                 "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
                 id,
@@ -128,7 +118,6 @@ impl SpaceViewContents {
             blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
-            entities_determined_by_user: entities_determined_by_user.map_or(false, |b| b.0),
         }
     }
 
@@ -141,8 +130,7 @@ impl SpaceViewContents {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             self.blueprint_entity_path.clone(),
-            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted())
-                .with_entities_determined_by_user(self.entities_determined_by_user),
+            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted()),
         );
     }
 
@@ -159,13 +147,6 @@ impl SpaceViewContents {
             &self.blueprint_entity_path,
             &QueryExpression(new_entity_path_filter.formatted().into()),
         );
-
-        if !self.entities_determined_by_user {
-            ctx.save_blueprint_component(
-                &self.blueprint_entity_path,
-                &EntitiesDeterminedByUser(true),
-            );
-        }
     }
 
     pub fn clear(&self, ctx: &ViewerContext<'_>) {

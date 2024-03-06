@@ -20,13 +20,6 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .entities_determined_by_user import (
-    EntitiesDeterminedByUser,
-    EntitiesDeterminedByUserArrayLike,
-    EntitiesDeterminedByUserBatch,
-    EntitiesDeterminedByUserLike,
-    EntitiesDeterminedByUserType,
-)
 from .entity_properties_component import (
     EntityPropertiesComponent,
     EntityPropertiesComponentArrayLike,
@@ -87,11 +80,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "EntitiesDeterminedByUser",
-    "EntitiesDeterminedByUserArrayLike",
-    "EntitiesDeterminedByUserBatch",
-    "EntitiesDeterminedByUserLike",
-    "EntitiesDeterminedByUserType",
     "EntityPropertiesComponent",
     "EntityPropertiesComponentArrayLike",
     "EntityPropertiesComponentBatch",
