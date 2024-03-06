@@ -119,25 +119,26 @@ fn data_result_visible(
     space_view_id: &SpaceViewId,
     instance_path: &InstancePath,
 ) -> Option<bool> {
-    if instance_path.is_splat() {
-        if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
-            let query_result = ctx
-                .viewer_context
-                .lookup_query_result(space_view.query_id());
-            query_result
-                .tree
-                .lookup_result_by_path(&instance_path.entity_path)
-                .map(|data_result| {
-                    data_result
-                        .recursive_properties()
-                        .map_or(true, |prop| prop.visible)
+    instance_path
+        .is_splat()
+        .then(|| {
+            ctx.viewport_blueprint
+                .space_view(space_view_id)
+                .and_then(|space_view| {
+                    let query_result = ctx
+                        .viewer_context
+                        .lookup_query_result(space_view.query_id());
+                    query_result
+                        .tree
+                        .lookup_result_by_path(&instance_path.entity_path)
+                        .map(|data_result| {
+                            data_result
+                                .recursive_properties()
+                                .map_or(true, |prop| prop.visible)
+                        })
                 })
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+        })
+        .flatten()
 }
 
 fn set_data_result_visible(
