@@ -10,6 +10,7 @@ use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
 
+use crate::auto_layout;
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
@@ -68,12 +69,15 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
-            blueprint_db.store(),
-            query,
-            &VIEWPORT_PATH.into(),
-        )
-        .and_then(|arch| arch.to_archetype())
+        let crate::blueprint::archetypes::ViewportBlueprint {
+            space_views,
+            root_container,
+            maximized,
+            auto_layout,
+            auto_space_views,
+            viewer_recommendation_hashes,
+        } = match query_archetype(blueprint_db.store(), query, &VIEWPORT_PATH.into())
+            .and_then(|arch| arch.to_archetype())
         {
             Ok(arch) => arch,
             Err(re_query::QueryError::PrimaryNotFound(_)) => {
@@ -91,7 +95,7 @@ impl ViewportBlueprint {
         };
 
         let space_view_ids: Vec<SpaceViewId> =
-            arch.space_views.iter().map(|id| id.0.into()).collect();
+            space_views.into_iter().map(|id| id.0.into()).collect();
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
@@ -119,11 +123,8 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
-        let auto_layout = arch.auto_layout.unwrap_or_default().0;
-
-        let root_container = arch.root_container.map(|id| id.0.into());
-
-        let auto_space_views = arch.auto_space_views.map_or_else(
+        let root_container = root_container.map(|id| id.0.into());
+        let auto_space_views = auto_space_views.map_or_else(
             || {
                 // Only enable auto-space-views if this is the app-default blueprint
                 blueprint_db
@@ -132,8 +133,6 @@ impl ViewportBlueprint {
             },
             |auto| auto.0,
         );
-
-        let maximized = arch.maximized.map(|id| id.0.into());
 
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
@@ -146,10 +145,10 @@ impl ViewportBlueprint {
             containers,
             root_container,
             tree,
-            maximized,
-            auto_layout: auto_layout.into(),
+            maximized: maximized.map(|id| id.0.into()),
+            auto_layout: auto_layout.unwrap_or_default().0.into(),
             auto_space_views: auto_space_views.into(),
-            viewer_recommendation_hashes: arch.viewer_recommendation_hashes.unwrap_or_default(),
+            viewer_recommendation_hashes: viewer_recommendation_hashes.unwrap_or_default(),
             tree_action_sender,
         }
     }
