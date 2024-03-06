@@ -290,7 +290,7 @@ impl Viewport<'_, '_> {
                 default_open,
                 |_, ui| {
                     // Always show the origin hierarchy first.
-                    Self::space_view_entity_hierarchy_ui(
+                    self.space_view_entity_hierarchy_ui(
                         ctx,
                         ui,
                         query_result,
@@ -323,7 +323,7 @@ impl Viewport<'_, '_> {
                         ui.label(egui::RichText::new("Projections:").italics());
 
                         for projection in projections {
-                            Self::space_view_entity_hierarchy_ui(
+                            self.space_view_entity_hierarchy_ui(
                                 ctx,
                                 ui,
                                 query_result,
@@ -365,7 +365,9 @@ impl Viewport<'_, '_> {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn space_view_entity_hierarchy_ui(
+        &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
@@ -491,7 +493,7 @@ impl Viewport<'_, '_> {
                                 continue;
                             };
 
-                            Self::space_view_entity_hierarchy_ui(
+                            self.space_view_entity_hierarchy_ui(
                                 ctx,
                                 ui,
                                 query_result,
@@ -517,6 +519,14 @@ impl Viewport<'_, '_> {
             let query = ctx.current_query();
             re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &query, store, entity_path);
         });
+
+        context_menu_ui_for_item(
+            ctx,
+            self.blueprint,
+            &item,
+            &response,
+            SelectionUpdateBehavior::UseSelection,
+        );
         ctx.select_hovered_on_click(&response, item);
     }
 

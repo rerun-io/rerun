@@ -1,4 +1,5 @@
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_entity_db::InstancePath;
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
 use re_space_view::SpaceViewBlueprint;
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
@@ -17,6 +18,9 @@ impl ContextMenuAction for ShowAction {
                 !ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != Some(*container_id)
+            }
+            Item::DataResult(space_view_id, instance_path) => {
+                data_result_visible(ctx, space_view_id, instance_path).is_some_and(|vis| !vis)
             }
             _ => false,
         })
@@ -45,9 +49,16 @@ impl ContextMenuAction for ShowAction {
             true,
         );
     }
-}
 
-// ---
+    fn process_data_result(
+        &self,
+        ctx: &ContextMenuContext<'_>,
+        space_view_id: &SpaceViewId,
+        instance_path: &InstancePath,
+    ) {
+        set_data_result_visible(ctx, space_view_id, instance_path, true);
+    }
+}
 
 pub(super) struct HideAction;
 
@@ -61,6 +72,9 @@ impl ContextMenuAction for HideAction {
                 ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != Some(*container_id)
+            }
+            Item::DataResult(space_view_id, instance_path) => {
+                data_result_visible(ctx, space_view_id, instance_path).unwrap_or(false)
             }
             _ => false,
         })
@@ -89,11 +103,62 @@ impl ContextMenuAction for HideAction {
             false,
         );
     }
+
+    fn process_data_result(
+        &self,
+        ctx: &ContextMenuContext<'_>,
+        space_view_id: &SpaceViewId,
+        instance_path: &InstancePath,
+    ) {
+        set_data_result_visible(ctx, space_view_id, instance_path, false);
+    }
+}
+
+fn data_result_visible(
+    ctx: &ContextMenuContext<'_>,
+    space_view_id: &SpaceViewId,
+    instance_path: &InstancePath,
+) -> Option<bool> {
+    instance_path
+        .is_splat()
+        .then(|| {
+            let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+            query_result
+                .tree
+                .lookup_result_by_path(&instance_path.entity_path)
+                .map(|data_result| {
+                    data_result
+                        .recursive_properties()
+                        .map_or(true, |prop| prop.visible)
+                })
+        })
+        .flatten()
+}
+
+fn set_data_result_visible(
+    ctx: &ContextMenuContext<'_>,
+    space_view_id: &SpaceViewId,
+    instance_path: &InstancePath,
+    visible: bool,
+) {
+    let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+    if let Some(data_result) = query_result
+        .tree
+        .lookup_result_by_path(&instance_path.entity_path)
+    {
+        let mut recursive_properties = data_result
+            .recursive_properties()
+            .cloned()
+            .unwrap_or_default();
+        recursive_properties.visible = visible;
+
+        data_result.save_recursive_override(ctx.viewer_context, Some(recursive_properties));
+    }
 }
 
 // ---
 
-/// Remove a container or space view
+/// Remove a container, space view, or data result.
 pub(super) struct RemoveAction;
 
 impl ContextMenuAction for RemoveAction {
@@ -107,6 +172,7 @@ impl ContextMenuAction for RemoveAction {
             Item::Container(container_id) => {
                 ctx.viewport_blueprint.root_container != Some(*container_id)
             }
+            Item::DataResult(_, instance_path) => instance_path.is_splat(),
             _ => false,
         }
     }
@@ -127,6 +193,20 @@ impl ContextMenuAction for RemoveAction {
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
             .remove_contents(Contents::SpaceView(*space_view_id));
+    }
+
+    fn process_data_result(
+        &self,
+        ctx: &ContextMenuContext<'_>,
+        space_view_id: &SpaceViewId,
+        instance_path: &InstancePath,
+    ) {
+        if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
+            space_view.contents.add_entity_exclusion(
+                ctx.viewer_context,
+                EntityPathRule::including_subtree(instance_path.entity_path.clone()),
+            );
+        }
     }
 }
 
