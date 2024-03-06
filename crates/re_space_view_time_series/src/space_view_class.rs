@@ -304,7 +304,11 @@ It can greatly improve performance (and readability) in such situations as it pr
                 corner: legend_corner,
             },
             _,
-        ) = query_space_view_sub_archetype_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        ) = query_space_view_sub_archetype_or_default(
+            query.space_view_id,
+            blueprint_db,
+            blueprint_query,
+        );
 
         let (
             re_types::blueprint::archetypes::ScalarAxis {
@@ -312,7 +316,11 @@ It can greatly improve performance (and readability) in such situations as it pr
                 lock_range_during_zoom: y_lock_range_during_zoom,
             },
             _,
-        ) = query_space_view_sub_archetype_or_default(query.space_view_id, blueprint_db, blueprint_query);
+        ) = query_space_view_sub_archetype_or_default(
+            query.space_view_id,
+            blueprint_db,
+            blueprint_query,
+        );
 
         let (current_time, time_type, timeline) = {
             // Avoid holding the lock for long
