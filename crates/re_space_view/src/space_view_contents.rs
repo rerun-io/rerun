@@ -34,12 +34,12 @@ use crate::{
 /// During execution it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match a [`EntityPathFilter`].
 ///
-/// Note: [`DataQueryBlueprint`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
+/// Note: [`SpaceViewContents`] doesn't implement Clone because it depends on its parent's [`SpaceViewId`]
 /// used for identifying the path of its data in the blueprint store. It's ambiguous
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`DataQueryBlueprint::duplicate`].
+/// [`SpaceViewContents::duplicate`].
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
@@ -81,9 +81,9 @@ impl SpaceViewContents {
 }
 
 impl SpaceViewContents {
-    /// Creates a new [`DataQueryBlueprint`].
+    /// Creates a new [`SpaceViewContents`].
     ///
-    /// This [`DataQueryBlueprint`] is ephemeral. It must be saved by calling
+    /// This [`SpaceViewContents`] is ephemeral. It must be saved by calling
     /// `save_to_blueprint_store` on the enclosing `SpaceViewBlueprint`.
     pub fn new(
         id: SpaceViewId,
@@ -105,7 +105,7 @@ impl SpaceViewContents {
         }
     }
 
-    /// Attempt to load a [`DataQueryBlueprint`] from the blueprint store.
+    /// Attempt to load a [`SpaceViewContents`] from the blueprint store.
     pub fn from_db_or_default(
         id: SpaceViewId,
         blueprint_db: &EntityDb,
@@ -131,9 +131,9 @@ impl SpaceViewContents {
         }
     }
 
-    /// Persist the entire [`DataQueryBlueprint`] to the blueprint store.
+    /// Persist the entire [`SpaceViewContents`] to the blueprint store.
     ///
-    /// This only needs to be called if the [`DataQueryBlueprint`] was created with [`Self::new`].
+    /// This only needs to be called if the [`SpaceViewContents`] was created with [`Self::new`].
     ///
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
@@ -178,7 +178,7 @@ impl SpaceViewContents {
         }
     }
 
-    /// Creates a new [`DataQueryBlueprint`] with a the same contents, but a different [`SpaceViewId`]
+    /// Creates a new [`SpaceViewContents`] with a the same contents, but a different [`SpaceViewId`]
     pub fn duplicate(
         &self,
         new_id: SpaceViewId,
@@ -281,7 +281,7 @@ impl SpaceViewContents {
 }
 
 impl DataQuery for SpaceViewContents {
-    /// Build up the initial [`DataQueryResult`] for this [`DataQueryBlueprint`]
+    /// Build up the initial [`DataQueryResult`] for this [`SpaceViewContents`]
     ///
     /// Note that this result will not have any resolved [`PropertyOverrides`]. Those can
     /// be added by separately calling [`PropertyResolver::update_overrides`] on
@@ -309,9 +309,9 @@ impl DataQuery for SpaceViewContents {
     }
 }
 
-/// Helper struct for executing the query from [`DataQueryBlueprint`]
+/// Helper struct for executing the query from [`SpaceViewContents`]
 ///
-/// This restructures the [`QueryExpressions`] into several sets that are
+/// This restructures the [`QueryExpression`] into several sets that are
 /// used to efficiently determine if we should continue the walk or switch
 /// to a pure recursive evaluation.
 struct QueryExpressionEvaluator<'a> {

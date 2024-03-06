@@ -74,7 +74,7 @@ pub struct SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
-    /// Creates a new [`SpaceViewBlueprint`] with a single [`DataQueryBlueprint`].
+    /// Creates a new [`SpaceViewBlueprint`] with a single [`SpaceViewContents`].
     ///
     /// This [`SpaceViewBlueprint`] is ephemeral. If you want to make it permanent you
     /// must call [`Self::save_to_blueprint_store`].
