@@ -13,6 +13,7 @@ use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
+        ViewerRecommendationHash,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     viewport::TreeAction,
@@ -50,6 +51,9 @@ pub struct ViewportBlueprint {
     ///
     /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
     auto_space_views: AtomicBool,
+
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    viewer_recommendation_hashes: Vec<ViewerRecommendationHash>,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -145,29 +149,9 @@ impl ViewportBlueprint {
             maximized,
             auto_layout: auto_layout.into(),
             auto_space_views: auto_space_views.into(),
+            viewer_recommendation_hashes: arch.viewer_recommendation_hashes.unwrap_or_default(),
             tree_action_sender,
         }
-
-        // TODO(jleibs): Need to figure out if we have to re-enable support for
-        // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
-        /*
-        let unknown_space_views: HashMap<_, _> = space_views
-            .iter()
-            .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
-            .map(|(k, v)| (*k, v.clone()))
-            .collect();
-        */
-
-        // TODO(jleibs): It seems we shouldn't call this until later, after we've created
-        // the snapshot. Doing this here means we are mutating the state before it goes
-        // into the snapshot. For example, even if there's no visibility in the
-        // store, this will end up with default-visibility, which then *won't* be saved back.
-        // TODO(jleibs): what to do about auto-discovery?
-        /*
-        for (_, view) in unknown_space_views {
-            viewport.add_space_view(view);
-        }
-        */
     }
 
     /// Determine whether all views in a blueprint are invalid.
@@ -281,6 +265,69 @@ impl ViewportBlueprint {
 
         self.set_auto_layout(false, ctx);
         self.set_auto_space_views(false, ctx);
+    }
+
+    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
+        if self.auto_space_views() {
+            self.spawn_heuristic_space_views(ctx);
+        }
+    }
+
+    fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
+        re_tracing::profile_function!();
+
+        for entry in ctx.space_view_class_registry.iter_registry() {
+            let class_id = entry.class.identifier();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
+
+            re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Remove all space views that we already have on screen.
+            let existing_path_filters = self
+                .space_views
+                .values()
+                .filter(|space_view| space_view.class_identifier() == &class_id)
+                .map(|space_view| &space_view.contents.entity_path_filter)
+                .collect::<Vec<_>>();
+            let recommended_space_views = spawn_heuristics
+                .recommended_space_views
+                .into_iter()
+                .filter(|recommended_view| {
+                    existing_path_filters.iter().all(|existing_filter| {
+                        !existing_filter.is_superset_of(&recommended_view.query_filter)
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            // Remove all space views that are redundant within the remaining recommendation.
+            // This n^2 loop should only run ever for frames that add new space views.
+            let final_recommendations =
+                recommended_space_views
+                    .iter()
+                    .enumerate()
+                    .filter(|(j, candidate)| {
+                        recommended_space_views
+                            .iter()
+                            .enumerate()
+                            .all(|(i, other)| {
+                                i == *j
+                                    || !other.query_filter.is_superset_of(&candidate.query_filter)
+                            })
+                    });
+
+            self.add_space_views(
+                final_recommendations.map(|(_, recommendation)| {
+                    SpaceViewBlueprint::new(
+                        class_id,
+                        &recommendation.root,
+                        recommendation.query_filter.clone(),
+                    )
+                }),
+                ctx,
+                None,
+                None,
+            );
+        }
     }
 
     /// Add a set of space views to the viewport.
