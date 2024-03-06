@@ -28,23 +28,17 @@ pub struct SpaceViewContents {
     ///
     /// They determine which entities are part of the spaceview.
     pub query: crate::blueprint::components::QueryExpression,
-
-    /// True if the user is has added entities themselves. False otherwise.
-    ///
-    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
-    pub entities_determined_by_user: Option<crate::blueprint::components::EntitiesDeterminedByUser>,
 }
 
 impl ::re_types_core::SizeBytes for SpaceViewContents {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.query.heap_size_bytes() + self.entities_determined_by_user.heap_size_bytes()
+        self.query.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::QueryExpression>::is_pod()
-            && <Option<crate::blueprint::components::EntitiesDeterminedByUser>>::is_pod()
     }
 }
 
@@ -54,26 +48,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewContentsIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.QueryExpression".into(),
             "rerun.blueprint.components.SpaceViewContentsIndicator".into(),
-            "rerun.blueprint.components.EntitiesDeterminedByUser".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl SpaceViewContents {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`SpaceViewContents`] [`::re_types_core::Archetype`]
@@ -136,23 +124,7 @@ impl ::re_types_core::Archetype for SpaceViewContents {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
         };
-        let entities_determined_by_user = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.EntitiesDeterminedByUser")
-        {
-            <crate::blueprint::components::EntitiesDeterminedByUser>::from_arrow_opt(&**array)
-                .with_context(
-                    "rerun.blueprint.archetypes.SpaceViewContents#entities_determined_by_user",
-                )?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self {
-            query,
-            entities_determined_by_user,
-        })
+        Ok(Self { query })
     }
 }
 
@@ -163,9 +135,6 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
         [
             Some(Self::indicator()),
             Some((&self.query as &dyn ComponentBatch).into()),
-            self.entities_determined_by_user
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -182,16 +151,6 @@ impl SpaceViewContents {
     pub fn new(query: impl Into<crate::blueprint::components::QueryExpression>) -> Self {
         Self {
             query: query.into(),
-            entities_determined_by_user: None,
         }
-    }
-
-    #[inline]
-    pub fn with_entities_determined_by_user(
-        mut self,
-        entities_determined_by_user: impl Into<crate::blueprint::components::EntitiesDeterminedByUser>,
-    ) -> Self {
-        self.entities_determined_by_user = Some(entities_determined_by_user.into());
-        self
     }
 }

@@ -21,4 +21,5 @@
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
+#include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"

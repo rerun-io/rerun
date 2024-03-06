@@ -8,6 +8,7 @@
 #include "../../blueprint/components/included_space_view.hpp"
 #include "../../blueprint/components/root_container.hpp"
 #include "../../blueprint/components/space_view_maximized.hpp"
+#include "../../blueprint/components/viewer_recommendation_hash.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
@@ -25,6 +26,12 @@ namespace rerun::blueprint::archetypes {
         /// All of the space-views that belong to the viewport.
         Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
 
+        /// True if the user is has added entities themselves. False otherwise.
+        ///
+        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+        std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
+            viewer_recommendation_hashes;
+
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::RootContainer> root_container;
 
@@ -38,6 +45,10 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::blueprint::components::AutoLayout> auto_layout;
 
         /// Whether or not space views should be created automatically.
+        ///
+        /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
+        /// all logged entities appropriately, it will do so unless they were added previously
+        /// (as identified by `viewer_recommendation_hashes`).
         std::optional<rerun::blueprint::components::AutoSpaceViews> auto_space_views;
 
       public:
@@ -55,6 +66,18 @@ namespace rerun::blueprint::archetypes {
             Collection<rerun::blueprint::components::IncludedSpaceView> _space_views
         )
             : space_views(std::move(_space_views)) {}
+
+        /// True if the user is has added entities themselves. False otherwise.
+        ///
+        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+        ViewportBlueprint with_viewer_recommendation_hashes(
+            Collection<rerun::blueprint::components::ViewerRecommendationHash>
+                _viewer_recommendation_hashes
+        ) && {
+            viewer_recommendation_hashes = std::move(_viewer_recommendation_hashes);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The layout of the space-views
         ViewportBlueprint with_root_container(
@@ -85,6 +108,10 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Whether or not space views should be created automatically.
+        ///
+        /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
+        /// all logged entities appropriately, it will do so unless they were added previously
+        /// (as identified by `viewer_recommendation_hashes`).
         ViewportBlueprint with_auto_space_views(
             rerun::blueprint::components::AutoSpaceViews _auto_space_views
         ) && {

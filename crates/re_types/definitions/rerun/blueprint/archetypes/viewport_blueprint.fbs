@@ -36,5 +36,14 @@ table ViewportBlueprint (
 
     // TODO(jleibs): This should come with an optional container id that specifies where to insert new space views.
     /// Whether or not space views should be created automatically.
+    ///
+    /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
+    /// all logged entities appropriately, it will do so unless they were added previously
+    /// (as identified by `viewer_recommendation_hashes`).
     auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
+
+    /// True if the user is has added entities themselves. False otherwise.
+    ///
+    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+    viewer_recommendation_hashes: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 2000);
 }

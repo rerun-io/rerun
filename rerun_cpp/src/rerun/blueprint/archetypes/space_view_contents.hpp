@@ -3,16 +3,13 @@
 
 #pragma once
 
-#include "../../blueprint/components/entities_determined_by_user.hpp"
 #include "../../blueprint/components/query_expression.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -23,12 +20,6 @@ namespace rerun::blueprint::archetypes {
         ///
         /// They determine which entities are part of the spaceview.
         rerun::blueprint::components::QueryExpression query;
-
-        /// True if the user is has added entities themselves. False otherwise.
-        ///
-        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
-        std::optional<rerun::blueprint::components::EntitiesDeterminedByUser>
-            entities_determined_by_user;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -43,17 +34,6 @@ namespace rerun::blueprint::archetypes {
 
         explicit SpaceViewContents(rerun::blueprint::components::QueryExpression _query)
             : query(std::move(_query)) {}
-
-        /// True if the user is has added entities themselves. False otherwise.
-        ///
-        /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
-        SpaceViewContents with_entities_determined_by_user(
-            rerun::blueprint::components::EntitiesDeterminedByUser _entities_determined_by_user
-        ) && {
-            entities_determined_by_user = std::move(_entities_determined_by_user);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {

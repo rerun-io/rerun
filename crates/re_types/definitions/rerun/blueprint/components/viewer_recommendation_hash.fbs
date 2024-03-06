@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Hash of a viewer recommendation.
+///
+/// The formation of this hash is considered an internal implementation detail of the viewer.
+table ViewerRecommendationHash  (
+    "attr.arrow.transparent",
+    "attr.rerun.scope": "blueprint",
+    "attr.python.aliases": "str",
+    "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.repr": "transparent"
+) {
+    value: rerun.datatypes.UInt64 (order: 100);
+}

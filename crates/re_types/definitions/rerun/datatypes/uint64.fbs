@@ -1,0 +1,17 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+include "docs/attributes.fbs";
+
+namespace rerun.datatypes;
+
+/// A 64bit unsigned integer.
+struct UInt64 (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.override_crate": "re_types_core",
+  "attr.rust.tuple_struct"
+) {
+  value: uint64 (order: 100);
+}

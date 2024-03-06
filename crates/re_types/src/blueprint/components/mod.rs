@@ -11,6 +11,7 @@ mod query_expression;
 mod row_share;
 mod space_view_class;
 mod space_view_origin;
+mod viewer_recommendation_hash;
 mod visible;
 
 pub use self::active_tab::ActiveTab;
@@ -23,4 +24,5 @@ pub use self::query_expression::QueryExpression;
 pub use self::row_share::RowShare;
 pub use self::space_view_class::SpaceViewClass;
 pub use self::space_view_origin::SpaceViewOrigin;
+pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
 pub use self::visible::Visible;

@@ -39,5 +39,7 @@ space_view_maximized.cpp linguist-generated=true
 space_view_maximized.hpp linguist-generated=true
 space_view_origin.cpp linguist-generated=true
 space_view_origin.hpp linguist-generated=true
+viewer_recommendation_hash.cpp linguist-generated=true
+viewer_recommendation_hash.hpp linguist-generated=true
 visible.cpp linguist-generated=true
 visible.hpp linguist-generated=true

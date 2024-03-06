@@ -25,6 +25,7 @@ class ViewportBlueprint(Archetype):
         self: Any,
         space_views: datatypes.UuidArrayLike,
         *,
+        viewer_recommendation_hashes: datatypes.UInt64ArrayLike | None = None,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: blueprint_components.AutoLayoutLike | None = None,
@@ -37,6 +38,10 @@ class ViewportBlueprint(Archetype):
         ----------
         space_views:
             All of the space-views that belong to the viewport.
+        viewer_recommendation_hashes:
+            True if the user is has added entities themselves. False otherwise.
+
+            This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
         root_container:
             The layout of the space-views
         maximized:
@@ -49,12 +54,17 @@ class ViewportBlueprint(Archetype):
         auto_space_views:
             Whether or not space views should be created automatically.
 
+            True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
+            all logged entities appropriately, it will do so unless they were added previously
+            (as identified by `viewer_recommendation_hashes`).
+
         """
 
         # You can define your own __init__ function as a member of ViewportBlueprintExt in viewport_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 space_views=space_views,
+                viewer_recommendation_hashes=viewer_recommendation_hashes,
                 root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
@@ -67,6 +77,7 @@ class ViewportBlueprint(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             space_views=None,  # type: ignore[arg-type]
+            viewer_recommendation_hashes=None,  # type: ignore[arg-type]
             root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
@@ -85,6 +96,17 @@ class ViewportBlueprint(Archetype):
         converter=blueprint_components.IncludedSpaceViewBatch._required,  # type: ignore[misc]
     )
     # All of the space-views that belong to the viewport.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    viewer_recommendation_hashes: blueprint_components.ViewerRecommendationHashBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
+    )
+    # True if the user is has added entities themselves. False otherwise.
+    #
+    # This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -124,6 +146,10 @@ class ViewportBlueprint(Archetype):
         converter=blueprint_components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
     )
     # Whether or not space views should be created automatically.
+    #
+    # True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
+    # all logged entities appropriately, it will do so unless they were added previously
+    # (as identified by `viewer_recommendation_hashes`).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
