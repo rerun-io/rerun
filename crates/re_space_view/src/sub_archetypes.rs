@@ -20,17 +20,24 @@ pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().short_name()))
 }
 
-pub fn query_space_view_sub_archetype<T: Archetype + Default>(
+pub fn query_space_view_sub_archetype<T: Archetype>(
+    space_view_id: SpaceViewId,
+    blueprint_db: &EntityDb,
+    query: &LatestAtQuery,
+) -> (Result<T, re_query::QueryError>, EntityPath) {
+    let path = entity_path_for_space_view_sub_archetype::<T>(space_view_id, blueprint_db.tree());
+
+    (
+        query_archetype(blueprint_db.store(), query, &path).and_then(|arch| arch.to_archetype()),
+        path,
+    )
+}
+
+pub fn query_space_view_sub_archetype_or_default<T: Archetype + Default>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> (T, EntityPath) {
-    let path = entity_path_for_space_view_sub_archetype::<T>(space_view_id, blueprint_db.tree());
-
-    (
-        query_archetype(blueprint_db.store(), query, &path)
-            .and_then(|arch| arch.to_archetype())
-            .unwrap_or_default(),
-        path,
-    )
+    let (arch, path) = query_space_view_sub_archetype(space_view_id, blueprint_db, query);
+    (arch.unwrap_or_default(), path)
 }

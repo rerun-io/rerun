@@ -112,13 +112,22 @@ impl SpaceViewContents {
         query: &LatestAtQuery,
         space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Self {
-        let (
-            blueprint_archetypes::SpaceViewContents {
-                query,
-                entities_determined_by_user,
-            },
-            blueprint_entity_path,
-        ) = query_space_view_sub_archetype(id, blueprint_db, query);
+        let (contents, blueprint_entity_path) = query_space_view_sub_archetype::<
+            blueprint_archetypes::SpaceViewContents,
+        >(id, blueprint_db, query);
+
+        let blueprint_archetypes::SpaceViewContents {
+            query,
+            entities_determined_by_user,
+        } = contents.unwrap_or_else(|err| {
+            re_log::warn_once!(
+                "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
+                id,
+                blueprint_entity_path,
+                err
+            );
+            Default::default()
+        });
 
         let entity_path_filter = EntityPathFilter::parse_forgiving(query.0.as_str());
 
