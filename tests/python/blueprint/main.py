@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import uuid
 import itertools
-from numpy.random import default_rng
+import uuid
 
 import rerun as rr
+from numpy.random import default_rng
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.archetypes.space_view_blueprint import SpaceViewBlueprint
 from rerun.blueprint.archetypes.space_view_contents import SpaceViewContents
@@ -128,6 +128,7 @@ if __name__ == "__main__":
     rr.init("rerun_example_blueprint_test", spawn=True)
     rr.log("test1", rr.Points3D(positions, colors=colors, radii=radii))
     rr.log("test2", rr.Points2D(positions[:, :2], colors=colors, radii=radii))
+
     root = Vertical(
         Spatial3D(origin="/test1"),
         Horizontal(
@@ -139,4 +140,5 @@ if __name__ == "__main__":
         ),
     )
     viewport = Viewport(root)
+
     create_blueprint(viewport)
