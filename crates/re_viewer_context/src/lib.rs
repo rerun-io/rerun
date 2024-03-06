@@ -30,7 +30,7 @@ pub use annotations::{
 };
 pub use app_options::AppOptions;
 pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
-pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, DataQueryId, SpaceViewId};
+pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{

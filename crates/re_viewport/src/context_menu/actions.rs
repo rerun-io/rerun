@@ -1,6 +1,6 @@
 use re_entity_db::InstancePath;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
-use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
+use re_space_view::SpaceViewBlueprint;
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
 use super::{ContextMenuAction, ContextMenuContext};
@@ -122,20 +122,14 @@ fn data_result_visible(
     instance_path
         .is_splat()
         .then(|| {
-            ctx.viewport_blueprint
-                .space_view(space_view_id)
-                .and_then(|space_view| {
-                    let query_result = ctx
-                        .viewer_context
-                        .lookup_query_result(space_view.query_id());
-                    query_result
-                        .tree
-                        .lookup_result_by_path(&instance_path.entity_path)
-                        .map(|data_result| {
-                            data_result
-                                .recursive_properties()
-                                .map_or(true, |prop| prop.visible)
-                        })
+            let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+            query_result
+                .tree
+                .lookup_result_by_path(&instance_path.entity_path)
+                .map(|data_result| {
+                    data_result
+                        .recursive_properties()
+                        .map_or(true, |prop| prop.visible)
                 })
         })
         .flatten()
@@ -147,22 +141,18 @@ fn set_data_result_visible(
     instance_path: &InstancePath,
     visible: bool,
 ) {
-    if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
-        let query_result = ctx
-            .viewer_context
-            .lookup_query_result(space_view.query_id());
-        if let Some(data_result) = query_result
-            .tree
-            .lookup_result_by_path(&instance_path.entity_path)
-        {
-            let mut recursive_properties = data_result
-                .recursive_properties()
-                .cloned()
-                .unwrap_or_default();
-            recursive_properties.visible = visible;
+    let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
+    if let Some(data_result) = query_result
+        .tree
+        .lookup_result_by_path(&instance_path.entity_path)
+    {
+        let mut recursive_properties = data_result
+            .recursive_properties()
+            .cloned()
+            .unwrap_or_default();
+        recursive_properties.visible = visible;
 
-            data_result.save_recursive_override(ctx.viewer_context, Some(recursive_properties));
-        }
+        data_result.save_recursive_override(ctx.viewer_context, Some(recursive_properties));
     }
 }
 
@@ -212,7 +202,7 @@ impl ContextMenuAction for RemoveAction {
         instance_path: &InstancePath,
     ) {
         if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
-            space_view.add_entity_exclusion(
+            space_view.contents.add_entity_exclusion(
                 ctx.viewer_context,
                 EntityPathRule::including_subtree(instance_path.entity_path.clone()),
             );
@@ -301,11 +291,8 @@ impl ContextMenuAction for AddSpaceViewAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let space_view = SpaceViewBlueprint::new(
-            self.0,
-            &EntityPath::root(),
-            DataQueryBlueprint::new(self.0, EntityPathFilter::default()),
-        );
+        let space_view =
+            SpaceViewBlueprint::new(self.0, &EntityPath::root(), EntityPathFilter::default());
 
         ctx.viewport_blueprint.add_space_views(
             std::iter::once(space_view),

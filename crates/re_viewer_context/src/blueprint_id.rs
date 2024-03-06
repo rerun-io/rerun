@@ -176,7 +176,6 @@ macro_rules! define_blueprint_id_type {
 // ----------------------------------------------------------------------------
 // Definitions for the different [`BlueprintId`] types.
 define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
-define_blueprint_id_type!(DataQueryId, DataQueryIdRegistry, "data_query");
 define_blueprint_id_type!(ContainerId, ContainerIdRegistry, "container");
 
 // ----------------------------------------------------------------------------
@@ -191,14 +190,14 @@ mod tests {
         let path = id.as_entity_path();
         assert!(path.is_child_of(&EntityPath::parse_forgiving("space_view/")));
 
-        let id = DataQueryId::random();
+        let id = ContainerId::random();
         let path = id.as_entity_path();
-        assert!(path.is_child_of(&EntityPath::parse_forgiving("data_query/")));
+        assert!(path.is_child_of(&EntityPath::parse_forgiving("container/")));
 
-        let roundtrip = DataQueryId::from_entity_path(&id.as_entity_path());
+        let roundtrip = ContainerId::from_entity_path(&id.as_entity_path());
         assert_eq!(roundtrip, id);
 
-        let crossed = DataQueryId::from_entity_path(&SpaceViewId::random().as_entity_path());
-        assert_eq!(crossed, DataQueryId::invalid());
+        let crossed = ContainerId::from_entity_path(&SpaceViewId::random().as_entity_path());
+        assert_eq!(crossed, ContainerId::invalid());
     }
 }

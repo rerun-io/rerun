@@ -35,7 +35,7 @@ pub fn override_ui(
     let query = ctx.current_query();
     let store = ctx.entity_db.store();
 
-    let query_result = ctx.lookup_query_result(space_view.query_id());
+    let query_result = ctx.lookup_query_result(space_view.id);
     let Some(data_result) = query_result
         .tree
         .lookup_result_by_path(entity_path)
@@ -324,7 +324,7 @@ pub fn override_visualizer_ui(
 
         let entity_db = ctx.entity_db;
 
-        let query_result = ctx.lookup_query_result(space_view.query_id());
+        let query_result = ctx.lookup_query_result(space_view.id);
         let Some(data_result) = query_result
             .tree
             .lookup_result_by_path(entity_path)

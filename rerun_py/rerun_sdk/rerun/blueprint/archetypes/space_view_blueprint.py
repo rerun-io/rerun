@@ -27,8 +27,6 @@ class SpaceViewBlueprint(Archetype):
         *,
         display_name: datatypes.Utf8Like | None = None,
         space_origin: datatypes.EntityPathLike | None = None,
-        entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserLike | None = None,
-        contents: datatypes.UuidArrayLike | None = None,
         visible: blueprint_components.VisibleLike | None = None,
     ):
         """
@@ -43,15 +41,11 @@ class SpaceViewBlueprint(Archetype):
         space_origin:
             The "anchor point" of this space view.
 
+            Defaults to the root path '/' if not specified.
+
             The transform at this path forms the reference point for all scene->world transforms in this space view.
             I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
             Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
-        entities_determined_by_user:
-            True if the user is has added entities themselves. False otherwise.
-        contents:
-            Ids of the `DataQuery`s that make up this `SpaceView`.
-
-            They determine which entities are part of the spaceview.
         visible:
             Whether this space view is visible.
 
@@ -62,12 +56,7 @@ class SpaceViewBlueprint(Archetype):
         # You can define your own __init__ function as a member of SpaceViewBlueprintExt in space_view_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                class_identifier=class_identifier,
-                display_name=display_name,
-                space_origin=space_origin,
-                entities_determined_by_user=entities_determined_by_user,
-                contents=contents,
-                visible=visible,
+                class_identifier=class_identifier, display_name=display_name, space_origin=space_origin, visible=visible
             )
             return
         self.__attrs_clear__()
@@ -78,8 +67,6 @@ class SpaceViewBlueprint(Archetype):
             class_identifier=None,  # type: ignore[arg-type]
             display_name=None,  # type: ignore[arg-type]
             space_origin=None,  # type: ignore[arg-type]
-            entities_determined_by_user=None,  # type: ignore[arg-type]
-            contents=None,  # type: ignore[arg-type]
             visible=None,  # type: ignore[arg-type]
         )
 
@@ -114,29 +101,11 @@ class SpaceViewBlueprint(Archetype):
     )
     # The "anchor point" of this space view.
     #
+    # Defaults to the root path '/' if not specified.
+    #
     # The transform at this path forms the reference point for all scene->world transforms in this space view.
     # I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     # Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.EntitiesDeterminedByUserBatch._optional,  # type: ignore[misc]
-    )
-    # True if the user is has added entities themselves. False otherwise.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    contents: blueprint_components.IncludedQueryBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.IncludedQueryBatch._optional,  # type: ignore[misc]
-    )
-    # Ids of the `DataQuery`s that make up this `SpaceView`.
-    #
-    # They determine which entities are part of the spaceview.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -104,7 +104,7 @@ pub fn execute_systems_for_space_view<'a>(
 
     let class = space_view.class(ctx.space_view_class_registry);
 
-    let query_result = ctx.lookup_query_result(space_view.query_id());
+    let query_result = ctx.lookup_query_result(space_view.id);
 
     let mut per_system_data_results = PerSystemDataResults::default();
     {

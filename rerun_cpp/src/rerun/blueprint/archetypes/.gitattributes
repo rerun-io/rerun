@@ -9,5 +9,7 @@ scalar_axis.cpp linguist-generated=true
 scalar_axis.hpp linguist-generated=true
 space_view_blueprint.cpp linguist-generated=true
 space_view_blueprint.hpp linguist-generated=true
+space_view_contents.cpp linguist-generated=true
+space_view_contents.hpp linguist-generated=true
 viewport_blueprint.cpp linguist-generated=true
 viewport_blueprint.hpp linguist-generated=true
