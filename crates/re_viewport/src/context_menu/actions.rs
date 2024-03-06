@@ -1,5 +1,5 @@
 use re_entity_db::InstancePath;
-use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_space_view::{DataQueryBlueprint, SpaceViewBlueprint};
 use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId};
 
@@ -325,15 +325,12 @@ pub(super) struct MoveContentsToNewContainerAction(pub egui_tiles::ContainerKind
 
 impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        if let Some((parent_container_id, _)) = Self::target_container_id_and_position(ctx) {
-            if let Some(parent_container) = ctx.viewport_blueprint.container(&parent_container_id) {
-                // same-kind linear containers cannot be nested
-                if (parent_container.container_kind == egui_tiles::ContainerKind::Vertical
-                    || parent_container.container_kind == egui_tiles::ContainerKind::Horizontal)
-                    && parent_container.container_kind == self.0
-                {
-                    return false;
-                }
+        if let Some((parent_container, _)) = ctx.clicked_item_parent_and_position() {
+            if (parent_container.container_kind == egui_tiles::ContainerKind::Vertical
+                || parent_container.container_kind == egui_tiles::ContainerKind::Horizontal)
+                && parent_container.container_kind == self.0
+            {
+                return false;
             }
         }
 
@@ -366,8 +363,9 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
 
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
         if let Some(root_container_id) = ctx.viewport_blueprint.root_container {
-            let (target_container_id, target_position) =
-                Self::target_container_id_and_position(ctx).unwrap_or((root_container_id, 0));
+            let (target_container_id, target_position) = ctx
+                .clicked_item_parent_id_and_position()
+                .unwrap_or((root_container_id, 0));
 
             let contents = ctx
                 .selection
@@ -388,14 +386,58 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
     }
 }
 
-impl MoveContentsToNewContainerAction {
-    fn target_container_id_and_position(
-        ctx: &ContextMenuContext<'_>,
-    ) -> Option<(ContainerId, usize)> {
-        ctx.clicked_item
-            .clone()
-            .try_into()
-            .ok()
-            .and_then(|c| ctx.viewport_blueprint.find_parent_and_position_index(&c))
+// ---
+
+/// Create a new space view containing the selected entities.
+///
+/// The space view is created next to the clicked item's parent view (if a data result was clicked).
+pub(super) struct AddEntitiesToNewSpaceViewAction(pub SpaceViewClassIdentifier);
+
+impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
+    fn supports_multi_selection(&self, _ctx: &ContextMenuContext<'_>) -> bool {
+        true
+    }
+
+    fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
+        matches!(item, Item::DataResult(_, _) | Item::InstancePath(_))
+    }
+
+    fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
+        ctx.viewer_context
+            .space_view_class_registry
+            .get_class_or_log_error(&self.0)
+            .display_name()
+            .to_owned()
+    }
+
+    fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
+        let root = EntityPath::root();
+        let origin = ctx.clicked_item.entity_path().unwrap_or(&root);
+
+        let mut filter = EntityPathFilter::subtree_entity_filter(origin);
+        ctx.selection
+            .iter()
+            .filter_map(|(item, _)| item.entity_path())
+            .filter(|path| !path.is_child_of(origin))
+            .for_each(|path| {
+                filter.add_rule(
+                    RuleEffect::Include,
+                    EntityPathRule::including_subtree(path.clone()),
+                );
+            });
+
+        let target_container_id = ctx.clicked_item_parent_id_and_position().map(|(id, _)| id);
+
+        let space_view =
+            SpaceViewBlueprint::new(self.0, origin, DataQueryBlueprint::new(self.0, filter));
+
+        ctx.viewport_blueprint.add_space_views(
+            std::iter::once(space_view),
+            ctx.viewer_context,
+            target_container_id,
+            None,
+        );
+        ctx.viewport_blueprint
+            .mark_user_interaction(ctx.viewer_context);
     }
 }

@@ -4,14 +4,14 @@ use once_cell::sync::OnceCell;
 use re_entity_db::InstancePath;
 use re_viewer_context::{ContainerId, Item, Selection, SpaceViewId, ViewerContext};
 
-use crate::ViewportBlueprint;
+use crate::{ContainerBlueprint, Contents, ViewportBlueprint};
 
 mod actions;
 mod sub_menu;
 
 use actions::{
-    AddContainerAction, AddSpaceViewAction, CloneSpaceViewAction, HideAction,
-    MoveContentsToNewContainerAction, RemoveAction, ShowAction,
+    AddContainerAction, AddEntitiesToNewSpaceViewAction, AddSpaceViewAction, CloneSpaceViewAction,
+    HideAction, MoveContentsToNewContainerAction, RemoveAction, ShowAction,
 };
 use sub_menu::SubMenu;
 
@@ -126,23 +126,37 @@ fn action_list(
                         .collect(),
                 }),
             ],
-            vec![Box::new(SubMenu {
-                label: "Move to new container".to_owned(),
-                actions: vec![
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Tabs,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Horizontal,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Vertical,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Grid,
-                    )),
-                ],
-            })],
+            vec![
+                Box::new(SubMenu {
+                    label: "Move to new container".to_owned(),
+                    actions: vec![
+                        Box::new(MoveContentsToNewContainerAction(
+                            egui_tiles::ContainerKind::Tabs,
+                        )),
+                        Box::new(MoveContentsToNewContainerAction(
+                            egui_tiles::ContainerKind::Horizontal,
+                        )),
+                        Box::new(MoveContentsToNewContainerAction(
+                            egui_tiles::ContainerKind::Vertical,
+                        )),
+                        Box::new(MoveContentsToNewContainerAction(
+                            egui_tiles::ContainerKind::Grid,
+                        )),
+                    ],
+                }),
+                Box::new(SubMenu {
+                    label: "Add to new space view".to_owned(),
+                    actions: ctx
+                        .space_view_class_registry
+                        .iter_registry()
+                        .sorted_by_key(|entry| entry.class.display_name())
+                        .map(|entry| {
+                            Box::new(AddEntitiesToNewSpaceViewAction(entry.class.identifier()))
+                                as Box<dyn ContextMenuAction + Sync + Send>
+                        })
+                        .collect(),
+                }),
+            ],
         ]
     })
 }
@@ -173,6 +187,11 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 
         should_display_separator |= any_action_displayed;
     }
+
+    // nothing was shown, make sure the context menu isn't empty
+    if !should_display_separator {
+        ui.label(egui::RichText::from("No action available for the current selection").italics());
+    }
 }
 
 /// Context information provided to context menu actions
@@ -181,6 +200,34 @@ struct ContextMenuContext<'a> {
     viewport_blueprint: &'a ViewportBlueprint,
     selection: &'a Selection,
     clicked_item: &'a Item,
+}
+
+impl<'a> ContextMenuContext<'a> {
+    /// Return the clicked item's parent container id and position within it.
+    ///
+    /// Valid only for space views, containers, and data results.
+    pub fn clicked_item_parent_id_and_position(&self) -> Option<(ContainerId, usize)> {
+        match self.clicked_item {
+            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
+                Some(Contents::SpaceView(*space_view_id))
+            }
+            Item::Container(container_id) => Some(Contents::Container(*container_id)),
+            _ => None,
+        }
+        .and_then(|c: Contents| self.viewport_blueprint.find_parent_and_position_index(&c))
+    }
+
+    /// Return the clicked item's parent container and position within it.
+    ///
+    /// Valid only for space views, containers, and data results.
+    pub fn clicked_item_parent_and_position(&self) -> Option<(&'a ContainerBlueprint, usize)> {
+        self.clicked_item_parent_id_and_position()
+            .and_then(|(container_id, pos)| {
+                self.viewport_blueprint
+                    .container(&container_id)
+                    .map(|container| (container, pos))
+            })
+    }
 }
 
 /// Context menu actions must implement this trait.
