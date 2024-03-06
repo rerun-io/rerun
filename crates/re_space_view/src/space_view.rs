@@ -194,7 +194,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_identifier,
             space_origin,
-            contents: query,
+            contents,
             visible,
             pending_writes,
         } = self;
@@ -218,7 +218,7 @@ impl SpaceViewBlueprint {
             deltas.push(row);
         }
 
-        query.save_to_blueprint_store(ctx);
+        contents.save_to_blueprint_store(ctx);
 
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(
