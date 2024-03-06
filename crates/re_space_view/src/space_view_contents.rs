@@ -36,7 +36,7 @@ use crate::{
 /// whether the intent is for a clone to write to the same place.
 ///
 /// If you want a new space view otherwise identical to an existing one, use
-/// [`SpaceView::duplicate`].
+/// [`SpaceViewBlueprint::duplicate`].
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
