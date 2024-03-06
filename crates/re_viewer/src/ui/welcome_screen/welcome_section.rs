@@ -308,7 +308,6 @@ fn open_quick_start(
     let store_info = StoreInfo {
         application_id: "Quick Start".into(),
         store_id: StoreId::random(StoreKind::Recording),
-        is_official_example: true,
         started: Time::now(),
         store_source: StoreSource::Viewer,
         store_kind: StoreKind::Recording,

@@ -36,7 +36,6 @@ impl crate::DataUi for re_entity_db::EntityDb {
                 let re_log_types::StoreInfo {
                     application_id,
                     store_id: _,
-                    is_official_example: _,
                     started,
                     store_source,
                     store_kind,

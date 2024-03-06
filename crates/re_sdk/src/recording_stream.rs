@@ -112,8 +112,6 @@ pub struct RecordingStreamBuilder {
     enabled: Option<bool>,
 
     batcher_config: Option<DataTableBatcherConfig>,
-
-    is_official_example: bool,
 }
 
 impl RecordingStreamBuilder {
@@ -131,7 +129,6 @@ impl RecordingStreamBuilder {
     #[track_caller]
     pub fn new(application_id: impl Into<ApplicationId>) -> Self {
         let application_id = application_id.into();
-        let is_official_example = crate::called_from_official_rust_example();
 
         Self {
             application_id,
@@ -143,7 +140,6 @@ impl RecordingStreamBuilder {
             enabled: None,
 
             batcher_config: None,
-            is_official_example,
         }
     }
 
@@ -215,14 +211,6 @@ impl RecordingStreamBuilder {
     #[inline]
     pub fn store_source(mut self, store_source: StoreSource) -> Self {
         self.store_source = Some(store_source);
-        self
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    #[doc(hidden)]
-    #[inline]
-    pub fn is_official_example(mut self, is_official_example: bool) -> Self {
-        self.is_official_example = is_official_example;
         self
     }
 
@@ -540,7 +528,6 @@ impl RecordingStreamBuilder {
             default_enabled: _,
             enabled: _,
             batcher_config,
-            is_official_example,
         } = self;
 
         let store_id = store_id.unwrap_or(StoreId::random(store_kind));
@@ -552,7 +539,6 @@ impl RecordingStreamBuilder {
         let store_info = StoreInfo {
             application_id,
             store_id,
-            is_official_example,
             started: Time::now(),
             store_source,
             store_kind,

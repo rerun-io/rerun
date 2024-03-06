@@ -167,14 +167,12 @@ pub fn decide_logging_enabled(default_enabled: bool) -> bool {
 // ----------------------------------------------------------------------------
 
 /// Creates a new [`re_log_types::StoreInfo`] which can be used with [`RecordingStream::new`].
-#[track_caller] // track_caller so that we can see if we are being called from an official example.
 pub fn new_store_info(
     application_id: impl Into<re_log_types::ApplicationId>,
 ) -> re_log_types::StoreInfo {
     re_log_types::StoreInfo {
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
-        is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
@@ -182,20 +180,4 @@ pub fn new_store_info(
         },
         store_kind: re_log_types::StoreKind::Recording,
     }
-}
-
-#[track_caller]
-fn called_from_official_rust_example() -> bool {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let caller = core::panic::Location::caller();
-    let mut path = std::path::PathBuf::from(caller.file());
-    let mut is_official_example = false;
-    for _ in 0..4 {
-        path.pop(); // first iteration is always a file path in our examples
-        if path.join(SENTINEL_FILENAME).exists() {
-            is_official_example = true;
-        }
-    }
-    is_official_example
 }

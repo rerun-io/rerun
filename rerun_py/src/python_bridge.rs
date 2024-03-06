@@ -221,19 +221,6 @@ fn new_recording(
     application_path: Option<PathBuf>,
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
-    // The sentinel file we use to identify the official examples directory.
-    const SENTINEL_FILENAME: &str = ".rerun_examples";
-    let is_official_example = application_path.map_or(false, |mut path| {
-        // more than 4 layers would be really pushing it
-        for _ in 0..4 {
-            path.pop(); // first iteration is always a file path in our examples
-            if path.join(SENTINEL_FILENAME).exists() {
-                return true;
-            }
-        }
-        false
-    });
-
     let recording_id = if let Some(recording_id) = recording_id {
         StoreId::from_string(StoreKind::Recording, recording_id)
     } else {
@@ -248,7 +235,6 @@ fn new_recording(
 
     let recording = RecordingStreamBuilder::new(application_id)
         .batcher_config(batcher_config)
-        .is_official_example(is_official_example)
         .store_id(recording_id.clone())
         .store_source(re_log_types::StoreSource::PythonSdk(python_version(py)))
         .default_enabled(default_enabled)

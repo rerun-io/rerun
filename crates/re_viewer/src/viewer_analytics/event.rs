@@ -44,13 +44,18 @@ pub fn open_recording(
     entity_db: &re_entity_db::EntityDb,
 ) -> OpenRecording {
     let store_info = entity_db.store_info().map(|store_info| {
-        let application_id = if store_info.is_official_example {
+        let app_id_starts_with_rerun_example = store_info
+            .application_id
+            .as_str()
+            .starts_with("rerun_example");
+
+        let application_id = if app_id_starts_with_rerun_example {
             Id::Official(store_info.application_id.0.clone())
         } else {
             Id::Hashed(Property::from(store_info.application_id.0.clone()).hashed())
         };
 
-        let recording_id = if store_info.is_official_example {
+        let recording_id = if app_id_starts_with_rerun_example {
             Id::Official(store_info.store_id.to_string())
         } else {
             Id::Hashed(Property::from(store_info.store_id.to_string()).hashed())
@@ -95,12 +100,6 @@ pub fn open_recording(
             S::CSdk | S::Unknown | S::Viewer | S::Other(_) => {}
         }
 
-        let is_official_example = store_info.is_official_example;
-        let app_id_starts_with_rerun_example = store_info
-            .application_id
-            .as_str()
-            .starts_with("rerun_example");
-
         StoreInfo {
             application_id,
             recording_id,
@@ -108,7 +107,6 @@ pub fn open_recording(
             rust_version,
             llvm_version,
             python_version,
-            is_official_example,
             app_id_starts_with_rerun_example,
         }
     });
