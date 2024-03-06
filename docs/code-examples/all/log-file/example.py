@@ -1,5 +1,6 @@
-import rerun as rr
 import sys
+
+import rerun as rr
 
 rr.init("rerun_example_log_file", spawn=True)
 
