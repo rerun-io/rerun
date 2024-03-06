@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The contents of a `SpaceView`.
 #[derive(Clone, Debug, Default)]
 pub struct SpaceViewContents {
-    /// Ids of the `DataQuery`s that make up this `SpaceView`.
+    /// The `QueryExpression` that populates the contents for the `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
     pub query: crate::blueprint::components::QueryExpression,

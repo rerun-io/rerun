@@ -33,7 +33,7 @@ class SpaceViewContents(Archetype):
         Parameters
         ----------
         query:
-            Ids of the `DataQuery`s that make up this `SpaceView`.
+            The `QueryExpression` that populates the contents for the `SpaceView`.
 
             They determine which entities are part of the spaceview.
         entities_determined_by_user:
@@ -67,7 +67,7 @@ class SpaceViewContents(Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.QueryExpressionBatch._required,  # type: ignore[misc]
     )
-    # Ids of the `DataQuery`s that make up this `SpaceView`.
+    # The `QueryExpression` that populates the contents for the `SpaceView`.
     #
     # They determine which entities are part of the spaceview.
     #

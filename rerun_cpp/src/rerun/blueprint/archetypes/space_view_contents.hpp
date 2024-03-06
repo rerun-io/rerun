@@ -19,7 +19,7 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: The contents of a `SpaceView`.
     struct SpaceViewContents {
-        /// Ids of the `DataQuery`s that make up this `SpaceView`.
+        /// The `QueryExpression` that populates the contents for the `SpaceView`.
         ///
         /// They determine which entities are part of the spaceview.
         rerun::blueprint::components::QueryExpression query;
