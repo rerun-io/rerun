@@ -13,7 +13,11 @@ from rerun.recording_stream import RecordingStream
 
 
 def connect(
-    addr: str | None = None, *, flush_timeout_sec: float | None = 2.0, recording: RecordingStream | None = None
+    addr: str | None = None,
+    *,
+    flush_timeout_sec: float | None = 2.0,
+    blueprint: MemoryRecording | None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Connect to a remote Rerun Viewer on the given ip:port.
@@ -30,14 +34,22 @@ def connect(
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
         and can cause a call to `flush` to block indefinitely.
+    blueprint: MemoryRecording
+        A memory recording of a blueprint.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    # TODO(jleibs): MemoryRecording here should just be the direct blueprint object with a helper function
+    # to convert it to the MemoryRecording object in place right here.
     recording = RecordingStream.to_native(recording)
-    bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, recording=recording)
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = blueprint.storage
+
+    bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, blueprint=blueprint_storage, recording=recording)
 
 
 _connect = connect  # we need this because Python scoping is horrible
