@@ -109,7 +109,7 @@ class Viewport:
         rr.log(self.path(), bp, recording=stream)
 
     def to_blueprint(self):
-        stream = rr.experimental.new_blueprint("rerun_example_blueprint_test", blueprint_id="TEST_BLUEPRINT")
+        stream = rr.experimental.new_blueprint("rerun_example_blueprint_test")
         stream_native = stream.to_native()
 
         rr.set_time_seconds("blueprint", 1, recording=stream)
@@ -125,11 +125,6 @@ if __name__ == "__main__":
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.init("rerun_example_blueprint_test")
-
-    rr.log("test1", rr.Points3D(positions, colors=colors, radii=radii))
-    rr.log("test2", rr.Points2D(positions[:, :2], colors=colors, radii=radii))
-
     root = Vertical(
         Spatial3D(origin="/test1"),
         Horizontal(
@@ -142,4 +137,11 @@ if __name__ == "__main__":
     )
     viewport = Viewport(root)
 
-    rr.connect(blueprint=viewport.to_blueprint())
+    rr.init(
+        "rerun_example_blueprint_test",
+        spawn=True,
+        blueprint=viewport.to_blueprint(),
+    )
+
+    rr.log("test1", rr.Points3D(positions, colors=colors, radii=radii))
+    rr.log("test2", rr.Points2D(positions[:, :2], colors=colors, radii=radii))

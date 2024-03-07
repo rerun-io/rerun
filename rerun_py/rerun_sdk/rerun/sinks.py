@@ -16,7 +16,7 @@ def connect(
     addr: str | None = None,
     *,
     flush_timeout_sec: float | None = 2.0,
-    blueprint: MemoryRecording | None,
+    blueprint: MemoryRecording | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -216,6 +216,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
+    blueprint: MemoryRecording | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -240,8 +241,12 @@ def spawn(
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    blueprint: MemoryRecording
+        A memory recording of a blueprint.
 
     """
+    # TODO(jleibs): MemoryRecording here should just be the direct blueprint object with a helper function
+    # to convert it to the MemoryRecording object in place right here.
 
     if not bindings.is_enabled():
         logging.warning("Rerun is disabled - spawn() call ignored.")
@@ -298,4 +303,4 @@ def spawn(
             sleep(0.1)
 
     if connect:
-        _connect(f"127.0.0.1:{port}", recording=recording)
+        _connect(f"127.0.0.1:{port}", recording=recording, blueprint=blueprint)
