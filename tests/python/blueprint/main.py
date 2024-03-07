@@ -108,15 +108,15 @@ class Viewport:
 
         rr.log(self.path(), bp, recording=stream)
 
+    def to_blueprint(self):
+        stream = rr.experimental.new_blueprint("rerun_example_blueprint_test", blueprint_id="TEST_BLUEPRINT")
+        stream_native = stream.to_native()
 
-def create_blueprint(viewport: Viewport):
-    stream = rr.experimental.new_blueprint("rerun_example_blueprint_test")
-    stream.connect()
-    stream_native = stream.to_native()
+        rr.set_time_seconds("blueprint", 1, recording=stream)
 
-    rr.set_time_seconds("blueprint", 1, recording=stream)
+        self.log(stream_native)
 
-    viewport.log(stream_native)
+        return stream.memory_recording()
 
 
 if __name__ == "__main__":
@@ -125,7 +125,8 @@ if __name__ == "__main__":
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.init("rerun_example_blueprint_test", spawn=True)
+    rr.init("rerun_example_blueprint_test")
+
     rr.log("test1", rr.Points3D(positions, colors=colors, radii=radii))
     rr.log("test2", rr.Points2D(positions[:, :2], colors=colors, radii=radii))
 
@@ -141,4 +142,4 @@ if __name__ == "__main__":
     )
     viewport = Viewport(root)
 
-    create_blueprint(viewport)
+    rr.connect(blueprint=viewport.to_blueprint())
