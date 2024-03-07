@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
-use re_entity_db::{EntityProperties, EntityTree};
+use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_types::{
     archetypes::{DepthImage, Image},
@@ -75,6 +75,20 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
+    fn recommended_root_for_entities(
+        &self,
+        entities: &IntSet<EntityPath>,
+        entity_db: &EntityDb,
+    ) -> Option<EntityPath> {
+        let common_ancestor = EntityPath::common_ancestor_of(entities.iter());
+
+        // For a 2D space view, the origin of the subspace defined by the common ancestor is always
+        // better.
+        SpatialTopology::access(entity_db.store_id(), |topo| {
+            topo.subspace_for_entity(&common_ancestor).origin.clone()
+        })
     }
 
     fn visualizable_filter_context(

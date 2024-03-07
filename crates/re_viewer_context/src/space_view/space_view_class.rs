@@ -1,4 +1,6 @@
-use re_entity_db::{EntityProperties, EntityPropertyMap};
+use nohash_hasher::IntSet;
+
+use re_entity_db::{EntityDb, EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -64,6 +66,18 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
 
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority;
+
+    /// Determines a suitable origin given the provided set of entities.
+    ///
+    /// This function only considers the transform topology, disregarding the actual visualizability
+    /// of the entities (for this, use [`Self::visualizable_filter_context`]).  
+    fn recommended_root_for_entities(
+        &self,
+        _entities: &IntSet<EntityPath>,
+        _entity_db: &re_entity_db::EntityDb,
+    ) -> Option<EntityPath> {
+        Some(EntityPath::root())
+    }
 
     /// Create context object that is passed to all of this classes visualizers
     /// to determine whether they can be visualized.
@@ -218,6 +232,15 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         self.layout_priority()
+    }
+
+    #[inline]
+    fn recommended_root_for_entities(
+        &self,
+        entities: &IntSet<EntityPath>,
+        entity_db: &EntityDb,
+    ) -> Option<EntityPath> {
+        self.recommended_root_for_entities(entities, entity_db)
     }
 
     #[inline]
