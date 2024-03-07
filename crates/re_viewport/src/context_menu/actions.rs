@@ -414,7 +414,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                             (
                                 identifier,
                                 space_view_class_registry
-                                    .get_class_or_log_error(&identifier)
+                                    .get_class_or_log_error(identifier)
                                     .display_name(),
                             )
                         })
@@ -427,7 +427,12 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                 };
 
             ui.label(egui::WidgetText::from("Recommended:").italics());
-            buttons_for_space_view_classes(ui, &recommended_space_view_classes);
+            if recommended_space_view_classes.is_empty() {
+                ui.label("None");
+            } else {
+                buttons_for_space_view_classes(ui, &recommended_space_view_classes);
+            }
+
             ui.label(egui::WidgetText::from("Others:").italics());
             buttons_for_space_view_classes(ui, &other_space_view_classes);
         })
@@ -463,11 +468,17 @@ fn recommended_space_views_for_selection(
             &EntityPath::root(),
         );
 
+        // We consider a space view class to be recommended all selected entities are "visualizable"
+        // with it. By "visualizable" we mean that either the entity itself, or any of its
+        // sub-entities, are visualizable.
+
         let covered = entities_of_interest.iter().all(|entity| {
-            visualizable_entities
-                .0
-                .iter()
-                .any(|(_, entities)| entities.0.contains(*entity))
+            visualizable_entities.0.iter().any(|(_, entities)| {
+                entities
+                    .0
+                    .iter()
+                    .any(|e| e == *entity || e.is_descendant_of(entity))
+            })
         });
 
         if covered {
