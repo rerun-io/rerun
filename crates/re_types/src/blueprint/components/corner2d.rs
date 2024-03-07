@@ -81,10 +81,10 @@ impl ::re_types_core::Loggable for Corner2D {
         DataType::Union(
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
-                Field::new("LeftTop", DataType::Null, false),
-                Field::new("RightTop", DataType::Null, false),
-                Field::new("LeftBottom", DataType::Null, false),
-                Field::new("RightBottom", DataType::Null, false),
+                Field::new("LeftTop", DataType::Null, true),
+                Field::new("RightTop", DataType::Null, true),
+                Field::new("LeftBottom", DataType::Null, true),
+                Field::new("RightBottom", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Sparse,

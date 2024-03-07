@@ -75,10 +75,10 @@ impl ::re_types_core::Loggable for ContainerKind {
         DataType::Union(
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
-                Field::new("Tabs", DataType::Null, false),
-                Field::new("Horizontal", DataType::Null, false),
-                Field::new("Vertical", DataType::Null, false),
-                Field::new("Grid", DataType::Null, false),
+                Field::new("Tabs", DataType::Null, true),
+                Field::new("Horizontal", DataType::Null, true),
+                Field::new("Vertical", DataType::Null, true),
+                Field::new("Grid", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Sparse,
