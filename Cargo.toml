@@ -284,13 +284,13 @@ debug = true
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }      # egui master 2024-02-29
-eframe = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }      # egui master 2024-02-29
-egui = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }        # egui master 2024-02-29
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" } # egui master 2024-02-29
-egui_plot = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }   # egui master 2024-02-29
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }   # egui master 2024-02-29
-emath = { git = "https://github.com/emilk/egui.git", rev = "e29022efc4783fe06842a46371d5bd88e3f13bdd" }       # egui master 2024-02-29
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }      # egui master 2024-03-06
+eframe = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }      # egui master 2024-03-06
+egui = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }        # egui master 2024-03-06
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" } # egui master 2024-03-06
+egui_plot = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }   # egui master 2024-03-06
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }   # egui master 2024-03-06
+emath = { git = "https://github.com/emilk/egui.git", rev = "a1d5145c16aba4d0b11668d496735d07520d0339" }       # egui master 2024-03-06
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
