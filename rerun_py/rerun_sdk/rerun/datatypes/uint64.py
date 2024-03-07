@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -38,11 +38,12 @@ class UInt64(UInt64Ext):
         return int(self.value)
 
 
-UInt64Like = UInt64
-UInt64ArrayLike = Union[
-    UInt64,
-    Sequence[UInt64Like],
-]
+if TYPE_CHECKING:
+    UInt64Like = Union[UInt64, int]
+else:
+    UInt64Like = Any
+
+UInt64ArrayLike = Union[UInt64, Sequence[UInt64Like], int, npt.NDArray[np.uint64]]
 
 
 class UInt64Type(BaseExtensionType):

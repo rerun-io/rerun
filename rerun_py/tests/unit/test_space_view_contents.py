@@ -15,7 +15,7 @@ def test_space_view_contents() -> None:
         query_array,
     )
 
-    for query in all_arrays:
+    for (query,) in all_arrays:
         # query = query if query is not None else query_array[-1]
 
         # mypy can't track types properly through itertools zip so re-cast

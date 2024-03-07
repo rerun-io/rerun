@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class UInt64Ext:
-    """Extension for [UInt64][rerun.components.UInt64]."""
+    """Extension for [UInt64][rerun.datatypes.UInt64]."""
 
     @staticmethod
     def native_to_pa_array_override(data: UInt64ArrayLike, data_type: pa.DataType) -> pa.Array:
