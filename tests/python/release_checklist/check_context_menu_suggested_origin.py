@@ -11,20 +11,21 @@ import rerun as rr
 README = """
 # Context Menu - Test the origin selection heuristics
 
-In the streams view, expend all entities in the `/world` hierarchy and create a spatial space view for every entity. Check the origin is as per the following table:
+Right click on each of the following entites and check that for the given space view class, the resulting suggested origin is as expected.
 
 ```plaintext
-ENTITY                  CLASS   ORIGIN
+ENTITY                      CLASS       EXPECTED ORIGIN
 
-/world                  3D      /
-/world/camera           3D      /
-/world/camera/image     3D      /
-/world/camera/keypoint  3D      /
+/                           3D          /
+/world                      3D          /world
+/world/camera               3D          /world
+/world/camera/image         3D          /world
+/world/camera/keypoint      3D          /world
 
-/world                  2D      <not suggested>
-/world/camera           2D      <not suggested>
-/world/camera/image     2D      /world/camera/image
-/world/camera/keypoint  2D      /world/camera/image
+/world                      2D          <not suggested>
+/world/camera               2D          <not suggested>
+/world/camera/image         2D          /world/camera/image
+/world/camera/keypoint      2D          /world/camera/image
 ```
 """
 
@@ -35,7 +36,8 @@ def log_readme() -> None:
 
 def log_some_space_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
-    rr.log("/world", rr.Boxes3D(centers=[0, 0, 0], half_sizes=[1, 1, 1]))
+    rr.log("/", rr.Boxes3D(centers=[0, 0, 0], half_sizes=[1, 1, 1]))
+    rr.log("/world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
     rr.log(
         "/world/camera/image",
         # rr.Pinhole(fov_y=0.7853982, aspect_ratio=1, camera_xyz=rr.ViewCoordinates.RUB, resolution=[10, 10]),

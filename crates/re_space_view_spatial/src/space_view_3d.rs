@@ -81,15 +81,33 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // For 3D space view, the origin of the subspace defined by the common ancestor is usually
         // the best choice. However, if the subspace is defined by a pinhole, we should use its
         // parent.
+        //
+        // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
+        // subspace origin, we use it as origin.
         SpatialTopology::access(entity_db.store_id(), |topo| {
             let subspace = topo.subspace_for_entity(&common_ancestor);
 
-            if subspace.supports_3d_content() {
+            let subspace_origin = if subspace.supports_3d_content() {
                 Some(subspace)
             } else {
                 topo.subspace_for_subspace_origin(subspace.parent_space)
             }
-            .map(|subspace| subspace.origin.clone())
+            .map(|subspace| subspace.origin.clone());
+
+            // Find the first ViewCoordinates3d logged, walking up from the common ancestor to the
+            // subspace origin.
+            EntityPath::incremental_walk(subspace_origin.as_ref(), &common_ancestor)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .find(|path| {
+                    subspace
+                        .heuristic_hints
+                        .get(path)
+                        .map(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                        .unwrap_or(false)
+                })
+                .or(subspace_origin)
         })
         .flatten()
     }
