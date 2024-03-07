@@ -439,6 +439,8 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
 fn recommended_space_views_for_selection(
     ctx: &ContextMenuContext<'_>,
 ) -> IntSet<SpaceViewClassIdentifier> {
+    re_tracing::profile_function!();
+
     let entities_of_interest = ctx
         .selection
         .iter()
@@ -497,11 +499,7 @@ fn create_space_view_with_entities(
 
     let target_container_id = ctx.clicked_item_parent_id_and_position().map(|(id, _)| id);
 
-    let space_view = SpaceViewBlueprint::new(
-        identifier,
-        &origin,
-        DataQueryBlueprint::new(identifier, filter),
-    );
+    let space_view = SpaceViewBlueprint::new(identifier, &origin, filter);
 
     ctx.viewport_blueprint.add_space_views(
         std::iter::once(space_view),
