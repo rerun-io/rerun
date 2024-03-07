@@ -535,10 +535,11 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), blueprint = None, recording = None))]
 fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
+    blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
@@ -553,18 +554,9 @@ fn connect(
     // The call to connect may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        if let Some(recording) = recording {
-            // If the user passed in a recording, use it
-            recording.connect_opts(addr, flush_timeout);
-        } else {
-            // Otherwise, connect both global defaults
-            if let Some(recording) = get_data_recording(None) {
-                recording.connect_opts(addr, flush_timeout);
-            };
-            if let Some(blueprint) = get_blueprint_recording(None) {
-                blueprint.connect_opts(addr, flush_timeout);
-            };
-        }
+        if let Some(recording) = get_data_recording(recording) {
+            recording.connect_opts(addr, flush_timeout, blueprint.map(|b| b.inner.take()));
+        };
         flush_garbage_queue();
     });
 
