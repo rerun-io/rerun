@@ -431,9 +431,7 @@ impl Viewport<'_, '_> {
 
         let subdued = !space_view_visible
             || !visible
-            || data_result_node.map_or(true, |n| {
-                n.data_result.visualizers.is_empty() && n.children.is_empty()
-            });
+            || data_result_node.map_or(true, |n| n.data_result.visualizers.is_empty());
 
         let list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)
