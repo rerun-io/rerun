@@ -519,12 +519,10 @@ fn create_space_view_for_selected_entities(
         .unwrap_or_else(EntityPath::root);
 
     let mut filter = EntityPathFilter::default();
-    entities_of_interest.iter().for_each(|path| {
-        filter.add_rule(
-            RuleEffect::Include,
-            EntityPathRule::including_subtree(path.clone()),
-        );
-    });
+
+    for path in entities_of_interest {
+        filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
+    }
 
     let target_container_id = ctx
         .clicked_item_enclosing_container_id_and_position()

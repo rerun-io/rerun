@@ -104,8 +104,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     subspace
                         .heuristic_hints
                         .get(path)
-                        .map(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
-                        .unwrap_or(false)
+                        .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
                 })
                 .or(subspace_origin)
         })

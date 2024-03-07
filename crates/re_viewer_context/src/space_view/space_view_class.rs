@@ -70,7 +70,7 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// Determines a suitable origin given the provided set of entities.
     ///
     /// This function only considers the transform topology, disregarding the actual visualizability
-    /// of the entities (for this, use [`Self::visualizable_filter_context`]).  
+    /// of the entities (for this, use [`Self::visualizable_filter_context`]).
     fn recommended_root_for_entities(
         &self,
         _entities: &IntSet<EntityPath>,

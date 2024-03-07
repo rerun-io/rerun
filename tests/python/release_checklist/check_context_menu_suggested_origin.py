@@ -11,7 +11,7 @@ import rerun as rr
 README = """
 # Context Menu - Test the origin selection heuristics
 
-Right click on each of the following entites and check that for the given space view class, the resulting suggested origin is as expected.
+Right click on each of the following entities and check that for the given space view class, the resulting suggested origin is as expected.
 
 ```plaintext
 ENTITY                      CLASS       EXPECTED ORIGIN
