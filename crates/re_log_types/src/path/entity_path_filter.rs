@@ -40,6 +40,12 @@ pub struct EntityPathFilter {
     rules: BTreeMap<EntityPathRule, RuleEffect>,
 }
 
+impl std::hash::Hash for EntityPathFilter {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.formatted().hash(state);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntityPathRule {
     pub path: EntityPath,

@@ -4,17 +4,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 
+use nohash_hasher::IntSet;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
+use re_log_types::hash::Hash64;
 use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
-use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_types::blueprint::components::ViewerRecommendationHash;
+use re_viewer_context::{
+    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, SpaceViewSpawnHeuristics,
+    ViewerContext,
+};
 
-use crate::auto_layout;
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
-        ViewerRecommendationHash,
     },
     container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
     viewport::TreeAction,
@@ -54,7 +58,7 @@ pub struct ViewportBlueprint {
     auto_space_views: AtomicBool,
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
-    viewer_recommendation_hashes: Vec<ViewerRecommendationHash>,
+    viewer_recommendation_hashes: IntSet<Hash64>,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -140,6 +144,12 @@ impl ViewportBlueprint {
             root_container,
         );
 
+        let viewer_recommendation_hashes = viewer_recommendation_hashes
+            .unwrap_or_default()
+            .into_iter()
+            .map(|h| Hash64::from_u64(h.0 .0))
+            .collect();
+
         ViewportBlueprint {
             space_views,
             containers,
@@ -148,7 +158,7 @@ impl ViewportBlueprint {
             maximized: maximized.map(|id| id.0.into()),
             auto_layout: auto_layout.unwrap_or_default().0.into(),
             auto_space_views: auto_space_views.into(),
-            viewer_recommendation_hashes: viewer_recommendation_hashes.unwrap_or_default(),
+            viewer_recommendation_hashes,
             tree_action_sender,
         }
     }
@@ -277,55 +287,75 @@ impl ViewportBlueprint {
 
         for entry in ctx.space_view_class_registry.iter_registry() {
             let class_id = entry.class.identifier();
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
+            let SpaceViewSpawnHeuristics {
+                mut recommended_space_views,
+            } = entry.class.spawn_heuristics(ctx);
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
 
-            // Remove all space views that we already have on screen.
+            // Remove all space views that we already spawned via heuristic before.
+            recommended_space_views.retain(|recommended_view| {
+                !self
+                    .viewer_recommendation_hashes
+                    .contains(&Hash64::hash(recommended_view))
+            });
+
+            // Remove all space views that have all the entities we already have on screen.
             let existing_path_filters = self
                 .space_views
                 .values()
                 .filter(|space_view| space_view.class_identifier() == &class_id)
                 .map(|space_view| &space_view.contents.entity_path_filter)
                 .collect::<Vec<_>>();
-            let recommended_space_views = spawn_heuristics
-                .recommended_space_views
-                .into_iter()
-                .filter(|recommended_view| {
-                    existing_path_filters.iter().all(|existing_filter| {
-                        !existing_filter.is_superset_of(&recommended_view.query_filter)
-                    })
+            recommended_space_views.retain(|recommended_view| {
+                existing_path_filters.iter().all(|existing_filter| {
+                    !existing_filter.is_superset_of(&recommended_view.query_filter)
                 })
-                .collect::<Vec<_>>();
+            });
 
             // Remove all space views that are redundant within the remaining recommendation.
             // This n^2 loop should only run ever for frames that add new space views.
-            let final_recommendations =
-                recommended_space_views
-                    .iter()
-                    .enumerate()
-                    .filter(|(j, candidate)| {
-                        recommended_space_views
-                            .iter()
-                            .enumerate()
-                            .all(|(i, other)| {
-                                i == *j
-                                    || !other.query_filter.is_superset_of(&candidate.query_filter)
-                            })
-                    });
+            let final_recommendations = recommended_space_views
+                .iter()
+                .enumerate()
+                .filter(|(j, candidate)| {
+                    recommended_space_views
+                        .iter()
+                        .enumerate()
+                        .all(|(i, other)| {
+                            i == *j || !other.query_filter.is_superset_of(&candidate.query_filter)
+                        })
+                })
+                .map(|(_, recommendation)| recommendation)
+                .collect::<Vec<_>>();
 
-            self.add_space_views(
-                final_recommendations.map(|(_, recommendation)| {
-                    SpaceViewBlueprint::new(
-                        class_id,
-                        &recommendation.root,
-                        recommendation.query_filter.clone(),
-                    )
-                }),
-                ctx,
-                None,
-                None,
-            );
+            if !final_recommendations.is_empty() {
+                self.add_space_views(
+                    final_recommendations.iter().map(|recommendation| {
+                        SpaceViewBlueprint::new(
+                            class_id,
+                            &recommendation.root,
+                            recommendation.query_filter.clone(),
+                        )
+                    }),
+                    ctx,
+                    None,
+                    None,
+                );
+
+                // Finally, save the added recommendations to the store.
+                let new_viewer_recommendation_hashes = self
+                    .viewer_recommendation_hashes
+                    .iter()
+                    .cloned()
+                    .chain(final_recommendations.iter().map(Hash64::hash))
+                    .map(|hash| ViewerRecommendationHash(hash.hash64().into()))
+                    .collect::<Vec<_>>();
+                ctx.save_blueprint_component(
+                    &VIEWPORT_PATH.into(),
+                    &new_viewer_recommendation_hashes,
+                );
+            }
         }
     }
 
