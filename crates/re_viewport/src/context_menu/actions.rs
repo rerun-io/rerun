@@ -422,6 +422,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                     {
                         if ui.button(display_name).clicked() {
                             create_space_view_for_selected_entities(ctx, *identifier);
+                            ui.close_menu();
                         }
                     }
                 };
@@ -491,8 +492,8 @@ fn recommended_space_views_for_selection(
     output
 }
 
-/// Creates a space view of the give class, with root set as origin, and a filter set to include all
-/// selected entities.
+/// Creates a space view of the given class, with root set as origin, and a filter set to include all
+/// selected entities. Then, the selection is set to the new space view.
 fn create_space_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
     identifier: SpaceViewClassIdentifier,
@@ -516,12 +517,17 @@ fn create_space_view_for_selected_entities(
 
     let space_view = SpaceViewBlueprint::new(identifier, &origin, filter);
 
-    ctx.viewport_blueprint.add_space_views(
+    let new_space_view = ctx.viewport_blueprint.add_space_views(
         std::iter::once(space_view),
         ctx.viewer_context,
         target_container_id,
         None,
     );
+    if let Some(space_view_id) = new_space_view.first() {
+        ctx.viewer_context
+            .selection_state()
+            .set_selection(Item::SpaceView(*space_view_id));
+    }
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

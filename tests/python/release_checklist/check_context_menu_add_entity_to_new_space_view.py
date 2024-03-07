@@ -6,6 +6,7 @@ from argparse import Namespace
 from uuid import uuid4
 
 import numpy as np
+
 import rerun as rr
 
 README = """
@@ -13,7 +14,7 @@ README = """
 
 * Reset the blueprint.
 * Expend all space views and data result.
-* Right-click on the `boxes3d` entity and select "Add to new space view" -> "3D". Check a new space view is created with the boxes3d entity and origin set to root.
+* Right-click on the `boxes3d` entity and select "Add to new space view" -> "3D". Check a new space view is created _and selected_ with the boxes3d entity and origin set to root.
 * In each space view, right-click on the leaf entity, and check that "Add to new space view" recommends at least space views of the same kind.
 * Select both the `boxes3d` entity and the `text_logs` entity. Check no space view is recommended (except Dataframe if enabled).
 """
