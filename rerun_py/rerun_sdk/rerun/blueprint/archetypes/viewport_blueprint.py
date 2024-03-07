@@ -29,7 +29,7 @@ class ViewportBlueprint(Archetype):
         maximized: datatypes.UuidLike | None = None,
         auto_layout: blueprint_components.AutoLayoutLike | None = None,
         auto_space_views: blueprint_components.AutoSpaceViewsLike | None = None,
-        viewer_recommendation_hashes: datatypes.UInt64ArrayLike | None = None,
+        past_viewer_recommendations: datatypes.UInt64ArrayLike | None = None,
     ):
         """
         Create a new instance of the ViewportBlueprint archetype.
@@ -52,8 +52,8 @@ class ViewportBlueprint(Archetype):
 
             True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
             all logged entities appropriately, it will do so unless they were added previously
-            (as identified by `viewer_recommendation_hashes`).
-        viewer_recommendation_hashes:
+            (as identified by `past_viewer_recommendations`).
+        past_viewer_recommendations:
             Hashes of all recommended space views the viewer has already added and that should not be added again.
 
             This is an internal field and should not be set usually.
@@ -71,7 +71,7 @@ class ViewportBlueprint(Archetype):
                 maximized=maximized,
                 auto_layout=auto_layout,
                 auto_space_views=auto_space_views,
-                viewer_recommendation_hashes=viewer_recommendation_hashes,
+                past_viewer_recommendations=past_viewer_recommendations,
             )
             return
         self.__attrs_clear__()
@@ -84,7 +84,7 @@ class ViewportBlueprint(Archetype):
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
             auto_space_views=None,  # type: ignore[arg-type]
-            viewer_recommendation_hashes=None,  # type: ignore[arg-type]
+            past_viewer_recommendations=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -141,11 +141,11 @@ class ViewportBlueprint(Archetype):
     #
     # True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
     # all logged entities appropriately, it will do so unless they were added previously
-    # (as identified by `viewer_recommendation_hashes`).
+    # (as identified by `past_viewer_recommendations`).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    viewer_recommendation_hashes: blueprint_components.ViewerRecommendationHashBatch | None = field(
+    past_viewer_recommendations: blueprint_components.ViewerRecommendationHashBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]

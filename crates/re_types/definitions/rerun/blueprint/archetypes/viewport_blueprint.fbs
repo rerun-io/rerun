@@ -39,7 +39,7 @@ table ViewportBlueprint (
     ///
     /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
     /// all logged entities appropriately, it will do so unless they were added previously
-    /// (as identified by `viewer_recommendation_hashes`).
+    /// (as identified by `past_viewer_recommendations`).
     auto_space_views: rerun.blueprint.components.AutoSpaceViews ("attr.rerun.component_optional", nullable, order: 5000);
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
@@ -48,5 +48,5 @@ table ViewportBlueprint (
     /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
     ///
     /// The viewer uses this to determine whether it should keep adding space views.
-    viewer_recommendation_hashes: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 6000);
+    past_viewer_recommendations: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 6000);
 }

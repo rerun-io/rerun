@@ -46,6 +46,12 @@ impl std::hash::Hash for EntityPathFilter {
     }
 }
 
+impl std::fmt::Debug for EntityPathFilter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "EntityPathFilter({:?})", self.formatted())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntityPathRule {
     pub path: EntityPath,

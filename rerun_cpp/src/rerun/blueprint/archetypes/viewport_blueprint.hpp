@@ -42,7 +42,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
         /// all logged entities appropriately, it will do so unless they were added previously
-        /// (as identified by `viewer_recommendation_hashes`).
+        /// (as identified by `past_viewer_recommendations`).
         std::optional<rerun::blueprint::components::AutoSpaceViews> auto_space_views;
 
         /// Hashes of all recommended space views the viewer has already added and that should not be added again.
@@ -52,7 +52,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// The viewer uses this to determine whether it should keep adding space views.
         std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
-            viewer_recommendation_hashes;
+            past_viewer_recommendations;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -102,7 +102,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
         /// all logged entities appropriately, it will do so unless they were added previously
-        /// (as identified by `viewer_recommendation_hashes`).
+        /// (as identified by `past_viewer_recommendations`).
         ViewportBlueprint with_auto_space_views(
             rerun::blueprint::components::AutoSpaceViews _auto_space_views
         ) && {
@@ -117,11 +117,11 @@ namespace rerun::blueprint::archetypes {
         /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
         ///
         /// The viewer uses this to determine whether it should keep adding space views.
-        ViewportBlueprint with_viewer_recommendation_hashes(
+        ViewportBlueprint with_past_viewer_recommendations(
             Collection<rerun::blueprint::components::ViewerRecommendationHash>
-                _viewer_recommendation_hashes
+                _past_viewer_recommendations
         ) && {
-            viewer_recommendation_hashes = std::move(_viewer_recommendation_hashes);
+            past_viewer_recommendations = std::move(_past_viewer_recommendations);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

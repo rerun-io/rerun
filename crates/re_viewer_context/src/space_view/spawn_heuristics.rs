@@ -1,7 +1,7 @@
 use re_log_types::{EntityPath, EntityPathFilter};
 
 /// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 pub struct RecommendedSpaceView {
     pub root: EntityPath,
     pub query_filter: EntityPathFilter,

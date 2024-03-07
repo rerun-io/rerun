@@ -41,8 +41,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.viewer_recommendation_hashes.has_value()) {
-            auto result = DataCell::from_loggable(archetype.viewer_recommendation_hashes.value());
+        if (archetype.past_viewer_recommendations.has_value()) {
+            auto result = DataCell::from_loggable(archetype.past_viewer_recommendations.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

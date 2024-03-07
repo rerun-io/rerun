@@ -43,7 +43,7 @@ pub struct ViewportBlueprint {
     ///
     /// True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
     /// all logged entities appropriately, it will do so unless they were added previously
-    /// (as identified by `viewer_recommendation_hashes`).
+    /// (as identified by `past_viewer_recommendations`).
     pub auto_space_views: Option<crate::blueprint::components::AutoSpaceViews>,
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
@@ -52,7 +52,7 @@ pub struct ViewportBlueprint {
     /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
     ///
     /// The viewer uses this to determine whether it should keep adding space views.
-    pub viewer_recommendation_hashes:
+    pub past_viewer_recommendations:
         Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 }
 
@@ -64,7 +64,7 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
             + self.maximized.heap_size_bytes()
             + self.auto_layout.heap_size_bytes()
             + self.auto_space_views.heap_size_bytes()
-            + self.viewer_recommendation_hashes.heap_size_bytes()
+            + self.past_viewer_recommendations.heap_size_bytes()
     }
 
     #[inline]
@@ -214,19 +214,19 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             } else {
                 None
             };
-        let viewer_recommendation_hashes = if let Some(array) =
+        let past_viewer_recommendations = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
         {
             Some({
                 <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)
                     .with_context(
-                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
+                        "rerun.blueprint.archetypes.ViewportBlueprint#past_viewer_recommendations",
                     )?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::<DeserializationResult<Vec<_>>>()
                     .with_context(
-                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
+                        "rerun.blueprint.archetypes.ViewportBlueprint#past_viewer_recommendations",
                     )?
             })
         } else {
@@ -238,7 +238,7 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             maximized,
             auto_layout,
             auto_space_views,
-            viewer_recommendation_hashes,
+            past_viewer_recommendations,
         })
     }
 }
@@ -262,7 +262,7 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
             self.auto_space_views
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.viewer_recommendation_hashes
+            self.past_viewer_recommendations
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
@@ -289,7 +289,7 @@ impl ViewportBlueprint {
             maximized: None,
             auto_layout: None,
             auto_space_views: None,
-            viewer_recommendation_hashes: None,
+            past_viewer_recommendations: None,
         }
     }
 
@@ -330,14 +330,14 @@ impl ViewportBlueprint {
     }
 
     #[inline]
-    pub fn with_viewer_recommendation_hashes(
+    pub fn with_past_viewer_recommendations(
         mut self,
-        viewer_recommendation_hashes: impl IntoIterator<
+        past_viewer_recommendations: impl IntoIterator<
             Item = impl Into<crate::blueprint::components::ViewerRecommendationHash>,
         >,
     ) -> Self {
-        self.viewer_recommendation_hashes = Some(
-            viewer_recommendation_hashes
+        self.past_viewer_recommendations = Some(
+            past_viewer_recommendations
                 .into_iter()
                 .map(Into::into)
                 .collect(),

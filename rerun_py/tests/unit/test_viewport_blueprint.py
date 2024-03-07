@@ -52,7 +52,7 @@ def test_viewport_blueprint() -> None:
         maximized,
         auto_layout,
         auto_space_views,
-        viewer_recommendation_hashes,
+        past_viewer_recommendations,
     ) in all_arrays:
         space_views = space_views if space_views is not None else space_views_arrays[-1]
 
@@ -62,7 +62,7 @@ def test_viewport_blueprint() -> None:
         maximized = cast(Optional[UuidLike], maximized)
         auto_layout = cast(Optional[AutoLayoutLike], auto_layout)
         auto_space_views = cast(Optional[AutoSpaceViewsLike], auto_space_views)
-        viewer_recommendation_hashes = cast(Optional[UInt64ArrayLike], viewer_recommendation_hashes)
+        past_viewer_recommendations = cast(Optional[UInt64ArrayLike], past_viewer_recommendations)
 
         print(
             "rr.ViewportBlueprint(\n",
@@ -71,7 +71,7 @@ def test_viewport_blueprint() -> None:
             f"    maximized={maximized!r}\n",
             f"    auto_layout={auto_layout!r}\n",
             f"    auto_space_views={auto_space_views!r}\n",
-            f"    viewer_recommendation_hashes={viewer_recommendation_hashes!r}\n",
+            f"    past_viewer_recommendations={past_viewer_recommendations!r}\n",
             ")",
         )
         arch = ViewportBlueprint(
@@ -80,7 +80,7 @@ def test_viewport_blueprint() -> None:
             maximized=maximized,
             auto_layout=auto_layout,
             auto_space_views=auto_space_views,
-            viewer_recommendation_hashes=viewer_recommendation_hashes,
+            past_viewer_recommendations=past_viewer_recommendations,
         )
         print(f"{arch}\n")
 
@@ -89,6 +89,6 @@ def test_viewport_blueprint() -> None:
         assert arch.maximized == SpaceViewMaximizedBatch._optional(none_empty_or_value(maximized, uuid_bytes1))
         assert arch.auto_layout == AutoLayoutBatch._optional(none_empty_or_value(auto_layout, True))
         assert arch.auto_space_views == AutoSpaceViewsBatch._optional(none_empty_or_value(auto_space_views, False))
-        assert arch.viewer_recommendation_hashes == ViewerRecommendationHashBatch._optional(
-            none_empty_or_value(viewer_recommendation_hashes, [123, 321])
+        assert arch.past_viewer_recommendations == ViewerRecommendationHashBatch._optional(
+            none_empty_or_value(past_viewer_recommendations, [123, 321])
         )
