@@ -128,7 +128,7 @@ rr.log(
 )
 ```
 
-# Run
+# Run the Code
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
