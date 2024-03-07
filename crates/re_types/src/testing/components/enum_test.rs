@@ -98,12 +98,12 @@ impl ::re_types_core::Loggable for EnumTest {
         DataType::Union(
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
-                Field::new("Up", DataType::Null, false),
-                Field::new("Down", DataType::Null, false),
-                Field::new("Right", DataType::Null, false),
-                Field::new("Left", DataType::Null, false),
-                Field::new("Forward", DataType::Null, false),
-                Field::new("Back", DataType::Null, false),
+                Field::new("Up", DataType::Null, true),
+                Field::new("Down", DataType::Null, true),
+                Field::new("Right", DataType::Null, true),
+                Field::new("Left", DataType::Null, true),
+                Field::new("Forward", DataType::Null, true),
+                Field::new("Back", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![
                 0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32,
