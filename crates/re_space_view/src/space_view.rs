@@ -297,7 +297,6 @@ impl SpaceViewBlueprint {
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
         ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
-        self.contents.clear(ctx);
     }
 
     #[inline]

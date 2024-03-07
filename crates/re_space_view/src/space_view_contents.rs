@@ -14,7 +14,7 @@ use re_types::{
     },
     Archetype as _,
 };
-use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
+use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
@@ -166,11 +166,6 @@ impl SpaceViewContents {
                 &EntitiesDeterminedByUser(true),
             );
         }
-    }
-
-    pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.blueprint_entity_path, &clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(
