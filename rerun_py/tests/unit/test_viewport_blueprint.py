@@ -8,6 +8,10 @@ from rerun.blueprint.components.auto_space_views import AutoSpaceViewsBatch
 from rerun.blueprint.components.included_space_view import IncludedSpaceViewBatch
 from rerun.blueprint.components.root_container import RootContainerBatch
 from rerun.blueprint.components.space_view_maximized import SpaceViewMaximizedBatch
+from rerun.blueprint.components.viewer_recommendation_hash import (
+    ViewerRecommendationHash,
+    ViewerRecommendationHashBatch,
+)
 
 from .common_arrays import none_empty_or_value, uuid_bytes0, uuid_bytes1, uuids_arrays
 
@@ -24,6 +28,11 @@ def test_viewport_blueprint() -> None:
     ]
     auto_layout_arrays = [None, True]
     auto_space_views_arrays = [None, False]
+    viewer_recommendation_hash_arrays = [
+        None,
+        [123, 321],
+        [ViewerRecommendationHash(123), ViewerRecommendationHash(321)],
+    ]
 
     all_arrays = itertools.zip_longest(
         space_views_arrays,
@@ -31,9 +40,17 @@ def test_viewport_blueprint() -> None:
         maximized_arrays,
         auto_layout_arrays,
         auto_space_views_arrays,
+        viewer_recommendation_hash_arrays,
     )
 
-    for space_views, root_container, maximized, auto_layout, auto_space_views in all_arrays:
+    for (
+        space_views,
+        root_container,
+        maximized,
+        auto_layout,
+        auto_space_views,
+        viewer_recommendation_hashes,
+    ) in all_arrays:
         space_views = space_views if space_views is not None else space_views_arrays[-1]
 
         print(
@@ -43,6 +60,7 @@ def test_viewport_blueprint() -> None:
             f"    maximized={maximized!r}\n",
             f"    auto_layout={auto_layout!r}\n",
             f"    auto_space_views={auto_space_views!r}\n",
+            f"    viewer_recommendation_hashes={viewer_recommendation_hashes!r}\n",
             ")",
         )
         arch = ViewportBlueprint(
@@ -51,6 +69,7 @@ def test_viewport_blueprint() -> None:
             maximized=maximized,
             auto_layout=auto_layout,
             auto_space_views=auto_space_views,
+            viewer_recommendation_hashes=viewer_recommendation_hashes,
         )
         print(f"{arch}\n")
 
@@ -59,3 +78,6 @@ def test_viewport_blueprint() -> None:
         assert arch.maximized == SpaceViewMaximizedBatch._optional(none_empty_or_value(maximized, uuid_bytes1))
         assert arch.auto_layout == AutoLayoutBatch._optional(none_empty_or_value(auto_layout, True))
         assert arch.auto_space_views == AutoSpaceViewsBatch._optional(none_empty_or_value(auto_space_views, False))
+        assert arch.viewer_recommendation_hashes == ViewerRecommendationHashBatch._optional(
+            none_empty_or_value(viewer_recommendation_hashes, [123, 321])
+        )

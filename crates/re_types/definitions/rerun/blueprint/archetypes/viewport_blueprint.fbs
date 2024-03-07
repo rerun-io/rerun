@@ -48,5 +48,5 @@ table ViewportBlueprint (
     /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
     ///
     /// The viewer uses this to determine whether it should keep adding space views.
-    viewer_recommendation_hashes: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 2000);
+    viewer_recommendation_hashes: [rerun.blueprint.components.ViewerRecommendationHash] ("attr.rerun.component_optional", nullable, order: 6000);
 }

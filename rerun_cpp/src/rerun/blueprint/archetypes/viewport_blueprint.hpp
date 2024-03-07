@@ -26,15 +26,6 @@ namespace rerun::blueprint::archetypes {
         /// All of the space-views that belong to the viewport.
         Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
 
-        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
-        ///
-        /// This is an internal field and should not be set usually.
-        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
-        ///
-        /// The viewer uses this to determine whether it should keep adding space views.
-        std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
-            viewer_recommendation_hashes;
-
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::RootContainer> root_container;
 
@@ -54,6 +45,15 @@ namespace rerun::blueprint::archetypes {
         /// (as identified by `viewer_recommendation_hashes`).
         std::optional<rerun::blueprint::components::AutoSpaceViews> auto_space_views;
 
+        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+        ///
+        /// This is an internal field and should not be set usually.
+        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        ///
+        /// The viewer uses this to determine whether it should keep adding space views.
+        std::optional<Collection<rerun::blueprint::components::ViewerRecommendationHash>>
+            viewer_recommendation_hashes;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.blueprint.components.ViewportBlueprintIndicator";
@@ -69,21 +69,6 @@ namespace rerun::blueprint::archetypes {
             Collection<rerun::blueprint::components::IncludedSpaceView> _space_views
         )
             : space_views(std::move(_space_views)) {}
-
-        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
-        ///
-        /// This is an internal field and should not be set usually.
-        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
-        ///
-        /// The viewer uses this to determine whether it should keep adding space views.
-        ViewportBlueprint with_viewer_recommendation_hashes(
-            Collection<rerun::blueprint::components::ViewerRecommendationHash>
-                _viewer_recommendation_hashes
-        ) && {
-            viewer_recommendation_hashes = std::move(_viewer_recommendation_hashes);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
 
         /// The layout of the space-views
         ViewportBlueprint with_root_container(
@@ -122,6 +107,21 @@ namespace rerun::blueprint::archetypes {
             rerun::blueprint::components::AutoSpaceViews _auto_space_views
         ) && {
             auto_space_views = std::move(_auto_space_views);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+        ///
+        /// This is an internal field and should not be set usually.
+        /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+        ///
+        /// The viewer uses this to determine whether it should keep adding space views.
+        ViewportBlueprint with_viewer_recommendation_hashes(
+            Collection<rerun::blueprint::components::ViewerRecommendationHash>
+                _viewer_recommendation_hashes
+        ) && {
+            viewer_recommendation_hashes = std::move(_viewer_recommendation_hashes);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

@@ -15,8 +15,8 @@ def test_space_view_contents() -> None:
         query_array,
     )
 
-    for query, entities_determined_by_user in all_arrays:
-        query = query if query is not None else query_array[-1]
+    for query in all_arrays:
+        # query = query if query is not None else query_array[-1]
 
         # mypy can't track types properly through itertools zip so re-cast
         query = cast(Utf8Like, query)

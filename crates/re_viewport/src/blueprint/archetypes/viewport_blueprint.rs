@@ -27,15 +27,6 @@ pub struct ViewportBlueprint {
     /// All of the space-views that belong to the viewport.
     pub space_views: Vec<crate::blueprint::components::IncludedSpaceView>,
 
-    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
-    ///
-    /// This is an internal field and should not be set usually.
-    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
-    ///
-    /// The viewer uses this to determine whether it should keep adding space views.
-    pub viewer_recommendation_hashes:
-        Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
-
     /// The layout of the space-views
     pub root_container: Option<crate::blueprint::components::RootContainer>,
 
@@ -54,27 +45,36 @@ pub struct ViewportBlueprint {
     /// all logged entities appropriately, it will do so unless they were added previously
     /// (as identified by `viewer_recommendation_hashes`).
     pub auto_space_views: Option<crate::blueprint::components::AutoSpaceViews>,
+
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    ///
+    /// This is an internal field and should not be set usually.
+    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    ///
+    /// The viewer uses this to determine whether it should keep adding space views.
+    pub viewer_recommendation_hashes:
+        Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 }
 
 impl ::re_types_core::SizeBytes for ViewportBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.space_views.heap_size_bytes()
-            + self.viewer_recommendation_hashes.heap_size_bytes()
             + self.root_container.heap_size_bytes()
             + self.maximized.heap_size_bytes()
             + self.auto_layout.heap_size_bytes()
             + self.auto_space_views.heap_size_bytes()
+            + self.viewer_recommendation_hashes.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::blueprint::components::IncludedSpaceView>>::is_pod()
-            && <Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>>::is_pod()
             && <Option<crate::blueprint::components::RootContainer>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
             && <Option<crate::blueprint::components::AutoLayout>>::is_pod()
             && <Option<crate::blueprint::components::AutoSpaceViews>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>>::is_pod()
     }
 }
 
@@ -173,24 +173,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
         };
-        let viewer_recommendation_hashes = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
-        {
-            Some({
-                <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)
-                    .with_context(
-                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
-                    )?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context(
-                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
-                    )?
-            })
-        } else {
-            None
-        };
         let root_container =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
@@ -232,13 +214,31 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             } else {
                 None
             };
+        let viewer_recommendation_hashes = if let Some(array) =
+            arrays_by_name.get("rerun.blueprint.components.ViewerRecommendationHash")
+        {
+            Some({
+                <crate::blueprint::components::ViewerRecommendationHash>::from_arrow_opt(&**array)
+                    .with_context(
+                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
+                    )?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context(
+                        "rerun.blueprint.archetypes.ViewportBlueprint#viewer_recommendation_hashes",
+                    )?
+            })
+        } else {
+            None
+        };
         Ok(Self {
             space_views,
-            viewer_recommendation_hashes,
             root_container,
             maximized,
             auto_layout,
             auto_space_views,
+            viewer_recommendation_hashes,
         })
     }
 }
@@ -250,9 +250,6 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
         [
             Some(Self::indicator()),
             Some((&self.space_views as &dyn ComponentBatch).into()),
-            self.viewer_recommendation_hashes
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.root_container
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -265,6 +262,9 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
             self.auto_space_views
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.viewer_recommendation_hashes
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -285,28 +285,12 @@ impl ViewportBlueprint {
     ) -> Self {
         Self {
             space_views: space_views.into_iter().map(Into::into).collect(),
-            viewer_recommendation_hashes: None,
             root_container: None,
             maximized: None,
             auto_layout: None,
             auto_space_views: None,
+            viewer_recommendation_hashes: None,
         }
-    }
-
-    #[inline]
-    pub fn with_viewer_recommendation_hashes(
-        mut self,
-        viewer_recommendation_hashes: impl IntoIterator<
-            Item = impl Into<crate::blueprint::components::ViewerRecommendationHash>,
-        >,
-    ) -> Self {
-        self.viewer_recommendation_hashes = Some(
-            viewer_recommendation_hashes
-                .into_iter()
-                .map(Into::into)
-                .collect(),
-        );
-        self
     }
 
     #[inline]
@@ -342,6 +326,22 @@ impl ViewportBlueprint {
         auto_space_views: impl Into<crate::blueprint::components::AutoSpaceViews>,
     ) -> Self {
         self.auto_space_views = Some(auto_space_views.into());
+        self
+    }
+
+    #[inline]
+    pub fn with_viewer_recommendation_hashes(
+        mut self,
+        viewer_recommendation_hashes: impl IntoIterator<
+            Item = impl Into<crate::blueprint::components::ViewerRecommendationHash>,
+        >,
+    ) -> Self {
+        self.viewer_recommendation_hashes = Some(
+            viewer_recommendation_hashes
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        );
         self
     }
 }
