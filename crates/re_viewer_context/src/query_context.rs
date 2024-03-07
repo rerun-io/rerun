@@ -29,19 +29,7 @@ impl DataQueryResult {
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         self.tree
             .lookup_result_by_path(path)
-            .map_or(false, |result| result.direct_included)
-    }
-
-    #[inline]
-    pub fn contains_group(&self, path: &EntityPath) -> bool {
-        self.tree
-            .lookup_result_by_path(path)
-            .map_or(false, |result| result.direct_included)
-    }
-
-    #[inline]
-    pub fn contains_any(&self, path: &EntityPath) -> bool {
-        self.contains_entity(path) || self.contains_group(path)
+            .map_or(false, |result| !result.tree_prefix_only)
     }
 }
 

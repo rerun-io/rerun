@@ -333,7 +333,7 @@ fn create_entity_add_info(
         let can_add: CanAddToSpaceView =
             if visualizable_entities.iter().any(|(_, entities)| entities.contains(entity_path)) {
                 CanAddToSpaceView::Compatible {
-                    already_added: query_result.contains_any(entity_path),
+                    already_added: query_result.contains_entity(entity_path),
                 }
             } else {
                 // TODO(#4826): This shouldn't necessarily prevent us from adding it.

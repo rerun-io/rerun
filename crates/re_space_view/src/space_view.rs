@@ -434,7 +434,7 @@ impl SpaceViewBlueprint {
         DataResult {
             entity_path: entity_path.clone(),
             visualizers: Default::default(),
-            direct_included: true,
+            tree_prefix_only: false,
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
