@@ -316,7 +316,7 @@ pub(super) struct MoveContentsToNewContainerAction(pub egui_tiles::ContainerKind
 
 impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
-        if let Some((parent_container, _)) = ctx.clicked_item_parent_and_position() {
+        if let Some((parent_container, _)) = ctx.clicked_item_enclosing_container_and_position() {
             if (parent_container.container_kind == egui_tiles::ContainerKind::Vertical
                 || parent_container.container_kind == egui_tiles::ContainerKind::Horizontal)
                 && parent_container.container_kind == self.0
@@ -355,7 +355,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
         if let Some(root_container_id) = ctx.viewport_blueprint.root_container {
             let (target_container_id, target_position) = ctx
-                .clicked_item_parent_id_and_position()
+                .clicked_item_enclosing_container_id_and_position()
                 .unwrap_or((root_container_id, 0));
 
             let contents = ctx
@@ -421,7 +421,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                         .sorted_by_key(|(_, display_name)| display_name.to_owned())
                     {
                         if ui.button(display_name).clicked() {
-                            create_space_view_with_entities(ctx, *identifier);
+                            create_space_view_for_selected_entities(ctx, *identifier);
                         }
                     }
                 };
@@ -433,8 +433,10 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
                 buttons_for_space_view_classes(ui, &recommended_space_view_classes);
             }
 
-            ui.label(egui::WidgetText::from("Others:").italics());
-            buttons_for_space_view_classes(ui, &other_space_view_classes);
+            if !other_space_view_classes.is_empty() {
+                ui.label(egui::WidgetText::from("Others:").italics());
+                buttons_for_space_view_classes(ui, &other_space_view_classes);
+            }
         })
         .response
     }
@@ -468,16 +470,16 @@ fn recommended_space_views_for_selection(
             &EntityPath::root(),
         );
 
-        // We consider a space view class to be recommended all selected entities are "visualizable"
-        // with it. By "visualizable" we mean that either the entity itself, or any of its
-        // sub-entities, are visualizable.
+        // We consider a space view class to be recommended if all selected entities are
+        // "visualizable" with it. By "visualizable" we mean that either the entity itself, or any
+        // of its sub-entities, are visualizable.
 
         let covered = entities_of_interest.iter().all(|entity| {
             visualizable_entities.0.iter().any(|(_, entities)| {
                 entities
                     .0
                     .iter()
-                    .any(|e| e == *entity || e.is_descendant_of(entity))
+                    .any(|visualizable_entity| visualizable_entity.starts_with(entity))
             })
         });
 
@@ -491,7 +493,7 @@ fn recommended_space_views_for_selection(
 
 /// Creates a space view of the give class, with root set as origin, and a filter set to include all
 /// selected entities.
-fn create_space_view_with_entities(
+fn create_space_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
     identifier: SpaceViewClassIdentifier,
 ) {
@@ -508,7 +510,9 @@ fn create_space_view_with_entities(
             );
         });
 
-    let target_container_id = ctx.clicked_item_parent_id_and_position().map(|(id, _)| id);
+    let target_container_id = ctx
+        .clicked_item_enclosing_container_id_and_position()
+        .map(|(id, _)| id);
 
     let space_view = SpaceViewBlueprint::new(identifier, &origin, filter);
 

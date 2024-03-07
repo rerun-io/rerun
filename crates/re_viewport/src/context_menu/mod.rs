@@ -175,7 +175,8 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
         should_display_separator |= any_action_displayed;
     }
 
-    // nothing was shown, make sure the context menu isn't empty
+    // If anything was shown, then `should_display_separator` has to be true. We can therefore
+    // recycle this flag for the empty menu message.
     if !should_display_separator {
         ui.label(egui::RichText::from("No action available for the current selection").italics());
     }
@@ -192,8 +193,9 @@ struct ContextMenuContext<'a> {
 impl<'a> ContextMenuContext<'a> {
     /// Return the clicked item's parent container id and position within it.
     ///
-    /// Valid only for space views, containers, and data results.
-    pub fn clicked_item_parent_id_and_position(&self) -> Option<(ContainerId, usize)> {
+    /// Valid only for space views, containers, and data results. For data results, the parent and
+    /// position of the enclosing space view is considered.
+    pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         match self.clicked_item {
             Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
                 Some(Contents::SpaceView(*space_view_id))
@@ -206,9 +208,12 @@ impl<'a> ContextMenuContext<'a> {
 
     /// Return the clicked item's parent container and position within it.
     ///
-    /// Valid only for space views, containers, and data results.
-    pub fn clicked_item_parent_and_position(&self) -> Option<(&'a ContainerBlueprint, usize)> {
-        self.clicked_item_parent_id_and_position()
+    /// Valid only for space views, containers, and data results. For data results, the parent and
+    /// position of the enclosing space view is considered.
+    pub fn clicked_item_enclosing_container_and_position(
+        &self,
+    ) -> Option<(&'a ContainerBlueprint, usize)> {
+        self.clicked_item_enclosing_container_id_and_position()
             .and_then(|(container_id, pos)| {
                 self.viewport_blueprint
                     .container(&container_id)
