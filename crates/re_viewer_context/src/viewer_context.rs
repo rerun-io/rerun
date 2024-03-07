@@ -6,8 +6,8 @@ use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, DataQueryId, IndicatedEntities, PerVisualizer,
-    Selection, SpaceViewClassRegistry, StoreContext, SystemCommandSender as _, TimeControl,
+    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, PerVisualizer, Selection,
+    SpaceViewClassRegistry, SpaceViewId, StoreContext, SystemCommandSender as _, TimeControl,
 };
 
 /// Common things needed by many parts of the viewer.
@@ -44,8 +44,8 @@ pub struct ViewerContext<'a> {
     ///                 or are we ever interested in a non-applicable but indicator-matching entity?
     pub indicated_entities_per_visualizer: &'a PerVisualizer<IndicatedEntities>,
 
-    /// All the query results for this frame
-    pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
+    /// All the query results for this frame.
+    pub query_results: &'a HashMap<SpaceViewId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`EntityDb`]).
     pub rec_cfg: &'a RecordingConfig,

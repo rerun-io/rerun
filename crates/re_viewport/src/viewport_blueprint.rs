@@ -638,7 +638,7 @@ impl ViewportBlueprint {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                let query_result = ctx.lookup_query_result(space_view.query_id());
+                let query_result = ctx.lookup_query_result(space_view.id);
                 if query_result.tree.lookup_result_by_path(path).is_some() {
                     Some(*space_view_id)
                 } else {

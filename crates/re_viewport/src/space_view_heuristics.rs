@@ -1,4 +1,3 @@
-use re_space_view::DataQueryBlueprint;
 use re_viewer_context::ViewerContext;
 
 use re_space_view::SpaceViewBlueprint;
@@ -22,7 +21,7 @@ pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlue
                     SpaceViewBlueprint::new(
                         class_id,
                         &recommendation.root,
-                        DataQueryBlueprint::new(class_id, recommendation.query_filter),
+                        recommendation.query_filter,
                     )
                 })
         })

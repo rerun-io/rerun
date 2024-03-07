@@ -3,14 +3,13 @@ use super::validation::validate_component;
 pub use crate::blueprint::components::PanelView;
 pub use re_entity_db::blueprint::components::EntityPropertiesComponent;
 use re_entity_db::EntityDb;
-pub use re_space_view::blueprint::components::QueryExpressions;
 pub use re_types::blueprint::components::ActiveTab;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::EntitiesDeterminedByUser;
 pub use re_types::blueprint::components::IncludedContent;
-pub use re_types::blueprint::components::IncludedQuery;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
+pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
@@ -37,11 +36,10 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<EntityPropertiesComponent>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
-        && validate_component::<IncludedQuery>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<PanelView>(blueprint)
-        && validate_component::<QueryExpressions>(blueprint)
+        && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
         && validate_component::<SpaceViewClass>(blueprint)

@@ -23,18 +23,12 @@ table SpaceViewBlueprint (
 
     /// The "anchor point" of this space view.
     ///
+    /// Defaults to the root path '/' if not specified.
+    ///
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     space_origin: rerun.blueprint.components.SpaceViewOrigin ("attr.rerun.component_optional", nullable, order: 300);
-
-    /// True if the user is has added entities themselves. False otherwise.
-    entities_determined_by_user: rerun.blueprint.components.EntitiesDeterminedByUser ("attr.rerun.component_optional", nullable, order: 400);
-
-    /// Ids of the `DataQuery`s that make up this `SpaceView`.
-    ///
-    /// They determine which entities are part of the spaceview.
-    contents: [rerun.blueprint.components.IncludedQuery] ("attr.rerun.component_optional", nullable, order: 500);
 
     /// Whether this space view is visible.
     ///

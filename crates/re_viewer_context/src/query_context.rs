@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{EntityPath, EntityPathHash};
 
-use crate::{DataQueryId, DataResult, ViewerContext};
+use crate::{DataResult, SpaceViewId, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -13,10 +13,8 @@ slotmap::new_key_type! {
 }
 
 /// The result of executing a single data query
+#[derive(Default)]
 pub struct DataQueryResult {
-    /// The [`DataQueryId`] for the query that generated this result
-    pub id: DataQueryId,
-
     /// The [`DataResultTree`] for the query
     pub tree: DataResultTree,
 }
@@ -51,17 +49,7 @@ impl Clone for DataQueryResult {
     fn clone(&self) -> Self {
         re_tracing::profile_function!();
         Self {
-            id: self.id,
             tree: self.tree.clone(),
-        }
-    }
-}
-
-impl Default for DataQueryResult {
-    fn default() -> Self {
-        Self {
-            id: DataQueryId::invalid(),
-            tree: DataResultTree::default(),
         }
     }
 }
@@ -178,7 +166,7 @@ impl DataResultTree {
 static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
 
 impl ViewerContext<'_> {
-    pub fn lookup_query_result(&self, id: DataQueryId) -> &DataQueryResult {
+    pub fn lookup_query_result(&self, id: SpaceViewId) -> &DataQueryResult {
         self.query_results.get(&id).unwrap_or_else(|| {
             if cfg!(debug_assertions) {
                 re_log::warn!("Tried looking up a query that doesn't exist: {:?}", id);

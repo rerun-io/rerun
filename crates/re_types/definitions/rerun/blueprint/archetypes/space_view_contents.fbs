@@ -1,0 +1,28 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// The contents of a `SpaceView`.
+table SpaceViewContents (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+)  {
+    // --- Required ---
+
+    /// The `QueryExpression` that populates the contents for the `SpaceView`.
+    ///
+    /// They determine which entities are part of the spaceview.
+    query: rerun.blueprint.components.QueryExpression ("attr.rerun.component_required", order: 1000);
+
+    // --- Optional ---
+
+    /// True if the user is has added entities themselves. False otherwise.
+    ///
+    /// This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
+    entities_determined_by_user: rerun.blueprint.components.EntitiesDeterminedByUser ("attr.rerun.component_optional", nullable, order: 2000);
+}

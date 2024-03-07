@@ -15,7 +15,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(7);
+        cells.reserve(5);
 
         {
             auto result = DataCell::from_loggable(archetype.class_identifier);
@@ -29,16 +29,6 @@ namespace rerun {
         }
         if (archetype.space_origin.has_value()) {
             auto result = DataCell::from_loggable(archetype.space_origin.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.entities_determined_by_user.has_value()) {
-            auto result = DataCell::from_loggable(archetype.entities_determined_by_user.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.contents.has_value()) {
-            auto result = DataCell::from_loggable(archetype.contents.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

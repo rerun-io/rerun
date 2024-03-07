@@ -36,7 +36,6 @@ from .entity_properties_component import (
 )
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
-from .included_query import IncludedQuery, IncludedQueryBatch, IncludedQueryType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .lock_range_during_zoom import (
     LockRangeDuringZoom,
@@ -46,13 +45,7 @@ from .lock_range_during_zoom import (
     LockRangeDuringZoomType,
 )
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
-from .query_expressions import (
-    QueryExpressions,
-    QueryExpressionsArrayLike,
-    QueryExpressionsBatch,
-    QueryExpressionsLike,
-    QueryExpressionsType,
-)
+from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
@@ -107,9 +100,6 @@ __all__ = [
     "IncludedContent",
     "IncludedContentBatch",
     "IncludedContentType",
-    "IncludedQuery",
-    "IncludedQueryBatch",
-    "IncludedQueryType",
     "IncludedSpaceView",
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
@@ -123,11 +113,9 @@ __all__ = [
     "PanelViewBatch",
     "PanelViewLike",
     "PanelViewType",
-    "QueryExpressions",
-    "QueryExpressionsArrayLike",
-    "QueryExpressionsBatch",
-    "QueryExpressionsLike",
-    "QueryExpressionsType",
+    "QueryExpression",
+    "QueryExpressionBatch",
+    "QueryExpressionType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
