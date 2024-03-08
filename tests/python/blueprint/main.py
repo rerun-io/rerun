@@ -5,7 +5,7 @@ from numpy.random import default_rng
 from rerun.blueprint import Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
 
 if __name__ == "__main__":
-    root = Vertical(
+    blueprint = Vertical(
         Spatial3D(origin="/test1"),
         Horizontal(
             Tabs(
@@ -15,12 +15,11 @@ if __name__ == "__main__":
             Spatial2D(origin="/test2"),
         ),
     )
-    viewport = Viewport(root)
 
     rr.init(
         "rerun_example_blueprint_test",
         spawn=True,
-        blueprint=viewport.create_blueprint("rerun_example_blueprint_test"),
+        blueprint=blueprint,
     )
 
     rng = default_rng(12345)

@@ -218,6 +218,9 @@ def log_components(
         if None, use the global default from `rerun.strict_mode()`
 
     """
+    # Convert to a native recording
+    recording = RecordingStream.to_native(recording)
+
     instanced: dict[str, pa.Array] = {}
     splats: dict[str, pa.Array] = {}
 

@@ -6,8 +6,9 @@ import socket
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
+from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.recording import MemoryRecording
-from rerun.recording_stream import RecordingStream
+from rerun.recording_stream import RecordingStream, get_application_id
 
 # --- Sinks ---
 
@@ -16,7 +17,7 @@ def connect(
     addr: str | None = None,
     *,
     flush_timeout_sec: float | None = 2.0,
-    blueprint: MemoryRecording | None = None,
+    blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -34,20 +35,22 @@ def connect(
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
         and can cause a call to `flush` to block indefinitely.
-    blueprint: MemoryRecording
-        A memory recording of a blueprint.
+    blueprint: Optional[BlueprintLike]
+        An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    # TODO(jleibs): MemoryRecording here should just be the direct blueprint object with a helper function
-    # to convert it to the MemoryRecording object in place right here.
     recording = RecordingStream.to_native(recording)
+
+    application_id = get_application_id(recording=recording)
+
+    # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if blueprint is not None:
-        blueprint_storage = blueprint.storage
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
 
     bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, blueprint=blueprint_storage, recording=recording)
 
@@ -216,7 +219,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
-    blueprint: MemoryRecording | None = None,
+    blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -241,12 +244,10 @@ def spawn(
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    blueprint: MemoryRecording
-        A memory recording of a blueprint.
+    blueprint: Optional[BlueprintLike]
+        An optional blueprint to configure the UI.
 
     """
-    # TODO(jleibs): MemoryRecording here should just be the direct blueprint object with a helper function
-    # to convert it to the MemoryRecording object in place right here.
 
     if not bindings.is_enabled():
         logging.warning("Rerun is disabled - spawn() call ignored.")

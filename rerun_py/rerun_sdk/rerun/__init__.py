@@ -142,6 +142,7 @@ from .archetypes import (
     ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import Box2DFormat
+from .blueprint.api import BlueprintLike
 from .components import (
     Material,
     MediaType,
@@ -230,6 +231,7 @@ def _init_recording_stream() -> None:
             set_time_nanos,
             disable_timeline,
             reset_time,
+            log,
         ]
         + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
     )
@@ -247,7 +249,7 @@ def init(
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
-    blueprint: MemoryRecording | None = None,
+    blueprint: BlueprintLike | None = None,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).

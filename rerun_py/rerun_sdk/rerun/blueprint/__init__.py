@@ -13,4 +13,4 @@ __all__ = [
 ]
 
 from . import archetypes, components, datatypes
-from .api import Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
+from .api import BlueprintLike, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport

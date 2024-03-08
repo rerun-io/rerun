@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import itertools
 import uuid
+from typing import Union
 
 import rerun_bindings as bindings
 
-from .._log import log
 from ..recording_stream import RecordingStream
 from .archetypes.container_blueprint import ContainerBlueprint
 from .archetypes.space_view_blueprint import SpaceViewBlueprint
@@ -23,11 +23,11 @@ class Container:
     def path(self):
         return f"container/{self.id}"
 
-    def log(self, stream):
+    def log_to_stream(self, stream):
         for sub in self.contents:
-            sub.log(stream)
+            sub.log_to_stream(stream)
 
-        bp = ContainerBlueprint(
+        arch = ContainerBlueprint(
             container_kind=self.kind,
             contents=[sub.path() for sub in self.contents],
             col_shares=[1 for _ in self.contents],
@@ -35,7 +35,7 @@ class Container:
             visible=True,
         )
 
-        log(self.path(), bp, recording=stream)
+        stream.log(self.path(), arch)
 
     def iter_space_views(self):
         return itertools.chain.from_iterable(sub.iter_space_views() for sub in self.contents)
@@ -49,6 +49,11 @@ class Horizontal(Container):
 class Vertical(Container):
     def __init__(self, *contents):
         super().__init__(ContainerKind.Vertical, contents)
+
+
+class Grid(Container):
+    def __init__(self, *contents):
+        super().__init__(ContainerKind.Grid, contents)
 
 
 class Tabs(Container):
@@ -66,16 +71,16 @@ class SpaceView:
     def path(self):
         return f"space_view/{self.id}"
 
-    def log(self, stream):
-        contents_bp = SpaceViewContents(query=self.contents)
-        log(self.path() + "/SpaceViewContents", contents_bp, recording=stream)
+    def log_to_stream(self, stream):
+        contents = SpaceViewContents(query=self.contents)
+        stream.log(self.path() + "/SpaceViewContents", contents)
 
-        bp = SpaceViewBlueprint(
+        arch = SpaceViewBlueprint(
             class_identifier=self.class_identifier,
             space_origin=self.origin,
         )
 
-        log(self.path(), bp, recording=stream)
+        stream.log(self.path(), arch, recording=stream)
 
     def iter_space_views(self):
         return [self.id.bytes]
@@ -98,29 +103,36 @@ class Viewport:
     def path(self):
         return "viewport"
 
-    def log(self, stream):
-        self.root_container.log(stream)
+    def log_to_stream(self, stream):
+        self.root_container.log_to_stream(stream)
 
-        bp = ViewportBlueprint(
+        arch = ViewportBlueprint(
             space_views=list(self.root_container.iter_space_views()),
             root_container=self.root_container.id.bytes,
             auto_layout=False,
             auto_space_views=False,
         )
 
-        log(self.path(), bp, recording=stream)
+        stream.log(self.path(), arch)
 
-    def create_blueprint(self, application_id):
-        blueprint_stream = RecordingStream(
-            bindings.new_blueprint(
-                application_id=application_id,
-            )
+
+BlueprintLike = Union[Viewport, Container, SpaceView]
+
+
+def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike):
+    blueprint_stream = RecordingStream(
+        bindings.new_blueprint(
+            application_id=application_id,
         )
+    )
 
-        stream_native = blueprint_stream.to_native()
+    if isinstance(blueprint, SpaceView):
+        blueprint = Viewport(Grid(blueprint))
+    elif isinstance(blueprint, Container):
+        blueprint = Viewport(blueprint)
 
-        blueprint_stream.set_time_seconds("blueprint", 1)
+    blueprint_stream.set_time_seconds("blueprint", 1)
 
-        self.log(stream_native)
+    blueprint.log_to_stream(blueprint_stream)
 
-        return blueprint_stream.memory_recording()
+    return blueprint_stream.memory_recording()
