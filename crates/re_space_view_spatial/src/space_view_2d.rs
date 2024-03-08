@@ -5,6 +5,7 @@ use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_types::{
     archetypes::{DepthImage, Image},
+    components::ViewCoordinates,
     Archetype, ComponentName,
 };
 use re_viewer_context::{
@@ -226,7 +227,13 @@ impl SpaceViewClass for SpatialSpaceView2D {
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) {
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::TwoD);
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_size_ui(ctx, ui);
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+                ui.end_row();
+            });
     }
 
     fn ui(

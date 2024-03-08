@@ -15,7 +15,7 @@ use crate::{
         default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialSpaceViewState,
+    ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -264,7 +264,71 @@ impl SpaceViewClass for SpatialSpaceView3D {
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) {
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
+        let scene_view_coordinates = ctx
+            .entity_db
+            .store()
+            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
+            .map(|c| c.value);
+
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_size_ui(ctx, ui);
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Camera")
+                    .on_hover_text("The virtual camera which controls what is shown on screen");
+                ui.vertical(|ui| {
+                    state.view_eye_ui(ctx.re_ui, ui, scene_view_coordinates);
+                });
+                ui.end_row();
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Coordinates")
+                    .on_hover_text("The world coordinate system used for this view");
+                ui.vertical(|ui| {
+                    let up_description =
+                        if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                            format!("Scene up is {scene_up}")
+                        } else {
+                            "Scene up is unspecified".to_owned()
+                        };
+                    ui.label(up_description).on_hover_ui(|ui| {
+                        re_ui::markdown_ui(
+                            ui,
+                            egui::Id::new("view_coordinates_tooltip"),
+                            "Set with `rerun.ViewCoordinates`.",
+                        );
+                    });
+
+                    if let Some(eye) = &state.state_3d.view_eye {
+                        if let Some(eye_up) = eye.eye_up() {
+                            ui.label(format!(
+                                "Current camera-eye up-axis is {}",
+                                format_vector(eye_up)
+                            ));
+                        }
+                    }
+
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
+                        .on_hover_text("Show X-Y-Z axes");
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
+                        .on_hover_text("Show the current scene bounding box");
+                    ctx.re_ui
+                        .checkbox(
+                            ui,
+                            &mut state.state_3d.show_accumulated_bbox,
+                            "Show accumulated bounding box",
+                        )
+                        .on_hover_text("Show bounding box accumulated over all rendered frames");
+                });
+                ui.end_row();
+
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
+                ui.end_row();
+            });
     }
 
     fn ui(
