@@ -317,12 +317,10 @@ def init(
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
-    blueprint: Optional[MemoryRecording]
+    blueprint
         A blueprint to use for this application. If not provided, a new one will be created.
 
     """
-    # TODO(jleibs): MemoryRecording here should just be the direct blueprint object with a helper function
-    # to convert it to the MemoryRecording object in place right here.
 
     if application_id.startswith("rerun_example_"):
         # Make all our example code deterministic.
