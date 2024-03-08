@@ -4,6 +4,14 @@
 #import <./utils/camera.wgsl>
 #import <./screen_triangle_vertex.wgsl>
 
+struct UniformBuffer {
+    // This is an ecolor::Rgba, so it's premultiplied and linear!
+    color: vec4f,
+}
+
+@group(1) @binding(0)
+var<uniform> uniforms: UniformBuffer;
+
 fn skybox_dark_srgb(dir: vec3f) -> vec3f {
     let rgb = dir * 0.5 + vec3f(0.5);
     return vec3f(0.05) + 0.20 * rgb;
@@ -45,9 +53,12 @@ fn main(in: FragmentInput, @builtin(position) frag_coord: vec4<f32>) -> @locatio
     // Apply dithering in gamma space.
     // TODO(andreas): Once we switch to HDR outputs, this can be removed.
     //                As of writing, the render target itself is (s)RGB8, so we need to dither while we still have maximum precision.
-    let rgb_dithered = dither_interleaved(rgb, 256.0, frag_coord);
+    var rgb_linear_dithered = dither_interleaved(rgb, 256.0, frag_coord);
 
-    return vec4f(linear_from_srgb(rgb_dithered), 1.0);
+    // Blend in the color that is specified via uniform buffer.
+    rgb_linear_dithered = rgb_linear_dithered * (1.0 - uniforms.color.a) + uniforms.color.rgb;
+
+    return vec4f(linear_from_srgb(rgb_linear_dithered), 1.0);
     //return vec4f(linear_from_srgb(rgb), 1.0); // Without dithering
     //return vec4f(camera_dir, 1.0);
 }

@@ -1,11 +1,13 @@
 use smallvec::smallvec;
 
 use crate::{
+    allocator::create_and_fill_uniform_buffer,
     draw_phases::DrawPhase,
     include_shader_module,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
+        BindGroupDesc, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
@@ -13,25 +15,58 @@ use crate::{
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
 
+mod gpu_data {
+    use crate::wgpu_buffer_types;
+
+    #[repr(C, align(256))]
+    #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct UniformBuffer {
+        pub color: ecolor::Rgba,
+        pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
+    }
+}
+
 /// Renders a generated skybox from a color gradient
 ///
 /// Is not actually a skybox, but a fullscreen effect.
 /// Should be rendered *last* to reduce amount of overdraw!
 pub struct GenericSkybox {
     render_pipeline: GpuRenderPipelineHandle,
+    bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 #[derive(Clone)]
-pub struct GenericSkyboxDrawData {}
+pub struct GenericSkyboxDrawData {
+    bind_group: GpuBindGroup,
+}
 
 impl DrawData for GenericSkyboxDrawData {
     type Renderer = GenericSkybox;
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &RenderContext) -> Self {
-        let _ = ctx.renderer::<GenericSkybox>(); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
-        GenericSkyboxDrawData {}
+    pub fn new(ctx: &RenderContext, color: ecolor::Rgba) -> Self {
+        let skybox_renderer = ctx.renderer::<GenericSkybox>();
+
+        let uniform_buffer = gpu_data::UniformBuffer {
+            color,
+            _end_padding: Default::default(),
+        };
+
+        let uniform_buffer_binding =
+            create_and_fill_uniform_buffer(ctx, "skybox uniform buffer".into(), uniform_buffer);
+
+        let bind_group = ctx.gpu_resources.bind_groups.alloc(
+            &ctx.device,
+            &ctx.gpu_resources,
+            &BindGroupDesc {
+                label: "GenericSkyboxDrawData::bind_group".into(),
+                entries: smallvec![uniform_buffer_binding,],
+                layout: skybox_renderer.bind_group_layout,
+            },
+        );
+
+        GenericSkyboxDrawData { bind_group }
     }
 }
 
@@ -40,6 +75,25 @@ impl Renderer for GenericSkybox {
 
     fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
+
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
+            &(BindGroupLayoutDesc {
+                label: "GenericSkybox::bind_group_layout".into(),
+                entries: vec![wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: (std::mem::size_of::<gpu_data::UniformBuffer>() as u64)
+                            .try_into()
+                            .ok(),
+                    },
+                    count: None,
+                }],
+            }),
+        );
 
         let vertex_handle = screen_triangle_vertex_shader(ctx);
         let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
@@ -50,7 +104,7 @@ impl Renderer for GenericSkybox {
                     ctx,
                     &PipelineLayoutDesc {
                         label: "GenericSkybox::render_pipeline".into(),
-                        entries: vec![ctx.global_bindings.layout],
+                        entries: vec![ctx.global_bindings.layout, bind_group_layout],
                     },
                 ),
 
@@ -76,7 +130,10 @@ impl Renderer for GenericSkybox {
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
         );
-        GenericSkybox { render_pipeline }
+        GenericSkybox {
+            render_pipeline,
+            bind_group_layout,
+        }
     }
 
     fn draw<'a>(
@@ -84,13 +141,14 @@ impl Renderer for GenericSkybox {
         render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
-        _draw_data: &GenericSkyboxDrawData,
+        draw_data: &'a Self::RendererDrawData,
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
         let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
+        pass.set_bind_group(1, &draw_data.bind_group, &[]);
         pass.draw(0..3, 0..1);
 
         Ok(())

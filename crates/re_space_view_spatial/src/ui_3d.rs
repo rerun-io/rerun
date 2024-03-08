@@ -666,6 +666,7 @@ pub fn view_3d(
     // Composite viewbuilder into egui.
     view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
         ctx.render_ctx,
+        re_renderer::Rgba::RED, // TODO:
     ));
     ui.painter().add(gpu_bridge::new_renderer_callback(
         view_builder,
