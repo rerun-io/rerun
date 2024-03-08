@@ -6,7 +6,7 @@
 
 struct UniformBuffer {
     // This is an ecolor::Rgba, so it's premultiplied and linear!
-    color: vec4f,
+    blend_color: vec4f,
 }
 
 @group(1) @binding(0)
@@ -56,7 +56,7 @@ fn main(in: FragmentInput, @builtin(position) frag_coord: vec4<f32>) -> @locatio
     var rgb_linear_dithered = dither_interleaved(rgb, 256.0, frag_coord);
 
     // Blend in the color that is specified via uniform buffer.
-    rgb_linear_dithered = rgb_linear_dithered * (1.0 - uniforms.color.a) + uniforms.color.rgb;
+    rgb_linear_dithered = rgb_linear_dithered * (1.0 - uniforms.blend_color.a) + uniforms.blend_color.rgb;
 
     return vec4f(linear_from_srgb(rgb_linear_dithered), 1.0);
     //return vec4f(linear_from_srgb(rgb), 1.0); // Without dithering

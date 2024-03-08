@@ -21,7 +21,7 @@ mod gpu_data {
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
-        pub color: ecolor::Rgba,
+        pub blend_color: ecolor::Rgba,
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
@@ -45,11 +45,11 @@ impl DrawData for GenericSkyboxDrawData {
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &RenderContext, color: ecolor::Rgba) -> Self {
+    pub fn new(ctx: &RenderContext, blend_color: ecolor::Rgba) -> Self {
         let skybox_renderer = ctx.renderer::<GenericSkybox>();
 
         let uniform_buffer = gpu_data::UniformBuffer {
-            color,
+            blend_color,
             _end_padding: Default::default(),
         };
 
