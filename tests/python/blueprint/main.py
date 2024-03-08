@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import rerun as rr
 from numpy.random import default_rng
-from rerun.blueprint import Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
+from rerun.blueprint import Horizontal, Spatial2D, Spatial3D, Tabs, Vertical
 
 if __name__ == "__main__":
     blueprint = Vertical(
