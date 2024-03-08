@@ -1,16 +1,12 @@
+use crate::wait_for_output;
 use crate::{Channel, Example};
 use indicatif::MultiProgress;
-use indicatif::ProgressBar;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
 use std::fs::create_dir_all;
-use std::io::stdout;
-use std::io::IsTerminal;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
-use std::process::Output;
-use std::time::Duration;
 
 /// Collect examples in the repository and run them to produce `.rrd` files.
 #[derive(argh::FromArgs)]
@@ -75,12 +71,7 @@ impl Rrd {
     }
 }
 
-trait Build {
-    /// Returns the path to the resulting `.rrd` file.
-    fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf>;
-}
-
-impl Build for Example {
+impl Example {
     fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<PathBuf> {
         let rrd_path = output_dir.join(&self.name).with_extension("rrd");
 
@@ -117,32 +108,4 @@ impl Build for Example {
             );
         }
     }
-}
-
-fn wait_for_output(
-    mut cmd: Command,
-    name: &str,
-    progress: &MultiProgress,
-) -> anyhow::Result<Output> {
-    let progress = progress.add(ProgressBar::new_spinner().with_message(name.to_owned()));
-    progress.enable_steady_tick(Duration::from_millis(100));
-
-    let output = cmd.output()?;
-
-    let elapsed = progress.elapsed().as_secs_f64();
-    let tick = if output.status.success() {
-        "✔"
-    } else {
-        "✘"
-    };
-    let message = format!("{tick} {name} ({elapsed:.3}s)");
-
-    if stdout().is_terminal() {
-        progress.set_message(message);
-        progress.finish();
-    } else {
-        println!("{message}");
-    }
-
-    Ok(output)
 }

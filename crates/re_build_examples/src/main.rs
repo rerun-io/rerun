@@ -21,6 +21,7 @@ fn main() -> anyhow::Result<()> {
     match args.cmd {
         Cmd::Rrd(cmd) => cmd.run(),
         Cmd::Manifest(cmd) => cmd.run(),
+        Cmd::Snippets(cmd) => cmd.run(),
     }
 }
 
@@ -36,4 +37,5 @@ struct Args {
 enum Cmd {
     Rrd(rrd::Rrd),
     Manifest(manifest::Manifest),
+    Snippets(snippets::Snippets),
 }
