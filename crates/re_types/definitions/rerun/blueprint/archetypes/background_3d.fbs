@@ -13,13 +13,17 @@ namespace rerun.blueprint.archetypes;
 /// Configuration for the background of the 3D space view.
 table Background3D (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+    "attr.docs.unreleased"
 ) {
+    // --- Required ---
+
+    /// The type of the background. Defaults to DirectionalGradient
+    kind: rerun.blueprint.components.Background3DKind ("attr.rerun.component_required", order: 1000);
+
     // --- Optional ---
 
-    /// Solid color blended with the background.
+    /// Color used for Background3DKind.SolidColor.
     ///
-    /// If alpha is one, this color is fully covering, if it is zero the default skybox is fully visible.
-    /// Defaults to fully transparent.
-    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2100);
+    /// Defaults to White.
+    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
 }

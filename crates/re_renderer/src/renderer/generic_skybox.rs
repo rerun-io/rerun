@@ -15,13 +15,19 @@ use crate::{
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GenericSkyboxType {
+    DirectionalGradientDark = 0,
+    DirectionalGradientBright = 1,
+}
+
 mod gpu_data {
     use crate::wgpu_buffer_types;
 
     #[repr(C, align(256))]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct UniformBuffer {
-        pub blend_color: ecolor::Rgba,
+        pub background_type: wgpu_buffer_types::U32RowPadded,
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 1],
     }
 }
@@ -45,11 +51,11 @@ impl DrawData for GenericSkyboxDrawData {
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &RenderContext, blend_color: ecolor::Rgba) -> Self {
+    pub fn new(ctx: &RenderContext, typ: GenericSkyboxType) -> Self {
         let skybox_renderer = ctx.renderer::<GenericSkybox>();
 
         let uniform_buffer = gpu_data::UniformBuffer {
-            blend_color,
+            background_type: (typ as u32).into(),
             _end_padding: Default::default(),
         };
 

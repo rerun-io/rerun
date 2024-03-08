@@ -13,7 +13,7 @@ use re_space_view::{
         RuntimeModifiers, DRAG_PAN3D_BUTTON, RESET_VIEW_BUTTON_TEXT, ROLL_MOUSE, ROLL_MOUSE_ALT,
         ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
     },
-    query_space_view_sub_archetype,
+    query_space_view_sub_archetype_or_default,
 };
 use re_types::{components::ViewCoordinates, view_coordinates::SignedAxis3};
 use re_viewer_context::{
@@ -24,7 +24,6 @@ use re_viewer_context::{
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    space_view_3d::DEFAULT_BACKGROUND_COLOR,
     ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
@@ -666,11 +665,16 @@ pub fn view_3d(
 
     // Commit ui induced lines.
     view_builder.queue_draw(line_builder.into_draw_data()?);
-    view_builder.queue_draw(configure_background(ctx, query));
+
+    let (background_drawable, clear_color) = configure_background(ctx, query);
+    if let Some(background_drawable) = background_drawable {
+        view_builder.queue_draw(background_drawable);
+    }
+
     ui.painter().add(gpu_bridge::new_renderer_callback(
         view_builder,
         rect,
-        re_renderer::Rgba::TRANSPARENT,
+        clear_color,
     ));
 
     // Add egui driven labels on top of re_renderer content.
@@ -680,19 +684,55 @@ pub fn view_3d(
     Ok(())
 }
 
-fn configure_background(ctx: &ViewerContext<'_>, query: &ViewQuery<'_>) -> QueueableDrawData {
+fn configure_background(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+) -> (Option<QueueableDrawData>, re_renderer::Rgba) {
+    use re_renderer::renderer;
+    use re_types::blueprint::{archetypes::Background3D, components::Background3DKind};
+
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
-    let (background, _) = query_space_view_sub_archetype::<
-        re_types::blueprint::archetypes::Background3D,
-    >(query.space_view_id, blueprint_db, blueprint_query);
+    let (
+        Background3D {
+            kind,
+            color: solid_color,
+        },
+        _,
+    ) = query_space_view_sub_archetype_or_default::<Background3D>(
+        query.space_view_id,
+        blueprint_db,
+        blueprint_query,
+    );
 
-    let background_color = background
-        .ok()
-        .and_then(|b| b.color)
-        .map_or(DEFAULT_BACKGROUND_COLOR, re_renderer::Rgba::from);
+    match kind {
+        Background3DKind::DirectionalGradientDark => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::DirectionalGradientDark,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
 
-    re_renderer::renderer::GenericSkyboxDrawData::new(ctx.render_ctx, background_color).into()
+        Background3DKind::DirectionalGradientBright => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::DirectionalGradientBright,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        Background3DKind::SolidColor => (
+            None,
+            solid_color.unwrap_or(Background3D::DEFAULT_COLOR).into(),
+        ),
+    }
 }
 
 /// Show center of orbit camera when interacting with camera (it's quite helpful).

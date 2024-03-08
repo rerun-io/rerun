@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../blueprint/components/background3d_kind.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../components/color.hpp"
@@ -18,10 +19,12 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of the 3D space view.
     struct Background3D {
-        /// Solid color blended with the background.
+        /// The type of the background. Defaults to DirectionalGradient
+        rerun::blueprint::components::Background3DKind kind;
+
+        /// Color used for Background3DKind.SolidColor.
         ///
-        /// If alpha is one, this color is fully covering, if it is zero the default skybox is fully visible.
-        /// Defaults to fully transparent.
+        /// Defaults to White.
         std::optional<rerun::components::Color> color;
 
       public:
@@ -35,10 +38,12 @@ namespace rerun::blueprint::archetypes {
         Background3D() = default;
         Background3D(Background3D&& other) = default;
 
-        /// Solid color blended with the background.
+        explicit Background3D(rerun::blueprint::components::Background3DKind _kind)
+            : kind(std::move(_kind)) {}
+
+        /// Color used for Background3DKind.SolidColor.
         ///
-        /// If alpha is one, this color is fully covering, if it is zero the default skybox is fully visible.
-        /// Defaults to fully transparent.
+        /// Defaults to White.
         Background3D with_color(rerun::components::Color _color) && {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -47,7 +52,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {
-            return 0;
+            return 1;
         }
     };
 

@@ -324,7 +324,10 @@ impl Example for Multiview {
             IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
 
         let triangle = TestTriangleDrawData::new(re_ctx);
-        let skybox = GenericSkyboxDrawData::new(re_ctx, re_renderer::Rgba::TRANSPARENT);
+        let skybox = GenericSkyboxDrawData::new(
+            re_ctx,
+            re_renderer::renderer::GenericSkyboxType::DirectionalGradientDark,
+        );
         let lines = build_lines(re_ctx, seconds_since_startup);
 
         let mut builder = PointCloudBuilder::new(re_ctx);

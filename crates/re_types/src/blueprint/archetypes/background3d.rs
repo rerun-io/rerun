@@ -22,29 +22,32 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the background of the 3D space view.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Background3D {
-    /// Solid color blended with the background.
+    /// The type of the background. Defaults to DirectionalGradient
+    pub kind: crate::blueprint::components::Background3DKind,
+
+    /// Color used for Background3DKind.SolidColor.
     ///
-    /// If alpha is one, this color is fully covering, if it is zero the default skybox is fully visible.
-    /// Defaults to fully transparent.
+    /// Defaults to White.
     pub color: Option<crate::components::Color>,
 }
 
 impl ::re_types_core::SizeBytes for Background3D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes()
+        self.kind.heap_size_bytes() + self.color.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::components::Color>>::is_pod()
+        <crate::blueprint::components::Background3DKind>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.Background3DKind".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.Background3DIndicator".into()]);
@@ -57,9 +60,10 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.blueprint.components.Background3DKind".into(),
             "rerun.blueprint.components.Background3DIndicator".into(),
             "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
@@ -67,7 +71,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl Background3D {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`Background3D`] [`::re_types_core::Archetype`]
@@ -117,6 +121,19 @@ impl ::re_types_core::Archetype for Background3D {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
+        let kind = {
+            let array = arrays_by_name
+                .get("rerun.blueprint.components.Background3DKind")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.Background3D#kind")?;
+            <crate::blueprint::components::Background3DKind>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.Background3D#kind")?
+                .into_iter()
+                .next()
+                .flatten()
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.Background3D#kind")?
+        };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             <crate::components::Color>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.Background3D#color")?
@@ -126,7 +143,7 @@ impl ::re_types_core::Archetype for Background3D {
         } else {
             None
         };
-        Ok(Self { color })
+        Ok(Self { kind, color })
     }
 }
 
@@ -136,6 +153,7 @@ impl ::re_types_core::AsComponents for Background3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
+            Some((&self.kind as &dyn ComponentBatch).into()),
             self.color
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -147,13 +165,16 @@ impl ::re_types_core::AsComponents for Background3D {
 
     #[inline]
     fn num_instances(&self) -> usize {
-        0
+        1
     }
 }
 
 impl Background3D {
-    pub fn new() -> Self {
-        Self { color: None }
+    pub fn new(kind: impl Into<crate::blueprint::components::Background3DKind>) -> Self {
+        Self {
+            kind: kind.into(),
+            color: None,
+        }
     }
 
     #[inline]

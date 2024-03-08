@@ -2,8 +2,12 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, EntityPathFilter};
-use re_space_view::query_space_view_sub_archetype_or_default;
-use re_types::{components::ViewCoordinates, Loggable};
+use re_space_view::query_space_view_sub_archetype;
+use re_types::{
+    blueprint::{archetypes::Background3D, components::Background3DKind},
+    components::ViewCoordinates,
+    Loggable,
+};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
@@ -20,8 +24,6 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
-
-pub const DEFAULT_BACKGROUND_COLOR: re_renderer::Rgba = re_renderer::Rgba::TRANSPARENT;
 
 #[derive(Default)]
 pub struct VisualizableFilterContext3D {
@@ -362,39 +364,65 @@ impl SpaceViewClass for SpatialSpaceView3D {
 fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
-    let (re_types::blueprint::archetypes::Background3D { color }, blueprint_path) =
-        query_space_view_sub_archetype_or_default(space_view_id, blueprint_db, blueprint_query);
+    let (archetype, blueprint_path) =
+        query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
 
-    // TODO(andreas): use editors
-    // let entity_path = entity_path_for_space_view_sub_archetype<re_types::blueprint::archetypes::Background3D>(space_view_id, blueprint_db.tree());
-    // let component  = re_query::get_component_with_instances(blueprint_db.store(), blueprint_query, entity_path, re_types::Component::Color::component_name());
-    // ctx.component_ui_registry.edit_ui(
-    //     ctx,
-    //     ui,
-    //     re_viewer_context::UiVerbosity::Full,
-    //     blueprint_query,
-    //     blueprint_db.store(),
-    //     entity_path,
-    //     entity_path,
-    //     component,
-    //     instance_key,
-    // );
+    let Background3D { color, mut kind } = archetype.unwrap_or(Background3D {
+        kind: Background3DKind::DirectionalGradientDark,
+        color: None,
+    });
 
-    ctx.re_ui.grid_left_hand_label(ui, "Background Color");
+    ctx.re_ui.grid_left_hand_label(ui, "Background");
 
-    let current_color = color.map_or(DEFAULT_BACKGROUND_COLOR.into(), |c| c.into());
-    let mut edit_color = current_color;
-    egui::color_picker::color_edit_button_srgba(
-        ui,
-        &mut edit_color,
-        egui::color_picker::Alpha::OnlyBlend,
-    );
-    if edit_color != current_color {
-        ctx.save_blueprint_component(
-            &blueprint_path,
-            &re_types::components::Color::from(edit_color),
-        );
-    }
+    ui.vertical(|ui| {
+        let kind_before = kind;
+        egui::ComboBox::from_id_source("background")
+            .selected_text(background_color_text(kind))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::DirectionalGradientDark,
+                    background_color_text(Background3DKind::DirectionalGradientDark),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::DirectionalGradientBright,
+                    background_color_text(Background3DKind::DirectionalGradientBright),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::SolidColor,
+                    background_color_text(Background3DKind::SolidColor),
+                );
+            });
+        if kind_before != kind {
+            ctx.save_blueprint_component(&blueprint_path, &kind);
+        }
+
+        if kind == Background3DKind::SolidColor {
+            let current_color = color.unwrap_or(Background3D::DEFAULT_COLOR).into();
+            let mut edit_color = current_color;
+            egui::color_picker::color_edit_button_srgba(
+                ui,
+                &mut edit_color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            if edit_color != current_color {
+                ctx.save_blueprint_component(
+                    &blueprint_path,
+                    &re_types::components::Color::from(edit_color),
+                );
+            }
+        }
+    });
 
     ui.end_row();
+}
+
+fn background_color_text(kind: Background3DKind) -> &'static str {
+    match kind {
+        Background3DKind::DirectionalGradientDark => "Directional Gradient (dark)",
+        Background3DKind::DirectionalGradientBright => "Directional Gradient (bright)",
+        Background3DKind::SolidColor => "Solid Color",
+    }
 }

@@ -122,7 +122,7 @@ impl framework::Example for Outlines {
 
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
             re_ctx,
-            re_renderer::Rgba::TRANSPARENT,
+            re_renderer::renderer::GenericSkyboxType::DirectionalGradientDark,
         ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());

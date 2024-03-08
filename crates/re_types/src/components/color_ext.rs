@@ -1,6 +1,7 @@
 use super::Color;
 
 impl Color {
+    pub const WHITE: Self = Self(crate::datatypes::Rgba32::WHITE);
     pub const TRANSPARENT: Self = Self(crate::datatypes::Rgba32::TRANSPARENT);
 
     #[inline]
