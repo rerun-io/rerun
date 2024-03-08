@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Sequence, Union
+from typing import Iterable, Sequence, Union
 
 import rerun_bindings as bindings
 
+from rerun import RecordingStream
+
 from ..datatypes import EntityPathLike, Utf8Like
-from ..recording_stream import RecordingStream
+from ..recording import MemoryRecording
 from .archetypes import ContainerBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components.container_kind import ContainerKind, ContainerKindLike
 
@@ -52,11 +54,11 @@ class SpaceView:
         self.origin = origin
         self.contents = contents
 
-    def entity_path(self):
+    def entity_path(self) -> str:
         """The blueprint `EntityPath` where this space view will be logged."""
         return f"space_view/{self.id}"
 
-    def _log_to_stream(self, stream):
+    def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         # Handle the cases for SpaceViewContentsLike
         if isinstance(self.contents, str):
@@ -70,18 +72,18 @@ class SpaceView:
             contents = self.contents
         else:
             # Anything else we let SpaceViewContents handle
-            contents = SpaceViewContents(query=self.contents)
+            contents = SpaceViewContents(query=self.contents)  # type: ignore[arg-type]
 
-        stream.log(self.entity_path() + "/SpaceViewContents", contents)
+        stream.log(self.entity_path() + "/SpaceViewContents", contents)  # type: ignore[attr-defined]
 
         arch = SpaceViewBlueprint(
             class_identifier=self.class_identifier,
             space_origin=self.origin,
         )
 
-        stream.log(self.entity_path(), arch, recording=stream)
+        stream.log(self.entity_path(), arch, recording=stream)  # type: ignore[attr-defined]
 
-    def _iter_space_views(self):
+    def _iter_space_views(self) -> Iterable[bytes]:
         """Internal method to iterate over all of the space views in the blueprint."""
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
@@ -91,7 +93,7 @@ class SpaceView:
 class Spatial3D(SpaceView):
     """A Spatial 3D space view."""
 
-    def __init__(self, origin="/", contents="/**"):
+    def __init__(self, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**"):
         """
         Construct a blueprint for a new 3D space view.
 
@@ -111,7 +113,7 @@ class Spatial3D(SpaceView):
 class Spatial2D(SpaceView):
     """A Spatial 2D space view."""
 
-    def __init__(self, origin="/", contents="/**"):
+    def __init__(self, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**"):
         """
         Construct a blueprint for a new 2D space view.
 
@@ -141,28 +143,32 @@ class Container:
     This is an ergonomic helper on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
     """
 
-    def __init__(self, kind: ContainerKindLike, contents: Sequence[Container | SpaceView]):
+    def __init__(
+        self,
+        *contents: Container | SpaceView,
+        kind: ContainerKindLike,
+    ):
         """
         Construct a new container.
 
         Parameters
         ----------
+        *contents:
+            All positional arguments are the contents of the container, which may be either other containers or space views.
         kind
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
-        contents:
-            The contents of the container, which may be either other containers or space views.
 
         """
         self.id = uuid.uuid4()
         self.kind = kind
         self.contents = contents
 
-    def entity_path(self):
+    def entity_path(self) -> str:
         """The blueprint `EntityPath` where this space view will be logged."""
         return f"container/{self.id}"
 
-    def _log_to_stream(self, stream):
+    def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         for sub in self.contents:
             sub._log_to_stream(stream)
@@ -175,9 +181,9 @@ class Container:
             visible=True,
         )
 
-        stream.log(self.entity_path(), arch)
+        stream.log(self.entity_path(), arch)  # type: ignore[attr-defined]
 
-    def _iter_space_views(self):
+    def _iter_space_views(self) -> Iterable[bytes]:
         """Internal method to iterate over all of the space views in the blueprint."""
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
@@ -187,65 +193,65 @@ class Container:
 class Horizontal(Container):
     """A horizontal container."""
 
-    def __init__(self, *contents):
+    def __init__(self, *contents: Container | SpaceView):
         """
         Construct a new horizontal container.
 
         Parameters
         ----------
-        contents:
-            The contents of the container, which may be either other containers or space views.
+        *contents:
+            All positional arguments are the contents of the container, which may be either other containers or space views.
 
         """
-        super().__init__(ContainerKind.Horizontal, contents)
+        super().__init__(*contents, kind=ContainerKind.Horizontal)
 
 
 class Vertical(Container):
     """A vertical container."""
 
-    def __init__(self, *contents):
+    def __init__(self, *contents: Container | SpaceView):
         """
         Construct a new vertical container.
 
         Parameters
         ----------
-        contents:
-            The contents of the container, which may be either other containers or space views.
+        *contents:
+            All positional arguments are the contents of the container, which may be either other containers or space views.
 
         """
-        super().__init__(ContainerKind.Vertical, contents)
+        super().__init__(*contents, kind=ContainerKind.Vertical)
 
 
 class Grid(Container):
     """A grid container."""
 
-    def __init__(self, *contents):
+    def __init__(self, *contents: Container | SpaceView):
         """
         Construct a new grid container.
 
         Parameters
         ----------
-        contents:
-            The contents of the container, which may be either other containers or space views.
+        *contents:
+            All positional arguments are the contents of the container, which may be either other containers or space views.
 
         """
-        super().__init__(ContainerKind.Grid, contents)
+        super().__init__(*contents, kind=ContainerKind.Grid)
 
 
 class Tabs(Container):
     """A tab container."""
 
-    def __init__(self, *contents):
+    def __init__(self, *contents: Container | SpaceView):
         """
         Construct a new tab container.
 
         Parameters
         ----------
-        contents:
-            The contents of the container, which may be either other containers or space views.
+        *contents:
+            All positional arguments are the contents of the container, which may be either other containers or space views.
 
         """
-        super().__init__(ContainerKind.Tabs, contents)
+        super().__init__(*contents, kind=ContainerKind.Tabs)
 
 
 class Viewport:
@@ -255,7 +261,7 @@ class Viewport:
     This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
     """
 
-    def __init__(self, root_container):
+    def __init__(self, root_container: Container):
         """
         Construct a new viewport.
 
@@ -268,11 +274,11 @@ class Viewport:
         """
         self.root_container = root_container
 
-    def entity_path(self):
+    def entity_path(self) -> str:
         """The blueprint `EntityPath` where this space view will be logged."""
         return "viewport"
 
-    def _log_to_stream(self, stream):
+    def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         self.root_container._log_to_stream(stream)
 
@@ -283,13 +289,13 @@ class Viewport:
             auto_space_views=False,
         )
 
-        stream.log(self.entity_path(), arch)
+        stream.log(self.entity_path(), arch)  # type: ignore[attr-defined]
 
 
 BlueprintLike = Union[Viewport, Container, SpaceView]
 
 
-def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike):
+def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike) -> MemoryRecording:
     """Internal rerun helper to convert a `BlueprintLike` into a stream that can be sent to the viewer."""
 
     # Add trivial wrappers as necessary
@@ -305,8 +311,8 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     )
 
     # TODO(jleibs): This should use a monotonic seq
-    blueprint_stream.set_time_seconds("blueprint", 1)
+    blueprint_stream.set_time_seconds("blueprint", 1)  # type: ignore[attr-defined]
 
     blueprint._log_to_stream(blueprint_stream)
 
-    return blueprint_stream.memory_recording()
+    return blueprint_stream.memory_recording()  # type: ignore[attr-defined, no-any-return]

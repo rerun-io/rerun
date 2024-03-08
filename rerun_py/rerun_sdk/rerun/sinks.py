@@ -47,6 +47,11 @@ def connect(
 
     application_id = get_application_id(recording=recording)
 
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
     if blueprint is not None:
