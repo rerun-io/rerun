@@ -48,18 +48,18 @@ class ViewportBlueprint(Archetype):
             If `true`, the container layout will be reset whenever a new space view is added or removed.
             This defaults to `false` and is automatically set to `false` when there is user determined layout.
         auto_space_views:
-            Whether or not space views should be created automatically.
+            Whether or not Space Views should be created automatically.
 
-            True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
-            all logged entities appropriately, it will do so unless they were added previously
-            (as identified by `past_viewer_recommendations`).
+            If `true`, the viewer will only add Space Views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+            and which aren't deemed redundant to existing Space Views.
+            This defaults to `false` and is automatically set to `false` when the user adds Space Views manually in the viewer.
         past_viewer_recommendations:
-            Hashes of all recommended space views the viewer has already added and that should not be added again.
+            Hashes of all recommended Space Views the viewer has already added and that should not be added again.
 
             This is an internal field and should not be set usually.
-            If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+            If you want the viewer from stopping to add Space Views, you should set `auto_space_views` to `false`.
 
-            The viewer uses this to determine whether it should keep adding space views.
+            The viewer uses this to determine whether it should keep adding Space Views.
 
         """
 
@@ -137,11 +137,11 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.AutoSpaceViewsBatch._optional,  # type: ignore[misc]
     )
-    # Whether or not space views should be created automatically.
+    # Whether or not Space Views should be created automatically.
     #
-    # True if not specified, meaning that if the Viewer deems it necessary to add new Space Views to cover
-    # all logged entities appropriately, it will do so unless they were added previously
-    # (as identified by `past_viewer_recommendations`).
+    # If `true`, the viewer will only add Space Views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    # and which aren't deemed redundant to existing Space Views.
+    # This defaults to `false` and is automatically set to `false` when the user adds Space Views manually in the viewer.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -150,12 +150,12 @@ class ViewportBlueprint(Archetype):
         default=None,
         converter=blueprint_components.ViewerRecommendationHashBatch._optional,  # type: ignore[misc]
     )
-    # Hashes of all recommended space views the viewer has already added and that should not be added again.
+    # Hashes of all recommended Space Views the viewer has already added and that should not be added again.
     #
     # This is an internal field and should not be set usually.
-    # If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    # If you want the viewer from stopping to add Space Views, you should set `auto_space_views` to `false`.
     #
-    # The viewer uses this to determine whether it should keep adding space views.
+    # The viewer uses this to determine whether it should keep adding Space Views.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

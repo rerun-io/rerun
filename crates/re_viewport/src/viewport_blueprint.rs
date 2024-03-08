@@ -128,15 +128,16 @@ impl ViewportBlueprint {
             .collect();
 
         let root_container = root_container.map(|id| id.0.into());
-        let auto_space_views = auto_space_views.map_or_else(
-            || {
-                // Only enable auto-space-views if this is the app-default blueprint
-                blueprint_db
-                    .store_info()
-                    .map_or(false, |ri| ri.is_app_default_blueprint())
-            },
-            |auto| auto.0,
-        );
+
+        // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
+        // Only enable auto-space-views if this is the app-default blueprint
+        let is_app_default_blueprint = blueprint_db
+            .store_info()
+            .map_or(false, |ri| ri.is_app_default_blueprint());
+        let auto_layout =
+            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| auto.0));
+        let auto_space_views =
+            AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| auto.0));
 
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
@@ -156,8 +157,8 @@ impl ViewportBlueprint {
             root_container,
             tree,
             maximized: maximized.map(|id| id.0.into()),
-            auto_layout: auto_layout.unwrap_or_default().0.into(),
-            auto_space_views: auto_space_views.into(),
+            auto_layout,
+            auto_space_views,
             past_viewer_recommendation_hashes,
             tree_action_sender,
         }
