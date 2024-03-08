@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Iterable, Sequence, Union
+from typing import Iterable, Optional, Sequence, Union
 
 import rerun_bindings as bindings
 
 from ..datatypes import EntityPathLike, Utf8Like
 from ..recording import MemoryRecording
 from ..recording_stream import RecordingStream
-from .archetypes import ContainerBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
+from .archetypes import (
+    ContainerBlueprint,
+    SpaceViewBlueprint,
+    SpaceViewContents,
+    ViewportBlueprint,
+)
+from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKind, ContainerKindLike
 
 SpaceViewContentsLike = Union[str, Sequence[str], Utf8Like, SpaceViewContents]
@@ -146,6 +152,9 @@ class Container:
         self,
         *contents: Container | SpaceView,
         kind: ContainerKindLike,
+        column_shares: Optional[ColumnShareArrayLike] = None,
+        row_shares: Optional[RowShareArrayLike] = None,
+        grid_columns: Optional[int] = None,
     ):
         """
         Construct a new container.
@@ -157,11 +166,20 @@ class Container:
         kind
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
+        column_shares
+            The layout shares of the columns in the container. This is only applicable to `Horizontal` or `Grid` containers.
+        row_shares
+            The layout shares of the rows in the container. This is only applicable to `Vertical` or `Grid` containers.
+        grid_columns
+            The number of columns in the grid. This is only applicable to `Grid` containers.
 
         """
         self.id = uuid.uuid4()
         self.kind = kind
         self.contents = contents
+        self.column_shares = column_shares
+        self.row_shares = row_shares
+        self.grid_columns = grid_columns
 
     def entity_path(self) -> str:
         """The blueprint `EntityPath` where this space view will be logged."""
@@ -175,9 +193,10 @@ class Container:
         arch = ContainerBlueprint(
             container_kind=self.kind,
             contents=[sub.entity_path() for sub in self.contents],
-            col_shares=[1 for _ in self.contents],
-            row_shares=[1 for _ in self.contents],
+            col_shares=self.column_shares,
+            row_shares=self.row_shares,
             visible=True,
+            grid_columns=self.grid_columns,
         )
 
         stream.log(self.entity_path(), arch)  # type: ignore[attr-defined]
@@ -192,7 +211,7 @@ class Container:
 class Horizontal(Container):
     """A horizontal container."""
 
-    def __init__(self, *contents: Container | SpaceView):
+    def __init__(self, *contents: Container | SpaceView, column_shares: Optional[ColumnShareArrayLike] = None):
         """
         Construct a new horizontal container.
 
@@ -200,15 +219,17 @@ class Horizontal(Container):
         ----------
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
+        column_shares
+            The layout shares of the columns in the container.
 
         """
-        super().__init__(*contents, kind=ContainerKind.Horizontal)
+        super().__init__(*contents, kind=ContainerKind.Horizontal, column_shares=column_shares)
 
 
 class Vertical(Container):
     """A vertical container."""
 
-    def __init__(self, *contents: Container | SpaceView):
+    def __init__(self, *contents: Container | SpaceView, row_shares: Optional[RowShareArrayLike] = None):
         """
         Construct a new vertical container.
 
@@ -216,15 +237,23 @@ class Vertical(Container):
         ----------
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
+        row_shares
+            The layout shares of the rows in the container.
 
         """
-        super().__init__(*contents, kind=ContainerKind.Vertical)
+        super().__init__(*contents, kind=ContainerKind.Vertical, row_shares=row_shares)
 
 
 class Grid(Container):
     """A grid container."""
 
-    def __init__(self, *contents: Container | SpaceView):
+    def __init__(
+        self,
+        *contents: Container | SpaceView,
+        column_shares: Optional[ColumnShareArrayLike] = None,
+        row_shares: Optional[RowShareArrayLike] = None,
+        grid_columns: Optional[int] = None,
+    ):
         """
         Construct a new grid container.
 
@@ -232,9 +261,21 @@ class Grid(Container):
         ----------
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
+        column_shares
+            The layout shares of the columns in the container.
+        row_shares
+            The layout shares of the rows in the container.
+        grid_columns
+            The number of columns in the grid.
 
         """
-        super().__init__(*contents, kind=ContainerKind.Grid)
+        super().__init__(
+            *contents,
+            kind=ContainerKind.Grid,
+            column_shares=column_shares,
+            row_shares=row_shares,
+            grid_columns=grid_columns,
+        )
 
 
 class Tabs(Container):

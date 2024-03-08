@@ -17,8 +17,12 @@ if __name__ == "__main__":
                 Spatial2D(origin="/test2"),
                 Spatial3D(origin="/test1"),
                 Spatial2D(origin="/test2"),
+                grid_columns=3,
+                column_shares=[1, 1, 1],
             ),
+            column_shares=[1, 2],
         ),
+        row_shares=[2, 1],
     )
 
     rr.init(
