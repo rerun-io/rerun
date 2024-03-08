@@ -93,14 +93,14 @@ jobs:
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
-      - name: Upload assets
-        uses: actions/upload-artifact@v3
-        with:
-          name: example_data
-          path: example_data
-
       - name: Build snippets
         shell: bash
         run: |
           pixi run build-examples snippets \
             example_data/snippets
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: example_data
+          path: example_data
