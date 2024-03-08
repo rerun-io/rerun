@@ -19,6 +19,7 @@ include "./blueprint/components/space_view_origin.fbs";
 include "./blueprint/components/viewer_recommendation_hash.fbs";
 include "./blueprint/components/visible.fbs";
 
+include "./blueprint/archetypes/background_3d.fbs";
 include "./blueprint/archetypes/container_blueprint.fbs";
 include "./blueprint/archetypes/space_view_blueprint.fbs";
 include "./blueprint/archetypes/space_view_contents.fbs";

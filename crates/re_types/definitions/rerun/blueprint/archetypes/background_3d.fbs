@@ -1,0 +1,25 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+// ---
+
+/// Configuration for the background of the 3D space view.
+table Background3D (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    // --- Optional ---
+
+    /// Solid color blended with the background.
+    ///
+    /// If alpha is one, this color is fully covering, if it is zero the default skybox is fully visible.
+    /// Defaults to fully transparent.
+    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2100);
+}
