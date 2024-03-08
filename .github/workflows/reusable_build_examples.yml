@@ -98,3 +98,9 @@ jobs:
         with:
           name: example_data
           path: example_data
+
+      - name: Build snippets
+        shell: bash
+        run: |
+          pixi run build-examples snippets \
+            example_data/snippets
