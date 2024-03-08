@@ -6,10 +6,9 @@ from typing import Iterable, Sequence, Union
 
 import rerun_bindings as bindings
 
-from rerun import RecordingStream
-
 from ..datatypes import EntityPathLike, Utf8Like
 from ..recording import MemoryRecording
+from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components.container_kind import ContainerKind, ContainerKindLike
 
