@@ -20,13 +20,6 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .entities_determined_by_user import (
-    EntitiesDeterminedByUser,
-    EntitiesDeterminedByUserArrayLike,
-    EntitiesDeterminedByUserBatch,
-    EntitiesDeterminedByUserLike,
-    EntitiesDeterminedByUserType,
-)
 from .entity_properties_component import (
     EntityPropertiesComponent,
     EntityPropertiesComponentArrayLike,
@@ -51,6 +44,11 @@ from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike,
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
+from .viewer_recommendation_hash import (
+    ViewerRecommendationHash,
+    ViewerRecommendationHashBatch,
+    ViewerRecommendationHashType,
+)
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
 
 __all__ = [
@@ -82,11 +80,6 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "EntitiesDeterminedByUser",
-    "EntitiesDeterminedByUserArrayLike",
-    "EntitiesDeterminedByUserBatch",
-    "EntitiesDeterminedByUserLike",
-    "EntitiesDeterminedByUserType",
     "EntityPropertiesComponent",
     "EntityPropertiesComponentArrayLike",
     "EntityPropertiesComponentBatch",
@@ -133,6 +126,9 @@ __all__ = [
     "SpaceViewOrigin",
     "SpaceViewOriginBatch",
     "SpaceViewOriginType",
+    "ViewerRecommendationHash",
+    "ViewerRecommendationHashBatch",
+    "ViewerRecommendationHashType",
     "Visible",
     "VisibleArrayLike",
     "VisibleBatch",

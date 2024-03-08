@@ -8,7 +8,6 @@ use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
-use re_space_view::SpaceViewBlueprint;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
     ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
@@ -331,67 +330,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             space_view.on_frame_start(ctx, space_view_state.as_mut(), auto_properties);
         }
 
-        if self.blueprint.auto_space_views() {
-            self.spawn_heuristic_space_views(ctx);
-        }
-    }
-
-    fn spawn_heuristic_space_views(&mut self, ctx: &ViewerContext<'_>) {
-        re_tracing::profile_function!();
-
-        for entry in ctx.space_view_class_registry.iter_registry() {
-            let class_id = entry.class.identifier();
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx);
-
-            re_tracing::profile_scope!("filter_recommendations_for", class_id);
-
-            // Remove all space views that we already have on screen.
-            let existing_path_filters = self
-                .blueprint
-                .space_views
-                .values()
-                .filter(|space_view| space_view.class_identifier() == &class_id)
-                .map(|space_view| &space_view.contents.entity_path_filter)
-                .collect::<Vec<_>>();
-            let recommended_space_views = spawn_heuristics
-                .recommended_space_views
-                .into_iter()
-                .filter(|recommended_view| {
-                    existing_path_filters.iter().all(|existing_filter| {
-                        !existing_filter.is_superset_of(&recommended_view.query_filter)
-                    })
-                })
-                .collect::<Vec<_>>();
-
-            // Remove all space views that are redundant within the remaining recommendation.
-            // This n^2 loop should only run ever for frames that add new space views.
-            let final_recommendations =
-                recommended_space_views
-                    .iter()
-                    .enumerate()
-                    .filter(|(j, candidate)| {
-                        recommended_space_views
-                            .iter()
-                            .enumerate()
-                            .all(|(i, other)| {
-                                i == *j
-                                    || !other.query_filter.is_superset_of(&candidate.query_filter)
-                            })
-                    });
-
-            self.blueprint.add_space_views(
-                final_recommendations.map(|(_, recommendation)| {
-                    SpaceViewBlueprint::new(
-                        class_id,
-                        &recommendation.root,
-                        recommendation.query_filter.clone(),
-                    )
-                }),
-                ctx,
-                None,
-                None,
-            );
-        }
+        self.blueprint.on_frame_start(ctx);
     }
 
     /// Process any deferred `TreeActions` and then sync to blueprint

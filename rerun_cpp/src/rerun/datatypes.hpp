@@ -27,6 +27,7 @@
 #include "datatypes/translation_and_mat3x3.hpp"
 #include "datatypes/translation_rotation_scale3d.hpp"
 #include "datatypes/uint32.hpp"
+#include "datatypes/uint64.hpp"
 #include "datatypes/utf8.hpp"
 #include "datatypes/uuid.hpp"
 #include "datatypes/uvec2d.hpp"

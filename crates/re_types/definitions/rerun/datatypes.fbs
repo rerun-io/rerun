@@ -23,6 +23,7 @@ include "./datatypes/transform3d.fbs";
 include "./datatypes/translation_and_mat3x3.fbs";
 include "./datatypes/translation_rotation_scale3d.fbs";
 include "./datatypes/uint32.fbs";
+include "./datatypes/uint64.fbs";
 include "./datatypes/utf8.fbs";
 include "./datatypes/uuid.fbs";
 include "./datatypes/uvec2d.fbs";

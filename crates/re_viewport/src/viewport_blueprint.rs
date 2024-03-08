@@ -4,11 +4,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 
+use nohash_hasher::IntSet;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
+use re_log_types::hash::Hash64;
 use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
-use re_viewer_context::{ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_types::blueprint::components::ViewerRecommendationHash;
+use re_viewer_context::{
+    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, SpaceViewSpawnHeuristics,
+    ViewerContext,
+};
 
 use crate::{
     blueprint::components::{
@@ -51,6 +57,9 @@ pub struct ViewportBlueprint {
     /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
     auto_space_views: AtomicBool,
 
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    past_viewer_recommendation_hashes: IntSet<Hash64>,
+
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
@@ -64,12 +73,15 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let arch = match query_archetype::<crate::blueprint::archetypes::ViewportBlueprint>(
-            blueprint_db.store(),
-            query,
-            &VIEWPORT_PATH.into(),
-        )
-        .and_then(|arch| arch.to_archetype())
+        let crate::blueprint::archetypes::ViewportBlueprint {
+            space_views,
+            root_container,
+            maximized,
+            auto_layout,
+            auto_space_views,
+            past_viewer_recommendations: past_viewer_recommendation_hashes,
+        } = match query_archetype(blueprint_db.store(), query, &VIEWPORT_PATH.into())
+            .and_then(|arch| arch.to_archetype())
         {
             Ok(arch) => arch,
             Err(re_query::QueryError::PrimaryNotFound(_)) => {
@@ -87,7 +99,7 @@ impl ViewportBlueprint {
         };
 
         let space_view_ids: Vec<SpaceViewId> =
-            arch.space_views.iter().map(|id| id.0.into()).collect();
+            space_views.into_iter().map(|id| id.0.into()).collect();
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
@@ -115,21 +127,17 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
-        let auto_layout = arch.auto_layout.unwrap_or_default().0;
+        let root_container = root_container.map(|id| id.0.into());
 
-        let root_container = arch.root_container.map(|id| id.0.into());
-
-        let auto_space_views = arch.auto_space_views.map_or_else(
-            || {
-                // Only enable auto-space-views if this is the app-default blueprint
-                blueprint_db
-                    .store_info()
-                    .map_or(false, |ri| ri.is_app_default_blueprint())
-            },
-            |auto| auto.0,
-        );
-
-        let maximized = arch.maximized.map(|id| id.0.into());
+        // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
+        // Only enable auto-space-views if this is the app-default blueprint
+        let is_app_default_blueprint = blueprint_db
+            .store_info()
+            .map_or(false, |ri| ri.is_app_default_blueprint());
+        let auto_layout =
+            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| auto.0));
+        let auto_space_views =
+            AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| auto.0));
 
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
@@ -137,37 +145,23 @@ impl ViewportBlueprint {
             root_container,
         );
 
+        let past_viewer_recommendation_hashes = past_viewer_recommendation_hashes
+            .unwrap_or_default()
+            .into_iter()
+            .map(|h| Hash64::from_u64(h.0 .0))
+            .collect();
+
         ViewportBlueprint {
             space_views,
             containers,
             root_container,
             tree,
-            maximized,
-            auto_layout: auto_layout.into(),
-            auto_space_views: auto_space_views.into(),
+            maximized: maximized.map(|id| id.0.into()),
+            auto_layout,
+            auto_space_views,
+            past_viewer_recommendation_hashes,
             tree_action_sender,
         }
-
-        // TODO(jleibs): Need to figure out if we have to re-enable support for
-        // auto-discovery of SpaceViews logged via the experimental blueprint APIs.
-        /*
-        let unknown_space_views: HashMap<_, _> = space_views
-            .iter()
-            .filter(|(k, _)| !viewport_layout.space_view_keys.contains(k))
-            .map(|(k, v)| (*k, v.clone()))
-            .collect();
-        */
-
-        // TODO(jleibs): It seems we shouldn't call this until later, after we've created
-        // the snapshot. Doing this here means we are mutating the state before it goes
-        // into the snapshot. For example, even if there's no visibility in the
-        // store, this will end up with default-visibility, which then *won't* be saved back.
-        // TODO(jleibs): what to do about auto-discovery?
-        /*
-        for (_, view) in unknown_space_views {
-            viewport.add_space_view(view);
-        }
-        */
     }
 
     /// Determine whether all views in a blueprint are invalid.
@@ -281,6 +275,102 @@ impl ViewportBlueprint {
 
         self.set_auto_layout(false, ctx);
         self.set_auto_space_views(false, ctx);
+    }
+
+    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
+        if self.auto_space_views() {
+            self.spawn_heuristic_space_views(ctx);
+        }
+    }
+
+    fn spawn_heuristic_space_views(&self, ctx: &ViewerContext<'_>) {
+        re_tracing::profile_function!();
+
+        for entry in ctx.space_view_class_registry.iter_registry() {
+            let class_id = entry.class.identifier();
+            let SpaceViewSpawnHeuristics {
+                mut recommended_space_views,
+            } = entry.class.spawn_heuristics(ctx);
+
+            re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Remove all space views that we already spawned via heuristic before.
+            recommended_space_views.retain(|recommended_view| {
+                !self
+                    .past_viewer_recommendation_hashes
+                    .contains(&Hash64::hash(recommended_view))
+            });
+
+            // Each of the remaining recommendations would individually be a candidate for spawning if there were
+            // no other space views in the viewport.
+            // In the following steps we further filter this list depending on what's on screen already,
+            // as well as redundancy within the recommendation itself BUT this is an important checkpoint:
+            // All the other views may change due to user interaction, but this does *not* mean
+            // that we should suddenly spawn the views we're filtering out here.
+            // Therefore everything so far needs to be added to `past_viewer_recommendations`,
+            // which marks this as "already processed recommendation".
+            //
+            // Example:
+            // Recommendation contains `/**` and `/camera/**`.
+            // We filter out `/camera/**` because that would be redundant to `/**`.
+            // If now the user edits the space view at `/**` to be `/points/**`, that does *not*
+            // mean we should suddenly add `/camera/**` to the viewport.
+            if !recommended_space_views.is_empty() {
+                let new_viewer_recommendation_hashes = self
+                    .past_viewer_recommendation_hashes
+                    .iter()
+                    .cloned()
+                    .chain(recommended_space_views.iter().map(Hash64::hash))
+                    .map(|hash| ViewerRecommendationHash(hash.hash64().into()))
+                    .collect::<Vec<_>>();
+
+                ctx.save_blueprint_component(
+                    &VIEWPORT_PATH.into(),
+                    &new_viewer_recommendation_hashes,
+                );
+            }
+
+            // Remove all space views that have all the entities we already have on screen.
+            let existing_path_filters = self
+                .space_views
+                .values()
+                .filter(|space_view| space_view.class_identifier() == &class_id)
+                .map(|space_view| &space_view.contents.entity_path_filter)
+                .collect::<Vec<_>>();
+            recommended_space_views.retain(|recommended_view| {
+                existing_path_filters.iter().all(|existing_filter| {
+                    !existing_filter.is_superset_of(&recommended_view.query_filter)
+                })
+            });
+
+            // Remove all space views that are redundant within the remaining recommendation.
+            // This n^2 loop should only run ever for frames that add new space views.
+            let final_recommendations = recommended_space_views
+                .iter()
+                .enumerate()
+                .filter(|(j, candidate)| {
+                    recommended_space_views
+                        .iter()
+                        .enumerate()
+                        .all(|(i, other)| {
+                            i == *j || !other.query_filter.is_superset_of(&candidate.query_filter)
+                        })
+                })
+                .map(|(_, recommendation)| recommendation);
+
+            self.add_space_views(
+                final_recommendations.map(|recommendation| {
+                    SpaceViewBlueprint::new(
+                        class_id,
+                        &recommendation.root,
+                        recommendation.query_filter.clone(),
+                    )
+                }),
+                ctx,
+                None,
+                None,
+            );
+        }
     }
 
     /// Add a set of space views to the viewport.

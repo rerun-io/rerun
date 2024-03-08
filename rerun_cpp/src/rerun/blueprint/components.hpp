@@ -8,7 +8,6 @@
 #include "blueprint/components/column_share.hpp"
 #include "blueprint/components/container_kind.hpp"
 #include "blueprint/components/corner2d.hpp"
-#include "blueprint/components/entities_determined_by_user.hpp"
 #include "blueprint/components/entity_properties_component.hpp"
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_content.hpp"
@@ -21,4 +20,5 @@
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"
 #include "blueprint/components/space_view_origin.hpp"
+#include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"
