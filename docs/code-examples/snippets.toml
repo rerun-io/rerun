@@ -8,8 +8,16 @@
 any_values = ["cpp", "rust"] # Not yet implemented
 extra_values = ["cpp", "rust"] # Missing examples
 image_advanced = ["cpp", "rust"] # Missing examples
-log_line = ["cpp", "rust", "py"] # Not a complete example -- just a single log line
-timelines_example = ["py", "cpp", "rust"] # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
+log_line = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+timelines_example = [ # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
+  "py",
+  "cpp",
+  "rust",
+]
 
 # This is this script, it's not an example.
 roundtrips = ["cpp", "py", "rust"]
@@ -20,19 +28,61 @@ roundtrips = ["cpp", "py", "rust"]
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-arrow3d_simple = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-asset3d_out_of_tree = ["cpp", "py", "rust"] # float issues since calculation is done slightly differently (also, Python uses doubles)
+arrow3d_simple = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+asset3d_out_of_tree = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
+  "cpp",
+  "py",
+  "rust",
+]
 mesh3d_partial_updates = ["cpp", "py", "rust"] # float precision issues
-pinhole_simple = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-point2d_random = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-point3d_random = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-quick_start_connect =  ["cpp", "py", "rust"] # These example don't have exactly the same implementation.
-quick_start_spawn =  ["cpp", "py", "rust"] # These example don't have exactly the same implementation.
-scalar_multiple_plots = ["cpp"] # trigonometric functions have slightly different outcomes
+pinhole_simple = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+point2d_random = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+point3d_random = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
+]
+quick_start_connect = [ # These example don't have exactly the same implementation.
+  "cpp",
+  "py",
+  "rust",
+]
+quick_start_spawn = [ # These example don't have exactly the same implementation.
+  "cpp",
+  "py",
+  "rust",
+]
+scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
+  "cpp",
+]
 tensor_simple = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-text_log_integration = ["cpp", "py", "rust"] # The entity path will differ because the Rust code is part of a library
-series_point_style = ["cpp", "py", "rust"] # TODO(#5116): trigonometric functions have slightly different outcomes
-series_line_style = ["cpp", "py", "rust"] # TODO(#5116):trigonometric functions have slightly different outcomes
+text_log_integration = [ # The entity path will differ because the Rust code is part of a library
+  "cpp",
+  "py",
+  "rust",
+]
+series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
+  "cpp",
+  "py",
+  "rust",
+]
+series_line_style = [ # TODO(#5116):trigonometric functions have slightly different outcomes
+  "cpp",
+  "py",
+  "rust",
+]
 
 # `$config_dir` will be replaced with the absolute path of `docs/code-examples`.
 [extra_args]
