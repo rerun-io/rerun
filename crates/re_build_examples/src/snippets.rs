@@ -37,15 +37,24 @@ impl Snippets {
         let mut snippets = vec![];
         for snippet in read_dir(snippets_dir.join("all"))? {
             let snippet = snippet?;
+            let meta = snippet.metadata()?;
             let path = snippet.path();
-            let name = path.file_stem().and_then(OsStr::to_str).unwrap();
+            let name = path.file_stem().and_then(OsStr::to_str).unwrap().to_owned();
 
-            if !snippet.path().extension().is_some_and(|p| p == "py") {
+            if meta.is_dir() {
+                println!(
+                    "Skipping {}: directories are implicitly opt-out",
+                    path.display()
+                );
+                continue;
+            }
+
+            if !path.extension().is_some_and(|p| p == "py") {
                 println!("Skipping {}: not a python example", path.display());
                 continue;
             }
 
-            if config.opt_out.run.contains_key(name) {
+            if config.opt_out.run.contains_key(&name) {
                 println!(
                     "Skipping {}: explicit opt-out in `snippets.toml`",
                     path.display()
@@ -54,9 +63,17 @@ impl Snippets {
             }
 
             println!("Adding {}", path.display());
+            let extra_args: Vec<String> = config
+                .extra_args
+                .get(&name)
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|value| value.replace("$config_dir", snippets_dir.as_str()))
+                .collect();
             snippets.push(Snippet {
-                extra_args: config.extra_args.get(name).cloned().unwrap_or_default(),
-                name: name.to_owned(),
+                extra_args,
+                name,
                 path,
             });
         }
