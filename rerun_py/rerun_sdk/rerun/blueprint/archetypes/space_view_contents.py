@@ -21,12 +21,7 @@ __all__ = ["SpaceViewContents"]
 class SpaceViewContents(Archetype):
     """**Archetype**: The contents of a `SpaceView`."""
 
-    def __init__(
-        self: Any,
-        query: datatypes.Utf8Like,
-        *,
-        entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserLike | None = None,
-    ):
+    def __init__(self: Any, query: datatypes.Utf8Like):
         """
         Create a new instance of the SpaceViewContents archetype.
 
@@ -36,16 +31,12 @@ class SpaceViewContents(Archetype):
             The `QueryExpression` that populates the contents for the `SpaceView`.
 
             They determine which entities are part of the spaceview.
-        entities_determined_by_user:
-            True if the user is has added entities themselves. False otherwise.
-
-            This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
 
         """
 
         # You can define your own __init__ function as a member of SpaceViewContentsExt in space_view_contents_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(query=query, entities_determined_by_user=entities_determined_by_user)
+            self.__attrs_init__(query=query)
             return
         self.__attrs_clear__()
 
@@ -53,7 +44,6 @@ class SpaceViewContents(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             query=None,  # type: ignore[arg-type]
-            entities_determined_by_user=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -70,17 +60,6 @@ class SpaceViewContents(Archetype):
     # The `QueryExpression` that populates the contents for the `SpaceView`.
     #
     # They determine which entities are part of the spaceview.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    entities_determined_by_user: blueprint_components.EntitiesDeterminedByUserBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.EntitiesDeterminedByUserBatch._optional,  # type: ignore[misc]
-    )
-    # True if the user is has added entities themselves. False otherwise.
-    #
-    # This is used by the viewer to determine whether it should regard this space view as created by the heuristic or not.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

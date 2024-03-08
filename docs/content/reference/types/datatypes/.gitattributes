@@ -26,6 +26,7 @@ transform3d.md linguist-generated=true
 translation_and_mat3x3.md linguist-generated=true
 translation_rotation_scale3d.md linguist-generated=true
 uint32.md linguist-generated=true
+uint64.md linguist-generated=true
 utf8.md linguist-generated=true
 uuid.md linguist-generated=true
 uvec2d.md linguist-generated=true

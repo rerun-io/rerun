@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use nohash_hasher::IntSet;
-use re_entity_db::EntityProperties;
+use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_types::{components::ViewCoordinates, Loggable};
 use re_viewer_context::{
@@ -69,6 +69,46 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::High
+    }
+
+    fn recommended_root_for_entities(
+        &self,
+        entities: &IntSet<EntityPath>,
+        entity_db: &EntityDb,
+    ) -> Option<EntityPath> {
+        let common_ancestor = EntityPath::common_ancestor_of(entities.iter());
+
+        // For 3D space view, the origin of the subspace defined by the common ancestor is usually
+        // the best choice. However, if the subspace is defined by a pinhole, we should use its
+        // parent.
+        //
+        // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
+        // subspace origin, we use it as origin.
+        SpatialTopology::access(entity_db.store_id(), |topo| {
+            let subspace = topo.subspace_for_entity(&common_ancestor);
+
+            let subspace_origin = if subspace.supports_3d_content() {
+                Some(subspace)
+            } else {
+                topo.subspace_for_subspace_origin(subspace.parent_space)
+            }
+            .map(|subspace| subspace.origin.clone());
+
+            // Find the first ViewCoordinates3d logged, walking up from the common ancestor to the
+            // subspace origin.
+            EntityPath::incremental_walk(subspace_origin.as_ref(), &common_ancestor)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .find(|path| {
+                    subspace
+                        .heuristic_hints
+                        .get(path)
+                        .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                })
+                .or(subspace_origin)
+        })
+        .flatten()
     }
 
     fn visualizable_filter_context(

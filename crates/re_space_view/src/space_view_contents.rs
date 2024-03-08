@@ -8,13 +8,10 @@ use re_entity_db::{
 };
 use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, StoreKind};
 use re_types::{
-    blueprint::{
-        archetypes as blueprint_archetypes,
-        components::{EntitiesDeterminedByUser, QueryExpression},
-    },
+    blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
 };
-use re_types_core::{archetypes::Clear, components::VisualizerOverrides, ComponentName};
+use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
@@ -42,9 +39,6 @@ pub struct SpaceViewContents {
 
     pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub entity_path_filter: EntityPathFilter,
-
-    /// True if the user is expected to add entities themselves. False otherwise.
-    pub entities_determined_by_user: bool,
 }
 
 impl SpaceViewContents {
@@ -94,7 +88,6 @@ impl SpaceViewContents {
             blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
-            entities_determined_by_user: false,
         }
     }
 
@@ -109,10 +102,7 @@ impl SpaceViewContents {
             blueprint_archetypes::SpaceViewContents,
         >(id, blueprint_db, query);
 
-        let blueprint_archetypes::SpaceViewContents {
-            query,
-            entities_determined_by_user,
-        } = contents.unwrap_or_else(|err| {
+        let blueprint_archetypes::SpaceViewContents { query } = contents.unwrap_or_else(|err| {
             re_log::warn_once!(
                 "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
                 id,
@@ -128,7 +118,6 @@ impl SpaceViewContents {
             blueprint_entity_path,
             space_view_class_identifier,
             entity_path_filter,
-            entities_determined_by_user: entities_determined_by_user.map_or(false, |b| b.0),
         }
     }
 
@@ -141,8 +130,7 @@ impl SpaceViewContents {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             self.blueprint_entity_path.clone(),
-            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted())
-                .with_entities_determined_by_user(self.entities_determined_by_user),
+            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted()),
         );
     }
 
@@ -159,18 +147,6 @@ impl SpaceViewContents {
             &self.blueprint_entity_path,
             &QueryExpression(new_entity_path_filter.formatted().into()),
         );
-
-        if !self.entities_determined_by_user {
-            ctx.save_blueprint_component(
-                &self.blueprint_entity_path,
-                &EntitiesDeterminedByUser(true),
-            );
-        }
-    }
-
-    pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        let clear = Clear::recursive();
-        ctx.save_blueprint_component(&self.blueprint_entity_path, &clear.is_recursive);
     }
 
     pub fn build_resolver<'a>(
@@ -288,16 +264,21 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
+        let tree_prefix_only = !self.entity_path_filter.is_included(entity_path);
+
         // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
         // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
         // is called before the property-overrider has a chance to update this list.
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
         // on the space view.
-        let visualizers: SmallVec<[_; 4]> = self
-            .visualizable_entities_for_visualizer_systems
-            .iter()
-            .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
-            .collect();
+        let visualizers: SmallVec<[_; 4]> = if tree_prefix_only {
+            Default::default()
+        } else {
+            self.visualizable_entities_for_visualizer_systems
+                .iter()
+                .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
+                .collect()
+        };
 
         let children: SmallVec<[_; 4]> = tree
             .children
@@ -316,7 +297,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     visualizers,
-                    direct_included: self.entity_path_filter.is_included(entity_path),
+                    tree_prefix_only,
                     property_overrides: None,
                 },
                 children,

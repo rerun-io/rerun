@@ -340,7 +340,11 @@ impl EntityDb {
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
         // cascades, thus this whole process must stabilize after one iteration.
-        debug_assert!(clear_cascade.is_empty());
+        if !clear_cascade.is_empty() {
+            re_log::debug!(
+                "recursive clear cascade detected -- might just have been logged this way"
+            );
+        }
 
         // We inform the stats last, since it measures e2e latency.
         self.stats.on_events(original_store_events);

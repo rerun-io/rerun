@@ -288,10 +288,18 @@ impl AppState {
         };
 
         if app_options.inspect_blueprint_timeline {
-            blueprint_panel.show_panel(&ctx, ctx.store_context.blueprint, blueprint_cfg, ui, true);
+            blueprint_panel.show_panel(
+                &ctx,
+                &viewport_blueprint,
+                ctx.store_context.blueprint,
+                blueprint_cfg,
+                ui,
+                true,
+            );
         }
         time_panel.show_panel(
             &ctx,
+            &viewport_blueprint,
             ctx.entity_db,
             ctx.rec_cfg,
             ui,

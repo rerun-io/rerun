@@ -3,10 +3,12 @@
 mod entity_path;
 mod float32;
 mod uint32;
+mod uint64;
 mod utf8;
 mod utf8_ext;
 
 pub use self::entity_path::EntityPath;
 pub use self::float32::Float32;
 pub use self::uint32::UInt32;
+pub use self::uint64::UInt64;
 pub use self::utf8::Utf8;

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -13,12 +13,13 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
+from .uint32_ext import UInt32Ext
 
 __all__ = ["UInt32", "UInt32ArrayLike", "UInt32Batch", "UInt32Like", "UInt32Type"]
 
 
 @define(init=False)
-class UInt32:
+class UInt32(UInt32Ext):
     """**Datatype**: A 32bit unsigned integer."""
 
     def __init__(self: Any, value: UInt32Like):
@@ -37,11 +38,12 @@ class UInt32:
         return int(self.value)
 
 
-UInt32Like = UInt32
-UInt32ArrayLike = Union[
-    UInt32,
-    Sequence[UInt32Like],
-]
+if TYPE_CHECKING:
+    UInt32Like = Union[UInt32, int]
+else:
+    UInt32Like = Any
+
+UInt32ArrayLike = Union[UInt32, Sequence[UInt32Like], int, npt.NDArray[np.uint32]]
 
 
 class UInt32Type(BaseExtensionType):
@@ -56,4 +58,4 @@ class UInt32Batch(BaseBatch[UInt32ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UInt32ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in uint32_ext.py
+        return UInt32Ext.native_to_pa_array_override(data, data_type)

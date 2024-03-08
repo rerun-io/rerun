@@ -297,7 +297,6 @@ impl SpaceViewBlueprint {
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         let clear = Clear::recursive();
         ctx.save_blueprint_component(&self.entity_path(), &clear.is_recursive);
-        self.contents.clear(ctx);
     }
 
     #[inline]
@@ -434,7 +433,7 @@ impl SpaceViewBlueprint {
         DataResult {
             entity_path: entity_path.clone(),
             visualizers: Default::default(),
-            direct_included: true,
+            tree_prefix_only: false,
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
