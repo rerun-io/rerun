@@ -5,7 +5,6 @@ use re_entity_db::{EntityDb, EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_types::{
     archetypes::{DepthImage, Image},
-    components::ViewCoordinates,
     Archetype, ComponentName,
 };
 use re_viewer_context::{
@@ -223,7 +222,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
-        space_origin: &EntityPath,
+        _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) {

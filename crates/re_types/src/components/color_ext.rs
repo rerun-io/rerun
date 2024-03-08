@@ -1,6 +1,8 @@
 use super::Color;
 
 impl Color {
+    pub const TRANSPARENT: Self = Self(crate::datatypes::Rgba32::TRANSPARENT);
+
     #[inline]
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::from([r, g, b, 255])

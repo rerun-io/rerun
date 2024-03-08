@@ -2,6 +2,7 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, EntityPathFilter};
+use re_space_view::query_space_view_sub_archetype_or_default;
 use re_types::{components::ViewCoordinates, Loggable};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
@@ -261,7 +262,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) {
         let scene_view_coordinates = ctx
@@ -326,6 +327,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 });
                 ui.end_row();
 
+                background_ui(ctx, space_view_id, ui);
+                ui.end_row();
+
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
                 ui.end_row();
             });
@@ -351,4 +355,51 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         crate::ui_3d::view_3d(ctx, ui, state, query, system_output)
     }
+}
+
+fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let (re_types::blueprint::archetypes::Background3D { color }, blueprint_path) =
+        query_space_view_sub_archetype_or_default(space_view_id, blueprint_db, blueprint_query);
+
+    // TODO(andreas): use editors
+    // let entity_path = entity_path_for_space_view_sub_archetype<re_types::blueprint::archetypes::Background3D>(space_view_id, blueprint_db.tree());
+    // let component  = re_query::get_component_with_instances(blueprint_db.store(), blueprint_query, entity_path, re_types::Component::Color::component_name());
+    // ctx.component_ui_registry.edit_ui(
+    //     ctx,
+    //     ui,
+    //     re_viewer_context::UiVerbosity::Full,
+    //     blueprint_query,
+    //     blueprint_db.store(),
+    //     entity_path,
+    //     entity_path,
+    //     component,
+    //     instance_key,
+    // );
+
+    ctx.re_ui
+        .selection_grid(ui, "background_3d")
+        .show(ui, |ui| {
+            ctx.re_ui.grid_left_hand_label(ui, "Color");
+
+            let current_color = color
+                .unwrap_or(re_types::components::Color::TRANSPARENT)
+                .into();
+            let mut edit_color = current_color;
+            egui::color_picker::color_edit_button_srgba(
+                ui,
+                &mut edit_color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            if edit_color != current_color {
+                // TODO: what's up with color conversion here and in editors
+                let [r, g, b, a] = edit_color.to_array();
+                let new_color = re_types::components::Color::from_unmultiplied_rgba(r, g, b, a);
+
+                ctx.save_blueprint_component(&blueprint_path, &new_color);
+            }
+
+            ui.end_row();
+        });
 }

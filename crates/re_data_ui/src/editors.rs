@@ -31,8 +31,7 @@ fn edit_color_ui(
         .ok()
         .unwrap_or_else(|| default_color(ctx, query, store, entity_path));
 
-    let [r, g, b, a] = current_color.to_array();
-    let current_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+    let current_color = current_color.into();
     let mut edit_color = current_color;
 
     egui::color_picker::color_edit_button_srgba(

@@ -2,6 +2,7 @@ use super::Rgba32;
 
 impl Rgba32 {
     pub const WHITE: Self = Self::from_rgb(255, 255, 255);
+    pub const TRANSPARENT: Self = Self::from_unmultiplied_rgba(0, 0, 0, 0);
 
     #[inline]
     pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
