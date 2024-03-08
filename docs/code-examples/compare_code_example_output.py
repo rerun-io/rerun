@@ -18,10 +18,14 @@ import toml
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
 from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
-opt_out_path = Path(__file__).parent / "opt_out.toml"
-OPT_OUT = toml.loads(opt_out_path.read_text())
-OPT_OUT_RUN = OPT_OUT.get("run", {})
-OPT_OUT_COMPARE = OPT_OUT.get("compare", {})
+config_path = Path(__file__).parent / "snippets.toml"
+config = toml.loads(config_path.read_text())
+OPT_OUT_RUN = config.opt_out.run
+OPT_OUT_COMPARE = config.opt_out.compare
+EXTRA_ARGS = {
+    name: [arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in args]
+    for name, args in config.extra_args.items()
+}
 
 EXTRA_ARGS = {
     "asset3d_simple": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
