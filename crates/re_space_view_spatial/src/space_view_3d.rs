@@ -390,11 +390,10 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
         egui::color_picker::Alpha::OnlyBlend,
     );
     if edit_color != current_color {
-        // TODO: what's up with color conversion here and in editors
-        let [r, g, b, a] = edit_color.to_array();
-        let new_color = re_types::components::Color::from_unmultiplied_rgba(r, g, b, a);
-
-        ctx.save_blueprint_component(&blueprint_path, &new_color);
+        ctx.save_blueprint_component(
+            &blueprint_path,
+            &re_types::components::Color::from(edit_color),
+        );
     }
 
     ui.end_row();

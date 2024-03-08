@@ -41,10 +41,7 @@ fn edit_color_ui(
     );
 
     if edit_color != current_color {
-        let [r, g, b, a] = edit_color.to_array();
-        let new_color = Color::from_unmultiplied_rgba(r, g, b, a);
-
-        ctx.save_blueprint_component(override_path, &new_color);
+        ctx.save_blueprint_component(override_path, &Color::from(edit_color));
     }
 }
 
