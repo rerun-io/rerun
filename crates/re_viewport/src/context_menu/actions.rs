@@ -452,8 +452,8 @@ fn recommended_space_views_for_selection(
     let entities_of_interest = ctx
         .selection
         .iter()
-        .filter_map(|(item, _)| item.entity_path())
-        .collect::<Vec<_>>();
+        .filter_map(|(item, _)| item.entity_path().cloned())
+        .collect::<IntSet<_>>();
 
     let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
 
@@ -463,12 +463,19 @@ fn recommended_space_views_for_selection(
         space_view_class_registry.applicable_entities_for_visualizer_systems(entity_db.store_id());
 
     for entry in space_view_class_registry.iter_registry() {
+        let Some(suggested_root) = entry
+            .class
+            .recommended_root_for_entities(&entities_of_interest, entity_db)
+        else {
+            continue;
+        };
+
         let visualizable_entities = determine_visualizable_entities(
             &applicable_entities_per_visualizer,
             entity_db,
             &space_view_class_registry.new_visualizer_collection(entry.class.identifier()),
             &*entry.class,
-            &EntityPath::root(),
+            &suggested_root,
         );
 
         // We consider a space view class to be recommended if all selected entities are
@@ -498,18 +505,24 @@ fn create_space_view_for_selected_entities(
     ctx: &ContextMenuContext<'_>,
     identifier: SpaceViewClassIdentifier,
 ) {
-    let origin = EntityPath::root();
+    let entities_of_interest = ctx
+        .selection
+        .iter()
+        .filter_map(|(item, _)| item.entity_path().cloned())
+        .collect::<IntSet<_>>();
+
+    let origin = ctx
+        .viewer_context
+        .space_view_class_registry
+        .get_class_or_log_error(&identifier)
+        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.entity_db)
+        .unwrap_or_else(EntityPath::root);
 
     let mut filter = EntityPathFilter::default();
-    ctx.selection
-        .iter()
-        .filter_map(|(item, _)| item.entity_path())
-        .for_each(|path| {
-            filter.add_rule(
-                RuleEffect::Include,
-                EntityPathRule::including_subtree(path.clone()),
-            );
-        });
+
+    for path in entities_of_interest {
+        filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
+    }
 
     let target_container_id = ctx
         .clicked_item_enclosing_container_id_and_position()
