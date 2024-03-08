@@ -61,9 +61,11 @@ pub struct DataResult {
     /// Which `ViewSystems`s to pass the `DataResult` to.
     pub visualizers: SmallVisualizerSet,
 
-    // This result was actually in the query results, not just a path that
-    // exists due to a common prefix.
-    pub direct_included: bool,
+    /// If true, this path is not actually included in the query results and is just here
+    /// because of a common prefix.
+    ///
+    /// If this is true, `visualizers` must be empty.
+    pub tree_prefix_only: bool,
 
     /// The accumulated property overrides for this `DataResult`.
     pub property_overrides: Option<PropertyOverrides>,

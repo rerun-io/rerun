@@ -148,7 +148,7 @@ impl Default for EntityProperties {
             visible_history: re_query::ExtraQueryHistory::default(),
             interactive: true,
             color_mapper: EditableAutoValue::default(),
-            pinhole_image_plane_distance: EditableAutoValue::default(),
+            pinhole_image_plane_distance: EditableAutoValue::Auto(1.0),
             backproject_depth: EditableAutoValue::Auto(true),
             depth_from_world_scale: EditableAutoValue::Auto(1.0),
             backproject_radius_scale: EditableAutoValue::Auto(1.0),

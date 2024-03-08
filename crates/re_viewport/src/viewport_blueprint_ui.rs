@@ -307,16 +307,17 @@ impl Viewport<'_, '_> {
                     // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                     let mut projections = Vec::new();
                     result_tree.visit(&mut |node| {
-                        if !node
+                        if node
                             .data_result
                             .entity_path
                             .starts_with(&space_view.space_origin)
-                            && node.data_result.direct_included
                         {
-                            projections.push(node);
-                            false
+                            false // If its under the origin, we're not interested, stop recursing.
+                        } else if node.data_result.tree_prefix_only {
+                            true // Keep recursing until we find a projection.
                         } else {
-                            true
+                            projections.push(node);
+                            false // We found a projection, stop recursing as everything below is now included in the projections.
                         }
                     });
                     if !projections.is_empty() {
@@ -430,9 +431,7 @@ impl Viewport<'_, '_> {
 
         let subdued = !space_view_visible
             || !visible
-            || data_result_node.map_or(true, |n| {
-                n.data_result.visualizers.is_empty() && n.children.is_empty()
-            });
+            || data_result_node.map_or(true, |n| n.data_result.visualizers.is_empty());
 
         let list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)

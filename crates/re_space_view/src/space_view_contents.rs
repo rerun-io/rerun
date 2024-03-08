@@ -283,16 +283,21 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
+        let tree_prefix_only = !self.entity_path_filter.is_included(entity_path);
+
         // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
         // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
         // is called before the property-overrider has a chance to update this list.
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
         // on the space view.
-        let visualizers: SmallVec<[_; 4]> = self
-            .visualizable_entities_for_visualizer_systems
-            .iter()
-            .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
-            .collect();
+        let visualizers: SmallVec<[_; 4]> = if tree_prefix_only {
+            Default::default()
+        } else {
+            self.visualizable_entities_for_visualizer_systems
+                .iter()
+                .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
+                .collect()
+        };
 
         let children: SmallVec<[_; 4]> = tree
             .children
@@ -311,7 +316,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     visualizers,
-                    direct_included: self.entity_path_filter.is_included(entity_path),
+                    tree_prefix_only,
                     property_overrides: None,
                 },
                 children,
