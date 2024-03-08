@@ -23,6 +23,7 @@ use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
     CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
 };
+use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
 
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
@@ -133,6 +134,7 @@ impl TimePanel {
     pub fn show_panel(
         &mut self,
         ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
         rec_cfg: &RecordingConfig,
         ui: &mut egui::Ui,
@@ -223,7 +225,13 @@ impl TimePanel {
                         let mut streams_frame = egui::Frame::default();
                         streams_frame.inner_margin.left = margin.x;
                         streams_frame.show(ui, |ui| {
-                            self.expanded_ui(ctx, entity_db, ui, &mut time_ctrl_after);
+                            self.expanded_ui(
+                                ctx,
+                                viewport_blueprint,
+                                entity_db,
+                                ui,
+                                &mut time_ctrl_after,
+                            );
                         });
                     });
                 }
@@ -287,6 +295,7 @@ impl TimePanel {
     fn expanded_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
@@ -422,6 +431,7 @@ impl TimePanel {
         // All the entity rows and their data density graphs:
         self.tree_ui(
             ctx,
+            viewport_blueprint,
             entity_db,
             time_ctrl,
             &time_area_response,
@@ -473,6 +483,7 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
         entity_db: &re_entity_db::EntityDb,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
@@ -501,6 +512,7 @@ impl TimePanel {
                 if show_root {
                     self.show_tree(
                         ctx,
+                        viewport_blueprint,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -513,6 +525,7 @@ impl TimePanel {
                 } else {
                     self.show_children(
                         ctx,
+                        viewport_blueprint,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -528,6 +541,7 @@ impl TimePanel {
     fn show_tree(
         &mut self,
         ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -588,6 +602,7 @@ impl TimePanel {
                 |_, ui| {
                     self.show_children(
                         ctx,
+                        viewport_blueprint,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -610,6 +625,13 @@ impl TimePanel {
             );
         });
 
+        context_menu_ui_for_item(
+            ctx,
+            viewport_blueprint,
+            &item.to_item(),
+            &response,
+            SelectionUpdateBehavior::UseSelection,
+        );
         ctx.select_hovered_on_click(&response, item.to_item());
 
         let is_closed = body_response.is_none();
@@ -664,6 +686,7 @@ impl TimePanel {
     fn show_children(
         &mut self,
         ctx: &ViewerContext<'_>,
+        viewport_blueprint: &ViewportBlueprint,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -674,6 +697,7 @@ impl TimePanel {
         for (last_component, child) in &tree.children {
             self.show_tree(
                 ctx,
+                viewport_blueprint,
                 time_ctrl,
                 time_area_response,
                 time_area_painter,
@@ -715,6 +739,13 @@ impl TimePanel {
 
                 ui.set_clip_rect(clip_rect_save);
 
+                context_menu_ui_for_item(
+                    ctx,
+                    viewport_blueprint,
+                    &item.to_item(),
+                    &response,
+                    SelectionUpdateBehavior::UseSelection,
+                );
                 ctx.select_hovered_on_click(&response, item.to_item());
 
                 let response_rect = response.rect;
