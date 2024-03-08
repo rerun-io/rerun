@@ -21,6 +21,8 @@ use crate::{
     visualizers::register_3d_spatial_visualizers,
 };
 
+pub const DEFAULT_BACKGROUND_COLOR: re_renderer::Rgba = re_renderer::Rgba::TRANSPARENT;
+
 #[derive(Default)]
 pub struct VisualizableFilterContext3D {
     // TODO(andreas): Would be nice to use `EntityPathHash` in order to avoid bumping reference counters.
@@ -383,14 +385,12 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
         .show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Color");
 
-            let current_color = color
-                .unwrap_or(re_types::components::Color::TRANSPARENT)
-                .into();
+            let current_color = color.map_or(DEFAULT_BACKGROUND_COLOR.into(), |c| c.into());
             let mut edit_color = current_color;
             egui::color_picker::color_edit_button_srgba(
                 ui,
                 &mut edit_color,
-                egui::color_picker::Alpha::Opaque,
+                egui::color_picker::Alpha::OnlyBlend,
             );
             if edit_color != current_color {
                 // TODO: what's up with color conversion here and in editors
