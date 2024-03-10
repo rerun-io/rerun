@@ -26,7 +26,10 @@ MAP_DATA_DIR = DATA_DIR / "map_data"
 if not DATA_DIR.exists():
     DATA_DIR.mkdir()
 
-INVOLI_DATASETS: dict[str, str] = {}  # TODO(ab): add some datasets
+INVOLI_DATASETS = {
+    "10min": "https://storage.googleapis.com/rerun-example-datasets/involi/involi_demo_set_1_10min.zip",
+    "2h": "https://storage.googleapis.com/rerun-example-datasets/involi/involi_demo_set_2_2h.zip",
+}
 
 
 def download_with_progress(url: str, what: str) -> io.BytesIO:
