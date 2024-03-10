@@ -3,31 +3,30 @@ from __future__ import annotations
 import dataclasses
 import io
 import itertools
+import json
 import re
 import zipfile
 from argparse import ArgumentParser
-from typing import Any
-import json
 from pathlib import Path
+from typing import Any
 
+import geopandas as gpd
+import numpy as np
+import numpy.typing as npt
 import requests
+import rerun as rr
 import shapely
 from pyproj import CRS, Transformer
 from pyproj.aoi import AreaOfInterest
 from pyproj.database import query_utm_crs_info
 from tqdm import tqdm
-import geopandas as gpd
-import numpy.typing as npt
-import numpy as np
-
-import rerun as rr
 
 DATA_DIR = Path(__file__).parent / "data"
 MAP_DATA_DIR = DATA_DIR / "map_data"
 if not DATA_DIR.exists():
     DATA_DIR.mkdir()
 
-INVOLI_DATASETS = {}  # TODO(ab): add some datasets
+INVOLI_DATASETS: dict[str, str] = {}  # TODO(ab): add some datasets
 
 
 def download_with_progress(url: str, what: str) -> io.BytesIO:
@@ -45,8 +44,9 @@ def download_with_progress(url: str, what: str) -> io.BytesIO:
     return download_file
 
 
-def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray]:
+def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray[np.float64]]:
     """Convert shapely objects to numpy array suitable for logging as line batches."""
+
     if geom.geom_type == "Polygon":
         return [np.array(geom.exterior.coords)] + [np.array(interior.coords) for interior in geom.interiors]
     elif geom.geom_type == "MultiPolygon":
@@ -54,6 +54,9 @@ def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray]:
         for poly in geom.geoms:
             res.extend(shapely_geom_to_numpy(poly))
         return res
+    else:
+        print(f"Warning: unknown Shapely object {geom}")
+        return []
 
 
 def log_region_boundaries_for_country(
@@ -61,7 +64,7 @@ def log_region_boundaries_for_country(
 ) -> None:
     """Log some boundaries for the given country and level."""
 
-    def download_eu_map_data():
+    def download_eu_map_data() -> None:
         """Download some basic EU map data."""
 
         if MAP_DATA_DIR.exists():
@@ -107,7 +110,7 @@ class Measurement:
     timestamp: float
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Measurement":
+    def from_dict(cls, data: dict[str, Any]) -> Measurement:
         return cls(
             icao_id=data["ids"]["icao"],
             latitude=data.get("latitude"),
@@ -123,18 +126,20 @@ class Measurement:
 
 
 def find_best_utm_crs(measurements: list[Measurement]) -> CRS:
-    """Returns the best UTM coordinates reference system given a list of measurements"""
+    """Returns the best UTM coordinates reference system given a list of measurements."""
 
     def get_area_of_interest(measurements: list[Measurement]) -> AreaOfInterest:
-        """Compute the span of coordinates for all provided measurements"""
+        """Compute the span of coordinates for all provided measurements."""
 
         print("Computing area of interest...")
-        have_longlat_measurements = [a for a in measurements if a.latitude is not None and a.longitude is not None]
+        all_long_lat = [
+            (a.longitude, a.latitude) for a in measurements if a.latitude is not None and a.longitude is not None
+        ]
         return AreaOfInterest(
-            west_lon_degree=min(a.longitude for a in have_longlat_measurements),
-            south_lat_degree=min(a.latitude for a in have_longlat_measurements),
-            east_lon_degree=max(a.longitude for a in have_longlat_measurements),
-            north_lat_degree=max(a.latitude for a in have_longlat_measurements),
+            west_lon_degree=min(x[0] for x in all_long_lat),
+            south_lat_degree=min(x[1] for x in all_long_lat),
+            east_lon_degree=max(x[0] for x in all_long_lat),
+            north_lat_degree=max(x[1] for x in all_long_lat),
         )
 
     area_of_interest = get_area_of_interest(measurements)
@@ -147,7 +152,7 @@ def find_best_utm_crs(measurements: list[Measurement]) -> CRS:
 
 
 def load_measurements(paths: list[Path]) -> list[Measurement]:
-    """Load measurements from a bunch of json files"""
+    """Load measurements from a bunch of json files."""
     all_measurements = []
     for path in tqdm(paths, "Loading measurements"):
         data = json.loads(path.read_text())
@@ -159,17 +164,20 @@ def load_measurements(paths: list[Path]) -> list[Measurement]:
 
 
 def get_paths_for_directory(directory: Path) -> list[Path]:
-    """Get a sorted list of JSON file by recursively walking the provided directory.
+    """
+    Get a sorted list of JSON file by recursively walking the provided directory.
 
     Note: technically, we don't need the list to be sorted as Rerun accepts out of order data. However, it comes at a
     (small) performance cost and any (cheap) sorting on the logging end is always better.
     """
 
-    def atoi(text):
+    def atoi(text: str) -> int | str:
         return int(text) if text.isdigit() else text
 
-    def natural_keys(path: Path):
+    def natural_keys(path: Path) -> list[int | str]:
         """
+        Human sort.
+
         alist.sort(key=natural_keys) sorts in human order
         https://nedbatchelder.com/blog/200712/human_sorting.html
         (See Toothy's implementation in the comments)
@@ -216,7 +224,7 @@ def log_everything(paths: list[Path]) -> None:
         if measurement.barometric_altitude is not None:
             rr.log(
                 entity_path + "/barometric_altitude",
-                rr.Scalar([measurement.barometric_altitude]),
+                rr.Scalar(measurement.barometric_altitude),
             )
 
 
@@ -244,7 +252,7 @@ def main() -> None:
             with zipfile.ZipFile(zip_data) as zip_ref:
                 zip_ref.extractall(dataset_directory)
 
-    rr.script_setup(args, "rerun_example_flight_data")
+    rr.script_setup(args, "rerun_example_air_traffic_data")
 
     paths = get_paths_for_directory(dataset_directory)
     log_everything(paths)
