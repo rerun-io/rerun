@@ -74,6 +74,7 @@ def log_region_boundaries_for_country(
 
     download_eu_map_data()
 
+    # cspell:disable-next-line
     map_data = gpd.read_file(MAP_DATA_DIR / f"NUTS_RG_01M_2021_4326_LEVL_{level}.json").set_crs("epsg:4326").to_crs(crs)
 
     for i, row in map_data[map_data.CNTR_CODE == country_code].iterrows():
