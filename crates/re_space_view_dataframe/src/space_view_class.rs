@@ -8,8 +8,8 @@ use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};
 use re_query::get_component_with_instances;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewState,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::EmptySystem;
@@ -18,10 +18,13 @@ use crate::visualizer_system::EmptySystem;
 pub struct DataframeSpaceView;
 
 impl SpaceViewClass for DataframeSpaceView {
-    type State = ();
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Dataframe".into()
+    }
 
-    const IDENTIFIER: &'static str = "Dataframe";
-    const DISPLAY_NAME: &'static str = "Dataframe";
+    fn display_name(&self) -> &'static str {
+        "Dataframe"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         //TODO(ab): fix that icon
@@ -44,7 +47,7 @@ impl SpaceViewClass for DataframeSpaceView {
         system_registry.register_visualizer::<EmptySystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -60,22 +63,11 @@ impl SpaceViewClass for DataframeSpaceView {
         Default::default()
     }
 
-    fn selection_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut Self::State,
-        _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
-    ) {
-    }
-
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,

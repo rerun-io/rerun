@@ -399,7 +399,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
         let recommended_space_view_classes = recommended_space_views_for_selection(ctx);
         let other_space_view_classes: IntSet<_> = space_view_class_registry
             .iter_registry()
-            .map(|entry| entry.class.identifier())
+            .map(|entry| entry.identifier)
             .collect::<IntSet<SpaceViewClassIdentifier>>()
             .difference(&recommended_space_view_classes)
             .cloned()
@@ -473,7 +473,7 @@ fn recommended_space_views_for_selection(
         let visualizable_entities = determine_visualizable_entities(
             &applicable_entities_per_visualizer,
             entity_db,
-            &space_view_class_registry.new_visualizer_collection(entry.class.identifier()),
+            &space_view_class_registry.new_visualizer_collection(entry.identifier),
             &*entry.class,
             &suggested_root,
         );
@@ -492,7 +492,7 @@ fn recommended_space_views_for_selection(
         });
 
         if covered {
-            output.insert(entry.class.identifier());
+            output.insert(entry.identifier);
         }
     }
 

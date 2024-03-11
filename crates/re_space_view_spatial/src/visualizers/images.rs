@@ -214,7 +214,7 @@ impl ImageVisualizer {
 
         // Parent pinhole should only be relevant to 3D views
         let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
                 transforms.parent_pinhole(ent_path)
             } else {
                 None
@@ -280,7 +280,7 @@ impl ImageVisualizer {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
@@ -330,7 +330,7 @@ impl ImageVisualizer {
 
         // Parent pinhole should only be relevant to 3D views
         let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
                 transforms.parent_pinhole(ent_path)
             } else {
                 None
@@ -418,7 +418,7 @@ impl ImageVisualizer {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
@@ -456,7 +456,7 @@ impl ImageVisualizer {
 
         // Parent pinhole should only be relevant to 3D views
         let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
                 transforms.parent_pinhole(ent_path)
             } else {
                 None
@@ -521,7 +521,7 @@ impl ImageVisualizer {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(

@@ -4,8 +4,9 @@ use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, EntityPathFilter};
 use re_types::{components::ViewCoordinates, Loggable};
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
     VisualizableFilterContext,
 };
 
@@ -37,10 +38,13 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 pub struct SpatialSpaceView3D;
 
 impl SpaceViewClass for SpatialSpaceView3D {
-    type State = SpatialSpaceViewState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "3D".into()
+    }
 
-    const IDENTIFIER: &'static str = "3D";
-    const DISPLAY_NAME: &'static str = "3D";
+    fn display_name(&self) -> &'static str {
+        "3D"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_3D
@@ -63,7 +67,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -172,7 +176,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         let mut indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
-            self.identifier(),
+            Self::identifier(),
             SpatialSpaceViewKind::ThreeD,
         );
 
@@ -242,10 +246,13 @@ impl SpaceViewClass for SpatialSpaceView3D {
     fn on_frame_start(
         &self,
         ctx: &ViewerContext<'_>,
-        state: &Self::State,
+        state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
+        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+            return;
+        };
         update_object_property_heuristics(
             ctx,
             ent_paths,
@@ -259,24 +266,28 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
         state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output
