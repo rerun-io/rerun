@@ -26,10 +26,10 @@ int main() {
     // Log some points with different keypoint IDs
     rec.log(
         "points",
-        rerun::Points3D({{0.0f, 0.0f, 0.0f},
-                         {50.0f, 0.0f, 20.0f},
-                         {100.0f, 100.0f, 30.0f},
-                         {0.0f, 50.0f, 40.0f}})
+        rerun::Points3D(
+            {{0.0f, 0.0f, 0.0f}, {50.0f, 0.0f, 20.0f}, {100.0f, 100.0f, 30.0f}, {0.0f, 50.0f, 40.0f}
+            }
+        )
             .with_keypoint_ids({0, 1, 2, 3})
             .with_class_ids({0})
     );
