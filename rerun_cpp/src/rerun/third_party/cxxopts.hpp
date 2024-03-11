@@ -2038,8 +2038,7 @@ namespace cxxopts {
             value->get_implicit_value(),
             std::move(arg_help),
             value->is_container(),
-            value->is_boolean()
-        });
+            value->is_boolean()});
     }
 
     inline void Options::add_one_option(

@@ -82,8 +82,7 @@ TEST_CASE("Construct Mat4x4 in different ways", TEST_TAG) {
             12.0f,
             13.0f,
             14.f,
-            15.0f
-        };
+            15.0f};
         Mat4x4 m4x4(carray);
         ctor_checks(m4x4);
     }
@@ -105,8 +104,7 @@ TEST_CASE("Construct Mat4x4 in different ways", TEST_TAG) {
             12.0f,
             13.0f,
             14.f,
-            15.0f
-        };
+            15.0f};
         Mat4x4 m4x4(elements.data());
         ctor_checks(m4x4);
     }

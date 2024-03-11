@@ -11,6 +11,7 @@
 -r face_tracking/requirements.txt
 -r gesture_detection/requirements.txt
 -r human_pose_tracking/requirements.txt
+-r incremental_logging/requirements.txt
 -r lidar/requirements.txt
 -r live_camera_edge_detection/requirements.txt
 -r live_depth_sensor/requirements.txt
