@@ -5,8 +5,8 @@ use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_log_types::{
-    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
-    RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstances,
+    NumInstancesVec, RowId, RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 
@@ -15,7 +15,7 @@ use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataStoreConfig {
     /// The maximum number of rows in an indexed bucket before triggering a split.
-    /// Does not apply to timeless data.
+    /// Does not apply to static data.
     ///
     /// ⚠ When configuring this threshold, do keep in mind that indexed tables are always scoped
     /// to a specific timeline _and_ a specific entity.
@@ -39,12 +39,6 @@ pub struct DataStoreConfig {
     ///
     /// Enabled by default in debug builds.
     pub store_insert_ids: bool,
-
-    /// If enabled, the store will throw an error if and when it notices that a single component
-    /// type maps to more than one arrow datatype.
-    ///
-    /// Enabled by default in debug builds.
-    pub enable_typecheck: bool,
 }
 
 impl Default for DataStoreConfig {
@@ -63,7 +57,6 @@ impl DataStoreConfig {
         // of the data itself has no impact.
         indexed_bucket_num_rows: 512,
         store_insert_ids: cfg!(debug_assertions),
-        enable_typecheck: cfg!(debug_assertions),
     };
 }
 
@@ -205,13 +198,20 @@ pub struct DataStore {
 
     /// All temporal [`IndexedTable`]s for all entities on all timelines.
     ///
-    /// See also [`Self::timeless_tables`].
+    /// See also [`Self::static_tables`].
     pub(crate) tables: BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
 
-    /// All timeless indexed tables for all entities. Never garbage collected.
+    // TODO: doc prob doesn't make sense anymore
+    //
+    /// Static data. Never garbage collected.
+    ///
+    /// If static data has been set for an `(entity, component)` pair, any temporal data for that
+    /// pair will be ignored by all [`DataStore`] APIs (with the exception of internal stats).
+    ///
+    /// Existing temporal will not be removed. Events won't be fired.
     ///
     /// See also [`Self::tables`].
-    pub(crate) timeless_tables: IntMap<EntityPathHash, PersistentIndexedTable>,
+    pub(crate) static_tables: BTreeMap<EntityPathHash, StaticTable>,
 
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
@@ -236,7 +236,7 @@ impl Clone for DataStore {
             metadata_registry: self.metadata_registry.clone(),
             cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
-            timeless_tables: self.timeless_tables.clone(),
+            static_tables: self.static_tables.clone(),
             insert_id: Default::default(),
             query_id: Default::default(),
             gc_id: Default::default(),
@@ -256,7 +256,7 @@ impl DataStore {
             type_registry: Default::default(),
             metadata_registry: Default::default(),
             tables: Default::default(),
-            timeless_tables: Default::default(),
+            static_tables: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
             gc_id: 0,
@@ -304,7 +304,7 @@ impl DataStore {
 
     /// The oldest time for which we have any data.
     ///
-    /// Ignores timeless data.
+    /// Ignores static data.
     ///
     /// Useful to call after a gc.
     pub fn oldest_time_per_timeline(&self) -> BTreeMap<Timeline, TimeInt> {
@@ -333,47 +333,9 @@ impl DataStore {
         &self,
     ) -> impl ExactSizeIterator<Item = ((EntityPath, Timeline), &IndexedTable)> {
         self.tables.iter().map(|((_, timeline), table)| {
-            ((table.ent_path.clone() /* shallow */, *timeline), table)
+            ((table.entity_path.clone() /* shallow */, *timeline), table)
         })
     }
-}
-
-/// A simple example to look at the internal representation of a [`DataStore`].
-///
-/// Run with:
-/// ```text
-/// cargo test -p re_data_store -- --nocapture datastore_internal_repr
-/// ```
-#[test]
-#[cfg(test)]
-fn datastore_internal_repr() {
-    use re_log_types::DataTable;
-    use re_types_core::Loggable as _;
-
-    let mut store = DataStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        re_types::components::InstanceKey::name(),
-        DataStoreConfig {
-            indexed_bucket_num_rows: 0,
-            store_insert_ids: true,
-            enable_typecheck: true,
-        },
-    );
-
-    let timeless = DataTable::example(true);
-    eprintln!("{timeless}");
-    for row in timeless.to_rows() {
-        store.insert_row(&row.unwrap()).unwrap();
-    }
-
-    let temporal = DataTable::example(false);
-    eprintln!("{temporal}");
-    for row in temporal.to_rows() {
-        store.insert_row(&row.unwrap()).unwrap();
-    }
-
-    store.sanity_check().unwrap();
-    eprintln!("{store}");
 }
 
 // --- Temporal ---
@@ -394,7 +356,7 @@ pub struct IndexedTable {
     pub timeline: Timeline,
 
     /// The entity this table is related to, for debugging purposes.
-    pub ent_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// Carrying the cluster key around to help with assertions and sanity checks all over the
     /// place.
@@ -429,12 +391,12 @@ pub struct IndexedTable {
 }
 
 impl IndexedTable {
-    pub fn new(cluster_key: ComponentName, timeline: Timeline, ent_path: EntityPath) -> Self {
+    pub fn new(cluster_key: ComponentName, timeline: Timeline, entity_path: EntityPath) -> Self {
         let bucket = IndexedBucket::new(cluster_key, timeline);
         let buckets_size_bytes = bucket.total_size_bytes();
         Self {
             timeline,
-            ent_path,
+            entity_path,
             buckets: [(TimeInt::MIN, bucket)].into(),
             cluster_key,
             all_components: Default::default(),
@@ -452,7 +414,7 @@ impl IndexedTable {
         if self.buckets.is_empty() {
             let Self {
                 timeline,
-                ent_path: _,
+                entity_path: _,
                 cluster_key,
                 buckets,
                 all_components: _, // keep the history on purpose
@@ -583,98 +545,39 @@ impl Default for IndexedBucketInner {
     }
 }
 
-// --- Timeless ---
+// --- Static ---
 
-/// The timeless specialization of an [`IndexedTable`].
+/// Keeps track of static data.
 ///
-/// Run the following command to display a visualization of the store's internal datastructures and
-/// better understand how everything fits together:
-/// ```text
-/// cargo test -p re_data_store -- --nocapture datastore_internal_repr
-/// ```
-#[derive(Debug)]
-pub struct PersistentIndexedTable {
+/// Once static data has been logged to an entity, the entity as a whole is considered static:
+/// any temporal data that might be attached to it will be ignored.
+#[derive(Clone)]
+pub struct StaticTable {
     /// The entity this table is related to, for debugging purposes.
-    pub ent_path: EntityPath,
+    pub entity_path: EntityPath,
 
     /// Carrying the cluster key around to help with assertions and sanity checks all over the
     /// place.
     pub cluster_key: ComponentName,
 
-    // To simplify interior mutability.
-    pub inner: RwLock<PersistentIndexedTableInner>,
+    pub cells: BTreeMap<ComponentName, StaticCell>,
 }
 
-impl Clone for PersistentIndexedTable {
-    fn clone(&self) -> Self {
+impl StaticTable {
+    #[inline]
+    pub fn new(cluster_key: ComponentName, entity_path: EntityPath) -> Self {
         Self {
-            ent_path: self.ent_path.clone(),
-            cluster_key: self.cluster_key,
-            inner: RwLock::new(self.inner.read().clone()),
-        }
-    }
-}
-
-impl PersistentIndexedTable {
-    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
-        Self {
+            entity_path,
             cluster_key,
-            ent_path,
-            inner: RwLock::new(PersistentIndexedTableInner::default()),
+            cells: Default::default(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PersistentIndexedTableInner {
-    /// The entire column of insertion IDs, if enabled in [`DataStoreConfig`].
-    ///
-    /// Keeps track of insertion order from the point-of-view of the [`DataStore`].
-    pub col_insert_id: InsertIdVec,
-
-    /// The entire column of `RowId`s.
-    ///
-    /// Keeps track of the unique identifier for each row that was generated by the clients.
-    pub col_row_id: RowIdVec,
-
-    /// The entire column of `num_instances`.
-    ///
-    /// Keeps track of the expected number of instances in each row.
-    pub col_num_instances: NumInstancesVec,
-
-    /// All the rows for all the component columns.
-    ///
-    /// The cells are optional since not all rows will have data for every single component
-    /// (i.e. the table is sparse).
-    pub columns: IntMap<ComponentName, DataCellColumn>,
-
-    /// Are the rows in this table sorted?
-    ///
-    /// Querying a [`PersistentIndexedTable`] will always trigger a sort if the rows within
-    /// aren't already sorted.
-    pub is_sorted: bool,
-}
-
-impl Default for PersistentIndexedTableInner {
-    fn default() -> Self {
-        Self {
-            col_insert_id: Default::default(),
-            col_row_id: Default::default(),
-            col_num_instances: Default::default(),
-            columns: Default::default(),
-            is_sorted: true,
-        }
-    }
-}
-
-impl PersistentIndexedTableInner {
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.num_rows() == 0
-    }
-
-    #[inline]
-    pub fn num_rows(&self) -> u64 {
-        self.col_row_id.len() as u64
-    }
+#[derive(Clone)]
+pub struct StaticCell {
+    pub insert_id: Option<u64>,
+    pub row_id: RowId,
+    pub num_instances: NumInstances,
+    pub cell: DataCell,
 }

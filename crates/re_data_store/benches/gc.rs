@@ -64,7 +64,6 @@ fn plotting_dashboard(c: &mut Criterion) {
 
     let gc_settings = GarbageCollectionOptions {
         target: GarbageCollectionTarget::DropAtLeastFraction(DROP_AT_LEAST),
-        gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: false,
         dont_protect: Default::default(),
@@ -152,7 +151,6 @@ fn timeless_logs(c: &mut Criterion) {
 
     let gc_settings = GarbageCollectionOptions {
         target: GarbageCollectionTarget::DropAtLeastFraction(DROP_AT_LEAST),
-        gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: false,
         dont_protect: Default::default(),

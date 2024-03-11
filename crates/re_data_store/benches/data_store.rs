@@ -339,7 +339,6 @@ fn gc(c: &mut Criterion) {
             let mut store = store.clone();
             let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                 target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
-                gc_timeless: false,
                 protect_latest: 0,
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
@@ -364,7 +363,6 @@ fn gc(c: &mut Criterion) {
                 let mut store = store.clone();
                 let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                     target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
-                    gc_timeless: false,
                     protect_latest: 0,
                     purge_empty_tables: false,
                     dont_protect: Default::default(),
@@ -454,10 +452,10 @@ fn latest_data_at<const N: usize>(
 ) -> [Option<DataCell>; N] {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = LatestAtQuery::new(timeline_frame_nr, (NUM_ROWS / 2).into());
-    let ent_path = EntityPath::from("large_structs");
+    let entity_path = EntityPath::from("large_structs");
 
     store
-        .latest_at(&timeline_query, &ent_path, primary, secondaries)
+        .latest_at(&timeline_query, &entity_path, primary, secondaries)
         .map_or_else(|| [(); N].map(|_| None), |(_, _, cells)| cells)
 }
 
@@ -467,9 +465,9 @@ fn range_data<const N: usize>(
 ) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(0.into(), NUM_ROWS.into()));
-    let ent_path = EntityPath::from("large_structs");
+    let entity_path = EntityPath::from("large_structs");
 
     store
-        .range(&query, &ent_path, components)
+        .range(&query, &entity_path, components)
         .map(move |(time, _, cells)| (time, cells))
 }

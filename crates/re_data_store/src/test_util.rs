@@ -52,7 +52,6 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
     INDEX_CONFIGS.iter().map(|idx| DataStoreConfig {
         indexed_bucket_num_rows: idx.indexed_bucket_num_rows,
         store_insert_ids: idx.store_insert_ids,
-        enable_typecheck: idx.enable_typecheck,
     })
 }
 

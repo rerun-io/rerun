@@ -6,6 +6,8 @@ use crate::{DataStore, LatestAtQuery};
 
 // --- Read ---
 
+// TODO: these things A) do not belong here and B)
+
 /// A [`Component`] at a specific _data_ time, versioned with a specific [`RowId`].
 ///
 /// This is not enough to globally, uniquely identify an instance of a component.
@@ -159,6 +161,8 @@ impl DataStore {
         }
         None
     }
+
+    // TODO: static?
 
     /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
     /// assuming it is timeless.

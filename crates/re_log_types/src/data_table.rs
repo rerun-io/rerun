@@ -71,7 +71,7 @@ pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 /// underlying type and likely point to shared, contiguous memory.
 ///
 /// Each cell in the column corresponds to a different row of the same column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {

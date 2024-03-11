@@ -1,16 +1,12 @@
 use std::{collections::VecDeque, ops::RangeBounds, sync::atomic::Ordering};
 
-use itertools::Itertools;
 use re_log::trace;
 use re_log_types::{
     DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 use re_types_core::{ComponentName, ComponentNameSet};
 
-use crate::{
-    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
-};
+use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
 
 // --- Queries ---
 
@@ -26,7 +22,7 @@ pub struct LatestAtQuery {
 impl std::fmt::Debug for LatestAtQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<latest at {} on {:?} (including timeless)>",
+            "<latest at {} on {:?}>",
             self.timeline.typ().format_utc(self.at),
             self.timeline.name(),
         ))
@@ -34,10 +30,12 @@ impl std::fmt::Debug for LatestAtQuery {
 }
 
 impl LatestAtQuery {
+    #[inline]
     pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
         Self { timeline, at }
     }
 
+    #[inline]
     pub const fn latest(timeline: Timeline) -> Self {
         Self {
             timeline,
@@ -61,20 +59,16 @@ pub struct RangeQuery {
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
+            "<ranging from {} to {} (all inclusive) on {:?}>",
             self.timeline.typ().format_utc(self.range.min),
             self.timeline.typ().format_utc(self.range.max),
             self.timeline.name(),
-            if self.range.min <= TimeInt::MIN {
-                "including"
-            } else {
-                "excluding"
-            }
         ))
     }
 }
 
 impl RangeQuery {
+    #[inline]
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
         Self { timeline, range }
     }
@@ -84,108 +78,80 @@ impl RangeQuery {
 
 impl DataStore {
     /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
-    /// a specific [`Timeline`].
+    /// the specified [`Timeline`].
     ///
-    /// # Temporal semantics
-    ///
-    /// In addition to the temporal results, this also includes all [`ComponentName`]s present in
-    /// the timeless tables for this entity.
+    /// Static components are always included in the results.
+    //
+    // TODO: all this extra logic gotta be tested
     pub fn all_components(
         &self,
         timeline: &Timeline,
-        ent_path: &EntityPath,
-    ) -> Option<Vec<ComponentName>> {
+        entity_path: &EntityPath,
+    ) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
 
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let ent_path_hash = ent_path.hash();
+        let entity_path_hash = entity_path.hash();
 
-        trace!(
-            kind = "all_components",
-            id = self.query_id.load(Ordering::Relaxed),
-            timeline = ?timeline,
-            entity = %ent_path,
-            "query started…"
-        );
+        let static_components: Option<ComponentNameSet> = self
+            .static_tables
+            .get(&entity_path_hash)
+            .map(|static_table| static_table.cells.keys().copied().collect());
 
-        let timeless: Option<ComponentNameSet> = self
-            .timeless_tables
-            .get(&ent_path_hash)
-            .map(|table| table.inner.read().columns.keys().cloned().collect());
-
-        let temporal = self
+        let temporal_components: Option<ComponentNameSet> = self
             .tables
-            .get(&(ent_path_hash, *timeline))
-            .map(|table| &table.all_components);
+            .get(&(entity_path_hash, *timeline))
+            .map(|table| table.all_components.clone());
 
-        let components = match (timeless, temporal) {
-            (None, Some(temporal)) => temporal.iter().cloned().collect_vec(),
-            (Some(timeless), None) => timeless.iter().cloned().collect_vec(),
-            (Some(timeless), Some(temporal)) => timeless.union(temporal).cloned().collect_vec(),
-            (None, None) => return None,
-        };
-
-        trace!(
-            kind = "latest_components_at",
-            id = self.query_id.load(Ordering::Relaxed),
-            timeline = ?timeline,
-            entity = %ent_path,
-            ?components,
-            "found components"
-        );
-
-        Some(components)
+        match (static_components, temporal_components) {
+            (None, None) => None,
+            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
+            (Some(static_comps), Some(temporal_comps)) => {
+                Some(static_comps.into_iter().chain(temporal_comps).collect())
+            }
+        }
     }
 
-    /// Check whether a given entity has a specific [`ComponentName`] on the specified timeline.
-    ///
-    /// # Temporal semantics
-    ///
-    /// In addition to the temporal results, this also checks whether the [`ComponentName`] is present
-    /// in timeless table.
+    /// Check whether a given entity has a specific [`ComponentName`] either on the specified
+    /// timeline, or in its static data.
+    //
+    // TODO: all this extra logic gotta be tested
+    #[inline]
     pub fn entity_has_component(
         &self,
         timeline: &Timeline,
-        ent_path: &EntityPath,
-        component: &ComponentName,
+        entity_path: &EntityPath,
+        component_name: &ComponentName,
     ) -> bool {
         re_tracing::profile_function!();
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
-
-        let ent_path_hash = ent_path.hash();
-
-        // First see if the component exists in the timeless table
-        if self
-            .timeless_tables
-            .get(&ent_path_hash)
-            .map_or(false, |table| {
-                table.inner.read().columns.contains_key(component)
-            })
-        {
-            return true;
-        }
-
-        // Otherwise see if it exists in the specified timeline
-        self.tables
-            .get(&(ent_path_hash, *timeline))
-            .map_or(false, |table| table.all_components.contains(component))
+        self.all_components(timeline, entity_path)
+            .map_or(false, |components| components.contains(component_name))
     }
 
     /// Find the earliest time at which something was logged for a given entity on the specified
     /// timeline.
     ///
-    /// # Temporal semantics
-    ///
-    /// Only considers temporal results—timeless data is ignored.
-    pub fn entity_min_time(&self, timeline: &Timeline, ent_path: &EntityPath) -> Option<TimeInt> {
-        let ent_path_hash = ent_path.hash();
+    /// Returns `None` if the entity has any static data associated with it, or if it was never
+    /// loggged to.
+    //
+    // TODO: all this extra logic gotta be tested
+    #[inline]
+    pub fn entity_min_time(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> Option<TimeInt> {
+        let entity_path_hash = entity_path.hash();
+
+        if self.static_tables.contains_key(&entity_path_hash) {
+            return None;
+        }
 
         let min_time = self
             .tables
-            .get(&(ent_path_hash, *timeline))?
+            .get(&(entity_path_hash, *timeline))?
             .buckets
             .first_key_value()?
             .1
@@ -202,150 +168,104 @@ impl DataStore {
         }
     }
 
-    /// Queries the datastore for the cells of the specified `components`, as seen from the point
+    /// Queries the datastore for the cells of the specified `component_names`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
-    /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
-    /// success.
+    /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and [`RowId`], if
+    /// the data is temporal) on success.
+    ///
     /// Success is defined by one thing and one thing only: whether a cell could be found for the
     /// `primary` component.
     /// The presence or absence of secondary components has no effect on the success criteria.
     ///
-    /// # Temporal semantics
-    ///
-    /// Temporal indices take precedence, then timeless tables are queried to fill the holes left
-    /// by missing temporal data.
+    /// If the entity has any static component data associated with it, this data will take priority.
+    //
+    // TODO: all this extra logic gotta be tested
     pub fn latest_at<const N: usize>(
         &self,
         query: &LatestAtQuery,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         primary: ComponentName,
-        components: &[ComponentName; N],
+        component_names: &[ComponentName; N],
     ) -> Option<(Option<TimeInt>, RowId, [Option<DataCell>; N])> {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let ent_path_hash = ent_path.hash();
+        let entity_path_hash = entity_path.hash();
 
-        trace!(
-            kind = "latest_at",
-            id = self.query_id.load(Ordering::Relaxed),
-            query = ?query,
-            entity = %ent_path,
-            %primary,
-            ?components,
-            "query started…"
-        );
+        let static_table = self.static_tables.get(&entity_path_hash);
 
-        let results = self
-            .tables
-            .get(&(ent_path_hash, query.timeline))
-            .and_then(|table| {
-                let cells = table.latest_at(query.at, primary, components);
-                trace!(
-                    kind = "latest_at",
-                    query = ?query,
-                    entity = %ent_path,
-                    %primary,
-                    ?components,
-                    timeless = false,
-                    "row cells fetched"
-                );
-                cells
+        let mut component_names_opt = [(); N].map(|_| None);
+        for (i, component_name) in component_names.iter().copied().enumerate() {
+            let has_static_data = static_table.map_or(false, |static_table| {
+                static_table.cells.contains_key(&component_name)
             });
-
-        // If we've found everything we were looking for in the temporal table, then we can
-        // return the results immediately.
-        if results
-            .as_ref()
-            .map_or(false, |(_, _, cells)| cells.iter().all(Option::is_some))
-        {
-            return results.map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells));
+            component_names_opt[i] = (!has_static_data).then_some(component_name);
         }
 
-        let cells_timeless = self.timeless_tables.get(&ent_path_hash).and_then(|table| {
-            let cells = table.latest_at(primary, components);
-            trace!(
-                kind = "latest_at",
-                query = ?query,
-                entity = %ent_path,
-                %primary,
-                ?components,
-                ?cells,
-                timeless = true,
-                "cells fetched"
-            );
-            cells
-        });
+        dbg!(&component_names_opt);
 
-        // Otherwise, let's see what's in the timeless table, and then..:
-        match (results, cells_timeless) {
-            // nothing in the timeless table: return those partial cells we got.
-            (results @ Some(_), None) => {
-                return results.map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells))
-            }
+        let mut results = self
+            .tables
+            .get(&(entity_path_hash, query.timeline))
+            .and_then(|table| table.latest_at(query.at, primary, &component_names_opt))
+            .map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells));
+        dbg!(&results);
 
-            // no temporal cells, but some timeless ones: return those as-is.
-            (None, results @ Some(_)) => {
-                return results.map(|(row_id, cells)| (None, row_id, cells))
-            }
+        // Overwrite results with static data, if any.
+        if let Some((data_time, max_row_id, results)) = results.as_mut() {
+            if let Some(static_table) = self.static_tables.get(&entity_path_hash) {
+                for (i, component_name) in component_names.iter().enumerate() {
+                    if let Some(static_cell) = static_table.cells.get(component_name).cloned() {
+                        dbg!(component_name);
+                        results[i] = Some(static_cell.cell.clone());
 
-            // we have both temporal & timeless cells: let's merge the two when it makes sense
-            // and return the end result.
-            (Some((data_time, row_id, mut cells)), Some((_, cells_timeless))) => {
-                for (i, row_idx) in cells_timeless.into_iter().enumerate() {
-                    if cells[i].is_none() {
-                        cells[i] = row_idx;
+                        // If and only if the primary is static, overwrite the returned index.
+                        if *component_name == primary {
+                            *data_time = None;
+                            *max_row_id = RowId::max(*max_row_id, static_cell.row_id);
+                        }
                     }
                 }
-                return Some((Some(data_time), row_id, cells));
             }
-
-            // no cells at all.
-            (None, None) => {}
+        } else {
+            // TODO: why did we want a RowId again..?
+            if let Some(static_table) = self.static_tables.get(&entity_path_hash) {
+                let mut max_row_id = RowId::ZERO;
+                let mut results = [(); N].map(|_| None);
+                for (i, component_name) in component_names.iter().enumerate() {
+                    if let Some(static_cell) = static_table.cells.get(component_name).cloned() {
+                        results[i] = Some(static_cell.cell.clone());
+                        max_row_id = RowId::max(max_row_id, static_cell.row_id);
+                    }
+                }
+                return itertools::Either::Left(std::iter::once((None, max_row_id, results)));
+            }
         }
 
-        trace!(
-            kind = "latest_at",
-            query = ?query,
-            entity = %ent_path,
-            %primary,
-            ?components,
-            "primary component not found"
-        );
-
-        None
+        results
     }
 
-    /// Iterates the datastore in order to return the cells of the specified `components`,
-    /// as seen from the point of view of the so-called `primary` component, for the given time
-    /// range.
+    /// Iterates the datastore in order to return the cells of the specified `component_names` for
+    /// the given time range.
     ///
     /// For each and every relevant row that is found, the returned iterator will yield an array
-    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// that is filled with the cells of each and every component in `component_names`, or `None` if
     /// said component is not available in that row.
-    /// A row is considered iff it contains data for the `primary` component.
     ///
     /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     ///
     /// ⚠ Contrary to latest-at queries, range queries can and will yield multiple rows for a
-    /// single timestamp if that timestamp happens to hold multiple entries for the `primary`
-    /// component.
-    /// On the contrary, they won't yield any rows that don't contain an actual value for the
-    /// `primary` component, _even if said rows do contain a value for one the secondaries_!
+    /// single timestamp if it happens to hold multiple entries.
     ///
-    /// # Temporal semantics
-    ///
-    /// Yields the contents of the temporal indices.
-    /// Iff the query's time range starts at `TimeInt::MIN`, this will yield the contents of the
-    /// timeless tables before anything else.
-    ///
-    /// When yielding timeless entries, the associated time will be `None`.
+    /// If the entity has any static component data associated with it, this data will take priority.
+    //
+    // TODO: all this extra logic gotta be tested
     pub fn range<'a, const N: usize>(
         &'a self,
         query: &RangeQuery,
-        ent_path: &EntityPath,
-        components: [ComponentName; N],
+        entity_path: &EntityPath,
+        component_names: [ComponentName; N],
     ) -> impl Iterator<Item = (Option<TimeInt>, RowId, [Option<DataCell>; N])> + 'a {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
@@ -354,44 +274,43 @@ impl DataStore {
         // TODO(cmc): kind & query_id need to somehow propagate through the span system.
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
-        let ent_path_hash = ent_path.hash();
+        let entity_path_hash = entity_path.hash();
 
-        trace!(
-            kind = "range",
-            id = self.query_id.load(Ordering::Relaxed),
-            query = ?query,
-            entity = %ent_path,
-            ?components,
-            "query started…"
-        );
+        let static_table = self.static_tables.get(&entity_path_hash);
 
-        let temporal = self
-            .tables
-            .get(&(ent_path_hash, query.timeline))
-            .map(|index| index.range(query.range, components))
-            .into_iter()
-            .flatten()
-            .map(|(time, row_id, cells)| (Some(time), row_id, cells));
-
-        if query.range.min <= TimeInt::MIN {
-            let timeless = self
-                .timeless_tables
-                .get(&ent_path_hash)
-                .map(|index| {
-                    index
-                        .range(components)
-                        .map(|(row_id, cells)| (None, row_id, cells))
-                })
-                .into_iter()
-                .flatten();
-            itertools::Either::Left(timeless.chain(temporal))
-        } else {
-            itertools::Either::Right(temporal)
+        let mut component_names_opt = [(); N].map(|_| None);
+        for (i, component_name) in component_names.iter().copied().enumerate() {
+            let has_static_data = static_table.map_or(false, |static_table| {
+                static_table.cells.contains_key(&component_name)
+            });
+            component_names_opt[i] = (!has_static_data).then_some(component_name);
         }
+
+        // TODO: i guess this needs to be chained then, right?
+        if let Some(static_table) = self.static_tables.get(&entity_path_hash) {
+            let mut max_row_id = RowId::ZERO;
+            let mut results = [(); N].map(|_| None);
+            for (i, component_name) in component_names.iter().enumerate() {
+                if let Some(static_cell) = static_table.cells.get(component_name).cloned() {
+                    results[i] = Some(static_cell.cell.clone());
+                    max_row_id = RowId::max(max_row_id, static_cell.row_id);
+                }
+            }
+            return itertools::Either::Left(std::iter::once((None, max_row_id, results)));
+        }
+
+        itertools::Either::Right(
+            self.tables
+                .get(&(entity_path_hash, query.timeline))
+                .map(|index| index.range(query.range, component_names_opt))
+                .into_iter()
+                .flatten()
+                .map(|(data_time, row_id, cells)| (Some(data_time), row_id, cells)),
+        )
     }
 
     #[inline]
-    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&(TimePoint, EntityPathHash)> {
+    pub fn row_metadata(&self, row_id: &RowId) -> Option<&(TimePoint, EntityPathHash)> {
         self.metadata_registry.get(row_id)
     }
 
@@ -400,16 +319,13 @@ impl DataStore {
         for index in self.tables.values() {
             index.sort_indices_if_needed();
         }
-        for index in self.timeless_tables.values() {
-            index.sort_indices_if_needed();
-        }
     }
 }
 
 // --- Temporal ---
 
 impl IndexedTable {
-    /// Queries the table for the cells of the specified `components`, as seen from the point
+    /// Queries the table for the cells of the specified `component_names`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
     /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
@@ -418,7 +334,7 @@ impl IndexedTable {
         &self,
         query_time: TimeInt,
         primary: ComponentName,
-        components: &[ComponentName; N],
+        component_names: &[Option<ComponentName>; N],
     ) -> Option<(TimeInt, RowId, [Option<DataCell>; N])> {
         // Early-exit if this entire table is unaware of this component.
         if !self.all_components.contains(&primary) {
@@ -444,12 +360,12 @@ impl IndexedTable {
                 timeline = %timeline.name(),
                 time = timeline.typ().format_utc(query_time),
                 %primary,
-                ?components,
+                ?component_names,
                 attempt,
                 bucket_time_range = timeline.typ().format_range_utc(bucket.inner.read().time_range),
                 "found candidate bucket"
             );
-            if let ret @ Some(_) = bucket.latest_at(query_time, primary, components) {
+            if let ret @ Some(_) = bucket.latest_at(query_time, primary, component_names) {
                 return ret; // found at least the primary component!
             }
         }
@@ -457,20 +373,18 @@ impl IndexedTable {
         None // primary component not found
     }
 
-    /// Iterates the table in order to return the cells of the specified `components`,
-    /// as seen from the point of view of the so-called `primary` component, for the given time
-    /// range.
+    /// Iterates the table in order to return the cells of the specified `component_names` for the
+    /// given time range.
     ///
     /// For each and every relevant row that is found, the returned iterator will yield an array
-    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// that is filled with the cells of each and every component in `component_names`, or `None` if
     /// said component is not available in that row.
-    /// A row is considered iff it contains data for the `primary` component.
     ///
     /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
-        components: [ComponentName; N],
+        component_names: [Option<ComponentName>; N],
     ) -> impl Iterator<Item = (TimeInt, RowId, [Option<DataCell>; N])> + '_ {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
         // for building the returned iterator.
@@ -492,11 +406,11 @@ impl IndexedTable {
                         timeline.typ().format_range_utc(bucket.inner.read().time_range),
                     timeline = %timeline.name(),
                     ?time_range,
-                    ?components,
+                    ?component_names,
                     "found bucket in range"
                 );
 
-                bucket.range(time_range, components)
+                bucket.range(time_range, component_names)
             })
     }
 
@@ -598,6 +512,7 @@ impl IndexedTable {
 
 impl IndexedBucket {
     /// Sort all component indices by time and [`RowId`], provided that's not already the case.
+    #[inline]
     pub fn sort_indices_if_needed(&self) {
         if self.inner.read().is_sorted {
             return; // early read-only exit
@@ -607,7 +522,7 @@ impl IndexedBucket {
         self.inner.write().sort();
     }
 
-    /// Queries the bucket for the cells of the specified `components`, as seen from the point
+    /// Queries the bucket for the cells of the specified `component_names`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
     /// Returns an array of [`DataCell`]s (as well as the associated _data_ time and `RowId`) on
@@ -616,7 +531,7 @@ impl IndexedBucket {
         &self,
         query_time: TimeInt,
         primary: ComponentName,
-        components: &[ComponentName; N],
+        component_names: &[Option<ComponentName>; N],
     ) -> Option<(TimeInt, RowId, [Option<DataCell>; N])> {
         self.sort_indices_if_needed();
 
@@ -639,7 +554,7 @@ impl IndexedBucket {
         trace!(
             kind = "latest_at",
             %primary,
-            ?components,
+            ?component_names,
             timeline = %self.timeline.name(),
             query_time = self.timeline.typ().format_utc(query_time),
             "searching for primary & secondary cells…"
@@ -661,7 +576,7 @@ impl IndexedBucket {
         trace!(
             kind = "latest_at",
             %primary,
-            ?components,
+            ?component_names,
             timeline = %self.timeline.name(),
             query_time = self.timeline.typ().format_utc(query_time),
             %primary_row_nr,
@@ -675,7 +590,7 @@ impl IndexedBucket {
                 trace!(
                     kind = "latest_at",
                     %primary,
-                    ?components,
+                    ?component_names,
                     timeline = %self.timeline.name(),
                     query_time = self.timeline.typ().format_utc(query_time),
                     %primary_row_nr,
@@ -689,7 +604,7 @@ impl IndexedBucket {
         trace!(
             kind = "latest_at",
             %primary,
-            ?components,
+            ?component_names,
             timeline = %self.timeline.name(),
             query_time = self.timeline.typ().format_utc(query_time),
             %primary_row_nr, %secondary_row_nr,
@@ -698,13 +613,18 @@ impl IndexedBucket {
         debug_assert!(column[secondary_row_nr as usize].is_some());
 
         let mut cells = [(); N].map(|_| None);
-        for (i, component) in components.iter().enumerate() {
-            if let Some(column) = columns.get(component) {
+        for (i, component_name) in component_names.iter().enumerate() {
+            let Some(component_name) = component_name else {
+                // That component has static data.
+                continue;
+            };
+
+            if let Some(column) = columns.get(component_name) {
                 if let Some(cell) = &column[secondary_row_nr as usize] {
                     trace!(
                         kind = "latest_at",
                         %primary,
-                        %component,
+                        %component_name,
                         timeline = %self.timeline.name(),
                         query_time = self.timeline.typ().format_utc(query_time),
                         %primary_row_nr, %secondary_row_nr,
@@ -722,20 +642,18 @@ impl IndexedBucket {
         ))
     }
 
-    /// Iterates the bucket in order to return the cells of the specified `components`,
-    /// as seen from the point of view of the so-called `primary` component, for the given time
-    /// range.
+    /// Iterates the bucket in order to return the cells of the specified `component_names` for
+    /// the given time range.
     ///
     /// For each and every relevant row that is found, the returned iterator will yield an array
-    /// that is filled with the cells of each and every component in `components`, or `None` if
+    /// that is filled with the cells of each and every component in `component_names`, or `None` if
     /// said component is not available in that row.
-    /// A row is considered iff it contains data for the `primary` component.
     ///
     /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
         time_range: TimeRange,
-        components: [ComponentName; N],
+        component_names: [Option<ComponentName>; N],
     ) -> impl Iterator<Item = (TimeInt, RowId, [Option<DataCell>; N])> + '_ {
         self.sort_indices_if_needed();
 
@@ -755,9 +673,10 @@ impl IndexedBucket {
         let bucket_time_range = *bucket_time_range;
 
         // Early-exit if this bucket is unaware of any of our components of interest.
-        if components
+        if component_names
             .iter()
-            .all(|component| columns.get(component).is_none())
+            .filter_map(|c| *c)
+            .all(|component| columns.get(&component).is_none())
         {
             return itertools::Either::Right(std::iter::empty());
         }
@@ -769,7 +688,7 @@ impl IndexedBucket {
         trace!(
             kind = "range",
             bucket_time_range = self.timeline.typ().format_range_utc(bucket_time_range),
-            ?components,
+            ?component_names,
             timeline = %self.timeline.name(),
             time_range = self.timeline.typ().format_range_utc(time_range),
             "searching for time & component cell numbers…"
@@ -780,7 +699,7 @@ impl IndexedBucket {
         trace!(
             kind = "range",
             bucket_time_range = self.timeline.typ().format_range_utc(bucket_time_range),
-            ?components,
+            ?component_names,
             timeline = %self.timeline.name(),
             time_range = self.timeline.typ().format_range_utc(time_range),
             %time_row_nr,
@@ -805,14 +724,19 @@ impl IndexedBucket {
             .into_iter()
             .skip(time_row_nr as usize)
             // don't go beyond the time range we're interested in!
-            .filter(move |time| time_range.contains((*time).into()))
+            .filter(move |data_time| time_range.contains((*data_time).into()))
             .enumerate()
-            .filter_map(move |(time_row_offset, time)| {
+            .filter_map(move |(time_row_offset, data_time)| {
                 let row_nr = time_row_nr + time_row_offset as u64;
 
                 let mut cells = [(); N].map(|_| None);
-                for (i, component) in components.iter().enumerate() {
-                    if let Some(column) = columns.get_mut(component) {
+                for (i, component_name) in component_names.iter().enumerate() {
+                    let Some(component_name) = component_name else {
+                        // That component has static data.
+                        continue;
+                    };
+
+                    if let Some(column) = columns.get_mut(component_name) {
                         cells[i] = column[row_nr as usize].take();
                     }
                 }
@@ -829,7 +753,7 @@ impl IndexedBucket {
                     kind = "range",
                     bucket_time_range =
                         self.timeline.typ().format_range_utc(bucket_time_range),
-                    ?components,
+                    ?component_names,
                     timeline = %self.timeline.name(),
                     time_range = self.timeline.typ().format_range_utc(time_range),
                     %row_nr,
@@ -838,7 +762,7 @@ impl IndexedBucket {
                     "yielding cells",
                 );
 
-                Some((time.into(), row_id, cells))
+                Some((data_time.into(), row_id, cells))
             });
 
         itertools::Either::Left(cells)
@@ -908,247 +832,6 @@ impl IndexedBucketInner {
             }
 
             reshuffle_control_column(col_time, &swaps);
-            if !col_insert_id.is_empty() {
-                reshuffle_control_column(col_insert_id, &swaps);
-            }
-            reshuffle_control_column(col_row_id, &swaps);
-            reshuffle_control_column(col_num_instances, &swaps);
-        }
-
-        {
-            re_tracing::profile_scope!("data");
-            // shuffle component columns back into a sorted state
-            for column in columns.values_mut() {
-                let mut source = column.clone();
-                {
-                    for (from, to) in swaps.iter().copied() {
-                        column[to] = source[from].take();
-                    }
-                }
-            }
-        }
-
-        *is_sorted = true;
-    }
-}
-
-// --- Timeless ---
-
-impl PersistentIndexedTable {
-    /// Sort all component indices by [`RowId`], provided that's not already the case.
-    pub fn sort_indices_if_needed(&self) {
-        if self.inner.read().is_sorted {
-            return; // early read-only exit
-        }
-
-        re_tracing::profile_scope!("sort");
-        self.inner.write().sort();
-    }
-
-    /// Queries the table for the cells of the specified `components`, as seen from the point
-    /// of view of the so-called `primary` component.
-    ///
-    /// Returns an array of [`DataCell`]s on success, or `None` iff no cell could be found for
-    /// the `primary` component.
-    fn latest_at<const N: usize>(
-        &self,
-        primary: ComponentName,
-        components: &[ComponentName; N],
-    ) -> Option<(RowId, [Option<DataCell>; N])> {
-        self.sort_indices_if_needed();
-
-        let inner = self.inner.read();
-
-        if inner.is_empty() {
-            return None;
-        }
-
-        // Early-exit if this bucket is unaware of this component.
-        let column = inner.columns.get(&primary)?;
-
-        re_tracing::profile_function!();
-
-        trace!(
-            kind = "latest_at",
-            %primary,
-            ?components,
-            timeless = true,
-            "searching for primary & secondary cells…"
-        );
-
-        // find the primary row number's row.
-        let primary_row_nr = inner.num_rows() - 1;
-
-        trace!(
-            kind = "latest_at",
-            %primary,
-            ?components,
-            %primary_row_nr,
-            timeless = true,
-            "found primary row number",
-        );
-
-        // find the secondary indices' rows, and the associated cells.
-        let mut secondary_row_nr = primary_row_nr;
-        while column[secondary_row_nr as usize].is_none() {
-            if secondary_row_nr == 0 {
-                trace!(
-                    kind = "latest_at",
-                    %primary,
-                    ?components,
-                    timeless = true,
-                    %primary_row_nr,
-                    "no secondary row number found",
-                );
-                return None;
-            }
-            secondary_row_nr -= 1;
-        }
-
-        trace!(
-            kind = "latest_at",
-            %primary,
-            ?components,
-            timeless = true,
-            %primary_row_nr, %secondary_row_nr,
-            "found secondary row number",
-        );
-        debug_assert!(column[secondary_row_nr as usize].is_some());
-
-        let mut cells = [(); N].map(|_| None);
-        for (i, component) in components.iter().enumerate() {
-            if let Some(column) = inner.columns.get(component) {
-                if let Some(cell) = &column[secondary_row_nr as usize] {
-                    trace!(
-                        kind = "latest_at",
-                        %primary,
-                        %component,
-                        timeless = true,
-                        %primary_row_nr, %secondary_row_nr,
-                        "found cell",
-                    );
-                    cells[i] = Some(cell.clone() /* shallow */);
-                }
-            }
-        }
-
-        Some((inner.col_row_id[secondary_row_nr as usize], cells))
-    }
-
-    /// Iterates the table in order to return the cells of the specified `components`,
-    /// as seen from the point of view of the so-called `primary` component, for the given time
-    /// range.
-    ///
-    /// For each and every relevant row that is found, the returned iterator will yield an array
-    /// that is filled with the cells of each and every component in `components`, or `None` if
-    /// said component is not available in that row.
-    /// A row is considered iff it contains data for the `primary` component.
-    ///
-    /// This method cannot fail! If there's no data to return, an empty iterator is returned.
-    pub fn range<const N: usize>(
-        &self,
-        components: [ComponentName; N],
-    ) -> impl Iterator<Item = (RowId, [Option<DataCell>; N])> + '_ {
-        self.sort_indices_if_needed();
-
-        let inner = self.inner.read();
-
-        // Early-exit if the table is unaware of any of our components of interest.
-        if components
-            .iter()
-            .all(|component| inner.columns.get(component).is_none())
-        {
-            return itertools::Either::Right(std::iter::empty());
-        }
-
-        // Beware! This merely measures the time it takes to gather all the necessary metadata
-        // for building the returned iterator.
-        re_tracing::profile_function!();
-
-        let cells = (0..inner.num_rows()).filter_map(move |row_nr| {
-            let mut cells = [(); N].map(|_| None);
-            for (i, component) in components.iter().enumerate() {
-                if let Some(column) = inner.columns.get(component) {
-                    cells[i] = column[row_nr as usize].clone();
-                }
-            }
-
-            // We only yield rows that contain data for at least one of the components of
-            // interest.
-            if cells.iter().all(Option::is_none) {
-                return None;
-            }
-
-            let row_id = inner.col_row_id[row_nr as usize];
-
-            trace!(
-                kind = "range",
-                ?components,
-                timeless = true,
-                %row_nr,
-                ?cells,
-                "yielding cells",
-            );
-
-            Some((row_id, cells))
-        });
-
-        itertools::Either::Left(cells)
-    }
-}
-
-impl PersistentIndexedTableInner {
-    pub fn sort(&mut self) {
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted,
-        } = self;
-
-        if *is_sorted {
-            return;
-        }
-
-        re_tracing::profile_function!();
-
-        let swaps = {
-            re_tracing::profile_scope!("swaps");
-            let mut swaps = (0..col_row_id.len()).collect::<Vec<_>>();
-            // NOTE: Within a single timestamp, we must use the Row ID as tie-breaker!
-            // The Row ID is how we define ordering within a client's thread, and our public APIs
-            // guarantee that logging order is respected within a single thread!
-            swaps.sort_by_key(|&i| &col_row_id[i]);
-            swaps
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(to, from)| (from, to))
-                .collect::<Vec<_>>()
-        };
-
-        // TODO(#442): re_datastore: implement efficient shuffling on the read path.
-
-        {
-            re_tracing::profile_scope!("control");
-
-            fn reshuffle_control_column<T: Copy>(
-                column: &mut VecDeque<T>,
-                swaps: &[(usize, usize)],
-            ) {
-                let source = {
-                    re_tracing::profile_scope!("clone");
-                    column.clone()
-                };
-                {
-                    re_tracing::profile_scope!("rotate");
-                    for (from, to) in swaps.iter().copied() {
-                        column[to] = source[from];
-                    }
-                }
-            }
-
             if !col_insert_id.is_empty() {
                 reshuffle_control_column(col_insert_id, &swaps);
             }

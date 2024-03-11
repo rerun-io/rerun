@@ -124,6 +124,7 @@ pub enum TimeType {
 }
 
 impl TimeType {
+    #[inline]
     fn hash(&self) -> u64 {
         match self {
             Self::Time => 0,
@@ -131,6 +132,7 @@ impl TimeType {
         }
     }
 
+    #[inline]
     pub fn format(&self, time_int: TimeInt, time_zone_for_timestamps: TimeZone) -> String {
         if time_int <= TimeInt::BEGINNING {
             "-∞".into()
@@ -144,10 +146,12 @@ impl TimeType {
         }
     }
 
+    #[inline]
     pub fn format_utc(&self, time_int: TimeInt) -> String {
         self.format(time_int, TimeZone::Utc)
     }
 
+    #[inline]
     pub fn format_range(
         &self,
         time_range: TimeRange,
@@ -160,6 +164,7 @@ impl TimeType {
         )
     }
 
+    #[inline]
     pub fn format_range_utc(&self, time_range: TimeRange) -> String {
         self.format_range(time_range, TimeZone::Utc)
     }

@@ -11,12 +11,15 @@ use re_data_store::{
     LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{build_frame_nr, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
-use re_types::datagen::{
-    build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
-};
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
+};
+use re_types::{
+    datagen::{
+        build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
+    },
+    ComponentNameSet,
 };
 use re_types_core::{ComponentName, Loggable as _};
 
@@ -26,7 +29,7 @@ use re_types_core::{ComponentName, Loggable as _};
 fn all_components() {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     // let frame0= TimeInt::from(0);
     let frame1 = TimeInt::from(1);
@@ -35,7 +38,7 @@ fn all_components() {
     let frame4 = TimeInt::from(4);
 
     let assert_latest_components_at =
-        |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
+        |store: &mut DataStore, entity_path: &EntityPath, expected: Option<&[ComponentName]>| {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -55,23 +58,17 @@ fn all_components() {
             let store = store2;
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
-            let components = store.all_components(&timeline, ent_path);
+            let component_names = store.all_components(&timeline, entity_path);
 
-            let components = components.map(|mut components| {
-                components.sort();
-                components
-            });
-
-            let expected = expected.map(|expected| {
-                let mut expected = expected.to_vec();
-                expected.sort();
+            let expected_component_names = expected.map(|expected| {
+                let expected: ComponentNameSet = expected.iter().copied().collect();
                 expected
             });
 
             store.sort_indices_if_needed();
             assert_eq!(
-                expected, components,
-                "expected to find {expected:?}, found {components:?} instead\n{store}",
+                expected_component_names, component_names,
+                "expected to find {expected_component_names:?}, found {component_names:?} instead\n{store}",
             );
         };
 
@@ -100,21 +97,21 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [
+        let row = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => 2; [build_some_large_structs(2), build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_b));
 
         sanity_unwrap(&store);
     }
@@ -157,24 +154,25 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_instances(2)]);
+        let row = test_row!(entity_path @ [build_frame_nr(frame2)] => 2; [build_some_instances(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_positions2d(2)]);
+        let row =
+            test_row!(entity_path @ [build_frame_nr(frame3)] => 2; [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_b));
 
         sanity_unwrap(&store);
     }
@@ -220,31 +218,32 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path @ [] => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(ent_path @ [build_frame_nr(frame2)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame2)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
         let row =
-            test_row!(ent_path @ [build_frame_nr(frame3)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame3)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
         let row =
-            test_row!(ent_path @ [build_frame_nr(frame4)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame4)] => 2; [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_a));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(ent_path @ [build_frame_nr(frame1)] => 2; [build_some_positions2d(2)]);
+        let row =
+            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
-        assert_latest_components_at(&mut store, &ent_path, Some(components_b));
+        assert_latest_components_at(&mut store, &entity_path, Some(components_b));
 
         sanity_unwrap(&store);
     }
@@ -269,7 +268,7 @@ fn latest_at() {
 fn latest_at_impl(store: &mut DataStore) {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     let frame0 = TimeInt::from(0);
     let frame1 = TimeInt::from(1);
@@ -277,30 +276,20 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3 = TimeInt::from(3);
     let frame4 = TimeInt::from(4);
 
-    // helper to insert a table both as a temporal and timeless payload
-    let insert_table = |store: &mut DataStore, table: &DataTable| {
-        // insert temporal
-        insert_table_with_retries(store, table);
-
-        // insert timeless
-        let mut table_timeless = table.clone();
-        table_timeless.col_timelines = Default::default();
-        insert_table_with_retries(store, &table_timeless);
-    };
-
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let row1 =
+        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
 
     let colors4 = build_some_colors(5);
-    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+    let row4 = test_row!(entity_path @ [] => 5; [colors4]);
 
-    insert_table(
+    insert_table_with_retries(
         store,
         &DataTable::from_rows(
             TableId::new(),
@@ -315,12 +304,12 @@ fn latest_at_impl(store: &mut DataStore) {
         store.config().clone(),
     );
     for table in store.to_data_tables(None) {
-        insert_table(&mut store2, &table);
+        insert_table_with_retries(&mut store2, &table);
     }
     // Stress test GC
     store2.gc(&GarbageCollectionOptions::gc_everything());
     for table in store.to_data_tables(None) {
-        insert_table(&mut store2, &table);
+        insert_table_with_retries(&mut store2, &table);
     }
     let store = store2;
 
@@ -333,7 +322,7 @@ fn latest_at_impl(store: &mut DataStore) {
             let (_, _, cells) = store
                 .latest_at::<1>(
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-                    &ent_path,
+                    &entity_path,
                     *component_name,
                     &[*component_name],
                 )
@@ -349,17 +338,18 @@ fn latest_at_impl(store: &mut DataStore) {
         }
     };
 
-    // TODO(cmc): bring back some log_time scenarios
+    // --- Only temporal ---
 
     assert_latest_components(
         frame0,
-        &[(Color::name(), &row4), (Position2D::name(), &row3)], // timeless
+        &[
+            (Color::name(), &row4), // static
+        ],
     );
     assert_latest_components(
         frame1,
         &[
-            (Color::name(), &row1),
-            (Position2D::name(), &row3), // timeless
+            (Color::name(), &row4), // static
         ],
     );
     assert_latest_components(
@@ -374,6 +364,58 @@ fn latest_at_impl(store: &mut DataStore) {
         frame4,
         &[(Color::name(), &row4), (Position2D::name(), &row3)],
     );
+
+    // --- Static + temporal ---
+
+    // assert_latest_components(
+    //     frame0,
+    //     &[(Color::name(), &row4), (Position2D::name(), &row3)], // timeless
+    // );
+    // assert_latest_components(
+    //     frame1,
+    //     &[
+    //         (Color::name(), &row1),
+    //         (Position2D::name(), &row3), // timeless
+    //     ],
+    // );
+    // assert_latest_components(
+    //     frame2,
+    //     &[(Color::name(), &row1), (Position2D::name(), &row2)],
+    // );
+    // assert_latest_components(
+    //     frame3,
+    //     &[(Color::name(), &row1), (Position2D::name(), &row3)],
+    // );
+    // assert_latest_components(
+    //     frame4,
+    //     &[(Color::name(), &row4), (Position2D::name(), &row3)],
+    // );
+
+    // --- Mixed ---
+
+    // assert_latest_components(
+    //     frame0,
+    //     &[(Color::name(), &row4), (Position2D::name(), &row3)], // timeless
+    // );
+    // assert_latest_components(
+    //     frame1,
+    //     &[
+    //         (Color::name(), &row1),
+    //         (Position2D::name(), &row3), // timeless
+    //     ],
+    // );
+    // assert_latest_components(
+    //     frame2,
+    //     &[(Color::name(), &row1), (Position2D::name(), &row2)],
+    // );
+    // assert_latest_components(
+    //     frame3,
+    //     &[(Color::name(), &row1), (Position2D::name(), &row3)],
+    // );
+    // assert_latest_components(
+    //     frame4,
+    //     &[(Color::name(), &row4), (Position2D::name(), &row3)],
+    // );
 }
 
 // --- Range ---
@@ -395,7 +437,7 @@ fn range() {
 fn range_impl(store: &mut DataStore) {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     let frame1 = TimeInt::from(1);
     let frame2 = TimeInt::from(2);
@@ -416,38 +458,40 @@ fn range_impl(store: &mut DataStore) {
 
     let insts1 = build_some_instances(3);
     let colors1 = build_some_colors(3);
-    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
+    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
     insert(store, &row1);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [insts1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [insts1, positions2]);
     insert(store, &row2);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
     insert(store, &row3);
 
     let insts4_1 = build_some_instances_from(20..25);
     let colors4_1 = build_some_colors(5);
-    let row4_1 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_1, colors4_1]);
+    let row4_1 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_1, colors4_1]);
     insert(store, &row4_1);
 
     let insts4_2 = build_some_instances_from(25..30);
     let colors4_2 = build_some_colors(5);
-    let row4_2 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2.clone(), colors4_2]);
+    let row4_2 =
+        test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_2.clone(), colors4_2]);
     insert(store, &row4_2);
 
     let points4_25 = build_some_positions2d(5);
-    let row4_25 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_2, points4_25]);
+    let row4_25 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_2, points4_25]);
     insert(store, &row4_25);
 
     let insts4_3 = build_some_instances_from(30..35);
     let colors4_3 = build_some_colors(5);
-    let row4_3 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3.clone(), colors4_3]);
+    let row4_3 =
+        test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_3.clone(), colors4_3]);
     insert(store, &row4_3);
 
     let points4_4 = build_some_positions2d(5);
-    let row4_4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
+    let row4_4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
     insert(store, &row4_4);
 
     sanity_unwrap(store);
@@ -482,7 +526,7 @@ fn range_impl(store: &mut DataStore) {
 
             let components = [components[0], components[1]];
             let query = RangeQuery::new(timeline_frame_nr, time_range);
-            let results = store.range(&query, &ent_path, components);
+            let results = store.range(&query, &entity_path, components);
 
             let mut results_processed = 0usize;
             for (i, (time, _, cells)) in results.enumerate() {
@@ -613,13 +657,13 @@ fn gc_impl(store: &mut DataStore) {
     for _ in 0..2 {
         let num_ents = 10;
         for i in 0..num_ents {
-            let ent_path = EntityPath::from(format!("this/that/{i}"));
+            let entity_path = EntityPath::from(format!("this/that/{i}"));
 
             let num_frames = rng.gen_range(0..=100);
             let frames = (0..num_frames).filter(|_| rand::thread_rng().gen());
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
-                let row = test_row!(ent_path @ [
+                let row = test_row!(entity_path @ [
                     build_frame_nr(frame_nr.into())
                 ] => num_instances; [
                     build_some_large_structs(num_instances as _),
@@ -635,7 +679,6 @@ fn gc_impl(store: &mut DataStore) {
 
         let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
-            gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
             dont_protect: Default::default(),
@@ -643,7 +686,7 @@ fn gc_impl(store: &mut DataStore) {
             time_budget: std::time::Duration::MAX,
         });
         for event in store_events {
-            assert!(store.get_msg_metadata(&event.row_id).is_none());
+            assert!(store.row_metadata(&event.row_id).is_none());
         }
 
         // NOTE: only temporal data and row metadata get purged!
@@ -681,7 +724,7 @@ fn protected_gc() {
 fn protected_gc_impl(store: &mut DataStore) {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     let frame0 = TimeInt::from(0);
     let frame1 = TimeInt::from(1);
@@ -690,16 +733,17 @@ fn protected_gc_impl(store: &mut DataStore) {
     let frame4 = TimeInt::from(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let row1 =
+        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
 
     let colors4 = build_some_colors(5);
-    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [colors4]);
 
     store.insert_row(&row1).unwrap();
     store.insert_row(&row2).unwrap();
@@ -714,7 +758,6 @@ fn protected_gc_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
-        gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
@@ -729,7 +772,7 @@ fn protected_gc_impl(store: &mut DataStore) {
             let (_, _, cells) = store
                 .latest_at::<1>(
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-                    &ent_path,
+                    &entity_path,
                     *component_name,
                     &[*component_name],
                 )
@@ -786,7 +829,7 @@ fn protected_gc_clear() {
 fn protected_gc_clear_impl(store: &mut DataStore) {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     let frame0 = TimeInt::from(0);
     let frame1 = TimeInt::from(1);
@@ -795,16 +838,17 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let frame4 = TimeInt::from(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let row1 =
+        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
 
     let colors2 = build_some_colors(0);
-    let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 0; [colors2]);
 
     let points4 = build_some_positions2d(0);
-    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
+    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 0; [points4]);
 
     // Insert the 3 rows as timeless
     let mut table_timeless =
@@ -814,7 +858,6 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
-        gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
@@ -829,7 +872,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
             let (_, _, cells) = store
                 .latest_at::<1>(
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
-                    &ent_path,
+                    &entity_path,
                     *component_name,
                     &[*component_name],
                 )
@@ -853,7 +896,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     // Only the 2 rows should remain in the table
     let stats = DataStoreStats::from_store(store);
-    assert_eq!(stats.timeless.num_rows, 2);
+    assert_eq!(stats.static_tables.num_rows, 2);
 
     // Now erase points and GC again
     let mut table_timeless = DataTable::from_rows(TableId::new(), [row4]);
@@ -862,7 +905,6 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
-        gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
@@ -872,5 +914,5 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     // No rows should remain because the table should have been purged
     let stats = DataStoreStats::from_store(store);
-    assert_eq!(stats.timeless.num_rows, 0);
+    assert_eq!(stats.static_tables.num_rows, 0);
 }

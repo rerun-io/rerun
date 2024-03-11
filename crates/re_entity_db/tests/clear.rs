@@ -1,4 +1,4 @@
-use re_data_store::{DataStoreStats, LatestAtQuery};
+use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{
     example_components::{MyColor, MyPoint},
@@ -429,62 +429,6 @@ fn clears() -> anyhow::Result<()> {
                 .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
                 .is_none());
         }
-    }
-
-    Ok(())
-}
-
-/// Test for GC behavior following clear. This functionality is expected by blueprints.
-#[test]
-fn clear_and_gc() -> anyhow::Result<()> {
-    re_log::setup_logging();
-
-    let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
-
-    let timepoint = TimePoint::timeless();
-    let entity_path: EntityPath = "space_view".into();
-
-    // Insert a component, then clear it, then GC.
-    {
-        // EntityTree is Empty when we start
-        assert_eq!(db.tree().num_children_and_fields(), 0);
-
-        let point = MyPoint::new(1.0, 2.0);
-
-        let row = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            [&[point] as _],
-        )?;
-
-        db.add_data_row(row)?;
-
-        db.gc_everything_but_the_latest_row();
-
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.timeless.num_rows, 1);
-
-        let clear = DataRow::from_component_batches(
-            RowId::new(),
-            timepoint.clone(),
-            entity_path.clone(),
-            Clear::recursive()
-                .as_component_batches()
-                .iter()
-                .map(|b| b.as_ref()),
-        )?;
-
-        db.add_data_row(clear)?;
-
-        db.gc_everything_but_the_latest_row();
-
-        // No rows should remain because the table should have been purged
-        let stats = DataStoreStats::from_store(db.store());
-        assert_eq!(stats.timeless.num_rows, 0);
-
-        // EntityTree should be empty again when we end since everything was GC'd
-        assert_eq!(db.tree().num_children_and_fields(), 0);
     }
 
     Ok(())

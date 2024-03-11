@@ -145,11 +145,12 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         }
     }
 
+    // Static data has last-write-wins semantics, as defined by RowId-ordering.
     // Timeless is RowId-ordered too!
     //
-    // * Insert timeless `point1` with a random `RowId`.
-    // * Insert timeless `point2` using `point1`'s `RowId`, decremented by one.
-    // * Query timelessly and make sure we get `point1` because of timeless tie-breaks.
+    // * Insert static `point1` with a random `RowId`.
+    // * Insert static `point2` using `point1`'s `RowId`, decremented by one.
+    // * Query and make sure we get `point1` because of last-write-wins semantics.
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -194,7 +195,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 fn write_errors() {
     re_log::setup_logging();
 
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
 
     {
         pub fn build_sparse_instances() -> DataCell {
@@ -206,7 +207,7 @@ fn write_errors() {
             InstanceKey::name(),
             Default::default(),
         );
-        let row = test_row!(ent_path @
+        let row = test_row!(entity_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                 build_sparse_instances(), build_some_positions2d(3)
         ]);
@@ -231,7 +232,7 @@ fn write_errors() {
             Default::default(),
         );
         {
-            let row = test_row!(ent_path @
+            let row = test_row!(entity_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                     build_unsorted_instances(), build_some_positions2d(3)
             ]);
@@ -241,7 +242,7 @@ fn write_errors() {
             ));
         }
         {
-            let row = test_row!(ent_path @
+            let row = test_row!(entity_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                     build_duped_instances(), build_some_positions2d(3)
             ]);
@@ -259,7 +260,7 @@ fn write_errors() {
             Default::default(),
         );
 
-        let mut row = test_row!(ent_path @ [
+        let mut row = test_row!(entity_path @ [
             build_frame_nr(1.into()),
             build_log_time(Time::now()),
         ] => 1; [ build_some_positions2d(1) ]);
@@ -300,7 +301,7 @@ fn latest_at_emptiness_edge_cases() {
 }
 
 fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
-    let ent_path = EntityPath::from("this/that");
+    let entity_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
     let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch().into();
@@ -309,7 +310,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let num_instances = 3;
 
     store
-        .insert_row(&test_row!(ent_path @ [
+        .insert_row(&test_row!(entity_path @ [
                 build_log_time(now), build_frame_nr(frame40),
             ] => num_instances; [build_some_instances(num_instances as _)]))
         .unwrap();
@@ -325,7 +326,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
-            &ent_path,
+            &entity_path,
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
@@ -336,7 +337,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
-            &ent_path,
+            &entity_path,
             InstanceKey::name(),
             &[InstanceKey::name()],
         );
@@ -360,7 +361,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let (_, _, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
-                &ent_path,
+                &entity_path,
                 InstanceKey::name(),
                 components,
             )
@@ -373,7 +374,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let (_, _, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),
-                &ent_path,
+                &entity_path,
                 InstanceKey::name(),
                 &[],
             )
@@ -425,9 +426,9 @@ fn gc_correct() {
     for frame_nr in frames {
         let num_ents = 10;
         for i in 0..num_ents {
-            let ent_path = EntityPath::from(format!("this/that/{i}"));
+            let entity_path = EntityPath::from(format!("this/that/{i}"));
             let num_instances = rng.gen_range(0..=1_000);
-            let row = test_row!(ent_path @ [
+            let row = test_row!(entity_path @ [
                 build_frame_nr(frame_nr.into()),
             ] => num_instances; [
                 build_some_colors(num_instances as _),
@@ -457,7 +458,7 @@ fn gc_correct() {
     sanity_unwrap(&store);
     check_still_readable(&store);
     for event in store_events {
-        assert!(store.get_msg_metadata(&event.row_id).is_none());
+        assert!(store.row_metadata(&event.row_id).is_none());
     }
 
     let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions::gc_everything());
@@ -498,7 +499,6 @@ fn gc_metadata_size() -> anyhow::Result<()> {
         for _ in 0..2 {
             _ = store.gc(&GarbageCollectionOptions {
                 target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
-                gc_timeless: false,
                 protect_latest: 1,
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
@@ -507,7 +507,6 @@ fn gc_metadata_size() -> anyhow::Result<()> {
             });
             _ = store.gc(&GarbageCollectionOptions {
                 target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
-                gc_timeless: false,
                 protect_latest: 1,
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
@@ -539,8 +538,8 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
 }
 
 fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
-    let ent_path = EntityPath::from("this/that");
-    let wrong_ent_path = EntityPath::from("this/that/other");
+    let entity_path = EntityPath::from("this/that");
+    let wrong_entity_path = EntityPath::from("this/that/other");
 
     let point = MyPoint::new(1.0, 1.0);
     let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
@@ -558,28 +557,28 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
             (timeline_log_time, now.into()),
             (timeline_frame_nr, 42.into()),
         ]),
-        ent_path.clone(),
+        entity_path.clone(),
         [&[point] as _],
     )?;
 
     store.insert_row(&row).unwrap();
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .entity_min_time(&timeline_wrong_name, &entity_path)
         .is_none());
     assert!(store
-        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .entity_min_time(&timeline_wrong_kind, &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        store.entity_min_time(&timeline_frame_nr, &entity_path),
         Some(TimeInt::from(42))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &ent_path),
+        store.entity_min_time(&timeline_log_time, &entity_path),
         Some(TimeInt::from(now))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
         .is_none());
 
     // insert row in the future, these shouldn't be visible
@@ -589,27 +588,27 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
             (timeline_log_time, now_plus_one.into()),
             (timeline_frame_nr, 54.into()),
         ]),
-        ent_path.clone(),
+        entity_path.clone(),
         [&[point] as _],
     )?;
     store.insert_row(&row).unwrap();
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .entity_min_time(&timeline_wrong_name, &entity_path)
         .is_none());
     assert!(store
-        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .entity_min_time(&timeline_wrong_kind, &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        store.entity_min_time(&timeline_frame_nr, &entity_path),
         Some(TimeInt::from(42))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &ent_path),
+        store.entity_min_time(&timeline_log_time, &entity_path),
         Some(TimeInt::from(now))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
         .is_none());
 
     // insert row in the past, these should be visible
@@ -619,27 +618,27 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
             (timeline_log_time, now_minus_one.into()),
             (timeline_frame_nr, 32.into()),
         ]),
-        ent_path.clone(),
+        entity_path.clone(),
         [&[point] as _],
     )?;
     store.insert_row(&row).unwrap();
 
     assert!(store
-        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .entity_min_time(&timeline_wrong_name, &entity_path)
         .is_none());
     assert!(store
-        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .entity_min_time(&timeline_wrong_kind, &entity_path)
         .is_none());
     assert_eq!(
-        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        store.entity_min_time(&timeline_frame_nr, &entity_path),
         Some(TimeInt::from(32))
     );
     assert_eq!(
-        store.entity_min_time(&timeline_log_time, &ent_path),
+        store.entity_min_time(&timeline_log_time, &entity_path),
         Some(TimeInt::from(now_minus_one))
     );
     assert!(store
-        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .entity_min_time(&timeline_frame_nr, &wrong_entity_path)
         .is_none());
 
     Ok(())

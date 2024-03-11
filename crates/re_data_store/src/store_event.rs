@@ -446,7 +446,7 @@ mod tests {
                 [
                     (row_id1, 0), //
                     (row_id2, 0),
-                    (row_id3, 0),
+                    (row_id3, 1), // static -- no gc
                 ],
                 [
                     (timeline_frame, 0),
@@ -455,19 +455,19 @@ mod tests {
                 ],
                 [
                     (entity_path1.clone(), 0), //
-                    (entity_path2.clone(), 0), //
+                    (entity_path2.clone(), 1), // static -- no gc
                 ],
                 [
-                    (InstanceKey::name(), 0), //
+                    (InstanceKey::name(), 1), // static -- no gc
                     (MyPoint::name(), 0),     //
-                    (MyColor::name(), 0),     //
+                    (MyColor::name(), 1),     // static -- no gc
                 ],
                 [
                     (42.into(), 0), //
                     (666.into(), 0),
                     (1.into(), 0),
                 ],
-                0,
+                1, // static -- no gc
             ),
             view,
         );
