@@ -43,9 +43,8 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    recording = RecordingStream.to_native(recording)
-
     application_id = get_application_id(recording=recording)
+    recording = RecordingStream.to_native(recording)
 
     if application_id is None:
         raise ValueError(
