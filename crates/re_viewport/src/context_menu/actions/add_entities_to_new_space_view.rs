@@ -34,7 +34,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
             .cloned()
             .collect();
 
-        ui.menu_button("Add to new space view", |ui| {
+        ui.menu_button("Add to new Space View", |ui| {
             let buttons_for_space_view_classes =
                 |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
                     for (identifier, display_name) in space_view_classes

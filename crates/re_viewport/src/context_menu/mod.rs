@@ -138,7 +138,7 @@ fn action_list(
                 }),
             ],
             vec![Box::new(SubMenu {
-                label: "Move to new container".to_owned(),
+                label: "Move to new Container".to_owned(),
                 actions: vec![
                     Box::new(MoveContentsToNewContainerAction(
                         egui_tiles::ContainerKind::Tabs,
