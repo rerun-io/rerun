@@ -11,7 +11,8 @@ mod sub_menu;
 
 use actions::{
     AddContainerAction, AddEntitiesToNewSpaceViewAction, AddSpaceViewAction, CloneSpaceViewAction,
-    HideAction, MoveContentsToNewContainerAction, RemoveAction, ShowAction,
+    CollapseExpandAllAction, HideAction, MoveContentsToNewContainerAction, RemoveAction,
+    ShowAction,
 };
 use sub_menu::SubMenu;
 
@@ -46,6 +47,7 @@ pub fn context_menu_ui_for_item(
             let context_menu_ctx = ContextMenuContext {
                 viewer_context: ctx,
                 viewport_blueprint,
+                egui_context: ui.ctx().clone(),
                 selection,
                 clicked_item: item,
             };
@@ -101,6 +103,10 @@ fn action_list(
                 Box::new(ShowAction),
                 Box::new(HideAction),
                 Box::new(RemoveAction),
+            ],
+            vec![
+                Box::new(CollapseExpandAllAction::ExpandAll),
+                Box::new(CollapseExpandAllAction::CollapseAll),
             ],
             vec![Box::new(CloneSpaceViewAction)],
             vec![
@@ -186,6 +192,7 @@ fn show_context_menu_for_selection(ctx: &ContextMenuContext<'_>, ui: &mut egui::
 struct ContextMenuContext<'a> {
     viewer_context: &'a ViewerContext<'a>,
     viewport_blueprint: &'a ViewportBlueprint,
+    egui_context: egui::Context,
     selection: &'a Selection,
     clicked_item: &'a Item,
 }
