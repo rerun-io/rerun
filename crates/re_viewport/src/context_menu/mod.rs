@@ -10,9 +10,14 @@ mod actions;
 mod sub_menu;
 
 use actions::{
-    AddContainerAction, AddEntitiesToNewSpaceViewAction, AddSpaceViewAction, CloneSpaceViewAction,
-    CollapseExpandAllAction, HideAction, MoveContentsToNewContainerAction, RemoveAction,
-    ShowAction,
+    add_container::AddContainerAction,
+    add_entities_to_new_space_view::AddEntitiesToNewSpaceViewAction,
+    add_space_view::AddSpaceViewAction,
+    clone_space_view::CloneSpaceViewAction,
+    collapse_expand_all::CollapseExpandAllAction,
+    move_contents_to_new_container::MoveContentsToNewContainerAction,
+    remove::RemoveAction,
+    show_hide::{HideAction, ShowAction},
 };
 use sub_menu::SubMenu;
 
