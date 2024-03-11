@@ -39,7 +39,7 @@ egui_plot = ["dep:egui_plot"]
 glam = ["dep:glam"]
 
 ## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
-image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
+image = ["dep:ecolor", "dep:image"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
@@ -81,12 +81,12 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 ecolor = { workspace = true, optional = true }
 egui_plot = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
-image = { workspace = true, optional = true, default-features = false }
+image = { workspace = true, optional = true, default-features = false, features = [
+  "jpeg",
+] }
 mint = { workspace = true, optional = true }
 rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
-zune-core = { workspace = true, optional = true }
-zune-jpeg = { workspace = true, optional = true }
 
 
 [dev-dependencies]

@@ -44,9 +44,6 @@ pub enum TensorImageLoadError {
 
     #[error("The encoded tensor shape did not match its metadata {expected:?} != {found:?}")]
     InvalidMetaData { expected: Vec<u64>, found: Vec<u64> },
-
-    #[error(transparent)]
-    JpegDecode(#[from] zune_jpeg::errors::DecodeErrors),
 }
 
 #[cfg(feature = "image")]
@@ -549,59 +546,30 @@ impl DecodedTensor {
     }
 
     pub fn decode_jpeg_bytes(
-        jpeg_bytes: &::re_types_core::ArrowBuffer<u8>,
+        jpeg_bytes: &[u8],
         [expected_height, expected_width, expected_channels]: [u64; 3],
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!(format!("{expected_width}x{expected_height}"));
 
-        use zune_core::colorspace::ColorSpace;
-        use zune_core::options::DecoderOptions;
-        use zune_jpeg::JpegDecoder;
-
-        let mut options = DecoderOptions::default();
-
-        let depth = if expected_channels == 1 {
-            options = options.jpeg_set_out_colorspace(ColorSpace::Luma);
-            1
-        } else {
-            // We decode to RGBA directly so we don't need to pad to four bytes later when uploading to GPU.
-            options = options.jpeg_set_out_colorspace(ColorSpace::RGBA);
-            4
+        use image::io::Reader as ImageReader;
+        let mut reader = ImageReader::new(std::io::Cursor::new(jpeg_bytes));
+        reader.set_format(image::ImageFormat::Jpeg);
+        let img = {
+            re_tracing::profile_scope!("decode_jpeg");
+            reader.decode()?
         };
 
-        let mut decoder = JpegDecoder::new_with_options(jpeg_bytes.as_slice(), options);
-        let pixels = decoder.decode()?;
-        let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode
+        let (w, h) = (img.width() as u64, img.height() as u64);
+        let channels = img.color().channel_count() as u64;
 
-        let (w, h) = (w as u64, h as u64);
-
-        if w != expected_width || h != expected_height {
+        if (w, h, channels) != (expected_width, expected_height, expected_channels) {
             return Err(TensorImageLoadError::InvalidMetaData {
                 expected: [expected_height, expected_width, expected_channels].into(),
-                found: [h, w, depth].into(),
+                found: [h, w, channels].into(),
             });
         }
 
-        if pixels.len() as u64 != w * h * depth {
-            return Err(zune_jpeg::errors::DecodeErrors::Format(format!(
-                "Bug in zune-jpeg: Expected {w}x{h}x{depth}={} bytes, got {}",
-                w * h * depth,
-                pixels.len()
-            ))
-            .into());
-        }
-
-        let tensor = TensorData {
-            shape: vec![
-                TensorDimension::height(h),
-                TensorDimension::width(w),
-                TensorDimension::depth(depth),
-            ],
-            buffer: TensorBuffer::U8(pixels.into()),
-        };
-        let decoded_tensor = DecodedTensor(tensor);
-
-        Ok(decoded_tensor)
+        Self::from_image(img)
     }
 }
 
