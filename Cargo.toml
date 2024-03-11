@@ -140,7 +140,7 @@ glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
 hyper = "0.14"
-image = { version = "0.24", default-features = false }
+image = { version = "0.25", default-features = false }
 indent = "0.1"
 indicatif = "0.17.7"                                               # Progress bar
 infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature

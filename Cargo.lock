@@ -242,7 +242,7 @@ checksum = "1faa3c733d9a3dd6fbaf85da5d162a2e03b2e0033a90dceb0e2a90fdd1e5380a"
 dependencies = [
  "clipboard-win",
  "core-graphics",
- "image",
+ "image 0.24.6",
  "log",
  "objc",
  "objc-foundation",
@@ -1586,7 +1586,7 @@ dependencies = [
  "egui-wgpu",
  "egui-winit",
  "egui_glow",
- "image",
+ "image 0.24.6",
  "js-sys",
  "log",
  "objc",
@@ -1679,7 +1679,7 @@ dependencies = [
  "egui",
  "ehttp",
  "enum-map",
- "image",
+ "image 0.24.6",
  "log",
  "mime_guess2",
  "puffin",
@@ -2290,7 +2290,7 @@ dependencies = [
  "base64 0.13.1",
  "byteorder",
  "gltf-json",
- "image",
+ "image 0.24.6",
  "lazy_static",
  "urlencoding",
 ]
@@ -2615,6 +2615,20 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+]
+
+[[package]]
+name = "image"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9b4f005360d32e9325029b38ba47ebd7a56f3316df09249368939562d518645"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "num-traits",
+ "png",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -4259,7 +4273,7 @@ version = "0.15.0-alpha.2"
 dependencies = [
  "ahash",
  "anyhow",
- "image",
+ "image 0.25.0",
  "itertools 0.12.0",
  "once_cell",
  "parking_lot",
@@ -4316,7 +4330,7 @@ dependencies = [
  "egui",
  "egui_extras",
  "egui_plot",
- "image",
+ "image 0.25.0",
  "itertools 0.12.0",
  "re_data_store",
  "re_entity_db",
@@ -4597,7 +4611,7 @@ dependencies = [
  "bytemuck",
  "console_error_panic_hook",
  "glam",
- "image",
+ "image 0.25.0",
  "itertools 0.12.0",
  "macaw",
  "pollster",
@@ -4917,7 +4931,7 @@ dependencies = [
  "egui_plot",
  "glam",
  "half 2.3.1",
- "image",
+ "image 0.25.0",
  "infer",
  "itertools 0.12.0",
  "linked-hash-map",
@@ -5023,7 +5037,7 @@ dependencies = [
  "egui_plot",
  "egui_tiles",
  "ehttp",
- "image",
+ "image 0.25.0",
  "itertools 0.12.0",
  "once_cell",
  "poll-promise",
@@ -5121,7 +5135,7 @@ dependencies = [
  "egui",
  "egui_tiles",
  "glam",
- "image",
+ "image 0.25.0",
  "itertools 0.12.0",
  "nohash-hasher",
  "once_cell",
@@ -5477,7 +5491,7 @@ version = "0.15.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
- "image",
+ "image 0.25.0",
  "re_log",
  "rerun",
 ]
@@ -5499,7 +5513,7 @@ dependencies = [
  "anyhow",
  "clap",
  "half 2.3.1",
- "image",
+ "image 0.25.0",
  "ndarray",
  "re_log",
  "rerun",
@@ -5561,7 +5575,7 @@ version = "0.15.0-alpha.2"
 dependencies = [
  "anyhow",
  "clap",
- "image",
+ "image 0.25.0",
  "re_log",
  "rerun",
 ]
@@ -7732,6 +7746,21 @@ dependencies = [
  "crc32fast",
  "crossbeam-utils",
  "flate2",
+]
+
+[[package]]
+name = "zune-core"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f423a2c17029964870cfaabb1f13dfab7d092a62a29a89264f4d36990ca414a"
+
+[[package]]
+name = "zune-jpeg"
+version = "0.4.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec866b44a2a1fd6133d363f073ca1b179f438f99e7e5bfb1e33f7181facfe448"
+dependencies = [
+ "zune-core",
 ]
 
 [[package]]
