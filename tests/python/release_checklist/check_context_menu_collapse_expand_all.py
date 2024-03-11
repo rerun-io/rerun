@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import os
-import random
 from argparse import Namespace
 from uuid import uuid4
 
-import numpy as np
 import rerun as rr
 
 README = """
