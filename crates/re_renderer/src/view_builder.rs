@@ -222,7 +222,7 @@ impl ViewBuilder {
 
     /// Depth format used for the main target of the view builder.
     ///
-    /// [`wgpu::TextureFormat::Depth24Plus`] would be preferable for performance, see [Nvidia's Vulkan dos and dont's](https://developer.nvidia.com/blog/vulkan-dos-donts/).
+    /// [`wgpu::TextureFormat::Depth24Plus`] would be preferable for performance, see [Nvidia's Vulkan dos and don'ts](https://developer.nvidia.com/blog/vulkan-dos-donts/).
     /// However, the problem with being "24Plus" is that we no longer know what format we'll actually get, which is a problem e.g. for vertex shader determined depth offsets.
     /// (This is a real concern - for example on Metal we always get a floating point target with this!)
     /// [`wgpu::TextureFormat::Depth32Float`] on the other hand is widely supported and has the best possible precision (with reverse infinite z projection which we're already using).
