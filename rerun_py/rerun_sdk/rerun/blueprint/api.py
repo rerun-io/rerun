@@ -118,6 +118,7 @@ class Spatial3D(SpaceView):
         contents
             The contents of the space view. Most commonly specified as a query expression. The individual
             sub-expressions must either be newline separate, or provided as a list of strings.
+            See: [rerun.blueprint.components.QueryExpression][].
 
         """
         super().__init__("3D", origin, contents)
@@ -138,6 +139,7 @@ class Spatial2D(SpaceView):
         contents
             The contents of the space view. Most commonly specified as a query expression. The individual
             sub-expressions must either be newline separate, or provided as a list of strings.
+            See: [rerun.blueprint.components.QueryExpression][].
 
         """
         super().__init__("2D", origin, contents)
