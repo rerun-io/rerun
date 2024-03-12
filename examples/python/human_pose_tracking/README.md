@@ -22,7 +22,7 @@ Use the MediaPipe Pose Landmark Detection solution to detect and track a human p
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image)
 
 ## Background
-[MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solutions is used to accurately track the human body pose in both images and videos. Researchers/Developers can gain insights into body pose information in various dimensions, enhance their understanding of human movement and facilitate the development of applications that require precise body pose tracking.
+The [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution detects and tracks human pose landmarks and produces segmentation masks for humans. The solution targets real-time inference on video streams. In this example we use Rerun to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
 
 # Logging and Visualizing with Rerun
