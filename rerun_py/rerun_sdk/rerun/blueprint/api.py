@@ -177,9 +177,13 @@ class Container:
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
         column_shares
-            The layout shares of the columns in the container. This is only applicable to `Horizontal` or `Grid` containers.
+            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
+            This is only applicable to `Horizontal` or `Grid` containers.
         row_shares
-            The layout shares of the rows in the container. This is only applicable to `Vertical` or `Grid` containers.
+            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
+            This is only applicable to `Vertical` or `Grid` containers.
         grid_columns
             The number of columns in the grid. This is only applicable to `Grid` containers.
 
@@ -235,7 +239,8 @@ class Horizontal(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         column_shares
-            The layout shares of the columns in the container.
+            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
 
         """
         super().__init__(*contents, kind=ContainerKind.Horizontal, column_shares=column_shares)
@@ -253,7 +258,8 @@ class Vertical(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         row_shares
-            The layout shares of the rows in the container.
+            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
 
         """
         super().__init__(*contents, kind=ContainerKind.Vertical, row_shares=row_shares)
@@ -277,9 +283,11 @@ class Grid(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         column_shares
-            The layout shares of the columns in the container.
+            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
         row_shares
-            The layout shares of the rows in the container.
+            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
         grid_columns
             The number of columns in the grid.
 
