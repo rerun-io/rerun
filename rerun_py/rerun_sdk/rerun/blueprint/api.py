@@ -33,7 +33,7 @@ class SpaceView:
         class_identifier: Utf8Like,
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
-        name: Utf8Like,
+        name: Utf8Like | None,
     ):
         """
         Construct a blueprint for a new space view.
