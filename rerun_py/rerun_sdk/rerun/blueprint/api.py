@@ -63,6 +63,14 @@ class SpaceView:
         """
         return f"space_view/{self.id}"
 
+    def to_viewport(self) -> Viewport:
+        """Convert this space view to a viewport."""
+        return Viewport(Grid(self))
+
+    def to_app_blueprint(self) -> App:
+        """Convert this space view to a full app blueprint."""
+        return App(self.to_viewport())
+
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         # Handle the cases for SpaceViewContentsLike
@@ -198,6 +206,14 @@ class Container:
         not a part of the regular data hierarchy.
         """
         return f"container/{self.id}"
+
+    def to_viewport(self) -> Viewport:
+        """Convert this container to a viewport."""
+        return Viewport(self)
+
+    def to_app_blueprint(self) -> App:
+        """Convert this container to a full app blueprint."""
+        return App(self.to_viewport())
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -341,6 +357,14 @@ class Viewport:
         """
         return "viewport"
 
+    def to_viewport(self) -> Viewport:
+        """Conform with the `ViewportLike` interface."""
+        return self
+
+    def to_app_blueprint(self) -> App:
+        """Convert this viewport to a full app blueprint."""
+        return App(self)
+
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         self.root_container._log_to_stream(stream)
@@ -395,6 +419,15 @@ class Panel:
         stream.log(self.blueprint_path(), arch)
 
 
+ViewportLike = Union[Viewport, Container, SpaceView]
+"""
+A type that can be converted to a viewport.
+
+These types all implement a `to_viewport()` method that wraps them in the necessary
+helper classes.
+"""
+
+
 class App:
     """
     The top-level description of the viewer application.
@@ -404,7 +437,7 @@ class App:
 
     def __init__(
         self,
-        viewport: Viewport,
+        viewport: ViewportLike,
         *,
         blueprint_panel_expanded: bool = None,
         selection_panel_expanded: bool = None,
@@ -426,7 +459,8 @@ class App:
 
         """
 
-        self.viewport = viewport
+        self.viewport = viewport.to_viewport()
+
         self.blueprint_panel = Panel(
             blueprint_path="blueprint_panel",
             expanded=blueprint_panel_expanded,
@@ -440,6 +474,10 @@ class App:
             expanded=time_panel_expanded,
         )
 
+    def to_app_blueprint(self) -> App:
+        """Conform with the `BlueprintLike` interface."""
+        return self
+
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         self.viewport._log_to_stream(stream)
@@ -449,16 +487,19 @@ class App:
 
 
 BlueprintLike = Union[App, Viewport, Container, SpaceView]
+"""
+A type that can be converted to a blueprint.
+
+These types all implement a `to_app_blueprint()` method that wraps them in the necessary
+helper classes.
+"""
 
 
 def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike) -> MemoryRecording:
     """Internal rerun helper to convert a `BlueprintLike` into a stream that can be sent to the viewer."""
 
-    # Add trivial wrappers as necessary
-    if isinstance(blueprint, SpaceView):
-        blueprint = Viewport(Grid(blueprint))
-    elif isinstance(blueprint, Container):
-        blueprint = Viewport(blueprint)
+    # Convert the BlueprintLike to a full app blueprint
+    blueprint = blueprint.to_app_blueprint()
 
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
