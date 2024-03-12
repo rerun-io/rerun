@@ -63,7 +63,7 @@ class SpaceView:
         """
         The blueprint path where this space view will be logged.
 
-        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
         """
         return f"space_view/{self.id}"
@@ -177,11 +177,11 @@ class Container:
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
         column_shares
-            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
             column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
             This is only applicable to `Horizontal` or `Grid` containers.
         row_shares
-            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
             row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
             This is only applicable to `Vertical` or `Grid` containers.
         grid_columns
@@ -199,7 +199,7 @@ class Container:
         """
         The blueprint path where this space view will be logged.
 
-        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
         """
         return f"container/{self.id}"
@@ -239,7 +239,7 @@ class Horizontal(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         column_shares
-            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
             column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
 
         """
@@ -258,7 +258,7 @@ class Vertical(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         row_shares
-            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
             row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
 
         """
@@ -283,10 +283,10 @@ class Grid(Container):
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
         column_shares
-            The layout shares of the columns in the container.  The share is used to determine what fraction of the total width each
+            The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
             column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
         row_shares
-            The layout shares of the rows in the container.  The share is used to determine what fraction of the total height each
+            The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
             row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
         grid_columns
             The number of columns in the grid.
@@ -341,7 +341,7 @@ class Viewport:
         """
         The blueprint path where this space view will be logged.
 
-        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
         not a part of the regular data hierarchy.
         """
         return "viewport"
