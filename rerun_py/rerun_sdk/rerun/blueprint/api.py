@@ -386,7 +386,7 @@ class Panel:
     This is used internally by the app to control the state of the 3 main panels.
     """
 
-    def __init__(self, *, blueprint_path: str, expanded: bool):
+    def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
         """
         Construct a new panel.
 
@@ -416,7 +416,7 @@ class Panel:
             expanded=self.expanded,
         )
 
-        stream.log(self.blueprint_path(), arch)
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
 ViewportLike = Union[Viewport, Container, SpaceView]
@@ -439,9 +439,9 @@ class App:
         self,
         viewport: ViewportLike,
         *,
-        blueprint_panel_expanded: bool = None,
-        selection_panel_expanded: bool = None,
-        time_panel_expanded: bool = None,
+        blueprint_panel_expanded: bool | None = None,
+        selection_panel_expanded: bool | None = None,
+        time_panel_expanded: bool | None = None,
     ):
         """
         Construct a new app.
