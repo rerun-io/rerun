@@ -2618,6 +2618,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "incremental_logging"
+version = "0.15.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "rand",
+ "rerun",
+]
+
+[[package]]
 name = "indent"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
