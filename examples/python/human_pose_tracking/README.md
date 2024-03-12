@@ -30,7 +30,7 @@ The visualizations in this example were created with the following Rerun code.
 
 ## Timelines
 
-[`Timelines`](https://www.rerun.io/docs/concepts/timelines) functions used to set a continuous and discrete timestamp, respectively.
+For each processed video frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
 
 ```python
 rr.set_time_seconds("time", bgr_frame.time)
