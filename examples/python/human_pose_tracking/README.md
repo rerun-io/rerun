@@ -82,8 +82,8 @@ rr.log(
 ```
 
 ## Body Pose Points
-Logging the body pose landmarks involves specifying connections between the points, extracting hand landmark points and logging them to the Rerun SDK.
-The 2D points are visualised over the image/video for a better understanding and visualisation of the body pose. The 3D points allows the creation of a 3D model of the body posture for a more comprehensive representation of the human pose.
+Logging the body pose landmarks involves specifying connections between the points, extracting pose landmark points and logging them to the Rerun SDK.
+The 2D points are visualized over the image/video for a better understanding and visualization of the body pose. The 3D points allows the creation of a 3D model of the body posture for a more comprehensive representation of the human pose.
 
 
 
