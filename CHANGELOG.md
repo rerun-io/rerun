@@ -1698,7 +1698,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Add re_arrow_store profile scopes [#1546](https://github.com/rerun-io/rerun/pull/1546)
 - datastore: early exit missing components at table level [#1554](https://github.com/rerun-io/rerun/pull/1554)
 - datastore: track bucket count in store stats & mem panel [#1555](https://github.com/rerun-io/rerun/pull/1555)
-- LogDb: dont split on index bucket size [#1558](https://github.com/rerun-io/rerun/pull/1558)
+- LogDb: don't split on index bucket size [#1558](https://github.com/rerun-io/rerun/pull/1558)
 - Introduce a simpler cache dedicated to just decode JPEGs [#1550](https://github.com/rerun-io/rerun/pull/1550)
 - Implement outlines for points 2d/3d/depth & use them for select & hover in Viewer [#1568](https://github.com/rerun-io/rerun/pull/1568)
 - Simplify ImageCache [#1551](https://github.com/rerun-io/rerun/pull/1551)
