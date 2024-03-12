@@ -8,7 +8,7 @@ use re_viewer_context::{
 
 pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 pub const SELECTION_PANEL_PATH: &str = "selection_panel";
-pub const TIMELINE_PANEL_PATH: &str = "timeline_panel";
+pub const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -46,9 +46,7 @@ impl<'a> AppBlueprint<'a> {
             {
                 ret.selection_panel_expanded = expanded;
             }
-            if let Some(expanded) =
-                load_panel_state(&TIMELINE_PANEL_PATH.into(), blueprint_db, query)
-            {
+            if let Some(expanded) = load_panel_state(&TIME_PANEL_PATH.into(), blueprint_db, query) {
                 ret.time_panel_expanded = expanded;
             }
         }
@@ -81,11 +79,7 @@ impl<'a> AppBlueprint<'a> {
     }
 
     pub fn toggle_time_panel(&self, command_sender: &CommandSender) {
-        self.send_panel_expanded(
-            TIMELINE_PANEL_PATH,
-            !self.time_panel_expanded,
-            command_sender,
-        );
+        self.send_panel_expanded(TIME_PANEL_PATH, !self.time_panel_expanded, command_sender);
     }
 }
 
@@ -93,7 +87,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     for (panel_name, is_expanded) in [
         (BLUEPRINT_PANEL_PATH, true),
         (SELECTION_PANEL_PATH, false),
-        (TIMELINE_PANEL_PATH, false),
+        (TIME_PANEL_PATH, false),
     ] {
         let entity_path = EntityPath::from(panel_name);
         // TODO(jleibs): Seq instead of timeless?
