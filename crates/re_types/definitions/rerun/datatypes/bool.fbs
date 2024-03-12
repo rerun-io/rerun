@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A single boolean.
+struct Bool (
+    "attr.arrow.transparent",
+    "attr.python.aliases": "bool",
+    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.repr": "transparent",
+    "attr.rust.tuple_struct"
+) {
+    visible: bool (order: 100);
+}
