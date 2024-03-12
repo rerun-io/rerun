@@ -89,10 +89,9 @@ The 2D points are visualized over the image/video for a better understanding and
 
 The 2D and 3D points are logged through a combination of two archetypes. First, a timeless
 [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
-the keypoints. In both 2D and 3D points, specifying connections between points is essential. 
-Defining these connections automatically renders lines between them. Using the information provided by MediaPipe, 
-you can get the pose points connections from the `POSE_CONNECTIONS` set. Second, the actual keypoint positions are logged in 2D
-nd 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
+the keypoints.
+Defining these connections automatically renders lines between them. Mediapipe provides the `POSE_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections. Second, the actual keypoint positions are logged in 2D
+and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively. 
 
 ### Label Mapping and Keypoint Connections
