@@ -137,7 +137,7 @@ As a further simplification, the Blueprint will allow for the direct inclusion o
 the data-logging APIs entirely for simple use-cases that don't require temporal information. This will be accomplished
 by allowing `rrb.Data` objects to be constructed from any Rerun-loggable object.
 
-Data that is a *query* from the recording store references an entity path used seprately by the logging APIs:
+Data that is a *query* from the recording store references an entity path used separately by the logging APIs:
 ```python
 # Log Data
 for t in range(100):
