@@ -335,7 +335,9 @@ class Viewport:
     This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
     """
 
-    def __init__(self, root_container: Container):
+    def __init__(
+        self, root_container: Container, *, auto_layout: bool | None = None, auto_space_views: bool | None = None
+    ):
         """
         Construct a new viewport.
 
@@ -344,9 +346,17 @@ class Viewport:
         root_container:
             The container that sits at the top of the viewport hierarchy. The only content visible
             in this viewport must be contained within this container.
+        auto_layout:
+            Whether to automatically layout the viewport. If `True`, the container layout will be
+            reset whenever a new space view is added to the viewport. Defaults to `False`.
+        auto_space_views:
+            Whether to automatically add space views to the viewport. If `True`, the viewport will
+            automatically add space views based on content in the data store. Defaults to `False`.
 
         """
         self.root_container = root_container
+        self.auto_layout = auto_layout
+        self.auto_space_views = auto_space_views
 
     def blueprint_path(self) -> str:
         """
@@ -372,8 +382,8 @@ class Viewport:
         arch = ViewportBlueprint(
             space_views=list(self.root_container._iter_space_views()),
             root_container=self.root_container.id.bytes,
-            auto_layout=False,
-            auto_space_views=False,
+            auto_layout=self.auto_layout,
+            auto_space_views=self.auto_space_views,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
