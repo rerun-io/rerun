@@ -407,6 +407,7 @@ impl DataQueryPropertyResolver<'_> {
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
+    #[allow(clippy::too_many_arguments)] // This will be a lot simpler and smaller once `EntityProperties` are gone!
     fn update_overrides_recursive(
         &self,
         ctx: &StoreContext<'_>,
@@ -414,6 +415,7 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
+        mut recursive_property_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated)) =
@@ -473,13 +475,39 @@ impl DataQueryPropertyResolver<'_> {
                     }
                 }
 
-                let mut component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)> =
-                    Default::default();
+                // First, gather recursive overrides.
+                // This manipulates `recursive_property_overrides` directly which we'll pass on to children.
+                // New recursive overrides shadow previous ones.
 
-                if let Some(override_subtree) =
+                if let Some(recursive_override_subtree) =
+                    ctx.blueprint.tree().subtree(&recursive_override_path)
+                {
+                    for component in recursive_override_subtree.entity.components.keys() {
+                        if let Some(component_data) = ctx
+                            .blueprint
+                            .store()
+                            .latest_at(query, &recursive_override_path, *component, &[*component])
+                            .and_then(|(_, _, cells)| cells[0].clone())
+                        {
+                            if !component_data.is_empty() {
+                                recursive_property_overrides.insert(
+                                    *component,
+                                    (StoreKind::Blueprint, recursive_override_path.clone()),
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // The recursive overrides are the base for the active overrides for this path.
+                let mut component_overrides = recursive_property_overrides.clone();
+
+                // Then, gather individual overrides - these may override the recursive ones again,
+                // but recursive overrides are still inherited to children.
+                if let Some(individual_override_subtree) =
                     ctx.blueprint.tree().subtree(&individual_override_path)
                 {
-                    for component in override_subtree.entity.components.keys() {
+                    for component in individual_override_subtree.entity.components.keys() {
                         if let Some(component_data) = ctx
                             .blueprint
                             .store()
@@ -515,6 +543,7 @@ impl DataQueryPropertyResolver<'_> {
                     query_result,
                     override_context,
                     &accumulated,
+                    recursive_property_overrides.clone(),
                     child,
                 );
             }
@@ -540,6 +569,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
                 query_result,
                 &entity_overrides,
                 &entity_overrides.root,
+                HashMap::default(), // TODO: root overrides!
                 root,
             );
         }
