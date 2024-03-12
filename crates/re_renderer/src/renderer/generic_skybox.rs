@@ -15,6 +15,9 @@ use crate::{
 
 use super::{DrawData, DrawError, RenderContext, Renderer};
 
+/// The type of generic skybox to render.
+///
+/// If you want a solid background color, don't add the skybox at all and instead set a clear color.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GenericSkyboxType {
     DirectionalGradientDark = 0,
