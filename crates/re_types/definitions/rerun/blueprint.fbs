@@ -22,6 +22,7 @@ include "./blueprint/components/visible.fbs";
 
 include "./blueprint/archetypes/background_3d.fbs";
 include "./blueprint/archetypes/container_blueprint.fbs";
+include "./blueprint/archetypes/panel_blueprint.fbs";
 include "./blueprint/archetypes/space_view_blueprint.fbs";
 include "./blueprint/archetypes/space_view_contents.fbs";
 include "./blueprint/archetypes/viewport_blueprint.fbs";
