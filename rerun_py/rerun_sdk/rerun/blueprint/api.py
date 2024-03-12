@@ -71,6 +71,9 @@ class SpaceView:
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         # Handle the cases for SpaceViewContentsLike
+        # TODO(#5483): Move this into a QueryExpressionExt class.
+        # This is a little bit tricky since QueryExpression is a delegating component for Utf8,
+        # and delegating components make extending things in this way a bit more complicated.
         if isinstance(self.contents, str):
             # str
             contents = SpaceViewContents(query=self.contents)
