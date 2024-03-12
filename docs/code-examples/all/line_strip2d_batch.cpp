@@ -1,4 +1,4 @@
-// Log a batch of 2d line strips.
+// Log a batch of 2D line strips.
 
 #include <rerun.hpp>
 

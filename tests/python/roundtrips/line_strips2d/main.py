@@ -40,7 +40,7 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_roundtrip_line_strips2d")
 
     rr.log("line_strips2d", line_strips2d)
-    # Hack to establish 2d view bounds
+    # Hack to establish 2D view bounds
     rr.log("rect", rr.Boxes2D(centers=[0, 0], half_sizes=[10, 10]))
 
     rr.script_teardown(args)

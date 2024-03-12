@@ -17,7 +17,7 @@ int main(int, char** argv) {
             .with_keypoint_ids({2, 3})
     );
 
-    // Hack to establish 2d view bounds
+    // Hack to establish 2D view bounds
     rec.log(
         "rect",
         rerun::archetypes::Boxes2D::from_mins_and_sizes({{0.0f, 0.0f}}, {{4.0f, 6.0f}})

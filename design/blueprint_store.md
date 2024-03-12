@@ -247,7 +247,7 @@ The ui components are quite specific for the type of blueprint. Here are a few e
     * `sizes`: individual sizes of the children
 * Space view
     * `children` (data blueprints)
-    * `category` ("3d", "text", …)
+    * `category` ("3D", "text", …)
 * Data group
     * `children`
 * Data
