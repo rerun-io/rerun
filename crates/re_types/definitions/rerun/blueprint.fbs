@@ -10,7 +10,7 @@ include "./blueprint/components/grid_columns.fbs";
 include "./blueprint/components/included_content.fbs";
 include "./blueprint/components/included_space_view.fbs";
 include "./blueprint/components/lock_range_during_zoom.fbs";
-include "./blueprint/components/panel_view.fbs";
+include "./blueprint/components/panel_expanded.fbs";
 include "./blueprint/components/query_expression.fbs";
 include "./blueprint/components/root_container.fbs";
 include "./blueprint/components/row_share.fbs";
