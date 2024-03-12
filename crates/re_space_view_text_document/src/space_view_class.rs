@@ -70,6 +70,10 @@ impl SpaceViewClass for TextDocumentSpaceView {
         system_registry.register_visualizer::<TextDocumentSystem>()
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TextDocumentSpaceViewState>::default()
+    }
+
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }

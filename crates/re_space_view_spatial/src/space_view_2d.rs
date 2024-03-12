@@ -72,6 +72,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
         Ok(())
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<SpatialSpaceViewState>::default()
+    }
+
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         state
             .downcast_ref::<SpatialSpaceViewState>()

@@ -54,6 +54,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
         super::ui_3d::help_text(re_ui)
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<SpatialSpaceViewState>::default()
+    }
+
     fn on_register(
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,

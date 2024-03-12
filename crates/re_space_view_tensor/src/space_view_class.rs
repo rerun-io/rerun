@@ -167,6 +167,10 @@ impl SpaceViewClass for TensorSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Medium
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ViewTensorState>::default()
+    }
+
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,

@@ -33,6 +33,10 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         Ok(())
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<()>::default()
+    }
+
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low
     }

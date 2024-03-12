@@ -63,6 +63,10 @@ impl SpaceViewClass for TextSpaceView {
         system_registry.register_visualizer::<TextLogSystem>()
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TextSpaceViewState>::default()
+    }
+
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }

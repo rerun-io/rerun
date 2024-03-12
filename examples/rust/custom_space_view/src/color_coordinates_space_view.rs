@@ -92,6 +92,10 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         system_registry.register_visualizer::<InstanceColorSystem>()
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ColorCoordinatesSpaceViewState>::default()
+    }
+
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)

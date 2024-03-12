@@ -127,6 +127,10 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         Ok(())
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TimeSeriesSpaceViewState>::default()
+    }
+
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }

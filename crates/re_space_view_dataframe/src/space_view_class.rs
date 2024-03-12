@@ -47,6 +47,10 @@ impl SpaceViewClass for DataframeSpaceView {
         system_registry.register_visualizer::<EmptySystem>()
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<()>::default()
+    }
+
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }

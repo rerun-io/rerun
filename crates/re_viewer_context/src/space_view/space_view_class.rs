@@ -89,9 +89,7 @@ pub trait SpaceViewClass: Send + Sync {
     /// Called once for every new space view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::new(())
-    }
+    fn new_state(&self) -> Box<dyn SpaceViewState>;
 
     /// Optional archetype of the Space View's blueprint properties.
     ///
