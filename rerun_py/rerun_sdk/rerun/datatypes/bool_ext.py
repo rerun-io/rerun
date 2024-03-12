@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from . import BoolArrayLike
 
 
-class VisibleExt:
+class BoolExt:
     """Extension for [Bool][rerun.datatypes.Bool]."""
 
     @staticmethod

@@ -12,7 +12,8 @@ __all__ = [
     "Tabs",
     "Vertical",
     "Viewport",
+    "App",
 ]
 
 from . import archetypes, components, datatypes
-from .api import BlueprintLike, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
+from .api import App, BlueprintLike, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport

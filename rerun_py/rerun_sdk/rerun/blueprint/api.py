@@ -9,12 +9,7 @@ import rerun_bindings as bindings
 from ..datatypes import EntityPathLike, Utf8Like
 from ..recording import MemoryRecording
 from ..recording_stream import RecordingStream
-from .archetypes import (
-    ContainerBlueprint,
-    SpaceViewBlueprint,
-    SpaceViewContents,
-    ViewportBlueprint,
-)
+from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKind, ContainerKindLike
 
@@ -360,7 +355,100 @@ class Viewport:
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
-BlueprintLike = Union[Viewport, Container, SpaceView]
+class Panel:
+    """
+    The state of a panel in the app.
+
+    This is used internally by the app to control the state of the 3 main panels.
+    """
+
+    def __init__(self, *, blueprint_path: str, expanded: bool):
+        """
+        Construct a new panel.
+
+        Parameters
+        ----------
+        blueprint_path:
+            The blueprint path of the panel.
+        expanded:
+            Whether the panel is expanded or not.
+
+        """
+        self._blueprint_path = blueprint_path
+        self.expanded = expanded
+
+    def blueprint_path(self) -> str:
+        """
+        The blueprint path where this space view will be logged.
+
+        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
+        return self._blueprint_path
+
+    def _log_to_stream(self, stream: RecordingStream) -> None:
+        """Internal method to convert to an archetype and log to the stream."""
+        arch = PanelBlueprint(
+            expanded=self.expanded,
+        )
+
+        stream.log(self.blueprint_path(), arch)
+
+
+class App:
+    """
+    The top-level description of the viewer application.
+
+    The app allows you to specify a viewport and control the state of the 3 main panels.
+    """
+
+    def __init__(
+        self,
+        viewport: Viewport,
+        *,
+        blueprint_panel_expanded: bool = None,
+        selection_panel_expanded: bool = None,
+        time_panel_expanded: bool = None,
+    ):
+        """
+        Construct a new app.
+
+        Parameters
+        ----------
+        viewport:
+            The viewport that will be displayed in the app.
+        blueprint_panel_expanded:
+            Whether the blueprint panel is expanded or not. If unset the panel will choose its state based on the window size.
+        selection_panel_expanded:
+            Whether the selection panel is expanded or not. If unset the panel will choose its state based on the window size.
+        time_panel_expanded:
+            Whether the time panel is expanded or not. If unset the panel will choose its state based on the window size.
+
+        """
+
+        self.viewport = viewport
+        self.blueprint_panel = Panel(
+            blueprint_path="blueprint_panel",
+            expanded=blueprint_panel_expanded,
+        )
+        self.selection_panel = Panel(
+            blueprint_path="selection_panel",
+            expanded=selection_panel_expanded,
+        )
+        self.time_panel = Panel(
+            blueprint_path="time_panel",
+            expanded=time_panel_expanded,
+        )
+
+    def _log_to_stream(self, stream: RecordingStream) -> None:
+        """Internal method to convert to an archetype and log to the stream."""
+        self.viewport._log_to_stream(stream)
+        self.blueprint_panel._log_to_stream(stream)
+        self.selection_panel._log_to_stream(stream)
+        self.time_panel._log_to_stream(stream)
+
+
+BlueprintLike = Union[App, Viewport, Container, SpaceView]
 
 
 def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike) -> MemoryRecording:
