@@ -29,15 +29,19 @@ class SpaceView:
 
     def __init__(
         self,
+        *,
         class_identifier: Utf8Like,
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
+        name: Utf8Like,
     ):
         """
         Construct a blueprint for a new space view.
 
         Parameters
         ----------
+        name
+            The name of the space view.
         class_identifier
             The class of the space view to add. This must correspond to a known space view class.
             Prefer to use one of the subclasses of `SpaceView` which will populate this for you.
@@ -51,6 +55,7 @@ class SpaceView:
         """
         self.id = uuid.uuid4()
         self.class_identifier = class_identifier
+        self.name = name
         self.origin = origin
         self.contents = contents
 
@@ -94,6 +99,7 @@ class SpaceView:
 
         arch = SpaceViewBlueprint(
             class_identifier=self.class_identifier,
+            display_name=self.name,
             space_origin=self.origin,
         )
 
@@ -109,7 +115,9 @@ class SpaceView:
 class Spatial3D(SpaceView):
     """A Spatial 3D space view."""
 
-    def __init__(self, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**"):
+    def __init__(
+        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+    ):
         """
         Construct a blueprint for a new 3D space view.
 
@@ -122,15 +130,19 @@ class Spatial3D(SpaceView):
             The contents of the space view. Most commonly specified as a query expression. The individual
             sub-expressions must either be newline separate, or provided as a list of strings.
             See: [rerun.blueprint.components.QueryExpression][].
+        name
+            The name of the space view.
 
         """
-        super().__init__("3D", origin, contents)
+        super().__init__(class_identifier="3D", origin=origin, contents=contents, name=name)
 
 
 class Spatial2D(SpaceView):
     """A Spatial 2D space view."""
 
-    def __init__(self, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**"):
+    def __init__(
+        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+    ):
         """
         Construct a blueprint for a new 2D space view.
 
@@ -143,9 +155,11 @@ class Spatial2D(SpaceView):
             The contents of the space view. Most commonly specified as a query expression. The individual
             sub-expressions must either be newline separate, or provided as a list of strings.
             See: [rerun.blueprint.components.QueryExpression][].
+        name
+            The name of the space view.
 
         """
-        super().__init__("2D", origin, contents)
+        super().__init__(class_identifier="2D", origin=origin, contents=contents, name=name)
 
 
 class Container:
