@@ -12,7 +12,7 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../concepts/entity-component.md).
 
 ## Spatial **Archetypes**
-The spatial archetypes represent 2d and 3d spatial data. These types have some notion of a coordinate system and
+The spatial archetypes represent 2D and 3D spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. These types can be visualized by 2D and 3D space views.
 
 To visualize a 2D entity in a 3D space view it must be under a pinhole transformation.

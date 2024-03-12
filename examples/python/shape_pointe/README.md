@@ -7,7 +7,7 @@ thumbnail_dimensions = [480, 293]
 -->
 
 
-OpenAI has released two models for text-to-3d generation: Point-E and Shape-E. Both of these methods are fast and interesting but still low fidelity for now.
+OpenAI has released two models for text-to-3D generation: Point-E and Shape-E. Both of these methods are fast and interesting but still low fidelity for now.
 
 https://vimeo.com/865974160?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6545
 

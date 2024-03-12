@@ -24,7 +24,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
             .with_class_ids([126, 127]),
     )?;
 
-    // Hack to establish 2d view bounds
+    // Hack to establish 2D view bounds
     rec.log(
         "rect",
         &Boxes2D::from_mins_and_sizes([(-10.0, -10.0)], [(20.0, 20.0)]),

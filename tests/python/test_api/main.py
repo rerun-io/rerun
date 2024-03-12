@@ -397,7 +397,7 @@ def run_bounding_box() -> None:
 
 def run_extension_component() -> None:
     rr.set_time_seconds("sim_time", 0)
-    # Hack to establish 2d view bounds
+    # Hack to establish 2D view bounds
     rr.log("extension_components", rr.Boxes2D(array=[0, 0, 128, 128], array_format=rr.Box2DFormat.XYWH))
 
     # Single point

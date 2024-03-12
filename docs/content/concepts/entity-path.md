@@ -45,7 +45,7 @@ Any other character should be escaped, including symbols (`\:`, `\$`, …) and w
 
 You can an arbitrary unicode code point into an entity path using `\u{262E}`.
 
-So for instance, `world/3d/My\ Image.jpg/detection` is a valid path (note the escaped space!).
+So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the escaped space!).
 
 ⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
 
