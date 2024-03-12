@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example of using the blueprint APIs to configure Rerun."""
+# TODO(jleibs): Update this example to use the new APIs
 from __future__ import annotations
 
 import argparse
@@ -26,15 +27,11 @@ def main() -> None:
         rr.init(
             "Blueprint demo",
             init_logging=False,
-            exp_init_blueprint=not args.skip_blueprint,
-            exp_add_to_app_default_blueprint=args.no_append_default,
             spawn=True,
         )
     else:
         rr.init(
             "Blueprint demo",
-            exp_init_blueprint=not args.skip_blueprint,
-            exp_add_to_app_default_blueprint=args.no_append_default,
             spawn=True,
         )
 

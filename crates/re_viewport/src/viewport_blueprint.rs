@@ -98,8 +98,11 @@ impl ViewportBlueprint {
             }
         };
 
-        let space_view_ids: Vec<SpaceViewId> =
-            space_views.into_iter().map(|id| id.0.into()).collect();
+        let space_view_ids: Vec<SpaceViewId> = space_views
+            .unwrap_or(vec![])
+            .iter()
+            .map(|id| id.0.into())
+            .collect();
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()

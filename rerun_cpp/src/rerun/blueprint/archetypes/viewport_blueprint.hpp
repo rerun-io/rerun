@@ -24,7 +24,7 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: The top-level description of the Viewport.
     struct ViewportBlueprint {
         /// All of the space-views that belong to the viewport.
-        Collection<rerun::blueprint::components::IncludedSpaceView> space_views;
+        std::optional<Collection<rerun::blueprint::components::IncludedSpaceView>> space_views;
 
         /// The layout of the space-views
         std::optional<rerun::blueprint::components::RootContainer> root_container;
@@ -65,10 +65,14 @@ namespace rerun::blueprint::archetypes {
         ViewportBlueprint() = default;
         ViewportBlueprint(ViewportBlueprint&& other) = default;
 
-        explicit ViewportBlueprint(
+        /// All of the space-views that belong to the viewport.
+        ViewportBlueprint with_space_views(
             Collection<rerun::blueprint::components::IncludedSpaceView> _space_views
-        )
-            : space_views(std::move(_space_views)) {}
+        ) && {
+            space_views = std::move(_space_views);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// The layout of the space-views
         ViewportBlueprint with_root_container(
@@ -128,7 +132,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {
-            return space_views.size();
+            return 0;
         }
     };
 
