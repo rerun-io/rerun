@@ -1,6 +1,7 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
 use re_data_ui::item_ui::guess_instance_path_icon;
+use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
@@ -54,7 +55,7 @@ impl<'a> DataResultNodeOrPath<'a> {
 
 impl Viewport<'_, '_> {
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
 
         egui::ScrollArea::both()
@@ -62,7 +63,7 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
-                    self.handle_focused_item(ctx, ui);
+                    self.state.blueprint_tree_focused_item = self.check_focused_item(ctx, ui);
 
                     self.root_container_tree_ui(ctx, ui);
 
@@ -83,14 +84,16 @@ impl Viewport<'_, '_> {
             });
     }
 
-    fn handle_focused_item(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-        if let Some(focused_item) = ctx.focused_item {
+    fn check_focused_item(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> Option<Item> {
+        ctx.focused_item.as_ref().and_then(|focused_item| {
             match focused_item {
                 Item::Container(container_id) => {
-                    self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id))
+                    self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
+                    Some(focused_item.clone())
                 }
                 Item::SpaceView(space_view_id) => {
-                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id))
+                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                    ctx.focused_item.clone()
                 }
                 Item::DataResult(space_view_id, instance_path) => {
                     self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
@@ -100,14 +103,37 @@ impl Viewport<'_, '_> {
                         space_view_id,
                         &instance_path.entity_path,
                     );
+
+                    ctx.focused_item.clone()
                 }
                 Item::InstancePath(instance_path) => {
-                    //TODO: all occurrences: expand, first occurance: scroll
+                    let space_view_ids =
+                        self.list_space_views_with_entity(ctx, &instance_path.entity_path);
+
+                    // focus on the first matching data result
+                    let res = space_view_ids
+                        .first()
+                        .map(|id| Item::DataResult(*id, instance_path.clone()));
+
+                    for space_view_id in space_view_ids {
+                        self.expand_all_contents_until(
+                            ui.ctx(),
+                            &Contents::SpaceView(space_view_id),
+                        );
+                        self.expand_all_data_results_until(
+                            ctx,
+                            ui.ctx(),
+                            &space_view_id,
+                            &instance_path.entity_path,
+                        );
+                    }
+
+                    res
                 }
 
-                Item::StoreId(_) | Item::ComponentPath(_) => {}
+                Item::StoreId(_) | Item::ComponentPath(_) => None,
             }
-        }
+        })
     }
 
     fn expand_all_contents_until(&self, egui_ctx: &egui::Context, focused_contents: &Contents) {
@@ -131,6 +157,24 @@ impl Viewport<'_, '_> {
         });
     }
 
+    #[inline]
+    fn list_space_views_with_entity(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> SmallVec<[SpaceViewId; 4]> {
+        let mut space_view_ids = SmallVec::new();
+        self.blueprint.visit_contents(&mut |contents, _| {
+            if let Contents::SpaceView(space_view_id) = contents {
+                let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+                if result_tree.lookup_node_by_path(entity_path).is_some() {
+                    space_view_ids.push(*space_view_id)
+                }
+            }
+        });
+        space_view_ids
+    }
+
     fn expand_all_data_results_until(
         &self,
         ctx: &ViewerContext<'_>,
@@ -151,6 +195,17 @@ impl Viewport<'_, '_> {
                     .data_result(*space_view_id, entity_path)
                     .set_open(egui_ctx, true);
             });
+        }
+    }
+
+    fn scroll_to_me_if_focused(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+        if Some(item) == self.state.blueprint_tree_focused_item.as_ref() {
+            // Scroll only if the entity isn't already visible. This is important because that's what
+            // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
+            // annoying to induce a scroll motion.
+            if !ui.clip_rect().contains_rect(response.rect) {
+                response.scroll_to_me(Some(egui::Align::Center));
+            }
         }
     }
 
@@ -218,7 +273,7 @@ impl Viewport<'_, '_> {
             &item_response,
             SelectionUpdateBehavior::UseSelection,
         );
-        scroll_to_me_if_focused(ctx, ui, &item, &item_response);
+        self.scroll_to_me_if_focused(ui, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -292,7 +347,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        scroll_to_me_if_focused(ctx, ui, &item, &response);
+        self.scroll_to_me_if_focused(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -379,7 +434,7 @@ impl Viewport<'_, '_> {
                     );
 
                     // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                     let mut projections = Vec::new();
                     result_tree.visit(&mut |node| {
                         if node
@@ -387,7 +442,7 @@ impl Viewport<'_, '_> {
                             .entity_path
                             .starts_with(&space_view.space_origin)
                         {
-                            false // If its under the origin, we're not interested, stop recursing.
+                            false // If it's under the origin, we're not interested, stop recursing.
                         } else if node.data_result.tree_prefix_only {
                             true // Keep recursing until we find a projection.
                         } else {
@@ -426,7 +481,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        scroll_to_me_if_focused(ctx, ui, &item, &response);
+        self.scroll_to_me_if_focused(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
@@ -602,7 +657,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        scroll_to_me_if_focused(ctx, ui, &item, &response);
+        self.scroll_to_me_if_focused(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
     }
 
@@ -830,23 +885,6 @@ impl Viewport<'_, '_> {
             egui::DragAndDrop::clear_payload(ui.ctx());
         } else {
             self.blueprint.set_drop_target(&target_container_id);
-        }
-    }
-}
-// ----------------------------------------------------------------------------
-
-fn scroll_to_me_if_focused(
-    ctx: &ViewerContext<'_>,
-    ui: &egui::Ui,
-    item: &Item,
-    response: &egui::Response,
-) {
-    if Some(item) == ctx.focused_item.as_ref() {
-        // Scroll only if the entity isn't already visible. This is important because that's what
-        // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
-        // annoying to induce a scroll motion.
-        if !ui.clip_rect().contains_rect(response.rect) {
-            response.scroll_to_me(Some(egui::Align::Center));
         }
     }
 }
