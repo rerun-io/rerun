@@ -33,7 +33,7 @@ pub struct PropertyOverrides {
     // TODO(jleibs): Consider something like `tinymap` for this.
     pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
 
-    /// `EntityPath` in the Blueprint store where updated overrides should be written back\
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
     pub recursive_override_path: EntityPath,
 

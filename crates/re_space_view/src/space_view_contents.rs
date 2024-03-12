@@ -336,11 +336,11 @@ impl DataQueryPropertyResolver<'_> {
 
         // TODO(#4194): We always start the override context with the root_data_result from
         // the space-view. This isn't totally generic once we add container overrides, but it's a start.
-        let mut root: EntityProperties = self
+        let (mut root_entity_properties, root_component_overrides) = self
             .space_view
             .root_data_result(ctx, query)
             .property_overrides
-            .map(|p| p.accumulated_properties.clone())
+            .map(|p| (p.accumulated_properties, p.component_overrides))
             .unwrap_or_default();
 
         for prefix in &self.default_stack {
@@ -349,7 +349,7 @@ impl DataQueryPropertyResolver<'_> {
                 .store()
                 .query_latest_component::<EntityPropertiesComponent>(prefix, query)
             {
-                root = root.with_child(&overrides.value.0);
+                root_entity_properties = root_entity_properties.with_child(&overrides.value.0);
             }
         }
 
@@ -357,7 +357,7 @@ impl DataQueryPropertyResolver<'_> {
         // if we were to support incrementally inheriting overrides from parent
         // contexts such as the `SpaceView` or `Container`.
         EntityOverrideContext {
-            root,
+            root: root_entity_properties,
             individual: self.resolve_entity_overrides_for_path(
                 ctx,
                 query,
@@ -368,6 +368,7 @@ impl DataQueryPropertyResolver<'_> {
                 query,
                 &self.recursive_override_root,
             ),
+            root_component_overrides,
         }
     }
 
@@ -415,10 +416,10 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
-        mut recursive_property_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+        recursive_property_overrides: &HashMap<ComponentName, (StoreKind, EntityPath)>,
         handle: DataResultHandle,
     ) {
-        if let Some((child_handles, accumulated)) =
+        if let Some((child_handles, accumulated, recursive_property_overrides)) =
             query_result.tree.lookup_node_mut(handle).map(|node| {
                 let recursive_properties = override_context
                     .recursive
@@ -475,10 +476,10 @@ impl DataQueryPropertyResolver<'_> {
                     }
                 }
 
-                // First, gather recursive overrides.
-                // This manipulates `recursive_property_overrides` directly which we'll pass on to children.
-                // New recursive overrides shadow previous ones.
-
+                // First, gather recursive overrides. Previous recursive overrides are the base for the next.
+                // We assume that most of the time there's no new recursive overrides, so clone the map lazily.
+                let mut recursive_property_overrides =
+                    std::borrow::Cow::Borrowed(recursive_property_overrides);
                 if let Some(recursive_override_subtree) =
                     ctx.blueprint.tree().subtree(&recursive_override_path)
                 {
@@ -490,7 +491,7 @@ impl DataQueryPropertyResolver<'_> {
                             .and_then(|(_, _, cells)| cells[0].clone())
                         {
                             if !component_data.is_empty() {
-                                recursive_property_overrides.insert(
+                                recursive_property_overrides.to_mut().insert(
                                     *component,
                                     (StoreKind::Blueprint, recursive_override_path.clone()),
                                 );
@@ -499,11 +500,9 @@ impl DataQueryPropertyResolver<'_> {
                     }
                 }
 
-                // The recursive overrides are the base for the active overrides for this path.
-                let mut component_overrides = recursive_property_overrides.clone();
-
                 // Then, gather individual overrides - these may override the recursive ones again,
                 // but recursive overrides are still inherited to children.
+                let mut component_overrides = (*recursive_property_overrides).clone();
                 if let Some(individual_override_subtree) =
                     ctx.blueprint.tree().subtree(&individual_override_path)
                 {
@@ -533,7 +532,11 @@ impl DataQueryPropertyResolver<'_> {
                     individual_override_path,
                 });
 
-                (node.children.clone(), accumulated_recursive_properties)
+                (
+                    node.children.clone(),
+                    accumulated_recursive_properties,
+                    recursive_property_overrides,
+                )
             })
         {
             for child in child_handles {
@@ -543,7 +546,7 @@ impl DataQueryPropertyResolver<'_> {
                     query_result,
                     override_context,
                     &accumulated,
-                    recursive_property_overrides.clone(),
+                    &recursive_property_overrides,
                     child,
                 );
             }
@@ -569,7 +572,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
                 query_result,
                 &entity_overrides,
                 &entity_overrides.root,
-                HashMap::default(), // TODO: root overrides!
+                &entity_overrides.root_component_overrides,
                 root,
             );
         }
