@@ -1,10 +1,14 @@
-use crate::blueprint::components::PanelView;
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
+use re_types::blueprint::components::PanelExpanded;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, CommandSender, StoreContext, SystemCommand, SystemCommandSender,
 };
+
+pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
+pub const SELECTION_PANEL_PATH: &str = "selection_panel";
+pub const TIMELINE_PANEL_PATH: &str = "timeline_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
@@ -33,17 +37,17 @@ impl<'a> AppBlueprint<'a> {
 
         if let Some(blueprint_db) = blueprint_db {
             if let Some(expanded) =
-                load_panel_state(&PanelView::BLUEPRINT_VIEW_PATH.into(), blueprint_db, query)
+                load_panel_state(&BLUEPRINT_PANEL_PATH.into(), blueprint_db, query)
             {
                 ret.blueprint_panel_expanded = expanded;
             }
             if let Some(expanded) =
-                load_panel_state(&PanelView::SELECTION_VIEW_PATH.into(), blueprint_db, query)
+                load_panel_state(&SELECTION_PANEL_PATH.into(), blueprint_db, query)
             {
                 ret.selection_panel_expanded = expanded;
             }
             if let Some(expanded) =
-                load_panel_state(&PanelView::TIMELINE_VIEW_PATH.into(), blueprint_db, query)
+                load_panel_state(&TIMELINE_PANEL_PATH.into(), blueprint_db, query)
             {
                 ret.time_panel_expanded = expanded;
             }
@@ -55,30 +59,30 @@ impl<'a> AppBlueprint<'a> {
     pub fn toggle_blueprint_panel(&self, command_sender: &CommandSender) {
         let blueprint_panel_expanded = !self.blueprint_panel_expanded;
         self.send_panel_expanded(
-            PanelView::BLUEPRINT_VIEW_PATH,
+            BLUEPRINT_PANEL_PATH,
             blueprint_panel_expanded,
             command_sender,
         );
         if self.is_narrow_screen && self.blueprint_panel_expanded {
-            self.send_panel_expanded(PanelView::SELECTION_VIEW_PATH, false, command_sender);
+            self.send_panel_expanded(SELECTION_PANEL_PATH, false, command_sender);
         }
     }
 
     pub fn toggle_selection_panel(&self, command_sender: &CommandSender) {
         let selection_panel_expanded = !self.selection_panel_expanded;
         self.send_panel_expanded(
-            PanelView::SELECTION_VIEW_PATH,
+            SELECTION_PANEL_PATH,
             selection_panel_expanded,
             command_sender,
         );
         if self.is_narrow_screen && self.blueprint_panel_expanded {
-            self.send_panel_expanded(PanelView::BLUEPRINT_VIEW_PATH, false, command_sender);
+            self.send_panel_expanded(BLUEPRINT_PANEL_PATH, false, command_sender);
         }
     }
 
     pub fn toggle_time_panel(&self, command_sender: &CommandSender) {
         self.send_panel_expanded(
-            PanelView::TIMELINE_VIEW_PATH,
+            TIMELINE_PANEL_PATH,
             !self.time_panel_expanded,
             command_sender,
         );
@@ -87,15 +91,15 @@ impl<'a> AppBlueprint<'a> {
 
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     for (panel_name, is_expanded) in [
-        (PanelView::BLUEPRINT_VIEW_PATH, true),
-        (PanelView::SELECTION_VIEW_PATH, false),
-        (PanelView::TIMELINE_VIEW_PATH, false),
+        (BLUEPRINT_PANEL_PATH, true),
+        (SELECTION_PANEL_PATH, false),
+        (TIMELINE_PANEL_PATH, false),
     ] {
         let entity_path = EntityPath::from(panel_name);
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
-        let component = PanelView(is_expanded);
+        let component = PanelExpanded(is_expanded.into());
 
         let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
             .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
@@ -118,7 +122,7 @@ impl<'a> AppBlueprint<'a> {
 
             let timepoint = blueprint_timepoint_for_writes();
 
-            let component = PanelView(is_expanded);
+            let component = PanelExpanded(is_expanded.into());
 
             let row =
                 DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
@@ -140,6 +144,6 @@ fn load_panel_state(
     re_tracing::profile_function!();
     blueprint_db
         .store()
-        .query_latest_component_quiet::<PanelView>(path, query)
-        .map(|p| p.0)
+        .query_latest_component_quiet::<PanelExpanded>(path, query)
+        .map(|p| p.0 .0)
 }
