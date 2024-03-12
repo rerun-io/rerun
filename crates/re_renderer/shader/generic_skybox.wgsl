@@ -10,8 +10,8 @@ struct UniformBuffer {
     _padding: vec3f,
 }
 
-const DIRECTIONAL_GRADIENT_DARK: u32 = 0u;
-const DIRECTIONAL_GRADIENT_BRGHT: u32 = 1u;
+const GRADIENT_DARK: u32 = 0u;
+const GRADIENT_BRGHT: u32 = 1u;
 
 @group(1) @binding(0)
 var<uniform> uniforms: UniformBuffer;
@@ -53,7 +53,7 @@ fn main(in: FragmentInput, @builtin(position) frag_coord: vec4<f32>) -> @locatio
     let camera_dir = camera_ray_direction_from_screenuv(in.texcoord);
 
     var rgb: vec3f;
-    if uniforms.background_type == DIRECTIONAL_GRADIENT_DARK {
+    if uniforms.background_type == GRADIENT_DARK {
         rgb = skybox_dark_srgb(camera_dir);
     } else {
         rgb = skybox_light_srgb(camera_dir);

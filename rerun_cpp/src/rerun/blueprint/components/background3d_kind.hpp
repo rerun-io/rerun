@@ -19,10 +19,10 @@ namespace rerun::blueprint::components {
     enum class Background3DKind : uint8_t {
 
         /// Gradient depending on the direction of the view, dark theme.
-        DirectionalGradientDark = 1,
+        GradientDark = 1,
 
         /// Gradient depending on the direction of the view, bright theme.
-        DirectionalGradientBright = 2,
+        GradientBright = 2,
 
         /// Simple uniform color.
         SolidColor = 3,

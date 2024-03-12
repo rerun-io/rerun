@@ -22,13 +22,14 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The type of the background in 3D Space Views.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Background3DKind {
     /// Gradient depending on the direction of the view, dark theme.
-    DirectionalGradientDark = 1,
+    #[default]
+    GradientDark = 1,
 
     /// Gradient depending on the direction of the view, bright theme.
-    DirectionalGradientBright = 2,
+    GradientBright = 2,
 
     /// Simple uniform color.
     SolidColor = 3,
@@ -36,11 +37,7 @@ pub enum Background3DKind {
 
 impl Background3DKind {
     /// All the different enum variants.
-    pub const ALL: [Self; 3] = [
-        Self::DirectionalGradientDark,
-        Self::DirectionalGradientBright,
-        Self::SolidColor,
-    ];
+    pub const ALL: [Self; 3] = [Self::GradientDark, Self::GradientBright, Self::SolidColor];
 }
 
 impl ::re_types_core::SizeBytes for Background3DKind {
@@ -58,8 +55,8 @@ impl ::re_types_core::SizeBytes for Background3DKind {
 impl std::fmt::Display for Background3DKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::DirectionalGradientDark => write!(f, "DirectionalGradientDark"),
-            Self::DirectionalGradientBright => write!(f, "DirectionalGradientBright"),
+            Self::GradientDark => write!(f, "GradientDark"),
+            Self::GradientBright => write!(f, "GradientBright"),
             Self::SolidColor => write!(f, "SolidColor"),
         }
     }
@@ -82,8 +79,8 @@ impl ::re_types_core::Loggable for Background3DKind {
         DataType::Union(
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
-                Field::new("DirectionalGradientDark", DataType::Null, true),
-                Field::new("DirectionalGradientBright", DataType::Null, true),
+                Field::new("GradientDark", DataType::Null, true),
+                Field::new("GradientBright", DataType::Null, true),
                 Field::new("SolidColor", DataType::Null, true),
             ]),
             Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
@@ -154,8 +151,8 @@ impl ::re_types_core::Loggable for Background3DKind {
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(Background3DKind::DirectionalGradientDark)),
-                    2 => Ok(Some(Background3DKind::DirectionalGradientBright)),
+                    1 => Ok(Some(Background3DKind::GradientDark)),
+                    2 => Ok(Some(Background3DKind::GradientBright)),
                     3 => Ok(Some(Background3DKind::SolidColor)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),

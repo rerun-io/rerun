@@ -26,10 +26,10 @@ from enum import Enum
 class Background3DKind(Enum):
     """**Component**: The type of the background in 3D Space Views."""
 
-    DirectionalGradientDark = 1
+    GradientDark = 1
     """Gradient depending on the direction of the view, dark theme."""
 
-    DirectionalGradientBright = 2
+    GradientBright = 2
     """Gradient depending on the direction of the view, bright theme."""
 
     SolidColor = 3
@@ -49,8 +49,8 @@ class Background3DKindType(BaseExtensionType):
             pa.sparse_union(
                 [
                     pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("DirectionalGradientDark", pa.null(), nullable=True, metadata={}),
-                    pa.field("DirectionalGradientBright", pa.null(), nullable=True, metadata={}),
+                    pa.field("GradientDark", pa.null(), nullable=True, metadata={}),
+                    pa.field("GradientBright", pa.null(), nullable=True, metadata={}),
                     pa.field("SolidColor", pa.null(), nullable=True, metadata={}),
                 ]
             ),
@@ -78,10 +78,10 @@ class Background3DKindBatch(BaseBatch[Background3DKindArrayLike], ComponentBatch
             elif isinstance(value, str):
                 if hasattr(Background3DKind, value):
                     types.append(Background3DKind[value].value)  # fast path
-                elif value.lower() == "directionalgradientdark":
-                    types.append(Background3DKind.DirectionalGradientDark.value)
-                elif value.lower() == "directionalgradientbright":
-                    types.append(Background3DKind.DirectionalGradientBright.value)
+                elif value.lower() == "gradientdark":
+                    types.append(Background3DKind.GradientDark.value)
+                elif value.lower() == "gradientbright":
+                    types.append(Background3DKind.GradientBright.value)
                 elif value.lower() == "solidcolor":
                     types.append(Background3DKind.SolidColor.value)
                 else:

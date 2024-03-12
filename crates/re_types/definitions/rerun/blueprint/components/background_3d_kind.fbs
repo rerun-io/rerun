@@ -14,10 +14,10 @@ enum Background3DKind: byte (
     "attr.docs.unreleased"
 ) {
     /// Gradient depending on the direction of the view, dark theme.
-    DirectionalGradientDark,
+    GradientDark (default),
 
     /// Gradient depending on the direction of the view, bright theme.
-    DirectionalGradientBright,
+    GradientBright,
 
     /// Simple uniform color.
     SolidColor,

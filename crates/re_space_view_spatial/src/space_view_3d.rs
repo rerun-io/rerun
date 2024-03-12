@@ -378,13 +378,13 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
             .show_ui(ui, |ui| {
                 ui.selectable_value(
                     &mut kind,
-                    Background3DKind::DirectionalGradientDark,
-                    background_color_text(Background3DKind::DirectionalGradientDark),
+                    Background3DKind::GradientDark,
+                    background_color_text(Background3DKind::GradientDark),
                 );
                 ui.selectable_value(
                     &mut kind,
-                    Background3DKind::DirectionalGradientBright,
-                    background_color_text(Background3DKind::DirectionalGradientBright),
+                    Background3DKind::GradientBright,
+                    background_color_text(Background3DKind::GradientBright),
                 );
                 ui.selectable_value(
                     &mut kind,
@@ -418,8 +418,8 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
 
 fn background_color_text(kind: Background3DKind) -> &'static str {
     match kind {
-        Background3DKind::DirectionalGradientDark => "Directional Gradient (dark)",
-        Background3DKind::DirectionalGradientBright => "Directional Gradient (bright)",
+        Background3DKind::GradientDark => "Dark Gradient",
+        Background3DKind::GradientBright => "Bright Gradient",
         Background3DKind::SolidColor => "Solid Color",
     }
 }

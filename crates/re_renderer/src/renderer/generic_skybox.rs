@@ -21,8 +21,8 @@ use super::{DrawData, DrawError, RenderContext, Renderer};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum GenericSkyboxType {
     #[default]
-    DirectionalGradientDark = 0,
-    DirectionalGradientBright = 1,
+    GradientDark = 0,
+    GradientBright = 1,
 }
 
 mod gpu_data {

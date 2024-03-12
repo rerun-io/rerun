@@ -706,22 +706,22 @@ fn configure_background(
     );
 
     match kind {
-        Background3DKind::DirectionalGradientDark => (
+        Background3DKind::GradientDark => (
             Some(
                 renderer::GenericSkyboxDrawData::new(
                     ctx.render_ctx,
-                    renderer::GenericSkyboxType::DirectionalGradientDark,
+                    renderer::GenericSkyboxType::GradientDark,
                 )
                 .into(),
             ),
             re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
         ),
 
-        Background3DKind::DirectionalGradientBright => (
+        Background3DKind::GradientBright => (
             Some(
                 renderer::GenericSkyboxDrawData::new(
                     ctx.render_ctx,
-                    renderer::GenericSkyboxType::DirectionalGradientBright,
+                    renderer::GenericSkyboxType::GradientBright,
                 )
                 .into(),
             ),

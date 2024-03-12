@@ -7,9 +7,10 @@ impl Background3D {
 }
 
 impl Default for Background3D {
+    #[inline]
     fn default() -> Self {
         Self {
-            kind: Background3DKind::DirectionalGradientDark,
+            kind: Background3DKind::default(),
             color: Some(Background3D::DEFAULT_COLOR),
         }
     }
