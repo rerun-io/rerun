@@ -1670,7 +1670,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Stop using infinities in wgsl shaders [#1594](https://github.com/rerun-io/rerun/pull/1594)
 - Workaround for alpha to coverage state leaking on (Web)GL renderer [#1596](https://github.com/rerun-io/rerun/pull/1596)
 - Use a patched `wasm-bindgen-cli` with fix for 2GiB bug [#1605](https://github.com/rerun-io/rerun/pull/1605)
-- Misc: make example in `log_pinhole` runable [#1609](https://github.com/rerun-io/rerun/pull/1609) (thanks [@Sjouks](https://github.com/Sjouks)!)
+- Misc: make example in `log_pinhole` runnable [#1609](https://github.com/rerun-io/rerun/pull/1609) (thanks [@Sjouks](https://github.com/Sjouks)!)
 - Early-out on zero-sized space-views to prevent crashes [#1623](https://github.com/rerun-io/rerun/pull/1623)
 - Print our own callstack on panics [#1622](https://github.com/rerun-io/rerun/pull/1622)
 - Handle ctrl+c to gracefully shutdown the server(s) [#1613](https://github.com/rerun-io/rerun/pull/1613)
