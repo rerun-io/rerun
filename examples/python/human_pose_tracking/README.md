@@ -15,7 +15,8 @@ channel = "main"
   <img src="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/full.png" alt="">
 </picture>
 
-Use the MediaPipe Pose Landmark Detection solution to detect and track a human pose in video.
+Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution to detect and track a human pose in video.
+
 
 
 ## Used Rerun Types
