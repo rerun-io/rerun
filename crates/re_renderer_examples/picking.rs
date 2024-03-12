@@ -192,7 +192,7 @@ impl framework::Example for Picking {
 
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
             re_ctx,
-            re_renderer::renderer::GenericSkyboxType::DirectionalGradientDark,
+            Default::default(),
         ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
