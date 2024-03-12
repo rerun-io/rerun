@@ -59,8 +59,13 @@ class SpaceView:
         self.origin = origin
         self.contents = contents
 
-    def entity_path(self) -> str:
-        """The blueprint `EntityPath` where this space view will be logged."""
+    def blueprint_path(self) -> str:
+        """
+        The blueprint path where this space view will be logged.
+
+        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
         return f"space_view/{self.id}"
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
@@ -79,14 +84,14 @@ class SpaceView:
             # Anything else we let SpaceViewContents handle
             contents = SpaceViewContents(query=self.contents)  # type: ignore[arg-type]
 
-        stream.log(self.entity_path() + "/SpaceViewContents", contents)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path() + "/SpaceViewContents", contents)  # type: ignore[attr-defined]
 
         arch = SpaceViewBlueprint(
             class_identifier=self.class_identifier,
             space_origin=self.origin,
         )
 
-        stream.log(self.entity_path(), arch, recording=stream)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]
 
     def _iter_space_views(self) -> Iterable[bytes]:
         """Internal method to iterate over all of the space views in the blueprint."""
@@ -181,8 +186,13 @@ class Container:
         self.row_shares = row_shares
         self.grid_columns = grid_columns
 
-    def entity_path(self) -> str:
-        """The blueprint `EntityPath` where this space view will be logged."""
+    def blueprint_path(self) -> str:
+        """
+        The blueprint path where this space view will be logged.
+
+        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
         return f"container/{self.id}"
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
@@ -192,14 +202,14 @@ class Container:
 
         arch = ContainerBlueprint(
             container_kind=self.kind,
-            contents=[sub.entity_path() for sub in self.contents],
+            contents=[sub.blueprint_path() for sub in self.contents],
             col_shares=self.column_shares,
             row_shares=self.row_shares,
             visible=True,
             grid_columns=self.grid_columns,
         )
 
-        stream.log(self.entity_path(), arch)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
     def _iter_space_views(self) -> Iterable[bytes]:
         """Internal method to iterate over all of the space views in the blueprint."""
@@ -314,8 +324,13 @@ class Viewport:
         """
         self.root_container = root_container
 
-    def entity_path(self) -> str:
-        """The blueprint `EntityPath` where this space view will be logged."""
+    def blueprint_path(self) -> str:
+        """
+        The blueprint path where this space view will be logged.
+
+        Note that although this is an `EntityPath`, is is scoped to the blueprint tree and
+        not a part of the regular data hierarchy.
+        """
         return "viewport"
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
@@ -329,7 +344,7 @@ class Viewport:
             auto_space_views=False,
         )
 
-        stream.log(self.entity_path(), arch)  # type: ignore[attr-defined]
+        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
 BlueprintLike = Union[Viewport, Container, SpaceView]
