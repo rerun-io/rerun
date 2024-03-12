@@ -44,7 +44,7 @@ from .lock_range_during_zoom import (
     LockRangeDuringZoomLike,
     LockRangeDuringZoomType,
 )
-from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+from .panel_expanded import PanelExpanded, PanelExpandedBatch, PanelExpandedType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
@@ -113,11 +113,9 @@ __all__ = [
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomLike",
     "LockRangeDuringZoomType",
-    "PanelView",
-    "PanelViewArrayLike",
-    "PanelViewBatch",
-    "PanelViewLike",
-    "PanelViewType",
+    "PanelExpanded",
+    "PanelExpandedBatch",
+    "PanelExpandedType",
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
