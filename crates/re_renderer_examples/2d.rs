@@ -288,7 +288,7 @@ impl framework::Example for Render2D {
         .unwrap();
 
         vec![
-            // 2d view to the left
+            // 2D view to the left
             {
                 let mut view_builder = ViewBuilder::new(
                     re_ctx,
@@ -318,7 +318,7 @@ impl framework::Example for Render2D {
                     target_location: splits[0].target_location,
                 }
             },
-            // and 3d view of the same scene to the right
+            // and 3D view of the same scene to the right
             {
                 let seconds_since_startup = time.seconds_since_startup();
                 let camera_rotation_center = screen_size.extend(0.0) * 0.5;

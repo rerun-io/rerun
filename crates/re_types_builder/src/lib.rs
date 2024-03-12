@@ -692,8 +692,8 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
         *last = last
             .replace("uvec", "UVec")
             .replace("uint", "UInt")
-            .replace("2d", "2D")
-            .replace("3d", "3D")
+            .replace("2d", "2D") // NOLINT
+            .replace("3d", "3D") // NOLINT
             .replace("4d", "4D");
         *last = rerun_snake.convert(&last);
     }

@@ -69,7 +69,7 @@ class Rotation3DExt:
                     types.append(quaternion_type_idx)
                 else:
                     raise ValueError(
-                        f"Unknown 3d rotation representation: {rotation_arm} (expected `Rotation3D`, `RotationAxisAngle`, "
+                        f"Unknown 3D rotation representation: {rotation_arm} (expected `Rotation3D`, `RotationAxisAngle`, "
                         "`Quaternion`, or `None`."
                     )
         # don't use pa.UnionArray.from_dense because it makes all fields nullable.

@@ -138,7 +138,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 };
             }
 
-            // All entities in the 3d space are visualizable + everything under pinholes.
+            // All entities in the 3D space are visualizable + everything under pinholes.
             let mut entities_in_main_3d_space = primary_space.entities.clone();
             let mut entities_under_pinholes = IntSet::<EntityPath>::default();
 
@@ -154,7 +154,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     .contains(SubSpaceConnectionFlags::Pinhole)
                 {
                     // Note that for this the connection to the parent is allowed to contain the disconnected flag.
-                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                    // Entities _at_ pinholes are a special case: we display both 3D and 2D visualizers for them.
                     entities_in_main_3d_space.insert(child_space.origin.clone());
                     entities_under_pinholes.extend(child_space.entities.iter().cloned());
                 }

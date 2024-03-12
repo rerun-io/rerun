@@ -181,7 +181,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         return Vec::new();
                     }
 
-                    // Collect just the 2d-relevant entities in this subspace
+                    // Collect just the 2D-relevant entities in this subspace
                     let relevant_entities: IntSet<EntityPath> = subspace
                         .entities
                         .iter()
