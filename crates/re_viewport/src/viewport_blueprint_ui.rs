@@ -62,6 +62,8 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
+                    self.handle_focused_item(ctx, ui);
+
                     self.root_container_tree_ui(ctx, ui);
 
                     let empty_space_response =
@@ -79,6 +81,77 @@ impl Viewport<'_, '_> {
                     );
                 });
             });
+    }
+
+    fn handle_focused_item(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        if let Some(focused_item) = ctx.focused_item {
+            match focused_item {
+                Item::Container(container_id) => {
+                    self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id))
+                }
+                Item::SpaceView(space_view_id) => {
+                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id))
+                }
+                Item::DataResult(space_view_id, instance_path) => {
+                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                    self.expand_all_data_results_until(
+                        ctx,
+                        ui.ctx(),
+                        space_view_id,
+                        &instance_path.entity_path,
+                    );
+                }
+                Item::InstancePath(instance_path) => {
+                    //TODO: all occurrences: expand, first occurance: scroll
+                }
+
+                Item::StoreId(_) | Item::ComponentPath(_) => {}
+            }
+        }
+    }
+
+    fn expand_all_contents_until(&self, egui_ctx: &egui::Context, focused_contents: &Contents) {
+        //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
+        let expend_contents = |contents: &Contents| match contents {
+            Contents::Container(container_id) => CollapseScope::BlueprintTree
+                .container(*container_id)
+                .set_open(egui_ctx, true),
+            Contents::SpaceView(space_view_id) => CollapseScope::BlueprintTree
+                .space_view(*space_view_id)
+                .set_open(egui_ctx, true),
+        };
+
+        self.blueprint.visit_contents(&mut |contents, hierarchy| {
+            if contents == focused_contents {
+                expend_contents(contents);
+                for parent in hierarchy {
+                    expend_contents(&Contents::Container(*parent));
+                }
+            }
+        });
+    }
+
+    fn expand_all_data_results_until(
+        &self,
+        ctx: &ViewerContext<'_>,
+        egui_ctx: &egui::Context,
+        space_view_id: &SpaceViewId,
+        entity_path: &EntityPath,
+    ) {
+        let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+        if result_tree.lookup_node_by_path(entity_path).is_some() {
+            EntityPath::incremental_walk(
+                result_tree
+                    .root_node()
+                    .map(|node| &node.data_result.entity_path),
+                entity_path,
+            )
+            .for_each(|entity_path| {
+                CollapseScope::BlueprintTree
+                    .data_result(*space_view_id, entity_path)
+                    .set_open(egui_ctx, true);
+            });
+        }
     }
 
     /// If a group or spaceview has a total of this number of elements, show its subtree by default?
@@ -145,6 +218,7 @@ impl Viewport<'_, '_> {
             &item_response,
             SelectionUpdateBehavior::UseSelection,
         );
+        scroll_to_me_if_focused(ctx, ui, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -218,6 +292,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        scroll_to_me_if_focused(ctx, ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -351,6 +426,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        scroll_to_me_if_focused(ctx, ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
@@ -526,6 +602,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        scroll_to_me_if_focused(ctx, ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
     }
 
@@ -753,6 +830,23 @@ impl Viewport<'_, '_> {
             egui::DragAndDrop::clear_payload(ui.ctx());
         } else {
             self.blueprint.set_drop_target(&target_container_id);
+        }
+    }
+}
+// ----------------------------------------------------------------------------
+
+fn scroll_to_me_if_focused(
+    ctx: &ViewerContext<'_>,
+    ui: &egui::Ui,
+    item: &Item,
+    response: &egui::Response,
+) {
+    if Some(item) == ctx.focused_item.as_ref() {
+        // Scroll only if the entity isn't already visible. This is important because that's what
+        // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
+        // annoying to induce a scroll motion.
+        if !ui.clip_rect().contains_rect(response.rect) {
+            response.scroll_to_me(Some(egui::Align::Center));
         }
     }
 }
