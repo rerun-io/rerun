@@ -546,7 +546,6 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
     }
 }
 
-#[cfg(feature = "testing")]
 #[cfg(test)]
 mod tests {
     use re_entity_db::EntityDb;
@@ -611,9 +610,8 @@ mod tests {
                 filter: "+ /**",
                 outputs: vec![
                     "/**",
-                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/**", // Not an exact match and not found in tree
+                    "/parent/skipped",
                     "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
@@ -621,8 +619,8 @@ mod tests {
                 filter: "+ parent/skipped/**",
                 outputs: vec![
                     "/**",
-                    "/parent/**",             // Only included because is a prefix
-                    "/parent/skipped/**",     // Not an exact match and not found in tree
+                    "/parent/**", // Only included because is a prefix
+                    "/parent/skipped",
                     "/parent/skipped/child1", // Only child 1 has visualizers
                 ],
             },
@@ -631,7 +629,6 @@ mod tests {
                           + parent/skipped/child2",
                 outputs: vec![
                     "/**", // Trivial intermediate group -- could be collapsed
-                    "/parent/**",
                     "/parent",
                     "/parent/skipped/**", // Trivial intermediate group -- could be collapsed
                     "/parent/skipped/child2",
@@ -643,9 +640,7 @@ mod tests {
                           + parent/**",
                 outputs: vec![
                     "/**",
-                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/**",
                     "/parent/skipped",        // Included because an exact match
                     "/parent/skipped/child1", // Included because an exact match
                     "/parent/skipped/child2",
@@ -658,8 +653,7 @@ mod tests {
                           - parent",
                 outputs: vec![
                     "/**",
-                    "/parent/**", // Parent leaf has been excluded
-                    "/parent/skipped/**",
+                    "/parent/**",             // Parent leaf has been excluded
                     "/parent/skipped",        // Included because an exact match
                     "/parent/skipped/child1", // Included because an exact match
                     "/parent/skipped/child2",
@@ -676,9 +670,8 @@ mod tests {
                           - parent/skipped/child1",
                 outputs: vec![
                     "/**",
-                    "/parent/**",
                     "/parent",
-                    "/parent/skipped/**",
+                    "/parent/skipped",
                     "/parent/skipped/child2", // No child1 since skipped.
                 ],
             },
@@ -692,36 +685,27 @@ mod tests {
         ];
 
         for (i, Scenario { filter, outputs }) in scenarios.into_iter().enumerate() {
-            let query = SpaceViewContents {
-                id: DataQueryId::random(),
-                space_view_class_identifier: "3D".into(),
-                entity_path_filter: EntityPathFilter::parse_forgiving(filter),
-            };
+            let contents = SpaceViewContents::new(
+                SpaceViewId::random(),
+                "3D".into(),
+                EntityPathFilter::parse_forgiving(filter),
+            );
 
-            let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>(
-                visualizable_entities_for_visualizer_systems
-                    .iter()
-                    .map(|(id, entities)| {
-                        (*id, IndicatedEntities(entities.0.iter().cloned().collect()))
-                    })
-                    .collect(),
-            );
-            let query_result = query.execute_query(
-                &ctx,
-                &visualizable_entities_for_visualizer_systems,
-                &indicated_entities_per_visualizer,
-            );
+            let query_result =
+                contents.execute_query(&ctx, &visualizable_entities_for_visualizer_systems);
 
             let mut visited = vec![];
-            query_result.tree.visit(&mut |handle| {
-                let result = query_result.tree.lookup_result(handle).unwrap();
-                if result.is_group && result.entity_path == EntityPath::root() {
+            query_result.tree.visit(&mut |node| {
+                let result = &node.data_result;
+                if result.entity_path == EntityPath::root() {
                     visited.push("/**".to_owned());
-                } else if result.is_group {
+                } else if result.tree_prefix_only {
                     visited.push(format!("{}/**", result.entity_path));
+                    assert!(result.visualizers.is_empty());
                 } else {
                     visited.push(result.entity_path.to_string());
                 }
+                true
             });
 
             assert_eq!(visited, outputs, "Scenario {i}, filter: {filter}");
