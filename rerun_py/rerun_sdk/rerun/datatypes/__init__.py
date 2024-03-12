@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
 from .class_description import (
     ClassDescription,
     ClassDescriptionArrayLike,
@@ -96,6 +97,11 @@ __all__ = [
     "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Bool",
+    "BoolArrayLike",
+    "BoolBatch",
+    "BoolLike",
+    "BoolType",
     "ClassDescription",
     "ClassDescriptionArrayLike",
     "ClassDescriptionBatch",
