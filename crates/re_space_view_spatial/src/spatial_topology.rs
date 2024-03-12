@@ -57,7 +57,7 @@ pub struct SubSpace {
     /// Note that we this is merely here to speed up queries.
     /// Instead, we could check if an entity is equal to or a descendent of the
     /// origin and not equal or descendent of any child space.
-    /// The problem with that is that it's common for a 3d space to have many 2d spaces as children,
+    /// The problem with that is that it's common for a 3D space to have many 2D spaces as children,
     /// which would make this an expensive query.
     pub entities: IntSet<EntityPath>,
 
@@ -91,7 +91,7 @@ pub struct SubSpace {
 }
 
 impl SubSpace {
-    /// Whether 3d content in this subspace can be displayed.
+    /// Whether 3D content in this subspace can be displayed.
     #[inline]
     pub fn supports_3d_content(&self) -> bool {
         // Note that we currently do *not* walk up the tree of spaces to check for pinholes.
@@ -106,11 +106,11 @@ impl SubSpace {
             .contains(SubSpaceConnectionFlags::Pinhole)
     }
 
-    /// Whether 2d content in this subspace can be displayed.
+    /// Whether 2D content in this subspace can be displayed.
     #[inline]
     #[allow(clippy::unused_self)]
     pub fn supports_2d_content(&self) -> bool {
-        // There's currently no way to prevent a subspace from displaying 2d content.
+        // There's currently no way to prevent a subspace from displaying 2D content.
         true
     }
 }

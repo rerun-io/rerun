@@ -1,4 +1,4 @@
-//! Log a batch of 2d line strips.
+//! Log a batch of 2D line strips.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d_batch").spawn()?;

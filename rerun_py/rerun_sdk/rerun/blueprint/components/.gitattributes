@@ -5,6 +5,7 @@ __init__.py linguist-generated=true
 active_tab.py linguist-generated=true
 auto_layout.py linguist-generated=true
 auto_space_views.py linguist-generated=true
+background3d_kind.py linguist-generated=true
 column_share.py linguist-generated=true
 container_kind.py linguist-generated=true
 corner2d.py linguist-generated=true

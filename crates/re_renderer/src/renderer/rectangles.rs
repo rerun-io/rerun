@@ -1,4 +1,4 @@
-//! Renderer that makes it easy to draw textured 2d rectangles with transparency
+//! Renderer that makes it easy to draw textured 2D rectangles with transparency
 //!
 //! Transparency: (TODO(andreas):)
 //! We're not performing any sorting on transparency yet, so the transparent rectangles pretty much

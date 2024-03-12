@@ -5,6 +5,7 @@
 #include "blueprint/components/active_tab.hpp"
 #include "blueprint/components/auto_layout.hpp"
 #include "blueprint/components/auto_space_views.hpp"
+#include "blueprint/components/background3d_kind.hpp"
 #include "blueprint/components/column_share.hpp"
 #include "blueprint/components/container_kind.hpp"
 #include "blueprint/components/corner2d.hpp"

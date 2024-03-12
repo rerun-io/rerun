@@ -1292,7 +1292,7 @@ fn quote_array_method_from_obj(
         return format!("# __array__ can be found in {}", ext_class.file_name);
     }
 
-    // exclude archetypes, objects which dont have a single field, and anything that isn't an numpy
+    // exclude archetypes, objects which don't have a single field, and anything that isn't an numpy
     // array or scalar numbers
     if obj.kind == ObjectKind::Archetype
         || obj.fields.len() != 1

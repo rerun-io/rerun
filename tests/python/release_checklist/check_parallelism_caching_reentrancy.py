@@ -21,13 +21,13 @@ TODO(cmc): simplify these instructions once we can log blueprint stuff!
 * Clone the `plots` view a handful of times.
 * Clone the `text_logs` view a handful of times.
 * 2D spatial:
-    * Clone the `2d` view a handful of times.
-    * Edit one of the `2d` views so that it requests a visible time range of `-inf:current` instead.
-    * Clone that edited `2d` view a bunch of times.
+    * Clone the `2D` view a handful of times.
+    * Edit one of the `2D` views so that it requests a visible time range of `-inf:current` instead.
+    * Clone that edited `2D` view a bunch of times.
 * 3D spatial:
-    * Clone the `3d` view a handful of times.
-    * Edit one of the `3d` views so that it requests a visible time range of `-inf:+inf` instead.
-    * Clone that edited `3d` view a bunch of times.
+    * Clone the `3D` view a handful of times.
+    * Edit one of the `3D` views so that it requests a visible time range of `-inf:+inf` instead.
+    * Clone that edited `3D` view a bunch of times.
 * Now scrub the time cursor like crazy: do your worst!
 
 If nothing weird happens, you can close this recording.
@@ -67,7 +67,7 @@ def log_spatial() -> None:
         ]
 
         rr.log(
-            "3d/points",
+            "3D/points",
             rr.Points3D(
                 np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -75,7 +75,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/lines",
+            "3D/lines",
             rr.LineStrips3D(
                 np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -83,7 +83,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/arrows",
+            "3D/arrows",
             rr.Arrows3D(
                 vectors=np.array(positions3d),
                 radii=0.1,
@@ -92,7 +92,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "3d/boxes",
+            "3D/boxes",
             rr.Boxes3D(
                 half_sizes=np.array(positions3d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -103,7 +103,7 @@ def log_spatial() -> None:
         positions2d = [[math.sin(i * math.tau / 100.0) * t, math.cos(i * math.tau / 100.0) * t] for i in range(0, 100)]
 
         rr.log(
-            "2d/points",
+            "2D/points",
             rr.Points2D(
                 np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -111,7 +111,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/lines",
+            "2D/lines",
             rr.LineStrips2D(
                 np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],
@@ -119,7 +119,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/arrows",
+            "2D/arrows",
             rr.Arrows2D(
                 vectors=np.array(positions2d),
                 radii=0.1,
@@ -128,7 +128,7 @@ def log_spatial() -> None:
             ),
         )
         rr.log(
-            "2d/boxes",
+            "2D/boxes",
             rr.Boxes2D(
                 half_sizes=np.array(positions2d),
                 labels=[str(i) for i in range(t, t + 100)],

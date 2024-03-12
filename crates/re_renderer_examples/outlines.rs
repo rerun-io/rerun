@@ -120,7 +120,10 @@ impl framework::Example for Outlines {
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
+        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+            re_ctx,
+            Default::default(),
+        ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
 

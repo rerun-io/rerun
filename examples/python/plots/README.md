@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Plots"
-tags = ["2d", "plots", "api-example"]
+tags = ["2D", "plots", "api-example"]
 description = "Demonstration of various plots and charts supported by Rerun."
 thumbnail = "https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png"
 thumbnail_dimensions = [480, 271]

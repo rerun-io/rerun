@@ -116,7 +116,11 @@ def compare(
                 unit = get_unit(min(previous_bytes, current_bytes))
                 div = get_divisor(unit)
 
-            change_pct = ((current - previous) / previous) * 100
+            if previous == 0:
+                change_pct = 100
+            else:
+                change_pct = 100 * (current - previous) / previous
+
             if abs(change_pct) >= threshold_pct:
                 if unit in DIVISORS:
                     change = f"{change_pct:+.2f}%"

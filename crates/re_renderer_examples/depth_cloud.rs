@@ -128,7 +128,7 @@ impl RenderDepthClouds {
         );
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx))
+            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
             .queue_draw(point_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
@@ -208,7 +208,7 @@ impl RenderDepthClouds {
         );
 
         let command_buffer = view_builder
-            .queue_draw(GenericSkyboxDrawData::new(re_ctx))
+            .queue_draw(GenericSkyboxDrawData::new(re_ctx, Default::default()))
             .queue_draw(depth_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
