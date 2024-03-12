@@ -54,7 +54,7 @@ pub struct ViewportState {
     /// Set at each frame by [`Viewport::tree_ui`]. This is similar to
     /// [`ViewerContext::focused_item`] but account for how specifically the blueprint tree should
     /// handle the focused item.
-    pub(crate) blueprint_tree_focused_item: Option<Item>,
+    pub(crate) blueprint_tree_scroll_to_item: Option<Item>,
 }
 
 static DEFAULT_PROPS: Lazy<EntityPropertyMap> = Lazy::<EntityPropertyMap>::new(Default::default);

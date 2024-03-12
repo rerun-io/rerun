@@ -63,7 +63,7 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
-                    self.state.blueprint_tree_focused_item = self.check_focused_item(ctx, ui);
+                    self.state.blueprint_tree_scroll_to_item = self.handle_focused_item(ctx, ui);
 
                     self.root_container_tree_ui(ctx, ui);
 
@@ -84,7 +84,8 @@ impl Viewport<'_, '_> {
             });
     }
 
-    fn check_focused_item(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> Option<Item> {
+    /// Expend all required items and compute which item we should scroll to.
+    fn handle_focused_item(&self, ctx: &ViewerContext<'_>, ui: &egui::Ui) -> Option<Item> {
         ctx.focused_item.as_ref().and_then(|focused_item| {
             match focused_item {
                 Item::Container(container_id) => {
@@ -136,6 +137,7 @@ impl Viewport<'_, '_> {
         })
     }
 
+    /// Expand all containers until reaching the provided content.
     fn expand_all_contents_until(&self, egui_ctx: &egui::Context, focused_contents: &Contents) {
         //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
         let expend_contents = |contents: &Contents| match contents {
@@ -157,6 +159,7 @@ impl Viewport<'_, '_> {
         });
     }
 
+    /// List all space views that have the provided entity as data result.
     #[inline]
     fn list_space_views_with_entity(
         &self,
@@ -168,13 +171,15 @@ impl Viewport<'_, '_> {
             if let Contents::SpaceView(space_view_id) = contents {
                 let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
                 if result_tree.lookup_node_by_path(entity_path).is_some() {
-                    space_view_ids.push(*space_view_id)
+                    space_view_ids.push(*space_view_id);
                 }
             }
         });
         space_view_ids
     }
 
+    /// Expand data results of the provided space view all the way to the provided entity.
+    #[allow(clippy::unused_self)]
     fn expand_all_data_results_until(
         &self,
         ctx: &ViewerContext<'_>,
@@ -198,8 +203,9 @@ impl Viewport<'_, '_> {
         }
     }
 
-    fn scroll_to_me_if_focused(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
-        if Some(item) == self.state.blueprint_tree_focused_item.as_ref() {
+    /// Check if the provided item should be scrolled to.
+    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+        if Some(item) == self.state.blueprint_tree_scroll_to_item.as_ref() {
             // Scroll only if the entity isn't already visible. This is important because that's what
             // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
             // annoying to induce a scroll motion.
@@ -273,7 +279,7 @@ impl Viewport<'_, '_> {
             &item_response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_focused(ui, &item, &item_response);
+        self.scroll_to_me_if_needed(ui, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -347,7 +353,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_focused(ui, &item, &response);
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -481,7 +487,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_focused(ui, &item, &response);
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
@@ -657,7 +663,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
-        self.scroll_to_me_if_focused(ui, &item, &response);
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
     }
 
