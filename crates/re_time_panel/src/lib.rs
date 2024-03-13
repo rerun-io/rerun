@@ -1037,7 +1037,7 @@ fn is_time_safe_to_show(
         }
     }
 
-    TimeInt::BEGINNING < time
+    TimeInt::STATIC_TIME_PANEL < time
 }
 
 fn current_time_ui(
@@ -1068,8 +1068,8 @@ fn initialize_time_ranges_ui(
     // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = if entity_db.num_timeless_messages() > 0 {
         vec![TimeRange {
-            min: TimeInt::BEGINNING,
-            max: TimeInt::BEGINNING,
+            min: TimeInt::STATIC_TIME_PANEL,
+            max: TimeInt::STATIC_TIME_PANEL,
         }]
     } else {
         Vec::new()
