@@ -14,10 +14,8 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
-    #[cfg(not(target_arch = "wasm32"))]
-    Save,
-    #[cfg(not(target_arch = "wasm32"))]
-    SaveSelection,
+    SaveRecording,
+    SaveRecordingSelection,
     CloseCurrentRecording,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
@@ -95,12 +93,10 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Save => ("Save…", "Save all data to a Rerun data file (.rrd)"),
+            Self::SaveRecording => ("Save recording…", "Save all data to a Rerun data file (.rrd)"),
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::SaveSelection => (
-                "Save loop selection…",
+            Self::SaveRecordingSelection => (
+                "Save recording (current time selection only)…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
@@ -238,7 +234,6 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
         fn cmd_alt(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
         }
@@ -248,10 +243,8 @@ impl UICommand {
         }
 
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::Save => Some(cmd(Key::S)),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::SaveSelection => Some(cmd_alt(Key::S)),
+            Self::SaveRecording => Some(cmd(Key::S)),
+            Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
 

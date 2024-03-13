@@ -1,7 +1,4 @@
 #[cfg(not(target_arch = "wasm32"))]
-use re_entity_db::EntityDb;
-
-#[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -65,60 +62,17 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-/// Returns a closure that, when run, will save the contents of the current database
-/// to disk, at the specified `path`.
-///
-/// If `time_selection` is specified, then only data for that specific timeline over that
-/// specific time range will be accounted for.
-pub fn save_database_to_file(
-    entity_db: &EntityDb,
-    path: std::path::PathBuf,
-    time_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
-) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
-    use re_data_store::TimeRange;
-
+pub fn encode_to_file<'a>(
+    path: &std::path::Path,
+    messages: impl Iterator<Item = &'a re_log_types::LogMsg>,
+) -> anyhow::Result<()> {
     re_tracing::profile_function!();
-
-    entity_db.store().sort_indices_if_needed();
-
-    let set_store_info_msg = entity_db
-        .store_info_msg()
-        .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
-
-    let time_filter = time_selection.map(|(timeline, range)| {
-        (
-            timeline,
-            TimeRange::new(range.min.floor(), range.max.ceil()),
-        )
-    });
-    let data_msgs: Result<Vec<_>, _> = entity_db
-        .store()
-        .to_data_tables(time_filter)
-        .map(|table| {
-            table
-                .to_arrow_msg()
-                .map(|msg| LogMsg::ArrowMsg(entity_db.store_id().clone(), msg))
-        })
-        .collect();
-
     use anyhow::Context as _;
-    use re_log_types::LogMsg;
-    let data_msgs = data_msgs.with_context(|| "Failed to export to data tables")?;
 
-    let msgs = std::iter::once(set_store_info_msg)
-        .flatten() // option
-        .chain(data_msgs);
+    let mut file = std::fs::File::create(path)
+        .with_context(|| format!("Failed to create file at {path:?}"))?;
 
-    Ok(move || {
-        re_tracing::profile_scope!("save_to_file");
-
-        use anyhow::Context as _;
-        let file = std::fs::File::create(path.as_path())
-            .with_context(|| format!("Failed to create file at {path:?}"))?;
-
-        let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-        re_log_encoding::encoder::encode_owned(encoding_options, msgs, file)
-            .map(|_| path)
-            .context("Message encode")
-    })
+    let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+    re_log_encoding::encoder::encode(encoding_options, messages, &mut file)
+        .context("Message encode")
 }
