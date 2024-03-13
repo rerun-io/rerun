@@ -19,15 +19,15 @@ impl re_types_core::SizeBytes for TimeInt {
 }
 
 impl TimeInt {
-    /// The beginning of time.
+    /// Special value used to represent static data in the time panel.
     ///
-    /// Special value used for timeless data.
-    ///
-    /// NOTE: this is not necessarily [`i64::MIN`].
-    // The reason we don't use i64::MIN is because in the time panel we need
-    // to be able to pan to before the `TimeInt::BEGINNING`, and so we need
-    // a bit of leeway.
-    pub const BEGINNING: Self = Self(i64::MIN / 2);
+    /// The reason we don't use i64::MIN is because in the time panel we need
+    /// to be able to pan to before the [`TimeInt::BEGINNING`], and so we need
+    /// a bit of leeway.
+    //
+    // TODO(#5264): remove this once the timeless
+    #[doc(hidden)]
+    pub const STATIC_TIME_PANEL: Self = Self(i64::MIN / 2);
 
     // TODO(#4832): `TimeInt::BEGINNING` vs. `TimeInt::MIN` vs. `Option<TimeInt>`…
     pub const MIN: Self = Self(i64::MIN);

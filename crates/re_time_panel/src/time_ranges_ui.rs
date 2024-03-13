@@ -210,13 +210,13 @@ impl TimeRangesUi {
             // By disallowing times between BEGINNING and the first real segment,
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
-            if first.tight_time.contains(TimeInt::BEGINNING) {
+            if first.tight_time.contains(TimeInt::STATIC_TIME_PANEL) {
                 if let Some(second) = self.segments.get(1) {
                     let half_way =
-                        TimeRangeF::new(TimeInt::BEGINNING, second.tight_time.min).lerp(0.5);
+                        TimeRangeF::new(TimeInt::STATIC_TIME_PANEL, second.tight_time.min).lerp(0.5);
 
                     if time < half_way {
-                        time = TimeReal::from(TimeInt::BEGINNING);
+                        time = TimeReal::from(TimeInt::STATIC_TIME_PANEL);
                     } else if time < second.tight_time.min {
                         time = second.tight_time.min.into();
                     }

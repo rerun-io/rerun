@@ -435,7 +435,7 @@ pub fn data_density_graph_ui(
             }
         };
 
-        add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
+        add_data_point(TimeRange::point(TimeInt::STATIC_TIME_PANEL), num_timeless_messages);
 
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
