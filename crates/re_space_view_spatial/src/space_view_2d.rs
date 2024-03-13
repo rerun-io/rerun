@@ -197,7 +197,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         return Vec::new();
                     }
 
-                    // Collect just the 2d-relevant entities in this subspace
+                    // Collect just the 2D-relevant entities in this subspace
                     let relevant_entities: IntSet<EntityPath> = subspace
                         .entities
                         .iter()
@@ -238,12 +238,18 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        space_origin: &EntityPath,
+        _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::TwoD);
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_size_ui(ctx, ui);
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
+                ui.end_row();
+            });
         Ok(())
     }
 

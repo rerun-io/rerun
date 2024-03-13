@@ -31,8 +31,7 @@ fn edit_color_ui(
         .ok()
         .unwrap_or_else(|| default_color(ctx, query, store, entity_path));
 
-    let [r, g, b, a] = current_color.to_array();
-    let current_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+    let current_color = current_color.into();
     let mut edit_color = current_color;
 
     egui::color_picker::color_edit_button_srgba(
@@ -42,10 +41,7 @@ fn edit_color_ui(
     );
 
     if edit_color != current_color {
-        let [r, g, b, a] = edit_color.to_array();
-        let new_color = Color::from_unmultiplied_rgba(r, g, b, a);
-
-        ctx.save_blueprint_component(override_path, &new_color);
+        ctx.save_blueprint_component(override_path, &Color::from(edit_color));
     }
 }
 

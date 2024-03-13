@@ -1522,7 +1522,11 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self) {
-        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
+        self.connect_opts(
+            crate::default_server_addr(),
+            crate::default_flush_timeout(),
+            None,
+        );
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
@@ -1539,13 +1543,23 @@ impl RecordingStream {
         &self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
+        blueprint: Option<Vec<LogMsg>>,
     ) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
             return;
         }
 
-        self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
+        let sink = crate::log_sink::TcpSink::new(addr, flush_timeout);
+
+        // If a blueprint was provided, send it first.
+        if let Some(blueprint) = blueprint {
+            for msg in blueprint {
+                sink.send(msg);
+            }
+        }
+
+        self.set_sink(Box::new(sink));
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
@@ -1598,7 +1612,7 @@ impl RecordingStream {
 
         spawn(opts)?;
 
-        self.connect_opts(opts.connect_addr(), flush_timeout);
+        self.connect_opts(opts.connect_addr(), flush_timeout, None);
 
         Ok(())
     }

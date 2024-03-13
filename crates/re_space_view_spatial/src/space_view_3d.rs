@@ -2,7 +2,12 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, EntityPathFilter};
-use re_types::{components::ViewCoordinates, Loggable};
+use re_space_view::query_space_view_sub_archetype;
+use re_types::{
+    blueprint::{archetypes::Background3D, components::Background3DKind},
+    components::ViewCoordinates,
+    Loggable,
+};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
@@ -16,7 +21,7 @@ use crate::{
         default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
     },
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
-    ui::SpatialSpaceViewState,
+    ui::{format_vector, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::register_3d_spatial_visualizers,
 };
@@ -141,7 +146,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 };
             }
 
-            // All entities in the 3d space are visualizable + everything under pinholes.
+            // All entities in the 3D space are visualizable + everything under pinholes.
             let mut entities_in_main_3d_space = primary_space.entities.clone();
             let mut entities_under_pinholes = IntSet::<EntityPath>::default();
 
@@ -157,7 +162,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                     .contains(SubSpaceConnectionFlags::Pinhole)
                 {
                     // Note that for this the connection to the parent is allowed to contain the disconnected flag.
-                    // Entities _at_ pinholes are a special case: we display both 3d and 2d visualizers for them.
+                    // Entities _at_ pinholes are a special case: we display both 3D and 2D visualizers for them.
                     entities_in_main_3d_space.insert(child_space.origin.clone());
                     entities_under_pinholes.extend(child_space.entities.iter().cloned());
                 }
@@ -272,11 +277,80 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
-        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
+
+        let scene_view_coordinates = ctx
+            .entity_db
+            .store()
+            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
+            .map(|c| c.value);
+
+        ctx.re_ui
+            .selection_grid(ui, "spatial_settings_ui")
+            .show(ui, |ui| {
+                state.default_size_ui(ctx, ui);
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Camera")
+                    .on_hover_text("The virtual camera which controls what is shown on screen");
+                ui.vertical(|ui| {
+                    state.view_eye_ui(ctx.re_ui, ui, scene_view_coordinates);
+                });
+                ui.end_row();
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Coordinates")
+                    .on_hover_text("The world coordinate system used for this view");
+                ui.vertical(|ui| {
+                    let up_description =
+                        if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                            format!("Scene up is {scene_up}")
+                        } else {
+                            "Scene up is unspecified".to_owned()
+                        };
+                    ui.label(up_description).on_hover_ui(|ui| {
+                        re_ui::markdown_ui(
+                            ui,
+                            egui::Id::new("view_coordinates_tooltip"),
+                            "Set with `rerun.ViewCoordinates`.",
+                        );
+                    });
+
+                    if let Some(eye) = &state.state_3d.view_eye {
+                        if let Some(eye_up) = eye.eye_up() {
+                            ui.label(format!(
+                                "Current camera-eye up-axis is {}",
+                                format_vector(eye_up)
+                            ));
+                        }
+                    }
+
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_axes, "Show origin axes")
+                        .on_hover_text("Show X-Y-Z axes");
+                    ctx.re_ui
+                        .checkbox(ui, &mut state.state_3d.show_bbox, "Show bounding box")
+                        .on_hover_text("Show the current scene bounding box");
+                    ctx.re_ui
+                        .checkbox(
+                            ui,
+                            &mut state.state_3d.show_accumulated_bbox,
+                            "Show accumulated bounding box",
+                        )
+                        .on_hover_text("Show bounding box accumulated over all rendered frames");
+                });
+                ui.end_row();
+
+                background_ui(ctx, space_view_id, ui);
+                ui.end_row();
+
+                state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
+                ui.end_row();
+            });
+
         Ok(())
     }
 
@@ -301,5 +375,68 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .load(std::sync::atomic::Ordering::Relaxed);
 
         crate::ui_3d::view_3d(ctx, ui, state, query, system_output)
+    }
+}
+
+fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let (archetype, blueprint_path) =
+        query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
+
+    let Background3D { color, mut kind } = archetype.unwrap_or_default();
+
+    ctx.re_ui.grid_left_hand_label(ui, "Background");
+
+    ui.vertical(|ui| {
+        let kind_before = kind;
+        egui::ComboBox::from_id_source("background")
+            .selected_text(background_color_text(kind))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::GradientDark,
+                    background_color_text(Background3DKind::GradientDark),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::GradientBright,
+                    background_color_text(Background3DKind::GradientBright),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    Background3DKind::SolidColor,
+                    background_color_text(Background3DKind::SolidColor),
+                );
+            });
+        if kind_before != kind {
+            ctx.save_blueprint_component(&blueprint_path, &kind);
+        }
+
+        if kind == Background3DKind::SolidColor {
+            let current_color = color.unwrap_or(Background3D::DEFAULT_COLOR).into();
+            let mut edit_color = current_color;
+            egui::color_picker::color_edit_button_srgba(
+                ui,
+                &mut edit_color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            if edit_color != current_color {
+                ctx.save_blueprint_component(
+                    &blueprint_path,
+                    &re_types::components::Color::from(edit_color),
+                );
+            }
+        }
+    });
+
+    ui.end_row();
+}
+
+fn background_color_text(kind: Background3DKind) -> &'static str {
+    match kind {
+        Background3DKind::GradientDark => "Dark Gradient",
+        Background3DKind::GradientBright => "Bright Gradient",
+        Background3DKind::SolidColor => "Solid Color",
     }
 }

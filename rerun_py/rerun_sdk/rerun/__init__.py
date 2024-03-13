@@ -142,6 +142,7 @@ from .archetypes import (
     ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import Box2DFormat
+from .blueprint.api import BlueprintLike
 from .components import (
     Material,
     MediaType,
@@ -230,6 +231,7 @@ def _init_recording_stream() -> None:
             set_time_nanos,
             disable_timeline,
             reset_time,
+            log,
         ]
         + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
     )
@@ -247,8 +249,7 @@ def init(
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
-    exp_init_blueprint: bool = False,
-    exp_add_to_app_default_blueprint: bool = True,
+    blueprint: BlueprintLike | None = None,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -316,10 +317,8 @@ def init(
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
-    exp_init_blueprint
-        (Experimental) Should we initialize the blueprint for this application?
-    exp_add_to_app_default_blueprint
-        (Experimental) Should the blueprint append to the existing app-default blueprint instead of creating a new one.
+    blueprint
+        A blueprint to use for this application. If not provided, a new one will be created.
 
     """
 
@@ -346,21 +345,11 @@ def init(
             spawn=False,
             default_enabled=default_enabled,
         )
-    if exp_init_blueprint:
-        experimental.new_blueprint(
-            application_id=application_id,
-            blueprint_id=recording_id,
-            make_default=True,
-            make_thread_default=False,
-            spawn=False,
-            add_to_app_default_blueprint=exp_add_to_app_default_blueprint,
-            default_enabled=default_enabled,
-        )
 
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn()
+        _spawn(blueprint=blueprint)
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in

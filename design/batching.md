@@ -850,7 +850,7 @@ Update the store implementation to remove component tables, remove the `get` API
 Add the required logic/thread/timers/whatever-else in the SDKs to accumulate data and just send it all as many `LogMsg`s (i.e. no batching yet).
 
 1. Implement full-on batching
-End-to-end: transport, storage, the whele shebang.
+End-to-end: transport, storage, the whole shebang.
 
 1. Sort the batch before sending (`(event_id, entity_path)`)
 Keep that in its own PR to keep track of the benchmarks.

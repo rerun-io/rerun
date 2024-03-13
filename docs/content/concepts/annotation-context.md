@@ -39,7 +39,7 @@ Just as with labels and colors this allows you to use the same connection inform
 Keypoints are currently only applicable to 2D and 3D points.
 
 <picture>
-  <img src="https://static.rerun.io/keypoints/07b268032ab7cd26812de6b83e018b8ab55ed2f2/full.png" alt="keypoint shown on a 3d skeleton">
+  <img src="https://static.rerun.io/keypoints/07b268032ab7cd26812de6b83e018b8ab55ed2f2/full.png" alt="keypoint shown on a 3D skeleton">
 </picture>
 
 

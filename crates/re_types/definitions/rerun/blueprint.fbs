@@ -1,6 +1,7 @@
 include "./blueprint/components/active_tab.fbs";
 include "./blueprint/components/auto_layout.fbs";
 include "./blueprint/components/auto_space_views.fbs";
+include "./blueprint/components/background_3d_kind.fbs";
 include "./blueprint/components/column_share.fbs";
 include "./blueprint/components/container_kind.fbs";
 include "./blueprint/components/corner_2d.fbs";
@@ -19,6 +20,7 @@ include "./blueprint/components/space_view_origin.fbs";
 include "./blueprint/components/viewer_recommendation_hash.fbs";
 include "./blueprint/components/visible.fbs";
 
+include "./blueprint/archetypes/background_3d.fbs";
 include "./blueprint/archetypes/container_blueprint.fbs";
 include "./blueprint/archetypes/space_view_blueprint.fbs";
 include "./blueprint/archetypes/space_view_contents.fbs";

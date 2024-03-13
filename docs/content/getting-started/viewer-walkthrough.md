@@ -121,9 +121,9 @@ Feel free to move the views around until you are happy with the layout.
 The space views are where you can see the data that was actually logged. This scene has streams of data for 6 different
 primitives, also known as [entities](../concepts/entity-component.md):
 * [images](../reference/types/archetypes/image.md) that were captured from a camera.
-* [2d keypoints](../reference/types/archetypes/points2d.md) that were detected and tracked in those images.
+* [2D keypoints](../reference/types/archetypes/points2d.md) that were detected and tracked in those images.
 * a [pinhole](../reference/types/archetypes/pinhole.md) camera model that describes the relationship between 2D and 3D space.
-* [3d points](../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
+* [3D points](../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
 * A sequence of [transforms](../reference/types/archetypes/transform3d.md) describing the 3D location of the camera in space.
 * A [scalar](../reference/types/archetypes/time_series_scalar.md) error metric that was computed by the algorithm for each frame.
 
@@ -152,7 +152,7 @@ corresponding ray projected into the `/ (Spatial)` view. See the section on
 [Spaces and Transforms](../concepts/spaces-and-transforms.md) for more information on how this linking works.
 
 ### Rotate, zoom, and pan
-Clicking and dragging the contents of any view will move it. You can rotate 3d views, or pan 2d views and plots. You can
+Clicking and dragging the contents of any view will move it. You can rotate 3D views, or pan 2D views and plots. You can
 also zoom using ctrl+scrollwheel or pinch gestures on a trackpad. Most views can be restored to their default state by
 double-clicking somewhere in the view. Every view has a "?" icon in the upper right hand corner. You can always mouse
 over this icon to find out more information about the specific view.
@@ -235,7 +235,7 @@ section.
 Try toggling "visible" on and off and you will see that the points disappear and reappear. Next, click the control
 labeled "visible history" and drag it to the right to increase the value. As you drag farther you will see more points
 show up in the view. This is making historical points, from farther back in time visible within the time point of this
-view. Because the points are logged in stationary 3d space, aggregating them here gives us a more complete view of the
+view. Because the points are logged in stationary 3D space, aggregating them here gives us a more complete view of the
 car. Leave the visible history with a value of 50.
 
 <picture>
@@ -289,7 +289,7 @@ right corner. Note that even with the timeline collapsed you still have access t
 
 ### Reusing what you've learned
 Finally, use what we covered in the previous section to change the contents of this view. Select the new `camera` view,
-then choose "Add/remove entities." Remove the 2d "keypoints" and add in the 3d "points." Note that these points do not
+then choose "Add/remove entities." Remove the 2D "keypoints" and add in the 3D "points." Note that these points do not
 have visible history turned on -- that's because the blueprint is part of the view and not part of the entity.
 Select the points within this view by clicking on them in the blueprint or the view itself, and then give them visible
 history as well. When you are done, your view should look like this:

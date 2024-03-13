@@ -2,6 +2,7 @@
 
 .gitattributes linguist-generated=true
 active_tab.rs linguist-generated=true
+background3d_kind.rs linguist-generated=true
 column_share.rs linguist-generated=true
 corner2d.rs linguist-generated=true
 included_content.rs linguist-generated=true
