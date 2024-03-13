@@ -24,7 +24,7 @@ OPT_OUT_RUN = config["opt_out"]["run"]
 OPT_OUT_COMPARE = config["opt_out"]["compare"]
 EXTRA_ARGS = {
     name: [arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in args]
-    for name, args in config.extra_args.items()
+    for name, args in config["extra_args"].items()
 }
 
 EXTRA_ARGS = {
