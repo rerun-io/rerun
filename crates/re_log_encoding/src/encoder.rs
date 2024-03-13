@@ -75,6 +75,8 @@ impl<W: std::io::Write> Encoder<W> {
     }
 
     pub fn append(&mut self, message: &LogMsg) -> Result<(), EncodeError> {
+        re_tracing::profile_function!();
+
         self.uncompressed.clear();
         rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
 
@@ -119,9 +121,23 @@ pub fn encode<'a>(
     messages: impl Iterator<Item = &'a LogMsg>,
     write: &mut impl std::io::Write,
 ) -> Result<(), EncodeError> {
+    re_tracing::profile_function!();
     let mut encoder = Encoder::new(options, write)?;
     for message in messages {
         encoder.append(message)?;
     }
     Ok(())
+}
+
+pub fn encode_as_bytes<'a>(
+    options: EncodingOptions,
+    messages: impl Iterator<Item = &'a LogMsg>,
+) -> Result<Vec<u8>, EncodeError> {
+    re_tracing::profile_function!();
+    let mut bytes: Vec<u8> = vec![];
+    let mut encoder = Encoder::new(options, &mut bytes)?;
+    for message in messages {
+        encoder.append(message)?;
+    }
+    Ok(bytes)
 }

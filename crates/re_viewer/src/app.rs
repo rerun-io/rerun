@@ -442,18 +442,17 @@ impl App {
         cmd: UICommand,
     ) {
         match cmd {
-            #[cfg(not(target_arch = "wasm32"))]
-            UICommand::Save => {
+            UICommand::SaveRecording => {
                 save(self, store_context, None);
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            UICommand::SaveSelection => {
+            UICommand::SaveRecordingSelection => {
                 save(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
                 );
             }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
                 for file_path in open_file_dialog_native() {
@@ -1501,9 +1500,9 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     file_contents
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[allow(clippy::needless_pass_by_ref_mut)]
 fn save(
-    app: &mut App,
+    #[allow(unused_variables)] app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) {
@@ -1513,14 +1512,36 @@ fn save(
         return;
     };
 
+    let file_name = "data.rrd";
+
     let title = if loop_selection.is_some() {
         "Save loop selection"
     } else {
         "Save"
     };
 
+    // Web
+    #[cfg(target_arch = "wasm32")]
+    {
+        let messages = match entity_db.to_messages(loop_selection) {
+            Ok(messages) => messages,
+            Err(err) => {
+                re_log::error!("File saving failed: {err}");
+                return;
+            }
+        };
+
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Err(err) = async_save_dialog(file_name, title, &messages).await {
+                re_log::error!("File saving failed: {err}");
+            }
+        });
+    }
+
+    // Native
+    #[cfg(not(target_arch = "wasm32"))]
     if let Some(path) = rfd::FileDialog::new()
-        .set_file_name("data.rrd")
+        .set_file_name(file_name)
         .set_title(title)
         .save_file()
     {
@@ -1539,4 +1560,29 @@ fn save(
             re_log::error!("File saving failed: {err}");
         }
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn async_save_dialog(
+    file_name: &str,
+    title: &str,
+    messages: &[LogMsg],
+) -> anyhow::Result<()> {
+    use anyhow::Context as _;
+
+    let file_handle = rfd::AsyncFileDialog::new()
+        .set_file_name(file_name)
+        .set_title(title)
+        .save_file()
+        .await;
+
+    let Some(file_handle) = file_handle else {
+        return Ok(()); // aborted
+    };
+
+    let bytes = re_log_encoding::encoder::encode_as_bytes(
+        re_log_encoding::EncodingOptions::COMPRESSED,
+        messages.iter(),
+    )?;
+    file_handle.write(&bytes).await.context("Failed to save")
 }
