@@ -13,6 +13,7 @@ mod space_view_class;
 mod space_view_origin;
 mod viewer_recommendation_hash;
 mod visible;
+mod visible_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background3d_kind::Background3DKind;
