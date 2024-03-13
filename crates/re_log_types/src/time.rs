@@ -98,13 +98,6 @@ impl Time {
         }
     }
 
-    fn get_time_prefix(time_zone: &TimeZone) -> &str {
-        match time_zone {
-            TimeZone::UnixEpoch => "[unix_timestamp]",
-            TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
-        }
-    }
-
     /// Human-readable formatting
     pub fn format(&self, time_zone_for_timestamps: TimeZone) -> String {
         let nanos_since_epoch = self.nanos_since_epoch();
@@ -112,7 +105,10 @@ impl Time {
         if let Some(datetime) = self.to_datetime() {
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
             let is_whole_millisecond = nanos_since_epoch % 1_000_000 == 0;
-            let prefix = Self::get_time_prefix(&time_zone_for_timestamps);
+            let prefix = match time_zone_for_timestamps {
+                TimeZone::UnixEpoch => "[unix_timestamp]",
+                TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
+            };
 
             let time_format = if is_whole_second {
                 prefix.to_owned()
@@ -159,9 +155,15 @@ impl Time {
                 let time_format = if self.is_exactly_midnight() {
                     "[year]-[month]-[day]"
                 } else if is_whole_minute {
-                    "[hour]:[minute]"
+                    match time_zone_for_timestamps {
+                        TimeZone::UnixEpoch => "[unix_timestamp]",
+                        TimeZone::Utc | TimeZone::Local => "[hour]:[minute]",
+                    }
                 } else {
-                    Self::get_time_prefix(&time_zone_for_timestamps)
+                    match time_zone_for_timestamps {
+                        TimeZone::UnixEpoch => "[unix_timestamp]",
+                        TimeZone::Utc | TimeZone::Local => "[hour]:[minute]:[second]",
+                    }
                 };
                 let parsed_format = time::format_description::parse(time_format).unwrap();
 
