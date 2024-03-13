@@ -23,13 +23,9 @@ from .api import (
     Blueprint,
     BlueprintLike,
     BlueprintPanel,
-    Grid,
-    Horizontal,
     SelectionPanel,
-    Spatial2D,
-    Spatial3D,
-    Tabs,
     TimePanel,
-    Vertical,
     Viewport,
 )
+from .containers import Grid, Horizontal, Vertical
+from .space_views import Spatial2D, Spatial3D

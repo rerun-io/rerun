@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-from rerun.blueprint.api import Blueprint, BlueprintPanel, Grid, SelectionPanel, Spatial2D, TimePanel, Viewport
+from rerun.blueprint import Blueprint, BlueprintPanel, Grid, SelectionPanel, Spatial2D, TimePanel, Viewport
 
 
 def main() -> None:

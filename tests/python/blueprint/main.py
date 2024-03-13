@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import rerun as rr
 from numpy.random import default_rng
-from rerun.blueprint import Blueprint, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
-from rerun.blueprint.api import TimePanel
+from rerun.blueprint import Blueprint, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, TimePanel, Vertical, Viewport
 
 if __name__ == "__main__":
     blueprint = Blueprint(
