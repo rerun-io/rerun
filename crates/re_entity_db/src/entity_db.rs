@@ -8,8 +8,9 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
+    ApplicationId, DataCell, DataRow, DataTable, DataTableResult, EntityPath, EntityPathHash,
+    LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
+    Timeline,
 };
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
@@ -509,6 +510,44 @@ impl EntityDb {
     pub fn sort_key(&self) -> impl Ord + '_ {
         self.store_info()
             .map(|info| (info.application_id.0.as_str(), info.started))
+    }
+
+    /// Export the contents of the current database to a sequence of messages.
+    ///
+    /// If `time_selection` is specified, then only data for that specific timeline over that
+    /// specific time range will be accounted for.
+    pub fn to_messages(
+        &self,
+        time_selection: Option<(Timeline, TimeRangeF)>,
+    ) -> DataTableResult<Vec<LogMsg>> {
+        re_tracing::profile_function!();
+
+        self.store().sort_indices_if_needed();
+
+        let set_store_info_msg = self
+            .store_info_msg()
+            .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
+
+        let time_filter = time_selection.map(|(timeline, range)| {
+            (
+                timeline,
+                TimeRange::new(range.min.floor(), range.max.ceil()),
+            )
+        });
+
+        let data_messages = self.store().to_data_tables(time_filter).map(|table| {
+            table
+                .to_arrow_msg()
+                .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
+        });
+
+        let messages: Result<Vec<_>, _> = set_store_info_msg
+            .map(re_log_types::DataTableResult::Ok)
+            .into_iter()
+            .chain(data_messages)
+            .collect();
+
+        messages
     }
 }
 

@@ -397,6 +397,7 @@ impl DataStore {
 
     /// Sort all unsorted indices in the store.
     pub fn sort_indices_if_needed(&self) {
+        re_tracing::profile_function!();
         for index in self.tables.values() {
             index.sort_indices_if_needed();
         }

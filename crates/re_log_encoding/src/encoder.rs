@@ -125,15 +125,3 @@ pub fn encode<'a>(
     }
     Ok(())
 }
-
-pub fn encode_owned(
-    options: EncodingOptions,
-    messages: impl Iterator<Item = LogMsg>,
-    write: impl std::io::Write,
-) -> Result<(), EncodeError> {
-    let mut encoder = Encoder::new(options, write)?;
-    for message in messages {
-        encoder.append(&message)?;
-    }
-    Ok(())
-}
