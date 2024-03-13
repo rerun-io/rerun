@@ -84,7 +84,7 @@ class Grid(Container):
 class Tabs(Container):
     """A tab container."""
 
-    def __init__(self, *contents: Container | SpaceView):
+    def __init__(self, *contents: Container | SpaceView, active_tab: Optional[int | str] = None):
         """
         Construct a new tab container.
 
@@ -92,6 +92,8 @@ class Tabs(Container):
         ----------
         *contents:
             All positional arguments are the contents of the container, which may be either other containers or space views.
+        active_tab:
+            The index or name of the active tab.
 
         """
-        super().__init__(*contents, kind=ContainerKind.Tabs)
+        super().__init__(*contents, kind=ContainerKind.Tabs, active_tab=active_tab)

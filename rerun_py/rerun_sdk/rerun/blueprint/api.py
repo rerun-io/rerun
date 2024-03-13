@@ -134,6 +134,7 @@ class Container:
         column_shares: Optional[ColumnShareArrayLike] = None,
         row_shares: Optional[RowShareArrayLike] = None,
         grid_columns: Optional[int] = None,
+        active_tab: Optional[int | str] = None,
     ):
         """
         Construct a new container.
@@ -155,6 +156,8 @@ class Container:
             This is only applicable to `Vertical` or `Grid` containers.
         grid_columns
             The number of columns in the grid. This is only applicable to `Grid` containers.
+        active_tab
+            The active tab in the container. This is only applicable to `Tabs` containers.
 
         """
         self.id = uuid.uuid4()
@@ -163,6 +166,7 @@ class Container:
         self.column_shares = column_shares
         self.row_shares = row_shares
         self.grid_columns = grid_columns
+        self.active_tab = active_tab
 
     def blueprint_path(self) -> str:
         """
@@ -183,8 +187,15 @@ class Container:
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        for sub in self.contents:
+        active_tab_path = None
+
+        for i, sub in enumerate(self.contents):
             sub._log_to_stream(stream)
+            if i == self.active_tab or (isinstance(sub, SpaceView) and sub.name == self.active_tab):
+                active_tab_path = sub.blueprint_path()
+
+        if self.active_tab is not None and active_tab_path is None:
+            raise ValueError(f"Active tab '{self.active_tab}' not found in the container contents.")
 
         arch = ContainerBlueprint(
             container_kind=self.kind,
@@ -193,6 +204,7 @@ class Container:
             row_shares=self.row_shares,
             visible=True,
             grid_columns=self.grid_columns,
+            active_tab=active_tab_path,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
