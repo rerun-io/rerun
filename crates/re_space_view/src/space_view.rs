@@ -553,6 +553,7 @@ mod tests {
         // No overrides set. Everybody has default values.
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -595,6 +596,7 @@ mod tests {
         // Parent is not visible, but children are
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -643,6 +645,7 @@ mod tests {
         // Nobody is visible
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -673,6 +676,7 @@ mod tests {
         {
             let root = space_view.root_data_result(
                 &StoreContext {
+                    app_id: re_log_types::ApplicationId::unknown(),
                     blueprint: &blueprint,
                     recording: Some(&recording),
                     all_recordings: vec![],
@@ -693,6 +697,7 @@ mod tests {
         // Everyone has visible history
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -734,6 +739,7 @@ mod tests {
         // Child2 has its own visible history
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -1019,6 +1025,7 @@ mod tests {
 
             // Set up a store query and update the overrides.
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],

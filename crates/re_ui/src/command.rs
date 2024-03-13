@@ -16,6 +16,7 @@ pub enum UICommand {
     Open,
     SaveRecording,
     SaveRecordingSelection,
+    SaveBlueprint,
     CloseCurrentRecording,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
@@ -99,6 +100,8 @@ impl UICommand {
                 "Save recording (current time selection only)…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
+
+            Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.blueprint)"),
 
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
@@ -245,6 +248,7 @@ impl UICommand {
         match self {
             Self::SaveRecording => Some(cmd(Key::S)),
             Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
+            Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
 
