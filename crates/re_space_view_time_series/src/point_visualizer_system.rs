@@ -16,7 +16,7 @@ use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
 use crate::ScatterAttrs;
-use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesPoint`] archetypes.
 #[derive(Default, Debug)]
@@ -113,10 +113,12 @@ impl SeriesPointSystem {
                 .annotation_info();
             let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-            let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
-            let override_marker_size = lookup_override::<MarkerSize>(data_result, ctx).map(|r| r.0);
-            let override_marker = lookup_override::<MarkerShape>(data_result, ctx);
+            let override_color = data_result
+                .lookup_override::<Color>(ctx)
+                .map(|c| c.to_array());
+            let override_series_name = data_result.lookup_override::<Name>(ctx).map(|t| t.0);
+            let override_marker_size = data_result.lookup_override::<MarkerSize>(ctx).map(|r| r.0);
+            let override_marker = data_result.lookup_override::<MarkerShape>(ctx);
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default
             // values.

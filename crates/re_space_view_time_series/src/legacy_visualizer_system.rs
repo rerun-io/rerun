@@ -10,7 +10,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    overrides::{initial_override_color, lookup_override},
+    overrides::initial_override_color,
     util::{determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series},
     PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
@@ -111,11 +111,14 @@ impl LegacyTimeSeriesSystem {
 
             const DEFAULT_RADIUS: f32 = 0.75;
 
-            let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-            let override_label = lookup_override::<Text>(data_result, ctx).map(|t| t.0);
-            let override_scattered =
-                lookup_override::<ScalarScattering>(data_result, ctx).map(|s| s.0);
-            let override_radius = lookup_override::<Radius>(data_result, ctx).map(|r| r.0);
+            let override_color = data_result
+                .lookup_override::<Color>(ctx)
+                .map(|c| c.to_array());
+            let override_label = data_result.lookup_override::<Text>(ctx).map(|t| t.0);
+            let override_scattered = data_result
+                .lookup_override::<ScalarScattering>(ctx)
+                .map(|s| s.0);
+            let override_radius = data_result.lookup_override::<Radius>(ctx).map(|r| r.0);
 
             // All the default values for a `PlotPoint`, accounting for both overrides and default
             // values.

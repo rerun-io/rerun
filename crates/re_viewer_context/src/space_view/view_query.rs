@@ -214,6 +214,24 @@ impl DataResult {
             .as_ref()
             .and_then(|p| p.individual_properties.as_ref())
     }
+
+    pub fn lookup_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) -> Option<C> {
+        self.property_overrides
+            .as_ref()
+            .and_then(|p| p.component_overrides.get(&C::name()))
+            .and_then(|(store_kind, path)| match store_kind {
+                StoreKind::Blueprint => ctx
+                    .store_context
+                    .blueprint
+                    .store()
+                    .query_latest_component::<C>(path, ctx.blueprint_query),
+                StoreKind::Recording => ctx
+                    .entity_db
+                    .store()
+                    .query_latest_component::<C>(path, &ctx.current_query()),
+            })
+            .map(|c| c.value)
+    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
