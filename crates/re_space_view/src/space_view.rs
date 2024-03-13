@@ -485,7 +485,6 @@ mod tests {
         store.add_data_row(row).unwrap();
     }
 
-    #[cfg(feature = "TODO")] // TODO:
     #[test]
     fn test_entity_properties() {
         let space_view_class_registry = SpaceViewClassRegistry::default();
@@ -582,9 +581,9 @@ mod tests {
                 );
             }
 
-            // Now, override visibility on parent individually.
+            // Now, override interactive on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -593,7 +592,7 @@ mod tests {
             );
         }
 
-        // Parent is not visible, but children are
+        // Parent is not interactive, but children are
         {
             let ctx = StoreContext {
                 blueprint: &blueprint,
@@ -621,18 +620,18 @@ mod tests {
                 .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
-            assert!(!parent.accumulated_properties().visible);
+            assert!(!parent.accumulated_properties().interactive);
 
             for result in [child1, child2] {
-                assert!(result.accumulated_properties().visible);
+                assert!(result.accumulated_properties().interactive);
             }
 
-            // Override visibility on parent recursively.
+            // Override interactivity on parent recursively.
             let mut overrides = parent_group
                 .individual_properties()
                 .cloned()
                 .unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -641,7 +640,7 @@ mod tests {
             );
         }
 
-        // Nobody is visible
+        // Nobody is interactive
         {
             let ctx = StoreContext {
                 blueprint: &blueprint,
@@ -666,11 +665,11 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.accumulated_properties().visible);
+                assert!(!result.accumulated_properties().interactive);
             }
         }
 
-        // Override visible range on root
+        // Override interactive range on root
         {
             let root = space_view.root_data_result(
                 &StoreContext {
@@ -691,7 +690,7 @@ mod tests {
             );
         }
 
-        // Everyone has visible history
+        // Everyone has interactive history
         {
             let ctx = StoreContext {
                 blueprint: &blueprint,
@@ -732,7 +731,7 @@ mod tests {
             );
         }
 
-        // Child2 has its own visible history
+        // Child2 has its own interactive history
         {
             let ctx = StoreContext {
                 blueprint: &blueprint,
