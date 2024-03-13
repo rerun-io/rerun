@@ -27,10 +27,11 @@ on:
       PLATFORM:
         type: choice
         options:
-          - linux
-          - windows
-          - macos-arm
-          - macos-intel
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
@@ -70,25 +71,31 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
+            linux-arm64)
+              runner="ubuntu-latest-16-cores"
+              target="aarch64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              lib_name="librerun_c.a"
+              ;;
+            linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               container="{'image': 'rerunio/ci_docker:0.11.0'}"
               lib_name="librerun_c.a"
               ;;
-            windows)
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               lib_name="rerun_c.lib"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest" # Small runners, because building rerun_c is fast
               target="x86_64-apple-darwin"
               container="null"
