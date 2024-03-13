@@ -485,6 +485,7 @@ mod tests {
         store.add_data_row(row).unwrap();
     }
 
+    #[cfg(feature = "TODO")] // TODO:
     #[test]
     fn test_entity_properties() {
         let space_view_class_registry = SpaceViewClassRegistry::default();

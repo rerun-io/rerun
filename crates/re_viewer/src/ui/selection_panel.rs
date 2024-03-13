@@ -1074,7 +1074,8 @@ fn entity_props_ui(
     resolved_entity_props: &EntityProperties,
 ) {
     let re_ui = ctx.re_ui;
-    re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
+    // TODO:
+    //re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
     re_ui
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");

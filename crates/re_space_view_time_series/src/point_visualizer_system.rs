@@ -60,7 +60,7 @@ impl VisualizerSystem for SeriesPointSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_visible_data_results(Self::identifier())
+                .iter_visible_data_results(ctx, Self::identifier())
                 .map(|data| &data.entity_path),
         );
 
@@ -106,7 +106,7 @@ impl SeriesPointSystem {
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
         // TODO(cmc): this should be thread-pooled in case there are a gazillon series in the same plot…
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations
                 .resolved_class_description(None)

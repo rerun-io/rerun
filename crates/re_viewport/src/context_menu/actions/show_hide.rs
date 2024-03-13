@@ -125,11 +125,7 @@ fn data_result_visible(
             query_result
                 .tree
                 .lookup_result_by_path(&instance_path.entity_path)
-                .map(|data_result| {
-                    data_result
-                        .recursive_properties()
-                        .map_or(true, |prop| prop.visible)
-                })
+                .map(|data_result| data_result.is_visible(ctx.viewer_context))
         })
         .flatten()
 }
@@ -145,12 +141,13 @@ fn set_data_result_visible(
         .tree
         .lookup_result_by_path(&instance_path.entity_path)
     {
-        let mut recursive_properties = data_result
-            .recursive_properties()
-            .cloned()
-            .unwrap_or_default();
-        recursive_properties.visible = visible;
+        // TODO:
+        // let mut recursive_properties = data_result
+        //     .recursive_properties()
+        //     .cloned()
+        //     .unwrap_or_default();
+        // recursive_properties.visible = visible;
 
-        data_result.save_recursive_override(ctx.viewer_context, Some(recursive_properties));
+        // data_result.save_recursive_override(ctx.viewer_context, Some(recursive_properties));
     }
 }

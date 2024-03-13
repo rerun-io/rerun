@@ -56,7 +56,7 @@ impl VisualizerSystem for SeriesLineSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_visible_data_results(Self::identifier())
+                .iter_visible_data_results(ctx, Self::identifier())
                 .map(|data| &data.entity_path),
         );
 
@@ -98,7 +98,7 @@ impl SeriesLineSystem {
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
         let parallel_loading = false; // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
         if parallel_loading {

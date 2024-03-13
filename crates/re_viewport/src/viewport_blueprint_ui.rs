@@ -408,8 +408,7 @@ impl Viewport<'_, '_> {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let visible =
-            data_result_node.map_or(false, |n| n.data_result.accumulated_properties().visible);
+        let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
         let mut recursive_properties = data_result_node
             .and_then(|n| n.data_result.recursive_properties())
             .cloned()
@@ -442,12 +441,13 @@ impl Viewport<'_, '_> {
             .subdued(subdued)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
-                let vis_response = visibility_button_ui(
-                    re_ui,
-                    ui,
-                    space_view_visible,
-                    &mut recursive_properties.visible,
-                );
+                // TODO:
+                // let vis_response = visibility_button_ui(
+                //     re_ui,
+                //     ui,
+                //     space_view_visible,
+                //     &mut recursive_properties.visible,
+                // );
 
                 let response = remove_button_ui(
                     re_ui,
@@ -461,7 +461,7 @@ impl Viewport<'_, '_> {
                     );
                 }
 
-                response | vis_response
+                response // | vis_response // TODO:
             });
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.

@@ -50,7 +50,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
 
         let store = ctx.entity_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let tensor = store.query_latest_component::<re_types::components::TensorData>(
                 &data_result.entity_path,

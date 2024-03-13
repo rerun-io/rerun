@@ -232,6 +232,18 @@ impl DataResult {
             })
             .map(|c| c.value)
     }
+
+    /// Shorthand for checking for visibility on data overrides.
+    ///
+    /// Note that this won't check if the data store has visibility logged.
+    // TODO(andreas): Should this be possible?
+    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    #[inline]
+    pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
+        self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
+            .unwrap_or_default()
+            .0
+    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
@@ -262,17 +274,21 @@ pub struct ViewQuery<'s> {
 
 impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visible_data_results(
-        &self,
+    pub fn iter_visible_data_results<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'a>,
         system: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = &DataResult> {
+    ) -> impl Iterator<Item = &DataResult>
+    where
+        's: 'a,
+    {
         self.per_system_data_results.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.accumulated_properties().visible)
+                        .filter(|result| result.is_visible(ctx))
                         .copied(),
                 )
             },
