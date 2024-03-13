@@ -12,14 +12,13 @@ pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlue
     ctx.space_view_class_registry
         .iter_registry()
         .flat_map(|entry| {
-            let class_id = entry.class.identifier();
             let spawn_heuristics = entry.class.spawn_heuristics(ctx);
             spawn_heuristics
                 .recommended_space_views
                 .into_iter()
                 .map(move |recommendation| {
                     SpaceViewBlueprint::new(
-                        class_id,
+                        entry.identifier,
                         &recommendation.root,
                         recommendation.query_filter,
                     )

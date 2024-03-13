@@ -3,7 +3,6 @@ use macaw::BoundingBox;
 
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
-use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
@@ -88,136 +87,62 @@ impl SpatialSpaceViewState {
         config
     }
 
-    pub fn selection_ui(
+    pub fn bounding_box_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        space_origin: &EntityPath,
         spatial_kind: SpatialSpaceViewKind,
     ) {
-        let re_ui = ctx.re_ui;
-
-        let scene_view_coordinates = ctx
-            .entity_db
-            .store()
-            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
-            .map(|c| c.value);
-
         ctx.re_ui
-            .selection_grid(ui, "spatial_settings_ui")
-            .show(ui, |ui| {
-                let auto_size_world = auto_size_world_heuristic(
-                    &self.bounding_boxes.accumulated,
-                    self.scene_num_primitives,
-                );
+            .grid_left_hand_label(ui, "Bounding box")
+            .on_hover_text("The bounding box encompassing all Entities in the view right now");
+        ui.vertical(|ui| {
+            ui.style_mut().wrap = Some(false);
+            let BoundingBox { min, max } = self.bounding_boxes.current;
+            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+            if spatial_kind == SpatialSpaceViewKind::ThreeD {
+                ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
+            }
+        });
+    }
 
-                ctx.re_ui.grid_left_hand_label(ui, "Default size");
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.push_id("points", |ui| {
-                            size_ui(
-                                ui,
-                                2.0,
-                                auto_size_world,
-                                &mut self.auto_size_config.point_radius,
-                            );
-                        });
-                        ui.label("Point radius")
-                            .on_hover_text("Point radius used whenever not explicitly specified");
-                    });
-                    ui.horizontal(|ui| {
-                        ui.push_id("lines", |ui| {
-                            size_ui(
-                                ui,
-                                1.5,
-                                auto_size_world,
-                                &mut self.auto_size_config.line_radius,
-                            );
-                            ui.label("Line radius").on_hover_text(
-                                "Line radius used whenever not explicitly specified",
-                            );
-                        });
-                    });
-                });
-                ui.end_row();
+    pub fn default_size_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+        let auto_size_world =
+            auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Camera")
-                    .on_hover_text("The virtual camera which controls what is shown on screen");
-                ui.vertical(|ui| {
-                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                        self.view_eye_ui(re_ui, ui, scene_view_coordinates);
-                    }
-                });
-                ui.end_row();
-
-                if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                    ctx.re_ui
-                        .grid_left_hand_label(ui, "Coordinates")
-                        .on_hover_text("The world coordinate system used for this view");
-                    ui.vertical(|ui| {
-                        let up_description =
-                            if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                                format!("Scene up is {scene_up}")
-                            } else {
-                                "Scene up is unspecified".to_owned()
-                            };
-                        ui.label(up_description).on_hover_ui(|ui| {
-                            re_ui::markdown_ui(
-                                ui,
-                                egui::Id::new("view_coordinates_tooltip"),
-                                "Set with `rerun.ViewCoordinates`.",
-                            );
-                        });
-
-                        if let Some(eye) = &self.state_3d.view_eye {
-                            if let Some(eye_up) = eye.eye_up() {
-                                ui.label(format!(
-                                    "Current camera-eye up-axis is {}",
-                                    format_vector(eye_up)
-                                ));
-                            }
-                        }
-
-                        re_ui
-                            .checkbox(ui, &mut self.state_3d.show_axes, "Show origin axes")
-                            .on_hover_text("Show X-Y-Z axes");
-                        re_ui
-                            .checkbox(ui, &mut self.state_3d.show_bbox, "Show bounding box")
-                            .on_hover_text("Show the current scene bounding box");
-                        re_ui
-                            .checkbox(
-                                ui,
-                                &mut self.state_3d.show_accumulated_bbox,
-                                "Show accumulated bounding box",
-                            )
-                            .on_hover_text(
-                                "Show bounding box accumulated over all rendered frames",
-                            );
-                    });
-                    ui.end_row();
-                }
-
-                ctx.re_ui
-                    .grid_left_hand_label(ui, "Bounding box")
-                    .on_hover_text(
-                        "The bounding box encompassing all Entities in the view right now",
+        ctx.re_ui.grid_left_hand_label(ui, "Default size");
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.push_id("points", |ui| {
+                    size_ui(
+                        ui,
+                        2.0,
+                        auto_size_world,
+                        &mut self.auto_size_config.point_radius,
                     );
-                ui.vertical(|ui| {
-                    ui.style_mut().wrap = Some(false);
-                    let BoundingBox { min, max } = self.bounding_boxes.current;
-                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-                    if spatial_kind == SpatialSpaceViewKind::ThreeD {
-                        ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
-                    }
                 });
-                ui.end_row();
+                ui.label("Point radius")
+                    .on_hover_text("Point radius used whenever not explicitly specified");
             });
+            ui.horizontal(|ui| {
+                ui.push_id("lines", |ui| {
+                    size_ui(
+                        ui,
+                        1.5,
+                        auto_size_world,
+                        &mut self.auto_size_config.line_radius,
+                    );
+                    ui.label("Line radius")
+                        .on_hover_text("Line radius used whenever not explicitly specified");
+                });
+            });
+        });
+        ui.end_row();
     }
 
     // Say the name out loud. It is fun!
-    fn view_eye_ui(
+    pub fn view_eye_ui(
         &mut self,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
@@ -816,7 +741,7 @@ fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     }
 }
 
-fn format_vector(v: glam::Vec3) -> String {
+pub fn format_vector(v: glam::Vec3) -> String {
     use glam::Vec3;
 
     if v == Vec3::X {

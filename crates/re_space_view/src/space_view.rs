@@ -14,8 +14,8 @@ use re_types::{
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataResult, DynSpaceViewClass, PerSystemEntities,
-    PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
+    blueprint_timepoint_for_writes, DataResult, PerSystemEntities, PropertyOverrides,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
@@ -337,7 +337,7 @@ impl SpaceViewBlueprint {
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
-    ) -> &'a dyn DynSpaceViewClass {
+    ) -> &'a dyn SpaceViewClass {
         space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
@@ -391,7 +391,15 @@ impl SpaceViewBlueprint {
             .unwrap_or_default();
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, &props, query, system_output);
+            class
+                .ui(ctx, ui, view_state, &props, query, system_output)
+                .unwrap_or_else(|err| {
+                    re_log::error!(
+                        "Error in Space View UI (class: {}, display name: {}): {err}",
+                        self.class_identifier,
+                        class.display_name(),
+                    );
+                });
         });
     }
 
@@ -450,12 +458,16 @@ impl SpaceViewBlueprint {
 mod tests {
     use crate::data_query::{DataQuery, PropertyResolver};
     use re_entity_db::EntityDb;
-    use re_log_types::{DataCell, DataRow, EntityPathFilter, RowId, StoreId, TimePoint};
-    use re_types::archetypes::Points3D;
+    use re_log_types::{
+        example_components::{MyColor, MyLabel, MyPoint},
+        DataCell, DataRow, EntityPathFilter, RowId, StoreId, StoreKind, TimePoint,
+    };
+    use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
         blueprint_timeline, IndicatedEntities, PerVisualizer, SpaceViewClassRegistry, StoreContext,
         VisualizableEntities,
     };
+    use std::collections::HashMap;
 
     use super::*;
 
@@ -474,7 +486,7 @@ mod tests {
     }
 
     #[test]
-    fn test_overrides() {
+    fn test_entity_properties() {
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
@@ -541,6 +553,7 @@ mod tests {
         // No overrides set. Everybody has default values.
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -583,6 +596,7 @@ mod tests {
         // Parent is not visible, but children are
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -631,6 +645,7 @@ mod tests {
         // Nobody is visible
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -661,6 +676,7 @@ mod tests {
         {
             let root = space_view.root_data_result(
                 &StoreContext {
+                    app_id: re_log_types::ApplicationId::unknown(),
                     blueprint: &blueprint,
                     recording: Some(&recording),
                     all_recordings: vec![],
@@ -681,6 +697,7 @@ mod tests {
         // Everyone has visible history
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -722,6 +739,7 @@ mod tests {
         // Child2 has its own visible history
         {
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
@@ -756,6 +774,292 @@ mod tests {
                 child2.accumulated_properties().visible_history.nanos,
                 VisibleHistory::OFF
             );
+        }
+    }
+
+    #[test]
+    fn test_component_overrides() {
+        let space_view_class_registry = SpaceViewClassRegistry::default();
+        let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut visualizable_entities_per_visualizer =
+            PerVisualizer::<VisualizableEntities>::default();
+
+        // Set up a store DB with some entities.
+        {
+            let entity_paths: Vec<EntityPath> =
+                ["parent", "parent/skipped/grandchild", "parent/child"]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
+            for entity_path in &entity_paths {
+                let row = DataRow::from_component_batches(
+                    RowId::new(),
+                    TimePoint::timeless(),
+                    entity_path.clone(),
+                    [&[MyPoint::new(1.0, 2.0)] as _],
+                )
+                .unwrap();
+                recording.add_data_row(row).unwrap();
+            }
+
+            // All of them are visualizable with some arbitrary visualizer.
+            visualizable_entities_per_visualizer
+                .0
+                .entry("Points3D".into())
+                .or_insert_with(|| VisualizableEntities(entity_paths.into_iter().collect()));
+        }
+
+        // Basic blueprint - a single space view that queries everything.
+        let space_view = SpaceViewBlueprint::new(
+            "3D".into(),
+            &EntityPath::root(),
+            EntityPathFilter::parse_forgiving("+ /**"),
+        );
+        let individual_override_root = space_view
+            .contents
+            .blueprint_entity_path
+            .join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_root = space_view
+            .contents
+            .blueprint_entity_path
+            .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
+
+        // Things needed to resolve properties:
+        let auto_properties = EntityPropertyMap::default();
+        let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
+        let resolver = space_view.contents.build_resolver(
+            &space_view_class_registry,
+            &space_view,
+            &auto_properties,
+            &visualizable_entities_per_visualizer,
+            &indicated_entities_per_visualizer,
+        );
+
+        struct Scenario {
+            recursive_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
+            individual_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
+            expected_overrides: HashMap<EntityPath, HashMap<ComponentName, EntityPath>>,
+        }
+
+        let scenarios: Vec<Scenario> = vec![
+            // No overrides.
+            Scenario {
+                recursive_overrides: Vec::new(),
+                individual_overrides: Vec::new(),
+                expected_overrides: HashMap::default(),
+            },
+            // Recursive override at parent entity.
+            Scenario {
+                recursive_overrides: vec![(
+                    "parent".into(),
+                    Box::new(MyLabel("parent_override".to_owned())),
+                )],
+                individual_overrides: Vec::new(),
+                expected_overrides: HashMap::from([
+                    (
+                        "parent".into(),
+                        HashMap::from([(
+                            MyLabel::name(),
+                            recursive_override_root.join(&"parent".into()),
+                        )]),
+                    ),
+                    (
+                        "parent/skipped".into(),
+                        HashMap::from([(
+                            MyLabel::name(),
+                            recursive_override_root.join(&"parent".into()),
+                        )]),
+                    ),
+                    (
+                        "parent/skipped/grandchild".into(),
+                        HashMap::from([(
+                            MyLabel::name(),
+                            recursive_override_root.join(&"parent".into()),
+                        )]),
+                    ),
+                    (
+                        "parent/child".into(),
+                        HashMap::from([(
+                            MyLabel::name(),
+                            recursive_override_root.join(&"parent".into()),
+                        )]),
+                    ),
+                ]),
+            },
+            // Set a single individual.
+            Scenario {
+                recursive_overrides: Vec::new(),
+                individual_overrides: vec![(
+                    "parent".into(),
+                    Box::new(MyLabel("parent_individual".to_owned())),
+                )],
+                expected_overrides: HashMap::from([(
+                    "parent".into(),
+                    HashMap::from([(
+                        MyLabel::name(),
+                        individual_override_root.join(&"parent".into()),
+                    )]),
+                )]),
+            },
+            // Recursive override, partially shadowed by individual.
+            Scenario {
+                recursive_overrides: vec![
+                    (
+                        "parent/skipped".into(),
+                        Box::new(MyLabel("parent_individual".to_owned())),
+                    ),
+                    (
+                        "parent/skipped".into(),
+                        Box::new(MyColor::from_rgb(0, 1, 2)),
+                    ),
+                ],
+                individual_overrides: vec![(
+                    "parent/skipped/grandchild".into(),
+                    Box::new(MyColor::from_rgb(1, 2, 3)),
+                )],
+                expected_overrides: HashMap::from([
+                    (
+                        "parent/skipped".into(),
+                        HashMap::from([
+                            (
+                                MyLabel::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                            (
+                                MyColor::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                        ]),
+                    ),
+                    (
+                        "parent/skipped/grandchild".into(),
+                        HashMap::from([
+                            (
+                                MyLabel::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                            (
+                                MyColor::name(),
+                                individual_override_root.join(&"parent/skipped/grandchild".into()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            },
+            // Recursive override, partially shadowed by another recursive override.
+            Scenario {
+                recursive_overrides: vec![
+                    (
+                        "parent/skipped".into(),
+                        Box::new(MyLabel("parent_individual".to_owned())),
+                    ),
+                    (
+                        "parent/skipped".into(),
+                        Box::new(MyColor::from_rgb(0, 1, 2)),
+                    ),
+                    (
+                        "parent/skipped/grandchild".into(),
+                        Box::new(MyColor::from_rgb(3, 2, 1)),
+                    ),
+                ],
+                individual_overrides: Vec::new(),
+                expected_overrides: HashMap::from([
+                    (
+                        "parent/skipped".into(),
+                        HashMap::from([
+                            (
+                                MyLabel::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                            (
+                                MyColor::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                        ]),
+                    ),
+                    (
+                        "parent/skipped/grandchild".into(),
+                        HashMap::from([
+                            (
+                                MyLabel::name(),
+                                recursive_override_root.join(&"parent/skipped".into()),
+                            ),
+                            (
+                                MyColor::name(),
+                                recursive_override_root.join(&"parent/skipped/grandchild".into()),
+                            ),
+                        ]),
+                    ),
+                ]),
+            },
+        ];
+
+        for (
+            i,
+            Scenario {
+                recursive_overrides,
+                individual_overrides,
+                expected_overrides,
+            },
+        ) in scenarios.into_iter().enumerate()
+        {
+            let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+            let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
+                let row = DataRow::from_component_batches(
+                    RowId::new(),
+                    TimePoint::timeless(),
+                    path.clone(),
+                    std::iter::once(batch),
+                )
+                .unwrap();
+                blueprint.add_data_row(row).unwrap();
+            };
+
+            // log individual and override components as instructed.
+            for (entity_path, batch) in recursive_overrides {
+                add_to_blueprint(&recursive_override_root.join(&entity_path), batch.as_ref());
+            }
+            for (entity_path, batch) in individual_overrides {
+                add_to_blueprint(&individual_override_root.join(&entity_path), batch.as_ref());
+            }
+
+            // Set up a store query and update the overrides.
+            let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+            let mut query_result = space_view
+                .contents
+                .execute_query(&ctx, &visualizable_entities_per_visualizer);
+            let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
+
+            // Extract component overrides for testing.
+            let mut visited: HashMap<EntityPath, HashMap<ComponentName, EntityPath>> =
+                HashMap::default();
+            query_result.tree.visit(&mut |node| {
+                let result = &node.data_result;
+                if let Some(property_overrides) = &result.property_overrides {
+                    if !property_overrides.component_overrides.is_empty() {
+                        visited.insert(
+                            result.entity_path.clone(),
+                            property_overrides
+                                .component_overrides
+                                .iter()
+                                .map(|(component_name, (store_kind, path))| {
+                                    assert_eq!(store_kind, &StoreKind::Blueprint);
+                                    (*component_name, path.clone())
+                                })
+                                .collect(),
+                        );
+                    }
+                }
+                true
+            });
+
+            assert_eq!(visited, expected_overrides, "Scenario {i}");
         }
     }
 }

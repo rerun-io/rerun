@@ -496,8 +496,8 @@ mod tests {
         );
 
         for (path, expected) in [
-            ("/2d", false),
-            ("/2d/image", false),
+            ("/2D", false),
+            ("/2D/image", false),
             ("/world", true),
             ("/world/car", true),
             ("/world/car/driver", true),

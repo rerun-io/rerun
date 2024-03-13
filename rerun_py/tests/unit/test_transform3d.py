@@ -163,7 +163,7 @@ def test_translation_and_mat3x3_from_parent() -> None:
     assert not TranslationAndMat3x3(from_parent=False).from_parent
 
 
-# SERIALISATION TESTS
+# SERIALIZATION TESTS
 # This should cover all acceptable input to the Transform3D archetype
 
 

@@ -191,6 +191,7 @@ jobs:
               - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
               - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
               merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
+              - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
 
           - [ ] Tests
             - [ ] Windows

@@ -146,7 +146,7 @@ def compute_box_3d(
     half_size: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.float64]:
     """
-    Given obb compute 3d keypoints of the box.
+    Given obb compute 3D keypoints of the box.
 
     TODO(#3412): once resolved this can be removed
     """
@@ -167,7 +167,7 @@ def compute_box_3d(
 
 def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Color, label: str) -> None:
     """
-    Generates line segments for each object's bounding box in 2d.
+    Generates line segments for each object's bounding box in 2D.
 
     Box corner order that we return is of the format below:
       6 -------- 7
@@ -189,7 +189,7 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
     # Calculate the centroid of the 2D keypoints
     valid_points = bboxes_2d_filtered[~np.isnan(bboxes_2d_filtered).any(axis=1)]
 
-    # log centroid and add label so that object label is visible in the 2d view
+    # log centroid and add label so that object label is visible in the 2D view
     if valid_points.size > 0:
         centroid = valid_points.mean(axis=0)
         rr.log(f"{entity_path}/centroid", rr.Points2D(centroid, colors=color, labels=label))
@@ -302,11 +302,11 @@ def log_camera(
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
 
     # clear previous centroid labels
-    rr.log(f"{entity_id}/bbox-2d-segments", rr.Clear(recursive=True))
+    rr.log(f"{entity_id}/bbox-2D-segments", rr.Clear(recursive=True))
 
     # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
-        log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
+        log_line_segments(f"{entity_id}/bbox-2D-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
     # pathlib makes it easy to get the parent, but log methods requires a string
     rr.log(entity_id, rr.Transform3D(transform=camera_from_world))

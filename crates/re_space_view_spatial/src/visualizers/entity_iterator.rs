@@ -45,7 +45,7 @@ where
     for data_result in query.iter_visible_data_results(System::identifier()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity =
-            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {
+            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
                 transforms.reference_from_entity(&data_result.entity_path)
             } else {
                 transforms.reference_from_entity_ignoring_pinhole(
@@ -153,7 +153,7 @@ macro_rules! impl_process_archetype {
 
             for data_result in query.iter_visible_data_results(S::identifier()) {
                 // The transform that considers pinholes only makes sense if this is a 3D space-view
-                let world_from_entity = if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {
+                let world_from_entity = if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
                     transforms.reference_from_entity(&data_result.entity_path)
                 } else {
                     transforms.reference_from_entity_ignoring_pinhole(

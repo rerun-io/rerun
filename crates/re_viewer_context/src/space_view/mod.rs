@@ -4,7 +4,6 @@
 //! Does not implement any concrete space view.
 
 // TODO(andreas): Can we move some of these to the `re_space_view` crate?
-mod dyn_space_view_class;
 mod highlights;
 mod named_system;
 mod space_view_class;
@@ -17,13 +16,12 @@ mod view_query;
 mod visualizer_entity_subscriber;
 mod visualizer_system;
 
-pub use dyn_space_view_class::{
-    DynSpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
-    VisualizableFilterContext,
-};
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
-pub use space_view_class::SpaceViewClass;
+pub use space_view_class::{
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
+    SpaceViewStateExt, VisualizableFilterContext,
+};
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,
 };
@@ -57,6 +55,9 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error(transparent)]
     GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
+
+    #[error("Failed to downcast Space View's to the {0}.")]
+    StateCastError(&'static str),
 }
 
 // Convenience conversions for some re_renderer error types since these are so frequent.

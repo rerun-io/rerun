@@ -356,7 +356,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
 
     // bunch of non-existing components
     {
-        let components = &["they".into(), "dont".into(), "exist".into()];
+        let components = &["does".into(), "not".into(), "exist".into()];
         let (_, _, cells) = store
             .latest_at(
                 &LatestAtQuery::new(timeline_frame_nr, frame40),

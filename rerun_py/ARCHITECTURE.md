@@ -59,17 +59,17 @@ The archetype native objects are the primary user-facing API of the Rerun SDK.
 
 #### Components
 
-Component's key role is to provide the serialisation of user data into their read-to-log, serialised Arrow array form. As such, a component's Arrow extension array object, and it's `from_similar()` method, play a key role. By convention, components must be structs with one, and exactly one, field.
+Component's key role is to provide the serialization of user data into their read-to-log, serialized Arrow array form. As such, a component's Arrow extension array object, and it's `from_similar()` method, play a key role. By convention, components must be structs with one, and exactly one, field.
 
 The code generator distinguishes between delegating and non-delegating components
 
 Delegating components use a datatype as field type, and their Arrow extension array object delegate its implementation to the corresponding datatype's. As a result, their implementation is very minimal, and forgoes native objects and typing aliases. `Point2D` is an example of delegating component (it delegates to the `Point2D` datatype).
 
-Non-delegating components use a native type as field type, such as a `float` or `int` instead of relying on a separate datatypes. As a result, their implementation much resembles that of datatypes as they must handle data serialisation in addition to their semantic role. In particular, a native object and typing aliases are generated.
+Non-delegating components use a native type as field type, such as a `float` or `int` instead of relying on a separate datatypes. As a result, their implementation much resembles that of datatypes as they must handle data serialization in addition to their semantic role. In particular, a native object and typing aliases are generated.
 
 #### Datatypes
 
-Datatypes primary concern is modelling well-defined data structures, including a nice user-facing construction API and support for Arrow serialisation. All the object types described in the previous section are thus generated for components.
+Datatypes primary concern is modelling well-defined data structures, including a nice user-facing construction API and support for Arrow serialization. All the object types described in the previous section are thus generated for components.
 
 Contrary to archetypes and components, datatypes occasionally represent complex data structures, such as `Transform3D`, made of nested structs and unions. The latter, lacking an obvious counterpart in Python, calls for a specific treatment (see below for details).
 
@@ -150,7 +150,7 @@ TODO(ab):
 Implementing a Pythonic API for a component or datatype sometime require a subtle interplay between various hand-coded overrides and auto-generated methods. The `Color` component is a good illustration:
 
 - The `ColorExt.rgba__field_converter_override()` converter flexibly normalizes user input into a `int` RGBA storage.
-- The auto-generated `__int__()` method facilitates the conversion of a `Color` instance into a `int`, which is recognised by Numpy array creation functions.
+- The auto-generated `__int__()` method facilitates the conversion of a `Color` instance into a `int`, which is recognized by Numpy array creation functions.
 - The `ColorExt.native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code will skip using actual `Color` instances).
 
 ### Converter must be functions

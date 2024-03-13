@@ -3,8 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
-
 use nohash_hasher::IntSet;
+use smallvec::SmallVec;
+
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::hash::Hash64;
@@ -98,8 +99,11 @@ impl ViewportBlueprint {
             }
         };
 
-        let space_view_ids: Vec<SpaceViewId> =
-            space_views.into_iter().map(|id| id.0.into()).collect();
+        let space_view_ids: Vec<SpaceViewId> = space_views
+            .unwrap_or(vec![])
+            .iter()
+            .map(|id| id.0.into())
+            .collect();
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
             .into_iter()
@@ -287,7 +291,7 @@ impl ViewportBlueprint {
         re_tracing::profile_function!();
 
         for entry in ctx.space_view_class_registry.iter_registry() {
-            let class_id = entry.class.identifier();
+            let class_id = entry.identifier;
             let SpaceViewSpawnHeuristics {
                 mut recommended_space_views,
             } = entry.class.spawn_heuristics(ctx);
@@ -439,26 +443,50 @@ impl ViewportBlueprint {
             )
     }
 
+    /// Walk the entire [`Contents`] tree, starting from the root container.
+    ///
+    /// See [`Self::visit_contents_in_container`] for details.
+    pub fn visit_contents(&self, visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>)) {
+        if let Some(root_container) = self.root_container {
+            self.visit_contents_in_container(&root_container, visitor);
+        }
+    }
+
     /// Walk the subtree defined by the provided container id and call `visitor` for each
     /// [`Contents`].
     ///
-    /// Note: `visitor` is first called for the container passed in argument.
+    /// Note:
+    /// - `visitor` is first called for the container passed in argument
+    /// - `visitor`'s second argument contains the hierarchy leading to the visited contents, from
+    ///   (and including) the container passed in argument
     pub fn visit_contents_in_container(
         &self,
         container_id: &ContainerId,
-        visitor: &mut impl FnMut(&Contents),
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>),
     ) {
-        visitor(&Contents::Container(*container_id));
+        let mut hierarchy = SmallVec::new();
+        self.visit_contents_in_container_impl(container_id, &mut hierarchy, visitor);
+    }
+
+    fn visit_contents_in_container_impl(
+        &self,
+        container_id: &ContainerId,
+        hierarchy: &mut SmallVec<[ContainerId; 4]>,
+        visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>),
+    ) {
+        visitor(&Contents::Container(*container_id), hierarchy);
         if let Some(container) = self.container(container_id) {
+            hierarchy.push(*container_id);
             for contents in &container.contents {
-                visitor(contents);
+                visitor(contents, hierarchy);
                 match contents {
                     Contents::Container(container_id) => {
-                        self.visit_contents_in_container(container_id, visitor);
+                        self.visit_contents_in_container_impl(container_id, hierarchy, visitor);
                     }
                     Contents::SpaceView(_) => {}
                 }
             }
+            hierarchy.pop();
         }
     }
 

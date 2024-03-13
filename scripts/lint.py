@@ -96,6 +96,11 @@ def lint_line(
         ):
             return "Use … instead of ..."
 
+    if re.search(r"\b2d\b", line):
+        return "we prefer '2D' over '2d'"
+    if re.search(r"\b3d\b", line):
+        return "we prefer '3D' over '3d'"
+
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
 
@@ -188,6 +193,7 @@ def test_lint_line() -> None:
 
     should_pass = [
         "hello world",
+        "this is a 2D spaceview",
         "todo lowercase is fine",
         'todo!("macro is ok with text")',
         "TODO_TOKEN",
@@ -268,6 +274,7 @@ def test_lint_line() -> None:
     ]
 
     should_error = [
+        "this is a 2d spaceview",
         "FIXME",
         "HACK",
         "TODO",
@@ -864,6 +871,7 @@ def main() -> None:
         "./rerun_cpp/src/rerun/c/arrow_c_data_interface.h",  # Not our code
         "./rerun_cpp/src/rerun/third_party/cxxopts.hpp",  # vendored
         "./rerun_py/site/",  # is in `.gitignore` which this script doesn't fully respect
+        "./run_wasm/README.md",  # Has a "2d" lowercase example in a code snippet
         "./scripts/lint.py",  # we contain all the patterns we are linting against
         "./scripts/zombie_todos.py",
         "./tests/python/release_checklist/main.py",

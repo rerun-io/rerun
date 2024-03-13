@@ -38,14 +38,16 @@ impl App {
 
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
+            self.save_buttons_ui(ui, _store_context);
+
+            UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
+
+            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+
+            ui.add_space(SPACING);
+
             #[cfg(not(target_arch = "wasm32"))]
             {
-                self.save_buttons_ui(ui, _store_context);
-
-                UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
-
-                ui.add_space(SPACING);
-
                 // On the web the browser controls the zoom
                 let zoom_factor = ui.ctx().zoom_factor();
                 ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
@@ -160,20 +162,18 @@ impl App {
         }
     }
 
-    // TODO(emilk): support saving data on web
-    #[cfg(not(target_arch = "wasm32"))]
     fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>) {
         use re_ui::UICommandSender;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
 
-        let save_button = UICommand::Save.menu_button(ui.ctx());
-        let save_selection_button = UICommand::SaveSelection.menu_button(ui.ctx());
+        let save_recording_button = UICommand::SaveRecording.menu_button(ui.ctx());
+        let save_selection_button = UICommand::SaveRecordingSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(save_button);
+                    ui.add(save_recording_button);
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
@@ -187,12 +187,12 @@ impl App {
                 .map_or(false, |recording| !recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
-                    .add(save_button)
+                    .add(save_recording_button)
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
                     ui.close_menu();
-                    self.command_sender.send_ui(UICommand::Save);
+                    self.command_sender.send_ui(UICommand::SaveRecording);
                 }
 
                 // We need to know the loop selection _before_ we can even display the
@@ -209,7 +209,8 @@ impl App {
                     .clicked()
                 {
                     ui.close_menu();
-                    self.command_sender.send_ui(UICommand::SaveSelection);
+                    self.command_sender
+                        .send_ui(UICommand::SaveRecordingSelection);
                 }
             });
         }
