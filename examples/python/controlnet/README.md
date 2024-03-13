@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "ControlNet"
 tags = ["controlnet", "canny", "huggingface", "stable-diffusion", "tensor", "text"]
-description = "Use Hugging Face's ControlNet to condition Stable Diffusion on edges detected by the Canny edge detector."
+description = "Use Hugging Face's ControlNet to generate an image from text, conditioned on detected edges from another image."
 thumbnail = "https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/480w.png"
 thumbnail_dimensions = [480, 303]
 -->
@@ -14,7 +14,7 @@ thumbnail_dimensions = [480, 303]
   <img src="https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/full.png" alt="">
 </picture>
 
-Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) to condition Stable Diffusion on edges detected by the Canny edge detector.
+Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) to generate an image from text, conditioned on detected edges from another image.
 
 
 
@@ -23,7 +23,7 @@ Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diff
 
 
 ## Background
-[Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet). allows to condition Stable Diffusion on various modalities. In this example we condition on edges detected by the Canny edge detector to keep our shape intact while generating an image with Stable Diffusion.
+[Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) allows to condition Stable Diffusion on various modalities. In this example we condition on edges detected by the Canny edge detector to keep our shape intact while generating an image with Stable Diffusion. This generates a new image based on the text prompt, but that still retains the structure of the control image. We visualize the whole generation process with Rerun.
 
 https://vimeo.com/870289439?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1440:1080
 
@@ -44,7 +44,12 @@ Log the input image and the canny image to Rerun.
 rr.log("input/raw", rr.Image(image), timeless=True)
 rr.log("input/canny", rr.Image(canny_image), timeless=True)
 ```
+<h2 style="color: #4FA37C;">Core Rerun Concept Timeless</h2>
+The image and canny_image variables are marked as timeless.
 
+Timeless entities belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer. This is useful for entities that aren't part of normal data capture, but set the scene for how they are shown.
+
+This designation ensures their constant availability across all timelines in Rerun, aiding in consistent comparison and documentation.
 
 ## Controlnet generation
 Load the [ControlNet ](https://huggingface.co/diffusers/controlnet-canny-sdxl-1.0) and [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0) models from HuggingFace 
@@ -74,7 +79,7 @@ def controlnet_callback(
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
 ```
 
-To run this example use
+# Run the Code
 ```bash
 pip install -r examples/python/controlnet/requirements.txt
 python examples/python/controlnet/main.py
@@ -84,3 +89,5 @@ You can specify your own image and prompts using
 ```bash
 main.py [--img-path IMG_PATH] [--prompt PROMPT] [--negative-prompt NEGATIVE_PROMPT]
 ```
+
+This example requires a machine with CUDA backend available for pytorch (GPU) to work.
