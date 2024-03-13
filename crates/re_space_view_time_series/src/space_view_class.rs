@@ -13,9 +13,10 @@ use re_viewer_context::external::re_entity_db::{
 };
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewSystemIdentifier, ViewerContext, VisualizableEntities,
+    SmallVisualizerSet, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
@@ -75,10 +76,13 @@ pub struct TimeSeriesSpaceView;
 const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
-    type State = TimeSeriesSpaceViewState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Time Series".into()
+    }
 
-    const IDENTIFIER: &'static str = "Time Series";
-    const DISPLAY_NAME: &'static str = "Time Series";
+    fn display_name(&self) -> &'static str {
+        "Time Series"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TIMESERIES
@@ -123,7 +127,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TimeSeriesSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -135,11 +143,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
+
         ctx.re_ui
         .selection_grid(ui, "time_series_selection_ui_aggregation")
         .show(ui, |ui| {
@@ -169,6 +179,8 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         legend_ui(ctx, space_view_id, ui);
         axis_ui(ctx, space_view_id, ui, state);
+
+        Ok(())
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
@@ -288,12 +300,14 @@ It can greatly improve performance (and readability) in such situations as it pr
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let state = state.downcast_mut::<TimeSeriesSpaceViewState>()?;
 
         let blueprint_db = ctx.store_context.blueprint;
         let blueprint_query = ctx.blueprint_query;

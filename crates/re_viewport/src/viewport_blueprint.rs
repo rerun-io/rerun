@@ -290,7 +290,7 @@ impl ViewportBlueprint {
         re_tracing::profile_function!();
 
         for entry in ctx.space_view_class_registry.iter_registry() {
-            let class_id = entry.class.identifier();
+            let class_id = entry.identifier;
             let SpaceViewSpawnHeuristics {
                 mut recommended_space_views,
             } = entry.class.spawn_heuristics(ctx);

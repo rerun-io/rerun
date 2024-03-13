@@ -5,9 +5,9 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry,
-    DynSpaceViewClass, PlayState, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    StoreContext, SystemCommand, SystemCommandSender,
+    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
 use crate::{
@@ -298,7 +298,7 @@ impl App {
     }
 
     /// Adds a new space view class to the viewer.
-    pub fn add_space_view_class<T: DynSpaceViewClass + Default + 'static>(
+    pub fn add_space_view_class<T: SpaceViewClass + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         self.space_view_class_registry.add_class::<T>()

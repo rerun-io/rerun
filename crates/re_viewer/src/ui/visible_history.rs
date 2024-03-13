@@ -16,9 +16,9 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
     HashSet<SpaceViewClassIdentifier>,
 > = once_cell::sync::Lazy::new(|| {
     [
-        SpatialSpaceView3D::IDENTIFIER,
-        SpatialSpaceView2D::IDENTIFIER,
-        TimeSeriesSpaceView::IDENTIFIER,
+        SpatialSpaceView3D::identifier(),
+        SpatialSpaceView2D::identifier(),
+        TimeSeriesSpaceView::identifier(),
     ]
     .map(Into::into)
     .into()

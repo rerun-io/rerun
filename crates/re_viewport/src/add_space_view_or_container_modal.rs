@@ -113,11 +113,7 @@ fn modal_ui(
         .iter_registry()
         .sorted_by_key(|entry| entry.class.display_name())
         .map(|entry| {
-            SpaceViewBlueprint::new(
-                entry.class.identifier(),
-                &EntityPath::root(),
-                Default::default(),
-            )
+            SpaceViewBlueprint::new(entry.identifier, &EntityPath::root(), Default::default())
         })
     {
         let icon = space_view.class(ctx.space_view_class_registry).icon();

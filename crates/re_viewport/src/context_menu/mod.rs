@@ -131,7 +131,7 @@ fn action_list(
                         .iter_registry()
                         .sorted_by_key(|entry| entry.class.display_name())
                         .map(|entry| {
-                            Box::new(AddSpaceViewAction(entry.class.identifier()))
+                            Box::new(AddSpaceViewAction(entry.identifier))
                                 as Box<dyn ContextMenuAction + Sync + Send>
                         })
                         .collect(),
