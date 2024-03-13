@@ -405,9 +405,14 @@ class Viewport:
 
 class Panel:
     """
-    The state of a panel in the app.
+    Base class for the panel types.
 
-    This is used internally by the app to control the state of the 3 main panels.
+    Consider using one of the subclasses instead of this class directly:
+    - [BlueprintPanel][]
+    - [SelectionPanel][]
+    - [TimePanel][]
+
+    This is an ergonomic helper on top of [rerun.blueprint.archetypes.PanelBlueprint][].
     """
 
     def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
