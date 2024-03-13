@@ -27,9 +27,9 @@ namespace rerun {
             );
         }
 
-        static_assert(sizeof(*elements) == sizeof(elements->visible));
+        static_assert(sizeof(*elements) == sizeof(elements->value));
         ARROW_RETURN_NOT_OK(builder->AppendValues(
-            reinterpret_cast<const uint8_t*>(&elements->visible),
+            reinterpret_cast<const uint8_t*>(&elements->value),
             static_cast<int64_t>(num_elements)
         ));
 

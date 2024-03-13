@@ -6,7 +6,7 @@ A single boolean.
 
 ## Fields
 
-* visible: `bool`
+* value: `bool`
 
 ## Links
  * 🌊 [C++ API docs for `Bool`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Bool.html)

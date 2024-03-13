@@ -40,8 +40,8 @@ impl ::re_types_core::SizeBytes for Bool {
 
 impl From<bool> for Bool {
     #[inline]
-    fn from(visible: bool) -> Self {
-        Self(visible)
+    fn from(value: bool) -> Self {
+        Self(value)
     }
 }
 
@@ -120,12 +120,12 @@ impl ::re_types_core::Loggable for Bool {
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
-            .with_context("rerun.datatypes.Bool#visible")?
+            .with_context("rerun.datatypes.Bool#value")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.datatypes.Bool#visible")
+            .with_context("rerun.datatypes.Bool#value")
             .with_context("rerun.datatypes.Bool")?)
     }
 }

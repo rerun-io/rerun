@@ -20,16 +20,16 @@ __all__ = ["Bool", "BoolArrayLike", "BoolBatch", "BoolLike", "BoolType"]
 class Bool(BoolExt):
     """**Datatype**: A single boolean."""
 
-    def __init__(self: Any, visible: BoolLike):
+    def __init__(self: Any, value: BoolLike):
         """Create a new instance of the Bool datatype."""
 
         # You can define your own __init__ function as a member of BoolExt in bool_ext.py
-        self.__attrs_init__(visible=visible)
+        self.__attrs_init__(value=value)
 
     def __bool__(self) -> bool:
-        return self.visible
+        return self.value
 
-    visible: bool = field(converter=bool)
+    value: bool = field(converter=bool)
 
 
 if TYPE_CHECKING:

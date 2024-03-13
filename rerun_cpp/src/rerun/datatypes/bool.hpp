@@ -17,15 +17,15 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: A single boolean.
     struct Bool {
-        bool visible;
+        bool value;
 
       public:
         Bool() = default;
 
-        Bool(bool visible_) : visible(visible_) {}
+        Bool(bool value_) : value(value_) {}
 
-        Bool& operator=(bool visible_) {
-            visible = visible_;
+        Bool& operator=(bool value_) {
+            value = value_;
             return *this;
         }
     };

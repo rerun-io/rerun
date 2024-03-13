@@ -30,10 +30,10 @@ namespace rerun::blueprint::components {
             return *this;
         }
 
-        PanelExpanded(bool visible_) : expanded(visible_) {}
+        PanelExpanded(bool value_) : expanded(value_) {}
 
-        PanelExpanded& operator=(bool visible_) {
-            expanded = visible_;
+        PanelExpanded& operator=(bool value_) {
+            expanded = value_;
             return *this;
         }
 

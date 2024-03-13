@@ -17,5 +17,5 @@ struct Bool (
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {
-    visible: bool (order: 100);
+    value: bool (order: 100);
 }
