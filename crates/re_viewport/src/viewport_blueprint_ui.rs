@@ -189,17 +189,15 @@ impl Viewport<'_, '_> {
     ) {
         let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
         if result_tree.lookup_node_by_path(entity_path).is_some() {
-            EntityPath::incremental_walk(
-                result_tree
-                    .root_node()
-                    .map(|node| &node.data_result.entity_path),
-                entity_path,
-            )
-            .for_each(|entity_path| {
-                CollapseScope::BlueprintTree
-                    .data_result(*space_view_id, entity_path)
-                    .set_open(egui_ctx, true);
-            });
+            if let Some(root_node) = result_tree.root_node() {
+                EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
+                    .chain(std::iter::once(root_node.data_result.entity_path.clone()))
+                    .for_each(|entity_path| {
+                        CollapseScope::BlueprintTree
+                            .data_result(*space_view_id, entity_path)
+                            .set_open(egui_ctx, true);
+                    });
+            }
         }
     }
 
@@ -611,8 +609,7 @@ impl Viewport<'_, '_> {
             let response = list_item
                 .show_collapsing(
                     ui,
-                    CollapseScope::BlueprintTree
-                        .data_result(space_view.id, node.data_result.entity_path.clone()),
+                    CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
                     default_open,
                     |_, ui| {
                         for child in node.children.iter().sorted_by_key(|c| {
