@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-from rerun.blueprint.api import App, Grid, Spatial2D, Viewport
+from rerun.blueprint.api import Blueprint, BlueprintPanel, Grid, SelectionPanel, Spatial2D, TimePanel, Viewport
 
 
 def main() -> None:
@@ -25,17 +25,17 @@ def main() -> None:
         #
         # If auto_space_views is True, the blueprint will automatically add one of the heuristic
         # space views, which will include the image and both rectangles.
-        blueprint = App(
-            viewport=Viewport(
+        blueprint = Blueprint(
+            Viewport(
                 Grid(
                     Spatial2D(name="Rect 0", origin="/", contents=["image", "rect/0"]),
                     Spatial2D(name="Rect 1", origin="/", contents=["image", "rect/1"]),
                 ),
                 auto_space_views=args.auto_space_views,
             ),
-            blueprint_panel_expanded=False,
-            selection_panel_expanded=False,
-            time_panel_expanded=False,
+            BlueprintPanel(expanded=False),
+            SelectionPanel(expanded=False),
+            TimePanel(expanded=False),
         )
 
     rr.init("rerun_example_blueprint", spawn=True, blueprint=blueprint)

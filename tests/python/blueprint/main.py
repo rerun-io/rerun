@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import rerun as rr
 from numpy.random import default_rng
-from rerun.blueprint import App, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
+from rerun.blueprint import Blueprint, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, Vertical, Viewport
+from rerun.blueprint.api import TimePanel
 
 if __name__ == "__main__":
-    blueprint = App(
-        viewport=Viewport(
+    blueprint = Blueprint(
+        Viewport(
             Vertical(
                 Spatial3D(origin="/test1"),
                 Horizontal(
@@ -27,7 +28,7 @@ if __name__ == "__main__":
                 row_shares=[2, 1],
             )
         ),
-        time_panel_expanded=False,
+        TimePanel(expanded=False),
     )
 
     rr.init(
