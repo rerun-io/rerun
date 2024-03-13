@@ -72,9 +72,9 @@ class SpaceView:
         """Convert this space view to a viewport."""
         return Viewport(Grid(self))
 
-    def to_app_blueprint(self) -> App:
-        """Convert this space view to a full app blueprint."""
-        return App(self.to_viewport())
+    def to_blueprint(self) -> Blueprint:
+        """Convert this space view to a full blueprint."""
+        return Blueprint(self.to_viewport())
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -225,9 +225,9 @@ class Container:
         """Convert this container to a viewport."""
         return Viewport(self)
 
-    def to_app_blueprint(self) -> App:
-        """Convert this container to a full app blueprint."""
-        return App(self.to_viewport())
+    def to_blueprint(self) -> Blueprint:
+        """Convert this container to a full blueprint."""
+        return Blueprint(self.to_viewport())
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -385,9 +385,9 @@ class Viewport:
         """Conform with the `ViewportLike` interface."""
         return self
 
-    def to_app_blueprint(self) -> App:
-        """Convert this viewport to a full app blueprint."""
-        return App(self)
+    def to_blueprint(self) -> Blueprint:
+        """Convert this viewport to a full blueprint."""
+        return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -443,6 +443,54 @@ class Panel:
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
+class BlueprintPanel(Panel):
+    """The state of the blueprint panel."""
+
+    def __init__(self, *, expanded: bool | None = None):
+        """
+        Construct a new blueprint panel.
+
+        Parameters
+        ----------
+        expanded:
+            Whether the panel is expanded or not.
+
+        """
+        super().__init__(blueprint_path="blueprint_panel", expanded=expanded)
+
+
+class SelectionPanel(Panel):
+    """The state of the selection panel."""
+
+    def __init__(self, *, expanded: bool | None = None):
+        """
+        Construct a new selection panel.
+
+        Parameters
+        ----------
+        expanded:
+            Whether the panel is expanded or not.
+
+        """
+        super().__init__(blueprint_path="selection_panel", expanded=expanded)
+
+
+class TimePanel(Panel):
+    """The state of the time panel."""
+
+    def __init__(self, *, expanded: bool | None = None):
+        """
+        Construct a new time panel.
+
+        Parameters
+        ----------
+        expanded:
+            Whether the panel is expanded or not.
+
+        """
+        super().__init__(blueprint_path="time_panel", expanded=expanded)
+
+
 ViewportLike = Union[Viewport, Container, SpaceView]
 """
 A type that can be converted to a viewport.
@@ -451,70 +499,78 @@ These types all implement a `to_viewport()` method that wraps them in the necess
 helper classes.
 """
 
+BlueprintPart = Union[ViewportLike, BlueprintPanel, SelectionPanel, TimePanel]
+"""
+The types that make up a blueprint.
+"""
 
-class App:
-    """
-    The top-level description of the viewer application.
 
-    The app allows you to specify a viewport and control the state of the 3 main panels.
-    """
+class Blueprint:
+    """The top-level description of the viewer blueprint."""
 
     def __init__(
         self,
-        viewport: ViewportLike,
-        *,
-        blueprint_panel_expanded: bool | None = None,
-        selection_panel_expanded: bool | None = None,
-        time_panel_expanded: bool | None = None,
+        *parts: BlueprintPart,
     ):
         """
-        Construct a new app.
+        Construct a new blueprint from the given parts.
+
+        Each [BlueprintPart][] can be one of the following:
+        - [Viewport][]
+        - [BlueprintPanel][]
+        - [SelectionPanel][]
+        - [TimePanel][]
+
+        It is an error to provide more than one of any type of part.
 
         Parameters
         ----------
-        viewport:
-            The viewport that will be displayed in the app.
-        blueprint_panel_expanded:
-            Whether the blueprint panel is expanded or not. If unset the panel will choose its state based on the window size.
-        selection_panel_expanded:
-            Whether the selection panel is expanded or not. If unset the panel will choose its state based on the window size.
-        time_panel_expanded:
-            Whether the time panel is expanded or not. If unset the panel will choose its state based on the window size.
+        *parts:
+            The parts of the blueprint.
 
         """
 
-        self.viewport = viewport.to_viewport()
+        for part in parts:
+            if isinstance(part, (Viewport, Container, SpaceView)):
+                if hasattr(self, "viewport"):
+                    raise ValueError("Only one viewport can be provided")
+                self.viewport = part.to_viewport()
+            elif isinstance(part, BlueprintPanel):
+                if hasattr(self, "blueprint_panel"):
+                    raise ValueError("Only one blueprint panel can be provided")
+                self.blueprint_panel = part
+            elif isinstance(part, SelectionPanel):
+                if hasattr(self, "selection_panel"):
+                    raise ValueError("Only one selection panel can be provided")
+                self.selection_panel = part
+            elif isinstance(part, TimePanel):
+                if hasattr(self, "time_panel"):
+                    raise ValueError("Only one time panel can be provided")
+                self.time_panel = part
+            else:
+                raise ValueError(f"Unknown part type: {part}")
 
-        self.blueprint_panel = Panel(
-            blueprint_path="blueprint_panel",
-            expanded=blueprint_panel_expanded,
-        )
-        self.selection_panel = Panel(
-            blueprint_path="selection_panel",
-            expanded=selection_panel_expanded,
-        )
-        self.time_panel = Panel(
-            blueprint_path="time_panel",
-            expanded=time_panel_expanded,
-        )
-
-    def to_app_blueprint(self) -> App:
+    def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
         return self
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
         self.viewport._log_to_stream(stream)
-        self.blueprint_panel._log_to_stream(stream)
-        self.selection_panel._log_to_stream(stream)
-        self.time_panel._log_to_stream(stream)
+        if hasattr(self, "blueprint_panel"):
+            self.blueprint_panel._log_to_stream(stream)
+        if hasattr(self, "selection_panel"):
+            self.selection_panel._log_to_stream(stream)
+        if hasattr(self, "time_panel"):
+            self.time_panel._log_to_stream(stream)
 
 
-BlueprintLike = Union[App, Viewport, Container, SpaceView]
+BlueprintLike = Union[Blueprint, Viewport, Container, SpaceView]
+
 """
 A type that can be converted to a blueprint.
 
-These types all implement a `to_app_blueprint()` method that wraps them in the necessary
+These types all implement a `to_blueprint()` method that wraps them in the necessary
 helper classes.
 """
 
@@ -522,8 +578,8 @@ helper classes.
 def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike) -> MemoryRecording:
     """Internal rerun helper to convert a `BlueprintLike` into a stream that can be sent to the viewer."""
 
-    # Convert the BlueprintLike to a full app blueprint
-    blueprint = blueprint.to_app_blueprint()
+    # Convert the BlueprintLike to a full blueprint
+    blueprint = blueprint.to_blueprint()
 
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
