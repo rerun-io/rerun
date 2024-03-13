@@ -1502,7 +1502,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
 
 #[allow(clippy::needless_pass_by_ref_mut)]
 fn save(
-    #[allow(unused_variables)] app: &mut App,
+    #[allow(unused_variables)] app: &mut App, // only used on native
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) {
