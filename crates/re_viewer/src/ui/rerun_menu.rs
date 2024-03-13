@@ -40,6 +40,8 @@ impl App {
 
             self.save_buttons_ui(ui, _store_context);
 
+            UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
+
             UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
             ui.add_space(SPACING);
@@ -165,13 +167,13 @@ impl App {
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
 
-        let save_button = UICommand::SaveRecording.menu_button(ui.ctx());
+        let save_recording_button = UICommand::SaveRecording.menu_button(ui.ctx());
         let save_selection_button = UICommand::SaveRecordingSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(save_button);
+                    ui.add(save_recording_button);
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
@@ -185,7 +187,7 @@ impl App {
                 .map_or(false, |recording| !recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
-                    .add(save_button)
+                    .add(save_recording_button)
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {

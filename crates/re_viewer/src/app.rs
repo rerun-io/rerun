@@ -453,6 +453,10 @@ impl App {
                 );
             }
 
+            UICommand::SaveBlueprint => {
+                save_blueprint(self, store_context);
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
                 for file_path in open_file_dialog_native() {
@@ -1519,14 +1523,36 @@ fn save_recording(
         "Save recording"
     };
 
-    save_entity_db(app, file_name, title, entity_db, loop_selection);
+    save_entity_db(
+        app,
+        file_name.to_owned(),
+        title.to_owned(),
+        entity_db,
+        loop_selection,
+    );
+}
+
+fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
+    let Some(store_context) = store_context else {
+        re_log::error!("No blueprint to save");
+        return;
+    };
+
+    let entity_db = store_context.blueprint;
+
+    let file_name = format!(
+        "{}.blueprint",
+        crate::saving::sanitize_app_id(&store_context.app_id)
+    );
+    let title = "Save blueprint";
+    save_entity_db(app, file_name, title.to_owned(), entity_db, None);
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
 fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
-    file_name: &'static str,
-    title: &'static str,
+    file_name: String,
+    title: String,
     entity_db: &EntityDb,
     loop_selection: Option<(re_log_types::Timeline, re_log_types::TimeRangeF)>,
 ) {
@@ -1544,7 +1570,7 @@ fn save_entity_db(
         };
 
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(file_name, title, &messages).await {
+            if let Err(err) = async_save_dialog(&file_name, &title, &messages).await {
                 re_log::error!("File saving failed: {err}");
             }
         });
