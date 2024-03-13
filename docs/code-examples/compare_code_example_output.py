@@ -13,13 +13,13 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-import toml
+import tomlkit
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
 from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
-config = toml.loads(config_path.read_text())
+config = tomlkit.loads(config_path.read_text())
 OPT_OUT_RUN = config.opt_out.run
 OPT_OUT_COMPARE = config.opt_out.compare
 EXTRA_ARGS = {
