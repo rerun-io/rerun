@@ -1025,6 +1025,7 @@ mod tests {
 
             // Set up a store query and update the overrides.
             let ctx = StoreContext {
+                app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: Some(&recording),
                 all_recordings: vec![],
