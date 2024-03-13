@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <random>
 
-const char* README = R"(
+static const char* README = R"(
 # Incremental Logging
 
 This example showcases how to incrementally log data belonging to the same archetype, and re-use some or all of it across frames.
