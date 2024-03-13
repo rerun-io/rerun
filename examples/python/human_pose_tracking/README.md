@@ -39,11 +39,11 @@ rr.set_time_sequence("frame_idx", bgr_frame.idx)
 ```
 
 ## Video
-The input video is logged as a sequence of 
+The input video is logged as a sequence of
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the 'Video' entity.
 ```python
 rr.log(
-    "video/rgb", 
+    "video/rgb",
     rr.Image(rgb).compress(jpeg_quality=75)
 )
 ```
@@ -51,7 +51,7 @@ rr.log(
 ## Segmentation Mask
 
 The segmentation result is logged through a combination of two archetypes. The segmentation
-image itself is logged as an 
+image itself is logged as an
 [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
 [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
@@ -76,7 +76,7 @@ rr.log(
 
 ```python
 rr.log(
-    "video/mask", 
+    "video/mask",
     rr.SegmentationImage(segmentation_mask.astype(np.uint8))
 )
 ```
@@ -92,7 +92,7 @@ The 2D and 3D points are logged through a combination of two archetypes. First, 
 the keypoints.
 Defining these connections automatically renders lines between them. Mediapipe provides the `POSE_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections. Second, the actual keypoint positions are logged in 2D
 and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
-[`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively. 
+[`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
 
 ### Label Mapping and Keypoint Connections
 
@@ -114,7 +114,7 @@ rr.log(
 
 ```python
 rr.log(
-    "video/pose/points", 
+    "video/pose/points",
     rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark)
 )
 ```
@@ -132,7 +132,7 @@ rr.log(
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -151,5 +151,5 @@ python examples/python/human_pose_tracking/main.py # run the example
 If you wish to customize it for various videos, adjust the maximum frames, or explore additional features, use the CLI with the `--help` option for guidance:
 
 ```bash
-python examples/python/human_pose_tracking/main.py --help 
+python examples/python/human_pose_tracking/main.py --help
 ```
