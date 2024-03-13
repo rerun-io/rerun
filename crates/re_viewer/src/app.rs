@@ -1568,10 +1568,10 @@ fn save_entity_db(
                     return;
                 }
             };
-            if let Err(err) = app
-                .background_tasks
-                .spawn_file_saver(move || crate::saving::encode_to_file(&path, messages.iter()))
-            {
+            if let Err(err) = app.background_tasks.spawn_file_saver(move || {
+                crate::saving::encode_to_file(&path, messages.iter())?;
+                Ok(path)
+            }) {
                 // NOTE: Can only happen if saving through the command palette.
                 re_log::error!("File saving failed: {err}");
             }
