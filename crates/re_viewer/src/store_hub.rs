@@ -90,33 +90,28 @@ impl StoreHub {
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
         // If we have an app-id, then use it to look up the blueprint.
-        let blueprint_id = self.selected_application_id.as_ref().map(|app_id| {
-            self.blueprint_by_app_id
-                .entry(app_id.clone())
-                .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0))
-        });
+        let app_id = self.selected_application_id.clone()?;
 
-        // As long as we have a blueprint-id, create the blueprint.
-        blueprint_id
+        let blueprint_id = self
+            .blueprint_by_app_id
+            .entry(app_id.clone())
+            .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+
+        // Get or create the blueprint:
+        self.store_bundle.blueprint_entry(blueprint_id);
+        let blueprint = self.store_bundle.blueprint(blueprint_id)?;
+
+        let recording = self
+            .selected_rec_id
             .as_ref()
-            .map(|id| self.store_bundle.blueprint_entry(id));
+            .and_then(|id| self.store_bundle.recording(id));
 
-        // If we have a blueprint, we can return the `StoreContext`. In most
-        // cases it should have already existed or been created above.
-        blueprint_id
-            .and_then(|id| self.store_bundle.blueprint(id))
-            .map(|blueprint| {
-                let recording = self
-                    .selected_rec_id
-                    .as_ref()
-                    .and_then(|id| self.store_bundle.recording(id));
-
-                StoreContext {
-                    blueprint,
-                    recording,
-                    all_recordings: self.store_bundle.recordings().collect_vec(),
-                }
-            })
+        Some(StoreContext {
+            app_id,
+            blueprint,
+            recording,
+            all_recordings: self.store_bundle.recordings().collect_vec(),
+        })
     }
 
     /// Keeps track if a recording was ever activated.
