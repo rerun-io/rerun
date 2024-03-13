@@ -454,7 +454,7 @@ impl ViewportBlueprint {
     ///
     /// Note:
     /// - `visitor` is first called for the container passed in argument
-    /// - `visitor`'s second argument contains the hierarchy leading to the visited contents, up to
+    /// - `visitor`'s second argument contains the hierarchy leading to the visited contents, from
     ///   (and including) the container passed in argument
     pub fn visit_contents_in_container(
         &self,

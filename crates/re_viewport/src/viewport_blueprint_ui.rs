@@ -86,55 +86,51 @@ impl Viewport<'_, '_> {
 
     /// Expend all required items and compute which item we should scroll to.
     fn handle_focused_item(&self, ctx: &ViewerContext<'_>, ui: &egui::Ui) -> Option<Item> {
-        ctx.focused_item.as_ref().and_then(|focused_item| {
-            match focused_item {
-                Item::Container(container_id) => {
-                    self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
-                    Some(focused_item.clone())
-                }
-                Item::SpaceView(space_view_id) => {
-                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
-                    ctx.focused_item.clone()
-                }
-                Item::DataResult(space_view_id, instance_path) => {
-                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+        let focused_item = ctx.focused_item.as_ref()?;
+        match focused_item {
+            Item::Container(container_id) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
+                Some(focused_item.clone())
+            }
+            Item::SpaceView(space_view_id) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                ctx.focused_item.clone()
+            }
+            Item::DataResult(space_view_id, instance_path) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                self.expand_all_data_results_until(
+                    ctx,
+                    ui.ctx(),
+                    space_view_id,
+                    &instance_path.entity_path,
+                );
+
+                ctx.focused_item.clone()
+            }
+            Item::InstancePath(instance_path) => {
+                let space_view_ids =
+                    self.list_space_views_with_entity(ctx, &instance_path.entity_path);
+
+                // focus on the first matching data result
+                let res = space_view_ids
+                    .first()
+                    .map(|id| Item::DataResult(*id, instance_path.clone()));
+
+                for space_view_id in space_view_ids {
+                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(space_view_id));
                     self.expand_all_data_results_until(
                         ctx,
                         ui.ctx(),
-                        space_view_id,
+                        &space_view_id,
                         &instance_path.entity_path,
                     );
-
-                    ctx.focused_item.clone()
-                }
-                Item::InstancePath(instance_path) => {
-                    let space_view_ids =
-                        self.list_space_views_with_entity(ctx, &instance_path.entity_path);
-
-                    // focus on the first matching data result
-                    let res = space_view_ids
-                        .first()
-                        .map(|id| Item::DataResult(*id, instance_path.clone()));
-
-                    for space_view_id in space_view_ids {
-                        self.expand_all_contents_until(
-                            ui.ctx(),
-                            &Contents::SpaceView(space_view_id),
-                        );
-                        self.expand_all_data_results_until(
-                            ctx,
-                            ui.ctx(),
-                            &space_view_id,
-                            &instance_path.entity_path,
-                        );
-                    }
-
-                    res
                 }
 
-                Item::StoreId(_) | Item::ComponentPath(_) => None,
+                res
             }
-        })
+
+            Item::StoreId(_) | Item::ComponentPath(_) => None,
+        }
     }
 
     /// Expand all containers until reaching the provided content.
