@@ -170,6 +170,7 @@ pub trait SpaceViewClass: Send + Sync {
             })
             .collect()
     }
+
     /// Determines which space views should be spawned by default for this class.
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics;
 
