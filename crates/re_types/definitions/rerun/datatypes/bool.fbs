@@ -1,4 +1,5 @@
 include "arrow/attributes.fbs";
+include "docs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
@@ -15,7 +16,8 @@ struct Bool (
     "attr.python.aliases": "bool",
     "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
-    "attr.rust.tuple_struct"
+    "attr.rust.tuple_struct",
+    "attr.docs.unreleased"
 ) {
     value: bool (order: 100);
 }
