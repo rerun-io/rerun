@@ -72,9 +72,9 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-              runner="ubuntu-latest-16-cores"
+              runner="buildjet-8vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              container="null"
               lib_name="librerun_c.a"
               ;;
             linux-x64)
