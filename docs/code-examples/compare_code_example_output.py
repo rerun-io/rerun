@@ -20,8 +20,8 @@ from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
-OPT_OUT_RUN = config.opt_out.run
-OPT_OUT_COMPARE = config.opt_out.compare
+OPT_OUT_RUN = config["opt_out"]["run"]
+OPT_OUT_COMPARE = config["opt_out"]["compare"]
 EXTRA_ARGS = {
     name: [arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in args]
     for name, args in config.extra_args.items()
