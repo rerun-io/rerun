@@ -298,7 +298,7 @@ fn paint_range_text(
 ) {
     use egui::{Pos2, Stroke};
 
-    if selected_range.min <= TimeInt::BEGINNING {
+    if selected_range.min <= TimeInt::STATIC_TIME_PANEL {
         return; // huge time selection, don't show a confusing times
     }
 

@@ -132,7 +132,7 @@ impl TimeType {
     }
 
     pub fn format(&self, time_int: TimeInt, time_zone_for_timestamps: TimeZone) -> String {
-        if time_int <= TimeInt::BEGINNING {
+        if time_int <= TimeInt::STATIC_TIME_PANEL {
             "-∞".into()
         } else if time_int >= TimeInt::MAX {
             "+∞".into()
