@@ -190,11 +190,12 @@ impl framework::Example for Picking {
             })
             .collect_vec();
 
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
+        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(
+            re_ctx,
+            Default::default(),
+        ));
         view_builder
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
-
-        view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
 
         let command_buffer = view_builder
             .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)

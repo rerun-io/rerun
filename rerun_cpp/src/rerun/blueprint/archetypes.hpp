@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "blueprint/archetypes/background3d.hpp"
 #include "blueprint/archetypes/container_blueprint.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"

@@ -44,7 +44,7 @@ class Transform3DExt:
             transform_repr = _build_struct_array_from_translation_rotation_scale(data, cast(pa.StructType, repr_type))
         else:
             raise ValueError(
-                f"unknown transform 3d value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
+                f"unknown transform 3D value: {data} (expected `Transform3D`, `TranslationAndMat3x3`, or "
                 "`TranslationRotationScale3D`"
             )
 

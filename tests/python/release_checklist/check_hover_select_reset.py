@@ -64,7 +64,7 @@ def log_points_3d() -> None:
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.log("3d/points", rr.Points3D(positions, colors=colors, radii=radii))
+    rr.log("3D/points", rr.Points3D(positions, colors=colors, radii=radii))
 
 
 def log_points_2d() -> None:
@@ -76,7 +76,7 @@ def log_points_2d() -> None:
     colors = rng.uniform(0, 255, size=[10, 3])
     radii = rng.uniform(0, 1, size=[10])
 
-    rr.log("2d/points", rr.Points2D(positions, colors=colors, radii=radii))
+    rr.log("2D/points", rr.Points2D(positions, colors=colors, radii=radii))
 
 
 def run(args: Namespace) -> None:

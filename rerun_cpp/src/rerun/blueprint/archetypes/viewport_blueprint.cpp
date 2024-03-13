@@ -16,8 +16,8 @@ namespace rerun {
         std::vector<DataCell> cells;
         cells.reserve(7);
 
-        {
-            auto result = DataCell::from_loggable(archetype.space_views);
+        if (archetype.space_views.has_value()) {
+            auto result = DataCell::from_loggable(archetype.space_views.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

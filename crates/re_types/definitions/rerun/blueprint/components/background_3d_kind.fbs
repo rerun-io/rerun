@@ -1,0 +1,24 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+
+/// The type of the background in 3D Space Views.
+enum Background3DKind: byte (
+    "attr.rerun.scope": "blueprint",
+    "attr.docs.unreleased"
+) {
+    /// Gradient depending on the direction of the view, dark theme.
+    GradientDark (default),
+
+    /// Gradient depending on the direction of the view, bright theme.
+    GradientBright,
+
+    /// Simple uniform color.
+    SolidColor,
+}

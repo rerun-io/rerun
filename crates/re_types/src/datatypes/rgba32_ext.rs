@@ -1,7 +1,9 @@
 use super::Rgba32;
 
 impl Rgba32 {
+    pub const BLACK: Self = Self::from_rgb(0, 0, 0);
     pub const WHITE: Self = Self::from_rgb(255, 255, 255);
+    pub const TRANSPARENT: Self = Self::from_unmultiplied_rgba(0, 0, 0, 0);
 
     #[inline]
     pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
@@ -85,6 +87,13 @@ impl From<Rgba32> for ecolor::Rgba {
 #[cfg(feature = "ecolor")]
 impl From<ecolor::Rgba> for Rgba32 {
     fn from(val: ecolor::Rgba) -> Self {
+        val.to_srgba_unmultiplied().into()
+    }
+}
+
+#[cfg(feature = "ecolor")]
+impl From<ecolor::Color32> for Rgba32 {
+    fn from(val: ecolor::Color32) -> Self {
         val.to_srgba_unmultiplied().into()
     }
 }

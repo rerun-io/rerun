@@ -153,7 +153,8 @@ namespace rerun::archetypes {
         /// Assumes the principal point to be in the middle of the sensor.
         static Pinhole from_fov_and_aspect_ratio(float fov_y, float aspect_ratio) {
             const float EPSILON = std::numeric_limits<float>::epsilon();
-            const float focal_length_y = 0.5f / std::tan(std::max(fov_y * 0.5f, EPSILON));
+            // `max` has explicit template args to avoid preprocessor replacement when <windows.h> is included without NOMINMAX.
+            const float focal_length_y = 0.5f / std::tan(std::max<float>(fov_y * 0.5f, EPSILON));
             return from_focal_length_and_resolution(
                 {focal_length_y, focal_length_y},
                 {aspect_ratio, 1.0}

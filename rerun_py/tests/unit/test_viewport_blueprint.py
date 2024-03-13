@@ -75,7 +75,7 @@ def test_viewport_blueprint() -> None:
             ")",
         )
         arch = ViewportBlueprint(
-            space_views,
+            space_views=space_views,
             root_container=root_container,
             maximized=maximized,
             auto_layout=auto_layout,
