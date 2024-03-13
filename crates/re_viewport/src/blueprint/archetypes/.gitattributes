@@ -3,4 +3,5 @@
 .gitattributes linguist-generated=true
 container_blueprint.rs linguist-generated=true
 mod.rs linguist-generated=true
+panel_blueprint.rs linguist-generated=true
 viewport_blueprint.rs linguist-generated=true

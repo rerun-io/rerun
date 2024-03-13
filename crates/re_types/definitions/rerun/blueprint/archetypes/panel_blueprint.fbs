@@ -1,0 +1,21 @@
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+/// Shared state for the 3 collapsible panels.
+table PanelBlueprint (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default",
+    "attr.rust.override_crate": "re_viewport"
+) {
+    // --- Required ---
+
+    // --- Optional ---
+    /// Whether or not the panel is expanded.
+    expanded: rerun.blueprint.components.PanelExpanded ("attr.rerun.component_optional", nullable, order: 1000);
+
+    // TODO(jleibs): Add a float to track how expanded the panel is.
+}

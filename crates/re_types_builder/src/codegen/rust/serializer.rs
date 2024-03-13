@@ -411,7 +411,8 @@ fn quote_arrow_field_serializer(
     let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
     match datatype.to_logical_type() {
-        DataType::Int8
+        DataType::Boolean
+        | DataType::Int8
         | DataType::Int16
         | DataType::Int32
         | DataType::Int64
@@ -458,35 +459,35 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            match inner_repr {
-                // A primitive that's an inner element of a list will already have been mapped
-                // to a buffer type.
-                InnerRepr::ArrowBuffer => quote! {
-                    PrimitiveArray::new(
+            if datatype.to_logical_type() == &DataType::Boolean {
+                quote! {
+                    BooleanArray::new(
                         #quoted_datatype,
-                        #data_src,
-                        #bitmap_src,
-                    ).boxed()
-                },
-                InnerRepr::NativeIterable => quote! {
-                    PrimitiveArray::new(
-                        #quoted_datatype,
+                        // NOTE: We need values for all slots, regardless of what the bitmap says,
+                        // hence `unwrap_or_default`.
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #bitmap_src,
                     ).boxed()
-                },
-            }
-        }
-
-        DataType::Boolean => {
-            quote! {
-                BooleanArray::new(
-                    #quoted_datatype,
-                    // NOTE: We need values for all slots, regardless of what the bitmap says,
-                    // hence `unwrap_or_default`.
-                    #data_src.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                    #bitmap_src,
-                ).boxed()
+                }
+            } else {
+                match inner_repr {
+                    // A primitive that's an inner element of a list will already have been mapped
+                    // to a buffer type.
+                    InnerRepr::ArrowBuffer => quote! {
+                        PrimitiveArray::new(
+                            #quoted_datatype,
+                            #data_src,
+                            #bitmap_src,
+                        ).boxed()
+                    },
+                    InnerRepr::NativeIterable => quote! {
+                        PrimitiveArray::new(
+                            #quoted_datatype,
+                            #data_src.into_iter() #quoted_transparent_mapping .collect(),
+                            #bitmap_src,
+                        ).boxed()
+                    },
+                }
             }
         }
 

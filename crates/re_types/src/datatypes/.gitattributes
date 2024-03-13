@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 angle.rs linguist-generated=true
 annotation_info.rs linguist-generated=true
+bool.rs linguist-generated=true
 class_description.rs linguist-generated=true
 class_description_map_elem.rs linguist-generated=true
 class_id.rs linguist-generated=true

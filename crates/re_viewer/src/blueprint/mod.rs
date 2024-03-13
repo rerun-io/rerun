@@ -1,4 +1,3 @@
-pub mod components;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod validation;
 #[cfg(not(target_arch = "wasm32"))]
