@@ -19,8 +19,10 @@ TODO(ab): add lots of stuff via blueprint to make the tree more crowded and chec
 
 ## Checks
 
-- Collapse all in the blueprint tree.
-- Double-click on the box in the first space view, check corresponding space view expands.
+- Collapse all in the blueprint tree and the streams view
+- Double-click on the box in the first space view
+    - check corresponding space view expands and scrolls
+    - check the streams view expands and scrolls
 - Collapse all in the blueprint tree.
 - Double-click on the leaf "boxes3d" entity in the streams view, check both space views expand.
 """

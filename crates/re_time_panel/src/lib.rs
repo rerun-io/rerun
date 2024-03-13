@@ -584,6 +584,18 @@ impl TimePanel {
         clip_rect.max.x = tree_max_y;
         ui.set_clip_rect(clip_rect);
 
+        // expand if children is focused
+        let focused_entity_path = ctx
+            .focused_item
+            .as_ref()
+            .and_then(|item| item.entity_path());
+
+        if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
+            CollapseScope::StreamsTree
+                .entity(tree.path.clone())
+                .set_open(&ui.ctx(), true);
+        }
+
         let re_ui::list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
@@ -624,6 +636,15 @@ impl TimePanel {
                 &tree.path,
             );
         });
+
+        if Some(&tree.path) == focused_entity_path {
+            // Scroll only if the entity isn't already visible. This is important because that's what
+            // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
+            // annoying to induce a scroll motion.
+            if !ui.clip_rect().contains_rect(response.rect) {
+                response.scroll_to_me(Some(egui::Align::Center));
+            }
+        }
 
         context_menu_ui_for_item(
             ctx,
