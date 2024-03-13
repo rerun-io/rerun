@@ -7,7 +7,7 @@ thumbnail_dimensions = [480, 272]
 channel = "main"
 -->
 
-<picture>
+<picture data-inline-viewer="human_pose_tracking">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/1024w.png">

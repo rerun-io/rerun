@@ -7,7 +7,7 @@ thumbnail_dimensions = [480, 285]
 channel = "main"
 -->
 
-<picture>
+<picture data-inline-viewer="dna">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/1024w.png">

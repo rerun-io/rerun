@@ -8,7 +8,7 @@ channel = "main"
 -->
 
 
-<picture>
+<picture data-inline-viewer="incremental_logging">
   <img src="https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/768w.png">
