@@ -1506,6 +1506,8 @@ fn save(
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) {
+    re_tracing::profile_function!();
+
     let Some(entity_db) = store_context.as_ref().and_then(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
         re_log::error!("No data to save!");
@@ -1540,24 +1542,29 @@ fn save(
 
     // Native
     #[cfg(not(target_arch = "wasm32"))]
-    if let Some(path) = rfd::FileDialog::new()
-        .set_file_name(file_name)
-        .set_title(title)
-        .save_file()
     {
-        let messages = match entity_db.to_messages(loop_selection) {
-            Ok(messages) => messages,
-            Err(err) => {
-                re_log::error!("File saving failed: {err}");
-                return;
-            }
+        let path = {
+            re_tracing::profile_scope!("file_dialog");
+            rfd::FileDialog::new()
+                .set_file_name(file_name)
+                .set_title(title)
+                .save_file()
         };
-        if let Err(err) = app
-            .background_tasks
-            .spawn_file_saver(move || crate::saving::encode_to_file(&path, messages.iter()))
-        {
-            // NOTE: Can only happen if saving through the command palette.
-            re_log::error!("File saving failed: {err}");
+        if let Some(path) = path {
+            let messages = match entity_db.to_messages(loop_selection) {
+                Ok(messages) => messages,
+                Err(err) => {
+                    re_log::error!("File saving failed: {err}");
+                    return;
+                }
+            };
+            if let Err(err) = app
+                .background_tasks
+                .spawn_file_saver(move || crate::saving::encode_to_file(&path, messages.iter()))
+            {
+                // NOTE: Can only happen if saving through the command palette.
+                re_log::error!("File saving failed: {err}");
+            }
         }
     }
 }
