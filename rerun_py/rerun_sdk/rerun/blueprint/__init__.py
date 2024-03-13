@@ -2,6 +2,7 @@ from __future__ import annotations
 
 __all__ = [
     "archetypes",
+    "BarChartView",
     "Blueprint",
     "BlueprintLike",
     "BlueprintPanel",
@@ -10,10 +11,14 @@ __all__ = [
     "Grid",
     "Horizontal",
     "SelectionPanel",
-    "Spatial2D",
-    "Spatial3D",
+    "Spatial2DView",
+    "Spatial3DView",
     "Tabs",
+    "TensorView",
+    "TextDocumentView",
+    "TextLogView",
     "TimePanel",
+    "TimeSeriesView",
     "Vertical",
     "Viewport",
 ]
@@ -28,4 +33,12 @@ from .api import (
     Viewport,
 )
 from .containers import Grid, Horizontal, Vertical
-from .space_views import Spatial2D, Spatial3D
+from .space_views import (
+    BarChartView,
+    Spatial2DView,
+    Spatial3DView,
+    TensorView,
+    TextDocumentView,
+    TextLogView,
+    TimeSeriesView,
+)

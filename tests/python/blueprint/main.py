@@ -2,23 +2,33 @@ from __future__ import annotations
 
 import rerun as rr
 from numpy.random import default_rng
-from rerun.blueprint import Blueprint, Grid, Horizontal, Spatial2D, Spatial3D, Tabs, TimePanel, Vertical, Viewport
+from rerun.blueprint import (
+    Blueprint,
+    Grid,
+    Horizontal,
+    Spatial2DView,
+    Spatial3DView,
+    Tabs,
+    TimePanel,
+    Vertical,
+    Viewport,
+)
 
 if __name__ == "__main__":
     blueprint = Blueprint(
         Viewport(
             Vertical(
-                Spatial3D(origin="/test1"),
+                Spatial3DView(origin="/test1"),
                 Horizontal(
                     Tabs(
-                        Spatial3D(origin="/test1"),
-                        Spatial2D(origin="/test2"),
+                        Spatial3DView(origin="/test1"),
+                        Spatial2DView(origin="/test2"),
                     ),
                     Grid(
-                        Spatial3D(origin="/test1"),
-                        Spatial2D(origin="/test2"),
-                        Spatial3D(origin="/test1"),
-                        Spatial2D(origin="/test2"),
+                        Spatial3DView(origin="/test1"),
+                        Spatial2DView(origin="/test2"),
+                        Spatial3DView(origin="/test1"),
+                        Spatial2DView(origin="/test2"),
                         grid_columns=3,
                         column_shares=[1, 1, 1],
                     ),

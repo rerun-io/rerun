@@ -6,7 +6,7 @@ import argparse
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-from rerun.blueprint import Blueprint, BlueprintPanel, Grid, SelectionPanel, Spatial2D, TimePanel, Viewport
+from rerun.blueprint import Blueprint, BlueprintPanel, Grid, SelectionPanel, Spatial2DView, TimePanel, Viewport
 
 
 def main() -> None:
@@ -28,8 +28,8 @@ def main() -> None:
         blueprint = Blueprint(
             Viewport(
                 Grid(
-                    Spatial2D(name="Rect 0", origin="/", contents=["image", "rect/0"]),
-                    Spatial2D(name="Rect 1", origin="/", contents=["image", "rect/1"]),
+                    Spatial2DView(name="Rect 0", origin="/", contents=["image", "rect/0"]),
+                    Spatial2DView(name="Rect 1", origin="/", contents=["image", "rect/1"]),
                 ),
                 auto_space_views=args.auto_space_views,
             ),
