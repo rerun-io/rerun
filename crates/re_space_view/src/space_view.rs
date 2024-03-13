@@ -14,8 +14,8 @@ use re_types::{
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataResult, DynSpaceViewClass, PerSystemEntities,
-    PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
+    blueprint_timepoint_for_writes, DataResult, PerSystemEntities, PropertyOverrides,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
@@ -337,7 +337,7 @@ impl SpaceViewBlueprint {
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
-    ) -> &'a dyn DynSpaceViewClass {
+    ) -> &'a dyn SpaceViewClass {
         space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
@@ -391,7 +391,15 @@ impl SpaceViewBlueprint {
             .unwrap_or_default();
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, &props, query, system_output);
+            class
+                .ui(ctx, ui, view_state, &props, query, system_output)
+                .unwrap_or_else(|err| {
+                    re_log::error!(
+                        "Error in Space View UI (class: {}, display name: {}): {err}",
+                        self.class_identifier,
+                        class.display_name(),
+                    );
+                });
         });
     }
 

@@ -10,10 +10,7 @@ use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::{
-    loading::load_blueprint_file,
-    saving::{default_blueprint_path, save_database_to_file},
-};
+use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -342,10 +339,13 @@ impl StoreHub {
                     {
                         let blueprint_path = default_blueprint_path(app_id)?;
                         re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
+
+                        let messages = blueprint.to_messages(None)?;
+
                         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                         // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                        let file_saver = save_database_to_file(blueprint, blueprint_path, None)?;
-                        file_saver()?;
+                        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
                         self.blueprint_last_save
                             .insert(blueprint_id.clone(), blueprint.generation());
                     }

@@ -14,9 +14,10 @@ use re_types::{
     tensor_data::{DecodedTensor, TensorDataMeaning},
 };
 use re_viewer_context::{
-    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorStatsCache, ViewQuery, ViewerContext,
+    gpu_bridge::{self, colormap_dropdown_button_ui},
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
@@ -135,10 +136,13 @@ impl PerTensorState {
 }
 
 impl SpaceViewClass for TensorSpaceView {
-    type State = ViewTensorState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Tensor".into()
+    }
 
-    const IDENTIFIER: &'static str = "Tensor";
-    const DISPLAY_NAME: &'static str = "Tensor";
+    fn display_name(&self) -> &'static str {
+        "Tensor"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TENSOR
@@ -155,7 +159,7 @@ impl SpaceViewClass for TensorSpaceView {
         system_registry.register_visualizer::<TensorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -163,20 +167,26 @@ impl SpaceViewClass for TensorSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Medium
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ViewTensorState>::default()
+    }
+
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<ViewTensorState>()?;
         if let Some(selected_tensor) = &state.selected_tensor {
             if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
                 state_tensor.ui(ctx, ui);
             }
         }
+        Ok(())
     }
 
     fn spawn_heuristics(
@@ -192,12 +202,13 @@ impl SpaceViewClass for TensorSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+        let state = state.downcast_mut::<ViewTensorState>()?;
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 

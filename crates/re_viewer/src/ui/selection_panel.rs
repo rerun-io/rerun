@@ -157,7 +157,7 @@ impl SelectionPanel {
                         // TODO(jleibs): Overrides still require special handling inside the visualizers.
                         // For now, only show the override section for TimeSeries until support is implemented
                         // generically.
-                        if space_view.class_identifier() == TimeSeriesSpaceView::IDENTIFIER
+                        if *space_view.class_identifier() == TimeSeriesSpaceView::identifier()
                             || ctx.app_options.experimental_visualizer_selection
                         {
                             ctx.re_ui
@@ -863,16 +863,22 @@ fn blueprint_ui_for_space_view(
             &root_data_result.accumulated_properties().visible_history,
         );
 
-        space_view
-            .class(ctx.space_view_class_registry)
-            .selection_ui(
-                ctx,
-                ui,
-                space_view_state.space_view_state.as_mut(),
-                &space_view.space_origin,
-                space_view.id,
-                &mut props,
+        let space_view_class = space_view.class(ctx.space_view_class_registry);
+
+        if let Err(err) = space_view_class.selection_ui(
+            ctx,
+            ui,
+            space_view_state.space_view_state.as_mut(),
+            &space_view.space_origin,
+            space_view.id,
+            &mut props,
+        ) {
+            re_log::error!(
+                "Error in Space View selection UI (class: {}, display name: {}): {err}",
+                space_view.class_identifier(),
+                space_view_class.display_name(),
             );
+        }
 
         root_data_result.save_individual_override(Some(props), ctx);
     }

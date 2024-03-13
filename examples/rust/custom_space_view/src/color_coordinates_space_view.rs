@@ -6,9 +6,10 @@ use re_viewer::external::{
     re_ui,
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-        SpaceViewSystemRegistrator, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+        SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
+        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+        SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
     },
 };
 
@@ -66,10 +67,14 @@ pub struct ColorCoordinatesSpaceView;
 
 impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
-    type State = ColorCoordinatesSpaceViewState;
 
-    const IDENTIFIER: &'static str = "Color Coordinates";
-    const DISPLAY_NAME: &'static str = "Color Coordinates";
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Color Coordinates".into()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Color Coordinates"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_GENERIC
@@ -87,7 +92,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         system_registry.register_visualizer::<InstanceColorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ColorCoordinatesSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
     }
@@ -121,11 +130,13 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
+
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
             egui::ComboBox::from_id_source("color_coordinates_mode")
@@ -139,6 +150,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
                     }
                 });
         });
+
+        Ok(())
     }
 
     /// The contents of the Space View window and all interaction within it.
@@ -148,12 +161,13 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let colors = system_output.view_systems.get::<InstanceColorSystem>()?;
+        let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
 
         egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {
