@@ -162,7 +162,7 @@ jobs:
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         shell: bash
         run: |
-          apt install binaryen
+          sudo apt-get install binaryen
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
       # This does not run in the pixi environment, doing so
