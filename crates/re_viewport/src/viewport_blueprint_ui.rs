@@ -6,6 +6,7 @@ use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
+use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{CollapseScope, DataResultTree};
 use re_viewer_context::{
@@ -409,10 +410,6 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
-        let mut recursive_properties = data_result_node
-            .and_then(|n| n.data_result.recursive_properties())
-            .cloned()
-            .unwrap_or_default();
 
         let item_label = if entity_path.is_root() {
             "/ (root)".to_owned()
@@ -441,13 +438,20 @@ impl Viewport<'_, '_> {
             .subdued(subdued)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
-                // TODO:
-                // let vis_response = visibility_button_ui(
-                //     re_ui,
-                //     ui,
-                //     space_view_visible,
-                //     &mut recursive_properties.visible,
-                // );
+                let mut visible_after = visible;
+                let vis_response =
+                    visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
+                if visible_after != visible {
+                    if let Some(data_result_node) = data_result_node {
+                        data_result_node
+                            .data_result
+                            .save_recursive_override_or_clear_if_redundant(
+                                ctx,
+                                &query_result.tree,
+                                &Visible(visible_after),
+                            );
+                    }
+                }
 
                 let response = remove_button_ui(
                     re_ui,
@@ -461,7 +465,7 @@ impl Viewport<'_, '_> {
                     );
                 }
 
-                response // | vis_response // TODO:
+                response | vis_response
             });
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
@@ -471,7 +475,7 @@ impl Viewport<'_, '_> {
             let default_open = entity_path.starts_with(&space_view.space_origin)
                 && Self::default_open_for_data_result(node);
 
-            let response = list_item
+            list_item
                 .show_collapsing(
                     ui,
                     CollapseScope::BlueprintTree
@@ -504,12 +508,7 @@ impl Viewport<'_, '_> {
                         }
                     },
                 )
-                .item_response;
-
-            node.data_result
-                .save_recursive_override(ctx, Some(recursive_properties));
-
-            response
+                .item_response
         } else {
             list_item.show(ui)
         };

@@ -124,7 +124,6 @@ pub fn override_ui(
                             // Note: need to use the blueprint store since the data might
                             // not exist in the recording store.
                             ctx.save_empty_blueprint_component_name(
-                                ctx.store_context.blueprint.store(),
                                 &overrides.individual_override_path,
                                 *component_name,
                             );

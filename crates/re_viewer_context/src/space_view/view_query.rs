@@ -6,13 +6,12 @@ use once_cell::sync::Lazy;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataCell, DataRow, RowId, StoreKind};
-use re_types::{ComponentName, Loggable};
+use re_log_types::StoreKind;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint_timepoint_for_writes, SpaceViewHighlights, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
+    DataResultTree, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier, ViewerContext,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -98,6 +97,59 @@ impl DataResult {
             .map(|p| &p.individual_override_path)
     }
 
+    /// Saves a recursive override OR clears both (!) individual & recursive overrides if the override is due to a parent recursive override.
+    ///
+    /// Note that this method does not take into account default values and values provided by the data store.
+    // TODO(andreas/jleibs): Does not take individual overrides into account yet.
+    // TODO(andreas): This should have a unit test, but the delayed override write makes it hard to test.
+    pub fn save_recursive_override_or_clear_if_redundant<C: re_types::Component + Eq>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        data_result_tree: &DataResultTree,
+        desired_override: &C,
+    ) {
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let (Some(recursive_override_path), Some(individual_override_path)) = (
+            self.recursive_override_path(),
+            self.individual_override_path(),
+        ) else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        if let Some(current_resolved_override) = self.lookup_override::<C>(ctx) {
+            // Do nothing if the resolved override is already the same as the new override.
+            if &current_resolved_override == desired_override {
+                return;
+            }
+
+            // TODO(andreas): Assumes this is a recursive override
+            let parent_recursive_override = self
+                .entity_path
+                .parent()
+                .and_then(|parent_path| data_result_tree.lookup_node_by_path(&parent_path))
+                .and_then(|parent_node| parent_node.data_result.lookup_override::<C>(ctx));
+
+            // If the parent has a recursive override that is the same as the new override,
+            // clear both individual and recursive override at the current path.
+            // (at least one of them has to be set, otherwise the current resolved override would be the same as the desired override)
+            if parent_recursive_override.as_ref() == Some(desired_override) {
+                // TODO(andreas): It might be that only either of these two are necessary, in that case we shouldn't clear both.
+                ctx.save_empty_blueprint_component::<C>(recursive_override_path);
+                ctx.save_empty_blueprint_component::<C>(individual_override_path);
+            } else {
+                ctx.save_blueprint_component(recursive_override_path, desired_override);
+            }
+        } else {
+            ctx.save_blueprint_component(recursive_override_path, desired_override);
+        }
+    }
+
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
     ///
     /// Setting `new_recursive_props` to `None` will always clear the override.
@@ -152,44 +204,20 @@ impl DataResult {
             return;
         };
 
-        let cell = match new_individual_props {
+        match new_individual_props {
             None => {
-                re_log::debug!("Clearing {:?}", override_path);
-
-                Some(DataCell::from_arrow_empty(
-                    EntityPropertiesComponent::name(),
-                    EntityPropertiesComponent::arrow_datatype(),
-                ))
+                ctx.save_empty_blueprint_component::<EntityPropertiesComponent>(override_path);
             }
             Some(props) => {
                 // A value of `None` in the data store means "use the default value", so if
                 // the properties are `None`, we only must save if `props` is different
                 // from the default.
                 if props.has_edits(properties.unwrap_or(&DEFAULT_PROPS)) {
-                    re_log::debug!("Overriding {:?} with {:?}", override_path, props);
-
                     let component = EntityPropertiesComponent(props);
-
-                    Some(DataCell::from([component]))
-                } else {
-                    None
+                    ctx.save_blueprint_component(override_path, &component);
                 }
             }
         };
-
-        if let Some(cell) = cell {
-            let timepoint = blueprint_timepoint_for_writes();
-
-            let row =
-                DataRow::from_cells1_sized(RowId::new(), override_path.clone(), timepoint, 1, cell)
-                    .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
-        }
     }
 
     #[inline]
