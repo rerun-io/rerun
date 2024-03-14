@@ -1551,13 +1551,9 @@ fn save_recording(
         "Save recording"
     };
 
-    save_entity_db(
-        app,
-        file_name.to_owned(),
-        title.to_owned(),
-        entity_db,
-        loop_selection,
-    )
+    save_entity_db(app, file_name.to_owned(), title.to_owned(), || {
+        entity_db.to_messages(loop_selection)
+    })
 }
 
 fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
@@ -1572,7 +1568,9 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
         crate::saving::sanitize_app_id(&store_context.app_id)
     );
     let title = "Save blueprint";
-    save_entity_db(app, file_name, title.to_owned(), entity_db, None)
+    save_entity_db(app, file_name, title.to_owned(), || {
+        entity_db.to_messages(None)
+    })
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
@@ -1580,15 +1578,14 @@ fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
     file_name: String,
     title: String,
-    entity_db: &EntityDb,
-    loop_selection: Option<(re_log_types::Timeline, re_log_types::TimeRangeF)>,
+    to_log_messages: impl FnOnce() -> re_log_types::DataTableResult<Vec<LogMsg>>,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        let messages = entity_db.to_messages(loop_selection)?;
+        let messages = to_log_messages()?;
 
         wasm_bindgen_futures::spawn_local(async move {
             if let Err(err) = async_save_dialog(&file_name, &title, &messages).await {
@@ -1608,7 +1605,7 @@ fn save_entity_db(
                 .save_file()
         };
         if let Some(path) = path {
-            let messages = entity_db.to_messages(loop_selection)?;
+            let messages = to_log_messages()?;
             app.background_tasks.spawn_file_saver(move || {
                 crate::saving::encode_to_file(&path, messages.iter())?;
                 Ok(path)
