@@ -98,6 +98,28 @@ jobs:
       WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
     secrets: inherit
 
+  linux-arm64-wheel-build:
+    name: "Linux-arm64 Wheel Build"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      MODE: "pr"
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: "linux-arm64-wheel-fast"
+    secrets: inherit
+
+  linux-arm64-wheel-test:
+    name: "Linux-arm64 Wheel Test"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [ linux-arm64-wheel-build ]
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: "linux-arm64-wheel-fast"
+    secrets: inherit
+
   build-js:
     name: "Build JS"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
