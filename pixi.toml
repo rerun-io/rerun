@@ -81,8 +81,8 @@ lint-py-ruff = "ruff check --config rerun_py/pyproject.toml"
 lint-taplo = "taplo fmt --check --diff"
 lint-typos = "typos"
 
-misc-fmt = "prettier --ignore-path .gitignore --write '**/*.{yml,yaml,js,css,html}'"
-misc-fmt-check = "prettier --ignore-path .gitignore --check '**/*.{yml,yaml,js,css,html}'"
+misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
+misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 toml-fmt = "taplo fmt"
 ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
 
