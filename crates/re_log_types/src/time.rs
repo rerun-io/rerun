@@ -92,9 +92,7 @@ impl Time {
             TimeZone::Utc => {
                 format!("{}Z", datetime.format(&parsed_format).unwrap())
             }
-            TimeZone::UnixEpoch => {
-                format!("{}", datetime.format(&parsed_format).unwrap())
-            }
+            TimeZone::UnixEpoch => datetime.format(&parsed_format).unwrap(),
         }
     }
 
