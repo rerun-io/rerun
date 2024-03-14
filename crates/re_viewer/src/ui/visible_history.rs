@@ -24,7 +24,7 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
     .into()
 });
 
-/// Entities containing one of these components support the Visible History feature.
+/// Entities containing one of these components support the visible history feature.
 static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
     once_cell::sync::Lazy::new(|| {
         [
@@ -92,24 +92,24 @@ pub fn visible_history_ui(
 
     let mut interacting_with_controls = false;
 
-    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", false, |ui| {
+    let collapsing_response = re_ui.collapsing_header(ui, "Visible time range", false, |ui| {
         ui.horizontal(|ui| {
             re_ui
                 .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
                 .on_hover_text(if is_space_view {
-                    "Default Visible Time Range settings for this kind of Space View"
+                    "Default visible time range settings for this kind of Space View"
                 } else {
-                    "Visible Time Range settings inherited from parent Group(s) or enclosing \
+                    "Visible time range settings inherited from parent Group(s) or enclosing \
                         Space View"
                 });
             re_ui
                 .radio_value(ui, &mut visible_history_prop.enabled, true, "Override")
                 .on_hover_text(if is_space_view {
-                    "Set Visible Time Range settings for the contents of this Space View"
+                    "Set visible time range settings for the contents of this Space View"
                 } else if entity_path.is_some() {
-                    "Set Visible Time Range settings for this entity"
+                    "Set visible time range settings for this entity"
                 } else {
-                    "Set Visible Time Range settings for he contents of this Group"
+                    "Set visible time range settings for he contents of this Group"
                 });
         });
 
@@ -263,12 +263,12 @@ pub fn visible_history_ui(
         }
     }
 
-    let markdown = format!("# Visible Time Range\n
+    let markdown = format!("# visible time range\n
 This feature controls the time range used to display data in the Space View.
 
 The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
 
-Visible Time Range properties are stored separately for each _type_ of timelines. They may differ depending on \
+Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
 whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.
 
 Notes that the data current as of the time range starting time is included.",
