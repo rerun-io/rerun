@@ -32,7 +32,7 @@ from .api import (
     TimePanel,
     Viewport,
 )
-from .containers import Grid, Horizontal, Vertical, Tabs
+from .containers import Grid, Horizontal, Tabs, Vertical
 from .space_views import (
     BarChartView,
     Spatial2DView,
