@@ -97,7 +97,7 @@ impl UICommand {
             Self::SaveRecording => ("Save recording…", "Save all data to a Rerun data file (.rrd)"),
 
             Self::SaveRecordingSelection => (
-                "Save recording (current time selection only)…",
+                "Save current time selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 

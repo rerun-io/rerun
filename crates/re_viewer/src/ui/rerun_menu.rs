@@ -26,7 +26,7 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.set_min_width(220.0);
+            ui.set_min_width(240.0);
 
             ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
