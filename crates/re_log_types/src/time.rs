@@ -6,6 +6,8 @@ use time::{format_description::FormatItem, OffsetDateTime, UtcOffset};
 pub enum TimeZone {
     Local,
     Utc,
+
+    /// Seconds since unix epoch
     UnixEpoch,
 }
 
