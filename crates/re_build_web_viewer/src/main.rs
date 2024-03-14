@@ -86,7 +86,7 @@ fn print_help() {
   --debug:    Build a debug binary
   --release:  Compile for release, and run wasm-opt.
               NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling.
-  -g:         Keep debug symboles, even in release builds.
+  -g:         Keep debug symbols, even in release builds.
               This gives better callstacks on panics, and also allows for in-browser profiling of the Wasm.
   -o, --out:  Set the output directory. This is a path relative to the cargo workspace root.
 "
