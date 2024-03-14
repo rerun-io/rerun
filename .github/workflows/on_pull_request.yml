@@ -83,8 +83,8 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       MODE: "pr"
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
     secrets: inherit
 
   min-wheel-test:
@@ -94,8 +94,8 @@ jobs:
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
     secrets: inherit
 
   build-js:
@@ -133,7 +133,7 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       CHANNEL: main
-      WHEEL_ARTIFACT_NAME: linux-wheel-fast
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel-fast
     secrets: inherit
 
   track-sizes:
@@ -163,7 +163,7 @@ jobs:
     uses: ./.github/workflows/reusable_run_notebook.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      WHEEL_ARTIFACT_NAME: linux-wheel-fast
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel-fast
     secrets: inherit
 
   save-pr-summary:

@@ -151,6 +151,9 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
 
 [dependencies]
+# IMPORTANT: do not add any dependencies here that may break CI. All dependencies should be available on all supported
+# platforms (including linux-aarch64), or added conditionally.
+
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
 clang-tools = "16.0.6"       # clang-format

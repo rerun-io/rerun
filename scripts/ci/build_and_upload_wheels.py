@@ -72,7 +72,11 @@ def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str,
 
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
-        run("pixi run cargo run --locked -p re_build_web_viewer -- --release")
+        # TODO(#5507): clean that up when pixi works on linux-aarch64
+        if target == "aarch64-unknown-linux-gnu":
+            run("cargo run --locked -p re_build_web_viewer -- --release")
+        else:
+            run("pixi run cargo run --locked -p re_build_web_viewer -- --release")
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
         maturin_feature_flags = "--no-default-features --features extension-module"

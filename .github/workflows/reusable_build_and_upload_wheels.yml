@@ -22,6 +22,41 @@ on:
         type: string
         default: ""
 
+  workflow_dispatch:
+    inputs:
+      PLATFORM:
+        type: choice
+        options:
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
+        description: "Platform to build for"
+        required: true
+      MODE:
+        type: choice
+        required: false
+        options:
+          - pypi
+          - pr
+        description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+        description: "Concurrency group to use"
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ""
+        description: "If set, will be saved under that name in the workflow artifacts"
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
+        description: "Release commit"
+
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels
   cancel-in-progress: true
@@ -62,22 +97,27 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
+            linux-arm64)
+                runner="buildjet-8vcpu-ubuntu-2204-arm"
+                target="aarch64-unknown-linux-gnu"
+                container="null"
+                ;;
+            linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               container="{'image': 'rerunio/ci_docker:0.11.0'}"
               ;;
-            windows)
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
@@ -127,7 +167,14 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
+
+      # TODO(#5507): suppress this workaround when we can use pixi on linux-aarch64
+      - name: Build web-viewer (release, Linux ARM64)
+        if: ${{ inputs.PLATFORM == 'linux-arm64' }}
+        shell: bash
+        run: |
+          sudo apt-get install binaryen
 
       - name: Install dependencies
         shell: bash
