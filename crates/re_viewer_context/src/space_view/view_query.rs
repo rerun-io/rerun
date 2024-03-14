@@ -98,7 +98,7 @@ impl DataResult {
     }
 
     /// Saves a recursive override OR clears both (!) individual & recursive overrides if the override is due to a parent recursive override or a default value.
-    // TODO(andreas/jleibs): Does not take individual overrides into account yet.
+    // TODO(andreas): Does not take individual overrides into account yet.
     // TODO(andreas): This should have a unit test, but the delayed override write makes it hard to test.
     pub fn save_recursive_override_or_clear_if_redundant<C: re_types::Component + Eq + Default>(
         &self,
