@@ -28,7 +28,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'parent' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
         let row = DataRow::from_component_batches(
@@ -43,7 +43,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             let got_point = db
@@ -66,7 +66,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
         let point = MyPoint::new(42.0, 43.0);
         let row = DataRow::from_component_batches(
             row_id,
@@ -80,7 +80,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             let got_point = db
@@ -97,7 +97,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
             row_id,
@@ -111,7 +111,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             let got_color = db
@@ -130,7 +130,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
         let clear = Clear::flat();
         let row = DataRow::from_component_batches(
             row_id,
@@ -144,7 +144,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             // parent
@@ -184,7 +184,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we find nothing.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
         let clear = Clear::recursive();
         let row = DataRow::from_component_batches(
             row_id,
@@ -198,7 +198,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             // parent
@@ -237,7 +237,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'parent' at frame #11 and make sure we do _not_ find it.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.try_into().unwrap())]);
         let instance_key = InstanceKey(0);
         let row = DataRow::from_component_batches(
             row_id,
@@ -251,7 +251,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 9.into(),
+                at: 9.try_into().unwrap(),
             };
 
             let got_instance_key = db
@@ -265,7 +265,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             assert!(db
@@ -281,7 +281,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.try_into().unwrap())]);
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
         let row = DataRow::from_component_batches(
@@ -296,7 +296,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 9.into(),
+                at: 9.try_into().unwrap(),
             };
 
             let got_point = db
@@ -317,7 +317,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             assert!(db
@@ -337,7 +337,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.try_into().unwrap())]);
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
         let row = DataRow::from_component_batches(
@@ -352,7 +352,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 9.into(),
+                at: 9.try_into().unwrap(),
             };
 
             let got_color = db
@@ -373,7 +373,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             assert!(db
@@ -392,7 +392,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'grandchild' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::new();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.try_into().unwrap())]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
             row_id,
@@ -406,7 +406,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 9.into(),
+                at: 9.try_into().unwrap(),
             };
 
             let got_color = db
@@ -421,7 +421,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery {
                 timeline: timeline_frame,
-                at: 11.into(),
+                at: 11.try_into().unwrap(),
             };
 
             assert!(db

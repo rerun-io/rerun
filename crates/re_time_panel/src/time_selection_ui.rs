@@ -175,7 +175,8 @@ fn initial_time_selection(
                     TimeType::Time => {
                         let seconds = Duration::from(range.max - range.min).as_secs_f64();
                         if seconds > min_duration {
-                            let one_sec = TimeInt::from(Duration::from_secs(1.0));
+                            let one_sec =
+                                TimeInt::new_temporal(Duration::from_secs(1.0).as_nanos());
                             return Some(TimeRangeF::new(range.min, range.min + one_sec));
                         }
                     }
@@ -298,7 +299,7 @@ fn paint_range_text(
 ) {
     use egui::{Pos2, Stroke};
 
-    if selected_range.min <= TimeInt::STATIC_TIME_PANEL {
+    if selected_range.min <= TimeInt::MIN_TIME_PANEL {
         return; // huge time selection, don't show a confusing times
     }
 

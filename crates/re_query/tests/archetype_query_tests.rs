@@ -18,7 +18,7 @@ fn simple_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -84,7 +84,7 @@ fn timeless_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -147,7 +147,7 @@ fn no_instance_join_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     // Create some positions with an implicit instance
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -211,7 +211,7 @@ fn missing_column_join_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     // Create some positions with an implicit instance
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -266,7 +266,7 @@ fn splatted_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];

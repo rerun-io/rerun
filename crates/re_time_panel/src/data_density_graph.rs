@@ -435,7 +435,10 @@ pub fn data_density_graph_ui(
             }
         };
 
-        add_data_point(TimeRange::point(TimeInt::STATIC_TIME_PANEL), num_timeless_messages);
+        add_data_point(
+            TimeRange::point(TimeInt::MIN_TIME_PANEL),
+            num_timeless_messages,
+        );
 
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
@@ -458,7 +461,10 @@ pub fn data_density_graph_ui(
         re_tracing::profile_scope!("add_data_point");
         for (time_range, num_messages_at_time) in ranges {
             add_data_point(
-                TimeRange::new(time_range.min.into(), time_range.max.into()),
+                TimeRange::new(
+                    TimeInt::new_temporal(time_range.min),
+                    TimeInt::new_temporal(time_range.max),
+                ),
                 num_messages_at_time as _,
             );
         }

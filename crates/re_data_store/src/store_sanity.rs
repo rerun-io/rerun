@@ -184,13 +184,13 @@ impl IndexedBucket {
                 let expected_min = times
                     .front()
                     .copied()
-                    .unwrap_or(TimeInt::MAX.as_i64())
-                    .into();
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MAX);
                 let expected_max = times
                     .back()
                     .copied()
-                    .unwrap_or(TimeInt::MIN.as_i64())
-                    .into();
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MIN);
                 let expected_time_range = TimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {

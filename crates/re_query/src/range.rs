@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances};
@@ -85,7 +85,7 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
 
     // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
     // into the past don't have a latest-at state!
-    let query_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
+    let query_time = TimeInt::try_from(query.range.min.as_i64().saturating_sub(1)).ok();
 
     let mut cwis_latest = None;
     if let Some(query_time) = query_time {

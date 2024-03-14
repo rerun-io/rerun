@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{TimeType, TimeZone};
+use re_log_types::{TimeInt, TimeType, TimeZone};
 use re_space_view::{
     time_range_boundary_to_visible_history_boundary,
     visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
@@ -107,7 +107,7 @@ pub fn visual_time_range_ui(
         let current_time = time_ctrl
             .time_i64()
             .unwrap_or_default()
-            .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
+            .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::MIN)
 
         // pick right from/to depending on the timeline type.
         let (from, to) = match time_type {
@@ -129,10 +129,10 @@ pub fn visual_time_range_ui(
 
         if has_individual_range {
             let current_from = visible_history
-                .range_start_from_cursor(current_time.into())
+                .range_start_from_cursor(TimeInt::new_temporal(current_time))
                 .as_i64();
             let current_to = visible_history
-                .range_end_from_cursor(current_time.into())
+                .range_end_from_cursor(TimeInt::new_temporal(current_time))
                 .as_i64();
 
             egui::Grid::new("from_to_editable").show(ui, |ui| {
@@ -182,7 +182,10 @@ pub fn visual_time_range_ui(
             } else if visible_history.from == VisibleHistoryBoundary::AT_CURSOR
                 && visible_history.to == VisibleHistoryBoundary::AT_CURSOR
             {
-                let current_time = time_type.format(current_time.into(), ctx.app_options.time_zone);
+                let current_time = time_type.format(
+                    TimeInt::new_temporal(current_time),
+                    ctx.app_options.time_zone,
+                );
                 match time_type {
                     TimeType::Time => {
                         ui.label(format!("At current time: {current_time}"));
@@ -291,7 +294,7 @@ fn current_range_ui(
     time_type: TimeType,
     visible_history: &VisibleHistory,
 ) {
-    let time_range = visible_history.time_range(current_time.into());
+    let time_range = visible_history.time_range(TimeInt::new_temporal(current_time));
     let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone);
     let to_formatted = time_type.format(time_range.max, ctx.app_options.time_zone);
 
@@ -360,7 +363,7 @@ fn resolved_visible_history_boundary_ui(
         VisibleHistoryBoundary::Absolute(time) => {
             label += &format!(
                 " {}",
-                time_type.format((*time).into(), ctx.app_options.time_zone)
+                time_type.format(TimeInt::new_temporal(*time), ctx.app_options.time_zone)
             );
         }
         VisibleHistoryBoundary::Infinite => {}
@@ -673,7 +676,8 @@ impl TimelineSpec {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time.format(base_time.into(), time_zone_for_timestamps)
+                    TimeType::Time
+                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
                 ))
             })
         } else {

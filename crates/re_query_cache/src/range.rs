@@ -126,7 +126,7 @@ impl RangeCache {
         if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.max = TimeInt::min(
                 reduced_query.range.max,
-                bucket_time_range.min.as_i64().saturating_sub(1).into(),
+                TimeInt::new_temporal(bucket_time_range.min.as_i64().saturating_sub(1)),
             );
         } else {
             return Some(reduced_query);
@@ -148,7 +148,7 @@ impl RangeCache {
         if let Some(bucket_time_range) = self.per_data_time.time_range() {
             reduced_query.range.min = TimeInt::max(
                 reduced_query.range.min,
-                bucket_time_range.max.as_i64().saturating_add(1).into(),
+                TimeInt::new_temporal(bucket_time_range.max.as_i64().saturating_add(1)),
             );
         } else {
             return Some(reduced_query);
@@ -285,7 +285,7 @@ macro_rules! impl_query_archetype_range {
                 }
 
                 let mut query = query.clone();
-                query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
+                query.range.min = TimeInt::max(TimeInt::MIN, query.range.min);
 
                 for reduced_query in range_cache.compute_queries(&query) {
                     // NOTE: `+ 1` because we always grab the instance keys.
@@ -324,7 +324,7 @@ macro_rules! impl_query_archetype_range {
                 }
 
                 let mut query = query.clone();
-                query.range.min = TimeInt::max((TimeInt::MIN.as_i64() + 1).into(), query.range.min);
+                query.range.min = TimeInt::max(TimeInt::MIN, query.range.min);
 
                 if !range_cache.per_data_time.is_empty() {
                     range_results(false, &range_cache.per_data_time, query.range, f)?;

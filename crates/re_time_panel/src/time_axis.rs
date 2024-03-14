@@ -70,7 +70,7 @@ fn gap_size_heuristic(time_type: TimeType, times: &TimeHistogram) -> u64 {
     // This is partially an optimization, and partially something that "feels right".
     let min_gap_size: u64 = match time_type {
         TimeType::Sequence => 9,
-        TimeType::Time => TimeInt::from_milliseconds(100).as_i64() as _,
+        TimeType::Time => TimeInt::from_milliseconds(100.try_into().unwrap()).as_i64() as _,
     };
     // Collect all gaps larger than our minimum gap size.
     let mut gap_sizes = collect_candidate_gaps(times, min_gap_size, max_collapses);
@@ -143,18 +143,21 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
     let mut it = times.range(.., gap_threshold);
     let first_range = it.next().unwrap().0;
     let mut ranges = vec1::vec1![TimeRange::new(
-        first_range.min.into(),
-        first_range.max.into()
+        TimeInt::new_temporal(first_range.min),
+        TimeInt::new_temporal(first_range.max),
     )];
 
     for (new_range, _count) in it {
         let last_max = &mut ranges.last_mut().max;
         if last_max.as_i64().abs_diff(new_range.min) < gap_threshold {
             // join previous range:
-            *last_max = new_range.max.into();
+            *last_max = TimeInt::new_temporal(new_range.max);
         } else {
             // new range:
-            ranges.push(TimeRange::new(new_range.min.into(), new_range.max.into()));
+            ranges.push(TimeRange::new(
+                TimeInt::new_temporal(new_range.min),
+                TimeInt::new_temporal(new_range.max),
+            ));
         }
     }
 

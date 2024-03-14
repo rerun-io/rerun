@@ -50,8 +50,8 @@ fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
     let timeline_frame = rerun::Timeline::new_sequence("frame");
     let time = rerun::Time::from_seconds_since_epoch(time);
     [
-        (timeline_time, time.into()),
-        (timeline_frame, (index as i64).into()),
+        (timeline_time, time.try_into().unwrap()),
+        (timeline_frame, (index as i64).try_into().unwrap()),
     ]
     .into()
 }

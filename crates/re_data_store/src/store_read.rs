@@ -717,7 +717,9 @@ impl IndexedBucket {
         }
 
         Some((
-            col_time[secondary_row_nr as usize].into(),
+            col_time[secondary_row_nr as usize]
+                .try_into()
+                .unwrap_or(TimeInt::MIN),
             col_row_id[secondary_row_nr as usize],
             cells,
         ))
@@ -806,7 +808,7 @@ impl IndexedBucket {
             .into_iter()
             .skip(time_row_nr as usize)
             // don't go beyond the time range we're interested in!
-            .filter(move |time| time_range.contains((*time).into()))
+            .filter(move |&time| time_range.contains(TimeInt::new_temporal(time)))
             .enumerate()
             .filter_map(move |(time_row_offset, time)| {
                 let row_nr = time_row_nr + time_row_offset as u64;
@@ -839,7 +841,7 @@ impl IndexedBucket {
                     "yielding cells",
                 );
 
-                Some((time.into(), row_id, cells))
+                Some((TimeInt::new_temporal(time), row_id, cells))
             });
 
         itertools::Either::Left(cells)

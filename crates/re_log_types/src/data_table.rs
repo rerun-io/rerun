@@ -11,7 +11,7 @@ use re_types_core::{ComponentName, Loggable, SizeBytes};
 
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    NumInstances, RowId, TimePoint, Timeline,
+    NonMinI64, NumInstances, RowId, TimePoint, Timeline,
 };
 
 // ---
@@ -291,8 +291,8 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
-/// #         (Timeline::new_sequence("frame_nr"), frame_nr.into()),
-/// #         (Timeline::new_sequence("clock"), clock.into()),
+/// #         (Timeline::new_sequence("frame_nr"), frame_nr.try_into().unwrap()),
+/// #         (Timeline::new_sequence("clock"), clock.try_into().unwrap()),
 /// #     ])
 /// # };
 /// #
@@ -344,6 +344,8 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # assert_eq!(table_in, table_out);
 /// ```
+//
+// TODO(#5303): the Layout part will be outdated in the new key-less model
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataTable {
     /// Auto-generated `TUID`, uniquely identifying this batch of data and keeping track of the
@@ -477,9 +479,7 @@ impl DataTable {
         self.col_row_id.len() as _
     }
 
-    /// Fails if any row has:
-    /// - cells that aren't 0, 1 or `num_instances` long
-    /// - two or more cells share the same component type
+    /// Fails if any row has two or more cells share the same component type.
     #[inline]
     pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataReadResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
@@ -504,7 +504,11 @@ impl DataTable {
                     col_timelines
                         .iter()
                         .filter_map(|(timeline, times)| {
-                            times[i].map(|time| (*timeline, time.into()))
+                            times[i]
+                                // Soundness: it should never happen that we have timestamps with an `i64::MIN`
+                                // value in the data since users cannot create those.
+                                .and_then(NonMinI64::new)
+                                .map(|time| (*timeline, time.into()))
                         })
                         .collect::<BTreeMap<_, _>>(),
                 ),
@@ -521,7 +525,16 @@ impl DataTable {
     pub fn timepoint_max(&self) -> TimePoint {
         let mut timepoint = TimePoint::timeless();
         for (timeline, col_time) in &self.col_timelines {
-            if let Some(time) = col_time.iter().flatten().max().copied() {
+            let time = col_time
+                .iter()
+                .flatten()
+                .max()
+                .copied()
+                // Soundness: it should never happen that we have timestamps with an `i64::MIN`
+                // value in the data since users cannot create those.
+                .and_then(NonMinI64::new);
+
+            if let Some(time) = time {
                 timepoint.insert(*timeline, time.into());
             }
         }
@@ -1320,9 +1333,12 @@ impl DataTable {
                 TimePoint::timeless()
             } else {
                 TimePoint::from([
-                    (Timeline::log_time(), Time::now().into()),
-                    (Timeline::log_tick(), tick.into()),
-                    (Timeline::new_sequence("frame_nr"), frame_nr.into()),
+                    (Timeline::log_time(), Time::now().try_into().unwrap()),
+                    (Timeline::log_tick(), tick.try_into().unwrap()),
+                    (
+                        Timeline::new_sequence("frame_nr"),
+                        frame_nr.try_into().unwrap(),
+                    ),
                 ])
             };
             tick += 1;

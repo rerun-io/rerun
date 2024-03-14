@@ -1,4 +1,4 @@
-use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
+use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint};
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
 
@@ -60,23 +60,26 @@ impl DataLoader for ArchetypeLoader {
             if let Ok(metadata) = filepath.metadata() {
                 use re_log_types::{Time, Timeline};
 
-                if let Some(created) = metadata.created().ok().and_then(|t| Time::try_from(t).ok())
+                if let Some(created) = metadata
+                    .created()
+                    .ok()
+                    .and_then(|t| TimeInt::try_from(Time::try_from(t).ok()?).ok())
                 {
-                    timepoint.insert(Timeline::new_temporal("created_at"), created.into());
+                    timepoint.insert(Timeline::new_temporal("created_at"), created);
                 }
                 if let Some(modified) = metadata
                     .modified()
                     .ok()
-                    .and_then(|t| Time::try_from(t).ok())
+                    .and_then(|t| TimeInt::try_from(Time::try_from(t).ok()?).ok())
                 {
-                    timepoint.insert(Timeline::new_temporal("modified_at"), modified.into());
+                    timepoint.insert(Timeline::new_temporal("modified_at"), modified);
                 }
                 if let Some(accessed) = metadata
                     .accessed()
                     .ok()
-                    .and_then(|t| Time::try_from(t).ok())
+                    .and_then(|t| TimeInt::try_from(Time::try_from(t).ok()?).ok())
                 {
-                    timepoint.insert(Timeline::new_temporal("accessed_at"), accessed.into());
+                    timepoint.insert(Timeline::new_temporal("accessed_at"), accessed);
                 }
             }
         }

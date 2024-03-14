@@ -26,19 +26,19 @@ impl TimeReal {
     #[inline]
     pub fn floor(&self) -> TimeInt {
         let int: i64 = self.0.saturating_floor().lossy_into();
-        TimeInt::from(int)
+        TimeInt::new_temporal(int)
     }
 
     #[inline]
     pub fn round(&self) -> TimeInt {
         let int: i64 = self.0.saturating_round().lossy_into();
-        TimeInt::from(int)
+        TimeInt::new_temporal(int)
     }
 
     #[inline]
     pub fn ceil(&self) -> TimeInt {
         let int: i64 = self.0.saturating_ceil().lossy_into();
-        TimeInt::from(int)
+        TimeInt::new_temporal(int)
     }
 
     #[inline]

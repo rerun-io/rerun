@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{TimeInt, TimeReal};
+use crate::{NonMinI64, TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -26,6 +26,15 @@ impl TimeRange {
 
     #[inline]
     pub fn new(min: TimeInt, max: TimeInt) -> Self {
+        // A time range that includes static just doesn't make sense, but it's such a nice error case
+        // that it's probably better for everyone involved to just crash in debug and silently fix
+        // it in release.
+        debug_assert!(!min.is_static());
+        debug_assert!(!max.is_static());
+
+        let min = TimeInt::new_temporal(min.as_i64());
+        let max = TimeInt::new_temporal(max.as_i64());
+
         Self { min, max }
     }
 
@@ -46,7 +55,9 @@ impl TimeRange {
 
     #[inline]
     pub fn center(&self) -> TimeInt {
-        self.min + TimeInt::from((self.abs_length() / 2) as i64)
+        let center =
+            NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::new(0).unwrap());
+        self.min + TimeInt::from(center)
     }
 
     #[inline]
