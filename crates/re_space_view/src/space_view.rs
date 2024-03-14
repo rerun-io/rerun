@@ -4,7 +4,7 @@ use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use crate::SpaceViewContents;
-use re_log_types::{DataRow, EntityPathFilter, RowId};
+use re_log_types::{DataRow, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
@@ -15,8 +15,9 @@ use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, PerSystemEntities, PropertyOverrides,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
-    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
+    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
@@ -80,8 +81,7 @@ impl SpaceViewBlueprint {
     /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
-        space_path: &EntityPath,
-        content: EntityPathFilter,
+        recommended: RecommendedSpaceView,
     ) -> Self {
         let id = SpaceViewId::random();
 
@@ -89,8 +89,8 @@ impl SpaceViewBlueprint {
             display_name: None,
             class_identifier: space_view_class,
             id,
-            space_origin: space_path.clone(),
-            contents: SpaceViewContents::new(id, space_view_class, content),
+            space_origin: recommended.origin,
+            contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
             pending_writes: Default::default(),
         }
@@ -467,7 +467,7 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
-        DataCell, DataRow, EntityPathFilter, RowId, StoreId, StoreKind, TimePoint,
+        DataCell, DataRow, RowId, StoreId, StoreKind, TimePoint,
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
@@ -494,8 +494,6 @@ mod tests {
 
     #[test]
     fn test_entity_properties() {
-        let space_env = Default::default();
-
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
@@ -512,18 +510,12 @@ mod tests {
             recording.add_data_row(row).ok();
         }
 
-        let space_view = SpaceViewBlueprint::new(
-            "3D".into(),
-            &EntityPath::root(),
-            EntityPathFilter::parse_forgiving(
-                r"
-                    + parent
-                    + parent/skip/child1
-                    + parent/skip/child2
-                ",
-                &space_env,
-            ),
+        let recommended = RecommendedSpaceView::new(
+            EntityPath::root(),
+            ["+ parent", "+ parent/skip/child1", "+ parent/skip/child2"],
         );
+
+        let space_view = SpaceViewBlueprint::new("3D".into(), recommended);
 
         let auto_properties = Default::default();
 
@@ -789,8 +781,6 @@ mod tests {
 
     #[test]
     fn test_component_overrides() {
-        let space_env = Default::default();
-
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut visualizable_entities_per_visualizer =
@@ -822,11 +812,7 @@ mod tests {
         }
 
         // Basic blueprint - a single space view that queries everything.
-        let space_view = SpaceViewBlueprint::new(
-            "3D".into(),
-            &EntityPath::root(),
-            EntityPathFilter::parse_forgiving("+ /**", &space_env),
-        );
+        let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
         let individual_override_root = space_view
             .contents
             .blueprint_entity_path

@@ -1,9 +1,9 @@
 use re_log_types::{EntityPath, EntityPathFilter};
 
 /// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
-#[derive(Hash, Debug)]
+#[derive(Hash, Debug, Clone)]
 pub struct RecommendedSpaceView {
-    pub root: EntityPath,
+    pub origin: EntityPath,
     pub query_filter: EntityPathFilter,
 }
 
@@ -16,4 +16,30 @@ pub struct RecommendedSpaceView {
 pub struct SpaceViewSpawnHeuristics {
     /// The recommended space views to spawn
     pub recommended_space_views: Vec<RecommendedSpaceView>,
+}
+
+impl RecommendedSpaceView {
+    #[inline]
+    pub fn new<'a>(origin: EntityPath, expressions: impl IntoIterator<Item = &'a str>) -> Self {
+        let space_env = std::iter::once(("origin".to_owned(), origin.to_string())).collect();
+        Self {
+            origin,
+            query_filter: EntityPathFilter::from_query_expressions(expressions, &space_env),
+        }
+    }
+
+    #[inline]
+    pub fn new_subtree(origin: EntityPath) -> Self {
+        Self::new(origin, std::iter::once("$origin/**"))
+    }
+
+    #[inline]
+    pub fn new_single_entity(origin: EntityPath) -> Self {
+        Self::new(origin, std::iter::once("$origin"))
+    }
+
+    #[inline]
+    pub fn root() -> Self {
+        Self::new_subtree(EntityPath::root())
+    }
 }
