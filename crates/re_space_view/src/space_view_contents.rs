@@ -112,7 +112,9 @@ impl SpaceViewContents {
             Default::default()
         });
 
-        let entity_path_filter = EntityPathFilter::parse_forgiving(query.0.as_str());
+        let query = query.iter().map(|qe| qe.0.as_str());
+
+        let entity_path_filter = EntityPathFilter::from_query_expressions(query);
 
         Self {
             blueprint_entity_path,
@@ -130,7 +132,9 @@ impl SpaceViewContents {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             self.blueprint_entity_path.clone(),
-            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted()),
+            &blueprint_archetypes::SpaceViewContents::new(
+                self.entity_path_filter.iter_expressions(),
+            ),
         );
     }
 
@@ -145,7 +149,10 @@ impl SpaceViewContents {
 
         ctx.save_blueprint_component(
             &self.blueprint_entity_path,
-            &QueryExpression(new_entity_path_filter.formatted().into()),
+            &new_entity_path_filter
+                .iter_expressions()
+                .map(|s| QueryExpression(s.into()))
+                .collect::<Vec<_>>(),
         );
     }
 
