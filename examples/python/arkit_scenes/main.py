@@ -352,7 +352,7 @@ def main() -> None:
                         contents=[f"{primary_camera_entity}/depth", "/world/annotations/**"],
                     ),
                 ),
-                rbl.TextDocumentView(),
+                rbl.TextDocumentView(name="Readme"),
             ),
         ),
     )
