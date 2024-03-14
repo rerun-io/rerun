@@ -319,12 +319,22 @@ fn options_menu_ui(
 
     ui.horizontal(|ui| {
         ui.label("Timezone:");
+    });
+    ui.horizontal(|ui| {
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
+        re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone,
+                TimeZone::UnixEpoch,
+                "Unix Epoch",
+            )
+            .on_hover_text("Display timestamps in seconds since unix epoch");
     });
 
     {
