@@ -108,6 +108,8 @@ impl DataResult {
         data_result_tree: &DataResultTree,
         desired_override: &C,
     ) {
+        re_tracing::profile_function!();
+
         // TODO(jleibs): Make it impossible for this to happen with different type structure
         // This should never happen unless we're doing something with a partially processed
         // query.
@@ -132,8 +134,8 @@ impl DataResult {
             let parent_recursive_override = self
                 .entity_path
                 .parent()
-                .and_then(|parent_path| data_result_tree.lookup_node_by_path(&parent_path))
-                .and_then(|parent_node| parent_node.data_result.lookup_override::<C>(ctx));
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|data_result| data_result.lookup_override::<C>(ctx));
 
             // If the parent has a recursive override that is the same as the new override,
             // clear both individual and recursive override at the current path.
@@ -146,6 +148,7 @@ impl DataResult {
                 ctx.save_blueprint_component(recursive_override_path, desired_override);
             }
         } else {
+            // No override at all so far, simply set it.
             ctx.save_blueprint_component(recursive_override_path, desired_override);
         }
     }
@@ -274,6 +277,48 @@ impl DataResult {
         ctx: &ViewerContext<'_>,
     ) -> C {
         self.lookup_override(ctx).unwrap_or_default()
+    }
+
+    /// Returns from which entity path an override originates from.
+    ///
+    /// Returns None if there was no override at all.
+    /// Note that if this returns the current path, the override might be either an individual or recursive override.
+    #[inline]
+    pub fn component_override_source(
+        &self,
+        result_tree: &DataResultTree,
+        component_name: &ComponentName,
+    ) -> Option<EntityPath> {
+        re_tracing::profile_function!();
+
+        // If we don't have a resolved override, clearly nothing overrode this.
+        let active_override = self
+            .property_overrides
+            .as_ref()
+            .and_then(|p| p.resolved_component_overrides.get(component_name))?;
+
+        // Walk up the tree to find the first change in override and return the path prior to that.
+        let mut override_source = self.entity_path.clone();
+        while let Some(parent_path) = override_source.parent() {
+            if result_tree
+                .lookup_result_by_path(&parent_path)
+                .and_then(|data_result| data_result.property_overrides.as_ref())
+                .map_or(true, |property_overrides| {
+                    // TODO(andreas): Assumes all overrides are recursive which is not true,
+                    //                This should access `recursive_component_overrides` instead.
+                    property_overrides
+                        .resolved_component_overrides
+                        .get(component_name)
+                        != Some(active_override)
+                })
+            {
+                break;
+            }
+
+            override_source = parent_path;
+        }
+
+        Some(override_source)
     }
 
     /// Shorthand for checking for visibility on data overrides.
