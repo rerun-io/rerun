@@ -97,7 +97,7 @@ impl UICommand {
             Self::SaveRecording => ("Save recording…", "Save all data to a Rerun data file (.rrd)"),
 
             Self::SaveRecordingSelection => (
-                "Save recording (current time selection only)…",
+                "Save current time selection…",
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
@@ -128,22 +128,22 @@ impl UICommand {
             ),
 
             Self::ToggleMemoryPanel => (
-                "Toggle Memory Panel",
+                "Toggle memory panel",
                 "View and track current RAM usage inside Rerun Viewer",
             ),
-            Self::ToggleBlueprintPanel => ("Toggle Blueprint Panel", "Toggle the left panel"),
-            Self::ToggleSelectionPanel => ("Toggle Selection Panel", "Toggle the right panel"),
-            Self::ToggleTimePanel => ("Toggle Time Panel", "Toggle the bottom panel"),
+            Self::ToggleBlueprintPanel => ("Toggle blueprint panel", "Toggle the left panel"),
+            Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
+            Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
-                "Toggle Blueprint Inspection Panel",
+                "Toggle blueprint inspection panel",
                 "Inspect the timeline of the internal blueprint data.",
             ),
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => (
-                "Toggle Egui Options/Debug Panel",
+                "Toggle egui debug panel",
                 "View and change global egui style settings",
             ),
 
@@ -154,18 +154,18 @@ impl UICommand {
                 "Toggle between windowed and fullscreen viewer",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomIn => ("Zoom In", "Increases the UI zoom level"),
+            Self::ZoomIn => ("Zoom in", "Increases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ZoomOut => ("Zoom Out", "Decreases the UI zoom level"),
+            Self::ZoomOut => ("Zoom out", "Decreases the UI zoom level"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => (
-                "Reset Zoom",
+                "Reset zoom",
                 "Resets the UI zoom level to the operating system's default value",
             ),
 
             Self::SelectionPrevious => ("Previous selection", "Go to previous selection"),
             Self::SelectionNext => ("Next selection", "Go to next selection"),
-            Self::ToggleCommandPalette => ("Command Palette…", "Toggle the Command Palette"),
+            Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
             Self::PlaybackTogglePlayPause => {
                 ("Toggle play/pause", "Either play or pause the time")

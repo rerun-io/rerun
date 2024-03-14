@@ -116,7 +116,7 @@ fn action_list(
             vec![Box::new(CloneSpaceViewAction)],
             vec![
                 Box::new(SubMenu {
-                    label: "Add Container".to_owned(),
+                    label: "Add container".to_owned(),
                     actions: vec![
                         Box::new(AddContainerAction(egui_tiles::ContainerKind::Tabs)),
                         Box::new(AddContainerAction(egui_tiles::ContainerKind::Horizontal)),
@@ -138,7 +138,7 @@ fn action_list(
                 }),
             ],
             vec![Box::new(SubMenu {
-                label: "Move to new Container".to_owned(),
+                label: "Move to new container".to_owned(),
                 actions: vec![
                     Box::new(MoveContentsToNewContainerAction(
                         egui_tiles::ContainerKind::Tabs,

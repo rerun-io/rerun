@@ -11,13 +11,13 @@ README = """
 
 This checks whether one can override all properties in a plot.
 
-### Component Overrides
+### Component overrides
 
 * Select `plots/cos`.
 * Override all of its properties with arbitrary values.
 * Remove all these overrides.
 
-### Visible Time Range Overrides
+### Visible time range overrides
 * Select the `plots` space view and confirm it shows:
   * "Default" selected
   * Showing data between frames -∞ and +∞ (included).
