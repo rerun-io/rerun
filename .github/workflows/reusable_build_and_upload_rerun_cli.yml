@@ -157,7 +157,7 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
-      # TODO(5507): supress this workaround when pixi dependencies are available on linux-arm64
+      # TODO(#5507): supress this workaround when pixi dependencies are available on linux-arm64
       - name: Build web-viewer (release, Linux ARM64)
         if: ${{ inputs.PLATFORM == 'linux-arm64' }}
         shell: bash
