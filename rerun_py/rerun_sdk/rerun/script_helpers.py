@@ -65,6 +65,7 @@ def script_setup(
     args: Namespace,
     application_id: str,
     recording_id: str | UUID | None = None,
+    blueprint: rr.blueprint.Blueprint | None = None,
 ) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
@@ -86,6 +87,8 @@ def script_setup(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
+    blueprint : Optional[rr.blueprint.Blueprint]
+        An optional blueprint to use for the viewer.
 
     """
     rr.init(
@@ -106,11 +109,11 @@ def script_setup(
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
-        rec.connect(args.addr)  # type: ignore[attr-defined]
+        rec.connect(args.addr, blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
         rec.save(args.save)  # type: ignore[attr-defined]
     elif not args.headless:
-        rec.spawn()  # type: ignore[attr-defined]
+        rec.spawn(blueprint=blueprint)  # type: ignore[attr-defined]
 
     return rec
 
