@@ -84,8 +84,8 @@ The bounding boxes around the furniture is visualized by logging the
 bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
 """.strip()
 
-lowres_posed_entity_id = "world/camera_lowres"
-highres_entity_id = "world/camera_highres"
+lowres_posed_entity_path = "world/camera_lowres"
+highres_entity_path = "world/camera_highres"
 
 
 def load_json(js_path: Path) -> dict[str, Any]:
@@ -283,11 +283,11 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 lowres_intri_path,
                 frame_timestamp,
                 camera_from_world_dict,
-                lowres_posed_entity_id,
+                lowres_posed_entity_path,
             )
 
-            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
-            rr.log(f"{lowres_posed_entity_id}/depth", rr.DepthImage(depth, meter=1000))
+            rr.log(f"{lowres_posed_entity_path}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
+            rr.log(f"{lowres_posed_entity_path}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
         if high_res_exists:
@@ -299,7 +299,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 highres_intri_path,
                 closest_lowres_frame_id,
                 camera_from_world_dict,
-                highres_entity_id,
+                highres_entity_path,
             )
 
             # load the highres image and depth if they exist
@@ -308,8 +308,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
 
-            rr.log(f"{highres_entity_id}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
-            rr.log(f"{highres_entity_id}/depth", rr.DepthImage(highres_depth, meter=1000))
+            rr.log(f"{highres_entity_path}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
+            rr.log(f"{highres_entity_path}/depth", rr.DepthImage(highres_depth, meter=1000))
 
 
 def main() -> None:
@@ -329,7 +329,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    primary_camera_entity = highres_entity_id if args.include_highres else lowres_posed_entity_id
+    primary_camera_entity = highres_entity_path if args.include_highres else lowres_posed_entity_path
 
     rr.script_setup(
         args,
