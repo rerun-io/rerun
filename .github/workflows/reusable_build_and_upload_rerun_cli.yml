@@ -163,7 +163,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get install binaryen
-          pixi run cargo run --locked -p re_build_web_viewer -- --release
+          cargo run --locked -p re_build_web_viewer -- --release
 
       # This does not run in the pixi environment, doing so
       # causes it to select the wrong compiler on macos-arm64
