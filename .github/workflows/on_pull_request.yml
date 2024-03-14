@@ -112,7 +112,7 @@ jobs:
   linux-arm64-wheel-test:
     name: "Linux-arm64 Wheel Test"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [ linux-arm64-wheel-build ]
+    needs: [linux-arm64-wheel-build]
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
