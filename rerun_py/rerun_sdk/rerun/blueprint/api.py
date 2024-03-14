@@ -11,7 +11,7 @@ from ..recording import MemoryRecording
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
-from .components.container_kind import ContainerKind, ContainerKindLike
+from .components.container_kind import ContainerKindLike
 
 SpaceViewContentsLike = Union[str, Sequence[str], Utf8Like, SpaceViewContents]
 
@@ -70,6 +70,8 @@ class SpaceView:
 
     def to_viewport(self) -> Viewport:
         """Convert this space view to a viewport."""
+        from .containers import Grid
+
         return Viewport(Grid(self))
 
     def to_blueprint(self) -> Blueprint:
@@ -110,56 +112,6 @@ class SpaceView:
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
         return [self.id.bytes]
-
-
-class Spatial3D(SpaceView):
-    """A Spatial 3D space view."""
-
-    def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
-    ):
-        """
-        Construct a blueprint for a new 3D space view.
-
-        Parameters
-        ----------
-        origin
-            The `EntityPath` to use as the origin of this space view. All other entities will be transformed
-            to be displayed relative to this origin.
-        contents
-            The contents of the space view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
-        name
-            The name of the space view.
-
-        """
-        super().__init__(class_identifier="3D", origin=origin, contents=contents, name=name)
-
-
-class Spatial2D(SpaceView):
-    """A Spatial 2D space view."""
-
-    def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
-    ):
-        """
-        Construct a blueprint for a new 2D space view.
-
-        Parameters
-        ----------
-        origin
-            The `EntityPath` to use as the origin of this space view. All other entities will be transformed
-            to be displayed relative to this origin.
-        contents
-            The contents of the space view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
-        name
-            The name of the space view.
-
-        """
-        super().__init__(class_identifier="2D", origin=origin, contents=contents, name=name)
 
 
 class Container:
@@ -250,96 +202,6 @@ class Container:
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
         return itertools.chain.from_iterable(sub._iter_space_views() for sub in self.contents)
-
-
-class Horizontal(Container):
-    """A horizontal container."""
-
-    def __init__(self, *contents: Container | SpaceView, column_shares: Optional[ColumnShareArrayLike] = None):
-        """
-        Construct a new horizontal container.
-
-        Parameters
-        ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
-        column_shares
-            The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
-            column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
-
-        """
-        super().__init__(*contents, kind=ContainerKind.Horizontal, column_shares=column_shares)
-
-
-class Vertical(Container):
-    """A vertical container."""
-
-    def __init__(self, *contents: Container | SpaceView, row_shares: Optional[RowShareArrayLike] = None):
-        """
-        Construct a new vertical container.
-
-        Parameters
-        ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
-        row_shares
-            The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
-            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
-
-        """
-        super().__init__(*contents, kind=ContainerKind.Vertical, row_shares=row_shares)
-
-
-class Grid(Container):
-    """A grid container."""
-
-    def __init__(
-        self,
-        *contents: Container | SpaceView,
-        column_shares: Optional[ColumnShareArrayLike] = None,
-        row_shares: Optional[RowShareArrayLike] = None,
-        grid_columns: Optional[int] = None,
-    ):
-        """
-        Construct a new grid container.
-
-        Parameters
-        ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
-        column_shares
-            The layout shares of the columns in the container. The share is used to determine what fraction of the total width each
-            column should take up. The column with index `i` will take up the fraction `shares[i] / total_shares`.
-        row_shares
-            The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
-            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
-        grid_columns
-            The number of columns in the grid.
-
-        """
-        super().__init__(
-            *contents,
-            kind=ContainerKind.Grid,
-            column_shares=column_shares,
-            row_shares=row_shares,
-            grid_columns=grid_columns,
-        )
-
-
-class Tabs(Container):
-    """A tab container."""
-
-    def __init__(self, *contents: Container | SpaceView):
-        """
-        Construct a new tab container.
-
-        Parameters
-        ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
-
-        """
-        super().__init__(*contents, kind=ContainerKind.Tabs)
 
 
 class Viewport:
