@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// The origin of a `SpaceView`.
+table VisibleTimeRange (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.repr": "transparent"
+) {
+  value: rerun.blueprint.datatypes.VisibleTimeRange (order: 100);
+}
