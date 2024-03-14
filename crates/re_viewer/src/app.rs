@@ -1541,7 +1541,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
     let entity_db = store_context.blueprint;
 
     let file_name = format!(
-        "{}.blueprint",
+        "{}.rbl",
         crate::saving::sanitize_app_id(&store_context.app_id)
     );
     let title = "Save blueprint";
