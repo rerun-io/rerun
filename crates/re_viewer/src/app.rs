@@ -956,10 +956,7 @@ impl App {
                                     StoreKind::Blueprint => {
                                         // We wait with activaing blueprints until they are fully loaded,
                                         // so that we don't run heuristics on half-loaded blueprints.
-                                        re_log::debug!(
-                                            "Activating newly loaded blueprint: {:?}",
-                                            store_info
-                                        );
+                                        re_log::debug!("Activating newly loaded blueprint");
                                         store_hub.set_blueprint_for_app_id(
                                             entity_db.store_id().clone(),
                                             store_info.application_id.clone(),

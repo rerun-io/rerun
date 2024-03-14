@@ -181,6 +181,7 @@ impl StoreHub {
     pub fn clear_current_blueprint(&mut self) {
         if let Some(app_id) = &self.selected_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
+                re_log::debug!("Clearing blueprint for {app_id:?}: {blueprint_id:?}");
                 self.store_bundle.remove(&blueprint_id);
             }
         }
@@ -392,7 +393,7 @@ impl StoreHub {
                         // We found the blueprint we were looking for; make it active.
                         // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                         re_log::debug!(
-                            "Switching blueprint for {app_id:?} to {:?}",
+                            "Switching blueprint for {app_id:?} to {:?} loaded from {blueprint_path:?}",
                             store.store_id(),
                         );
                         self.blueprint_by_app_id
@@ -500,9 +501,10 @@ impl StoreBundle {
     /// Returns either a recording or blueprint [`EntityDb`].
     /// One is created if it doesn't already exist.
     pub fn entity_db_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        self.entity_dbs
-            .entry(id.clone())
-            .or_insert_with(|| EntityDb::new(id.clone()))
+        self.entity_dbs.entry(id.clone()).or_insert_with(|| {
+            re_log::debug!("Creating new store: {id}");
+            EntityDb::new(id.clone())
+        })
     }
 
     /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
@@ -636,6 +638,8 @@ impl StoreBundle {
             // Make sure it's marked as a blueprint.
 
             let mut blueprint_db = EntityDb::new(id.clone());
+
+            re_log::debug!("Creating a new blueprint {id}");
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: re_log_types::RowId::new(),
