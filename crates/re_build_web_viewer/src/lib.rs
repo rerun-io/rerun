@@ -50,7 +50,15 @@ pub enum Target {
 }
 
 /// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `build_dir` folder.
-pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::Result<()> {
+///
+/// If `debug_symbols` is set, debug symbols are kept even in release builds,
+/// allowing for better callstacks on panics, as well as in-browser profiling of the wasm.
+pub fn build(
+    profile: Profile,
+    debug_symbols: bool,
+    target: Target,
+    build_dir: &Utf8Path,
+) -> anyhow::Result<()> {
     std::env::set_current_dir(workspace_root())?;
 
     eprintln!("Building web viewer wasm…");
@@ -167,8 +175,11 @@ pub fn build(profile: Profile, target: Target, build_dir: &Utf8Path) -> anyhow::
         // to get wasm-opt:  apt/brew/dnf install binaryen
         let mut cmd = std::process::Command::new("wasm-opt");
 
-        // TODO(emilk): add `-g` to keep debug symbols; useful for profiling release builds in the in-browser profiler.
-        cmd.args([wasm_path.as_str(), "-O2", "--output", wasm_path.as_str()]);
+        let mut args = vec![wasm_path.as_str(), "-O2", "--output", wasm_path.as_str()];
+        if debug_symbols {
+            args.push("-g");
+        }
+        cmd.args(args);
         eprintln!("{root_dir}> {cmd:?}");
 
         let output = cmd
