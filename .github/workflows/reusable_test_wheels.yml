@@ -195,11 +195,11 @@ jobs:
         run: |
           RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
-      - name: Run docs/code-examples/compare_code_example_output.py
+      - name: Run docs/snippets/compare_code_example_output.py
         if: ${{ inputs.PLATFORM != 'windows' }}
         shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug docs/code-examples/compare_code_example_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          RUST_LOG=debug docs/snippets/compare_code_example_output.py --release --target x86_64-unknown-linux-gnu --no-py-build

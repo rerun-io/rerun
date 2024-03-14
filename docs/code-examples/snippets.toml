@@ -84,7 +84,7 @@ series_line_style = [ # TODO(#5116):trigonometric functions have slightly differ
   "rust",
 ]
 
-# `$config_dir` will be replaced with the absolute path of `docs/code-examples`.
+# `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
 asset3d_simple = ["$config_dir/assets/cube.glb"]
 asset3d_out_of_tree = ["$config_dir/assets/cube.glb"]

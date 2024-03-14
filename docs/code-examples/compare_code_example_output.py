@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Runs all our code-examples, for all our languages, and compares the .rrd they output."""
+"""Runs all our snippets, for all our languages, and compares the .rrd they output."""
 
 from __future__ import annotations
 
@@ -145,9 +145,9 @@ def main() -> None:
         if "rust" in example_opt_out_entirely:
             continue  # No baseline to compare against
 
-        cpp_output_path = f"docs/code-examples/all/{example}_cpp.rrd"
-        python_output_path = f"docs/code-examples/all/{example}_py.rrd"
-        rust_output_path = f"docs/code-examples/all/{example}_rust.rrd"
+        cpp_output_path = f"docs/snippets/all/{example}_cpp.rrd"
+        python_output_path = f"docs/snippets/all/{example}_py.rrd"
+        rust_output_path = f"docs/snippets/all/{example}_rust.rrd"
 
         if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
@@ -175,8 +175,8 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
 
 
 def run_roundtrip_python(example: str) -> str:
-    main_path = f"docs/code-examples/all/{example}.py"
-    output_path = f"docs/code-examples/all/{example}_py.rrd"
+    main_path = f"docs/snippets/all/{example}.py"
+    output_path = f"docs/snippets/all/{example}_py.rrd"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
@@ -192,7 +192,7 @@ def run_roundtrip_python(example: str) -> str:
 
 
 def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
-    output_path = f"docs/code-examples/all/{example}_rust.rrd"
+    output_path = f"docs/snippets/all/{example}_rust.rrd"
 
     cmd = ["cargo", "run", "--quiet", "-p", "code_examples"]
 
@@ -217,9 +217,9 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
 
 def run_roundtrip_cpp(example: str, release: bool) -> str:
-    output_path = f"docs/code-examples/all/{example}_cpp.rrd"
+    output_path = f"docs/snippets/all/{example}_cpp.rrd"
 
-    cmd = [f"./build/debug/docs/code-examples/{example}"] + (EXTRA_ARGS.get(example) or [])
+    cmd = [f"./build/debug/docs/snippets/{example}"] + (EXTRA_ARGS.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 

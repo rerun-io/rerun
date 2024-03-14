@@ -7,7 +7,7 @@ This script builds/gather RRDs and corresponding screenshots and displays
 them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
-  and the corresponding code examples in the docs (docs/code-examples/*.rs)
+  and the corresponding code examples in the docs (docs/snippets/*.rs)
 - The `app.rerun.io` examples, as built by the `re_build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
@@ -43,7 +43,7 @@ TEMPLATE_DIR = SCRIPT_DIR_PATH / "assets" / "templates"
 INDEX_TEMPLATE = Template((TEMPLATE_DIR / "index.html").read_text())
 EXAMPLE_TEMPLATE = Template((TEMPLATE_DIR / "example.html").read_text())
 RERUN_DIR = SCRIPT_DIR_PATH.parent.parent
-CODE_EXAMPLE_DIR = RERUN_DIR / "docs" / "code-examples"
+CODE_EXAMPLE_DIR = RERUN_DIR / "docs" / "snippets"
 
 
 def measure_thumbnail(url: str) -> Any:

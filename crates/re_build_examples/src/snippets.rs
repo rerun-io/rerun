@@ -13,7 +13,7 @@ use rayon::prelude::ParallelIterator;
 
 use crate::wait_for_output;
 
-/// Collect code snippets from `docs/code-examples` in the repository and run them to produce `.rrd` files.
+/// Collect code snippets from `docs/snippets` in the repository and run them to produce `.rrd` files.
 #[derive(argh::FromArgs)]
 #[argh(subcommand, name = "snippets")]
 pub struct Snippets {
@@ -27,7 +27,7 @@ impl Snippets {
 
         let snippets_dir = re_build_tools::cargo_metadata()?
             .workspace_root
-            .join("docs/code-examples");
+            .join("docs/snippets");
 
         println!("Reading config…");
         let config = read_to_string(snippets_dir.join("snippets.toml"))?;
@@ -163,7 +163,7 @@ impl Snippet {
     }
 }
 
-/// See `docs/code-examples/snippets.toml` for more info
+/// See `docs/snippets/snippets.toml` for more info
 #[derive(serde::Deserialize)]
 struct Config {
     opt_out: OptOut,

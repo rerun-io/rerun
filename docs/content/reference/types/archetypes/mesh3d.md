@@ -21,7 +21,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 ### Simple indexed 3D mesh
 
-code-example: mesh3d_indexed
+snippet: mesh3d_indexed
 
 <center>
 <picture>
@@ -35,7 +35,7 @@ code-example: mesh3d_indexed
 
 ### 3D mesh with partial updates
 
-code-example: mesh3d_partial_updates
+snippet: mesh3d_partial_updates
 
 <center>
 <picture>

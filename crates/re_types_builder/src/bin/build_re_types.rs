@@ -13,7 +13,7 @@ use camino::Utf8Path;
 const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/re_types/source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
-const DOC_EXAMPLES_DIR_PATH: &str = "docs/code-examples/all";
+const DOC_EXAMPLES_DIR_PATH: &str = "docs/snippets/all";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
