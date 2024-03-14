@@ -1,4 +1,4 @@
-# This file is read in `compare_code_example_output.py` and the `snippets` command in `re_build_examples`.
+# This file is read in `compare_snippet_output.py` and the `snippets` command in `re_build_examples`.
 
 # These entries won't run at all.
 #

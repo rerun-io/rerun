@@ -242,7 +242,7 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples_for_api_docs<'a>(
+pub fn collect_snippets_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
@@ -267,7 +267,7 @@ pub fn collect_examples_for_api_docs<'a>(
                 Ok(content) => content,
                 Err(_) if !required => continue,
                 Err(err) => {
-                    return Err(err).with_context(|| format!("couldn't open code example {path:?}"))
+                    return Err(err).with_context(|| format!("couldn't open snippet {path:?}"))
                 }
             };
             let mut content = content

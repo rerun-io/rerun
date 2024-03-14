@@ -12,7 +12,7 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
+    codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
@@ -2199,7 +2199,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = true;
-    let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
+    let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {

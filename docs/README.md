@@ -14,7 +14,7 @@ The site documentation lives in Markdown files inside [`/content`](./content).
 
 The entry point to the documentation is [`/content/index.md`](./content/index.md)
 
-Code examples can be rendered in multiple languages by placing them in `snippets/all`, like so:
+Snippets can be rendered in multiple languages by placing them in `snippets/all`, like so:
 
 ```
 /docs
@@ -38,9 +38,9 @@ order: 6
 ```
 
 
-### Code Examples
+### Snippets
 
-snippets can be referenced in Markdown using this syntax:
+Snippets can be referenced in Markdown using this syntax:
 ```
 snippet: my-example
 ```

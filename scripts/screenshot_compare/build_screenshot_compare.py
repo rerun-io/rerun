@@ -7,7 +7,7 @@ This script builds/gather RRDs and corresponding screenshots and displays
 them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
-  and the corresponding code examples in the docs (docs/snippets/*.rs)
+  and the corresponding snippets in the docs (docs/snippets/*.rs)
 - The `app.rerun.io` examples, as built by the `re_build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
@@ -43,7 +43,7 @@ TEMPLATE_DIR = SCRIPT_DIR_PATH / "assets" / "templates"
 INDEX_TEMPLATE = Template((TEMPLATE_DIR / "index.html").read_text())
 EXAMPLE_TEMPLATE = Template((TEMPLATE_DIR / "example.html").read_text())
 RERUN_DIR = SCRIPT_DIR_PATH.parent.parent
-CODE_EXAMPLE_DIR = RERUN_DIR / "docs" / "snippets"
+SNIPPET_DIR = RERUN_DIR / "docs" / "snippets"
 
 
 def measure_thumbnail(url: str) -> Any:
@@ -95,13 +95,13 @@ def build_python_sdk() -> None:
 
 
 # ====================================================================================================
-# CODE EXAMPLES
+# SNIPPETS
 #
-# We scrape FBS for screenshot URL and generate the corresponding code examples RRD with roundtrips.py
+# We scrape FBS for screenshot URL and generate the corresponding snippets RRD with roundtrips.py
 # ====================================================================================================
 
 
-def extract_code_example_urls_from_fbs() -> dict[str, str]:
+def extract_snippet_urls_from_fbs() -> dict[str, str]:
     fbs_path = SCRIPT_DIR_PATH.parent.parent / "crates" / "re_types" / "definitions" / "rerun"
 
     urls = {}
@@ -120,27 +120,27 @@ def extract_code_example_urls_from_fbs() -> dict[str, str]:
     return urls
 
 
-CODE_EXAMPLE_URLS = extract_code_example_urls_from_fbs()
+SNIPPET_URLS = extract_snippet_urls_from_fbs()
 
 
-def build_code_examples() -> None:
+def build_snippets() -> None:
     cmd = [
-        str(CODE_EXAMPLE_DIR / "roundtrips.py"),
+        str(SNIPPET_DIR / "roundtrips.py"),
         "--no-py",
         "--no-cpp",
         "--no-py-build",
         "--no-cpp-build",
     ]
 
-    for name in CODE_EXAMPLE_URLS.keys():
+    for name in SNIPPET_URLS.keys():
         run(cmd + [name], cwd=RERUN_DIR)
 
 
-def collect_code_examples() -> Iterable[Example]:
-    for name in sorted(CODE_EXAMPLE_URLS.keys()):
-        rrd = CODE_EXAMPLE_DIR / f"{name}_rust.rrd"
+def collect_snippets() -> Iterable[Example]:
+    for name in sorted(SNIPPET_URLS.keys()):
+        rrd = SNIPPET_DIR / f"{name}_rust.rrd"
         assert rrd.exists(), f"Missing {rrd} for {name}"
-        yield Example(name=name, title=name, rrd=rrd, screenshot_url=CODE_EXAMPLE_URLS[name])
+        yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])
 
 
 # ====================================================================================================
@@ -150,7 +150,7 @@ def collect_code_examples() -> Iterable[Example]:
 # ====================================================================================================
 
 
-def build_demo_examples() -> None:
+def build_examples() -> None:
     # fmt: off
     cmd = [
         "cargo", "run", "--locked",
@@ -168,7 +168,7 @@ def build_demo_examples() -> None:
     # fmt: on
 
 
-def collect_demo_examples() -> Iterable[Example]:
+def collect_examples() -> Iterable[Example]:
     example_dir = RERUN_DIR / "example_data"
     assert example_dir.exists(), "Examples have not been built yet."
 
@@ -185,11 +185,6 @@ def collect_demo_examples() -> Iterable[Example]:
             rrd=rrd,
             screenshot_url=example["thumbnail"]["url"],
         )
-
-
-def collect_examples() -> Iterable[Example]:
-    yield from collect_code_examples()
-    yield from collect_demo_examples()
 
 
 def render_index(examples: list[Example]) -> None:
@@ -262,10 +257,10 @@ def main() -> None:
         build_python_sdk()
 
     if not args.skip_example_build:
-        build_code_examples()
-        build_demo_examples()
+        build_snippets()
+        build_examples()
 
-    examples = list(collect_examples())
+    examples = list(collect_snippets()) + list(collect_examples())
     assert len(examples) > 0, "No examples found"
 
     render_index(examples)

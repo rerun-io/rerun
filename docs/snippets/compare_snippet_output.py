@@ -194,7 +194,7 @@ def run_roundtrip_python(example: str) -> str:
 def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = f"docs/snippets/all/{example}_rust.rrd"
 
-    cmd = ["cargo", "run", "--quiet", "-p", "code_examples"]
+    cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
 
     if target is not None:
         cmd += ["--target", target]
