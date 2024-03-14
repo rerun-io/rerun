@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Any, Tuple
 
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rbl
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
@@ -84,6 +84,9 @@ The bounding boxes around the furniture is visualized by logging the
 bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
 """.strip()
 
+lowres_posed_entity_id = "world/camera_lowres"
+highres_entity_id = "world/camera_highres"
+
 
 def load_json(js_path: Path) -> dict[str, Any]:
     with open(js_path) as f:
@@ -95,25 +98,14 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
     """
     Logs annotated oriented bounding boxes to Rerun.
 
-    We currently calculate and return the 3D bounding boxes keypoints, labels, and colors for each object to log them in
-    each camera frame TODO(#3412): once resolved this can be removed.
-
     annotation json file
     |  |-- label: object name of bounding box
     |  |-- axesLengths[x, y, z]: size of the origin bounding-box before transforming
     |  |-- centroid[]: the translation matrix (1,3) of bounding-box
     |  |-- normalizedAxes[]: the rotation matrix (3,3) of bounding-box
     """
-    bbox_list = []
-    bbox_labels = []
-    num_objects = len(annotation["data"])
-    # Generate a color per object that can be reused across both 3D obb and their 2D projections
-    # TODO(#3412, #1728): once resolved this can be removed
-    color_positions = np.linspace(0, 1, num_objects)
-    colormap = plt.colormaps["viridis"]
-    colors = [colormap(pos) for pos in color_positions]
 
-    for i, label_info in enumerate(annotation["data"]):
+    for label_info in annotation["data"]:
         uid = label_info["uid"]
         label = label_info["label"]
 
@@ -130,157 +122,9 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
                 centers=centroid,
                 rotations=rr.Quaternion(xyzw=rot.as_quat()),
                 labels=label,
-                colors=colors[i],
             ),
             timeless=True,
         )
-
-        box3d = compute_box_3d(half_size, centroid, rotation)
-        bbox_list.append(box3d)
-        bbox_labels.append(label)
-    bboxes_3d = np.array(bbox_list)
-    return bboxes_3d, bbox_labels, colors
-
-
-def compute_box_3d(
-    half_size: npt.NDArray[np.float64], transform: npt.NDArray[np.float64], rotation: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
-    """
-    Given obb compute 3D keypoints of the box.
-
-    TODO(#3412): once resolved this can be removed
-    """
-    length, height, width = half_size.tolist()
-    center = np.reshape(transform, (-1, 3))
-    center = center.reshape(3)
-    x_corners = [length, length, -length, -length, length, length, -length, -length]
-    y_corners = [height, -height, -height, height, height, -height, -height, height]
-    z_corners = [width, width, width, width, -width, -width, -width, -width]
-    corners_3d = np.dot(np.transpose(rotation), np.vstack([x_corners, y_corners, z_corners]))
-
-    corners_3d[0, :] += center[0]
-    corners_3d[1, :] += center[1]
-    corners_3d[2, :] += center[2]
-    bbox3d_raw = np.transpose(corners_3d)
-    return bbox3d_raw
-
-
-def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float64], color: Color, label: str) -> None:
-    """
-    Generates line segments for each object's bounding box in 2D.
-
-    Box corner order that we return is of the format below:
-      6 -------- 7
-     /|         /|
-    5 -------- 4 .
-    | |        | |
-    . 2 -------- 3
-    |/         |/
-    1 -------- 0
-
-    TODO(#3412): once resolved this can be removed
-
-    :param bboxes_2d_filtered:
-        A numpy array of shape (8, 2), representing the filtered 2D keypoints of the 3D bounding boxes.
-    :return: A numpy array of shape (24, 2), representing the line segments for each object's bounding boxes.
-             Even and odd indices represent the start and end points of each line segment respectively.
-    """
-
-    # Calculate the centroid of the 2D keypoints
-    valid_points = bboxes_2d_filtered[~np.isnan(bboxes_2d_filtered).any(axis=1)]
-
-    # log centroid and add label so that object label is visible in the 2D view
-    if valid_points.size > 0:
-        centroid = valid_points.mean(axis=0)
-        rr.log(f"{entity_path}/centroid", rr.Points2D(centroid, colors=color, labels=label))
-    else:
-        pass
-
-    segments = [
-        # bottom of bbox
-        [bboxes_2d_filtered[0], bboxes_2d_filtered[1]],
-        [bboxes_2d_filtered[1], bboxes_2d_filtered[2]],
-        [bboxes_2d_filtered[2], bboxes_2d_filtered[3]],
-        [bboxes_2d_filtered[3], bboxes_2d_filtered[0]],
-        # top of bbox
-        [bboxes_2d_filtered[4], bboxes_2d_filtered[5]],
-        [bboxes_2d_filtered[5], bboxes_2d_filtered[6]],
-        [bboxes_2d_filtered[6], bboxes_2d_filtered[7]],
-        [bboxes_2d_filtered[7], bboxes_2d_filtered[4]],
-        # sides of bbox
-        [bboxes_2d_filtered[0], bboxes_2d_filtered[4]],
-        [bboxes_2d_filtered[1], bboxes_2d_filtered[5]],
-        [bboxes_2d_filtered[2], bboxes_2d_filtered[6]],
-        [bboxes_2d_filtered[3], bboxes_2d_filtered[7]],
-    ]
-
-    rr.log(entity_path, rr.LineStrips2D(segments, colors=color))
-
-
-def project_3d_bboxes_to_2d_keypoints(
-    bboxes_3d: npt.NDArray[np.float64],
-    camera_from_world: rr.TranslationRotationScale3D,
-    intrinsic: npt.NDArray[np.float64],
-    img_width: int,
-    img_height: int,
-) -> npt.NDArray[np.float64]:
-    """
-    Returns 2D keypoints of the 3D bounding box in the camera view.
-
-    TODO(#3412): once resolved this can be removed
-    Args:
-        bboxes_3d: (nObjects, 8, 3) containing the 3D bounding box keypoints in world frame.
-        camera_from_world: Tuple containing the camera translation and rotation_quaternion in world frame.
-        intrinsic: (3,3) containing the camera intrinsic matrix.
-        img_width: Width of the image.
-        img_height: Height of the image.
-
-    Returns
-    -------
-    bboxes_2d_filtered:
-        A numpy array of shape (nObjects, 8, 2), representing the 2D keypoints of the 3D bounding boxes. That
-        are within the image frame.
-
-    """
-
-    translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
-    # We know we stored the rotation as a quaternion, so extract it again.
-    # TODO(#3467): This shouldn't directly access rotation.inner
-    rotation = R.from_quat(rotation_q.inner)  # type: ignore[union-attr]
-
-    # Transform 3D keypoints from world to camera frame
-    world_to_camera_rotation = rotation.as_matrix()
-    world_to_camera_translation = np.array(translation).reshape(3, 1)
-    # Tile translation to match bounding box shape, (nObjects, 1, 3)
-    world_to_camera_translation_tiled = np.tile(world_to_camera_translation.T, (bboxes_3d.shape[0], 1, 1))
-    # Transform 3D bounding box keypoints from world to camera frame to filter out points behind the camera
-    camera_points = (
-        np.einsum("ij,afj->afi", world_to_camera_rotation, bboxes_3d[..., :3]) + world_to_camera_translation_tiled
-    )
-    # Check if the points are in front of the camera
-    depth_mask = camera_points[..., 2] > 0
-    # convert to transformation matrix shape of (3, 4)
-    world_to_camera = np.hstack([world_to_camera_rotation, world_to_camera_translation])
-    transformation_matrix = intrinsic @ world_to_camera
-    # add batch dimension to match bounding box shape, (nObjects, 3, 4)
-    transformation_matrix = np.tile(transformation_matrix, (bboxes_3d.shape[0], 1, 1))
-    # bboxes_3d: [nObjects, 8, 3] -> [nObjects, 8, 4] to allow for batch projection
-    bboxes_3d = np.concatenate([bboxes_3d, np.ones((bboxes_3d.shape[0], bboxes_3d.shape[1], 1))], axis=-1)
-    # Apply depth mask to filter out points behind the camera
-    bboxes_3d[~depth_mask] = np.nan
-    # batch projection of points using einsum
-    bboxes_2d = np.einsum("vab,fnb->vfna", transformation_matrix, bboxes_3d)
-    bboxes_2d = bboxes_2d[..., :2] / bboxes_2d[..., 2:]
-    # nViews irrelevant, squeeze out
-    bboxes_2d = bboxes_2d[0]
-
-    # Filter out keypoints that are not within the frame
-    mask_x = (bboxes_2d[:, :, 0] >= 0) & (bboxes_2d[:, :, 0] < img_width)
-    mask_y = (bboxes_2d[:, :, 1] >= 0) & (bboxes_2d[:, :, 1] < img_height)
-    mask = mask_x & mask_y
-    bboxes_2d_filtered = np.where(mask[..., np.newaxis], bboxes_2d, np.nan)
-
-    return bboxes_2d_filtered
 
 
 def log_camera(
@@ -288,25 +132,14 @@ def log_camera(
     frame_id: str,
     poses_from_traj: dict[str, rr.TranslationRotationScale3D],
     entity_id: str,
-    bboxes: npt.NDArray[np.float64],
-    bbox_labels: list[str],
-    colors: list[Color],
 ) -> None:
     """Logs camera transform and 3D bounding boxes in the image frame."""
     w, h, fx, fy, cx, cy = np.loadtxt(intri_path)
     intrinsic = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     camera_from_world = poses_from_traj[frame_id]
 
-    # TODO(#3412): once resolved this can be removed
-    # Project 3D bounding boxes into 2D image
-    bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
-
     # clear previous centroid labels
     rr.log(f"{entity_id}/bbox-2D-segments", rr.Clear(recursive=True))
-
-    # Log line segments for each bounding box in the image
-    for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
-        log_line_segments(f"{entity_id}/bbox-2D-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
     # pathlib makes it easy to get the parent, but log methods requires a string
     rr.log(entity_id, rr.Transform3D(transform=camera_from_world))
@@ -430,10 +263,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     # load the obb annotations and log them in the world frame
     bbox_annotations_path = recording_path / f"{recording_path.stem}_3dod_annotation.json"
     annotation = load_json(bbox_annotations_path)
-    bboxes_3d, bbox_labels, colors_list = log_annotated_bboxes(annotation)
-
-    lowres_posed_entity_id = "world/camera_lowres"
-    highres_entity_id = "world/camera_highres"
+    log_annotated_bboxes(annotation)
 
     print("Processing frames…")
     for frame_timestamp in tqdm(lowres_frame_ids):
@@ -454,9 +284,6 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 frame_timestamp,
                 camera_from_world_dict,
                 lowres_posed_entity_id,
-                bboxes_3d,
-                bbox_labels,
-                colors_list,
             )
 
             rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
@@ -473,9 +300,6 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 closest_lowres_frame_id,
                 camera_from_world_dict,
                 highres_entity_id,
-                bboxes_3d,
-                bbox_labels,
-                colors_list,
             )
 
             # load the highres image and depth if they exist
@@ -505,7 +329,33 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_arkit_scenes")
+    primary_camera_entity = highres_entity_id if args.include_highres else lowres_posed_entity_id
+
+    rr.script_setup(
+        args,
+        "rerun_example_arkit_scenes",
+        blueprint=rbl.Horizontal(
+            rbl.Spatial3DView(name="3D"),
+            rbl.Vertical(
+                rbl.Tabs(
+                    # Note that we re-project the annotations into the 2D views:
+                    # For this to work, the origin of the 2D views has to be a pinhole camera,
+                    # this way the viewer knows how to project the 3D annotations into the 2D views.
+                    rbl.Spatial2DView(
+                        name="RGB",
+                        origin=primary_camera_entity,
+                        contents=[f"{primary_camera_entity}/rgb", "/world/annotations/**"],
+                    ),
+                    rbl.Spatial2DView(
+                        name="Depth",
+                        origin=primary_camera_entity,
+                        contents=[f"{primary_camera_entity}/depth", "/world/annotations/**"],
+                    ),
+                ),
+                rbl.TextDocumentView(),
+            ),
+        ),
+    )
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 
