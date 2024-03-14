@@ -43,7 +43,7 @@ TEMPLATE_DIR = SCRIPT_DIR_PATH / "assets" / "templates"
 INDEX_TEMPLATE = Template((TEMPLATE_DIR / "index.html").read_text())
 EXAMPLE_TEMPLATE = Template((TEMPLATE_DIR / "example.html").read_text())
 RERUN_DIR = SCRIPT_DIR_PATH.parent.parent
-SNIPPET_DIR = RERUN_DIR / "docs" / "snippets"
+SNIPPETS_DIR = RERUN_DIR / "docs" / "snippets"
 
 
 def measure_thumbnail(url: str) -> Any:
@@ -125,7 +125,7 @@ SNIPPET_URLS = extract_snippet_urls_from_fbs()
 
 def build_snippets() -> None:
     cmd = [
-        str(SNIPPET_DIR / "roundtrips.py"),
+        str(SNIPPETS_DIR / "roundtrips.py"),
         "--no-py",
         "--no-cpp",
         "--no-py-build",
@@ -138,7 +138,7 @@ def build_snippets() -> None:
 
 def collect_snippets() -> Iterable[Example]:
     for name in sorted(SNIPPET_URLS.keys()):
-        rrd = SNIPPET_DIR / f"{name}_rust.rrd"
+        rrd = SNIPPETS_DIR / f"{name}_rust.rrd"
         assert rrd.exists(), f"Missing {rrd} for {name}"
         yield Example(name=name, title=name, rrd=rrd, screenshot_url=SNIPPET_URLS[name])
 

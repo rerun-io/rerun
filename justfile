@@ -46,9 +46,9 @@ cpp-build:
 cpp-build-examples:
     pixi run cpp-build-examples
 
-# Build all our C++ api doc examples.
-cpp-build-doc-examples:
-    pixi run cpp-build-doc-examples
+# Build all our C++ snippets.
+cpp-build-snippets:
+    pixi run cpp-build-snippets
 
 # Run our C++ tests
 cpp-test:
