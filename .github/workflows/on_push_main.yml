@@ -203,7 +203,7 @@ jobs:
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-windows-x64--${{ github.ref_name }}
+      CONCURRENCY: push-windows-x64-${{ github.ref_name }}
       PLATFORM: windows-x64
     secrets: inherit
 
