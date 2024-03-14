@@ -197,7 +197,7 @@ fn build_points_rows(paths: &[EntityPath], num_points: usize) -> Vec<DataRow> {
                 let mut row = DataRow::from_cells2(
                     RowId::new(),
                     path.clone(),
-                    [build_frame_nr((frame_idx as i64).into())],
+                    [build_frame_nr((frame_idx as i64).try_into().unwrap())],
                     num_points as _,
                     (
                         build_some_point2d(num_points),
@@ -223,7 +223,7 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
                 let mut row = DataRow::from_cells2(
                     RowId::new(),
                     path.clone(),
-                    [build_frame_nr((frame_idx as i64).into())],
+                    [build_frame_nr((frame_idx as i64).try_into().unwrap())],
                     num_strings as _,
                     // We still need to create points because they are the primary for the
                     // archetype query we want to do. We won't actually deserialize the points
@@ -266,7 +266,10 @@ struct SavePoint {
 
 fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_POINTS as i64 / 2).into());
+    let query = LatestAtQuery::new(
+        timeline_frame_nr,
+        (NUM_FRAMES_POINTS as i64 / 2).try_into().unwrap(),
+    );
 
     let mut points = Vec::with_capacity(NUM_POINTS as _);
 
@@ -294,7 +297,10 @@ struct SaveString {
 
 fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_STRINGS as i64 / 2).into());
+    let query = LatestAtQuery::new(
+        timeline_frame_nr,
+        (NUM_FRAMES_STRINGS as i64 / 2).try_into().unwrap(),
+    );
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 

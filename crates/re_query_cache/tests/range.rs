@@ -27,7 +27,7 @@ fn simple_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.into())];
+    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -50,7 +50,7 @@ fn simple_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint2 = [build_frame_nr(223.into())];
+    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
@@ -66,7 +66,7 @@ fn simple_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint3 = [build_frame_nr(323.into())];
+    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
@@ -80,7 +80,10 @@ fn simple_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
+        TimeRange::new(
+            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
+            timepoint3[0].1,
+        ),
     );
 
     query_and_compare(&caches, &store, &query, &ent_path);
@@ -108,7 +111,7 @@ fn timeless_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.into())];
+    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -148,7 +151,7 @@ fn timeless_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint2 = [build_frame_nr(223.into())];
+    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
@@ -175,7 +178,7 @@ fn timeless_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint3 = [build_frame_nr(323.into())];
+    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
@@ -194,7 +197,10 @@ fn timeless_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
+        TimeRange::new(
+            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
+            timepoint3[0].1,
+        ),
     );
 
     query_and_compare(&caches, &store, &query, &ent_path);
@@ -212,8 +218,10 @@ fn timeless_range() {
 
     // --- Third test: `[-inf, +inf]` ---
 
-    let query =
-        re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
+    let query = re_data_store::RangeQuery::new(
+        timepoint1[0].0,
+        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
+    );
 
     query_and_compare(&caches, &store, &query, &ent_path);
 }
@@ -229,7 +237,7 @@ fn simple_splatted_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.into())];
+    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -252,7 +260,7 @@ fn simple_splatted_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint2 = [build_frame_nr(223.into())];
+    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
     {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
@@ -268,7 +276,7 @@ fn simple_splatted_range() {
         insert_and_react(&mut store, &mut caches, &row);
     }
 
-    let timepoint3 = [build_frame_nr(323.into())];
+    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
     {
         // Create some Positions with implicit instances
         let positions = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
@@ -282,7 +290,10 @@ fn simple_splatted_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new((timepoint1[0].1.as_i64() + 1).into(), timepoint3[0].1),
+        TimeRange::new(
+            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
+            timepoint3[0].1,
+        ),
     );
 
     query_and_compare(&caches, &store, &query, &ent_path);
@@ -423,9 +434,9 @@ fn invalidation() {
     };
 
     let timeless = TimePoint::timeless();
-    let frame_122 = build_frame_nr(122.into());
-    let frame_123 = build_frame_nr(123.into());
-    let frame_124 = build_frame_nr(124.into());
+    let frame_122 = build_frame_nr(122.try_into().unwrap());
+    let frame_123 = build_frame_nr(123.try_into().unwrap());
+    let frame_124 = build_frame_nr(124.try_into().unwrap());
 
     test_invalidation(
         RangeQuery::new(frame_123.0, TimeRange::EVERYTHING),
@@ -479,8 +490,8 @@ fn invalidation_of_future_optionals() {
     let ent_path = "points";
 
     let timeless = TimePoint::timeless();
-    let frame2 = [build_frame_nr(2.into())];
-    let frame3 = [build_frame_nr(3.into())];
+    let frame2 = [build_frame_nr(2.try_into().unwrap())];
+    let frame3 = [build_frame_nr(3.try_into().unwrap())];
 
     let query = re_data_store::RangeQuery::new(frame2[0].0, TimeRange::EVERYTHING);
 
@@ -531,7 +542,7 @@ fn invalidation_timeless() {
 
     let timeless = TimePoint::timeless();
 
-    let frame0 = [build_frame_nr(0.into())];
+    let frame0 = [build_frame_nr(TimeInt::ZERO)];
     let query = re_data_store::RangeQuery::new(frame0[0].0, TimeRange::EVERYTHING);
 
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];

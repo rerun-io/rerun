@@ -297,9 +297,9 @@ mod tests {
 
         let row_id1 = RowId::new();
         let timepoint1 = TimePoint::from_iter([
-            (timeline_frame, 42.into()),      //
-            (timeline_other, 666.into()),     //
-            (timeline_yet_another, 1.into()), //
+            (timeline_frame, 42.try_into().unwrap()),      //
+            (timeline_other, 666.try_into().unwrap()),     //
+            (timeline_yet_another, 1.try_into().unwrap()), //
         ]);
         let entity_path1: EntityPath = "entity_a".into();
         let row1 = DataRow::from_component_batches(
@@ -328,9 +328,9 @@ mod tests {
                     (InstanceKey::name(), 1), //
                 ],
                 [
-                    (42.into(), 1), //
-                    (666.into(), 1),
-                    (1.into(), 1),
+                    (42.try_into().unwrap(), 1), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 1),
                 ],
                 0,
             ),
@@ -339,8 +339,8 @@ mod tests {
 
         let row_id2 = RowId::new();
         let timepoint2 = TimePoint::from_iter([
-            (timeline_frame, 42.into()),      //
-            (timeline_yet_another, 1.into()), //
+            (timeline_frame, 42.try_into().unwrap()),      //
+            (timeline_yet_another, 1.try_into().unwrap()), //
         ]);
         let entity_path2: EntityPath = "entity_b".into();
         let row2 = {
@@ -380,9 +380,9 @@ mod tests {
                     (MyColor::name(), 1),     //
                 ],
                 [
-                    (42.into(), 2), //
-                    (666.into(), 1),
-                    (1.into(), 2),
+                    (42.try_into().unwrap(), 2), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 2),
                 ],
                 0,
             ),
@@ -429,9 +429,9 @@ mod tests {
                     (MyColor::name(), 2),     //
                 ],
                 [
-                    (42.into(), 2), //
-                    (666.into(), 1),
-                    (1.into(), 2),
+                    (42.try_into().unwrap(), 2), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 2),
                 ],
                 1,
             ),
@@ -463,9 +463,9 @@ mod tests {
                     (MyColor::name(), 0),     //
                 ],
                 [
-                    (42.into(), 0), //
-                    (666.into(), 0),
-                    (1.into(), 0),
+                    (42.try_into().unwrap(), 0), //
+                    (666.try_into().unwrap(), 0),
+                    (1.try_into().unwrap(), 0),
                 ],
                 0,
             ),
@@ -487,7 +487,7 @@ mod tests {
 
         let row1 = DataRow::from_component_batches(
             RowId::new(),
-            TimePoint::from_iter([(timeline_frame, 42.into())]),
+            TimePoint::from_iter([(timeline_frame, 42.try_into().unwrap())]),
             "entity_a".into(),
             [&InstanceKey::from_iter(0..10) as _],
         )?;
@@ -504,7 +504,7 @@ mod tests {
 
         let row2 = DataRow::from_component_batches(
             RowId::new(),
-            TimePoint::from_iter([(timeline_frame, 42.into())]),
+            TimePoint::from_iter([(timeline_frame, 42.try_into().unwrap())]),
             "entity_b".into(),
             [&[MyColor::from(0xAABBCCDD)] as _],
         )?;

@@ -1,4 +1,4 @@
-use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint, Timeline};
+use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
 use re_types::{components::InstanceKey, AsComponents, ComponentBatch, ComponentName};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
@@ -14,16 +14,14 @@ impl StoreContext<'_> {
     pub fn blueprint_timepoint_for_writes(&self) -> TimePoint {
         let timeline = blueprint_timeline();
 
-        let mut max_time = self
+        let max_time = self
             .blueprint
             .times_per_timeline()
             .get(&timeline)
             .and_then(|times| times.last_key_value())
-            .map_or(0.into(), |(time, _)| *time);
+            .map_or(0, |(time, _)| time.as_i64());
 
-        max_time += 1.into();
-
-        TimePoint::from([(timeline, max_time)])
+        TimePoint::from([(timeline, TimeInt::new_temporal(max_time + 1))])
     }
 }
 

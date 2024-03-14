@@ -991,11 +991,13 @@ fn help_button(ui: &mut egui::Ui) {
 
 /// A user can drag the time slider to between the timeless data and the first real data.
 ///
-/// The time interpolated there is really weird, as it goes from [`TimeInt::BEGINNING`]
+/// The time interpolated there is really weird, as it goes from [`TimeInt::MIN`]
 /// (which is extremely long time ago) to whatever tim the user logged.
 /// So we do not want to display these times to the user.
 ///
 /// This functions returns `true` iff the given time is safe to show.
+//
+// TODO(#5264): remove time panel hack once we migrate to the new static UI
 fn is_time_safe_to_show(
     entity_db: &re_entity_db::EntityDb,
     timeline: &re_data_store::Timeline,
@@ -1008,15 +1010,17 @@ fn is_time_safe_to_show(
     if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
-                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000),
-                re_data_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
+                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000.try_into().unwrap()),
+                re_data_store::TimeType::Sequence => {
+                    TimeInt::from_sequence(1_000.try_into().unwrap())
+                }
             };
 
-            return TimeInt::from(first_time) <= time + margin;
+            return TimeInt::new_temporal(first_time) <= time + margin;
         }
     }
 
-    TimeInt::STATIC_TIME_PANEL < time
+    TimeInt::MIN_TIME_PANEL < time
 }
 
 fn current_time_ui(
@@ -1047,8 +1051,8 @@ fn initialize_time_ranges_ui(
     // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = if entity_db.num_timeless_messages() > 0 {
         vec![TimeRange {
-            min: TimeInt::STATIC_TIME_PANEL,
-            max: TimeInt::STATIC_TIME_PANEL,
+            min: TimeInt::MIN_TIME_PANEL,
+            max: TimeInt::MIN_TIME_PANEL,
         }]
     } else {
         Vec::new()
