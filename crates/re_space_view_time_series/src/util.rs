@@ -55,11 +55,11 @@ pub fn determine_time_range(
         if let Some(plot_bounds) = plot_bounds {
             time_range.min = TimeInt::max(
                 time_range.min,
-                (plot_bounds.range_x().start().floor() as i64).into(),
+                TimeInt::new_temporal(plot_bounds.range_x().start().floor() as i64),
             );
             time_range.max = TimeInt::min(
                 time_range.max,
-                (plot_bounds.range_x().end().ceil() as i64).into(),
+                TimeInt::new_temporal(plot_bounds.range_x().end().ceil() as i64),
             );
         }
     }

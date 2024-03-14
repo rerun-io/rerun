@@ -206,10 +206,10 @@ fn data_store_dump_filtered() {
 fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore) {
     let timeline_frame_nr = Timeline::new_sequence("frame_nr");
     let timeline_log_time = Timeline::log_time();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     let ent_paths = ["this/that", "other", "yet/another/one"];
     let tables = ent_paths
@@ -276,10 +276,10 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
     let ent_path = ent_path.into();
 
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
-    let frame4: TimeInt = 4.into();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [
@@ -330,9 +330,9 @@ fn data_store_dump_empty_column() {
 
 fn data_store_dump_empty_column_impl(store: &mut DataStore) {
     let ent_path: EntityPath = "points".into();
-    let frame1: TimeInt = 1.into();
-    let frame2: TimeInt = 2.into();
-    let frame3: TimeInt = 3.into();
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
 
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {

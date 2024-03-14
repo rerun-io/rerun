@@ -50,7 +50,9 @@ pub use self::data_table::{
 pub use self::num_instances::NumInstances;
 pub use self::path::*;
 pub use self::time::{Duration, Time, TimeZone};
-pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
+pub use self::time_point::{
+    NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,
+};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
@@ -390,7 +392,10 @@ impl std::fmt::Display for StoreSource {
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].
 #[inline]
 pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
-    (Timeline::log_time(), log_time.into())
+    (
+        Timeline::log_time(),
+        TimeInt::new_temporal(log_time.nanos_since_epoch()),
+    )
 }
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].

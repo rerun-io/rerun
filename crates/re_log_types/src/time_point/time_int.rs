@@ -198,7 +198,14 @@ impl From<TimeInt> for Duration {
 impl From<TimeInt> for re_types_core::datatypes::TimeInt {
     #[inline]
     fn from(time: TimeInt) -> Self {
-        Self(time.as_i64().try_into().ok())
+        Self(time.as_i64())
+    }
+}
+
+impl From<re_types_core::datatypes::TimeInt> for TimeInt {
+    #[inline]
+    fn from(time: re_types_core::datatypes::TimeInt) -> Self {
+        Self::new_temporal(time.0)
     }
 }
 

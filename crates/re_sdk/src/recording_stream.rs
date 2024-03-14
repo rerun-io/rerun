@@ -1156,7 +1156,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert(Timeline::log_tick(), tick.into());
+                    now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                     now
                 })
@@ -1394,7 +1394,7 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert(Timeline::log_tick(), tick.into());
+                now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, time) in now {
@@ -1816,7 +1816,10 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(Timeline::log_time(), Time::now().into());
+        timepoint.insert(
+            Timeline::log_time(),
+            Time::now().try_into().unwrap_or(TimeInt::MIN),
+        );
         timepoint
     }
 
@@ -1896,10 +1899,22 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let sequence = sequence.into();
+            let sequence = if let Ok(seq) = TimeInt::try_from(sequence) {
+                seq
+            } else {
+                re_log::error!(
+                    illegal_value = sequence,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Sequence),
-                sequence.into().into(),
+                sequence,
             );
         };
 
@@ -1926,10 +1941,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let seconds = seconds.into();
+            let time = Time::from_seconds_since_epoch(seconds);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = time.nanos_since_epoch(),
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_seconds_since_epoch(seconds.into()).into(),
+                time,
             );
         };
 
@@ -1956,10 +1984,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let ns = ns.into();
+            let time = Time::from_ns_since_epoch(ns);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = time.nanos_since_epoch(),
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_ns_since_epoch(ns.into()).into(),
+                time,
             );
         };
 

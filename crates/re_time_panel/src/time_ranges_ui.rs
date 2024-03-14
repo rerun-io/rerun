@@ -201,22 +201,25 @@ impl TimeRangesUi {
                 TimeReal::from(last.tight_time.max),
             );
 
-            // Special: don't allow users dragging time between
-            // BEGINNING (-∞ = timeless data) and some real time.
+            // Special: don't allow users dragging time between STATIC (-∞ = timeless data) and some real time.
+            //
             // Otherwise we get weird times (e.g. dates in 1923).
             // Selecting times between other segments is not as problematic, as all other segments are
             // real times, so interpolating between them always produces valid times
             // (we want users to have a smooth experience dragging the time handle anywhere else).
-            // By disallowing times between BEGINNING and the first real segment,
+            // By disallowing times between STATIC and the first real segment,
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
-            if first.tight_time.contains(TimeInt::STATIC_TIME_PANEL) {
+            //
+            // TODO(#5264): remove time panel hack once we migrate to the new static UI
+            if first.tight_time.contains(TimeInt::MIN_TIME_PANEL) {
                 if let Some(second) = self.segments.get(1) {
                     let half_way =
-                        TimeRangeF::new(TimeInt::STATIC_TIME_PANEL, second.tight_time.min).lerp(0.5);
+                        TimeRangeF::new(TimeInt::MIN_TIME_PANEL, second.tight_time.min)
+                            .lerp(0.5);
 
                     if time < half_way {
-                        time = TimeReal::from(TimeInt::STATIC_TIME_PANEL);
+                        time = TimeReal::from(TimeInt::MIN_TIME_PANEL);
                     } else if time < second.tight_time.min {
                         time = second.tight_time.min.into();
                     }
@@ -386,9 +389,9 @@ fn test_time_ranges_ui() {
             time_spanned: 14.2,
         },
         &[
-            TimeRange::new(TimeInt::from(0), TimeInt::from(0)),
-            TimeRange::new(TimeInt::from(1), TimeInt::from(5)),
-            TimeRange::new(TimeInt::from(10), TimeInt::from(100)),
+            TimeRange::new(TimeInt::ZERO, TimeInt::ZERO),
+            TimeRange::new(TimeInt::new_temporal(1), TimeInt::new_temporal(5)),
+            TimeRange::new(TimeInt::new_temporal(10), TimeInt::new_temporal(100)),
         ],
     );
 
@@ -428,8 +431,8 @@ fn test_time_ranges_ui_2() {
             time_spanned: 50.0,
         },
         &[
-            TimeRange::new(TimeInt::from(10), TimeInt::from(20)),
-            TimeRange::new(TimeInt::from(30), TimeInt::from(40)),
+            TimeRange::new(TimeInt::new_temporal(10), TimeInt::new_temporal(20)),
+            TimeRange::new(TimeInt::new_temporal(30), TimeInt::new_temporal(40)),
         ],
     );
 

@@ -4,7 +4,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, TimeZone};
+use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_space_view_sub_archetype_or_default};
 use re_types::blueprint::components::Corner2D;
 use re_types::components::Range1D;
@@ -413,7 +413,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
-                    (value.x as i64 + time_offset).into(),
+                    TimeInt::new_temporal(value.x as i64 + time_offset),
                     time_zone_for_timestamps,
                 );
 
@@ -789,10 +789,7 @@ fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: Tim
         let time = re_log_types::Time::from_ns_since_epoch(time_int);
         time.format_time_compact(time_zone_for_timestamps)
     } else {
-        time_type.format(
-            re_log_types::TimeInt::from(time_int),
-            time_zone_for_timestamps,
-        )
+        time_type.format(TimeInt::new_temporal(time_int), time_zone_for_timestamps)
     }
 }
 

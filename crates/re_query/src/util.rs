@@ -62,8 +62,10 @@ impl VisibleHistory {
     #[doc(hidden)]
     pub fn range_start_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::new_temporal(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+                cursor + TimeInt::new_temporal(value)
+            }
             VisibleHistoryBoundary::Infinite => TimeInt::MIN,
         }
     }
@@ -75,8 +77,10 @@ impl VisibleHistory {
     #[doc(hidden)]
     pub fn range_end_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.to {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::new_temporal(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+                cursor + TimeInt::new_temporal(value)
+            }
             VisibleHistoryBoundary::Infinite => TimeInt::MAX,
         }
     }

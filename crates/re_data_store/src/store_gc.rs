@@ -5,7 +5,7 @@ use web_time::Instant;
 
 use nohash_hasher::IntMap;
 use re_log_types::{
-    DataCell, EntityPath, EntityPathHash, RowId, TimePoint, TimeRange, Timeline,
+    DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
     VecDequeRemovalExt as _,
 };
 use re_types_core::{ComponentName, SizeBytes as _};
@@ -424,7 +424,7 @@ impl DataStore {
             for (&timeline, &time) in timepoint {
                 if let Some(table) = tables.get_mut(&(*entity_path_hash, timeline)) {
                     let (removed, num_bytes_removed) =
-                        table.try_drop_row(cluster_cell_cache, *row_id, time.as_i64());
+                        table.try_drop_row(cluster_cell_cache, *row_id, time);
                     if let Some(inner) = diff.as_mut() {
                         if let Some(removed) = removed {
                             inner.times.extend(removed.times);
@@ -642,7 +642,8 @@ impl DataStore {
                         .entry(row_id)
                         .or_insert_with(|| StoreDiff::deletion(row_id, entity_path.clone()));
 
-                    diff.times.push((bucket.timeline, time.into()));
+                    diff.times
+                        .push((bucket.timeline, TimeInt::new_temporal(time)));
 
                     for column in &mut inner.columns.values_mut() {
                         let cell = column[i].take();
@@ -702,7 +703,7 @@ impl IndexedTable {
                 let mut diff = StoreDiff::deletion(row_id, ent_path.clone());
 
                 if let Some(time) = col_time.pop_front() {
-                    diff.times.push((timeline, time.into()));
+                    diff.times.push((timeline, TimeInt::new_temporal(time)));
                 }
 
                 for (component_name, column) in &mut columns {
@@ -747,7 +748,7 @@ impl IndexedTable {
         &mut self,
         cluster_cache: &ClusterCellCache,
         row_id: RowId,
-        time: i64,
+        time: TimeInt,
     ) -> (Option<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
@@ -757,7 +758,7 @@ impl IndexedTable {
 
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
-        let (bucket_key, bucket) = self.find_bucket_mut(time.into());
+        let (bucket_key, bucket) = self.find_bucket_mut(time);
         let bucket_num_bytes = bucket.total_size_bytes();
 
         let (diff, mut dropped_num_bytes) = {
@@ -806,7 +807,7 @@ impl IndexedBucketInner {
         row_id: RowId,
         timeline: Timeline,
         ent_path: &EntityPath,
-        time: i64,
+        time: TimeInt,
     ) -> (Option<StoreDiff>, u64) {
         self.sort();
 
@@ -825,8 +826,8 @@ impl IndexedBucketInner {
         let mut diff: Option<StoreDiff> = None;
         let mut dropped_num_bytes = 0u64;
 
-        let mut row_index = col_time.partition_point(|&time2| time2 < time);
-        while col_time.get(row_index) == Some(&time) {
+        let mut row_index = col_time.partition_point(|&time2| time2 < time.as_i64());
+        while col_time.get(row_index) == Some(&time.as_i64()) {
             if col_row_id[row_index] != row_id {
                 row_index += 1;
                 continue;
@@ -842,11 +843,11 @@ impl IndexedBucketInner {
                 // We have at least two rows, so we can safely [index] here:
                 if row_index == 0 {
                     // We removed the first row, so the second row holds the new min
-                    time_range.min = col_time[1].into();
+                    time_range.min = TimeInt::new_temporal(col_time[1]);
                 }
                 if row_index + 1 == col_time.len() {
                     // We removed the last row, so the penultimate row holds the new max
-                    time_range.max = col_time[row_index - 1].into();
+                    time_range.max = TimeInt::new_temporal(col_time[row_index - 1]);
                 }
             }
 

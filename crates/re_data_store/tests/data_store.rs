@@ -28,11 +28,11 @@ fn all_components() {
 
     let ent_path = EntityPath::from("this/that");
 
-    // let frame0= TimeInt::from(0);
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
+    // let frame0= TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
@@ -271,11 +271,11 @@ fn latest_at_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = TimeInt::from(0);
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
@@ -397,11 +397,11 @@ fn range_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
-    let frame5 = TimeInt::from(5);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
+    let frame5 = TimeInt::new_temporal(5);
 
     // helper to insert a row both as a temporal and timeless payload
     let insert = |store: &mut DataStore, row| {
@@ -620,7 +620,7 @@ fn gc_impl(store: &mut DataStore) {
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
                 let row = test_row!(ent_path @ [
-                    build_frame_nr(frame_nr.into())
+                    build_frame_nr(frame_nr.try_into().unwrap())
                 ] => num_instances; [
                     build_some_large_structs(num_instances as _),
                 ]);
@@ -683,11 +683,11 @@ fn protected_gc_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = TimeInt::from(0);
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
@@ -788,11 +788,11 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     let ent_path = EntityPath::from("this/that");
 
-    let frame0 = TimeInt::from(0);
-    let frame1 = TimeInt::from(1);
-    let frame2 = TimeInt::from(2);
-    let frame3 = TimeInt::from(3);
-    let frame4 = TimeInt::from(4);
+    let frame0 = TimeInt::new_temporal(0);
+    let frame1 = TimeInt::new_temporal(1);
+    let frame2 = TimeInt::new_temporal(2);
+    let frame3 = TimeInt::new_temporal(3);
+    let frame4 = TimeInt::new_temporal(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
     let row1 = test_row!(ent_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);

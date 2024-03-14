@@ -10,12 +10,12 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 ///
 /// ```
 /// # use re_data_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint}};
+/// # use re_log_types::{Timeline, TimeInt, example_components::{MyColor, MyPoint}};
 /// # use re_types_core::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::new_temporal(123));
 ///
 /// let (_, _, component) = re_query::get_component_with_instances(
 ///   &store,
@@ -73,12 +73,12 @@ pub fn get_component_with_instances(
 ///
 /// ```
 /// # use re_data_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint, MyPoints}};
+/// # use re_log_types::{Timeline, TimeInt, example_components::{MyColor, MyPoint, MyPoints}};
 /// # use re_types_core::Component;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::new_temporal(123));
 ///
 /// let arch_view = re_query::query_archetype::<MyPoints>(
 ///   &store,
@@ -171,7 +171,7 @@ pub fn __populate_example_store() -> DataStore {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123.try_into().unwrap())];
 
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -214,7 +214,7 @@ fn simple_get_component() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.try_into().unwrap());
 
     let (_, _, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), MyPoint::name()).unwrap();
@@ -245,7 +245,7 @@ fn simple_query_archetype() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.try_into().unwrap());
 
     let arch_view = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
 

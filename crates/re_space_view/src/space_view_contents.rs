@@ -605,7 +605,7 @@ mod tests {
         let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
         let timeline_frame = Timeline::new_sequence("frame");
-        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.try_into().unwrap())]);
 
         // Set up a store DB with some entities
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
