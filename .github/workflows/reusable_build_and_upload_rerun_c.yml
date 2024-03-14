@@ -39,6 +39,7 @@ on:
         required: false
         type: string
         default: "adhoc"
+        description: "Concurrency group to use"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-rerun_c
@@ -111,7 +112,7 @@ jobs:
 
   rs-build-rerun_c:
     name: Build rerun_c (${{ needs.set-config.outputs.RUNNER }})
-    needs: [set-config]
+    needs: [ set-config ]
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
     steps:

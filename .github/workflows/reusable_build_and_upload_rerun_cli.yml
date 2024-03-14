@@ -21,22 +21,25 @@ on:
   workflow_dispatch:
     inputs:
       ADHOC_NAME:
-        required: true
+        required: false
         type: string
+        default: ""
         description: "Name of the adhoc build, used for upload directory"
       PLATFORM:
         type: choice
         options:
-          - linux
-          - windows
-          - macos-arm
-          - macos-intel
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
         required: false
         type: string
         default: "adhoc"
+        description: "Concurrency group to use"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-rerun-cli
@@ -71,25 +74,31 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
+            linux-arm64)
+                runner="buildjet-8vcpu-ubuntu-2204-arm"
+                target="aarch64-unknown-linux-gnu"
+                container="null"
+                bin_name="rerun"
+                ;;
+            linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               container="{'image': 'rerunio/ci_docker:0.11.0'}"
               bin_name="rerun"
               ;;
-            windows)
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               bin_name="rerun.exe"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               bin_name="rerun"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
@@ -105,7 +114,7 @@ jobs:
   build-rerun-cli:
     name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
 
-    needs: [set-config]
+    needs: [ set-config ]
 
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
@@ -147,7 +156,7 @@ jobs:
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
       # This does not run in the pixi environment, doing so
-      # causes it to select the wrong compiler on macos-arm
+      # causes it to select the wrong compiler on macos-arm64
       - name: Build rerun-cli
         shell: bash
         env:
