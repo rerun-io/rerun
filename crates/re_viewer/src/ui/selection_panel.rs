@@ -1091,24 +1091,14 @@ fn entity_props_ui(
             data_result.component_override_source(&query_result.tree, &Visible::name());
         let is_inherited =
             override_source.is_some() && override_source.as_ref() != Some(entity_path);
-        let visible_response =
-            re_ui.checkbox_indeterminate(ui, &mut visible.0, "Visible", is_inherited);
 
-        if let (true, Some(override_source)) = (is_inherited, override_source) {
-            visible_response.on_hover_ui(|ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Inherited from:");
-                    item_ui::entity_path_button(
-                        ctx,
-                        &ctx.current_query(),
-                        ctx.entity_db.store(),
-                        ui,
-                        None,
-                        &override_source,
-                    );
-                });
-            });
-        }
+        ui.horizontal(|ui| {
+            re_ui.checkbox(ui, &mut visible.0, "Visible");
+            if is_inherited {
+                ui.label("(inherited)");
+            }
+        });
+
         if visible_before != visible {
             data_result.save_recursive_override_or_clear_if_redundant(
                 ctx,
