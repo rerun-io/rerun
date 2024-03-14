@@ -165,8 +165,15 @@ impl SpaceViewBlueprint {
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
         let display_name = display_name.map(|v| v.0.to_string());
 
-        let content =
-            SpaceViewContents::from_db_or_default(id, blueprint_db, query, class_identifier);
+        let space_env = std::iter::once(("origin".to_owned(), space_origin.to_string())).collect();
+
+        let content = SpaceViewContents::from_db_or_default(
+            id,
+            blueprint_db,
+            query,
+            class_identifier,
+            &space_env,
+        );
         let visible = visible.map_or(true, |v| v.0);
 
         Some(Self {
@@ -487,6 +494,8 @@ mod tests {
 
     #[test]
     fn test_entity_properties() {
+        let space_env = Default::default();
+
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
@@ -512,6 +521,7 @@ mod tests {
                     + parent/skip/child1
                     + parent/skip/child2
                 ",
+                &space_env,
             ),
         );
 
@@ -779,6 +789,8 @@ mod tests {
 
     #[test]
     fn test_component_overrides() {
+        let space_env = Default::default();
+
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut visualizable_entities_per_visualizer =
@@ -813,7 +825,7 @@ mod tests {
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
             &EntityPath::root(),
-            EntityPathFilter::parse_forgiving("+ /**"),
+            EntityPathFilter::parse_forgiving("+ /**", &space_env),
         );
         let individual_override_root = space_view
             .contents
