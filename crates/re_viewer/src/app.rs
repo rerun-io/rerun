@@ -972,6 +972,11 @@ impl App {
 
             let store_id = msg.store_id();
 
+            if store_hub.is_active_blueprint(store_id) {
+                // TODO(#5514): handle loading of active blueprints.
+                re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
+            }
+
             let entity_db = store_hub.entity_db_mut(store_id);
 
             if entity_db.data_source.is_none() {

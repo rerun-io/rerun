@@ -177,6 +177,13 @@ impl StoreHub {
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
     }
 
+    /// Is the given blueprint id the active blueprint for any app id?
+    pub fn is_active_blueprint(&self, blueprint_id: &StoreId) -> bool {
+        self.blueprint_by_app_id
+            .values()
+            .any(|id| id == blueprint_id)
+    }
+
     /// Clear the current blueprint
     pub fn clear_current_blueprint(&mut self) {
         if let Some(app_id) = &self.selected_application_id {
