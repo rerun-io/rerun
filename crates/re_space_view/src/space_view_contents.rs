@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -340,7 +340,7 @@ impl DataQueryPropertyResolver<'_> {
             .space_view
             .root_data_result(ctx, query)
             .property_overrides
-            .map(|p| (p.accumulated_properties, p.component_overrides))
+            .map(|p| (p.accumulated_properties, p.resolved_component_overrides))
             .unwrap_or_default();
 
         for prefix in &self.default_stack {
@@ -416,7 +416,7 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
-        recursive_property_overrides: &HashMap<ComponentName, (StoreKind, EntityPath)>,
+        recursive_property_overrides: &IntMap<ComponentName, (StoreKind, EntityPath)>,
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated, recursive_property_overrides)) =
@@ -527,7 +527,7 @@ impl DataQueryPropertyResolver<'_> {
                     accumulated_properties,
                     individual_properties: individual_properties.cloned(),
                     recursive_properties: recursive_properties.cloned(),
-                    component_overrides,
+                    resolved_component_overrides: component_overrides,
                     recursive_override_path,
                     individual_override_path,
                 });

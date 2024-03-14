@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
 use itertools::Itertools;
+use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
+
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
@@ -28,10 +29,16 @@ pub struct PropertyOverrides {
     pub recursive_properties: Option<EntityProperties>,
 
     /// An alternative store and entity path to use for the specified component.
+    ///
+    /// These are resolved overrides, i.e. the result of recursive override propagation + individual overrides.
     // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
     // might still be ambiguous when we have multiple stores active at a time.
     // TODO(jleibs): Consider something like `tinymap` for this.
-    pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+    // TODO(andreas): Should be a `Cow` to not do as many clones.
+    // TODO(andreas): Track recursive vs resolved (== individual + recursive) overrides.
+    //                  Recursive here meaning inherited + own recursive, i.e. not just what's on the path.
+    //                  What is logged on *this* entity can be inferred from walking up the tree.
+    pub resolved_component_overrides: IntMap<ComponentName, (StoreKind, EntityPath)>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
@@ -218,7 +225,7 @@ impl DataResult {
     pub fn lookup_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) -> Option<C> {
         self.property_overrides
             .as_ref()
-            .and_then(|p| p.component_overrides.get(&C::name()))
+            .and_then(|p| p.resolved_component_overrides.get(&C::name()))
             .and_then(|(store_kind, path)| match store_kind {
                 StoreKind::Blueprint => ctx
                     .store_context
@@ -233,6 +240,14 @@ impl DataResult {
             .map(|c| c.value)
     }
 
+    #[inline]
+    pub fn lookup_override_or_default<C: re_types::Component + Default>(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> C {
+        self.lookup_override(ctx).unwrap_or_default()
+    }
+
     /// Shorthand for checking for visibility on data overrides.
     ///
     /// Note that this won't check if the data store has visibility logged.
@@ -240,8 +255,7 @@ impl DataResult {
     // TODO(andreas): Should the result be cached, this might be a very common operation?
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
-        self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
-            .unwrap_or_default()
+        self.lookup_override_or_default::<re_types::blueprint::components::Visible>(ctx)
             .0
     }
 }

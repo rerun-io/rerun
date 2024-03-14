@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 
 use re_entity_db::{external::re_data_store::LatestAtQuery, EntityProperties, EntityPropertyMap};
 use re_log_types::{EntityPath, StoreKind};
@@ -11,7 +11,7 @@ pub struct EntityOverrideContext {
     pub recursive: EntityPropertyMap,
 
     /// Base component overrides that are inherited by all entities.
-    pub root_component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+    pub root_component_overrides: IntMap<ComponentName, (StoreKind, EntityPath)>,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]

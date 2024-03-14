@@ -48,7 +48,7 @@ pub fn override_ui(
     let active_overrides: BTreeSet<ComponentName> = data_result
         .property_overrides
         .as_ref()
-        .map(|props| props.component_overrides.keys().cloned().collect())
+        .map(|props| props.resolved_component_overrides.keys().cloned().collect())
         .unwrap_or_default();
 
     let view_systems = ctx
@@ -95,7 +95,7 @@ pub fn override_ui(
     };
 
     let components: Vec<_> = overrides
-        .component_overrides
+        .resolved_component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c)
         .filter(|(c, _)| component_to_vis.contains_key(c) && is_component_visible_in_ui(c))

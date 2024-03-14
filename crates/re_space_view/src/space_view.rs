@@ -446,7 +446,7 @@ impl SpaceViewBlueprint {
                 accumulated_properties,
                 individual_properties,
                 recursive_properties: Default::default(),
-                component_overrides: Default::default(),
+                resolved_component_overrides: Default::default(),
                 recursive_override_path: entity_path.clone(),
                 individual_override_path: entity_path,
             }),
@@ -1035,11 +1035,11 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
                 if let Some(property_overrides) = &result.property_overrides {
-                    if !property_overrides.component_overrides.is_empty() {
+                    if !property_overrides.resolved_component_overrides.is_empty() {
                         visited.insert(
                             result.entity_path.clone(),
                             property_overrides
-                                .component_overrides
+                                .resolved_component_overrides
                                 .iter()
                                 .map(|(component_name, (store_kind, path))| {
                                     assert_eq!(store_kind, &StoreKind::Blueprint);
