@@ -39,6 +39,7 @@ on:
         required: false
         type: string
         default: "adhoc"
+        description: "Concurrency group to use"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-rerun_c

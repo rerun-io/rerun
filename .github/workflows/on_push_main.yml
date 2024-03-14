@@ -162,40 +162,49 @@ jobs:
   # -----------------------------------------------------------------------------------
   # Build rerun-cli (rerun binaries):
 
-  build-rerun-cli-and-upload-linux:
+  build-rerun-cli-and-upload-linux-arm64:
+    needs: [checks]
+    name: "Linux-arm64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-linux-arm64-${{ github.ref_name }}
+      PLATFORM: linux-arm64
+    secrets: inherit
+
+  build-rerun-cli-and-upload-linux-x64:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      PLATFORM: linux-x64
     secrets: inherit
 
-  build-rerun-cli-and-upload-macos-intel:
+  build-rerun-cli-and-upload-macos-x64:
     needs: [checks]
-    name: "Mac-Intel: Build & Upload rerun-cli"
+    name: "Mac-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
+      CONCURRENCY: push-macos-x64-${{ github.ref_name }}
+      PLATFORM: macos-x64
     secrets: inherit
 
-  build-rerun-cli-and-upload-macos-arm:
+  build-rerun-cli-and-upload-macos-arm64:
     needs: [checks]
-    name: "Mac-Arm: Build & Upload rerun-cli"
+    name: "Mac-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}
+      PLATFORM: macos-arm64
     secrets: inherit
 
-  build-rerun-cli-and-upload-windows:
+  build-rerun-cli-and-upload-windows-x64:
     needs: [checks]
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
+      CONCURRENCY: push-windows-x64-${{ github.ref_name }}
+      PLATFORM: windows-x64
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
@@ -305,10 +314,11 @@ jobs:
         build-rerun_c-and-upload-macos-x64,
         build-rerun_c-and-upload-macos-arm64,
         build-rerun_c-and-upload-windows-x64,
-        build-rerun-cli-and-upload-linux,
-        build-rerun-cli-and-upload-macos-intel,
-        build-rerun-cli-and-upload-macos-arm,
-        build-rerun-cli-and-upload-windows,
+        build-rerun-cli-and-upload-linux-x64,
+        build-rerun-cli-and-upload-linux-arm64,
+        build-rerun-cli-and-upload-macos-x64,
+        build-rerun-cli-and-upload-macos-arm64,
+        build-rerun-cli-and-upload-windows-x64,
         bundle-and-upload-rerun_cpp,
       ]
     runs-on: "ubuntu-latest"
