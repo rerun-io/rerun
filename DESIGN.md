@@ -5,7 +5,7 @@ Guidelines for UI design, covering GUI, CLI, documentation, log messages, etc
 #### Sentences
 Short, single-sentence text do NOT end in a period.
 
-Multi-sentece text ALWAYS ends in a period.
+Multi-sentence text ALWAYS ends in a period.
 
 #### Casing
 We prefer normal casing, and avoid Title Casing.
