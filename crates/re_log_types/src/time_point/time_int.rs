@@ -1,13 +1,16 @@
-use crate::time::{Duration, Time};
+use crate::{time::Time, Duration, NonMinI64, TryFromIntError};
 
-/// A 64-bit number describing either nanoseconds OR sequence numbers.
+/// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 ///
 /// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeInt(pub(crate) i64);
+pub struct TimeInt(pub(crate) Option<NonMinI64>);
+
+static_assertions::assert_eq_size!(TimeInt, i64);
+static_assertions::assert_eq_align!(TimeInt, i64);
 
 impl re_types_core::SizeBytes for TimeInt {
     #[inline]
@@ -16,84 +19,165 @@ impl re_types_core::SizeBytes for TimeInt {
     }
 }
 
+impl std::fmt::Debug for TimeInt {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(NonMinI64::MIN) => f
+                .debug_tuple("TimeInt::MIN")
+                .field(&NonMinI64::MIN)
+                .finish(),
+            Some(NonMinI64::MAX) => f
+                .debug_tuple("TimeInt::MAX")
+                .field(&NonMinI64::MAX)
+                .finish(),
+            Some(t) => f.debug_tuple("TimeInt").field(&t).finish(),
+            None => f.debug_tuple("TimeInt::STATIC").finish(),
+        }
+    }
+}
+
+impl PartialOrd for TimeInt {
+    #[inline]
+    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl Ord for TimeInt {
+    #[inline]
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        match (self.0, rhs.0) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Less,
+            (Some(_), None) => std::cmp::Ordering::Greater,
+            (Some(lhs), Some(rhs)) => lhs.cmp(&rhs),
+        }
+    }
+}
+
 impl TimeInt {
-    /// Special value used to represent static data in the time panel.
+    /// Hack.
+    ///
+    /// Special value used to represent timeless data in the time panel.
     ///
     /// The reason we don't use i64::MIN is because in the time panel we need
-    /// to be able to pan to before the [`TimeInt::BEGINNING`], and so we need
+    /// to be able to pan to before the [`TimeInt::MIN`], and so we need
     /// a bit of leeway.
     //
-    // TODO(#5264): remove this once the timeless
+    // TODO(#5264): remove this once we migrate to the new static UI
     #[doc(hidden)]
-    pub const STATIC_TIME_PANEL: Self = Self(i64::MIN / 2);
+    pub const MIN_TIME_PANEL: Self = Self(NonMinI64::new(i64::MIN / 2));
 
-    // TODO(#4832): `TimeInt::BEGINNING` vs. `TimeInt::MIN` vs. `Option<TimeInt>`…
-    pub const MIN: Self = Self(i64::MIN);
-    pub const MAX: Self = Self(i64::MAX);
+    /// Special value used to represent static data.
+    ///
+    /// It is illegal to create a [`TimeInt`] with that value in a temporal context.
+    ///
+    /// SDK users cannot log data at that timestamp explicitly, the only way to do so is to use
+    /// the timeless APIs.
+    pub const STATIC: Self = Self(None);
 
-    /// For time timelines.
+    /// Value used to represent the minimal temporal value a [`TimeInt`] can hold.
+    ///
+    /// This is _not_ `i64::MIN`, as that is a special value reserved as a marker for static
+    /// data (see [`Self::STATIC`]).
+    pub const MIN: Self = Self(Some(NonMinI64::MIN));
+
+    /// Value used to represent the maximum temporal value a [`TimeInt`] can hold.
+    pub const MAX: Self = Self(Some(NonMinI64::MAX));
+
+    pub const ZERO: Self = Self(Some(NonMinI64::ZERO));
+
+    pub const ONE: Self = Self(Some(NonMinI64::ONE));
+
     #[inline]
-    pub fn from_nanos(nanos: i64) -> Self {
-        Self(nanos)
+    pub fn is_static(&self) -> bool {
+        *self == Self::STATIC
+    }
+
+    /// Creates a new temporal [`TimeInt`].
+    ///
+    /// If `time` is `i64::MIN`, this will return [`TimeInt::MIN`].
+    ///
+    /// This can't return [`TimeInt::STATIC`], ever.
+    #[inline]
+    pub fn new_temporal(time: i64) -> TimeInt {
+        NonMinI64::new(time).map_or(Self::MIN, |t| Self(Some(t)))
     }
 
     /// For time timelines.
     #[inline]
-    pub fn from_milliseconds(millis: i64) -> Self {
-        Self::from_nanos(millis * 1_000_000)
+    pub fn from_nanos(nanos: NonMinI64) -> Self {
+        Self(Some(nanos))
     }
 
     /// For time timelines.
     #[inline]
-    pub fn from_seconds(seconds: i64) -> Self {
-        Self::from_nanos(seconds.saturating_mul(1_000_000_000))
+    pub fn from_milliseconds(millis: NonMinI64) -> Self {
+        // Soundness: we cannot hit the min value with a saturing positive multiplication.
+        Self(NonMinI64::new(millis.get().saturating_mul(1_000_000)))
+    }
+
+    /// For time timelines.
+    #[inline]
+    pub fn from_seconds(seconds: NonMinI64) -> Self {
+        // Soundness: we cannot hit the min value with a saturing positive multiplication.
+        Self(NonMinI64::new(seconds.get().saturating_mul(1_000_000_000)))
     }
 
     /// For sequence timelines.
     #[inline]
-    pub fn from_sequence(sequence: i64) -> Self {
-        Self(sequence)
+    pub fn from_sequence(sequence: NonMinI64) -> Self {
+        Self(Some(sequence))
     }
 
+    /// Returns `i64::MIN` for [`Self::STATIC`].
     #[inline]
     pub fn as_i64(&self) -> i64 {
-        self.0
+        match self.0 {
+            Some(t) => t.get(),
+            None => i64::MIN,
+        }
     }
 
-    #[inline]
-    pub fn as_f32(&self) -> f32 {
-        self.0 as _
-    }
-
+    /// Returns `f64::MIN` for [`Self::STATIC`].
     #[inline]
     pub fn as_f64(&self) -> f64 {
-        self.0 as _
-    }
-
-    #[inline]
-    pub fn abs(&self) -> Self {
-        Self(self.0.saturating_abs())
+        match self.0 {
+            Some(t) => t.get() as _,
+            None => f64::MIN,
+        }
     }
 }
 
-impl From<i64> for TimeInt {
+impl TryFrom<i64> for TimeInt {
+    type Error = TryFromIntError;
+
     #[inline]
-    fn from(seq: i64) -> Self {
-        Self(seq)
+    fn try_from(t: i64) -> Result<Self, Self::Error> {
+        let Some(t) = NonMinI64::new(t) else {
+            return Err(TryFromIntError);
+        };
+        Ok(Self(Some(t)))
     }
 }
 
-impl From<Duration> for TimeInt {
+impl From<NonMinI64> for TimeInt {
     #[inline]
-    fn from(duration: Duration) -> Self {
-        Self(duration.as_nanos())
+    fn from(seq: NonMinI64) -> Self {
+        Self(Some(seq))
     }
 }
 
-impl From<Time> for TimeInt {
+impl TryFrom<Time> for TimeInt {
+    type Error = TryFromIntError;
+
     #[inline]
-    fn from(time: Time) -> Self {
-        Self(time.nanos_since_epoch())
+    fn try_from(t: Time) -> Result<Self, Self::Error> {
+        let Some(t) = NonMinI64::new(t.nanos_since_epoch()) else {
+            return Err(TryFromIntError);
+        };
+        Ok(Self(Some(t)))
     }
 }
 
@@ -111,21 +195,19 @@ impl From<TimeInt> for Duration {
     }
 }
 
-impl std::ops::Neg for TimeInt {
-    type Output = Self;
-
-    #[inline]
-    fn neg(self) -> Self::Output {
-        Self(self.0.saturating_neg())
-    }
-}
-
 impl std::ops::Add for TimeInt {
     type Output = Self;
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0.saturating_add(rhs.0))
+        match (self.0, rhs.0) {
+            // temporal + temporal = temporal
+            (Some(lhs), Some(rhs)) => Self(Some(
+                NonMinI64::new(lhs.get().saturating_add(rhs.get())).unwrap_or(NonMinI64::MIN),
+            )),
+            // static + anything = static
+            _ => Self(None),
+        }
     }
 }
 
@@ -134,30 +216,13 @@ impl std::ops::Sub for TimeInt {
 
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0.saturating_sub(rhs.0))
-    }
-}
-
-impl std::ops::AddAssign for TimeInt {
-    #[inline]
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-impl std::ops::SubAssign for TimeInt {
-    #[inline]
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
-
-impl std::iter::Sum for TimeInt {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        let mut sum = TimeInt(0);
-        for item in iter {
-            sum += item;
+        match (self.0, rhs.0) {
+            // temporal + temporal = temporal
+            (Some(lhs), Some(rhs)) => Self(Some(
+                NonMinI64::new(lhs.get().saturating_sub(rhs.get())).unwrap_or(NonMinI64::MIN),
+            )),
+            // static + anything = static
+            _ => Self(None),
         }
-        sum
     }
 }

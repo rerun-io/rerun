@@ -1,5 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
+mod non_min_i64;
 mod time_int;
 mod timeline;
 
@@ -9,6 +10,7 @@ use crate::{
 };
 
 // Re-exports
+pub use non_min_i64::{NonMinI64, TryFromIntError};
 pub use time_int::TimeInt;
 pub use timeline::{Timeline, TimelineName};
 
@@ -30,9 +32,11 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 }
 
 impl TimePoint {
-    /// Logging to this time means the data will show upp in all timelines,
-    /// past and future. The time will be [`TimeInt::BEGINNING`], meaning it will
-    /// always be in range for any time query.
+    /// Logging to this time means the data will show up in all timelines, past and future.
+    ///
+    /// The time will be [`TimeInt::MIN`], meaning it will always be in range for any time query.
+    //
+    // TODO(#5264): rework this when we migrate away from the legacy timeless model
     pub fn timeless() -> Self {
         Self::default()
     }
@@ -96,17 +100,7 @@ impl TimePoint {
 impl re_types_core::SizeBytes for TimePoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        type K = Timeline;
-        type V = TimeInt;
-
-        // NOTE: This is only here to make sure this method fails to compile if the inner type
-        // changes, as the following size computation assumes POD types.
-        let inner: &BTreeMap<K, V> = &self.0;
-
-        let keys_size_bytes = std::mem::size_of::<K>() * inner.len();
-        let values_size_bytes = std::mem::size_of::<V>() * inner.len();
-
-        (keys_size_bytes + values_size_bytes) as u64
+        self.0.heap_size_bytes()
     }
 }
 
@@ -132,15 +126,15 @@ impl TimeType {
     }
 
     pub fn format(&self, time_int: TimeInt, time_zone_for_timestamps: TimeZone) -> String {
-        if time_int <= TimeInt::STATIC_TIME_PANEL {
-            "-∞".into()
-        } else if time_int >= TimeInt::MAX {
-            "+∞".into()
-        } else {
-            match self {
+        match time_int {
+            TimeInt::STATIC => "<static>".into(),
+            // TODO(#5264): remove time panel hack once we migrate to the new static UI
+            TimeInt::MIN | TimeInt::MIN_TIME_PANEL => "-∞".into(),
+            TimeInt::MAX => "+∞".into(),
+            _ => match self {
                 Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
-                Self::Sequence => format!("#{}", time_int.0),
-            }
+                Self::Sequence => format!("#{}", time_int.as_i64()),
+            },
         }
     }
 
