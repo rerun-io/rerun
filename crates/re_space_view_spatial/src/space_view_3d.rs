@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::EntityPath;
 use re_space_view::query_space_view_sub_archetype;
 use re_types::{
     blueprint::{archetypes::Background3D, components::Background3DKind},
@@ -220,7 +220,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
                         //
                         // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
                         // (e.g. this also has a camera or a `disconnect` logged there)
-                        let mut roots = subspace
+                        let mut origins = subspace
                             .heuristic_hints
                             .iter()
                             .filter(|(path, hint)| {
@@ -232,18 +232,15 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
                         // If there's no view coordinates or there are still some entities not covered,
                         // create a view at the subspace origin.
-                        if !roots.iter().contains(&subspace.origin)
+                        if !origins.iter().contains(&subspace.origin)
                             && indicated_entities
                                 .intersection(&subspace.entities)
-                                .any(|e| roots.iter().all(|root| !e.starts_with(root)))
+                                .any(|e| origins.iter().all(|origin| !e.starts_with(origin)))
                         {
-                            roots.push(subspace.origin.clone());
+                            origins.push(subspace.origin.clone());
                         }
 
-                        Some(roots.into_iter().map(|root| RecommendedSpaceView {
-                            query_filter: EntityPathFilter::subtree_entity_filter(&root),
-                            root,
-                        }))
+                        Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
                     }
                 })
                 .flatten()

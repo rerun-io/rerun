@@ -4,7 +4,7 @@ use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
-use re_viewer_context::{Item, SpaceViewClassIdentifier};
+use re_viewer_context::{Item, RecommendedSpaceView, SpaceViewClassIdentifier};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
 
@@ -149,15 +149,20 @@ fn create_space_view_for_selected_entities(
 
     let mut filter = EntityPathFilter::default();
 
-    for path in entities_of_interest {
-        filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
-    }
-
     let target_container_id = ctx
         .clicked_item_enclosing_container_id_and_position()
         .map(|(id, _)| id);
 
-    let space_view = SpaceViewBlueprint::new(identifier, &origin, filter);
+    // TODO(jleibs): Take the `$origin` into account here
+    for path in entities_of_interest {
+        filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
+    }
+    let recommended = RecommendedSpaceView {
+        origin,
+        query_filter: filter,
+    };
+
+    let space_view = SpaceViewBlueprint::new(identifier, recommended);
 
     let new_space_view = ctx.viewport_blueprint.add_space_views(
         std::iter::once(space_view),

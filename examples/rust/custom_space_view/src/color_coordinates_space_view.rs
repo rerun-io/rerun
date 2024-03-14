@@ -2,7 +2,7 @@ use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
     re_entity_db::{EntityProperties, InstancePath},
-    re_log_types::{EntityPath, EntityPathFilter},
+    re_log_types::EntityPath,
     re_ui,
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
@@ -115,10 +115,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
             SpaceViewSpawnHeuristics::default()
         } else {
             SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
+                recommended_space_views: vec![RecommendedSpaceView::root()],
             }
         }
     }

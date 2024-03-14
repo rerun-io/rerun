@@ -1,4 +1,3 @@
-use re_log_types::EntityPathFilter;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, RecommendedSpaceView, SpaceViewClass,
     SpaceViewSpawnHeuristics, ViewerContext, VisualizerSystem,
@@ -44,10 +43,7 @@ where
             {
                 None
             } else {
-                Some(RecommendedSpaceView {
-                    root: entity.clone(),
-                    query_filter: EntityPathFilter::single_entity_filter(entity),
-                })
+                Some(RecommendedSpaceView::new_single_entity(entity.clone()))
             }
         })
         .collect();
