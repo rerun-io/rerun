@@ -64,7 +64,7 @@ pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
 // TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
 pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 
-pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rrd"];
+pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 // TODO(#4555): Add catch-all builtin `DataLoader` for text files
 pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
