@@ -19,9 +19,43 @@ __all__ = ["SpaceViewContents"]
 
 @define(str=False, repr=False, init=False)
 class SpaceViewContents(Archetype):
-    """**Archetype**: The contents of a `SpaceView`."""
+    """
+    **Archetype**: The contents of a `SpaceView`.
 
-    def __init__(self: Any, query: datatypes.Utf8Like):
+    The contents are found by combining a collection of `QueryExpression`s.
+
+    ```diff
+    + /world/**           # add everything…
+    - /world/roads/**     # …but remove all roads…
+    + /world/roads/main   # …but show main road
+    ```
+
+    If there is multiple matching rules, the most specific rule wins.
+    If there are multiple rules of the same specificity, the last one wins.
+    If no rules match, the path is excluded.
+
+    The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+    (`/world/**` matches both `/world` and `/world/car/driver`).
+    Other uses of `*` are not (yet) supported.
+
+    Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+    This means the last matching rule is also the most specific one.  For instance:
+    ```diff
+    + /world/**
+    - /world
+    - /world/car/**
+    + /world/car/driver
+    ```
+
+    The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+    The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+    The last rule matching `/world` is `- /world`, so it is excluded.
+    The last rule matching `/world/house` is `+ /world/**`, so it is included.
+
+    Unstable. Used for the ongoing blueprint experimentations.
+    """
+
+    def __init__(self: Any, query: datatypes.Utf8ArrayLike):
         """
         Create a new instance of the SpaceViewContents archetype.
 

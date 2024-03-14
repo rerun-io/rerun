@@ -22,12 +22,44 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The contents of a `SpaceView`.
+///
+/// The contents are found by combining a collection of `QueryExpression`s.
+///
+/// ```diff
+/// + /world/**           # add everything…
+/// - /world/roads/**     # …but remove all roads…
+/// + /world/roads/main   # …but show main road
+/// ```
+///
+/// If there is multiple matching rules, the most specific rule wins.
+/// If there are multiple rules of the same specificity, the last one wins.
+/// If no rules match, the path is excluded.
+///
+/// The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
+/// (`/world/**` matches both `/world` and `/world/car/driver`).
+/// Other uses of `*` are not (yet) supported.
+///
+/// Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
+/// This means the last matching rule is also the most specific one.  For instance:
+/// ```diff
+/// + /world/**
+/// - /world
+/// - /world/car/**
+/// + /world/car/driver
+/// ```
+///
+/// The last rule matching `/world/car/driver` is `+ /world/car/driver`, so it is included.
+/// The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
+/// The last rule matching `/world` is `- /world`, so it is excluded.
+/// The last rule matching `/world/house` is `+ /world/**`, so it is included.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Default)]
 pub struct SpaceViewContents {
     /// The `QueryExpression` that populates the contents for the `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
-    pub query: crate::blueprint::components::QueryExpression,
+    pub query: Vec<crate::blueprint::components::QueryExpression>,
 }
 
 impl ::re_types_core::SizeBytes for SpaceViewContents {
@@ -38,7 +70,7 @@ impl ::re_types_core::SizeBytes for SpaceViewContents {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::components::QueryExpression>::is_pod()
+        <Vec<crate::blueprint::components::QueryExpression>>::is_pod()
     }
 }
 
@@ -119,9 +151,8 @@ impl ::re_types_core::Archetype for SpaceViewContents {
             <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
                 .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
         };
         Ok(Self { query })
@@ -143,14 +174,16 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
 
     #[inline]
     fn num_instances(&self) -> usize {
-        1
+        self.query.len()
     }
 }
 
 impl SpaceViewContents {
-    pub fn new(query: impl Into<crate::blueprint::components::QueryExpression>) -> Self {
+    pub fn new(
+        query: impl IntoIterator<Item = impl Into<crate::blueprint::components::QueryExpression>>,
+    ) -> Self {
         Self {
-            query: query.into(),
+            query: query.into_iter().map(Into::into).collect(),
         }
     }
 }
