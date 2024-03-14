@@ -65,7 +65,7 @@ def script_setup(
     args: Namespace,
     application_id: str,
     recording_id: str | UUID | None = None,
-    blueprint: rr.blueprint.Blueprint | None = None,
+    blueprint: rr.blueprint.BlueprintLike | None = None,
 ) -> RecordingStream:
     """
     Run common Rerun script setup actions. Connect to the viewer if necessary.
@@ -87,7 +87,7 @@ def script_setup(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
-    blueprint : Optional[rr.blueprint.Blueprint]
+    blueprint : Optional[rr.blueprint.BlueprintLike]
         An optional blueprint to use for the viewer.
 
     """
