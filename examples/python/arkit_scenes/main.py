@@ -9,7 +9,6 @@ from typing import Any, Tuple
 
 import cv2
 import numpy as np
-import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rbl
 import trimesh
@@ -94,7 +93,7 @@ def load_json(js_path: Path) -> dict[str, Any]:
     return json_data
 
 
-def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.float64], list[str], list[Color]]:
+def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
     """
     Logs annotated oriented bounding boxes to Rerun.
 
