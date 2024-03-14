@@ -263,7 +263,7 @@ pub fn visible_history_ui(
         }
     }
 
-    let markdown = format!("# visible time range\n
+    let markdown = format!("# Visible time range\n
 This feature controls the time range used to display data in the Space View.
 
 The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
