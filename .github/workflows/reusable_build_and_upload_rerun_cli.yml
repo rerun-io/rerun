@@ -114,7 +114,7 @@ jobs:
   build-rerun-cli:
     name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
 
-    needs: [ set-config ]
+    needs: [set-config]
 
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
