@@ -44,6 +44,8 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
             continue
 
         blob = bucket.get_blob(f"commit/{git_hash}/rerun_c/{src}")
+        if blob is None:
+            raise RuntimeError(f"Blob not found: commit/{git_hash}/rerun_c/{src}")
         with open(f"{target_dir}/{dst}", "wb") as f:
             logging.info(f"Copying {blob.path} to {target_dir}/{dst}")
             blob.download_to_file(f)

@@ -21,9 +21,10 @@ on:
   workflow_dispatch:
     inputs:
       ADHOC_NAME:
-        required: true
+        required: false
         type: string
         description: "Name of the adhoc build, used for upload directory"
+        default: ""
       PLATFORM:
         type: choice
         options:
