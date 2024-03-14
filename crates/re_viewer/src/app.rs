@@ -443,18 +443,24 @@ impl App {
     ) {
         match cmd {
             UICommand::SaveRecording => {
-                save_recording(self, store_context, None);
+                if let Err(err) = save_recording(self, store_context, None) {
+                    re_log::error!("Failed to save recording: {err}");
+                }
             }
             UICommand::SaveRecordingSelection => {
-                save_recording(
+                if let Err(err) = save_recording(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
-                );
+                ) {
+                    re_log::error!("Failed to save recording: {err}");
+                }
             }
 
             UICommand::SaveBlueprint => {
-                save_blueprint(self, store_context);
+                if let Err(err) = save_blueprint(self, store_context) {
+                    re_log::error!("Failed to save blueprint: {err}");
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1531,11 +1537,10 @@ fn save_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
-) {
+) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().and_then(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
-        re_log::error!("No recording data to save");
-        return;
+        anyhow::bail!("No recording data to save");
     };
 
     let file_name = "data.rrd";
@@ -1552,13 +1557,12 @@ fn save_recording(
         title.to_owned(),
         entity_db,
         loop_selection,
-    );
+    )
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
+fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
-        re_log::error!("No blueprint to save");
-        return;
+        anyhow::bail!("No blueprint to save");
     };
 
     let entity_db = store_context.blueprint;
@@ -1568,7 +1572,7 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
         crate::saving::sanitize_app_id(&store_context.app_id)
     );
     let title = "Save blueprint";
-    save_entity_db(app, file_name, title.to_owned(), entity_db, None);
+    save_entity_db(app, file_name, title.to_owned(), entity_db, None)
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
@@ -1578,19 +1582,13 @@ fn save_entity_db(
     title: String,
     entity_db: &EntityDb,
     loop_selection: Option<(re_log_types::Timeline, re_log_types::TimeRangeF)>,
-) {
+) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        let messages = match entity_db.to_messages(loop_selection) {
-            Ok(messages) => messages,
-            Err(err) => {
-                re_log::error!("File saving failed: {err}");
-                return;
-            }
-        };
+        let messages = entity_db.to_messages(loop_selection)?;
 
         wasm_bindgen_futures::spawn_local(async move {
             if let Err(err) = async_save_dialog(&file_name, &title, &messages).await {
@@ -1610,22 +1608,15 @@ fn save_entity_db(
                 .save_file()
         };
         if let Some(path) = path {
-            let messages = match entity_db.to_messages(loop_selection) {
-                Ok(messages) => messages,
-                Err(err) => {
-                    re_log::error!("File saving failed: {err}");
-                    return;
-                }
-            };
-            if let Err(err) = app.background_tasks.spawn_file_saver(move || {
+            let messages = entity_db.to_messages(loop_selection)?;
+            app.background_tasks.spawn_file_saver(move || {
                 crate::saving::encode_to_file(&path, messages.iter())?;
                 Ok(path)
-            }) {
-                // NOTE: Can only happen if saving through the command palette.
-                re_log::error!("File saving failed: {err}");
-            }
+            })?;
         }
     }
+
+    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]
