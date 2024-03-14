@@ -1,10 +1,8 @@
-#[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
-fn sanitize_app_id(app_id: &ApplicationId) -> String {
+pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
     let output = app_id.0.to_lowercase();
     output.replace(
         |c: char| !matches!(c, '0'..='9' | 'a'..='z' | '.' | '_' | '+' | '(' | ')' | '[' | ']'),
@@ -12,10 +10,10 @@ fn sanitize_app_id(app_id: &ApplicationId) -> String {
     )
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Determine the default path for a blueprint based on its `ApplicationId`
 /// This path should be deterministic and unique.
 // TODO(#2579): Implement equivalent for web
+#[cfg(not(target_arch = "wasm32"))]
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
     use anyhow::Context;
 
