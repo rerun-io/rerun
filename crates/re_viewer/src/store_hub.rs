@@ -193,12 +193,12 @@ impl StoreHub {
         }
     }
 
-    /// Insert a new recording into the [`StoreHub`].
+    /// Insert a new recording or blueprint into the [`StoreHub`].
     ///
     /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
     /// if needed.
-    pub fn insert_recording(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert_recording(entity_db);
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
+        self.store_bundle.insert_entity_db(entity_db);
     }
 
     /// Mutable access to a [`EntityDb`] by id
@@ -271,9 +271,19 @@ impl StoreHub {
             .and_then(|id| self.store_bundle.recording(id))
     }
 
-    /// Check whether the [`StoreHub`] contains the referenced recording
-    pub fn contains_recording(&self, id: &StoreId) -> bool {
-        self.store_bundle.contains_recording(id)
+    /// Check whether the [`StoreHub`] contains the referenced store (recording or blueprint).
+    pub fn contains_store(&self, id: &StoreId) -> bool {
+        self.store_bundle.contains_store(id)
+    }
+
+    pub fn entity_db_from_channel_source(
+        &self,
+        source: &re_smart_channel::SmartChannelSource,
+    ) -> Option<&EntityDb> {
+        self.store_bundle
+            .entity_dbs
+            .values()
+            .find(|db| db.data_source.as_ref() == Some(source))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
@@ -554,8 +564,7 @@ impl StoreBundle {
 
     // --
 
-    pub fn contains_recording(&self, id: &StoreId) -> bool {
-        debug_assert_eq!(id.kind, StoreKind::Recording);
+    pub fn contains_store(&self, id: &StoreId) -> bool {
         self.entity_dbs.contains_key(id)
     }
 
@@ -577,8 +586,7 @@ impl StoreBundle {
             .or_insert_with(|| EntityDb::new(id.clone()))
     }
 
-    pub fn insert_recording(&mut self, entity_db: EntityDb) {
-        debug_assert_eq!(entity_db.store_kind(), StoreKind::Recording);
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
         self.entity_dbs
             .insert(entity_db.store_id().clone(), entity_db);
     }

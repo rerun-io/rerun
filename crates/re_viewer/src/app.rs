@@ -366,7 +366,7 @@ impl App {
 
             SystemCommand::LoadStoreDb(entity_db) => {
                 let store_id = entity_db.store_id().clone();
-                store_hub.insert_recording(entity_db);
+                store_hub.insert_entity_db(entity_db);
                 store_hub.set_recording_id(store_id);
             }
 
@@ -934,7 +934,34 @@ impl App {
                     if let Some(err) = err {
                         re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
-                        re_log::debug!("Data source {} has left", msg.source);
+                        re_log::debug!("Data source {} has finished", msg.source);
+
+                        // This could be the signal that we finished loading a blueprint.
+                        // In that case, we want to make it the default.
+
+                        if let Some(entity_db) =
+                            store_hub.entity_db_from_channel_source(&channel_source)
+                        {
+                            if let Some(store_info) = entity_db.store_info() {
+                                match store_info.store_id.kind {
+                                    StoreKind::Recording => {
+                                        // Recordings become active as soon as we start streaming them.
+                                    }
+                                    StoreKind::Blueprint => {
+                                        // We wait with activaing blueprints until they are fully loaded,
+                                        // so that we don't run heuristics on half-loaded blueprints.
+                                        re_log::debug!(
+                                            "Activating newly loaded blueprint: {:?}",
+                                            store_info
+                                        );
+                                        store_hub.set_blueprint_for_app_id(
+                                            entity_db.store_id().clone(),
+                                            store_info.application_id.clone(),
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     }
                     continue;
                 }
@@ -952,8 +979,8 @@ impl App {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
 
-            // Set the recording-id after potentially creating the store in the
-            // hub. This ordering is important because the `StoreHub` internally
+            // Set the recording-id after potentially creating the store in the hub.
+            // This ordering is important because the `StoreHub` internally
             // updates the app-id when changing the recording.
             if let LogMsg::SetStoreInfo(msg) = &msg {
                 match msg.info.store_id.kind {
@@ -961,19 +988,15 @@ impl App {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
                         store_hub.set_recording_id(store_id.clone());
                     }
-
                     StoreKind::Blueprint => {
-                        re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        store_hub.set_blueprint_for_app_id(
-                            store_id.clone(),
-                            msg.info.application_id.clone(),
-                        );
+                        // We wait with activaing blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
                     }
                 }
             }
 
             // Do analytics after ingesting the new message,
-            // because thats when the `entity_db.store_info` is set,
+            // because that's when the `entity_db.store_info` is set,
             // which we use in the analytics call.
             let entity_db = store_hub.entity_db_mut(store_id);
             let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
