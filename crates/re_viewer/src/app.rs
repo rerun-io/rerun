@@ -1561,16 +1561,26 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
         anyhow::bail!("No blueprint to save");
     };
 
-    let entity_db = store_context.blueprint;
+    re_tracing::profile_function!();
+
+    // We change the recording id to a new random one,
+    // otherwise when saving and loading a blueprint file, we can end up
+    // in a situation where the store_id we're loading is the same as the currently active one,
+    // which mean they will merge in a strange way.
+    // This is also related to https://github.com/rerun-io/rerun/issues/5295
+    let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
+    let mut messages = store_context.blueprint.to_messages(None)?;
+    for message in &mut messages {
+        message.set_store_id(new_store_id.clone());
+    }
 
     let file_name = format!(
         "{}.rbl",
         crate::saving::sanitize_app_id(&store_context.app_id)
     );
     let title = "Save blueprint";
-    save_entity_db(app, file_name, title.to_owned(), || {
-        entity_db.to_messages(None)
-    })
+
+    save_entity_db(app, file_name, title.to_owned(), || Ok(messages))
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native

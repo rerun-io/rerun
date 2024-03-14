@@ -227,6 +227,17 @@ impl LogMsg {
             Self::ArrowMsg(store_id, _) => store_id,
         }
     }
+
+    pub fn set_store_id(&mut self, new_store_id: StoreId) {
+        match self {
+            LogMsg::SetStoreInfo(store_info) => {
+                store_info.info.store_id = new_store_id;
+            }
+            LogMsg::ArrowMsg(msg_store_id, _) => {
+                *msg_store_id = new_store_id;
+            }
+        }
+    }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
