@@ -46,8 +46,10 @@ table SpaceViewContents (
 )  {
     // --- Required ---
 
+    // --- Optional ---
+
     /// The `QueryExpression` that populates the contents for the `SpaceView`.
     ///
     /// They determine which entities are part of the spaceview.
-    query: [rerun.blueprint.components.QueryExpression] ("attr.rerun.component_required", order: 1000);
+    query: [rerun.blueprint.components.QueryExpression] ("attr.rerun.component_optional", order: 1000);
 }

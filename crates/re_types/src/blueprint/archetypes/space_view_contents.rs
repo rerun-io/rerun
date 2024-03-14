@@ -74,20 +74,25 @@ impl ::re_types_core::SizeBytes for SpaceViewContents {
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.QueryExpression".into()]);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewContentsIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.blueprint.components.QueryExpression".into(),
+            "rerun.components.InstanceKey".into(),
+        ]
+    });
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.QueryExpression".into(),
             "rerun.blueprint.components.SpaceViewContentsIndicator".into(),
+            "rerun.blueprint.components.QueryExpression".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
@@ -174,7 +179,7 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
 
     #[inline]
     fn num_instances(&self) -> usize {
-        self.query.len()
+        0
     }
 }
 
