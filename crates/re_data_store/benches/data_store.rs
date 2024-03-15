@@ -304,7 +304,6 @@ fn range(c: &mut Criterion) {
                 b.iter(|| {
                     let rows = range_data(&store, [LargeStruct::name()]);
                     for (cur_time, (time, cells)) in rows.enumerate() {
-                        let time = time.unwrap();
                         assert_eq!(cur_time as i64, time.as_i64());
 
                         let large_structs = cells[0]
@@ -339,7 +338,6 @@ fn gc(c: &mut Criterion) {
             let mut store = store.clone();
             let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                 target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
-                gc_timeless: false,
                 protect_latest: 0,
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
@@ -364,7 +362,6 @@ fn gc(c: &mut Criterion) {
                 let mut store = store.clone();
                 let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                     target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
-                    gc_timeless: false,
                     protect_latest: 0,
                     purge_empty_tables: false,
                     dont_protect: Default::default(),
@@ -454,22 +451,22 @@ fn latest_data_at<const N: usize>(
 ) -> [Option<DataCell>; N] {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let timeline_query = LatestAtQuery::new(timeline_frame_nr, NUM_ROWS / 2);
-    let ent_path = EntityPath::from("large_structs");
+    let entity_path = EntityPath::from("large_structs");
 
     store
-        .latest_at(&timeline_query, &ent_path, primary, secondaries)
+        .latest_at(&timeline_query, &entity_path, primary, secondaries)
         .map_or_else(|| [(); N].map(|_| None), |(_, _, cells)| cells)
 }
 
 fn range_data<const N: usize>(
     store: &DataStore,
     components: [ComponentName; N],
-) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
+) -> impl Iterator<Item = (TimeInt, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(TimeInt::ZERO, NUM_ROWS));
-    let ent_path = EntityPath::from("large_structs");
+    let entity_path = EntityPath::from("large_structs");
 
     store
-        .range(&query, &ent_path, components)
+        .range(&query, &entity_path, components)
         .map(move |(time, _, cells)| (time, cells))
 }

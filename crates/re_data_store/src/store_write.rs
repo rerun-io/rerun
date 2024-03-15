@@ -1,6 +1,6 @@
 use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
-use nohash_hasher::{IntMap, IntSet};
+use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
 use re_log::{debug, trace};
@@ -13,9 +13,8 @@ use re_types_core::{
 };
 
 use crate::{
-    store::PersistentIndexedTableInner, DataStore, DataStoreConfig, IndexedBucket,
-    IndexedBucketInner, IndexedTable, MetadataRegistry, PersistentIndexedTable, StoreDiff,
-    StoreDiffKind, StoreEvent,
+    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
+    StaticCell, StaticTable, StoreDiff, StoreDiffKind, StoreEvent,
 };
 
 // --- Data store ---
@@ -82,39 +81,15 @@ impl DataStore {
 
         re_tracing::profile_function!();
 
-        // Update type registry and do typechecking if enabled
+        // Update type registry.
         // TODO(#1809): not only this should be replaced by a central arrow runtime registry, it should
         // also be implemented as a changelog subscriber.
-        if self.config.enable_typecheck {
-            for cell in row.cells().iter() {
-                use std::collections::hash_map::Entry;
-                match self.type_registry.entry(cell.component_name()) {
-                    Entry::Occupied(entry) => {
-                        // NOTE: Don't care about extensions until the migration is over (arrow2-convert
-                        // issues).
-                        let expected = entry.get().to_logical_type().clone();
-                        let got = cell.datatype().to_logical_type().clone();
-                        if expected != got {
-                            return Err(WriteError::TypeCheck {
-                                component: cell.component_name(),
-                                expected,
-                                got,
-                            });
-                        }
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(cell.datatype().clone());
-                    }
-                }
-            }
-        } else {
-            for cell in row.cells().iter() {
-                self.type_registry
-                    .insert(cell.component_name(), cell.datatype().clone());
-            }
+        for cell in row.cells().iter() {
+            self.type_registry
+                .insert(cell.component_name(), cell.datatype().clone());
         }
 
-        let ent_path_hash = entity_path.hash();
+        let entity_path_hash = entity_path.hash();
         let num_instances = *num_instances;
 
         trace!(
@@ -124,7 +99,7 @@ impl DataStore {
             timelines = ?timepoint.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format_utc(*time)))
                 .collect::<Vec<_>>(),
-            entity = %entity_path,
+            %entity_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
             "insertion started…"
         );
@@ -162,22 +137,58 @@ impl DataStore {
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
 
-        if timepoint.is_static() {
-            let index = self
-                .timeless_tables
-                .entry(ent_path_hash)
-                .or_insert_with(|| {
-                    PersistentIndexedTable::new(self.cluster_key, entity_path.clone())
-                });
+        let diff = if timepoint.is_static() {
+            let static_table = self
+                .static_tables
+                .entry(entity_path_hash)
+                .or_insert_with(|| StaticTable::new(self.cluster_key, entity_path.clone()));
 
-            index.insert_row(insert_id, generated_cluster_cell.clone(), row);
+            let cluster_key = self.cluster_key;
+            let cells = row
+                .cells()
+                .iter()
+                .filter(|cell| {
+                    static_table
+                        .cells
+                        .get(&cell.component_name())
+                        // Last-write-wins semantics, where ordering is defined by RowId.
+                        .map_or(true, |static_cell| static_cell.row_id < *row_id)
+                })
+                .collect_vec();
+
+            for cell in cells
+                .iter()
+                // TODO(#5303): We let the cluster key slip through for backwards compatibility with
+                // the legacy instance-key model. This will go away next.
+                .filter(|cell| cell.component_name() != cluster_key)
+            {
+                static_table.cells.insert(
+                    cell.component_name(),
+                    StaticCell {
+                        insert_id,
+                        row_id: *row_id,
+                        num_instances,
+                        cell: (*cell).clone(),
+                        // TODO(#5303): We keep track of cluster keys for each static cell for backwards
+                        // compatibility with the legacy instance-key model. This will go away next.
+                        cluster_key: generated_cluster_cell
+                            .as_ref()
+                            .unwrap_or_else(|| cells[cluster_cell_pos.unwrap()])
+                            .clone(),
+                    },
+                );
+            }
+
+            let mut diff = StoreDiff::addition(*row_id, entity_path.clone());
+            diff.with_cells(cells.into_iter().cloned());
+            diff
         } else {
             for (timeline, time) in timepoint.iter() {
-                let ent_path = entity_path.clone(); // shallow
+                let entity_path = entity_path.clone(); // shallow
                 let index = self
                     .tables
-                    .entry((ent_path_hash, *timeline))
-                    .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
+                    .entry((entity_path_hash, *timeline))
+                    .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, entity_path));
 
                 index.insert_row(
                     &self.config,
@@ -187,11 +198,12 @@ impl DataStore {
                     row,
                 );
             }
-        }
 
-        let mut diff = StoreDiff::addition(*row_id, entity_path.clone());
-        diff.at_timepoint(timepoint.clone())
-            .with_cells(cells.iter().cloned());
+            let mut diff = StoreDiff::addition(*row_id, entity_path.clone());
+            diff.at_timepoint(timepoint.clone())
+                .with_cells(cells.iter().cloned());
+            diff
+        };
 
         // TODO(#4220): should we fire for auto-generated data?
         // if let Some(cell) = generated_cluster_cell {
@@ -288,7 +300,7 @@ impl IndexedTable {
 
         // borrowck workaround
         let timeline = self.timeline;
-        let ent_path = self.ent_path.clone(); // shallow
+        let entity_path = self.entity_path.clone(); // shallow
 
         let (_, bucket) = self.find_bucket_mut(time);
 
@@ -302,7 +314,7 @@ impl IndexedTable {
                     kind = "insert",
                     timeline = %timeline.name(),
                     time = timeline.typ().format_utc(time),
-                    entity = %ent_path,
+                    %entity_path,
                     len_limit = config.indexed_bucket_num_rows,
                     len, len_overflow,
                     new_time_bound = timeline.typ().format_utc(min),
@@ -352,7 +364,7 @@ impl IndexedTable {
                         kind = "insert",
                         timeline = %timeline.name(),
                         time = timeline.typ().format_utc(time),
-                        entity = %ent_path,
+                        %entity_path,
                         len_limit = config.indexed_bucket_num_rows,
                         len, len_overflow,
                         new_time_bound = timeline.typ().format_utc(TimeInt::new_temporal(new_time_bound)),
@@ -403,7 +415,7 @@ impl IndexedTable {
             kind = "insert",
             timeline = %timeline.name(),
             time = timeline.typ().format_utc(time),
-            entity = %ent_path,
+            %entity_path,
             ?components,
             "inserted into indexed tables"
         );
@@ -790,92 +802,4 @@ fn split_time_range_off(
     );
 
     time_range2
-}
-
-// --- Timeless ---
-
-impl PersistentIndexedTable {
-    fn insert_row(
-        &mut self,
-        insert_id: Option<u64>,
-        generated_cluster_cell: Option<DataCell>,
-        row: &DataRow,
-    ) {
-        re_tracing::profile_function!();
-
-        self.inner
-            .write()
-            .insert_row(self.cluster_key, insert_id, generated_cluster_cell, row);
-
-        #[cfg(debug_assertions)]
-        self.sanity_check().unwrap();
-    }
-}
-
-impl PersistentIndexedTableInner {
-    fn insert_row(
-        &mut self,
-        cluster_key: ComponentName,
-        insert_id: Option<u64>,
-        generated_cluster_cell: Option<DataCell>,
-        row: &DataRow,
-    ) {
-        re_tracing::profile_function!();
-
-        let num_rows = self.num_rows() as usize;
-
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted,
-        } = self;
-
-        if let Some(last_row_id) = col_row_id.back() {
-            *is_sorted &= *last_row_id <= row.row_id();
-        }
-
-        let components: IntSet<_> = row.component_names().collect();
-
-        // --- update all control columns ---
-
-        if let Some(insert_id) = insert_id {
-            col_insert_id.push_back(insert_id);
-        }
-        col_row_id.push_back(row.row_id());
-        col_num_instances.push_back(row.num_instances());
-
-        // --- append components to their respective columns (2-way merge) ---
-
-        // insert auto-generated cluster cell if present
-        if let Some(cluster_cell) = generated_cluster_cell {
-            let column = columns
-                .entry(cluster_cell.component_name())
-                .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push_back(Some(cluster_cell.clone()));
-        }
-
-        // 2-way merge, step 1: left-to-right
-        for cell in row.cells().iter() {
-            let column = columns
-                .entry(cell.component_name())
-                .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push_back(Some(cell.clone() /* shallow */));
-        }
-
-        // 2-way merge, step 2: right-to-left
-        //
-        // fill unimpacted secondary indices with null values
-        for (component, column) in &mut *columns {
-            // The cluster key always gets added one way or another, don't try to force fill it!
-            if *component == cluster_key {
-                continue;
-            }
-
-            if !components.contains(component) {
-                column.0.push_back(None);
-            }
-        }
-    }
 }
