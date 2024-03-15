@@ -12,12 +12,10 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewport::VIEWPORT_PATH;
-
-use re_log_types::{DataRow, EntityPathPart, StoreKind};
+use re_log_types::{EntityPathPart, StoreKind};
 use rerun::{
-    log::RowId, sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream,
-    RecordingStreamBuilder, StoreId,
+    sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
+    StoreId,
 };
 
 #[cfg(feature = "web_viewer")]
@@ -189,11 +187,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(start_web_viewer_server, m)?)?;
     m.add_function(wrap_pyfunction!(escape_entity_path_part, m)?)?;
     m.add_function(wrap_pyfunction!(new_entity_path, m)?)?;
-
-    // blueprint
-    m.add_function(wrap_pyfunction!(set_panels, m)?)?;
-    m.add_function(wrap_pyfunction!(add_space_view, m)?)?;
-    m.add_function(wrap_pyfunction!(set_auto_space_views, m)?)?;
 
     Ok(())
 }
@@ -799,126 +792,6 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
 }
 
 // --- Log special ---
-
-#[pyfunction]
-fn set_panels(
-    blueprint_view_expanded: Option<bool>,
-    selection_view_expanded: Option<bool>,
-    timeline_view_expanded: Option<bool>,
-    blueprint: Option<&PyRecordingStream>,
-) {
-    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewer::blueprint::components::PanelView;
-
-    if let Some(expanded) = blueprint_view_expanded {
-        set_panel(PanelView::BLUEPRINT_VIEW_PATH, expanded, blueprint);
-    }
-    if let Some(expanded) = selection_view_expanded {
-        set_panel(PanelView::SELECTION_VIEW_PATH, expanded, blueprint);
-    }
-    if let Some(expanded) = timeline_view_expanded {
-        set_panel(PanelView::TIMELINE_VIEW_PATH, expanded, blueprint);
-    }
-}
-
-fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordingStream>) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else {
-        return;
-    };
-
-    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewer::blueprint::components::PanelView;
-
-    // TODO(jleibs): Validation this is a valid blueprint path?
-    let entity_path = EntityPath::parse_forgiving(entity_path);
-
-    let panel_state = PanelView(is_expanded);
-
-    let row = DataRow::from_cells1(
-        RowId::new(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [panel_state].as_slice(),
-    )
-    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
-
-    // TODO(jleibs) timeless? Something else?
-    let timeless = true;
-    blueprint.record_row(row, !timeless);
-}
-
-#[pyfunction]
-fn add_space_view(
-    _name: &str,
-    _space_view_class: &str,
-    _origin: &str,
-    _entity_paths: Vec<&str>,
-    _blueprint: Option<&PyRecordingStream>,
-) -> PyResult<()> {
-    Err(PyRuntimeError::new_err(
-        "add_space_view is broken until blueprint refactoring is complete: https://github.com/rerun-io/rerun/issues/4167",
-    ))
-
-    /*
-    let Some(blueprint) = get_blueprint_recording(blueprint) else {
-        return;
-    };
-
-    let entity_paths = entity_paths.into_iter().map(|s| s.into()).collect_vec();
-    let mut space_view =
-        SpaceViewBlueprint::new(space_view_class.into(), &origin.into(), entity_paths.iter());
-
-    // Choose the space-view id deterministically from the name; this means the user
-    // can run the application multiple times and get sane behavior.
-    space_view.id = SpaceViewId::hashed_from_str(name);
-
-    space_view.display_name = name.into();
-    space_view.entities_determined_by_user = true;
-
-    let entity_path = space_view.entity_path();
-
-    let space_view = SpaceViewComponent { space_view };
-
-    let row = DataRow::from_cells1(
-        RowId::new(),
-        entity_path,
-        TimePoint::default(),
-        1,
-        [space_view].as_slice(),
-    )
-    .unwrap();
-
-    // TODO(jleibs) timeless? Something else?
-    let timeless = true;
-    blueprint.record_row(row, !timeless);
-    */
-}
-
-#[pyfunction]
-fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
-    let Some(blueprint) = get_blueprint_recording(blueprint) else {
-        return;
-    };
-
-    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-    use re_viewport::blueprint::components::AutoSpaceViews;
-
-    let enable_auto_space = AutoSpaceViews(enabled);
-
-    let row = DataRow::from_cells1(
-        RowId::new(),
-        VIEWPORT_PATH,
-        TimePoint::default(),
-        1,
-        [enable_auto_space].as_slice(),
-    )
-    .unwrap();
-
-    // TODO(jleibs) timeless? Something else?
-    let timeless = true;
-    blueprint.record_row(row, !timeless);
-}
 
 #[pyfunction]
 #[pyo3(signature = (

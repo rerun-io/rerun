@@ -1,4 +1,4 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -6,7 +6,7 @@ use re_entity_db::{
     external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
     EntityPropertyMap, EntityTree,
 };
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, StoreKind};
+use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule};
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
@@ -14,8 +14,8 @@ use re_types::{
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
-    StoreContext, ViewerContext, VisualizableEntities,
+    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
+    SpaceViewId, StoreContext, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -112,7 +112,9 @@ impl SpaceViewContents {
             Default::default()
         });
 
-        let entity_path_filter = EntityPathFilter::parse_forgiving(query.0.as_str());
+        let query = query.iter().map(|qe| qe.0.as_str());
+
+        let entity_path_filter = EntityPathFilter::from_query_expressions(query);
 
         Self {
             blueprint_entity_path,
@@ -130,7 +132,9 @@ impl SpaceViewContents {
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
         ctx.save_blueprint_archetype(
             self.blueprint_entity_path.clone(),
-            &blueprint_archetypes::SpaceViewContents::new(self.entity_path_filter.formatted()),
+            &blueprint_archetypes::SpaceViewContents::new(
+                self.entity_path_filter.iter_expressions(),
+            ),
         );
     }
 
@@ -145,7 +149,10 @@ impl SpaceViewContents {
 
         ctx.save_blueprint_component(
             &self.blueprint_entity_path,
-            &QueryExpression(new_entity_path_filter.formatted().into()),
+            &new_entity_path_filter
+                .iter_expressions()
+                .map(|s| QueryExpression(s.into()))
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -340,7 +347,7 @@ impl DataQueryPropertyResolver<'_> {
             .space_view
             .root_data_result(ctx, query)
             .property_overrides
-            .map(|p| (p.accumulated_properties, p.component_overrides))
+            .map(|p| (p.accumulated_properties, p.resolved_component_overrides))
             .unwrap_or_default();
 
         for prefix in &self.default_stack {
@@ -416,7 +423,7 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
-        recursive_property_overrides: &HashMap<ComponentName, (StoreKind, EntityPath)>,
+        recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated, recursive_property_overrides)) =
@@ -493,7 +500,7 @@ impl DataQueryPropertyResolver<'_> {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
                                     *component,
-                                    (StoreKind::Blueprint, recursive_override_path.clone()),
+                                    OverridePath::blueprint_path(recursive_override_path.clone()),
                                 );
                             }
                         }
@@ -502,7 +509,7 @@ impl DataQueryPropertyResolver<'_> {
 
                 // Then, gather individual overrides - these may override the recursive ones again,
                 // but recursive overrides are still inherited to children.
-                let mut component_overrides = (*recursive_property_overrides).clone();
+                let mut resolved_component_overrides = (*recursive_property_overrides).clone();
                 if let Some(individual_override_subtree) =
                     ctx.blueprint.tree().subtree(&individual_override_path)
                 {
@@ -514,9 +521,9 @@ impl DataQueryPropertyResolver<'_> {
                             .and_then(|(_, _, cells)| cells[0].clone())
                         {
                             if !component_data.is_empty() {
-                                component_overrides.insert(
+                                resolved_component_overrides.insert(
                                     *component,
-                                    (StoreKind::Blueprint, individual_override_path.clone()),
+                                    OverridePath::blueprint_path(individual_override_path.clone()),
                                 );
                             }
                         }
@@ -527,7 +534,7 @@ impl DataQueryPropertyResolver<'_> {
                     accumulated_properties,
                     individual_properties: individual_properties.cloned(),
                     recursive_properties: recursive_properties.cloned(),
-                    component_overrides,
+                    resolved_component_overrides,
                     recursive_override_path,
                     individual_override_path,
                 });
@@ -628,6 +635,7 @@ mod tests {
             });
 
         let ctx = StoreContext {
+            app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
             recording: Some(&recording),
             all_recordings: vec![],

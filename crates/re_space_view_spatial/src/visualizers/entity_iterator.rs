@@ -42,7 +42,7 @@ where
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for data_result in query.iter_visible_data_results(System::identifier()) {
+    for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity =
             if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
@@ -151,7 +151,7 @@ macro_rules! impl_process_archetype {
             let annotations = view_ctx.get::<AnnotationSceneContext>()?;
             let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-            for data_result in query.iter_visible_data_results(S::identifier()) {
+            for data_result in query.iter_visible_data_results(ctx, S::identifier()) {
                 // The transform that considers pinholes only makes sense if this is a 3D space-view
                 let world_from_entity = if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
                     transforms.reference_from_entity(&data_result.entity_path)
@@ -256,7 +256,7 @@ pub fn count_instances_in_archetype_views<
 
     let mut num_instances = 0;
 
-    for data_result in query.iter_visible_data_results(System::identifier()) {
+    for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
         match query_archetype_with_history::<A, N>(
             ctx.entity_db.store(),
             &query.timeline,

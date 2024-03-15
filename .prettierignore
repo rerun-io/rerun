@@ -8,3 +8,10 @@ web_viewer/re_viewer.js
 crates/re_web_viewer_server/web_viewer/re_viewer.js
 
 .pixi
+/.nox
+/build
+/compare_screenshot
+**/target
+**/target_ra
+**/target_wasm
+**/venv*

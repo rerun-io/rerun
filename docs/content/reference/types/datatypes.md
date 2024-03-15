@@ -9,6 +9,7 @@ Data types are the lowest layer of the data model hierarchy
 
 * [`Angle`](datatypes/angle.md)
 * [`AnnotationInfo`](datatypes/annotation_info.md)
+* [`Bool`](datatypes/bool.md)
 * [`ClassDescription`](datatypes/class_description.md)
 * [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md)
 * [`ClassId`](datatypes/class_id.md)

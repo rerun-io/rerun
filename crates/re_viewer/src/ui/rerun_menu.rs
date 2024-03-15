@@ -26,7 +26,7 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.set_min_width(220.0);
+            ui.set_min_width(240.0);
 
             ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
 
@@ -39,6 +39,8 @@ impl App {
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
 
             self.save_buttons_ui(ui, _store_context);
+
+            UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
             UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
@@ -165,13 +167,13 @@ impl App {
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
 
-        let save_button = UICommand::SaveRecording.menu_button(ui.ctx());
+        let save_recording_button = UICommand::SaveRecording.menu_button(ui.ctx());
         let save_selection_button = UICommand::SaveRecordingSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
-                    ui.add(save_button);
+                    ui.add(save_recording_button);
                     ui.spinner();
                 });
                 ui.horizontal(|ui| {
@@ -185,7 +187,7 @@ impl App {
                 .map_or(false, |recording| !recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
-                    .add(save_button)
+                    .add(save_recording_button)
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
                 {
@@ -317,12 +319,22 @@ fn options_menu_ui(
 
     ui.horizontal(|ui| {
         ui.label("Timezone:");
+    });
+    ui.horizontal(|ui| {
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Utc, "UTC")
             .on_hover_text("Display timestamps in UTC");
         re_ui
             .radio_value(ui, &mut app_options.time_zone, TimeZone::Local, "Local")
             .on_hover_text("Display timestamps in the local timezone");
+        re_ui
+            .radio_value(
+                ui,
+                &mut app_options.time_zone,
+                TimeZone::UnixEpoch,
+                "Unix Epoch",
+            )
+            .on_hover_text("Display timestamps in seconds since unix epoch");
     });
 
     {

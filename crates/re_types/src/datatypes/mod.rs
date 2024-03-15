@@ -4,6 +4,7 @@ mod angle;
 mod angle_ext;
 mod annotation_info;
 mod annotation_info_ext;
+mod bool;
 mod class_description;
 mod class_description_ext;
 mod class_description_map_elem;
@@ -61,6 +62,7 @@ mod vec4d_ext;
 
 pub use self::angle::Angle;
 pub use self::annotation_info::AnnotationInfo;
+pub use self::bool::Bool;
 pub use self::class_description::ClassDescription;
 pub use self::class_description_map_elem::ClassDescriptionMapElem;
 pub use self::class_id::ClassId;

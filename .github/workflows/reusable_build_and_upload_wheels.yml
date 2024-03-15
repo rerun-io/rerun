@@ -22,6 +22,41 @@ on:
         type: string
         default: ""
 
+  workflow_dispatch:
+    inputs:
+      PLATFORM:
+        type: choice
+        options:
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
+        description: "Platform to build for"
+        required: true
+      MODE:
+        type: choice
+        required: false
+        options:
+          - pypi
+          - pr
+        description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+        description: "Concurrency group to use"
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ""
+        description: "If set, will be saved under that name in the workflow artifacts"
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
+        description: "Release commit"
+
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels
   cancel-in-progress: true

@@ -1,10 +1,8 @@
-#[cfg(not(target_arch = "wasm32"))]
 use re_log_types::ApplicationId;
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Convert to lowercase and replace any character that is not a fairly common
 /// filename character with '-'
-fn sanitize_app_id(app_id: &ApplicationId) -> String {
+pub fn sanitize_app_id(app_id: &ApplicationId) -> String {
     let output = app_id.0.to_lowercase();
     output.replace(
         |c: char| !matches!(c, '0'..='9' | 'a'..='z' | '.' | '_' | '+' | '(' | ')' | '[' | ']'),
@@ -12,10 +10,10 @@ fn sanitize_app_id(app_id: &ApplicationId) -> String {
     )
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 /// Determine the default path for a blueprint based on its `ApplicationId`
 /// This path should be deterministic and unique.
 // TODO(#2579): Implement equivalent for web
+#[cfg(not(target_arch = "wasm32"))]
 pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::path::PathBuf> {
     use anyhow::Context;
 
@@ -39,7 +37,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
     const MAX_PATH: usize = 255;
     let directory_part_length = blueprint_dir.as_os_str().len();
     let hash_part_length = 16 + 1;
-    let extension_part_length = ".blueprint".len();
+    let extension_part_length = ".rbl".len();
     let total_reserved_length = directory_part_length + hash_part_length + extension_part_length;
     if total_reserved_length > MAX_PATH {
         anyhow::bail!(
@@ -58,7 +56,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
         sanitized_app_id = format!("{sanitized_app_id}-{hash:x}");
     }
 
-    Ok(blueprint_dir.join(format!("{sanitized_app_id}.blueprint")))
+    Ok(blueprint_dir.join(format!("{sanitized_app_id}.rbl")))
 }
 
 #[cfg(not(target_arch = "wasm32"))]

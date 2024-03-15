@@ -17,8 +17,8 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, ContainerId, HoverHighlight, Item, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataQueryResult, HoverHighlight, Item,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     context_menu_ui_for_item, icon_for_container_kind, space_view_name_style, Contents,
@@ -911,8 +911,9 @@ fn blueprint_ui_for_data_result(
                 entity_props_ui(
                     ctx,
                     ui,
+                    ctx.lookup_query_result(*space_view_id),
                     &space_view_class,
-                    Some(entity_path),
+                    entity_path,
                     &mut props,
                     data_result.accumulated_properties(),
                 );
@@ -1068,13 +1069,45 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 fn entity_props_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    query_result: &DataQueryResult,
     space_view_class: &SpaceViewClassIdentifier,
-    entity_path: Option<&EntityPath>,
+    entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
     resolved_entity_props: &EntityProperties,
 ) {
+    use re_types::blueprint::components::Visible;
+    use re_types::Loggable as _;
+
     let re_ui = ctx.re_ui;
-    re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
+    let Some(data_result) = query_result.tree.lookup_result_by_path(entity_path) else {
+        return;
+    };
+
+    {
+        let visible_before = data_result.lookup_override_or_default::<Visible>(ctx);
+        let mut visible = visible_before;
+
+        let override_source =
+            data_result.component_override_source(&query_result.tree, &Visible::name());
+        let is_inherited =
+            override_source.is_some() && override_source.as_ref() != Some(entity_path);
+
+        ui.horizontal(|ui| {
+            re_ui.checkbox(ui, &mut visible.0, "Visible");
+            if is_inherited {
+                ui.label("(inherited)");
+            }
+        });
+
+        if visible_before != visible {
+            data_result.save_recursive_override_or_clear_if_redundant(
+                ctx,
+                &query_result.tree,
+                &visible,
+            );
+        }
+    }
+
     re_ui
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
@@ -1084,7 +1117,7 @@ fn entity_props_ui(
         ui,
         space_view_class,
         false,
-        entity_path,
+        Some(entity_path),
         &mut entity_props.visible_history,
         &resolved_entity_props.visible_history,
     );
@@ -1094,11 +1127,9 @@ fn entity_props_ui(
         .show(ui, |ui| {
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
-            if let Some(entity_path) = entity_path {
-                pinhole_props_ui(ctx, ui, entity_path, entity_props);
-                depth_props_ui(ctx, ui, entity_path, entity_props);
-                transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
-            }
+            pinhole_props_ui(ctx, ui, entity_path, entity_props);
+            depth_props_ui(ctx, ui, entity_path, entity_props);
+            transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
         });
 }
 

@@ -34,7 +34,7 @@ pub fn load_from_path(
 
     re_log::info!("Loading {path:?}…");
 
-    let data = load(settings, path, None)?;
+    let rx = load(settings, path, None)?;
 
     // TODO(cmc): should we always unconditionally set store info though?
     // If we reach this point, then at least one compatible `DataLoader` has been found.
@@ -45,7 +45,7 @@ pub fn load_from_path(
         }
     }
 
-    send(&settings.store_id, data, tx);
+    send(&settings.store_id, rx, tx);
 
     Ok(())
 }

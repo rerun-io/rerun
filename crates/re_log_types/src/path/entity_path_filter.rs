@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use itertools::Itertools as _;
+
 use crate::EntityPath;
 
 /// A way to filter a set of `EntityPath`s.
@@ -101,10 +103,22 @@ impl EntityPathFilter {
     ///
     /// Conflicting rules are resolved by the last rule.
     pub fn parse_forgiving(rules: &str) -> Self {
+        Self::from_query_expressions(rules.split('\n'))
+    }
+
+    /// Build a filter from a list of query expressions.
+    ///
+    /// Each item in the iterator should be a query expression.
+    ///
+    /// The first character should be `+` or `-`. If missing, `+` is assumed.
+    /// The rest of the expression is trimmed and treated as an entity path.
+    ///
+    /// Conflicting rules are resolved by the last rule.
+    pub fn from_query_expressions<'a>(rules: impl IntoIterator<Item = &'a str>) -> Self {
         let mut filter = Self::default();
 
         for line in rules
-            .split('\n')
+            .into_iter()
             .map(|line| line.trim())
             .filter(|line| !line.is_empty())
         {
@@ -140,9 +154,9 @@ impl EntityPathFilter {
         self.rules.insert(rule, effect);
     }
 
-    pub fn formatted(&self) -> String {
-        let mut s = String::new();
-        for (rule, effect) in &self.rules {
+    pub fn iter_expressions(&self) -> impl Iterator<Item = String> + '_ {
+        self.rules.iter().map(|(rule, effect)| {
+            let mut s = String::new();
             s.push_str(match effect {
                 RuleEffect::Include => "+ ",
                 RuleEffect::Exclude => "- ",
@@ -156,12 +170,12 @@ impl EntityPathFilter {
                     s.push_str("/**");
                 }
             }
-            s.push('\n');
-        }
-        if s.ends_with('\n') {
-            s.pop();
-        }
-        s
+            s
+        })
+    }
+
+    pub fn formatted(&self) -> String {
+        self.iter_expressions().join("\n")
     }
 
     /// Find the most specific matching rule and return its effect.

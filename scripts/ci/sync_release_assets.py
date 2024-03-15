@@ -96,19 +96,23 @@ def fetch_binary_assets(
         rerun_c_blobs = [
             (
                 f"rerun_c-{tag}-x86_64-pc-windows-msvc.lib",
-                f"commit/{commit_short}/rerun_c/windows/rerun_c.lib",
+                f"commit/{commit_short}/rerun_c/windows-x64/rerun_c.lib",
             ),
             (
                 f"librerun_c-{tag}-x86_64-unknown-linux-gnu.a",
-                f"commit/{commit_short}/rerun_c/linux/librerun_c.a",
+                f"commit/{commit_short}/rerun_c/linux-x64/librerun_c.a",
+            ),
+            (
+                f"librerun_c-{tag}-aarch64-unknown-linux-gnu.a",
+                f"commit/{commit_short}/rerun_c/linux-arm64/librerun_c.a",
             ),
             (
                 f"librerun_c-{tag}-aarch64-apple-darwin.a",
-                f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a",
+                f"commit/{commit_short}/rerun_c/macos-arm64/librerun_c.a",
             ),
             (
                 f"librerun_c-{tag}-x86_64-apple-darwin.a",
-                f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a",
+                f"commit/{commit_short}/rerun_c/macos-x64/librerun_c.a",
             ),
         ]
         for name, blob_url in rerun_c_blobs:
@@ -139,19 +143,23 @@ def fetch_binary_assets(
         rerun_cli_blobs = [
             (
                 f"rerun-cli-{tag}-x86_64-pc-windows-msvc.exe",
-                f"commit/{commit_short}/rerun-cli/windows/rerun.exe",
+                f"commit/{commit_short}/rerun-cli/windows-x64/rerun.exe",
             ),
             (
                 f"rerun-cli-{tag}-x86_64-unknown-linux-gnu",
-                f"commit/{commit_short}/rerun-cli/linux/rerun",
+                f"commit/{commit_short}/rerun-cli/linux-x64/rerun",
+            ),
+            (
+                f"rerun-cli-{tag}-aarch64-unknown-linux-gnu",
+                f"commit/{commit_short}/rerun-cli/linux-arm64/rerun",
             ),
             (
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
-                f"commit/{commit_short}/rerun-cli/macos-arm/rerun",
+                f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
             ),
             (
                 f"rerun-cli-{tag}-x86_64-apple-darwin",
-                f"commit/{commit_short}/rerun-cli/macos-intel/rerun",
+                f"commit/{commit_short}/rerun-cli/macos-x64/rerun",
             ),
         ]
         for name, blob_url in rerun_cli_blobs:
