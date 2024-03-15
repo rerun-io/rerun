@@ -17,7 +17,7 @@ rr.log(
         marker="circle",
         marker_size=4,
     ),
-    timeless=True,
+    static=True,
 )
 rr.log(
     "trig/cos",
@@ -27,7 +27,7 @@ rr.log(
         marker="cross",
         marker_size=2,
     ),
-    timeless=True,
+    static=True,
 )
 
 # Log the data on a timeline called "step".

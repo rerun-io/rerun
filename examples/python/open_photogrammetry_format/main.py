@@ -113,7 +113,7 @@ class OPFProject:
     def log_point_cloud(self) -> None:
         """Log the project's point cloud."""
         points = self.project.point_cloud_objs[0].nodes[0]
-        rr.log("world/points", rr.Points3D(points.position, colors=points.color), timeless=True)
+        rr.log("world/points", rr.Points3D(points.position, colors=points.color), static=True)
 
     def log_calibrated_cameras(self, jpeg_quality: int | None) -> None:
         """
@@ -227,7 +227,7 @@ def main() -> None:
 
     # display everything in Rerun
     rr.script_setup(args, "rerun_example_open_photogrammetry_format")
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
     project.log_point_cloud()
     project.log_calibrated_cameras(jpeg_quality=args.jpeg_quality)
     rr.script_teardown(args)
