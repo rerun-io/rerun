@@ -288,11 +288,11 @@ jobs:
     name: "Generate Pip Index"
     needs:
       [
-        build-wheel-linux-x64,
         build-wheel-linux-arm64,
-        build-wheel-windows-x64,
+        build-wheel-linux-x64,
         build-wheel-macos-arm64,
         build-wheel-macos-x64,
+        build-wheel-windows-x64,
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
@@ -303,10 +303,10 @@ jobs:
     name: "Bundle and upload rerun_cpp_sdk.zip"
     needs:
       [
-        build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-linux-arm64,
-        build-rerun_c-and-upload-macos-x64,
+        build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-macos-arm64,
+        build-rerun_c-and-upload-macos-x64,
         build-rerun_c-and-upload-windows-x64,
       ]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
@@ -319,19 +319,19 @@ jobs:
       cancel-in-progress: true
     needs:
       [
-        upload-web,
-        generate-pip-index,
-        build-rerun_c-and-upload-linux-x64,
-        build-rerun_c-and-upload-linux-arm64,
-        build-rerun_c-and-upload-macos-x64,
-        build-rerun_c-and-upload-macos-arm64,
-        build-rerun_c-and-upload-windows-x64,
-        build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-linux-arm64,
-        build-rerun-cli-and-upload-macos-x64,
+        build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-macos-arm64,
+        build-rerun-cli-and-upload-macos-x64,
         build-rerun-cli-and-upload-windows-x64,
+        build-rerun_c-and-upload-linux-arm64,
+        build-rerun_c-and-upload-linux-x64,
+        build-rerun_c-and-upload-macos-arm64,
+        build-rerun_c-and-upload-macos-x64,
+        build-rerun_c-and-upload-windows-x64,
         bundle-and-upload-rerun_cpp,
+        generate-pip-index,
+        upload-web,
       ]
     runs-on: "ubuntu-latest"
     steps:
