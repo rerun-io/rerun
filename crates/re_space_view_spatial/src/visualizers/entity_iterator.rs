@@ -134,7 +134,7 @@ macro_rules! impl_process_archetype {
                 &EntityPath,
                 &EntityProperties,
                 &SpatialSceneEntityContext<'_>,
-                (Option<TimeInt>, RowId),
+                (TimeInt, RowId),
                 &[InstanceKey],
                 $(&[$pov],)*
                 $(Option<&[Option<$comp>]>,)*

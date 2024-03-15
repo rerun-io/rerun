@@ -148,7 +148,7 @@ pub struct CompactedStoreEvents {
     pub row_ids: HashSet<RowId>,
 
     /// What time points were deleted for each entity+timeline+component?
-    pub timeful: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
+    pub temporal: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
 
     /// For each entity+component, how many timeless entries were deleted?
     pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
@@ -158,7 +158,7 @@ impl CompactedStoreEvents {
     pub fn new(store_events: &[&StoreEvent]) -> Self {
         let mut this = CompactedStoreEvents {
             row_ids: store_events.iter().map(|event| event.row_id).collect(),
-            timeful: Default::default(),
+            temporal: Default::default(),
             timeless: Default::default(),
         };
 
@@ -171,7 +171,7 @@ impl CompactedStoreEvents {
                 }
             } else {
                 for &(timeline, time) in &event.times {
-                    let per_timeline = this.timeful.entry(event.entity_path.hash()).or_default();
+                    let per_timeline = this.temporal.entry(event.entity_path.hash()).or_default();
                     let per_component = per_timeline.entry(timeline).or_default();
                     for component_name in event.cells.keys() {
                         per_component.entry(*component_name).or_default().push(time);

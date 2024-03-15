@@ -215,7 +215,8 @@ impl EntityDb {
     }
 
     pub fn num_rows(&self) -> usize {
-        self.data_store.num_temporal_rows() as usize
+        (self.data_store.num_static_cells() > 0) as usize
+            + self.data_store.num_temporal_rows() as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the

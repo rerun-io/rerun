@@ -211,7 +211,7 @@ fn load_series(
             store,
             &query,
             entity_path,
-            |_timeless, entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
+            |entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
                 let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
                 // Allocate all points.
                 points = times.map(|time| PlotPoint {

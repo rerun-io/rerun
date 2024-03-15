@@ -164,7 +164,7 @@ impl LegacyTimeSeriesSystem {
                     store,
                     &query,
                     entity_path,
-                    |_timeless, entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
+                    |entry_range, (times, _, scalars, scatterings, colors, radii, labels)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
                         // Allocate all points.
