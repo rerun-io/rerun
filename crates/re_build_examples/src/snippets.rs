@@ -49,6 +49,9 @@ impl Snippets {
                 continue;
             }
 
+            // We only run python examples, because:
+            // - Each snippet should already be available in each language
+            // - Python is the easiest to run
             if !path.extension().is_some_and(|p| p == "py") {
                 println!("Skipping {}: not a python example", path.display());
                 continue;
