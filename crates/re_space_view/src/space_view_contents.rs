@@ -6,7 +6,9 @@ use re_entity_db::{
     external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
     EntityPropertyMap, EntityTree,
 };
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule};
+use re_log_types::{
+    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs,
+};
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
@@ -97,6 +99,7 @@ impl SpaceViewContents {
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
         space_view_class_identifier: SpaceViewClassIdentifier,
+        space_env: &EntityPathSubs,
     ) -> Self {
         let (contents, blueprint_entity_path) = query_space_view_sub_archetype::<
             blueprint_archetypes::SpaceViewContents,
@@ -114,7 +117,7 @@ impl SpaceViewContents {
 
         let query = query.iter().map(|qe| qe.0.as_str());
 
-        let entity_path_filter = EntityPathFilter::from_query_expressions(query);
+        let entity_path_filter = EntityPathFilter::from_query_expressions(query, space_env);
 
         Self {
             blueprint_entity_path,
@@ -596,6 +599,8 @@ mod tests {
 
     #[test]
     fn test_query_results() {
+        let space_env = Default::default();
+
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
@@ -729,7 +734,7 @@ mod tests {
             let contents = SpaceViewContents::new(
                 SpaceViewId::random(),
                 "3D".into(),
-                EntityPathFilter::parse_forgiving(filter),
+                EntityPathFilter::parse_forgiving(filter, &space_env),
             );
 
             let query_result =
