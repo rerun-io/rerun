@@ -42,7 +42,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .spawn()?;
 ///
 ///     // create an annotation context to describe the classes
-///     rec.log_timeless(
+///     rec.log_static(
 ///         "segmentation",
 ///         &rerun::AnnotationContext::new([
 ///             (1, "red", rerun::Rgba32::from_rgb(255, 0, 0)),
