@@ -52,7 +52,7 @@ def read_depth_image(buf: bytes) -> npt.NDArray[Any]:
 
 
 def log_nyud_data(recording_path: Path, subset_idx: int, frames: int) -> None:
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
     with zipfile.ZipFile(recording_path, "r") as archive:
         archive_dirs = [f.filename for f in archive.filelist if f.is_dir()]

@@ -41,7 +41,7 @@ ENTITY                      CLASS       EXPECTED ORIGIN
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def blueprint() -> rrb.BlueprintLike:
@@ -57,7 +57,7 @@ def blueprint() -> rrb.BlueprintLike:
 def log_some_space_views() -> None:
     rr.set_time_sequence("frame_nr", 0)
     rr.log("/", rr.Boxes3D(centers=[0, 0, 0], half_sizes=[1, 1, 1]))
-    rr.log("/world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
+    rr.log("/world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
     rr.log(
         "/world/camera/image",
         rr.Pinhole(

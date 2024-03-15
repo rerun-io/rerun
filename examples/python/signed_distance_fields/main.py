@@ -98,7 +98,7 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
     rr.log("world/sdf", rr.AnnotationContext([(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))]), timeless=False)
     rr.log("world/sdf/points", rr.Points3D(points, class_ids=np.array(sdf > 0, dtype=np.uint8)))
 

@@ -106,7 +106,7 @@ def read_annotations(dirpath: Path) -> Sequence:
 def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
     """Logs a stream of `ARFrame` samples and their annotations with the Rerun SDK."""
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
     log_annotated_bboxes(seq.objects)
 
@@ -182,7 +182,7 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
                 colors=[160, 230, 130, 255],
                 labels=bbox.category,
             ),
-            timeless=True,
+            static=True,
         )
 
 
