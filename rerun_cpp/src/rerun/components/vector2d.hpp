@@ -80,7 +80,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
+                &elements->vector,
                 num_elements
             );
         }
@@ -89,10 +89,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Vector2D* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Vec2D>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Vec2D*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::Vec2D>::to_arrow(&instances->vector, num_instances);
         }
     };
 } // namespace rerun

@@ -117,7 +117,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Utf8*>(elements),
+                &elements->value,
                 num_elements
             );
         }
@@ -126,10 +126,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::MediaType* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Utf8>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Utf8*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->value, num_instances);
         }
     };
 } // namespace rerun

@@ -64,7 +64,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Uuid*>(elements),
+                &elements->id,
                 num_elements
             );
         }
@@ -73,10 +73,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::RootContainer* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Uuid>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Uuid*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::Uuid>::to_arrow(&instances->id, num_instances);
         }
     };
 } // namespace rerun

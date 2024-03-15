@@ -73,7 +73,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::MeshProperties>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::MeshProperties*>(elements),
+                &elements->props,
                 num_elements
             );
         }
@@ -83,7 +83,7 @@ namespace rerun {
             const components::MeshProperties* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::MeshProperties>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::MeshProperties*>(instances),
+                &instances->props,
                 num_instances
             );
         }

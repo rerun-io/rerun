@@ -60,7 +60,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Transform3D>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Transform3D*>(elements),
+                &elements->repr,
                 num_elements
             );
         }
@@ -70,7 +70,7 @@ namespace rerun {
             const components::OutOfTreeTransform3D* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Transform3D>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Transform3D*>(instances),
+                &instances->repr,
                 num_instances
             );
         }

@@ -66,7 +66,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::ClassId>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::ClassId*>(elements),
+                &elements->id,
                 num_elements
             );
         }
@@ -75,10 +75,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::ClassId* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::ClassId>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::ClassId*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::ClassId>::to_arrow(&instances->id, num_instances);
         }
     };
 } // namespace rerun

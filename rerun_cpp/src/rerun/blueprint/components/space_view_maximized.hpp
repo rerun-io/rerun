@@ -67,7 +67,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Uuid*>(elements),
+                &elements->space_view_id,
                 num_elements
             );
         }
@@ -77,7 +77,7 @@ namespace rerun {
             const blueprint::components::SpaceViewMaximized* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Uuid>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Uuid*>(instances),
+                &instances->space_view_id,
                 num_instances
             );
         }

@@ -1409,10 +1409,11 @@ fn fill_arrow_array_builder_method(
         (obj.is_arrow_transparent(), &obj.fields[0].typ)
     {
         let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+        let field_name = format_ident!("{}", obj.fields[0].snake_case_name());
         (
             true,
             quote! {
-                return Loggable<#forwarded_type>::fill_arrow_array_builder(builder, reinterpret_cast<const #forwarded_type*>(elements), num_elements);
+                return Loggable<#forwarded_type>::fill_arrow_array_builder(builder, &elements->#field_name, num_elements);
             },
         )
     } else {
@@ -1477,10 +1478,12 @@ fn to_arrow_method(
         (obj.is_arrow_transparent(), &obj.fields[0].typ)
     {
         let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+        let field_name = format_ident!("{}", obj.fields[0].snake_case_name());
+
         (
             true,
             quote! {
-                return Loggable<#forwarded_type>::to_arrow(reinterpret_cast<const #forwarded_type*>(instances), num_instances);
+                return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
             },
         )
     } else {

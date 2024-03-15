@@ -67,7 +67,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::EntityPath*>(elements),
+                &elements->tab,
                 num_elements
             );
         }
@@ -76,10 +76,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::ActiveTab* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::EntityPath>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::EntityPath*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::EntityPath>::to_arrow(&instances->tab, num_instances);
         }
     };
 } // namespace rerun

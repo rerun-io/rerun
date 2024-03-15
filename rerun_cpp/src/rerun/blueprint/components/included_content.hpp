@@ -70,7 +70,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::EntityPath*>(elements),
+                &elements->contents,
                 num_elements
             );
         }
@@ -80,7 +80,7 @@ namespace rerun {
             const blueprint::components::IncludedContent* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::EntityPath>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::EntityPath*>(instances),
+                &instances->contents,
                 num_instances
             );
         }

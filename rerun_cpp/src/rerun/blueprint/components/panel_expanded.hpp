@@ -62,7 +62,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Bool>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Bool*>(elements),
+                &elements->expanded,
                 num_elements
             );
         }
@@ -71,10 +71,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::PanelExpanded* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Bool>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Bool*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::Bool>::to_arrow(&instances->expanded, num_instances);
         }
     };
 } // namespace rerun

@@ -90,7 +90,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::TensorData>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::TensorData*>(elements),
+                &elements->data,
                 num_elements
             );
         }
@@ -100,7 +100,7 @@ namespace rerun {
             const components::TensorData* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::TensorData>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::TensorData*>(instances),
+                &instances->data,
                 num_instances
             );
         }

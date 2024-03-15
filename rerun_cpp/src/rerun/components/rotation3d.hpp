@@ -67,7 +67,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Rotation3D>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Rotation3D*>(elements),
+                &elements->repr,
                 num_elements
             );
         }
@@ -77,7 +77,7 @@ namespace rerun {
             const components::Rotation3D* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Rotation3D>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Rotation3D*>(instances),
+                &instances->repr,
                 num_instances
             );
         }

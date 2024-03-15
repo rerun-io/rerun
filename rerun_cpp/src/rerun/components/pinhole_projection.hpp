@@ -82,7 +82,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Mat3x3>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Mat3x3*>(elements),
+                &elements->image_from_camera,
                 num_elements
             );
         }
@@ -92,7 +92,7 @@ namespace rerun {
             const components::PinholeProjection* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Mat3x3>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Mat3x3*>(instances),
+                &instances->image_from_camera,
                 num_instances
             );
         }

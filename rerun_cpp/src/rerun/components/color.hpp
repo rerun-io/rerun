@@ -91,7 +91,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Rgba32>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Rgba32*>(elements),
+                &elements->rgba,
                 num_elements
             );
         }
@@ -100,10 +100,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Color* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Rgba32>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Rgba32*>(instances),
-                num_instances
-            );
+            return Loggable<rerun::datatypes::Rgba32>::to_arrow(&instances->rgba, num_instances);
         }
     };
 } // namespace rerun

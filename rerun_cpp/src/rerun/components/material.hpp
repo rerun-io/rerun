@@ -71,7 +71,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::Material>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Material*>(elements),
+                &elements->material,
                 num_elements
             );
         }
@@ -81,7 +81,7 @@ namespace rerun {
             const components::Material* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::Material>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::Material*>(instances),
+                &instances->material,
                 num_instances
             );
         }

@@ -67,7 +67,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::AffixFuzzer22>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::AffixFuzzer22*>(elements),
+                &elements->nullable_nested_array,
                 num_elements
             );
         }
@@ -77,7 +77,7 @@ namespace rerun {
             const components::AffixFuzzer22* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::AffixFuzzer22>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::AffixFuzzer22*>(instances),
+                &instances->nullable_nested_array,
                 num_instances
             );
         }

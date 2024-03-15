@@ -57,7 +57,7 @@ namespace rerun {
         ) {
             return Loggable<rerun::datatypes::AffixFuzzer1>::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::AffixFuzzer1*>(elements),
+                &elements->single_optional,
                 num_elements
             );
         }
@@ -67,7 +67,7 @@ namespace rerun {
             const components::AffixFuzzer5* instances, size_t num_instances
         ) {
             return Loggable<rerun::datatypes::AffixFuzzer1>::to_arrow(
-                reinterpret_cast<const rerun::datatypes::AffixFuzzer1*>(instances),
+                &instances->single_optional,
                 num_instances
             );
         }
