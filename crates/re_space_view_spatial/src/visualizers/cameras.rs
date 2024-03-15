@@ -213,7 +213,7 @@ impl VisualizerSystem for CamerasVisualizer {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {

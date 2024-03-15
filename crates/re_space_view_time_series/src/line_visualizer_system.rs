@@ -15,7 +15,7 @@ use crate::overrides::initial_override_color;
 use crate::util::{
     determine_plot_bounds_and_time_per_pixel, determine_time_range, points_to_series,
 };
-use crate::{overrides::lookup_override, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind};
 
 /// The system for rendering [`SeriesLine`] archetypes.
 #[derive(Default, Debug)]
@@ -56,7 +56,7 @@ impl VisualizerSystem for SeriesLineSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_visible_data_results(Self::identifier())
+                .iter_visible_data_results(ctx, Self::identifier())
                 .map(|data| &data.entity_path),
         );
 
@@ -98,7 +98,7 @@ impl SeriesLineSystem {
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
-        let data_results = query.iter_visible_data_results(Self::identifier());
+        let data_results = query.iter_visible_data_results(ctx, Self::identifier());
 
         let parallel_loading = false; // TODO(emilk): enable parallel loading when it is faster, because right now it is often slower.
         if parallel_loading {
@@ -162,9 +162,11 @@ fn load_series(
         .resolved_class_description(None)
         .annotation_info();
     let default_color = DefaultColor::EntityPath(&data_result.entity_path);
-    let override_color = lookup_override::<Color>(data_result, ctx).map(|c| c.to_array());
-    let override_series_name = lookup_override::<Name>(data_result, ctx).map(|t| t.0);
-    let override_stroke_width = lookup_override::<StrokeWidth>(data_result, ctx).map(|r| r.0);
+    let override_color = data_result
+        .lookup_override::<Color>(ctx)
+        .map(|c| c.to_array());
+    let override_series_name = data_result.lookup_override::<Name>(ctx).map(|t| t.0);
+    let override_stroke_width = data_result.lookup_override::<StrokeWidth>(ctx).map(|r| r.0);
 
     // All the default values for a `PlotPoint`, accounting for both overrides and default
     // values.
