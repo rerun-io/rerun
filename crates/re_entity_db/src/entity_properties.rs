@@ -94,7 +94,6 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    pub visible: bool,
     pub visible_history: re_query::ExtraQueryHistory,
     pub interactive: bool,
 
@@ -144,7 +143,6 @@ pub struct EntityProperties {
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
-            visible: true,
             visible_history: re_query::ExtraQueryHistory::default(),
             interactive: true,
             color_mapper: EditableAutoValue::default(),
@@ -166,7 +164,6 @@ impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
-            visible: self.visible && child.visible,
             visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
 
@@ -211,7 +208,6 @@ impl EntityProperties {
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
-            visible: other.visible,
             visible_history: self.visible_history.with_child(&other.visible_history),
             interactive: other.interactive,
 
@@ -250,7 +246,6 @@ impl EntityProperties {
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
-            visible,
             visible_history,
             interactive,
             color_mapper,
@@ -265,8 +260,7 @@ impl EntityProperties {
             time_series_aggregator,
         } = self;
 
-        visible != &other.visible
-            || visible_history != &other.visible_history
+        visible_history != &other.visible_history
             || interactive != &other.interactive
             || color_mapper.has_edits(&other.color_mapper)
             || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)

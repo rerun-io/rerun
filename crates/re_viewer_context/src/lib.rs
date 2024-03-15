@@ -45,14 +45,15 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    DataResult, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities, PropertyOverrides,
-    RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewContextCollection, ViewContextSystem, ViewQuery,
-    ViewSystemIdentifier, VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter,
-    VisualizerCollection, VisualizerQueryInfo, VisualizerSystem,
+    DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
+    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystem, ViewQuery, ViewSystemIdentifier,
+    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

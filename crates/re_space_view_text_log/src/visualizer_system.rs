@@ -53,7 +53,7 @@ impl VisualizerSystem for TextLogSystem {
         let query_caches = ctx.entity_db.query_caches();
         let store = ctx.entity_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
             // We want everything, for all times:

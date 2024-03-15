@@ -446,7 +446,7 @@ impl SpaceViewBlueprint {
                 accumulated_properties,
                 individual_properties,
                 recursive_properties: Default::default(),
-                component_overrides: Default::default(),
+                resolved_component_overrides: Default::default(),
                 recursive_override_path: entity_path.clone(),
                 individual_override_path: entity_path,
             }),
@@ -464,8 +464,8 @@ mod tests {
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, PerVisualizer, SpaceViewClassRegistry, StoreContext,
-        VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, OverridePath, PerVisualizer, SpaceViewClassRegistry,
+        StoreContext, VisualizableEntities,
     };
     use std::collections::HashMap;
 
@@ -582,9 +582,9 @@ mod tests {
                 );
             }
 
-            // Now, override visibility on parent individually.
+            // Now, override interactive on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -593,7 +593,7 @@ mod tests {
             );
         }
 
-        // Parent is not visible, but children are
+        // Parent is not interactive, but children are
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -622,18 +622,18 @@ mod tests {
                 .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
-            assert!(!parent.accumulated_properties().visible);
+            assert!(!parent.accumulated_properties().interactive);
 
             for result in [child1, child2] {
-                assert!(result.accumulated_properties().visible);
+                assert!(result.accumulated_properties().interactive);
             }
 
-            // Override visibility on parent recursively.
+            // Override interactivity on parent recursively.
             let mut overrides = parent_group
                 .individual_properties()
                 .cloned()
                 .unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -642,7 +642,7 @@ mod tests {
             );
         }
 
-        // Nobody is visible
+        // Nobody is interactive
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -668,11 +668,11 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.accumulated_properties().visible);
+                assert!(!result.accumulated_properties().interactive);
             }
         }
 
-        // Override visible range on root
+        // Override interactive range on root
         {
             let root = space_view.root_data_result(
                 &StoreContext {
@@ -694,7 +694,7 @@ mod tests {
             );
         }
 
-        // Everyone has visible history
+        // Everyone has interactive history
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -736,7 +736,7 @@ mod tests {
             );
         }
 
-        // Child2 has its own visible history
+        // Child2 has its own interactive history
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -1042,13 +1042,13 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
                 if let Some(property_overrides) = &result.property_overrides {
-                    if !property_overrides.component_overrides.is_empty() {
+                    if !property_overrides.resolved_component_overrides.is_empty() {
                         visited.insert(
                             result.entity_path.clone(),
                             property_overrides
-                                .component_overrides
+                                .resolved_component_overrides
                                 .iter()
-                                .map(|(component_name, (store_kind, path))| {
+                                .map(|(component_name, OverridePath { store_kind, path })| {
                                     assert_eq!(store_kind, &StoreKind::Blueprint);
                                     (*component_name, path.clone())
                                 })

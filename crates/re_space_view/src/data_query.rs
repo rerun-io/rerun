@@ -1,9 +1,10 @@
-use ahash::HashMap;
+use nohash_hasher::IntMap;
 
 use re_entity_db::{external::re_data_store::LatestAtQuery, EntityProperties, EntityPropertyMap};
-use re_log_types::{EntityPath, StoreKind};
 use re_types::ComponentName;
-use re_viewer_context::{DataQueryResult, PerVisualizer, StoreContext, VisualizableEntities};
+use re_viewer_context::{
+    DataQueryResult, OverridePath, PerVisualizer, StoreContext, VisualizableEntities,
+};
 
 pub struct EntityOverrideContext {
     pub root: EntityProperties,
@@ -11,7 +12,7 @@ pub struct EntityOverrideContext {
     pub recursive: EntityPropertyMap,
 
     /// Base component overrides that are inherited by all entities.
-    pub root_component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+    pub root_component_overrides: IntMap<ComponentName, OverridePath>,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]
