@@ -74,7 +74,7 @@ impl VisualizerSystem for TextLogSystem {
                         self.entries.push(Entry {
                             row_id,
                             entity_path: data_result.entity_path.clone(),
-                            time: time.map(|time| time.as_i64()),
+                            time: (time.is_static()).then(|| time.as_i64()),
                             color: *color,
                             body: body.clone(),
                             level: level.clone(),
