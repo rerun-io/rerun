@@ -240,10 +240,10 @@ impl StoreHub {
         };
 
         let store_size_before =
-            entity_db.store().timeless_size_bytes() + entity_db.store().temporal_size_bytes();
+            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
         entity_db.purge_fraction_of_ram(fraction_to_purge);
         let store_size_after =
-            entity_db.store().timeless_size_bytes() + entity_db.store().temporal_size_bytes();
+            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {

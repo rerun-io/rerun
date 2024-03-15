@@ -133,8 +133,7 @@ fn entity_ui(
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(mut components) = entity_db.store().all_components(&timeline, entity_path) {
-        components.sort(); // Make the order predicatable
+    if let Some(components) = entity_db.store().all_components(&timeline, entity_path) {
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, entity_db, timeline, entity_path, component);
