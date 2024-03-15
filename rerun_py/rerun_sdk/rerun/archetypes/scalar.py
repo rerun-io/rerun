@@ -22,7 +22,7 @@ class Scalar(Archetype):
     **Archetype**: Log a double-precision scalar.
 
     The current timeline value will be used for the time/X-axis, hence scalars
-    cannot be timeless.
+    cannot be static.
 
     When used to produce a plot, this archetype is used to provide the data that
     is referenced by the `SeriesLine` or `SeriesPoint` archetypes. You can do
