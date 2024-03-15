@@ -8,7 +8,11 @@ class BarChartView(SpaceView):
     """A bar chart view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new bar chart view.
@@ -33,7 +37,11 @@ class Spatial2DView(SpaceView):
     """A Spatial 2D view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new spatial 2D view.
@@ -58,7 +66,11 @@ class Spatial3DView(SpaceView):
     """A Spatial 3D view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new spatial 3D view.
@@ -83,7 +95,11 @@ class TensorView(SpaceView):
     """A tensor view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new tensor view.
@@ -108,7 +124,11 @@ class TextDocumentView(SpaceView):
     """A text document view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new text document view.
@@ -133,7 +153,11 @@ class TextLogView(SpaceView):
     """A text log view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new text log view.
@@ -158,7 +182,11 @@ class TimeSeriesView(SpaceView):
     """A time series view."""
 
     def __init__(
-        self, *, origin: EntityPathLike = "/", contents: SpaceViewContentsLike = "/**", name: Utf8Like | None = None
+        self,
+        *,
+        origin: EntityPathLike = "/",
+        contents: SpaceViewContentsLike = "$origin/**",
+        name: Utf8Like | None = None,
     ):
         """
         Construct a blueprint for a new time series view.
