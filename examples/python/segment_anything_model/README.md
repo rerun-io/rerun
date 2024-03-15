@@ -19,6 +19,8 @@ channel = "release"
 Visualize the output of [Meta AI's Segment Anything model](https://segment-anything.com/).
 
 ## Used Rerun Types
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image)
+
 
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
