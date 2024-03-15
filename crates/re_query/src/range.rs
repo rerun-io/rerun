@@ -121,7 +121,7 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
         // Consider e.g. what happens when one system queries for `range(10, 20)` while another
         // queries for `range(9, 20)`: the data at timestamp `10` would differ because of the
         // statefulness of range queries!
-        .map(move |cwis| (query_time, false, cwis))
+        .map(move |cwis| (query_time.unwrap_or(TimeInt::STATIC), false, cwis))
         .chain(store.range(query, ent_path, components).map(
             move |(data_time, row_id, mut cells)| {
                 // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
