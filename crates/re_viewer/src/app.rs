@@ -999,6 +999,9 @@ impl App {
                     StoreKind::Blueprint => {
                         // We wait with activaing blueprints until they are fully loaded,
                         // so that we don't run heuristics on half-loaded blueprints.
+                        // TODO(#5297): heed special "end-of-blueprint" message to activate blueprint.
+                        // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                        // the blueprint won't be activated until the whole _recording_ has finished loading.
                     }
                 }
             }
