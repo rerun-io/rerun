@@ -265,8 +265,8 @@ re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 /// #
 /// # let row_id = RowId::ZERO;
 /// # let timepoint = [
-/// #     (Timeline::new_sequence("frame_nr"), 42.try_into().unwrap()), //
-/// #     (Timeline::new_sequence("clock"), 666.try_into().unwrap()),   //
+/// #     (Timeline::new_sequence("frame_nr"), 42), //
+/// #     (Timeline::new_sequence("clock"), 666),   //
 /// # ];
 /// #
 /// let num_instances = 2;

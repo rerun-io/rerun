@@ -144,9 +144,9 @@ impl TimeControl {
                 // never interacted with before, in which case we don't even have a time state yet.
                 self.states.entry(*self.timeline).or_insert_with(|| {
                     TimeState::new(if self.following {
-                        full_range.max
+                        full_range.max()
                     } else {
-                        full_range.min
+                        full_range.min()
                     })
                 });
                 NeedsRepaint::No
@@ -157,11 +157,11 @@ impl TimeControl {
                 let state = self
                     .states
                     .entry(*self.timeline)
-                    .or_insert_with(|| TimeState::new(full_range.min));
+                    .or_insert_with(|| TimeState::new(full_range.min()));
 
-                if self.looping == Looping::Off && full_range.max <= state.time {
+                if self.looping == Looping::Off && full_range.max() <= state.time {
                     // We've reached the end of the data
-                    state.time = full_range.max.into();
+                    state.time = full_range.max().into();
 
                     if more_data_is_coming {
                         // then let's wait for it without pausing!
@@ -201,10 +201,10 @@ impl TimeControl {
                 // Set the time to the max:
                 match self.states.entry(*self.timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
-                        entry.insert(TimeState::new(full_range.max));
+                        entry.insert(TimeState::new(full_range.max()));
                     }
                     std::collections::btree_map::Entry::Occupied(mut entry) => {
-                        entry.get_mut().time = full_range.max.into();
+                        entry.get_mut().time = full_range.max().into();
                     }
                 }
                 NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
@@ -565,7 +565,10 @@ fn min(values: &TimeCounts) -> TimeInt {
 }
 
 fn max(values: &TimeCounts) -> TimeInt {
-    *values.keys().next_back().unwrap_or(&TimeInt::MIN_TIME_PANEL)
+    *values
+        .keys()
+        .next_back()
+        .unwrap_or(&TimeInt::MIN_TIME_PANEL)
 }
 
 fn range(values: &TimeCounts) -> TimeRange {

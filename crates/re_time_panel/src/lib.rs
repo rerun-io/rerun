@@ -959,8 +959,8 @@ fn paint_range_highlight(
     painter: &egui::Painter,
     rect: Rect,
 ) {
-    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min.into());
-    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max.into());
+    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min().into());
+    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max().into());
 
     if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
         let visible_history_area_rect =
@@ -1050,10 +1050,7 @@ fn initialize_time_ranges_ui(
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = if entity_db.num_timeless_messages() > 0 {
-        vec![TimeRange {
-            min: TimeInt::MIN_TIME_PANEL,
-            max: TimeInt::MIN_TIME_PANEL,
-        }]
+        vec![TimeRange::point(TimeInt::MIN_TIME_PANEL)]
     } else {
         Vec::new()
     };

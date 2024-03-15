@@ -190,7 +190,7 @@ fn update_transform3d_lines_heuristics(
             let only_has_transform_components = ctx
                 .entity_db
                 .store()
-                .all_components(&ctx.current_query().timeline, ent_path)
+                .all_components(&ctx.current_query().timeline(), ent_path)
                 .map_or(false, |c| {
                     c.iter()
                         .all(|c| re_types::archetypes::Transform3D::all_components().contains(c))

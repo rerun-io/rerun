@@ -24,7 +24,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     let entity_path: EntityPath = "some_entity".into();
 
     let timeline_frame = Timeline::new_sequence("frame");
-    let timepoint = TimePoint::from_iter([(timeline_frame, TimeInt::new_temporal(10))]);
+    let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
 
     let point1 = MyPoint::new(1.0, 1.0);
     let point2 = MyPoint::new(2.0, 2.0);
@@ -59,11 +59,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_row(&row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: TimeInt::new_temporal(11),
-            };
-
+            let query = LatestAtQuery::new(timeline_frame, 11);
             let got_point = store
                 .query_latest_component::<MyPoint>(&entity_path, &query)
                 .unwrap()
@@ -132,11 +128,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_row(&row)?;
 
         {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: TimeInt::new_temporal(11),
-            };
-
+            let query = LatestAtQuery::new(timeline_frame, 11);
             let got_point = store
                 .query_latest_component::<MyPoint>(&entity_path, &query)
                 .unwrap()
@@ -207,7 +199,7 @@ fn write_errors() {
             Default::default(),
         );
         let row = test_row!(ent_path @
-            [build_frame_nr(32.try_into().unwrap()), build_log_time(Time::now())] => 3; [
+            [build_frame_nr(32), build_log_time(Time::now())] => 3; [
                 build_sparse_instances(), build_some_positions2d(3)
         ]);
         assert!(matches!(
@@ -232,7 +224,7 @@ fn write_errors() {
         );
         {
             let row = test_row!(ent_path @
-                [build_frame_nr(32.try_into().unwrap()), build_log_time(Time::now())] => 3; [
+                [build_frame_nr(32), build_log_time(Time::now())] => 3; [
                     build_unsorted_instances(), build_some_positions2d(3)
             ]);
             assert!(matches!(
@@ -242,7 +234,7 @@ fn write_errors() {
         }
         {
             let row = test_row!(ent_path @
-                [build_frame_nr(32.try_into().unwrap()), build_log_time(Time::now())] => 3; [
+                [build_frame_nr(32), build_log_time(Time::now())] => 3; [
                     build_duped_instances(), build_some_positions2d(3)
             ]);
             assert!(matches!(
@@ -260,7 +252,7 @@ fn write_errors() {
         );
 
         let mut row = test_row!(ent_path @ [
-            build_frame_nr(1.try_into().unwrap()),
+            build_frame_nr(1),
             build_log_time(Time::now()),
         ] => 1; [ build_some_positions2d(1) ]);
 
@@ -303,9 +295,9 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     let ent_path = EntityPath::from("this/that");
     let now = Time::now();
     let now_minus_1s = now - Duration::from_secs(1.0);
-    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch().try_into().unwrap();
-    let frame39 = 39.try_into().unwrap();
-    let frame40 = 40.try_into().unwrap();
+    let now_minus_1s_nanos = now_minus_1s.nanos_since_epoch();
+    let frame39 = 39;
+    let frame40 = 40;
     let num_instances = 3;
 
     store
@@ -428,7 +420,7 @@ fn gc_correct() {
             let ent_path = EntityPath::from(format!("this/that/{i}"));
             let num_instances = rng.gen_range(0..=1_000);
             let row = test_row!(ent_path @ [
-                build_frame_nr(frame_nr.try_into().unwrap()),
+                build_frame_nr(frame_nr),
             ] => num_instances; [
                 build_some_colors(num_instances as _),
             ]);
@@ -554,10 +546,9 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
 
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::from_iter([
-            (timeline_log_time, now.try_into().unwrap()),
-            (timeline_frame_nr, 42.try_into().unwrap()),
-        ]),
+        TimePoint::timeless()
+            .with(timeline_log_time, now)
+            .with(timeline_frame_nr, 42),
         ent_path.clone(),
         [&[point] as _],
     )?;
@@ -585,10 +576,9 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
     // insert row in the future, these shouldn't be visible
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::from_iter([
-            (timeline_log_time, now_plus_one.try_into().unwrap()),
-            (timeline_frame_nr, 54.try_into().unwrap()),
-        ]),
+        TimePoint::timeless()
+            .with(timeline_log_time, now_plus_one)
+            .with(timeline_frame_nr, 54),
         ent_path.clone(),
         [&[point] as _],
     )?;
@@ -615,10 +605,9 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
     // insert row in the past, these should be visible
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::from_iter([
-            (timeline_log_time, now_minus_one.try_into().unwrap()),
-            (timeline_frame_nr, 32.try_into().unwrap()),
-        ]),
+        TimePoint::timeless()
+            .with(timeline_log_time, now_minus_one)
+            .with(timeline_frame_nr, 32),
         ent_path.clone(),
         [&[point] as _],
     )?;

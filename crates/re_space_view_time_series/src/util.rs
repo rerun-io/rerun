@@ -55,14 +55,14 @@ pub fn determine_time_range(
     // Just try it out and you'll see what I mean.
     if enable_query_clamping {
         if let Some(plot_bounds) = plot_bounds {
-            time_range.min = TimeInt::max(
-                time_range.min,
-                TimeInt::new_temporal(plot_bounds.range_x().start().floor() as i64),
-            );
-            time_range.max = TimeInt::min(
-                time_range.max,
-                TimeInt::new_temporal(plot_bounds.range_x().end().ceil() as i64),
-            );
+            time_range.set_min(i64::max(
+                time_range.min().as_i64(),
+                plot_bounds.range_x().start().floor() as i64,
+            ));
+            time_range.set_max(i64::min(
+                time_range.max().as_i64(),
+                plot_bounds.range_x().end().ceil() as i64,
+            ));
         }
     }
     time_range

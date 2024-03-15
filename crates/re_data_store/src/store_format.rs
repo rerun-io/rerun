@@ -130,7 +130,7 @@ impl std::fmt::Display for IndexedBucket {
 
         let time_range = {
             let time_range = &self.inner.read().time_range;
-            if time_range.min != TimeInt::MAX && time_range.max != TimeInt::MIN {
+            if time_range.min() != TimeInt::MAX && time_range.max() != TimeInt::MIN {
                 format!(
                     "    - {}: {}",
                     self.timeline.name(),

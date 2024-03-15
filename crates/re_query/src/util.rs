@@ -145,8 +145,8 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
 
     let time_range = visible_history.time_range(*time);
 
-    if !history.enabled || time_range.min == time_range.max {
-        let latest_query = LatestAtQuery::new(*timeline, time_range.min);
+    if !history.enabled || time_range.min() == time_range.max() {
+        let latest_query = LatestAtQuery::new(*timeline, time_range.min());
         let latest = query_archetype::<A>(store, &latest_query, ent_path)?;
 
         Ok(itertools::Either::Left(std::iter::once(latest)))
