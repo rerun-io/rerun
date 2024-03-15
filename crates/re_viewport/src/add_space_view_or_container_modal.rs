@@ -4,10 +4,9 @@ use itertools::Itertools;
 
 use crate::container::blueprint_id_to_tile_id;
 use crate::{icon_for_container_kind, ViewportBlueprint};
-use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_ui::ReUi;
-use re_viewer_context::{ContainerId, ViewerContext};
+use re_viewer_context::{ContainerId, RecommendedSpaceView, ViewerContext};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
@@ -112,9 +111,7 @@ fn modal_ui(
         .space_view_class_registry
         .iter_registry()
         .sorted_by_key(|entry| entry.class.display_name())
-        .map(|entry| {
-            SpaceViewBlueprint::new(entry.identifier, &EntityPath::root(), Default::default())
-        })
+        .map(|entry| SpaceViewBlueprint::new(entry.identifier, RecommendedSpaceView::root()))
     {
         let icon = space_view.class(ctx.space_view_class_registry).icon();
         let title = space_view

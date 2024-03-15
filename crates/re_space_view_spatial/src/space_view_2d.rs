@@ -2,7 +2,7 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
     Archetype, ComponentName,
@@ -387,10 +387,9 @@ fn recommended_space_views_with_image_splits(
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
         if entities.contains(recommended_root) {
-            recommended.push(RecommendedSpaceView {
-                root: recommended_root.clone(),
-                query_filter: EntityPathFilter::single_entity_filter(recommended_root),
-            });
+            recommended.push(RecommendedSpaceView::new_single_entity(
+                recommended_root.clone(),
+            ));
         }
 
         // And then recurse into the children
@@ -413,9 +412,6 @@ fn recommended_space_views_with_image_splits(
         }
     } else {
         // Otherwise we can use the space as it is
-        recommended.push(RecommendedSpaceView {
-            root: recommended_root.clone(),
-            query_filter: EntityPathFilter::subtree_entity_filter(recommended_root),
-        });
+        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }

@@ -1,8 +1,20 @@
 use std::collections::BTreeMap;
 
+use ahash::HashMap;
 use itertools::Itertools as _;
 
 use crate::EntityPath;
+
+/// A set of substitutions for entity paths.
+#[derive(Default)]
+pub struct EntityPathSubs(pub HashMap<String, String>);
+
+impl EntityPathSubs {
+    /// Create a new set of substitutions from a single origin.
+    pub fn new_with_origin(origin: &EntityPath) -> Self {
+        Self(std::iter::once(("origin".to_owned(), origin.to_string())).collect())
+    }
+}
 
 /// A way to filter a set of `EntityPath`s.
 ///
@@ -54,13 +66,25 @@ impl std::fmt::Debug for EntityPathFilter {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct EntityPathRule {
+    // We need to store the raw expression to be able to round-trip the filter
+    // when it contains substitutions.
+    pub raw_expression: String,
+
     pub path: EntityPath,
 
     /// If true, ALSO include children and grandchildren of this path (recursive rule).
     pub include_subtree: bool,
 }
+
+impl PartialEq for EntityPathRule {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw_expression == other.raw_expression
+    }
+}
+
+impl Eq for EntityPathRule {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RuleEffect {
@@ -102,8 +126,8 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path.
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn parse_forgiving(rules: &str) -> Self {
-        Self::from_query_expressions(rules.split('\n'))
+    pub fn parse_forgiving(rules: &str, subst_env: &EntityPathSubs) -> Self {
+        Self::from_query_expressions(rules.split('\n'), subst_env)
     }
 
     /// Build a filter from a list of query expressions.
@@ -114,7 +138,10 @@ impl EntityPathFilter {
     /// The rest of the expression is trimmed and treated as an entity path.
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn from_query_expressions<'a>(rules: impl IntoIterator<Item = &'a str>) -> Self {
+    pub fn from_query_expressions<'a>(
+        rules: impl IntoIterator<Item = &'a str>,
+        subst_env: &EntityPathSubs,
+    ) -> Self {
         let mut filter = Self::default();
 
         for line in rules
@@ -128,7 +155,7 @@ impl EntityPathFilter {
                 _ => (RuleEffect::Include, line),
             };
 
-            let rule = EntityPathRule::parse_forgiving(path_pattern);
+            let rule = EntityPathRule::parse_forgiving(path_pattern, subst_env);
 
             filter.add_rule(effect, rule);
         }
@@ -161,15 +188,7 @@ impl EntityPathFilter {
                 RuleEffect::Include => "+ ",
                 RuleEffect::Exclude => "- ",
             });
-            if rule.path.is_root() && rule.include_subtree {
-                // needs special casing, otherwise we end up with `//**`
-                s.push_str("/**");
-            } else {
-                s.push_str(&rule.path.to_string());
-                if rule.include_subtree {
-                    s.push_str("/**");
-                }
-            }
+            s.push_str(&rule.raw_expression);
             s
         })
     }
@@ -360,6 +379,7 @@ impl EntityPathRule {
     #[inline]
     pub fn exact(path: EntityPath) -> Self {
         Self {
+            raw_expression: path.to_string(),
             path,
             include_subtree: false,
         }
@@ -369,26 +389,40 @@ impl EntityPathRule {
     #[inline]
     pub fn including_subtree(path: EntityPath) -> Self {
         Self {
+            raw_expression: format!("{path}/**",),
             path,
             include_subtree: true,
         }
     }
 
-    pub fn parse_forgiving(expression: &str) -> Self {
-        let expression = expression.trim();
+    pub fn parse_forgiving(expression: &str, subst_env: &EntityPathSubs) -> Self {
+        let raw_expression = expression.trim().to_owned();
+
+        // TODO(#5528): This is a very naive implementation of variable substitution.
+        // unclear if we want to do this here, push this down into `EntityPath::parse`,
+        // or even supported deferred evaluation on the `EntityPath` itself.
+        let mut expression_sub = raw_expression.clone();
+        for (key, value) in &subst_env.0 {
+            expression_sub = expression_sub.replace(format!("${key}").as_str(), value);
+            expression_sub = expression_sub.replace(format!("${{{key}}}").as_str(), value);
+        }
+
         if expression == "/**" {
             Self {
+                raw_expression,
                 path: EntityPath::root(),
                 include_subtree: true,
             }
-        } else if let Some(path) = expression.strip_suffix("/**") {
+        } else if let Some(path) = expression_sub.strip_suffix("/**") {
             Self {
+                raw_expression,
                 path: EntityPath::parse_forgiving(path),
                 include_subtree: true,
             }
         } else {
             Self {
-                path: EntityPath::parse_forgiving(expression),
+                raw_expression,
+                path: EntityPath::parse_forgiving(&expression_sub),
                 include_subtree: false,
             }
         }
@@ -421,10 +455,12 @@ impl std::cmp::PartialOrd for EntityPathRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
+    use crate::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, RuleEffect};
 
     #[test]
     fn test_rule_order() {
+        let subst_env = Default::default();
+
         use std::cmp::Ordering;
 
         fn check_total_order(rules: &[EntityPathRule]) {
@@ -459,12 +495,14 @@ mod tests {
             "/world/car/driver",
             "/x/y/z",
         ];
-        let rules = rules.map(EntityPathRule::parse_forgiving);
+        let rules = rules.map(|rule| EntityPathRule::parse_forgiving(rule, &subst_env));
         check_total_order(&rules);
     }
 
     #[test]
     fn test_entity_path_filter() {
+        let subst_env = Default::default();
+
         let filter = EntityPathFilter::parse_forgiving(
             r#"
         + /world/**
@@ -472,6 +510,7 @@ mod tests {
         - /world/car/**
         + /world/car/driver
         "#,
+            &subst_env,
         );
 
         for (path, expected_effect) in [
@@ -491,13 +530,59 @@ mod tests {
         }
 
         assert_eq!(
-            EntityPathFilter::parse_forgiving("/**").formatted(),
+            EntityPathFilter::parse_forgiving("/**", &subst_env).formatted(),
+            "+ /**"
+        );
+    }
+
+    #[test]
+    fn test_entity_path_filter_subs() {
+        // Make sure we use a string longer than `$origin` here.
+        // We can't do in-place substitution.
+        let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
+
+        let filter = EntityPathFilter::parse_forgiving(
+            r#"
+        + $origin/**
+        - $origin
+        - $origin/car/**
+        + $origin/car/driver
+        "#,
+            &subst_env,
+        );
+
+        for (path, expected_effect) in [
+            ("/unworldly", None),
+            ("/annoyingly/long/path", Some(RuleEffect::Exclude)),
+            ("/annoyingly/long/path/house", Some(RuleEffect::Include)),
+            ("/annoyingly/long/path/car", Some(RuleEffect::Exclude)),
+            ("/annoyingly/long/path/car/hood", Some(RuleEffect::Exclude)),
+            (
+                "/annoyingly/long/path/car/driver",
+                Some(RuleEffect::Include),
+            ),
+            (
+                "/annoyingly/long/path/car/driver/head",
+                Some(RuleEffect::Exclude),
+            ),
+        ] {
+            assert_eq!(
+                filter.most_specific_match(&EntityPath::from(path)),
+                expected_effect,
+                "path: {path:?}",
+            );
+        }
+
+        assert_eq!(
+            EntityPathFilter::parse_forgiving("/**", &subst_env).formatted(),
             "+ /**"
         );
     }
 
     #[test]
     fn test_entity_path_filter_subtree() {
+        let subst_env = Default::default();
+
         let filter = EntityPathFilter::parse_forgiving(
             r#"
         + /world/**
@@ -507,6 +592,7 @@ mod tests {
         - /world/city
         - /world/houses/**
         "#,
+            &subst_env,
         );
 
         for (path, expected) in [
@@ -533,6 +619,8 @@ mod tests {
 
     #[test]
     fn test_is_superset_of() {
+        let subst_env = Default::default();
+
         struct TestCase {
             filter: &'static str,
             contains: Vec<&'static str>,
@@ -594,9 +682,9 @@ mod tests {
         ];
 
         for case in &cases {
-            let filter = EntityPathFilter::parse_forgiving(case.filter);
+            let filter = EntityPathFilter::parse_forgiving(case.filter, &subst_env);
             for contains in &case.contains {
-                let contains_filter = EntityPathFilter::parse_forgiving(contains);
+                let contains_filter = EntityPathFilter::parse_forgiving(contains, &subst_env);
                 assert!(
                     filter.is_superset_of(&contains_filter),
                     "Expected {:?} to fully contain {:?}, but it didn't",
@@ -605,7 +693,8 @@ mod tests {
                 );
             }
             for not_contains in &case.not_contains {
-                let not_contains_filter = EntityPathFilter::parse_forgiving(not_contains);
+                let not_contains_filter =
+                    EntityPathFilter::parse_forgiving(not_contains, &subst_env);
                 assert!(
                     !filter.is_superset_of(&not_contains_filter),
                     "Expected {:?} to NOT fully contain {:?}, but it did",

@@ -364,11 +364,7 @@ impl ViewportBlueprint {
 
             self.add_space_views(
                 final_recommendations.map(|recommendation| {
-                    SpaceViewBlueprint::new(
-                        class_id,
-                        &recommendation.root,
-                        recommendation.query_filter.clone(),
-                    )
+                    SpaceViewBlueprint::new(class_id, recommendation.clone())
                 }),
                 ctx,
                 None,
