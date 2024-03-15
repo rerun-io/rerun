@@ -215,7 +215,7 @@ impl EntityDb {
     }
 
     pub fn num_rows(&self) -> usize {
-        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
+        self.data_store.num_temporal_rows() as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
@@ -436,7 +436,6 @@ impl EntityDb {
 
         self.gc(&GarbageCollectionOptions {
             target: re_data_store::GarbageCollectionTarget::Everything,
-            gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
             dont_protect: [
@@ -459,7 +458,6 @@ impl EntityDb {
             target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
-            gc_timeless: true,
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),

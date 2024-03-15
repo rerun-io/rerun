@@ -45,7 +45,7 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> Option<(Option<TimeInt>, RowId, ComponentWithInstances)> {
+) -> Option<(TimeInt, RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
     let components = [InstanceKey::name(), component];
@@ -131,7 +131,7 @@ pub fn query_archetype<A: Archetype>(
 
     // NOTE: Since this is a compound API that actually emits multiple queries, the data time of the
     // final result is the most recent data time among all of its components.
-    let mut max_data_time = data_times.iter().max().copied().unwrap_or(None);
+    let mut max_data_time = data_times.iter().max().copied().unwrap_or(TimeInt::STATIC);
     let row_id = row_ids.first().unwrap_or(&RowId::ZERO);
 
     let recommended_components = A::recommended_components();
@@ -143,7 +143,7 @@ pub fn query_archetype<A: Archetype>(
         .filter_map(|component| {
             get_component_with_instances(store, query, ent_path, *component).map(
                 |(data_time, _, component_result)| {
-                    max_data_time = Option::max(max_data_time, data_time);
+                    max_data_time = TimeInt::max(max_data_time, data_time);
                     component_result
                 },
             )
