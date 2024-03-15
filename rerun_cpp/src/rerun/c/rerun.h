@@ -159,10 +159,10 @@ typedef struct rr_data_loader_settings {
     /// Unspecified by default.
     rr_string entity_path_prefix;
 
-    /// Should the logged data be timeless?
+    /// Should the logged data be static?
     ///
     /// Defaults to `false` if not set.
-    bool timeless;
+    bool statically;
 } rr_data_loader_settings;
 
 typedef struct rr_store_info {
@@ -456,7 +456,7 @@ extern void rr_recording_stream_log(
 ///
 /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
 extern void rr_recording_stream_log_file_from_path(
-    rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool timeless,
+    rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool statically,
     rr_error* error
 );
 
@@ -470,7 +470,7 @@ extern void rr_recording_stream_log_file_from_path(
 /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
-    bool timeless, rr_error* error
+    bool statically, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

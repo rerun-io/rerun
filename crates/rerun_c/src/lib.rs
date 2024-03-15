@@ -732,7 +732,7 @@ fn rr_log_file_from_path_impl(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    statically: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -740,7 +740,7 @@ fn rr_log_file_from_path_impl(
     let entity_path_prefix = entity_path_prefix.as_str("entity_path_prefix").ok();
 
     stream
-        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), timeless)
+        .log_file_from_path(filepath, entity_path_prefix.map(Into::into), statically)
         .map_err(|err| {
             CError::new(
                 CErrorCode::RecordingStreamRuntimeFailure,
@@ -757,10 +757,10 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_path(
     stream: CRecordingStream,
     filepath: CStringView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    statically: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, timeless) {
+    if let Err(err) = rr_log_file_from_path_impl(stream, filepath, entity_path_prefix, statically) {
         err.write_error(error);
     }
 }
@@ -772,7 +772,7 @@ fn rr_log_file_from_contents_impl(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    statically: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
@@ -785,7 +785,7 @@ fn rr_log_file_from_contents_impl(
             filepath,
             std::borrow::Cow::Borrowed(contents),
             entity_path_prefix.map(Into::into),
-            timeless,
+            statically,
         )
         .map_err(|err| {
             CError::new(
@@ -804,11 +804,11 @@ pub unsafe extern "C" fn rr_recording_stream_log_file_from_contents(
     filepath: CStringView,
     contents: CBytesView,
     entity_path_prefix: CStringView,
-    timeless: bool,
+    statically: bool,
     error: *mut CError,
 ) {
     if let Err(err) =
-        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, timeless)
+        rr_log_file_from_contents_impl(stream, filepath, contents, entity_path_prefix, statically)
     {
         err.write_error(error);
     }
