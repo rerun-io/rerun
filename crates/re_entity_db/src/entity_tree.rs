@@ -163,7 +163,7 @@ impl CompactedStoreEvents {
         };
 
         for event in store_events {
-            if event.is_timeless() {
+            if event.is_static() {
                 let per_component = this.timeless.entry(event.entity_path.hash()).or_default();
                 for component_name in event.cells.keys() {
                     *per_component.entry(*component_name).or_default() +=
