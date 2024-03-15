@@ -76,6 +76,8 @@ jobs:
       FULL: "true"
     secrets: inherit
 
+  # Build and test a single wheel to limit CI cost. We use linux-x64 because it's fast. linux-arm64 would also be a good
+  # choice, but reusable_test_wheels.yml is broken for that target (https://github.com/rerun-io/rerun/issues/5525)
   min-wheel-build:
     name: "Minimum Wheel Build"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
