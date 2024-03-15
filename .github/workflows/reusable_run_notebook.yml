@@ -1,4 +1,4 @@
-name: Reusable Buld and Upload Notebook
+name: Reusable Build and Upload Notebook
 
 on:
   workflow_call:
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: rerunio/ci_docker:0.11.0
+      image: rerunio/ci_docker:0.12.0
 
     steps:
       - uses: actions/checkout@v4
