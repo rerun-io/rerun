@@ -1554,8 +1554,19 @@ impl RecordingStream {
 
         // If a blueprint was provided, send it first.
         if let Some(blueprint) = blueprint {
+            let mut store_id = None;
             for msg in blueprint {
+                if store_id.is_none() {
+                    store_id = Some(msg.store_id().clone());
+                }
                 sink.send(msg);
+            }
+            if let Some(store_id) = store_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                sink.send(LogMsg::ActivateStore(store_id));
             }
         }
 
@@ -2048,7 +2059,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -2059,7 +2070,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Third message is the batched table itself, which was sent as a result of the implicit
@@ -2076,7 +2087,7 @@ mod tests {
 
                 similar_asserts::assert_eq!(table, got);
             }
-            LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+            _ => panic!("expected ArrowMsg"),
         }
 
         // That's all.
@@ -2115,7 +2126,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -2126,7 +2137,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            _ => panic!("expected SetStoreInfo"),
         }
 
         let mut rows = {
@@ -2150,7 +2161,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(expected, got);
                 }
-                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+                _ => panic!("expected ArrowMsg"),
             }
         };
 
@@ -2195,7 +2206,7 @@ mod tests {
                     assert!(msg.row_id != RowId::ZERO);
                     similar_asserts::assert_eq!(store_info, msg.info);
                 }
-                LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+                _ => panic!("expected SetStoreInfo"),
             }
 
             // MemorySinkStorage transparently handles flushing during `take()`!
@@ -2213,7 +2224,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(table, got);
                 }
-                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+                _ => panic!("expected ArrowMsg"),
             }
 
             // That's all.
