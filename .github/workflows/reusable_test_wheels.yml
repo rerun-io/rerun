@@ -67,7 +67,7 @@ jobs:
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"

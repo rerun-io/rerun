@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.11.0"
+LABEL version="0.12.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -113,7 +113,7 @@ RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_6
     curl --fail -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-${arch}-linux.tar.gz | tar xzk --strip-components 1
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.10.0
+ENV CACHE_KEY=rerun_docker_v0.12.0
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'
