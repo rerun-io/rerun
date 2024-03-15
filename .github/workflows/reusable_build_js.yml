@@ -55,7 +55,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.3.0
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Install dependencies
         shell: bash

@@ -16,13 +16,14 @@ channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
-platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
 [environments]
 cpp = ["cpp"]
+taplo = ["taplo"]
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -78,12 +79,10 @@ lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 lint-py-blackdoc = "blackdoc --check"
 lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 lint-py-ruff = "ruff check --config rerun_py/pyproject.toml"
-lint-taplo = "taplo fmt --check --diff"
 lint-typos = "typos"
 
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
-toml-fmt = "taplo fmt"
 ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
@@ -107,6 +106,14 @@ search-index = "cargo run -p re_build_search_index --release --"
 # This should only be used for testing the search index locally.
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
+
+# TODO(ab): move everything back to the main tasks/dependencies once taplo supports linux-aarch64.
+[feature.taplo]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.taplo.tasks]
+lint-taplo = "taplo fmt --check --diff"
+toml-fmt = "taplo fmt"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
@@ -153,6 +160,15 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 [dependencies]
 # IMPORTANT: do not add any dependencies here that may break CI. All dependencies should be available on all supported
 # platforms (including linux-aarch64), or added conditionally.
+#
+# Hints:
+# - To check a given package, go to https://prefix.dev/channels/conda-forge/packages/XXXX. It should support Windows,
+#   x86_64 and aarch64 macOS architectures, and x86_64 and aarch64 Linux architectures.
+# - Some pure Python packages may wrongly be tagged as platform-specific. In this case, use `[pypi-dependencies]`
+#   instead (e.g. `nox`).
+# - If a package is only used for a very specific CI job on a specific target, include it under that target (e.g.
+#   `meilisearch`).
+# - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
@@ -163,7 +179,6 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 just = ">=1.15.0"
 maturin = "1.4.0"
-meilisearch = "1.5.1.*"
 mypy = "1.8.0"
 numpy = ">=1.23,<2"
 pip = ">=23"
@@ -172,7 +187,6 @@ pytest = ">=7"
 python = "=3.11"             # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.2.2"
 semver = ">=2.13,<2.14"
-taplo = "=0.8.1"
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
@@ -180,13 +194,19 @@ ninja = "1.11.1"
 # Make sure to use a version that is compatible with
 # the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 doxygen = "1.9.7.*"
-binaryen = "116.*"   # for `wasm-opt`
-nox = "2021.10.1.*"
+binaryen = "117.*"   # for `wasm-opt`
 prettier = "2.8.8.*"
 tomlkit = "0.12.3.*"
 
+[pypi-dependencies]
+nox = ">=2024.3.2" # the conda-forge package is (wrongly) tagged as platform-specific
+
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+meilisearch = "1.5.1.*" # not avaialble for linux-aarch64
+
+[feature.taplo.dependencies]
+taplo = "=0.8.1" # not (yet?) available for linux-aarch64
 
 [feature.cpp.target.linux-64.dependencies]
 clang = "16.0.6"
