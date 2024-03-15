@@ -537,7 +537,9 @@ mod tests {
 
     #[test]
     fn test_entity_path_filter_subs() {
-        let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/world"));
+        // Make sure we use a string longer than `$origin` here.
+        // We can't do in-place substitution.
+        let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
 
         let filter = EntityPathFilter::parse_forgiving(
             r#"
@@ -551,12 +553,18 @@ mod tests {
 
         for (path, expected_effect) in [
             ("/unworldly", None),
-            ("/world", Some(RuleEffect::Exclude)),
-            ("/world/house", Some(RuleEffect::Include)),
-            ("/world/car", Some(RuleEffect::Exclude)),
-            ("/world/car/hood", Some(RuleEffect::Exclude)),
-            ("/world/car/driver", Some(RuleEffect::Include)),
-            ("/world/car/driver/head", Some(RuleEffect::Exclude)),
+            ("/annoyingly/long/path", Some(RuleEffect::Exclude)),
+            ("/annoyingly/long/path/house", Some(RuleEffect::Include)),
+            ("/annoyingly/long/path/car", Some(RuleEffect::Exclude)),
+            ("/annoyingly/long/path/car/hood", Some(RuleEffect::Exclude)),
+            (
+                "/annoyingly/long/path/car/driver",
+                Some(RuleEffect::Include),
+            ),
+            (
+                "/annoyingly/long/path/car/driver/head",
+                Some(RuleEffect::Exclude),
+            ),
         ] {
             assert_eq!(
                 filter.most_specific_match(&EntityPath::from(path)),
