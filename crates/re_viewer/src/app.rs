@@ -1,3 +1,5 @@
+use itertools::Itertools as _;
+
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -366,7 +368,7 @@ impl App {
 
             SystemCommand::LoadStoreDb(entity_db) => {
                 let store_id = entity_db.store_id().clone();
-                store_hub.insert_recording(entity_db);
+                store_hub.insert_entity_db(entity_db);
                 store_hub.set_recording_id(store_id);
             }
 
@@ -443,18 +445,24 @@ impl App {
     ) {
         match cmd {
             UICommand::SaveRecording => {
-                save_recording(self, store_context, None);
+                if let Err(err) = save_recording(self, store_context, None) {
+                    re_log::error!("Failed to save recording: {err}");
+                }
             }
             UICommand::SaveRecordingSelection => {
-                save_recording(
+                if let Err(err) = save_recording(
                     self,
                     store_context,
                     self.state.loop_selection(store_context),
-                );
+                ) {
+                    re_log::error!("Failed to save recording: {err}");
+                }
             }
 
             UICommand::SaveBlueprint => {
-                save_blueprint(self, store_context);
+                if let Err(err) = save_blueprint(self, store_context) {
+                    re_log::error!("Failed to save blueprint: {err}");
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -934,13 +942,50 @@ impl App {
                     if let Some(err) = err {
                         re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
-                        re_log::debug!("Data source {} has left", msg.source);
+                        re_log::debug!("Data source {} has finished", msg.source);
+
+                        // This could be the signal that we finished loading a blueprint.
+                        // In that case, we want to make it the default.
+                        // We wait with activaing blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
+
+                        let blueprints = store_hub
+                            .entity_dbs_from_channel_source(&channel_source)
+                            .filter_map(|entity_db| {
+                                if let Some(store_info) = entity_db.store_info() {
+                                    match store_info.store_id.kind {
+                                        StoreKind::Recording => {
+                                            // Recordings become active as soon as we start streaming them.
+                                        }
+                                        StoreKind::Blueprint => {
+                                            return Some(store_info.clone());
+                                        }
+                                    }
+                                }
+                                None
+                            })
+                            .collect_vec();
+
+                        for re_log_types::StoreInfo {
+                            store_id,
+                            application_id,
+                            ..
+                        } in blueprints
+                        {
+                            re_log::debug!("Activating newly loaded blueprint");
+                            store_hub.set_blueprint_for_app_id(store_id, application_id);
+                        }
                     }
                     continue;
                 }
             };
 
             let store_id = msg.store_id();
+
+            if store_hub.is_active_blueprint(store_id) {
+                // TODO(#5514): handle loading of active blueprints.
+                re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
+            }
 
             let entity_db = store_hub.entity_db_mut(store_id);
 
@@ -952,8 +997,8 @@ impl App {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
 
-            // Set the recording-id after potentially creating the store in the
-            // hub. This ordering is important because the `StoreHub` internally
+            // Set the recording-id after potentially creating the store in the hub.
+            // This ordering is important because the `StoreHub` internally
             // updates the app-id when changing the recording.
             if let LogMsg::SetStoreInfo(msg) = &msg {
                 match msg.info.store_id.kind {
@@ -961,19 +1006,18 @@ impl App {
                         re_log::debug!("Opening a new recording: {:?}", msg.info);
                         store_hub.set_recording_id(store_id.clone());
                     }
-
                     StoreKind::Blueprint => {
-                        re_log::debug!("Opening a new blueprint: {:?}", msg.info);
-                        store_hub.set_blueprint_for_app_id(
-                            store_id.clone(),
-                            msg.info.application_id.clone(),
-                        );
+                        // We wait with activaing blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
+                        // TODO(#5297): heed special "end-of-blueprint" message to activate blueprint.
+                        // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                        // the blueprint won't be activated until the whole _recording_ has finished loading.
                     }
                 }
             }
 
             // Do analytics after ingesting the new message,
-            // because thats when the `entity_db.store_info` is set,
+            // because that's when the `entity_db.store_info` is set,
             // which we use in the analytics call.
             let entity_db = store_hub.entity_db_mut(store_id);
             let is_new_store = matches!(&msg, LogMsg::SetStoreInfo(_msg));
@@ -1508,11 +1552,10 @@ fn save_recording(
     app: &mut App,
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
-) {
+) -> anyhow::Result<()> {
     let Some(entity_db) = store_context.as_ref().and_then(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
-        re_log::error!("No recording data to save");
-        return;
+        anyhow::bail!("No recording data to save");
     };
 
     let file_name = "data.rrd";
@@ -1523,29 +1566,36 @@ fn save_recording(
         "Save recording"
     };
 
-    save_entity_db(
-        app,
-        file_name.to_owned(),
-        title.to_owned(),
-        entity_db,
-        loop_selection,
-    );
+    save_entity_db(app, file_name.to_owned(), title.to_owned(), || {
+        entity_db.to_messages(loop_selection)
+    })
 }
 
-fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) {
+fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> anyhow::Result<()> {
     let Some(store_context) = store_context else {
-        re_log::error!("No blueprint to save");
-        return;
+        anyhow::bail!("No blueprint to save");
     };
 
-    let entity_db = store_context.blueprint;
+    re_tracing::profile_function!();
+
+    // We change the recording id to a new random one,
+    // otherwise when saving and loading a blueprint file, we can end up
+    // in a situation where the store_id we're loading is the same as the currently active one,
+    // which mean they will merge in a strange way.
+    // This is also related to https://github.com/rerun-io/rerun/issues/5295
+    let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
+    let mut messages = store_context.blueprint.to_messages(None)?;
+    for message in &mut messages {
+        message.set_store_id(new_store_id.clone());
+    }
 
     let file_name = format!(
         "{}.rbl",
         crate::saving::sanitize_app_id(&store_context.app_id)
     );
     let title = "Save blueprint";
-    save_entity_db(app, file_name, title.to_owned(), entity_db, None);
+
+    save_entity_db(app, file_name, title.to_owned(), || Ok(messages))
 }
 
 #[allow(clippy::needless_pass_by_ref_mut)] // `app` is only used on native
@@ -1553,21 +1603,14 @@ fn save_entity_db(
     #[allow(unused_variables)] app: &mut App, // only used on native
     file_name: String,
     title: String,
-    entity_db: &EntityDb,
-    loop_selection: Option<(re_log_types::Timeline, re_log_types::TimeRangeF)>,
-) {
+    to_log_messages: impl FnOnce() -> re_log_types::DataTableResult<Vec<LogMsg>>,
+) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        let messages = match entity_db.to_messages(loop_selection) {
-            Ok(messages) => messages,
-            Err(err) => {
-                re_log::error!("File saving failed: {err}");
-                return;
-            }
-        };
+        let messages = to_log_messages()?;
 
         wasm_bindgen_futures::spawn_local(async move {
             if let Err(err) = async_save_dialog(&file_name, &title, &messages).await {
@@ -1587,22 +1630,15 @@ fn save_entity_db(
                 .save_file()
         };
         if let Some(path) = path {
-            let messages = match entity_db.to_messages(loop_selection) {
-                Ok(messages) => messages,
-                Err(err) => {
-                    re_log::error!("File saving failed: {err}");
-                    return;
-                }
-            };
-            if let Err(err) = app.background_tasks.spawn_file_saver(move || {
+            let messages = to_log_messages()?;
+            app.background_tasks.spawn_file_saver(move || {
                 crate::saving::encode_to_file(&path, messages.iter())?;
                 Ok(path)
-            }) {
-                // NOTE: Can only happen if saving through the command palette.
-                re_log::error!("File saving failed: {err}");
-            }
+            })?;
         }
     }
+
+    Ok(())
 }
 
 #[cfg(target_arch = "wasm32")]

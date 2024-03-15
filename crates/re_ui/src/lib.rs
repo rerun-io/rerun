@@ -65,7 +65,7 @@ pub enum LabelStyle {
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
 use egui::epaint::util::FloatOrd;
-use egui::{pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2};
+use egui::{pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2, Widget};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -432,13 +432,26 @@ impl ReUi {
         selected: &mut bool,
         text: impl Into<egui::WidgetText>,
     ) -> egui::Response {
+        self.checkbox_indeterminate(ui, selected, text, false)
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn checkbox_indeterminate(
+        &self,
+        ui: &mut egui::Ui,
+        selected: &mut bool,
+        text: impl Into<egui::WidgetText>,
+        indeterminate: bool,
+    ) -> egui::Response {
         ui.scope(|ui| {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.active.expansion = 0.0;
             ui.visuals_mut().widgets.open.expansion = 0.0;
 
             // NOLINT
-            ui.checkbox(selected, text)
+            egui::Checkbox::new(selected, text)
+                .indeterminate(indeterminate)
+                .ui(ui)
         })
         .inner
     }

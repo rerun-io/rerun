@@ -1,18 +1,36 @@
 use std::collections::BTreeMap;
 
-use ahash::HashMap;
 use itertools::Itertools;
+use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
+
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataCell, DataRow, RowId, StoreKind};
-use re_types::{ComponentName, Loggable};
+use re_log_types::StoreKind;
+use re_types::ComponentName;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint_timepoint_for_writes, SpaceViewHighlights, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, ViewSystemIdentifier, ViewerContext,
+    DataResultTree, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier, ViewerContext,
 };
+
+/// Path to a specific entity in a specific store used for overrides.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OverridePath {
+    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
+    // might still be ambiguous when we have multiple stores active at a time.
+    pub store_kind: StoreKind,
+    pub path: EntityPath,
+}
+
+impl OverridePath {
+    pub fn blueprint_path(path: EntityPath) -> Self {
+        Self {
+            store_kind: StoreKind::Blueprint,
+            path,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyOverrides {
@@ -28,10 +46,14 @@ pub struct PropertyOverrides {
     pub recursive_properties: Option<EntityProperties>,
 
     /// An alternative store and entity path to use for the specified component.
-    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
-    // might still be ambiguous when we have multiple stores active at a time.
+    ///
+    /// These are resolved overrides, i.e. the result of recursive override propagation + individual overrides.
     // TODO(jleibs): Consider something like `tinymap` for this.
-    pub component_overrides: HashMap<ComponentName, (StoreKind, EntityPath)>,
+    // TODO(andreas): Should be a `Cow` to not do as many clones.
+    // TODO(andreas): Track recursive vs resolved (== individual + recursive) overrides.
+    //                  Recursive here meaning inherited + own recursive, i.e. not just what's on the path.
+    //                  What is logged on *this* entity can be inferred from walking up the tree.
+    pub resolved_component_overrides: IntMap<ComponentName, OverridePath>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
@@ -91,6 +113,64 @@ impl DataResult {
             .map(|p| &p.individual_override_path)
     }
 
+    /// Saves a recursive override OR clears both (!) individual & recursive overrides if the override is due to a parent recursive override or a default value.
+    // TODO(andreas): Does not take individual overrides into account yet.
+    // TODO(andreas): This should have a unit test, but the delayed override write makes it hard to test.
+    pub fn save_recursive_override_or_clear_if_redundant<C: re_types::Component + Eq + Default>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        data_result_tree: &DataResultTree,
+        desired_override: &C,
+    ) {
+        re_tracing::profile_function!();
+
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let (Some(recursive_override_path), Some(individual_override_path)) = (
+            self.recursive_override_path(),
+            self.individual_override_path(),
+        ) else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        if let Some(current_resolved_override) = self.lookup_override::<C>(ctx) {
+            // Do nothing if the resolved override is already the same as the new override.
+            if &current_resolved_override == desired_override {
+                return;
+            }
+
+            // TODO(andreas): Assumes this is a recursive override
+            let parent_recursive_override = self
+                .entity_path
+                .parent()
+                .and_then(|parent_path| data_result_tree.lookup_result_by_path(&parent_path))
+                .and_then(|data_result| data_result.lookup_override::<C>(ctx));
+
+            // If the parent has a recursive override that is the same as the new override,
+            // clear both individual and recursive override at the current path.
+            // (at least one of them has to be set, otherwise the current resolved override would be the same as the desired override)
+            //
+            // Another case for clearing
+            if parent_recursive_override.as_ref() == Some(desired_override)
+                || (parent_recursive_override.is_none() && desired_override == &C::default())
+            {
+                // TODO(andreas): It might be that only either of these two are necessary, in that case we shouldn't clear both.
+                ctx.save_empty_blueprint_component::<C>(recursive_override_path);
+                ctx.save_empty_blueprint_component::<C>(individual_override_path);
+            } else {
+                ctx.save_blueprint_component(recursive_override_path, desired_override);
+            }
+        } else {
+            // No override at all so far, simply set it.
+            ctx.save_blueprint_component(recursive_override_path, desired_override);
+        }
+    }
+
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
     ///
     /// Setting `new_recursive_props` to `None` will always clear the override.
@@ -145,44 +225,20 @@ impl DataResult {
             return;
         };
 
-        let cell = match new_individual_props {
+        match new_individual_props {
             None => {
-                re_log::debug!("Clearing {:?}", override_path);
-
-                Some(DataCell::from_arrow_empty(
-                    EntityPropertiesComponent::name(),
-                    EntityPropertiesComponent::arrow_datatype(),
-                ))
+                ctx.save_empty_blueprint_component::<EntityPropertiesComponent>(override_path);
             }
             Some(props) => {
                 // A value of `None` in the data store means "use the default value", so if
                 // the properties are `None`, we only must save if `props` is different
                 // from the default.
                 if props.has_edits(properties.unwrap_or(&DEFAULT_PROPS)) {
-                    re_log::debug!("Overriding {:?} with {:?}", override_path, props);
-
                     let component = EntityPropertiesComponent(props);
-
-                    Some(DataCell::from([component]))
-                } else {
-                    None
+                    ctx.save_blueprint_component(override_path, &component);
                 }
             }
         };
-
-        if let Some(cell) = cell {
-            let timepoint = blueprint_timepoint_for_writes();
-
-            let row =
-                DataRow::from_cells1_sized(RowId::new(), override_path.clone(), timepoint, 1, cell)
-                    .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
-        }
     }
 
     #[inline]
@@ -214,6 +270,87 @@ impl DataResult {
             .as_ref()
             .and_then(|p| p.individual_properties.as_ref())
     }
+
+    pub fn lookup_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) -> Option<C> {
+        self.property_overrides
+            .as_ref()
+            .and_then(|p| p.resolved_component_overrides.get(&C::name()))
+            .and_then(|OverridePath { store_kind, path }| match store_kind {
+                StoreKind::Blueprint => ctx
+                    .store_context
+                    .blueprint
+                    .store()
+                    .query_latest_component::<C>(path, ctx.blueprint_query),
+                StoreKind::Recording => ctx
+                    .entity_db
+                    .store()
+                    .query_latest_component::<C>(path, &ctx.current_query()),
+            })
+            .map(|c| c.value)
+    }
+
+    #[inline]
+    pub fn lookup_override_or_default<C: re_types::Component + Default>(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> C {
+        self.lookup_override(ctx).unwrap_or_default()
+    }
+
+    /// Returns from which entity path an override originates from.
+    ///
+    /// Returns None if there was no override at all.
+    /// Note that if this returns the current path, the override might be either an individual or recursive override.
+    #[inline]
+    pub fn component_override_source(
+        &self,
+        result_tree: &DataResultTree,
+        component_name: &ComponentName,
+    ) -> Option<EntityPath> {
+        re_tracing::profile_function!();
+
+        // If we don't have a resolved override, clearly nothing overrode this.
+        let active_override = self
+            .property_overrides
+            .as_ref()
+            .and_then(|p| p.resolved_component_overrides.get(component_name))?;
+
+        // Walk up the tree to find the highest ancestor which has a matching override.
+        // This must be the ancestor we inherited the override from. Note that `active_override`
+        // is a `(StoreKind, EntityPath)`, not a value.
+        let mut override_source = self.entity_path.clone();
+        while let Some(parent_path) = override_source.parent() {
+            if result_tree
+                .lookup_result_by_path(&parent_path)
+                .and_then(|data_result| data_result.property_overrides.as_ref())
+                .map_or(true, |property_overrides| {
+                    // TODO(andreas): Assumes all overrides are recursive which is not true,
+                    //                This should access `recursive_component_overrides` instead.
+                    property_overrides
+                        .resolved_component_overrides
+                        .get(component_name)
+                        != Some(active_override)
+                })
+            {
+                break;
+            }
+
+            override_source = parent_path;
+        }
+
+        Some(override_source)
+    }
+
+    /// Shorthand for checking for visibility on data overrides.
+    ///
+    /// Note that this won't check if the data store has visibility logged.
+    // TODO(andreas): Should this be possible?
+    // TODO(andreas): Should the result be cached, this might be a very common operation?
+    #[inline]
+    pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
+        self.lookup_override_or_default::<re_types::blueprint::components::Visible>(ctx)
+            .0
+    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
@@ -244,17 +381,21 @@ pub struct ViewQuery<'s> {
 
 impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visible_data_results(
-        &self,
+    pub fn iter_visible_data_results<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'a>,
         system: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = &DataResult> {
+    ) -> impl Iterator<Item = &DataResult>
+    where
+        's: 'a,
+    {
         self.per_system_data_results.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .filter(|result| result.accumulated_properties().visible)
+                        .filter(|result| result.is_visible(ctx))
                         .copied(),
                 )
             },

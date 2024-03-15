@@ -16,13 +16,7 @@ pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlue
             spawn_heuristics
                 .recommended_space_views
                 .into_iter()
-                .map(move |recommendation| {
-                    SpaceViewBlueprint::new(
-                        entry.identifier,
-                        &recommendation.root,
-                        recommendation.query_filter,
-                    )
-                })
+                .map(|recommendation| SpaceViewBlueprint::new(entry.identifier, recommendation))
         })
         .collect()
 }

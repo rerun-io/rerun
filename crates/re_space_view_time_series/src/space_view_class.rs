@@ -4,7 +4,7 @@ use egui_plot::{Legend, Line, Plot, PlotPoint, Points};
 
 use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{EntityPath, EntityPathFilter, TimeZone};
+use re_log_types::{EntityPath, TimeZone};
 use re_space_view::{controls, query_space_view_sub_archetype_or_default};
 use re_types::blueprint::components::Corner2D;
 use re_types::components::Range1D;
@@ -223,10 +223,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                 .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
         {
             return SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
+                recommended_space_views: vec![RecommendedSpaceView::root()],
             };
         }
 
@@ -242,10 +239,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .into_iter()
             .map(|path_part| {
                 let entity = EntityPath::new(vec![path_part.clone()]);
-                RecommendedSpaceView {
-                    query_filter: EntityPathFilter::subtree_entity_filter(&entity),
-                    root: entity,
-                }
+                RecommendedSpaceView::new_subtree(entity)
             })
             .collect();
 

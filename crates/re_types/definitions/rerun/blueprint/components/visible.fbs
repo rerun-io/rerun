@@ -14,7 +14,7 @@ struct Visible (
     "attr.arrow.transparent",
     "attr.rerun.scope": "blueprint",
     "attr.python.aliases": "bool",
-    "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
     "attr.rust.repr": "transparent",
     "attr.rust.tuple_struct"
 ) {

@@ -4,7 +4,7 @@ use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use crate::SpaceViewContents;
-use re_log_types::{DataRow, EntityPathFilter, RowId};
+use re_log_types::{DataRow, EntityPathSubs, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
@@ -15,8 +15,9 @@ use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     blueprint_timepoint_for_writes, DataResult, PerSystemEntities, PropertyOverrides,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
-    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
+    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
@@ -80,8 +81,7 @@ impl SpaceViewBlueprint {
     /// must call [`Self::save_to_blueprint_store`].
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
-        space_path: &EntityPath,
-        content: EntityPathFilter,
+        recommended: RecommendedSpaceView,
     ) -> Self {
         let id = SpaceViewId::random();
 
@@ -89,8 +89,8 @@ impl SpaceViewBlueprint {
             display_name: None,
             class_identifier: space_view_class,
             id,
-            space_origin: space_path.clone(),
-            contents: SpaceViewContents::new(id, space_view_class, content),
+            space_origin: recommended.origin,
+            contents: SpaceViewContents::new(id, space_view_class, recommended.query_filter),
             visible: true,
             pending_writes: Default::default(),
         }
@@ -165,8 +165,15 @@ impl SpaceViewBlueprint {
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
         let display_name = display_name.map(|v| v.0.to_string());
 
-        let content =
-            SpaceViewContents::from_db_or_default(id, blueprint_db, query, class_identifier);
+        let space_env = EntityPathSubs::new_with_origin(&space_origin);
+
+        let content = SpaceViewContents::from_db_or_default(
+            id,
+            blueprint_db,
+            query,
+            class_identifier,
+            &space_env,
+        );
         let visible = visible.map_or(true, |v| v.0);
 
         Some(Self {
@@ -446,7 +453,7 @@ impl SpaceViewBlueprint {
                 accumulated_properties,
                 individual_properties,
                 recursive_properties: Default::default(),
-                component_overrides: Default::default(),
+                resolved_component_overrides: Default::default(),
                 recursive_override_path: entity_path.clone(),
                 individual_override_path: entity_path,
             }),
@@ -460,12 +467,12 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
-        DataCell, DataRow, EntityPathFilter, RowId, StoreId, StoreKind, TimePoint,
+        DataCell, DataRow, RowId, StoreId, StoreKind, TimePoint,
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, PerVisualizer, SpaceViewClassRegistry, StoreContext,
-        VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, OverridePath, PerVisualizer, SpaceViewClassRegistry,
+        StoreContext, VisualizableEntities,
     };
     use std::collections::HashMap;
 
@@ -503,17 +510,12 @@ mod tests {
             recording.add_data_row(row).ok();
         }
 
-        let space_view = SpaceViewBlueprint::new(
-            "3D".into(),
-            &EntityPath::root(),
-            EntityPathFilter::parse_forgiving(
-                r"
-                    + parent
-                    + parent/skip/child1
-                    + parent/skip/child2
-                ",
-            ),
+        let recommended = RecommendedSpaceView::new(
+            EntityPath::root(),
+            ["+ parent", "+ parent/skip/child1", "+ parent/skip/child2"],
         );
+
+        let space_view = SpaceViewBlueprint::new("3D".into(), recommended);
 
         let auto_properties = Default::default();
 
@@ -582,9 +584,9 @@ mod tests {
                 );
             }
 
-            // Now, override visibility on parent individually.
+            // Now, override interactive on parent individually.
             let mut overrides = parent.individual_properties().cloned().unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -593,7 +595,7 @@ mod tests {
             );
         }
 
-        // Parent is not visible, but children are
+        // Parent is not interactive, but children are
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -622,18 +624,18 @@ mod tests {
                 .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
                 .unwrap();
 
-            assert!(!parent.accumulated_properties().visible);
+            assert!(!parent.accumulated_properties().interactive);
 
             for result in [child1, child2] {
-                assert!(result.accumulated_properties().visible);
+                assert!(result.accumulated_properties().interactive);
             }
 
-            // Override visibility on parent recursively.
+            // Override interactivity on parent recursively.
             let mut overrides = parent_group
                 .individual_properties()
                 .cloned()
                 .unwrap_or_default();
-            overrides.visible = false;
+            overrides.interactive = false;
 
             save_override(
                 overrides,
@@ -642,7 +644,7 @@ mod tests {
             );
         }
 
-        // Nobody is visible
+        // Nobody is interactive
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -668,11 +670,11 @@ mod tests {
                 .unwrap();
 
             for result in [parent, child1, child2] {
-                assert!(!result.accumulated_properties().visible);
+                assert!(!result.accumulated_properties().interactive);
             }
         }
 
-        // Override visible range on root
+        // Override interactive range on root
         {
             let root = space_view.root_data_result(
                 &StoreContext {
@@ -694,7 +696,7 @@ mod tests {
             );
         }
 
-        // Everyone has visible history
+        // Everyone has interactive history
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -736,7 +738,7 @@ mod tests {
             );
         }
 
-        // Child2 has its own visible history
+        // Child2 has its own interactive history
         {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
@@ -810,11 +812,7 @@ mod tests {
         }
 
         // Basic blueprint - a single space view that queries everything.
-        let space_view = SpaceViewBlueprint::new(
-            "3D".into(),
-            &EntityPath::root(),
-            EntityPathFilter::parse_forgiving("+ /**"),
-        );
+        let space_view = SpaceViewBlueprint::new("3D".into(), RecommendedSpaceView::root());
         let individual_override_root = space_view
             .contents
             .blueprint_entity_path
@@ -1042,13 +1040,13 @@ mod tests {
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
                 if let Some(property_overrides) = &result.property_overrides {
-                    if !property_overrides.component_overrides.is_empty() {
+                    if !property_overrides.resolved_component_overrides.is_empty() {
                         visited.insert(
                             result.entity_path.clone(),
                             property_overrides
-                                .component_overrides
+                                .resolved_component_overrides
                                 .iter()
-                                .map(|(component_name, (store_kind, path))| {
+                                .map(|(component_name, OverridePath { store_kind, path })| {
                                     assert_eq!(store_kind, &StoreKind::Blueprint);
                                     (*component_name, path.clone())
                                 })

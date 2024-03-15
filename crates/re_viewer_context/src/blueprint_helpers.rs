@@ -59,6 +59,13 @@ impl ViewerContext<'_> {
         let num_instances = components.num_instances() as u32;
         let timepoint = blueprint_timepoint_for_writes();
 
+        re_log::trace!(
+            "Writing {} components of type {:?} to {:?}",
+            num_instances,
+            components.name(),
+            entity_path
+        );
+
         let data_row_result = if num_instances == 1 {
             let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
             splat_cell.compute_size_bytes();
@@ -105,11 +112,11 @@ impl ViewerContext<'_> {
     /// Helper to save a component to the blueprint store.
     pub fn save_empty_blueprint_component_name(
         &self,
-        store: &re_data_store::DataStore,
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) {
-        let Some(datatype) = store.lookup_datatype(&component_name) else {
+        let blueprint = &self.store_context.blueprint;
+        let Some(datatype) = blueprint.store().lookup_datatype(&component_name) else {
             re_log::error_once!(
                 "Tried to clear a component with unknown type: {}",
                 component_name
@@ -130,7 +137,7 @@ impl ViewerContext<'_> {
             Ok(row) => self
                 .command_sender
                 .send_system(SystemCommand::UpdateBlueprint(
-                    self.store_context.blueprint.store_id().clone(),
+                    blueprint.store_id().clone(),
                     vec![row],
                 )),
             Err(err) => {
