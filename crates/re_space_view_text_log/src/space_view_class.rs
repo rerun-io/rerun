@@ -2,7 +2,7 @@ use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
@@ -91,10 +91,7 @@ impl SpaceViewClass for TextSpaceView {
             SpaceViewSpawnHeuristics::default()
         } else {
             SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
+                recommended_space_views: vec![RecommendedSpaceView::root()],
             }
         }
     }

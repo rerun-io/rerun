@@ -1065,7 +1065,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 
     // Apply the edit.
-    let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
+    let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
     if &new_filter == filter {
         None // no change
     } else {
