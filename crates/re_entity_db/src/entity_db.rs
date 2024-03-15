@@ -82,9 +82,6 @@ fn insert_row_with_retries(
 ///
 /// NOTE: all mutation is to be done via public functions!
 pub struct EntityDb {
-    /// The [`StoreId`] for this log.
-    store_id: StoreId,
-
     /// Set by whomever created this [`EntityDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
@@ -126,7 +123,6 @@ impl EntityDb {
         );
         let query_caches = re_query_cache::Caches::new(&data_store);
         Self {
-            store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
@@ -193,11 +189,11 @@ impl EntityDb {
     }
 
     pub fn store_kind(&self) -> StoreKind {
-        self.store_id.kind
+        self.store_id().kind
     }
 
     pub fn store_id(&self) -> &StoreId {
-        &self.store_id
+        self.data_store.id()
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -486,7 +482,6 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         let Self {
-            store_id: _,
             data_source: _,
             set_store_info: _,
             last_modified_at: _,
