@@ -23,7 +23,7 @@ inputs:
     type: string
     required: true
   release_version:
-    description: "Release versino to update the deployment to"
+    description: "Which release version to update the deployment to"
     type: string
     required: true
 
