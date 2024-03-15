@@ -5,7 +5,6 @@
 
 #include "../../datatypes/bool.hpp"
 #include "../../result.hpp"
-#include "panel_expanded.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -44,9 +43,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::Bool) == sizeof(rerun::blueprint::components::PanelExpanded)
-    );
+    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(blueprint::components::PanelExpanded));
 
     /// \private
     template <>

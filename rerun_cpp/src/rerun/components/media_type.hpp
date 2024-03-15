@@ -5,7 +5,6 @@
 
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
-#include "media_type.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -99,7 +98,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(rerun::components::MediaType));
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::MediaType));
 
     /// \private
     template <>

@@ -6,7 +6,6 @@
 #include "../datatypes/material.hpp"
 #include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
-#include "material.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -54,7 +53,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Material) == sizeof(rerun::components::Material));
+    static_assert(sizeof(rerun::datatypes::Material) == sizeof(components::Material));
 
     /// \private
     template <>

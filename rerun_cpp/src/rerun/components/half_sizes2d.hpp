@@ -5,7 +5,6 @@
 
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
-#include "half_sizes2d.hpp"
 
 #include <array>
 #include <cstdint>
@@ -62,7 +61,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(rerun::components::HalfSizes2D));
+    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::HalfSizes2D));
 
     /// \private
     template <>

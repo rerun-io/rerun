@@ -5,7 +5,6 @@
 
 #include "../datatypes/keypoint_id.hpp"
 #include "../result.hpp"
-#include "keypoint_id.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,7 +48,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(rerun::components::KeypointId));
+    static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(components::KeypointId));
 
     /// \private
     template <>

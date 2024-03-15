@@ -5,7 +5,6 @@
 
 #include "../datatypes/transform3d.hpp"
 #include "../result.hpp"
-#include "transform3d.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -38,7 +37,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(rerun::components::Transform3D));
+    static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(components::Transform3D));
 
     /// \private
     template <>

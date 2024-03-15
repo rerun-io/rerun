@@ -5,7 +5,6 @@
 
 #include "../datatypes/transform3d.hpp"
 #include "../result.hpp"
-#include "out_of_tree_transform3d.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -41,7 +40,7 @@ namespace rerun::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::Transform3D) == sizeof(rerun::components::OutOfTreeTransform3D)
+        sizeof(rerun::datatypes::Transform3D) == sizeof(components::OutOfTreeTransform3D)
     );
 
     /// \private

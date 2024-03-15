@@ -5,7 +5,6 @@
 
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
-#include "included_content.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -51,8 +50,7 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::EntityPath) ==
-        sizeof(rerun::blueprint::components::IncludedContent)
+        sizeof(rerun::datatypes::EntityPath) == sizeof(blueprint::components::IncludedContent)
     );
 
     /// \private

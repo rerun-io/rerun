@@ -5,7 +5,6 @@
 
 #include "../datatypes/rotation3d.hpp"
 #include "../result.hpp"
-#include "rotation3d.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,7 +48,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Rotation3D) == sizeof(rerun::components::Rotation3D));
+    static_assert(sizeof(rerun::datatypes::Rotation3D) == sizeof(components::Rotation3D));
 
     /// \private
     template <>

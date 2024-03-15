@@ -5,7 +5,6 @@
 
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
-#include "position3d.hpp"
 
 #include <array>
 #include <cstdint>
@@ -63,7 +62,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(rerun::components::Position3D));
+    static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(components::Position3D));
 
     /// \private
     template <>

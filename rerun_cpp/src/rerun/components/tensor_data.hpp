@@ -5,7 +5,6 @@
 
 #include "../datatypes/tensor_data.hpp"
 #include "../result.hpp"
-#include "tensor_data.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -72,7 +71,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(rerun::components::TensorData));
+    static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(components::TensorData));
 
     /// \private
     template <>

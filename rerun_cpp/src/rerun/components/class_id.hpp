@@ -5,7 +5,6 @@
 
 #include "../datatypes/class_id.hpp"
 #include "../result.hpp"
-#include "class_id.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,7 +48,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::ClassId) == sizeof(rerun::components::ClassId));
+    static_assert(sizeof(rerun::datatypes::ClassId) == sizeof(components::ClassId));
 
     /// \private
     template <>

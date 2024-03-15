@@ -5,7 +5,6 @@
 
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
-#include "text.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -56,7 +55,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(rerun::components::Text));
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::Text));
 
     /// \private
     template <>

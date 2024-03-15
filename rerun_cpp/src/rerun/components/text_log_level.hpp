@@ -5,7 +5,6 @@
 
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
-#include "text_log_level.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -82,7 +81,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(rerun::components::TextLogLevel));
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::TextLogLevel));
 
     /// \private
     template <>

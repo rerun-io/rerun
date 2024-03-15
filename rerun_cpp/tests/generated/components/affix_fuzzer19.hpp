@@ -5,7 +5,6 @@
 
 #include "../datatypes/affix_fuzzer4.hpp"
 #include "../datatypes/affix_fuzzer5.hpp"
-#include "affix_fuzzer19.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -50,9 +49,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::AffixFuzzer5) == sizeof(rerun::components::AffixFuzzer19)
-    );
+    static_assert(sizeof(rerun::datatypes::AffixFuzzer5) == sizeof(components::AffixFuzzer19));
 
     /// \private
     template <>

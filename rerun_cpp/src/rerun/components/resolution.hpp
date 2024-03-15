@@ -5,7 +5,6 @@
 
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
-#include "resolution.hpp"
 
 #include <array>
 #include <cstdint>
@@ -59,7 +58,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(rerun::components::Resolution));
+    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::Resolution));
 
     /// \private
     template <>

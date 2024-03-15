@@ -5,7 +5,6 @@
 
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
-#include "active_tab.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,9 +48,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::EntityPath) == sizeof(rerun::blueprint::components::ActiveTab)
-    );
+    static_assert(sizeof(rerun::datatypes::EntityPath) == sizeof(blueprint::components::ActiveTab));
 
     /// \private
     template <>

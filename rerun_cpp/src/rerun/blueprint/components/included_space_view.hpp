@@ -5,7 +5,6 @@
 
 #include "../../datatypes/uuid.hpp"
 #include "../../result.hpp"
-#include "included_space_view.hpp"
 
 #include <array>
 #include <cstdint>
@@ -48,7 +47,7 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::Uuid) == sizeof(rerun::blueprint::components::IncludedSpaceView)
+        sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::IncludedSpaceView)
     );
 
     /// \private

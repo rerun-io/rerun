@@ -5,7 +5,6 @@
 
 #include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
-#include "color.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -74,7 +73,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(rerun::components::Color));
+    static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(components::Color));
 
     /// \private
     template <>

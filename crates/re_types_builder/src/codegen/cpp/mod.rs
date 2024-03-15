@@ -2477,9 +2477,8 @@ fn quote_loggable_hpp_and_cpp(
     let predeclarations_and_static_assertions = if let (true, Type::Object(forwarded_fqname)) =
         (obj.is_arrow_transparent(), &obj.fields[0].typ)
     {
-        let quoted_type = quote_fqname_as_type_path(hpp_includes, &obj.fqname);
         let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
-        quote! { static_assert(sizeof(#forwarded_type) == sizeof(#quoted_type)); }
+        quote! { static_assert(sizeof(#forwarded_type) == sizeof(#quoted_namespace::#type_ident)); }
     } else {
         // Don't need this if we're forwarding to another type - it's already known then.
         quote! {

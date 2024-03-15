@@ -5,7 +5,6 @@
 
 #include "../datatypes/mat3x3.hpp"
 #include "../result.hpp"
-#include "pinhole_projection.hpp"
 
 #include <array>
 #include <cstdint>
@@ -64,7 +63,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Mat3x3) == sizeof(rerun::components::PinholeProjection));
+    static_assert(sizeof(rerun::datatypes::Mat3x3) == sizeof(components::PinholeProjection));
 
     /// \private
     template <>

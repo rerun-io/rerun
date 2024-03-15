@@ -6,7 +6,6 @@
 #include "../collection.hpp"
 #include "../datatypes/mesh_properties.hpp"
 #include "../result.hpp"
-#include "mesh_properties.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -55,9 +54,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::MeshProperties) == sizeof(rerun::components::MeshProperties)
-    );
+    static_assert(sizeof(rerun::datatypes::MeshProperties) == sizeof(components::MeshProperties));
 
     /// \private
     template <>

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../datatypes/affix_fuzzer1.hpp"
-#include "affix_fuzzer5.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -39,9 +38,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::AffixFuzzer1) == sizeof(rerun::components::AffixFuzzer5)
-    );
+    static_assert(sizeof(rerun::datatypes::AffixFuzzer1) == sizeof(components::AffixFuzzer5));
 
     /// \private
     template <>

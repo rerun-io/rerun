@@ -5,7 +5,6 @@
 
 #include "../../datatypes/utf8.hpp"
 #include "../../result.hpp"
-#include "space_view_class.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -46,9 +45,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::Utf8) == sizeof(rerun::blueprint::components::SpaceViewClass)
-    );
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::SpaceViewClass));
 
     /// \private
     template <>

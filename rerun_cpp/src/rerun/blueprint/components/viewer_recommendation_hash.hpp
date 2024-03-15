@@ -5,7 +5,6 @@
 
 #include "../../datatypes/uint64.hpp"
 #include "../../result.hpp"
-#include "viewer_recommendation_hash.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -52,8 +51,7 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::datatypes::UInt64) ==
-        sizeof(rerun::blueprint::components::ViewerRecommendationHash)
+        sizeof(rerun::datatypes::UInt64) == sizeof(blueprint::components::ViewerRecommendationHash)
     );
 
     /// \private
