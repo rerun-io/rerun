@@ -4,7 +4,7 @@ use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
 use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 
 use crate::SpaceViewContents;
-use re_log_types::{DataRow, RowId};
+use re_log_types::{DataRow, EntityPathSubs, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
@@ -165,7 +165,7 @@ impl SpaceViewBlueprint {
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
         let display_name = display_name.map(|v| v.0.to_string());
 
-        let space_env = std::iter::once(("origin".to_owned(), space_origin.to_string())).collect();
+        let space_env = EntityPathSubs::new_with_origin(&space_origin);
 
         let content = SpaceViewContents::from_db_or_default(
             id,

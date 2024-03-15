@@ -1,4 +1,4 @@
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs};
 
 /// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
 #[derive(Hash, Debug, Clone)]
@@ -21,7 +21,7 @@ pub struct SpaceViewSpawnHeuristics {
 impl RecommendedSpaceView {
     #[inline]
     pub fn new<'a>(origin: EntityPath, expressions: impl IntoIterator<Item = &'a str>) -> Self {
-        let space_env = std::iter::once(("origin".to_owned(), origin.to_string())).collect();
+        let space_env = EntityPathSubs::new_with_origin(&origin);
         Self {
             origin,
             query_filter: EntityPathFilter::from_query_expressions(expressions, &space_env),

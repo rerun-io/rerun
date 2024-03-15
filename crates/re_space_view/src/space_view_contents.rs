@@ -6,7 +6,9 @@ use re_entity_db::{
     external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
     EntityPropertyMap, EntityTree,
 };
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule};
+use re_log_types::{
+    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs,
+};
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
@@ -97,7 +99,7 @@ impl SpaceViewContents {
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
         space_view_class_identifier: SpaceViewClassIdentifier,
-        space_env: &HashMap<String, String>,
+        space_env: &EntityPathSubs,
     ) -> Self {
         let (contents, blueprint_entity_path) = query_space_view_sub_archetype::<
             blueprint_archetypes::SpaceViewContents,
