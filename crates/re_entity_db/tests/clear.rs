@@ -391,7 +391,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
 
     let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
-    let timepoint = TimePoint::timeless();
+    let timepoint = TimePoint::default();
     let entity_path: EntityPath = "space_view".into();
 
     // Insert a component, then clear it, then GC.
