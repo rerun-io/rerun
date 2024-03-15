@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Visible time range bounds.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisibleTimeRange {
     /// Low time boundary for sequence timeline.
     pub from_sequence: crate::blueprint::datatypes::VisibleTimeRangeBoundary,

@@ -9,7 +9,6 @@ use re_entity_db::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, InstancePath,
 };
 use re_log_types::EntityPathFilter;
-use re_space_view::query_visual_history;
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -29,7 +28,7 @@ use re_viewport::{
 use crate::ui::override_ui::override_ui;
 use crate::ui::override_ui::override_visualizer_ui;
 
-use super::{selection_history_ui::SelectionHistoryUi, visible_history::visible_history_ui};
+use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_time_range_ui};
 
 // ---
 
@@ -838,34 +837,42 @@ fn blueprint_ui_for_space_view(
     ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-        let space_view_class = *space_view.class_identifier();
+        let class_identifier = *space_view.class_identifier();
 
         let space_view_state = viewport.state.space_view_state_mut(
             ctx.space_view_class_registry,
             space_view.id,
-            space_view.class_identifier(),
+            &class_identifier,
         );
 
         // Space View don't inherit properties.
         let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+
+        let query_result = ctx.lookup_query_result(space_view.id);
+        let Some(data_result) = query_result
+            .tree
+            .root_handle()
+            .and_then(|root| query_result.tree.lookup_result(root))
+        else {
+            re_log::error!("Could not find root data result for Space View {space_view_id:?}");
+            return;
+        };
+
+        visual_time_range_ui(
+            ctx,
+            ui,
+            &query_result.tree,
+            data_result,
+            class_identifier,
+            true,
+        );
 
         let mut props = root_data_result
             .individual_properties()
             .cloned()
             .unwrap_or_default();
 
-        // visible_history_ui(
-        //     ctx,
-        //     ui,
-        //     &space_view_class,
-        //     true,
-        //     None,
-        //     &mut props.visible_history,
-        //     &root_data_result.accumulated_properties().visible_history,
-        // );
-
         let space_view_class = space_view.class(ctx.space_view_class_registry);
-
         if let Err(err) = space_view_class.selection_ui(
             ctx,
             ui,
@@ -881,7 +888,7 @@ fn blueprint_ui_for_space_view(
             );
         }
 
-        root_data_result.save_individual_override(Some(props), ctx);
+        root_data_result.save_individual_override_properties(ctx, Some(props));
     }
 }
 
@@ -916,9 +923,8 @@ fn blueprint_ui_for_data_result(
                     &space_view_class,
                     entity_path,
                     &mut props,
-                    data_result.accumulated_properties(),
                 );
-                data_result.save_individual_override(Some(props), ctx);
+                data_result.save_individual_override_properties(ctx, Some(props));
             }
         }
     }
@@ -1074,7 +1080,6 @@ fn entity_props_ui(
     space_view_class: &SpaceViewClassIdentifier,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
-    resolved_entity_props: &EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
@@ -1113,16 +1118,14 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    // TODO:
-    // visible_history_ui(
-    //     ctx,
-    //     ui,
-    //     space_view_class,
-    //     false,
-    //     Some(entity_path),
-    //     &mut entity_props.visible_history,
-    //     &resolved_entity_props.visible_history,
-    // );
+    visual_time_range_ui(
+        ctx,
+        ui,
+        &query_result.tree,
+        data_result,
+        *space_view_class,
+        false,
+    );
 
     egui::Grid::new("entity_properties")
         .num_columns(2)

@@ -13,7 +13,8 @@ namespace rerun.blueprint.components;
 table VisibleTimeRange (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
-  "attr.rust.repr": "transparent"
+  "attr.rust.repr": "transparent",
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   value: rerun.blueprint.datatypes.VisibleTimeRange (order: 100);
 }

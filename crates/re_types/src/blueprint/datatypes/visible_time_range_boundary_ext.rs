@@ -29,3 +29,18 @@ impl VisibleTimeRangeBoundary {
         }
     }
 }
+
+impl PartialEq for VisibleTimeRangeBoundary {
+    fn eq(&self, other: &Self) -> bool {
+        match self.kind {
+            VisibleTimeRangeBoundaryKind::Absolute
+            | VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => {
+                other.kind == self.kind && other.time == self.time
+            }
+            // Ignore the time value for infinite boundaries.
+            VisibleTimeRangeBoundaryKind::Infinite => other.kind == self.kind,
+        }
+    }
+}
+
+impl Eq for VisibleTimeRangeBoundary {}

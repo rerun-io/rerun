@@ -1,18 +1,16 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
-use re_types::blueprint::components::VisibleTimeRange;
 
 use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;
-use re_entity_db::EntityPropertyMap;
 use re_entity_db::{EntityDb, EntityPath};
+use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathFilter, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
     blueprint::components::{SpaceViewOrigin, Visible},
     components::Name,
-    Loggable as _,
 };
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
@@ -412,33 +410,56 @@ impl SpaceViewBlueprint {
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
-        let entity_path = self.entity_path();
+        let base_override_root = self.entity_path();
+        let individual_override_path =
+            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_path =
+            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
-        let mut recursive_component_overrides = IntMap::default();
-
-        // TODO(#4194): this should come from delegation to the space-view-class
-        let visible_time_range = ctx
+        let individual_properties = ctx
             .blueprint
             .store()
-            .query_latest_component_quiet::<VisibleTimeRange>(&self.entity_path(), query);
-        if visible_time_range.is_some() {
-            recursive_component_overrides.insert(
-                VisibleTimeRange::name(),
-                OverridePath::blueprint_path(self.entity_path()),
-            );
+            .query_latest_component_quiet::<EntityPropertiesComponent>(
+                &individual_override_path,
+                query,
+            )
+            .map(|result| result.value.0);
+        let accumulated_properties = individual_properties.clone().unwrap_or_default();
+
+        // Gather recursive component overrides.
+        // Ignore individual overrides on SpaceView root.
+        let mut recursive_component_overrides = IntMap::default();
+        if let Some(recursive_override_subtree) =
+            ctx.blueprint.tree().subtree(&recursive_override_path)
+        {
+            for component in recursive_override_subtree.entity.components.keys() {
+                if let Some(component_data) = ctx
+                    .blueprint
+                    .store()
+                    .latest_at(query, &recursive_override_path, *component, &[*component])
+                    .and_then(|(_, _, cells)| cells[0].clone())
+                {
+                    if !component_data.is_empty() {
+                        recursive_component_overrides.insert(
+                            *component,
+                            OverridePath::blueprint_path(recursive_override_path.clone()),
+                        );
+                    }
+                }
+            }
         }
 
         DataResult {
-            entity_path: entity_path.clone(),
+            entity_path: base_override_root,
             visualizers: Default::default(),
             tree_prefix_only: false,
             property_overrides: Some(PropertyOverrides {
-                accumulated_properties: Default::default(),
-                individual_properties: Default::default(),
+                accumulated_properties,
+                individual_properties,
                 recursive_properties: Default::default(),
-                resolved_component_overrides: recursive_component_overrides, // TODO(andreas): distinguish resolved & recursive overrides on `DataResult`
-                recursive_override_path: entity_path.clone(),
-                individual_override_path: entity_path,
+                resolved_component_overrides: recursive_component_overrides,
+                recursive_override_path,
+                individual_override_path,
             }),
         }
     }

@@ -39,10 +39,10 @@ struct VisibleTimeRangeBoundary (
 /// Visible time range bounds.
 struct VisibleTimeRange (
   "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.unreleased"
 ) {
-  // TODO(andreas): This should either specify a timeline type or even a concrete timeline
-  // instead of providing ranges for sequnece and time timelines.
+  // TODO(andreas): Split this up into two separate components.
 
   /// Low time boundary for sequence timeline.
   from_sequence: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 100);
