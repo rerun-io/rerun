@@ -202,7 +202,7 @@ def serve(
     The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
     You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     Once reached, the earliest logged data will be dropped.
-    Note that this means that timeless data may be dropped if logged early.
+    Note that this means that static data may be dropped if logged early (see https://github.com/rerun-io/rerun/issues/5531).
 
     This function returns immediately.
 
@@ -214,7 +214,7 @@ def serve(
         The port to serve the web viewer on (defaults to 9090).
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
-    default_blueprint
+    default_blueprint:
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, the new blueprint won't become active until the user
         clicks the "reset blueprint" button. If you want to activate the new blueprint
@@ -247,6 +247,7 @@ def serve(
         ).storage
 
     recording = RecordingStream.to_native(recording)
+    # TODO(#5531): keep static data around.
     bindings.serve(
         open_browser,
         web_port,

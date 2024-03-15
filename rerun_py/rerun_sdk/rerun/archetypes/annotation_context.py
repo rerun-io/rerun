@@ -44,7 +44,7 @@ class AnnotationContext(Archetype):
     image[100:180, 130:280] = 2
 
     # Log an annotation context to assign a label and color to each class
-    rr.log("segmentation", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), timeless=True)
+    rr.log("segmentation", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), static=True)
 
     rr.log("segmentation/image", rr.SegmentationImage(image))
     ```
