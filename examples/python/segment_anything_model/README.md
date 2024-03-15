@@ -22,7 +22,7 @@ Visualize the output of [Meta AI's Segment Anything model](https://segment-anyth
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image)
 
 
-# Run the Code
+## Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup 
@@ -42,17 +42,24 @@ python examples/python/segment_anything_model/main.py # run the example
 If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
 ```bash
 python examples/python/segment_anything_model/main.py --help 
+
+usage: main.py [-h] [--model {vit_h,vit_l,vit_b}] [--device DEVICE] [--points-per-batch POINTS_PER_BATCH] [--headless] [--connect] [--serve] [--addr ADDR]
+               [--save SAVE] [-o]
+               [N ...]
+
+Run the Facebook Research Segment Anything example.
+
+positional arguments: N                   A list of images to process. (default: None)
+
+optional arguments:
+  -h, --help                              show this help message and exit
+  --model {vit_h,vit_l,vit_b}             Which model to use.(See: https://github.com/facebookresearch/segment-anything#model-checkpoints) (default: vit_b)
+  --device DEVICE                         Which torch device to use, e.g. cpu or cuda. (See: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device) (default: cpu)
+  --points-per-batch POINTS_PER_BATCH     Points per batch. More points will run faster, but too many will exhaust GPU memory. (default: 32)
+  --headless                              Don t show GUI (default: False)
+  --connect                               Connect to an external viewer (default: False)
+  --serve                                 Serve a web viewer (WARNING: experimental feature) (default: False)
+  --addr ADDR                             Connect to this ip:port (default: None)
+  --save SAVE                             Save data to a .rrd file at this path (default: None)
+  -o, --stdout                            Log data to standard output, to be piped into a Rerun Viewer (default: False)
 ```
-
-[//]: # (Example of using Rerun to log and visualize the output of Meta AI's Segment Anything model.)
-
-[//]: # ()
-[//]: # (For more info see [here]&#40;https://segment-anything.com/&#41;.)
-
-[//]: # (```bash)
-
-[//]: # (pip install -r examples/python/segment_anything_model/requirements.txt)
-
-[//]: # (python examples/python/segment_anything_model/main.py)
-
-[//]: # (```)

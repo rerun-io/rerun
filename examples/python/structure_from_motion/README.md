@@ -30,7 +30,9 @@ A short video clip has been processed offline by the COLMAP pipeline, and we use
 
 ## Used Rerun Types
 
-# Run
+[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+
+## Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup 
@@ -47,15 +49,23 @@ To experiment with the provided example, simply execute the main Python script:
 ```bash
 python examples/python/structure_from_motion/main.py # run the example
 ```
-If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
+If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
 python examples/python/structure_from_motion/main.py --help 
+
+usage: main.py [-h] [--unfiltered] [--dataset {colmap_rusty_car,colmap_fiat}] [--resize RESIZE] [--headless] [--connect] [--serve] [--addr ADDR] [--save SAVE] [-o]
+
+Visualize the output of COLMAP s sparse reconstruction on a video.
+
+optional arguments:
+  -h, --help                                    show this help message and exit
+  --unfiltered                                  If set, we don t filter away any noisy data.
+  --dataset {colmap_rusty_car,colmap_fiat}      Which dataset to download
+  --resize RESIZE                               Target resolution to resize images
+  --headless                                    Don t show GUI
+  --connect                                     Connect to an external viewer
+  --serve                                       Serve a web viewer (WARNING: experimental feature)
+  --addr ADDR                                   Connect to this ip:port
+  --save SAVE                                   Save data to a .rrd file at this path
+  -o, --stdout                                  Log data to standard output, to be piped into a Rerun Viewer
 ```
-
-[//]: # (```bash)
-
-[//]: # (pip install -r examples/python/structure_from_motion/requirements.txt)
-
-[//]: # (python examples/python/structure_from_motion/main.py)
-
-[//]: # (```)
