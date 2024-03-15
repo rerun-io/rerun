@@ -100,34 +100,39 @@ jobs:
             linux-arm64)
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
-                container="{'image': 'quay.io/pypa/manylinux_2_28_aarch64:latest'}"
-          
+                container="null"
+                compat="manylinux_2_35"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              compat="manylinux_2_31"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
+              compat="manylinux_2_31"
               ;;
             macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
             macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "compat=$compat" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
 
@@ -191,7 +196,7 @@ jobs:
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat manylinux_2_31
+            --compat ${{ needs.set-config.outputs.COMPAT }}
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
