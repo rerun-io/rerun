@@ -5,16 +5,15 @@
 
 #include "../datatypes/mat3x3.hpp"
 #include "../result.hpp"
+#include "pinhole_projection.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class FixedSizeListBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: Camera projection, from image coordinates to view coordinates.
@@ -65,8 +64,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Mat3x3) == sizeof(rerun::components::PinholeProjection));
 
     /// \private
     template <>
@@ -74,17 +72,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.PinholeProjection";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Mat3x3>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const components::PinholeProjection* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Mat3x3>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Mat3x3*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::PinholeProjection` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::PinholeProjection* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Mat3x3>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Mat3x3*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../datatypes/mesh_properties.hpp"
 #include "../result.hpp"
+#include "mesh_properties.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -13,10 +14,8 @@
 #include <utility>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class StructBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: Optional triangle indices for a mesh.
@@ -56,8 +55,9 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::MeshProperties) == sizeof(rerun::components::MeshProperties)
+    );
 
     /// \private
     template <>
@@ -65,17 +65,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.MeshProperties";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::MeshProperties>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StructBuilder* builder, const components::MeshProperties* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::MeshProperties>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::MeshProperties*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::MeshProperties` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::MeshProperties* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::MeshProperties>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::MeshProperties*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

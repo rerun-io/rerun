@@ -5,6 +5,7 @@
 
 #include "../../datatypes/entity_path.hpp"
 #include "../../result.hpp"
+#include "active_tab.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -12,10 +13,8 @@
 #include <utility>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class StringBuilder;
-} // namespace arrow
+}
 
 namespace rerun::blueprint::components {
     /// **Component**: The active tab in a tabbed container.
@@ -50,8 +49,9 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::EntityPath) == sizeof(rerun::blueprint::components::ActiveTab)
+    );
 
     /// \private
     template <>
@@ -59,17 +59,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.ActiveTab";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::EntityPath>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StringBuilder* builder, const blueprint::components::ActiveTab* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::EntityPath*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::ActiveTab` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::ActiveTab* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::EntityPath>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::EntityPath*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

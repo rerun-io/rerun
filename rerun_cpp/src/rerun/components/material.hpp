@@ -6,16 +6,15 @@
 #include "../datatypes/material.hpp"
 #include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
+#include "material.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class StructBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: Material properties of a mesh.
@@ -55,8 +54,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Material) == sizeof(rerun::components::Material));
 
     /// \private
     template <>
@@ -64,16 +62,29 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Material";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Material>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StructBuilder* builder, const components::Material* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Material>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Material*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::Material` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Material* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Material>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Material*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

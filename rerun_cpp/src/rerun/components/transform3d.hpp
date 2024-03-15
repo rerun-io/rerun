@@ -5,15 +5,14 @@
 
 #include "../datatypes/transform3d.hpp"
 #include "../result.hpp"
+#include "transform3d.hpp"
 
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class DenseUnionBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: An affine transform between two 3D spaces, represented in a given direction.
@@ -39,8 +38,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(rerun::components::Transform3D));
 
     /// \private
     template <>
@@ -48,17 +46,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Transform3D";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Transform3D>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const components::Transform3D* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Transform3D>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Transform3D*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::Transform3D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Transform3D* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Transform3D>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Transform3D*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

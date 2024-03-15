@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/affix_fuzzer1.hpp"
+#include "affix_fuzzer6.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -12,10 +13,8 @@
 #include <utility>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class StructBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     struct AffixFuzzer6 {
@@ -40,8 +39,9 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::AffixFuzzer1) == sizeof(rerun::components::AffixFuzzer6)
+    );
 
     /// \private
     template <>
@@ -49,17 +49,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer6";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::AffixFuzzer1>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StructBuilder* builder, const components::AffixFuzzer6* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::AffixFuzzer1>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer1*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::AffixFuzzer6` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AffixFuzzer6* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::AffixFuzzer1>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer1*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

@@ -5,16 +5,15 @@
 
 #include "../../datatypes/uuid.hpp"
 #include "../../result.hpp"
+#include "root_container.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class FixedSizeListBuilder;
-} // namespace arrow
+}
 
 namespace rerun::blueprint::components {
     /// **Component**: The container that sits at the root of a viewport.
@@ -47,8 +46,9 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::Uuid) == sizeof(rerun::blueprint::components::RootContainer)
+    );
 
     /// \private
     template <>
@@ -56,17 +56,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.RootContainer";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder,
             const blueprint::components::RootContainer* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Uuid*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::RootContainer` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::RootContainer* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Uuid>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Uuid*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

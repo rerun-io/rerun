@@ -5,6 +5,7 @@
 
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
+#include "text.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -12,10 +13,8 @@
 #include <utility>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class StringBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: A string of text, e.g. for labels and text documents.
@@ -57,8 +56,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(rerun::components::Text));
 
     /// \private
     template <>
@@ -66,16 +64,29 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Text";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::StringBuilder* builder, const components::Text* elements, size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Utf8*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::Text` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Text* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Utf8>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Utf8*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

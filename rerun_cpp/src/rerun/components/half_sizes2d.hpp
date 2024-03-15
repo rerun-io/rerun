@@ -5,16 +5,15 @@
 
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
+#include "half_sizes2d.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class FixedSizeListBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     /// **Component**: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
@@ -63,8 +62,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(rerun::components::HalfSizes2D));
 
     /// \private
     template <>
@@ -72,17 +70,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.HalfSizes2D";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const components::HalfSizes2D* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::HalfSizes2D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::HalfSizes2D* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Vec2D>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::Vec2D*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun

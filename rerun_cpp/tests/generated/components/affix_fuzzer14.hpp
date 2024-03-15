@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/affix_fuzzer3.hpp"
+#include "affix_fuzzer14.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -11,10 +12,8 @@
 #include <utility>
 
 namespace arrow {
-    class Array;
-    class DataType;
     class DenseUnionBuilder;
-} // namespace arrow
+}
 
 namespace rerun::components {
     struct AffixFuzzer14 {
@@ -39,8 +38,9 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::AffixFuzzer3) == sizeof(rerun::components::AffixFuzzer14)
+    );
 
     /// \private
     template <>
@@ -48,17 +48,30 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer14";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype();
+        }
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const components::AffixFuzzer14* elements,
             size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::AffixFuzzer3>::fill_arrow_array_builder(
+                builder,
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer3*>(elements),
+                num_elements
+            );
+        }
 
         /// Serializes an array of `rerun::components::AffixFuzzer14` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AffixFuzzer14* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::AffixFuzzer3>::to_arrow(
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer3*>(instances),
+                num_instances
+            );
+        }
     };
 } // namespace rerun
