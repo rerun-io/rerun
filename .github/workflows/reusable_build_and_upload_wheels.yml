@@ -101,8 +101,8 @@ jobs:
             linux-arm64)
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
-                container="null"
-                compat="manylinux_2_35" # TODO(#5512): bringing that down to manylinux_2_31 requires a custom container
+                container="{'image': 'rerunio/ci_docker:0.12.0'}"
+                compat="manylinux_2_31"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
