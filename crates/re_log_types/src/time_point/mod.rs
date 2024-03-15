@@ -18,9 +18,9 @@ pub use timeline::{Timeline, TimelineName};
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 ///
-/// If this is empty, the data is _timeless_.
-/// Timeless data will show up on all timelines, past and future,
-/// and will hit all time queries. In other words, it is always there.
+/// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
+/// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+/// any temporal data of the same type.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
@@ -32,12 +32,6 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 }
 
 impl TimePoint {
-    /// Logging to this time means the data will show up in all timelines, past and future.
-    #[inline]
-    pub fn timeless() -> Self {
-        Self::default()
-    }
-
     #[inline]
     pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
         self.0.get(timeline)
@@ -61,7 +55,7 @@ impl TimePoint {
     }
 
     #[inline]
-    pub fn is_timeless(&self) -> bool {
+    pub fn is_static(&self) -> bool {
         self.0.is_empty()
     }
 
