@@ -37,7 +37,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     rr.init("rerun_example_view_coordinates", spawn=True)
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)  # Set an up-axis
     rr.log(
         "world/xyz",
         rr.Arrows3D(
