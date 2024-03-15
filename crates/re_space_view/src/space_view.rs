@@ -14,10 +14,9 @@ use re_types::{
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataResult, PerSystemEntities, PropertyOverrides,
-    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
-    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    DataResult, PerSystemEntities, PropertyOverrides, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
@@ -194,7 +193,7 @@ impl SpaceViewBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
 
         let Self {
             id,
@@ -237,8 +236,9 @@ impl SpaceViewBlueprint {
     /// Creates a new [`SpaceViewBlueprint`] with the same contents, but a different [`SpaceViewId`]
     ///
     /// Also duplicates all the queries in the space view.
-    pub fn duplicate(&self, blueprint: &EntityDb, query: &LatestAtQuery) -> Self {
+    pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
+        let blueprint = store_context.blueprint;
 
         let current_path = self.entity_path();
         let new_id = SpaceViewId::random();
@@ -256,7 +256,7 @@ impl SpaceViewBlueprint {
 
                 if let Ok(row) = DataRow::from_cells(
                     RowId::new(),
-                    blueprint_timepoint_for_writes(),
+                    store_context.blueprint_timepoint_for_writes(),
                     sub_path,
                     1,
                     info.components

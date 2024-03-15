@@ -1,22 +1,24 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, Time, TimePoint, Timeline};
 use re_types::{components::InstanceKey, AsComponents, ComponentBatch, ComponentName};
 
-use crate::{SystemCommand, SystemCommandSender as _, ViewerContext};
+use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
 #[inline]
 pub fn blueprint_timeline() -> Timeline {
     Timeline::new_temporal("blueprint")
 }
 
-/// The timepoint to use when writing an update to the blueprint.
-#[inline]
-pub fn blueprint_timepoint_for_writes() -> TimePoint {
-    TimePoint::from([(blueprint_timeline(), Time::now().into())])
+impl StoreContext<'_> {
+    /// The timepoint to use when writing an update to the blueprint.
+    #[inline]
+    pub fn blueprint_timepoint_for_writes(&self) -> TimePoint {
+        TimePoint::from([(blueprint_timeline(), Time::now().into())])
+    }
 }
 
 impl ViewerContext<'_> {
     pub fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         let data_row =
             match DataRow::from_archetype(RowId::new(), timepoint.clone(), entity_path, components)
@@ -57,7 +59,7 @@ impl ViewerContext<'_> {
         data_cell.compute_size_bytes();
 
         let num_instances = components.num_instances() as u32;
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
 
         re_log::trace!(
             "Writing {} components of type {:?} to {:?}",
@@ -124,7 +126,7 @@ impl ViewerContext<'_> {
             return;
         };
 
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = self.store_context.blueprint_timepoint_for_writes();
         let cell = DataCell::from_arrow_empty(component_name, datatype.clone());
 
         match DataRow::from_cells1(

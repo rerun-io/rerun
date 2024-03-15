@@ -9,8 +9,8 @@ use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, BlueprintId, BlueprintIdRegistry, ContainerId, Item,
-    SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+    BlueprintId, BlueprintIdRegistry, ContainerId, Item, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, ViewerContext,
 };
 
 use crate::blueprint::components::GridColumns;
@@ -218,7 +218,7 @@ impl ContainerBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = blueprint_timepoint_for_writes();
+        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
 
         let Self {
             id,
