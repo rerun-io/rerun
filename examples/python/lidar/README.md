@@ -19,8 +19,19 @@ Visualize the LiDAR data from the [nuScenes dataset](https://www.nuscenes.org/).
 
 For a more extensive example including other sensors and annotations check out the [nuScenes example](https://www.rerun.io/examples/real-data/nuscenes).
 
-## Used Rerun Types
+# Used Rerun Types
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
+
+
+# Logging and Visualizing with Rerun
+
+The visualization in this example was created with just the following lines.
+```python
+rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6) # Setting the time 
+rr.log("world/lidar", rr.Points3D(points, colors=point_colors)) # Log the 3D data
+```
+When logging data to Rerun, it's possible to associate it with specific time by using the Rerun's [`timelines`](https://www.rerun.io/docs/concepts/timelines).
+
 
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
