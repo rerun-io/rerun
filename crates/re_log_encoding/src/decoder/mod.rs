@@ -22,7 +22,7 @@ pub enum VersionPolicy {
 
     /// Return [`DecodeError::IncompatibleRerunVersion`] if the versions aren't compatible.
     ///
-    /// We usually use this for tests, and for loading `.blueprint` files.
+    /// We usually use this for tests, and for loading `.rbl` blueprint files.
     Error,
 }
 

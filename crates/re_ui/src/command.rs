@@ -101,7 +101,7 @@ impl UICommand {
                 "Save data for the current loop selection to a Rerun data file (.rrd)",
             ),
 
-            Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.blueprint)"),
+            Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.rbl)"),
 
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
