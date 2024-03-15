@@ -25,7 +25,7 @@ fn simple_query() {
     let mut caches = Caches::new(&store);
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -59,7 +59,7 @@ fn timeless_query() {
     let mut caches = Caches::new(&store);
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -69,8 +69,14 @@ fn timeless_query() {
     // Assign one of them a color with an explicit instance.. timelessly!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
-    let row = DataRow::from_cells2_sized(RowId::new(), ent_path, [], 1, (color_instances, colors))
-        .unwrap();
+    let row = DataRow::from_cells2_sized(
+        RowId::new(),
+        ent_path,
+        TimePoint::timeless(),
+        1,
+        (color_instances, colors),
+    )
+    .unwrap();
     insert_and_react(&mut store, &mut caches, &row);
 
     let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
@@ -87,7 +93,7 @@ fn no_instance_join_query() {
     let mut caches = Caches::new(&store);
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with an implicit instance
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -113,7 +119,7 @@ fn missing_column_join_query() {
     let mut caches = Caches::new(&store);
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with an implicit instance
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -134,7 +140,7 @@ fn splatted_query() {
     let mut caches = Caches::new(&store);
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -277,25 +283,19 @@ fn invalidation() {
     };
 
     let timeless = TimePoint::timeless();
-    let frame_122 = build_frame_nr(122.try_into().unwrap());
-    let frame_123 = build_frame_nr(123.try_into().unwrap());
-    let frame_124 = build_frame_nr(124.try_into().unwrap());
+    let frame_122 = build_frame_nr(122);
+    let frame_123 = build_frame_nr(123);
+    let frame_124 = build_frame_nr(124);
 
     test_invalidation(
-        LatestAtQuery {
-            timeline: frame_123.0,
-            at: frame_123.1,
-        },
+        LatestAtQuery::new(frame_123.0, frame_123.1),
         [frame_123].into(),
         [frame_122].into(),
         [frame_124].into(),
     );
 
     test_invalidation(
-        LatestAtQuery {
-            timeline: frame_123.0,
-            at: frame_123.1,
-        },
+        LatestAtQuery::new(frame_123.0, frame_123.1),
         [frame_123].into(),
         timeless,
         [frame_124].into(),
@@ -339,10 +339,10 @@ fn invalidation_of_future_optionals() {
     let ent_path = "points";
 
     let timeless = TimePoint::timeless();
-    let frame2 = [build_frame_nr(2.try_into().unwrap())];
-    let frame3 = [build_frame_nr(3.try_into().unwrap())];
+    let frame2 = [build_frame_nr(2)];
+    let frame3 = [build_frame_nr(3)];
 
-    let query_time = [build_frame_nr(9999.try_into().unwrap())];
+    let query_time = [build_frame_nr(9999)];
 
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::new(), ent_path, timeless, 2, positions).unwrap();
@@ -395,7 +395,7 @@ fn invalidation_timeless() {
 
     let timeless = TimePoint::timeless();
 
-    let query_time = [build_frame_nr(9999.try_into().unwrap())];
+    let query_time = [build_frame_nr(9999)];
 
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row =

@@ -291,8 +291,8 @@ fn current_range_ui(
     visible_history: &VisibleHistory,
 ) {
     let time_range = visible_history.time_range(TimeInt::new_temporal(current_time));
-    let from_formatted = time_type.format(time_range.min, ctx.app_options.time_zone);
-    let to_formatted = time_type.format(time_range.max, ctx.app_options.time_zone);
+    let from_formatted = time_type.format(time_range.min(), ctx.app_options.time_zone);
+    let to_formatted = time_type.format(time_range.max(), ctx.app_options.time_zone);
 
     ui.label(format!("{from_formatted} to {to_formatted}"))
         .on_hover_text("Showing data in this range (inclusive).");

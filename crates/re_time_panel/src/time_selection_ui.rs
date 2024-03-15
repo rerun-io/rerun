@@ -170,21 +170,21 @@ fn initial_time_selection(
     for min_duration in [2.0, 0.5, 0.0] {
         for segment in ranges {
             let range = &segment.tight_time;
-            if range.min < range.max {
+            if range.min() < range.max() {
                 match time_type {
                     TimeType::Time => {
-                        let seconds = Duration::from(range.max - range.min).as_secs_f64();
+                        let seconds = Duration::from(range.max() - range.min()).as_secs_f64();
                         if seconds > min_duration {
                             let one_sec =
                                 TimeInt::new_temporal(Duration::from_secs(1.0).as_nanos());
-                            return Some(TimeRangeF::new(range.min, range.min + one_sec));
+                            return Some(TimeRangeF::new(range.min(), range.min() + one_sec));
                         }
                     }
                     TimeType::Sequence => {
                         return Some(TimeRangeF::new(
-                            range.min,
-                            TimeReal::from(range.min)
-                                + TimeReal::from((range.max - range.min).as_f64() / 2.0),
+                            range.min(),
+                            TimeReal::from(range.min())
+                                + TimeReal::from((range.max() - range.min()).as_f64() / 2.0),
                         ));
                     }
                 }
@@ -199,8 +199,8 @@ fn initial_time_selection(
     } else {
         let end = (ranges.len() / 2).at_least(1);
         Some(TimeRangeF::new(
-            ranges[0].tight_time.min,
-            ranges[end].tight_time.max,
+            ranges[0].tight_time.min(),
+            ranges[end].tight_time.max(),
         ))
     }
 }

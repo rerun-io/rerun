@@ -60,7 +60,7 @@ fn bench_points(c: &mut criterion::Criterion) {
     let caches = Caches::new(&store);
 
     let latest_at = LatestAtQuery::latest(timeline);
-    let at = latest_at.at;
+    let at = latest_at.at();
     let latest_at = re_query_cache::AnyQuery::from(latest_at);
     let annotations = Annotations::missing();
 

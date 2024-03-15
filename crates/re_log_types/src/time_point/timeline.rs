@@ -102,8 +102,8 @@ impl Timeline {
     ) -> String {
         format!(
             "{}..={}",
-            self.typ.format(time_range.min, time_zone_for_timestamps),
-            self.typ.format(time_range.max, time_zone_for_timestamps),
+            self.typ.format(time_range.min(), time_zone_for_timestamps),
+            self.typ.format(time_range.max(), time_zone_for_timestamps),
         )
     }
 

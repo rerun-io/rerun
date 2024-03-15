@@ -85,7 +85,7 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
 
     // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
     // into the past don't have a latest-at state!
-    let query_time = TimeInt::try_from(query.range.min.as_i64().saturating_sub(1)).ok();
+    let query_time = TimeInt::try_from(query.range.min().as_i64().saturating_sub(1)).ok();
 
     let mut cwis_latest = None;
     if let Some(query_time) = query_time {

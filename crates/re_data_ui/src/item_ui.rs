@@ -186,7 +186,7 @@ pub fn guess_instance_path_icon(
     instance_path: &InstancePath,
 ) -> &'static re_ui::icons::Icon {
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query.timeline, store, instance_path)
+    instance_path_icon(&query.timeline(), store, instance_path)
 }
 
 /// Show an instance id and make it selectable.
@@ -232,7 +232,7 @@ fn instance_path_button_to_ex(
     let response = if with_icon {
         ctx.re_ui.selectable_label_with_icon(
             ui,
-            instance_path_icon(&query.timeline, store, instance_path),
+            instance_path_icon(&query.timeline(), store, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
@@ -530,7 +530,7 @@ pub fn instance_hover_card_ui(
 
     if instance_path.instance_key.is_splat() {
         if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
-            entity_tree_stats_ui(ui, &query.timeline, subtree);
+            entity_tree_stats_ui(ui, &query.timeline(), subtree);
         }
     } else {
         // TODO(emilk): per-component stats

@@ -443,6 +443,7 @@ impl<'s> ViewQuery<'s> {
     }
 
     /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
+    #[inline]
     pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
         self.per_system_data_results
             .values()
@@ -450,16 +451,15 @@ impl<'s> ViewQuery<'s> {
     }
 
     /// Iterates over all entities of the [`ViewQuery`].
+    #[inline]
     pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
         self.iter_all_data_results()
             .map(|data_result| &data_result.entity_path)
             .unique()
     }
 
+    #[inline]
     pub fn latest_at_query(&self) -> LatestAtQuery {
-        LatestAtQuery {
-            timeline: self.timeline,
-            at: self.latest_at,
-        }
+        LatestAtQuery::new(self.timeline, self.latest_at)
     }
 }

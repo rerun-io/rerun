@@ -400,6 +400,9 @@ pub fn build_log_time(log_time: Time) -> (Timeline, TimeInt) {
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `frame_nr` suitable for inserting in a [`TimePoint`].
 #[inline]
-pub fn build_frame_nr(frame_nr: TimeInt) -> (Timeline, TimeInt) {
-    (Timeline::new("frame_nr", TimeType::Sequence), frame_nr)
+pub fn build_frame_nr(frame_nr: impl TryInto<TimeInt>) -> (Timeline, TimeInt) {
+    (
+        Timeline::new("frame_nr", TimeType::Sequence),
+        frame_nr.try_into().unwrap_or(TimeInt::MIN),
+    )
 }

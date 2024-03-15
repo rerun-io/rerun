@@ -28,7 +28,6 @@ fn all_components() {
 
     let ent_path = EntityPath::from("this/that");
 
-    // let frame0= TimeInt::new_temporal(0);
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
@@ -100,7 +99,7 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(ent_path => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
@@ -157,7 +156,7 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(ent_path => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
@@ -220,7 +219,7 @@ fn all_components() {
             cluster_key,         // always here
         ];
 
-        let row = test_row!(ent_path @ [] => 2; [build_some_colors(2)]);
+        let row = test_row!(ent_path => 2; [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
@@ -620,7 +619,7 @@ fn gc_impl(store: &mut DataStore) {
             for frame_nr in frames {
                 let num_instances = rng.gen_range(0..=1_000);
                 let row = test_row!(ent_path @ [
-                    build_frame_nr(frame_nr.try_into().unwrap())
+                    build_frame_nr(frame_nr)
                 ] => num_instances; [
                     build_some_large_structs(num_instances as _),
                 ]);

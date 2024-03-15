@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use re_data_store::{DataStore, TimeInt, TimeRange};
-use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, EntityPath, RowId};
+use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, EntityPath, RowId, TimePoint};
 use re_query::range_archetype;
 use re_types::{
     archetypes::Points2D,
@@ -19,7 +19,7 @@ fn simple_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -42,7 +42,7 @@ fn simple_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
+    let timepoint2 = [build_frame_nr(223)];
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
@@ -58,7 +58,7 @@ fn simple_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
+    let timepoint3 = [build_frame_nr(323)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
@@ -72,10 +72,7 @@ fn simple_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new(
-            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
-            timepoint3[0].1,
-        ),
+        TimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let arch_views =
@@ -220,7 +217,7 @@ fn timeless_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -231,8 +228,14 @@ fn timeless_range() {
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), [], 2, &positions).unwrap();
+        let row = DataRow::from_cells1_sized(
+            RowId::new(),
+            ent_path.clone(),
+            TimePoint::timeless(),
+            2,
+            &positions,
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
@@ -252,7 +255,7 @@ fn timeless_range() {
         let row = DataRow::from_cells2_sized(
             RowId::new(),
             ent_path.clone(),
-            [],
+            TimePoint::timeless(),
             1,
             (color_instances, colors),
         )
@@ -260,7 +263,7 @@ fn timeless_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
+    let timepoint2 = [build_frame_nr(223)];
     {
         // Assign one of them a color with an explicit instance
         let color_instances = vec![InstanceKey(0)];
@@ -287,7 +290,7 @@ fn timeless_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
+    let timepoint3 = [build_frame_nr(323)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
@@ -297,8 +300,14 @@ fn timeless_range() {
         store.insert_row(&row).unwrap();
 
         // Insert timelessly too!
-        let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), [], 2, &positions).unwrap();
+        let row = DataRow::from_cells1_sized(
+            RowId::new(),
+            ent_path.clone(),
+            TimePoint::timeless(),
+            2,
+            &positions,
+        )
+        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
@@ -326,10 +335,7 @@ fn timeless_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new(
-            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
-            timepoint3[0].1,
-        ),
+        TimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let arch_views =
@@ -465,10 +471,8 @@ fn timeless_range() {
 
     // --- Third test: `[-inf, +inf]` ---
 
-    let query = re_data_store::RangeQuery::new(
-        timepoint1[0].0,
-        TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-    );
+    let query =
+        re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
 
     let arch_views =
         range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
@@ -631,7 +635,7 @@ fn simple_splatted_range() {
 
     let ent_path: EntityPath = "point".into();
 
-    let timepoint1 = [build_frame_nr(123.try_into().unwrap())];
+    let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -654,7 +658,7 @@ fn simple_splatted_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint2 = [build_frame_nr(223.try_into().unwrap())];
+    let timepoint2 = [build_frame_nr(223)];
     {
         // Assign one of them a color with a splatted instance
         let color_instances = vec![InstanceKey::SPLAT];
@@ -670,7 +674,7 @@ fn simple_splatted_range() {
         store.insert_row(&row).unwrap();
     }
 
-    let timepoint3 = [build_frame_nr(323.try_into().unwrap())];
+    let timepoint3 = [build_frame_nr(323)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
@@ -684,10 +688,7 @@ fn simple_splatted_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        TimeRange::new(
-            (timepoint1[0].1.as_i64() + 1).try_into().unwrap(),
-            timepoint3[0].1,
-        ),
+        TimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let arch_views =

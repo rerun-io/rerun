@@ -13,6 +13,7 @@ pub(crate) struct TimelineAxis {
 }
 
 impl TimelineAxis {
+    #[inline]
     pub fn new(time_type: TimeType, times: &TimeHistogram) -> Self {
         re_tracing::profile_function!();
         assert!(!times.is_empty());
@@ -23,24 +24,15 @@ impl TimelineAxis {
     }
 
     /// Total uncollapsed time.
+    #[inline]
     pub fn sum_time_lengths(&self) -> u64 {
         self.ranges.iter().map(|t| t.abs_length()).sum()
     }
 
-    // pub fn range(&self) -> TimeRange {
-    //     TimeRange {
-    //         min: self.min(),
-    //         max: self.max(),
-    //     }
-    // }
-
+    #[inline]
     pub fn min(&self) -> TimeInt {
-        self.ranges.first().min
+        self.ranges.first().min()
     }
-
-    // pub fn max(&self) -> TimeInt {
-    //     self.ranges.last().max
-    // }
 }
 
 /// First determine the threshold for when a gap should be closed.
@@ -142,22 +134,15 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
     re_tracing::profile_function!();
     let mut it = times.range(.., gap_threshold);
     let first_range = it.next().unwrap().0;
-    let mut ranges = vec1::vec1![TimeRange::new(
-        TimeInt::new_temporal(first_range.min),
-        TimeInt::new_temporal(first_range.max),
-    )];
+    let mut ranges = vec1::vec1![TimeRange::new(first_range.min, first_range.max,)];
 
     for (new_range, _count) in it {
-        let last_max = &mut ranges.last_mut().max;
-        if last_max.as_i64().abs_diff(new_range.min) < gap_threshold {
+        if ranges.last_mut().max().as_i64().abs_diff(new_range.min) < gap_threshold {
             // join previous range:
-            *last_max = TimeInt::new_temporal(new_range.max);
+            ranges.last_mut().set_max(new_range.max);
         } else {
             // new range:
-            ranges.push(TimeRange::new(
-                TimeInt::new_temporal(new_range.min),
-                TimeInt::new_temporal(new_range.max),
-            ));
+            ranges.push(TimeRange::new(new_range.min, new_range.max));
         }
     }
 
