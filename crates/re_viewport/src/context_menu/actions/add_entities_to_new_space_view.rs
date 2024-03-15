@@ -153,7 +153,9 @@ fn create_space_view_for_selected_entities(
         .clicked_item_enclosing_container_id_and_position()
         .map(|(id, _)| id);
 
-    // TODO(jleibs): Take the `$origin` into account here
+    // Note that these entity paths will always be absolute, rather than
+    // relative to the origin. This makes sense since if you create a view and
+    // then change the origin you likely wanted those entities to still be there.
     for path in entities_of_interest {
         filter.add_rule(RuleEffect::Include, EntityPathRule::including_subtree(path));
     }

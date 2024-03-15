@@ -5,6 +5,17 @@ use itertools::Itertools as _;
 
 use crate::EntityPath;
 
+/// A set of substitutions for entity paths.
+#[derive(Default)]
+pub struct EntityPathSubs(pub HashMap<String, String>);
+
+impl EntityPathSubs {
+    /// Create a new set of substitutions from a single origin.
+    pub fn new_with_origin(origin: &EntityPath) -> Self {
+        Self(std::iter::once(("origin".to_owned(), origin.to_string())).collect())
+    }
+}
+
 /// A way to filter a set of `EntityPath`s.
 ///
 /// This implements as simple set of include/exclude rules:
@@ -115,7 +126,7 @@ impl EntityPathFilter {
     /// The rest of the line is trimmed and treated as an entity path.
     ///
     /// Conflicting rules are resolved by the last rule.
-    pub fn parse_forgiving(rules: &str, subst_env: &HashMap<String, String>) -> Self {
+    pub fn parse_forgiving(rules: &str, subst_env: &EntityPathSubs) -> Self {
         Self::from_query_expressions(rules.split('\n'), subst_env)
     }
 
@@ -129,7 +140,7 @@ impl EntityPathFilter {
     /// Conflicting rules are resolved by the last rule.
     pub fn from_query_expressions<'a>(
         rules: impl IntoIterator<Item = &'a str>,
-        subst_env: &HashMap<String, String>,
+        subst_env: &EntityPathSubs,
     ) -> Self {
         let mut filter = Self::default();
 
@@ -384,14 +395,14 @@ impl EntityPathRule {
         }
     }
 
-    pub fn parse_forgiving(expression: &str, subst_env: &HashMap<String, String>) -> Self {
+    pub fn parse_forgiving(expression: &str, subst_env: &EntityPathSubs) -> Self {
         let raw_expression = expression.trim().to_owned();
 
-        // TODO(jleibs): This is a very naive implementation of variable substitution.
+        // TODO(#5528): This is a very naive implementation of variable substitution.
         // unclear if we want to do this here, push this down into `EntityPath::parse`,
         // or even supported deferred evaluation on the `EntityPath` itself.
         let mut expression_sub = raw_expression.clone();
-        for (key, value) in subst_env {
+        for (key, value) in &subst_env.0 {
             expression_sub = expression_sub.replace(format!("${key}").as_str(), value);
             expression_sub = expression_sub.replace(format!("${{{key}}}").as_str(), value);
         }
@@ -444,7 +455,7 @@ impl std::cmp::PartialOrd for EntityPathRule {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
+    use crate::{EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, RuleEffect};
 
     #[test]
     fn test_rule_order() {
@@ -526,7 +537,7 @@ mod tests {
 
     #[test]
     fn test_entity_path_filter_subs() {
-        let subst_env = std::iter::once(("origin".to_owned(), "/world".to_owned())).collect();
+        let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/world"));
 
         let filter = EntityPathFilter::parse_forgiving(
             r#"
