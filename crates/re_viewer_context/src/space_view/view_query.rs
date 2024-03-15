@@ -14,6 +14,24 @@ use crate::{
     DataResultTree, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier, ViewerContext,
 };
 
+/// Path to a specific entity in a specific store used for overrides.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct OverridePath {
+    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
+    // might still be ambiguous when we have multiple stores active at a time.
+    pub store_kind: StoreKind,
+    pub path: EntityPath,
+}
+
+impl OverridePath {
+    pub fn blueprint_path(path: EntityPath) -> Self {
+        Self {
+            store_kind: StoreKind::Blueprint,
+            path,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct PropertyOverrides {
     /// The accumulated properties (including any hierarchical flattening) to apply.
@@ -30,14 +48,12 @@ pub struct PropertyOverrides {
     /// An alternative store and entity path to use for the specified component.
     ///
     /// These are resolved overrides, i.e. the result of recursive override propagation + individual overrides.
-    // NOTE: StoreKind is easier to work with than a `StoreId`` or full `DataStore` but
-    // might still be ambiguous when we have multiple stores active at a time.
     // TODO(jleibs): Consider something like `tinymap` for this.
     // TODO(andreas): Should be a `Cow` to not do as many clones.
     // TODO(andreas): Track recursive vs resolved (== individual + recursive) overrides.
     //                  Recursive here meaning inherited + own recursive, i.e. not just what's on the path.
     //                  What is logged on *this* entity can be inferred from walking up the tree.
-    pub resolved_component_overrides: IntMap<ComponentName, (StoreKind, EntityPath)>,
+    pub resolved_component_overrides: IntMap<ComponentName, OverridePath>,
 
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply recursively.
@@ -259,7 +275,7 @@ impl DataResult {
         self.property_overrides
             .as_ref()
             .and_then(|p| p.resolved_component_overrides.get(&C::name()))
-            .and_then(|(store_kind, path)| match store_kind {
+            .and_then(|OverridePath { store_kind, path }| match store_kind {
                 StoreKind::Blueprint => ctx
                     .store_context
                     .blueprint
@@ -299,7 +315,9 @@ impl DataResult {
             .as_ref()
             .and_then(|p| p.resolved_component_overrides.get(component_name))?;
 
-        // Walk up the tree to find the first change in override and return the path prior to that.
+        // Walk up the tree to find the highest ancestor which has a matching override.
+        // This must be the ancestor we inherited the override from. Note that `active_override`
+        // is a `(StoreKind, EntityPath)`, not a value.
         let mut override_source = self.entity_path.clone();
         while let Some(parent_path) = override_source.parent() {
             if result_tree

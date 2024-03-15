@@ -464,8 +464,8 @@ mod tests {
     };
     use re_types::{archetypes::Points3D, ComponentBatch, ComponentName, Loggable as _};
     use re_viewer_context::{
-        blueprint_timeline, IndicatedEntities, PerVisualizer, SpaceViewClassRegistry, StoreContext,
-        VisualizableEntities,
+        blueprint_timeline, IndicatedEntities, OverridePath, PerVisualizer, SpaceViewClassRegistry,
+        StoreContext, VisualizableEntities,
     };
     use std::collections::HashMap;
 
@@ -1041,7 +1041,7 @@ mod tests {
                             property_overrides
                                 .resolved_component_overrides
                                 .iter()
-                                .map(|(component_name, (store_kind, path))| {
+                                .map(|(component_name, OverridePath { store_kind, path })| {
                                     assert_eq!(store_kind, &StoreKind::Blueprint);
                                     (*component_name, path.clone())
                                 })

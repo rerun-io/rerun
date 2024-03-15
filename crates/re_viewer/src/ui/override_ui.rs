@@ -13,8 +13,8 @@ use re_types_core::{
     ComponentName,
 };
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataResult, SystemCommand, SystemCommandSender as _,
-    UiVerbosity, ViewSystemIdentifier, ViewerContext,
+    blueprint_timepoint_for_writes, DataResult, OverridePath, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewSystemIdentifier, ViewerContext,
 };
 
 pub fn override_ui(
@@ -111,7 +111,7 @@ pub fn override_ui(
             re_ui::ReUi::setup_table_body(&mut body);
             let row_height = re_ui::ReUi::table_line_height();
             body.rows(row_height, components.len(), |mut row| {
-                if let Some((component_name, (store_kind, entity_path))) =
+                if let Some((component_name, OverridePath { store_kind, path })) =
                     components.get(row.index())
                 {
                     // Remove button
@@ -142,19 +142,11 @@ pub fn override_ui(
                             StoreKind::Blueprint => {
                                 let store = ctx.store_context.blueprint.store();
                                 let query = ctx.blueprint_query;
-                                get_component_with_instances(
-                                    store,
-                                    query,
-                                    entity_path,
-                                    *component_name,
-                                )
+                                get_component_with_instances(store, query, path, *component_name)
                             }
-                            StoreKind::Recording => get_component_with_instances(
-                                store,
-                                &query,
-                                entity_path,
-                                *component_name,
-                            ),
+                            StoreKind::Recording => {
+                                get_component_with_instances(store, &query, path, *component_name)
+                            }
                         };
 
                         if let Some((_, _, component_data)) = component_data {
@@ -164,7 +156,7 @@ pub fn override_ui(
                                 UiVerbosity::Small,
                                 &query,
                                 store,
-                                entity_path,
+                                path,
                                 &overrides.individual_override_path,
                                 &component_data,
                                 instance_key,

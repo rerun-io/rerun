@@ -6,7 +6,7 @@ use re_entity_db::{
     external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
     EntityPropertyMap, EntityTree,
 };
-use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, StoreKind};
+use re_log_types::{path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule};
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _,
@@ -14,8 +14,8 @@ use re_types::{
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier, SpaceViewId,
-    StoreContext, ViewerContext, VisualizableEntities,
+    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
+    SpaceViewId, StoreContext, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
@@ -416,7 +416,7 @@ impl DataQueryPropertyResolver<'_> {
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         accumulated: &EntityProperties,
-        recursive_property_overrides: &IntMap<ComponentName, (StoreKind, EntityPath)>,
+        recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
         if let Some((child_handles, accumulated, recursive_property_overrides)) =
@@ -493,7 +493,7 @@ impl DataQueryPropertyResolver<'_> {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
                                     *component,
-                                    (StoreKind::Blueprint, recursive_override_path.clone()),
+                                    OverridePath::blueprint_path(recursive_override_path.clone()),
                                 );
                             }
                         }
@@ -502,7 +502,7 @@ impl DataQueryPropertyResolver<'_> {
 
                 // Then, gather individual overrides - these may override the recursive ones again,
                 // but recursive overrides are still inherited to children.
-                let mut component_overrides = (*recursive_property_overrides).clone();
+                let mut resolved_component_overrides = (*recursive_property_overrides).clone();
                 if let Some(individual_override_subtree) =
                     ctx.blueprint.tree().subtree(&individual_override_path)
                 {
@@ -514,9 +514,9 @@ impl DataQueryPropertyResolver<'_> {
                             .and_then(|(_, _, cells)| cells[0].clone())
                         {
                             if !component_data.is_empty() {
-                                component_overrides.insert(
+                                resolved_component_overrides.insert(
                                     *component,
-                                    (StoreKind::Blueprint, individual_override_path.clone()),
+                                    OverridePath::blueprint_path(individual_override_path.clone()),
                                 );
                             }
                         }
@@ -527,7 +527,7 @@ impl DataQueryPropertyResolver<'_> {
                     accumulated_properties,
                     individual_properties: individual_properties.cloned(),
                     recursive_properties: recursive_properties.cloned(),
-                    resolved_component_overrides: component_overrides,
+                    resolved_component_overrides,
                     recursive_override_path,
                     individual_override_path,
                 });
