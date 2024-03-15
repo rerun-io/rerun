@@ -54,7 +54,7 @@ impl DataLoader for ArchetypeLoader {
 
         let entity_path = EntityPath::from_file_path(&filepath);
 
-        let mut timepoint = TimePoint::timeless();
+        let mut timepoint = TimePoint::default();
         // TODO(cmc): log these once heuristics (I think?) are fixed
         if false {
             if let Ok(metadata) = filepath.metadata() {

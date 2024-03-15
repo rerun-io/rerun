@@ -438,7 +438,7 @@ impl DataStore {
 
             // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
             // first and then remove them in one pass.
-            if timepoint.is_timeless() && gc_timeless {
+            if timepoint.is_static() && gc_timeless {
                 for table in timeless_tables.values_mut() {
                     // let deleted_comps = deleted.timeless.entry(ent_path.clone()_hash).or_default();
                     let (removed, num_bytes_removed) =

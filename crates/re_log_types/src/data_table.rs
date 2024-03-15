@@ -523,7 +523,7 @@ impl DataTable {
     /// and returns the corresponding [`TimePoint`].
     #[inline]
     pub fn timepoint_max(&self) -> TimePoint {
-        let mut timepoint = TimePoint::timeless();
+        let mut timepoint = TimePoint::default();
         for (timeline, col_time) in &self.col_timelines {
             let time = col_time
                 .iter()
@@ -1329,7 +1329,7 @@ impl DataTable {
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
-            let mut tp = TimePoint::timeless();
+            let mut tp = TimePoint::default();
             if !timeless {
                 tp.insert(Timeline::log_time(), Time::now());
                 tp.insert(Timeline::log_tick(), tick);

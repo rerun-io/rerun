@@ -127,7 +127,7 @@ fn timeless_range() {
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             2,
             &positions,
         )
@@ -151,7 +151,7 @@ fn timeless_range() {
         let row = DataRow::from_cells2_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             1,
             (color_instances, colors),
         )
@@ -199,7 +199,7 @@ fn timeless_range() {
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             2,
             &positions,
         )
@@ -444,7 +444,7 @@ fn invalidation() {
         query_and_compare(&caches, &store, &query, &ent_path.into());
     };
 
-    let timeless = TimePoint::timeless();
+    let timeless = TimePoint::default();
     let frame_122 = build_frame_nr(122);
     let frame_123 = build_frame_nr(123);
     let frame_124 = build_frame_nr(124);
@@ -505,7 +505,7 @@ fn invalidation_of_future_optionals() {
 
     let ent_path = "points";
 
-    let timeless = TimePoint::timeless();
+    let timeless = TimePoint::default();
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
@@ -561,7 +561,7 @@ fn invalidation_timeless() {
 
     let ent_path = "points";
 
-    let timeless = TimePoint::timeless();
+    let timeless = TimePoint::default();
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
     let query = re_data_store::RangeQuery::new(frame0[0].0, TimeRange::EVERYTHING);

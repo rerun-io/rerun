@@ -154,7 +154,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         let row = DataRow::from_component_batches(
             row_id2,
-            TimePoint::timeless(),
+            TimePoint::default(),
             entity_path.clone(),
             [&[point1] as _],
         )?;
@@ -162,7 +162,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         let row = DataRow::from_component_batches(
             row_id1,
-            TimePoint::timeless(),
+            TimePoint::default(),
             entity_path.clone(),
             [&[point2] as _],
         )?;
@@ -480,7 +480,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
         for _ in 0..3 {
             let row = DataRow::from_component_batches(
                 RowId::new(),
-                TimePoint::timeless(),
+                TimePoint::default(),
                 "xxx".into(),
                 [&[point] as _],
             )?;
@@ -546,7 +546,7 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
 
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::timeless()
+        TimePoint::default()
             .with(timeline_log_time, now)
             .with(timeline_frame_nr, 42),
         ent_path.clone(),
@@ -576,7 +576,7 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
     // insert row in the future, these shouldn't be visible
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::timeless()
+        TimePoint::default()
             .with(timeline_log_time, now_plus_one)
             .with(timeline_frame_nr, 54),
         ent_path.clone(),
@@ -605,7 +605,7 @@ fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
     // insert row in the past, these should be visible
     let row = DataRow::from_component_batches(
         RowId::new(),
-        TimePoint::timeless()
+        TimePoint::default()
             .with(timeline_log_time, now_minus_one)
             .with(timeline_frame_nr, 32),
         ent_path.clone(),

@@ -162,7 +162,7 @@ impl DataStore {
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
 
-        if timepoint.is_timeless() {
+        if timepoint.is_static() {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)

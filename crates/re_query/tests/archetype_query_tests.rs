@@ -97,7 +97,7 @@ fn timeless_query() {
     let row = DataRow::from_cells2_sized(
         RowId::new(),
         ent_path,
-        TimePoint::timeless(),
+        TimePoint::default(),
         1,
         (color_instances, colors),
     )

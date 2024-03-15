@@ -11,7 +11,7 @@ macro_rules! test_row {
         ::re_log_types::DataRow::from_cells1_sized(
             ::re_log_types::RowId::new(),
             $entity.clone(),
-            ::re_log_types::TimePoint::timeless(),
+            ::re_log_types::TimePoint::default(),
             $n,
             $c0,
         )

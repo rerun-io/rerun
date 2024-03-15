@@ -231,7 +231,7 @@ fn timeless_range() {
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             2,
             &positions,
         )
@@ -255,7 +255,7 @@ fn timeless_range() {
         let row = DataRow::from_cells2_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             1,
             (color_instances, colors),
         )
@@ -303,7 +303,7 @@ fn timeless_range() {
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             ent_path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             2,
             &positions,
         )

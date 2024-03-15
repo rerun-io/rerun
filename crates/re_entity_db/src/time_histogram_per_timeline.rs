@@ -75,7 +75,7 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
-        if timepoint.is_timeless() {
+        if timepoint.is_static() {
             self.num_timeless_messages = self
                 .num_timeless_messages
                 .checked_sub(n as u64)

@@ -242,7 +242,7 @@ fn time_histograms() -> anyhow::Result<()> {
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
                 RowId::new(),
-                TimePoint::timeless(),
+                TimePoint::default(),
                 "entity".into(),
                 [
                     &InstanceKey::from_iter(0..num_instances as _) as _,
