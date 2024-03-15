@@ -11,7 +11,7 @@ import rerun as rr  # pip install rerun-sdk
 
 def run_realsense(num_frames: int | None) -> None:
     # Visualize the data as RDF
-    rr.log("realsense", rr.ViewCoordinates.RDF, timeless=True)
+    rr.log("realsense", rr.ViewCoordinates.RDF, static=True)
 
     # Open the pipe
     pipe = rs.pipeline()
@@ -31,7 +31,7 @@ def run_realsense(num_frames: int | None) -> None:
             focal_length=[depth_intr.fx, depth_intr.fy],
             principal_point=[depth_intr.ppx, depth_intr.ppy],
         ),
-        timeless=True,
+        static=True,
     )
 
     # Get and log color extrinsics
@@ -45,7 +45,7 @@ def run_realsense(num_frames: int | None) -> None:
             mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
             from_parent=True,
         ),
-        timeless=True,
+        static=True,
     )
 
     # Get and log color intrinsics
@@ -58,7 +58,7 @@ def run_realsense(num_frames: int | None) -> None:
             focal_length=[rgb_intr.fx, rgb_intr.fy],
             principal_point=[rgb_intr.ppx, rgb_intr.ppy],
         ),
-        timeless=True,
+        static=True,
     )
 
     # Read frames in a loop

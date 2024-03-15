@@ -142,7 +142,7 @@ def run_2d_layering() -> None:
 
 
 def transforms() -> None:
-    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
+    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
     rr.log("transforms/disconnected", rr.DisconnectedSpace())
@@ -262,7 +262,7 @@ def run_rects() -> None:
 
 
 def run_text_logs() -> None:
-    rr.log("logs", rr.TextLog("Text with explicitly set color", color=[255, 215, 0]), timeless=True)
+    rr.log("logs", rr.TextLog("Text with explicitly set color", color=[255, 215, 0]), static=True)
     rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level="TRACE"))
 
     logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
@@ -299,10 +299,10 @@ def transforms_rigid_3d() -> None:
     rotation_speed_moon = 5.0
 
     # Planetary motion is typically in the XY plane.
-    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     # All are in the center of their own space:
     rr.log("transforms3d/sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))

@@ -69,8 +69,8 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
     canny_image = np.concatenate([canny_image, canny_image, canny_image], axis=2)
     canny_image = PIL.Image.fromarray(canny_image)
 
-    rr.log("input/raw", rr.Image(image), timeless=True)
-    rr.log("input/canny", rr.Image(canny_image), timeless=True)
+    rr.log("input/raw", rr.Image(image), static=True)
+    rr.log("input/canny", rr.Image(canny_image), static=True)
 
     controlnet = ControlNetModel.from_pretrained(
         "diffusers/controlnet-canny-sdxl-1.0",
@@ -90,8 +90,8 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
 
     pipeline.enable_model_cpu_offload()
 
-    rr.log("positive_prompt", rr.TextDocument(prompt), timeless=True)
-    rr.log("negative_prompt", rr.TextDocument(negative_prompt), timeless=True)
+    rr.log("positive_prompt", rr.TextDocument(prompt), static=True)
+    rr.log("negative_prompt", rr.TextDocument(negative_prompt), static=True)
 
     images = pipeline(
         prompt,

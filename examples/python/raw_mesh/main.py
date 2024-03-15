@@ -129,7 +129,7 @@ def main() -> None:
     root = next(iter(scene.graph.nodes))
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log(root, rr.ViewCoordinates.RUB, timeless=True)
+    rr.log(root, rr.ViewCoordinates.RUB, static=True)
     log_scene(scene, root)
 
     rr.script_teardown(args)

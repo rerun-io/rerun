@@ -9,7 +9,7 @@ rr.log(
             rr.AnnotationInfo(id=1, label="Person", color=(255, 0, 0)),
         ],
     ),
-    timeless=True,
+    static=True,
 )
 
 # Annotation context with simple keypoints & keypoint connections.
@@ -20,5 +20,5 @@ rr.log(
         keypoint_annotations=[rr.AnnotationInfo(id=i, color=(0, 255 / 9 * i, 0)) for i in range(10)],
         keypoint_connections=[(i, i + 1) for i in range(9)],
     ),
-    timeless=True,
+    static=True,
 )

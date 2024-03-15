@@ -41,7 +41,7 @@ image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged with `rr.log(…, timeless=True` as it should apply to the whole sequence.
+logged with `rr.log(…, static=True` as it should apply to the whole sequence.
 
 ### Skeletons
 The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a
@@ -63,7 +63,7 @@ nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/poin
 def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -> None:
     mp_pose = mp.solutions.pose
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     rr.log(
         "/",
@@ -74,7 +74,7 @@ def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -
                 keypoint_connections=mp_pose.POSE_CONNECTIONS,
             )
         ),
-        timeless=True,
+        static=True,
     )
     # Use a separate annotation context for the segmentation mask.
     rr.log(
@@ -85,9 +85,9 @@ def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -
                 rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
             ]
         ),
-        timeless=True,
+        static=True,
     )
-    rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
+    rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
     with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
         for idx, bgr_frame in enumerate(video_source.stream_bgr()):

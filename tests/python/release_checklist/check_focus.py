@@ -27,7 +27,7 @@ TODO(ab): add lots of stuff via blueprint to make the tree more crowded and chec
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_some_space_views() -> None:
