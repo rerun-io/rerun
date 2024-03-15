@@ -9,7 +9,7 @@ int main() {
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
     // connections between keypoints.
-    rec.log_timeless(
+    rec.log_static(
         "/",
         rerun::AnnotationContext({rerun::ClassDescription{
             0,

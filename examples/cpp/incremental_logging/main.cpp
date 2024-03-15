@@ -44,7 +44,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_incremental_logging");
     rec.spawn().exit_on_failure();
 
-    rec.log_timeless(
+    rec.log_static(
         "readme",
         rerun::TextDocument(README).with_media_type(rerun::components::MediaType::markdown())
     );
@@ -56,8 +56,8 @@ int main() {
     // Only log colors and radii once.
     rec.set_time_sequence("frame_nr", 0);
     rec.log("points", colors, radii);
-    // Logging timelessly with `RecordingStream::log_timeless` would also work.
-    // rec.log_timeless("points", colors, radii);
+    // Logging statically with `RecordingStream::log_static` would also work.
+    // rec.log_static("points", colors, radii);
 
     std::default_random_engine gen;
     std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
