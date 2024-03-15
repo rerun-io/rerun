@@ -36,9 +36,9 @@ fn time_histograms() -> anyhow::Result<()> {
         let row = DataRow::from_component_batches(
             RowId::new(),
             TimePoint::from_iter([
-                (timeline_frame, 42.try_into().unwrap()),      //
-                (timeline_other, 666.try_into().unwrap()),     //
-                (timeline_yet_another, 1.try_into().unwrap()), //
+                (timeline_frame, 42),      //
+                (timeline_other, 666),     //
+                (timeline_yet_another, 1), //
             ]),
             entity_parent.clone(),
             [&InstanceKey::from_iter(0..10) as _],
@@ -92,8 +92,8 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 42.try_into().unwrap()),      //
-                    (timeline_yet_another, 1.try_into().unwrap()), //
+                    (timeline_frame, 42),      //
+                    (timeline_yet_another, 1), //
                 ]),
                 entity_grandchild.clone(),
                 [&points as _, &colors as _],
@@ -333,9 +333,9 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 1234.try_into().unwrap()),       //
-                    (timeline_other, 1235.try_into().unwrap()),       //
-                    (timeline_yet_another, 1236.try_into().unwrap()), //
+                    (timeline_frame, 1234),       //
+                    (timeline_other, 1235),       //
+                    (timeline_yet_another, 1236), //
                 ]),
                 entity_unrelated.clone(),
                 [
@@ -459,7 +459,7 @@ fn time_histograms() -> anyhow::Result<()> {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 1000.try_into().unwrap()), //
+                    (timeline_frame, 1000), //
                 ]),
                 entity_parent.clone(),
                 [&[ClearIsRecursive(true)] as _],

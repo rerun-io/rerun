@@ -232,7 +232,7 @@ impl Caches {
             store.id(),
         );
 
-        let key = CacheKey::new(entity_path, query.timeline);
+        let key = CacheKey::new(entity_path, query.timeline());
 
         let cache = {
             let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
@@ -774,10 +774,10 @@ impl CacheBucket {
     pub fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
         let start_index = self
             .data_times
-            .partition_point(|(data_time, _)| data_time < &time_range.min);
+            .partition_point(|(data_time, _)| data_time < &time_range.min());
         let end_index = self
             .data_times
-            .partition_point(|(data_time, _)| data_time <= &time_range.max);
+            .partition_point(|(data_time, _)| data_time <= &time_range.max());
         start_index..end_index
     }
 

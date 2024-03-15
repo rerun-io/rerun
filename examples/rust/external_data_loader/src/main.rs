@@ -117,7 +117,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             };
             timepoint.insert(
                 rerun::Timeline::new_temporal(timeline_name),
-                time.parse::<i64>()?.try_into()?,
+                time.parse::<i64>()?,
             );
         }
 
@@ -127,7 +127,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             };
             timepoint.insert(
                 rerun::Timeline::new_sequence(seqline_name),
-                seq.parse::<i64>()?.try_into()?,
+                seq.parse::<i64>()?,
             );
         }
     }

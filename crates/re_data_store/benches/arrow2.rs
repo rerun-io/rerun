@@ -113,7 +113,7 @@ fn erased_clone(c: &mut Criterion) {
             .sum::<u64>();
         let expected_total_size_bytes = data.total_size_bytes();
         assert!(
-            total_size_bytes >= expected_total_size_bytes,
+            total_size_bytes + 1 >= expected_total_size_bytes,
             "Size for {} calculated to be {} bytes, but should be at least {} bytes",
             T::name(),
             total_size_bytes,

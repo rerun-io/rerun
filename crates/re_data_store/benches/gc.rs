@@ -76,7 +76,7 @@ fn plotting_dashboard(c: &mut Criterion) {
     let mut timegen = |i| {
         [
             build_log_time(Time::from_seconds_since_epoch(i as _)),
-            build_frame_nr((i as i64).try_into().unwrap()),
+            build_frame_nr(i as i64),
         ]
         .into()
     };

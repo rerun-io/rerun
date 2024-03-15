@@ -843,11 +843,11 @@ impl IndexedBucketInner {
                 // We have at least two rows, so we can safely [index] here:
                 if row_index == 0 {
                     // We removed the first row, so the second row holds the new min
-                    time_range.min = TimeInt::new_temporal(col_time[1]);
+                    time_range.set_min(col_time[1]);
                 }
                 if row_index + 1 == col_time.len() {
                     // We removed the last row, so the penultimate row holds the new max
-                    time_range.max = TimeInt::new_temporal(col_time[row_index - 1]);
+                    time_range.set_max(col_time[row_index - 1]);
                 }
             }
 

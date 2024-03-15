@@ -49,11 +49,9 @@ fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
     let timeline_time = rerun::Timeline::new_temporal("time");
     let timeline_frame = rerun::Timeline::new_sequence("frame");
     let time = rerun::Time::from_seconds_since_epoch(time);
-    [
-        (timeline_time, time.try_into().unwrap()),
-        (timeline_frame, (index as i64).try_into().unwrap()),
-    ]
-    .into()
+    rerun::TimePoint::timeless()
+        .with(timeline_time, time)
+        .with(timeline_frame, index as i64)
 }
 
 struct AnnotationsPerFrame<'a>(HashMap<usize, &'a objectron::FrameAnnotation>);

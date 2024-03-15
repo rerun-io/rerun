@@ -7,7 +7,7 @@ use crate::{time::Time, Duration, NonMinI64, TryFromIntError};
 /// Used both for time points and durations.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeInt(pub(crate) Option<NonMinI64>);
+pub struct TimeInt(Option<NonMinI64>);
 
 static_assertions::assert_eq_size!(TimeInt, i64);
 static_assertions::assert_eq_align!(TimeInt, i64);
@@ -235,7 +235,7 @@ impl std::ops::Sub for TimeInt {
             (Some(lhs), Some(rhs)) => Self(Some(
                 NonMinI64::new(lhs.get().saturating_sub(rhs.get())).unwrap_or(NonMinI64::MIN),
             )),
-            // static + anything = static
+            // static - anything = static
             _ => Self(None),
         }
     }

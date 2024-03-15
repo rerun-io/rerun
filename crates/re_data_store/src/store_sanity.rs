@@ -104,12 +104,12 @@ impl IndexedTable {
                 let &[t1, t2] = time_ranges else {
                     unreachable!()
                 };
-                if t1.max.as_i64() >= t2.min.as_i64() {
+                if t1.max().as_i64() >= t2.min().as_i64() {
                     return Err(SanityError::OverlappingBuckets {
-                        t1_max: t1.max.as_i64(),
-                        t1_max_formatted: self.timeline.typ().format_utc(t1.max),
-                        t2_max: t2.max.as_i64(),
-                        t2_max_formatted: self.timeline.typ().format_utc(t2.max),
+                        t1_max: t1.max().as_i64(),
+                        t1_max_formatted: self.timeline.typ().format_utc(t1.max()),
+                        t2_max: t2.max().as_i64(),
+                        t2_max_formatted: self.timeline.typ().format_utc(t2.max()),
                     });
                 }
             }

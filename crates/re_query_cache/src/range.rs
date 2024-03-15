@@ -124,15 +124,15 @@ impl RangeCache {
         }
 
         if let Some(bucket_time_range) = self.per_data_time.time_range() {
-            reduced_query.range.max = TimeInt::min(
-                reduced_query.range.max,
-                TimeInt::new_temporal(bucket_time_range.min.as_i64().saturating_sub(1)),
-            );
+            reduced_query.range.set_max(i64::min(
+                reduced_query.range.max().as_i64(),
+                bucket_time_range.min().as_i64().saturating_sub(1),
+            ));
         } else {
             return Some(reduced_query);
         }
 
-        if reduced_query.range.max < reduced_query.range.min {
+        if reduced_query.range.max() < reduced_query.range.min() {
             return None;
         }
 
@@ -146,15 +146,15 @@ impl RangeCache {
         let mut reduced_query = query.clone();
 
         if let Some(bucket_time_range) = self.per_data_time.time_range() {
-            reduced_query.range.min = TimeInt::max(
-                reduced_query.range.min,
-                TimeInt::new_temporal(bucket_time_range.max.as_i64().saturating_add(1)),
-            );
+            reduced_query.range.set_min(i64::max(
+                reduced_query.range.min().as_i64(),
+                bucket_time_range.max().as_i64().saturating_add(1),
+            ));
         } else {
             return Some(reduced_query);
         }
 
-        if reduced_query.range.max < reduced_query.range.min {
+        if reduced_query.range.max() < reduced_query.range.min() {
             return None;
         }
 
@@ -269,11 +269,11 @@ macro_rules! impl_query_archetype_range {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
                 // NOTE: Same logic as what the store does.
-                if query.range.min <= TimeInt::MIN {
+                if query.range.min() <= TimeInt::MIN {
                     let mut reduced_query = query.clone();
                     // This is the reduced query corresponding to the timeless part of the data.
                     // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
-                    reduced_query.range.max = TimeInt::MIN; // inclusive
+                    reduced_query.range.set_max(TimeInt::MIN); // inclusive
 
                     // NOTE: `+ 1` because we always grab the instance keys.
                     let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
@@ -285,7 +285,7 @@ macro_rules! impl_query_archetype_range {
                 }
 
                 let mut query = query.clone();
-                query.range.min = TimeInt::max(TimeInt::MIN, query.range.min);
+                query.range.set_min(TimeInt::max(TimeInt::MIN, query.range.min()));
 
                 for reduced_query in range_cache.compute_queries(&query) {
                     // NOTE: `+ 1` because we always grab the instance keys.
@@ -312,11 +312,11 @@ macro_rules! impl_query_archetype_range {
                 // scenarios -- otherwise all of this is giant hack meant to go away anyhow.
 
                 // NOTE: Same logic as what the store does.
-                if query.range.min <= TimeInt::MIN {
+                if query.range.min() <= TimeInt::MIN {
                     let mut reduced_query = query.clone();
                     // This is the reduced query corresponding to the timeless part of the data.
                     // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
-                    reduced_query.range.max = TimeInt::MIN; // inclusive
+                    reduced_query.range.set_max(TimeInt::MIN); // inclusive
 
                     if !range_cache.timeless.is_empty() {
                         range_results(true, &range_cache.timeless, reduced_query.range, f)?;
@@ -324,7 +324,7 @@ macro_rules! impl_query_archetype_range {
                 }
 
                 let mut query = query.clone();
-                query.range.min = TimeInt::max(TimeInt::MIN, query.range.min);
+                query.range.set_min(TimeInt::max(TimeInt::MIN, query.range.min()));
 
                 if !range_cache.per_data_time.is_empty() {
                     range_results(false, &range_cache.per_data_time, query.range, f)?;

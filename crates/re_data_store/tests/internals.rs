@@ -48,7 +48,7 @@ fn pathological_bucket_topology() {
         let ent_path = EntityPath::from("this/that");
         let num_instances = 1;
 
-        let timepoint = TimePoint::from([build_frame_nr(frame_nr.try_into().unwrap())]);
+        let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
         for _ in 0..num {
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
@@ -82,7 +82,7 @@ fn pathological_bucket_topology() {
 
         let rows = range
             .map(|frame_nr| {
-                let timepoint = TimePoint::from([build_frame_nr(frame_nr.try_into().unwrap())]);
+                let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
                 DataRow::from_cells1_sized(
                     RowId::new(),
                     ent_path.clone(),

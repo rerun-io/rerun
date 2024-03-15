@@ -19,8 +19,8 @@ use crate::{
 /// Get the latest version of the data available at this time.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LatestAtQuery {
-    pub timeline: Timeline,
-    pub at: TimeInt,
+    timeline: Timeline,
+    at: TimeInt,
 }
 
 impl std::fmt::Debug for LatestAtQuery {
@@ -34,15 +34,29 @@ impl std::fmt::Debug for LatestAtQuery {
 }
 
 impl LatestAtQuery {
-    pub const fn new(timeline: Timeline, at: TimeInt) -> Self {
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    #[inline]
+    pub fn new(timeline: Timeline, at: impl TryInto<TimeInt>) -> Self {
+        let at = at.try_into().unwrap_or(TimeInt::MIN);
         Self { timeline, at }
     }
 
+    #[inline]
     pub const fn latest(timeline: Timeline) -> Self {
         Self {
             timeline,
             at: TimeInt::MAX,
         }
+    }
+
+    #[inline]
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    #[inline]
+    pub fn at(&self) -> TimeInt {
+        self.at
     }
 }
 
@@ -62,10 +76,10 @@ impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<ranging from {} to {} (all inclusive) on {:?} ({} timeless)>",
-            self.timeline.typ().format_utc(self.range.min),
-            self.timeline.typ().format_utc(self.range.max),
+            self.timeline.typ().format_utc(self.range.min()),
+            self.timeline.typ().format_utc(self.range.max()),
             self.timeline.name(),
-            if self.range.min <= TimeInt::MIN {
+            if self.range.min() <= TimeInt::MIN {
                 "including"
             } else {
                 "excluding"
@@ -75,6 +89,7 @@ impl std::fmt::Debug for RangeQuery {
 }
 
 impl RangeQuery {
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
         Self { timeline, range }
     }
@@ -192,7 +207,7 @@ impl DataStore {
             .inner
             .read()
             .time_range
-            .min;
+            .min();
 
         // handle case where no data was logged
         if min_time == TimeInt::MIN {
@@ -373,7 +388,7 @@ impl DataStore {
             .flatten()
             .map(|(time, row_id, cells)| (Some(time), row_id, cells));
 
-        if query.range.min <= TimeInt::MIN {
+        if query.range.min() <= TimeInt::MIN {
             let timeless = self
                 .timeless_tables
                 .get(&ent_path_hash)
@@ -480,9 +495,9 @@ impl IndexedTable {
         let timeline = self.timeline;
 
         // We need to find the _indexing time_ that corresponds to this time range's minimum bound!
-        let (time_range_min, _) = self.find_bucket(time_range.min);
+        let (time_range_min, _) = self.find_bucket(time_range.min());
 
-        self.range_buckets(time_range_min..=time_range.max)
+        self.range_buckets(time_range_min..=time_range.max())
             .map(|(_, bucket)| bucket)
             .enumerate()
             .flat_map(move |(bucket_nr, bucket)| {
@@ -778,7 +793,7 @@ impl IndexedBucket {
             "searching for time & component cell numbers…"
         );
 
-        let time_row_nr = col_time.partition_point(|t| *t < time_range.min.as_i64()) as u64;
+        let time_row_nr = col_time.partition_point(|t| *t < time_range.min().as_i64()) as u64;
 
         trace!(
             kind = "range",

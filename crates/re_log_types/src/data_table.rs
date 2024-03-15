@@ -71,7 +71,7 @@ pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 /// underlying type and likely point to shared, contiguous memory.
 ///
 /// Each cell in the column corresponds to a different row of the same column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {
@@ -291,8 +291,8 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
-/// #         (Timeline::new_sequence("frame_nr"), frame_nr.try_into().unwrap()),
-/// #         (Timeline::new_sequence("clock"), clock.try_into().unwrap()),
+/// #         (Timeline::new_sequence("frame_nr"), frame_nr),
+/// #         (Timeline::new_sequence("clock"), clock),
 /// #     ])
 /// # };
 /// #
@@ -535,7 +535,7 @@ impl DataTable {
                 .and_then(NonMinI64::new);
 
             if let Some(time) = time {
-                timepoint.insert(*timeline, time.into());
+                timepoint.insert(*timeline, time);
             }
         }
         timepoint
@@ -1329,18 +1329,12 @@ impl DataTable {
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
-            let tp = if timeless {
-                TimePoint::timeless()
-            } else {
-                TimePoint::from([
-                    (Timeline::log_time(), Time::now().try_into().unwrap()),
-                    (Timeline::log_tick(), tick.try_into().unwrap()),
-                    (
-                        Timeline::new_sequence("frame_nr"),
-                        frame_nr.try_into().unwrap(),
-                    ),
-                ])
-            };
+            let mut tp = TimePoint::timeless();
+            if !timeless {
+                tp.insert(Timeline::log_time(), Time::now());
+                tp.insert(Timeline::log_tick(), tick);
+                tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);
+            }
             tick += 1;
             tp
         };

@@ -230,9 +230,9 @@ mod tests {
         let row = DataRow::from_component_batches(
             RowId::new(),
             TimePoint::from_iter([
-                (timeline_frame, 42.try_into().unwrap()),      //
-                (timeline_other, 666.try_into().unwrap()),     //
-                (timeline_yet_another, 1.try_into().unwrap()), //
+                (timeline_frame, 42),      //
+                (timeline_other, 666),     //
+                (timeline_yet_another, 1), //
             ]),
             "entity_a".into(),
             [&InstanceKey::from_iter(0..10) as _],
@@ -249,8 +249,8 @@ mod tests {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 42.try_into().unwrap()),      //
-                    (timeline_yet_another, 1.try_into().unwrap()), //
+                    (timeline_frame, 42),      //
+                    (timeline_yet_another, 1), //
                 ]),
                 "entity_b".into(),
                 [&points as _, &colors as _],

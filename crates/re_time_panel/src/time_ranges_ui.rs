@@ -123,8 +123,8 @@ impl TimeRangesUi {
                 .iter()
                 .tuple_windows()
                 .fold(f64::INFINITY, |shortest, (a, b)| {
-                    debug_assert!(a.max < b.min, "Overlapping time ranges: {a:?}, {b:?}");
-                    let time_gap = b.min - a.max;
+                    debug_assert!(a.max() < b.min(), "Overlapping time ranges: {a:?}, {b:?}");
+                    let time_gap = b.min() - a.max();
                     time_gap.as_f64().min(shortest)
                 });
 
@@ -149,8 +149,8 @@ impl TimeRangesUi {
                     (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
 
                 let time_range = TimeRangeF::new(
-                    tight_time_range.min - expansion_in_time,
-                    tight_time_range.max + expansion_in_time,
+                    tight_time_range.min() - expansion_in_time,
+                    tight_time_range.max() + expansion_in_time,
                 );
 
                 Segment {
@@ -183,7 +183,7 @@ impl TimeRangesUi {
                 "Overlapping x in segments: {a:#?}, {b:#?}"
             );
             debug_assert!(
-                a.tight_time.max < b.tight_time.min,
+                a.tight_time.max() < b.tight_time.min(),
                 "Overlapping time in segments: {a:#?}, {b:#?}"
             );
         }
@@ -197,8 +197,8 @@ impl TimeRangesUi {
     pub fn clamp_time(&self, mut time: TimeReal) -> TimeReal {
         if let (Some(first), Some(last)) = (self.segments.first(), self.segments.last()) {
             time = time.clamp(
-                TimeReal::from(first.tight_time.min),
-                TimeReal::from(last.tight_time.max),
+                TimeReal::from(first.tight_time.min()),
+                TimeReal::from(last.tight_time.max()),
             );
 
             // Special: don't allow users dragging time between STATIC (-∞ = timeless data) and some real time.
@@ -215,13 +215,12 @@ impl TimeRangesUi {
             if first.tight_time.contains(TimeInt::MIN_TIME_PANEL) {
                 if let Some(second) = self.segments.get(1) {
                     let half_way =
-                        TimeRangeF::new(TimeInt::MIN_TIME_PANEL, second.tight_time.min)
-                            .lerp(0.5);
+                        TimeRangeF::new(TimeInt::MIN_TIME_PANEL, second.tight_time.min()).lerp(0.5);
 
                     if time < half_way {
                         time = TimeReal::from(TimeInt::MIN_TIME_PANEL);
-                    } else if time < second.tight_time.min {
-                        time = second.tight_time.min.into();
+                    } else if time < second.tight_time.min() {
+                        time = second.tight_time.min().into();
                     }
                 }
             }
@@ -336,15 +335,12 @@ impl TimeRangesUi {
 
     pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> TimeRange {
         let (min_x, max_x) = (*x_range.start(), *x_range.end());
-        TimeRange {
-            min: self
-                .time_from_x_f32(min_x)
+        TimeRange::new(
+            self.time_from_x_f32(min_x)
                 .map_or(TimeInt::MIN, |tf| tf.floor()),
-
-            max: self
-                .time_from_x_f32(max_x)
+            self.time_from_x_f32(max_x)
                 .map_or(TimeInt::MAX, |tf| tf.ceil()),
-        }
+        )
     }
 
     /// Pan the view, returning the new view.
@@ -389,9 +385,9 @@ fn test_time_ranges_ui() {
             time_spanned: 14.2,
         },
         &[
-            TimeRange::new(TimeInt::ZERO, TimeInt::ZERO),
-            TimeRange::new(TimeInt::new_temporal(1), TimeInt::new_temporal(5)),
-            TimeRange::new(TimeInt::new_temporal(10), TimeInt::new_temporal(100)),
+            TimeRange::new(0, 0),
+            TimeRange::new(1, 5),
+            TimeRange::new(10, 100),
         ],
     );
 
@@ -430,10 +426,7 @@ fn test_time_ranges_ui_2() {
             min: TimeReal::from(0),
             time_spanned: 50.0,
         },
-        &[
-            TimeRange::new(TimeInt::new_temporal(10), TimeInt::new_temporal(20)),
-            TimeRange::new(TimeInt::new_temporal(30), TimeInt::new_temporal(40)),
-        ],
+        &[TimeRange::new(10, 20), TimeRange::new(30, 40)],
     );
 
     let pixel_precision = 0.5;
