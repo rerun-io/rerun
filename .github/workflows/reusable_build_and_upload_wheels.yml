@@ -169,13 +169,6 @@ jobs:
         with:
           pixi-version: v0.16.1
 
-      # TODO(#5507): suppress this workaround when we can use pixi on linux-aarch64
-      - name: Build web-viewer (release, Linux ARM64)
-        if: ${{ inputs.PLATFORM == 'linux-arm64' }}
-        shell: bash
-        run: |
-          sudo apt-get install binaryen
-
       - name: Install dependencies
         shell: bash
         run: |
