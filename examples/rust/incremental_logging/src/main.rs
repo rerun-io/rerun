@@ -38,7 +38,7 @@ let radii = [rerun::Radius(0.1); 10];
 
 // Only log colors and radii once.
 rec.set_time_sequence("frame_nr", 0);
-rec.log_component_batches("points", false, /* timeless */ [&colors as &dyn rerun::ComponentBatch, &radii])?;
+rec.log_component_batches("points", false /* static */, [&colors as &dyn rerun::ComponentBatch, &radii])?;
 
 let mut rng = rand::thread_rng();
 let dist = Uniform::new(-5., 5.);
@@ -56,7 +56,7 @@ Move the time cursor around, and notice how the colors and radii from frame 0 ar
 "#;
 
 fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
-    rec.log_timeless(
+    rec.log_static(
         "readme",
         &rerun::TextDocument::new(README).with_media_type(rerun::MediaType::MARKDOWN),
     )?;
@@ -69,13 +69,13 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     rec.set_time_sequence("frame_nr", 0);
     rec.log_component_batches(
         "points",
-        false, /* timeless */
+        false, /* static */
         [&colors as &dyn rerun::ComponentBatch, &radii],
     )?;
-    // Logging timelessly would also work.
+    // Logging statically would also work.
     // rec.log_component_batches(
     //     "points",
-    //     true, /* timeless */
+    //     true, /* static */
     //     [&colors as &dyn rerun::ComponentBatch, &radii],
     // )?;
 
