@@ -284,14 +284,14 @@ impl StoreHub {
         self.store_bundle.contains_store(id)
     }
 
-    pub fn entity_db_from_channel_source(
-        &self,
-        source: &re_smart_channel::SmartChannelSource,
-    ) -> Option<&EntityDb> {
+    pub fn entity_dbs_from_channel_source<'a>(
+        &'a self,
+        source: &'a re_smart_channel::SmartChannelSource,
+    ) -> impl Iterator<Item = &EntityDb> + 'a {
         self.store_bundle
             .entity_dbs
             .values()
-            .find(|db| db.data_source.as_ref() == Some(source))
+            .filter(move |db| db.data_source.as_ref() == Some(source))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.

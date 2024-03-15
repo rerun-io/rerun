@@ -1,3 +1,5 @@
+use itertools::Itertools as _;
+
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -944,26 +946,34 @@ impl App {
 
                         // This could be the signal that we finished loading a blueprint.
                         // In that case, we want to make it the default.
+                        // We wait with activaing blueprints until they are fully loaded,
+                        // so that we don't run heuristics on half-loaded blueprints.
 
-                        if let Some(entity_db) =
-                            store_hub.entity_db_from_channel_source(&channel_source)
-                        {
-                            if let Some(store_info) = entity_db.store_info() {
-                                match store_info.store_id.kind {
-                                    StoreKind::Recording => {
-                                        // Recordings become active as soon as we start streaming them.
-                                    }
-                                    StoreKind::Blueprint => {
-                                        // We wait with activaing blueprints until they are fully loaded,
-                                        // so that we don't run heuristics on half-loaded blueprints.
-                                        re_log::debug!("Activating newly loaded blueprint");
-                                        store_hub.set_blueprint_for_app_id(
-                                            entity_db.store_id().clone(),
-                                            store_info.application_id.clone(),
-                                        );
+                        let blueprints = store_hub
+                            .entity_dbs_from_channel_source(&channel_source)
+                            .filter_map(|entity_db| {
+                                if let Some(store_info) = entity_db.store_info() {
+                                    match store_info.store_id.kind {
+                                        StoreKind::Recording => {
+                                            // Recordings become active as soon as we start streaming them.
+                                        }
+                                        StoreKind::Blueprint => {
+                                            return Some(store_info.clone());
+                                        }
                                     }
                                 }
-                            }
+                                None
+                            })
+                            .collect_vec();
+
+                        for re_log_types::StoreInfo {
+                            store_id,
+                            application_id,
+                            ..
+                        } in blueprints
+                        {
+                            re_log::debug!("Activating newly loaded blueprint");
+                            store_hub.set_blueprint_for_app_id(store_id, application_id);
                         }
                     }
                     continue;
