@@ -21,6 +21,23 @@ Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstr
 ## Used Rerun Types
 [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
+# Logging and Visualizing with Rerun
+
+The visualizations in this example were created with just the following line.
+```python
+rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
+```
+
+`voxels_volume_u16` is a `numpy.array` of shape `(512, 512, 512)` containing volumetric MRI intensities. We can
+visualize such information in Rerun by logging the `numpy.array` as an
+[`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor) to
+the `tensor` entity.
+
+In the Rerun viewer you can inspect the data in detail. The `dim_names` provided in the above call to `rr.log` help to
+give semantic meaning to each axis. After selecting the tensor view, you can adjust various settings in the Blueprint
+settings on the right-hand side. For example, you can adjust the color map, the brightness, which dimensions to show as
+an image and which to select from, and more.
+
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
