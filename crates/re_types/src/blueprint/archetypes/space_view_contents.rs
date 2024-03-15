@@ -40,7 +40,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Other uses of `*` are not (yet) supported.
 ///
 /// Internally, `EntityPathFilter` sorts the rule by entity path, with recursive coming before non-recursive.
-/// This means the last matching rule is also the most specific one.  For instance:
+/// This means the last matching rule is also the most specific one. For instance:
 /// ```diff
 /// + /world/**
 /// - /world
