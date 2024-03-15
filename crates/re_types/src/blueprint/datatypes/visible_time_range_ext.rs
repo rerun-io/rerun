@@ -1,11 +1,5 @@
 use super::{VisibleTimeRange, VisibleTimeRangeBoundary};
 
-impl Default for VisibleTimeRange {
-    fn default() -> Self {
-        VisibleTimeRange::EMPTY
-    }
-}
-
 impl VisibleTimeRange {
     pub const EMPTY: Self = Self {
         from_sequence: VisibleTimeRangeBoundary::AT_CURSOR,

@@ -76,22 +76,22 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
-                "low_boundary_sequences",
+                "from_sequence",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
-                "high_boundary_sequences",
+                "to_sequence",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
-                "low_boundary_time",
+                "from_time",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
-                "high_boundary_time",
+                "to_time",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),

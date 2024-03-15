@@ -1,10 +1,13 @@
 use re_log_types::{EntityPath, TimeInt, TimeRange};
-use re_types::datatypes::Utf8;
-use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
+use re_space_view::default_time_range;
+use re_types::{blueprint::datatypes::VisibleTimeRange, datatypes::Utf8};
+use re_viewer_context::{
+    external::re_entity_db::TimeSeriesAggregator, SpaceViewClass, ViewQuery, ViewerContext,
+};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
-    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
+    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs, TimeSeriesSpaceView,
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
@@ -27,27 +30,54 @@ pub fn determine_plot_bounds_and_time_per_pixel(
     (plot_bounds, time_per_pixel)
 }
 
+pub fn visible_time_range_to_time_range(
+    range: &VisibleTimeRange,
+    time_type: re_log_types::TimeType,
+    cursor: re_log_types::TimeInt,
+) -> re_log_types::TimeRange {
+    let cursor = cursor.as_i64().into();
+
+    let mut min = match time_type {
+        re_log_types::TimeType::Sequence => {
+            TimeInt::from_nanos(range.from_sequence.start_boundary_time(cursor).0)
+        }
+        re_log_types::TimeType::Time => {
+            TimeInt::from_nanos(range.from_time.start_boundary_time(cursor).0)
+        }
+    };
+    let mut max = match time_type {
+        re_log_types::TimeType::Sequence => {
+            TimeInt::from_nanos(range.to_sequence.end_boundary_time(cursor).0)
+        }
+        re_log_types::TimeType::Time => {
+            TimeInt::from_nanos(range.to_time.end_boundary_time(cursor).0)
+        }
+    };
+
+    if min > max {
+        std::mem::swap(&mut min, &mut max);
+    }
+
+    TimeRange::new(min, max)
+}
+
 pub fn determine_time_range(
+    ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     data_result: &re_viewer_context::DataResult,
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
 ) -> TimeRange {
-    let visible_history = match query.timeline.typ() {
-        re_log_types::TimeType::Time => data_result.accumulated_properties().visible_history.nanos,
-        re_log_types::TimeType::Sequence => {
-            data_result
-                .accumulated_properties()
-                .visible_history
-                .sequences
-        }
-    };
+    let visible_time_range_override = data_result
+        .lookup_override::<re_types::blueprint::components::VisibleTimeRange>(ctx)
+        .unwrap_or(default_time_range(TimeSeriesSpaceView::identifier()))
+        .0;
 
-    let mut time_range = if data_result.accumulated_properties().visible_history.enabled {
-        visible_history.time_range(query.latest_at)
-    } else {
-        TimeRange::new(TimeInt::MIN, TimeInt::MAX)
-    };
+    let mut time_range = visible_time_range_to_time_range(
+        &visible_time_range_override,
+        query.timeline.typ(),
+        query.latest_at,
+    );
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

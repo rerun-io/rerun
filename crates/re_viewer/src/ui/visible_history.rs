@@ -99,7 +99,7 @@ pub fn visible_history_ui(
                 .on_hover_text(if is_space_view {
                     "Default visible time range settings for this kind of Space View"
                 } else {
-                    "Visible time range settings inherited from parent Group(s) or enclosing \
+                    "Visible time range settings inherited from parent Entity or enclosing \
                         Space View"
                 });
             re_ui
@@ -109,7 +109,7 @@ pub fn visible_history_ui(
                 } else if entity_path.is_some() {
                     "Set visible time range settings for this entity"
                 } else {
-                    "Set visible time range settings for he contents of this Group"
+                    "Set visible time range settings for he contents of this Entity"
                 });
         });
 
@@ -137,10 +137,10 @@ pub fn visible_history_ui(
         };
 
         if visible_history_prop.enabled {
-            let current_low_boundary = visible_history
+            let current_from = visible_history
                 .range_start_from_cursor(current_time.into())
                 .as_i64();
-            let current_high_boundary = visible_history
+            let current_to = visible_history
                 .range_end_from_cursor(current_time.into())
                 .as_i64();
 
@@ -156,7 +156,7 @@ pub fn visible_history_ui(
                             current_time,
                             &timeline_spec,
                             true,
-                            current_high_boundary,
+                            current_to,
                         )
                     })
                     .inner;
@@ -173,7 +173,7 @@ pub fn visible_history_ui(
                             current_time,
                             &timeline_spec,
                             false,
-                            current_low_boundary,
+                            current_from,
                         )
                     })
                     .inner;
@@ -266,7 +266,7 @@ pub fn visible_history_ui(
     let markdown = format!("# Visible time range\n
 This feature controls the time range used to display data in the Space View.
 
-The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
+The settings are inherited from the parent Entity or enclosing Space View if not overridden.
 
 Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
 whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.

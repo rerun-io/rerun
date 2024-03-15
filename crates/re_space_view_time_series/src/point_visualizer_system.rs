@@ -138,6 +138,7 @@ impl SeriesPointSystem {
             let mut points = Vec::new();
 
             let time_range = determine_time_range(
+                ctx,
                 query,
                 data_result,
                 plot_bounds,

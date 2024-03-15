@@ -94,7 +94,6 @@ impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct EntityProperties {
-    pub visible_history: re_query::ExtraQueryHistory,
     pub interactive: bool,
 
     /// What kind of color mapping should be applied (none, map, texture, transfer..)?
@@ -143,7 +142,6 @@ pub struct EntityProperties {
 impl Default for EntityProperties {
     fn default() -> Self {
         Self {
-            visible_history: re_query::ExtraQueryHistory::default(),
             interactive: true,
             color_mapper: EditableAutoValue::default(),
             pinhole_image_plane_distance: EditableAutoValue::Auto(1.0),
@@ -164,7 +162,6 @@ impl EntityProperties {
     /// Multiply/and these together.
     pub fn with_child(&self, child: &Self) -> Self {
         Self {
-            visible_history: self.visible_history.with_child(&child.visible_history),
             interactive: self.interactive && child.interactive,
 
             color_mapper: self.color_mapper.or(&child.color_mapper).clone(),
@@ -208,7 +205,6 @@ impl EntityProperties {
     /// loaded from the Blueprint store where the Auto values are not up-to-date.
     pub fn merge_with(&self, other: &Self) -> Self {
         Self {
-            visible_history: self.visible_history.with_child(&other.visible_history),
             interactive: other.interactive,
 
             color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
@@ -246,7 +242,6 @@ impl EntityProperties {
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
-            visible_history,
             interactive,
             color_mapper,
             pinhole_image_plane_distance,
@@ -260,8 +255,7 @@ impl EntityProperties {
             time_series_aggregator,
         } = self;
 
-        visible_history != &other.visible_history
-            || interactive != &other.interactive
+        interactive != &other.interactive
             || color_mapper.has_edits(&other.color_mapper)
             || pinhole_image_plane_distance.has_edits(&other.pinhole_image_plane_distance)
             || backproject_depth.has_edits(&other.backproject_depth)

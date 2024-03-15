@@ -16,6 +16,7 @@ mod viewer_recommendation_hash;
 mod visible;
 mod visible_ext;
 mod visible_time_range;
+mod visible_time_range_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background3d_kind::Background3DKind;

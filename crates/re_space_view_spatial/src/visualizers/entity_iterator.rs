@@ -2,6 +2,7 @@ use re_entity_db::EntityProperties;
 use re_log_types::{EntityPath, RowId, TimeInt};
 use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
+use re_space_view::query_visual_history;
 use re_types::{components::InstanceKey, Archetype, Component};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -71,11 +72,13 @@ where
             space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
+        let extra_history = query_visual_history(ctx, data_result);
+
         match query_archetype_with_history::<A, N>(
             ctx.entity_db.store(),
             &query.timeline,
             &query.latest_at,
-            &data_result.accumulated_properties().visible_history,
+            &extra_history,
             &data_result.entity_path,
         )
         .and_then(|arch_views| {
@@ -179,11 +182,13 @@ macro_rules! impl_process_archetype {
                     space_view_class_identifier: view_ctx.space_view_class_identifier(),
                 };
 
+                let extra_history = query_visual_history(ctx, data_result);
+
                 match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
                     ctx.entity_db.store(),
                     &query.timeline,
                     &query.latest_at,
-                    &data_result.accumulated_properties().visible_history,
+                    &extra_history,
                     &data_result.entity_path,
                     |(t, keys, $($pov,)+ $($comp,)*)| {
                         counter
@@ -257,11 +262,13 @@ pub fn count_instances_in_archetype_views<
     let mut num_instances = 0;
 
     for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
+        let extra_history = query_visual_history(ctx, data_result);
+
         match query_archetype_with_history::<A, N>(
             ctx.entity_db.store(),
             &query.timeline,
             &query.latest_at,
-            &data_result.accumulated_properties().visible_history,
+            &extra_history,
             &data_result.entity_path,
         )
         .map(|arch_views| {
