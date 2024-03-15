@@ -49,7 +49,6 @@ pub fn setup_logging() {
             log::LevelFilter::Debug,
         )))
         .expect("Failed to install logger");
-        console_error_panic_hook::set_once();
     }
 
     use std::sync::Once;
