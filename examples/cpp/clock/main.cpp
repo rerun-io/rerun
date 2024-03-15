@@ -45,8 +45,8 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_clock");
     rec.spawn().exit_on_failure();
 
-    rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Y_UP);
-    rec.log_timeless("world/frame", rerun::Boxes3D::from_half_sizes({{LENGTH_S, LENGTH_S, 1.0f}}));
+    rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Y_UP);
+    rec.log_static("world/frame", rerun::Boxes3D::from_half_sizes({{LENGTH_S, LENGTH_S, 1.0f}}));
 
     for (int step = 0; step < num_steps; step++) {
         log_hand(rec, "seconds", seconds(step), (step % 60) / 60.0f, LENGTH_S, WIDTH_S, 0);

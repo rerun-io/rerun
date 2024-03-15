@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     const auto rec = rerun::RecordingStream("rerun_example_asset3d_out_of_tree");
     rec.spawn().exit_on_failure();
 
-    rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+    rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
 
     rec.set_time_sequence("frame", 0);
     rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
