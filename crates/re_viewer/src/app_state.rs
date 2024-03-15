@@ -431,7 +431,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         self.recording_configs
-            .retain(|store_id, _| store_hub.contains_recording(store_id));
+            .retain(|store_id, _| store_hub.contains_store(store_id));
     }
 
     /// Returns the blueprint query that should be used for generating the current

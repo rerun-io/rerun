@@ -108,6 +108,24 @@ impl DataSource {
         }
     }
 
+    pub fn file_name(&self) -> Option<String> {
+        match self {
+            DataSource::RrdHttpUrl(url) => url.split('/').last().map(|r| r.to_owned()),
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(_, path) => {
+                path.file_name().map(|s| s.to_string_lossy().to_string())
+            }
+            DataSource::FileContents(_, file_contents) => Some(file_contents.name.clone()),
+            DataSource::WebSocketAddr(_) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => None,
+        }
+    }
+
+    pub fn is_blueprint(&self) -> Option<bool> {
+        self.file_name().map(|name| name.ends_with(".rbl"))
+    }
+
     /// Stream the data from the given data source.
     ///
     /// Will do minimal checks (e.g. that the file exists), for synchronous errors,

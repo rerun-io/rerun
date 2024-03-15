@@ -173,14 +173,22 @@ impl StoreHub {
     /// Change which blueprint is active for a given [`ApplicationId`]
     #[inline]
     pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
-        re_log::debug!("Switching blueprint for {app_id:?} to {blueprint_id:?}");
+        re_log::debug!("Switching blueprint for {app_id} to {blueprint_id}");
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
+    }
+
+    /// Is the given blueprint id the active blueprint for any app id?
+    pub fn is_active_blueprint(&self, blueprint_id: &StoreId) -> bool {
+        self.blueprint_by_app_id
+            .values()
+            .any(|id| id == blueprint_id)
     }
 
     /// Clear the current blueprint
     pub fn clear_current_blueprint(&mut self) {
         if let Some(app_id) = &self.selected_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
+                re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
                 self.store_bundle.remove(&blueprint_id);
             }
         }
@@ -193,12 +201,12 @@ impl StoreHub {
         }
     }
 
-    /// Insert a new recording into the [`StoreHub`].
+    /// Insert a new recording or blueprint into the [`StoreHub`].
     ///
     /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
     /// if needed.
-    pub fn insert_recording(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert_recording(entity_db);
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
+        self.store_bundle.insert_entity_db(entity_db);
     }
 
     /// Mutable access to a [`EntityDb`] by id
@@ -271,9 +279,19 @@ impl StoreHub {
             .and_then(|id| self.store_bundle.recording(id))
     }
 
-    /// Check whether the [`StoreHub`] contains the referenced recording
-    pub fn contains_recording(&self, id: &StoreId) -> bool {
-        self.store_bundle.contains_recording(id)
+    /// Check whether the [`StoreHub`] contains the referenced store (recording or blueprint).
+    pub fn contains_store(&self, id: &StoreId) -> bool {
+        self.store_bundle.contains_store(id)
+    }
+
+    pub fn entity_dbs_from_channel_source<'a>(
+        &'a self,
+        source: &'a re_smart_channel::SmartChannelSource,
+    ) -> impl Iterator<Item = &EntityDb> + 'a {
+        self.store_bundle
+            .entity_dbs
+            .values()
+            .filter(move |db| db.data_source.as_ref() == Some(source))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
@@ -382,7 +400,7 @@ impl StoreHub {
                         // We found the blueprint we were looking for; make it active.
                         // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                         re_log::debug!(
-                            "Switching blueprint for {app_id:?} to {:?}",
+                            "Switching blueprint for {app_id} to {} loaded from {blueprint_path:?}",
                             store.store_id(),
                         );
                         self.blueprint_by_app_id
@@ -490,9 +508,10 @@ impl StoreBundle {
     /// Returns either a recording or blueprint [`EntityDb`].
     /// One is created if it doesn't already exist.
     pub fn entity_db_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        self.entity_dbs
-            .entry(id.clone())
-            .or_insert_with(|| EntityDb::new(id.clone()))
+        self.entity_dbs.entry(id.clone()).or_insert_with(|| {
+            re_log::debug!("Creating new store: {id}");
+            EntityDb::new(id.clone())
+        })
     }
 
     /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
@@ -554,8 +573,7 @@ impl StoreBundle {
 
     // --
 
-    pub fn contains_recording(&self, id: &StoreId) -> bool {
-        debug_assert_eq!(id.kind, StoreKind::Recording);
+    pub fn contains_store(&self, id: &StoreId) -> bool {
         self.entity_dbs.contains_key(id)
     }
 
@@ -577,8 +595,7 @@ impl StoreBundle {
             .or_insert_with(|| EntityDb::new(id.clone()))
     }
 
-    pub fn insert_recording(&mut self, entity_db: EntityDb) {
-        debug_assert_eq!(entity_db.store_kind(), StoreKind::Recording);
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
         self.entity_dbs
             .insert(entity_db.store_id().clone(), entity_db);
     }
@@ -628,6 +645,8 @@ impl StoreBundle {
             // Make sure it's marked as a blueprint.
 
             let mut blueprint_db = EntityDb::new(id.clone());
+
+            re_log::debug!("Creating a new blueprint {id}");
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: re_log_types::RowId::new(),
