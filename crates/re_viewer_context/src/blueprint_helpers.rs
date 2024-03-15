@@ -59,7 +59,7 @@ impl ViewerContext<'_> {
         let num_instances = components.num_instances() as u32;
         let timepoint = blueprint_timepoint_for_writes();
 
-        re_log::debug!(
+        re_log::trace!(
             "Writing {} components of type {:?} to {:?}",
             num_instances,
             components.name(),
