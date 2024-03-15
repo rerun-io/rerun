@@ -38,7 +38,7 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // create an annotation context to describe the classes
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "segmentation",
     ///         rerun::AnnotationContext({
     ///             rerun::AnnotationInfo(1, "red", rerun::Rgba32(255, 0, 0)),
