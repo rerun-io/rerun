@@ -84,7 +84,8 @@ lint-typos = "typos"
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 toml-fmt = "taplo fmt"
-ruff-fix = "ruff format --config rerun_py/pyproject.toml ."
+ruff-fmt = "ruff format --config rerun_py/pyproject.toml ."
+ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 
