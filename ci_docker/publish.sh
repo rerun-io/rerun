@@ -6,19 +6,6 @@ VERSION=0.11.0 # Bump on each new version. Remember to update the version in the
 # The build needs to run from top of repo to access the requirements.txt
 cd `git rev-parse --show-toplevel`
 
-# Pull :latest so we have the correct cache
-docker pull rerunio/ci_docker
-
 # Build the image
-docker build -t ci_docker -f ci_docker/Dockerfile .
-# This is necessary to build on mac, but is doing something weird with the Cache
-# TODO(jleibs): Make this all work portably with caching
-# docker buildx build --platform=linux/amd64 -t ci_docker -f ci_docker/Dockerfile .
-
-# Tag latest and version
-docker tag ci_docker rerunio/ci_docker
-docker tag ci_docker rerunio/ci_docker:$VERSION
-
-# Push the images back up
-docker push rerunio/ci_docker
-docker push rerunio/ci_docker:$VERSION
+# buildx wants to do all of this in one step
+docker buildx build --pull --platform linux/arm64,linux/amd64 -t rerunio/ci_docker -t rerunio/ci_docker:$VERSION --push -f ci_docker/Dockerfile .
