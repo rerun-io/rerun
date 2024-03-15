@@ -204,7 +204,7 @@ nox = ">=2024.3.2" # the conda-forge package is (wrongly) tagged as platform-spe
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
-meilisearch = "1.5.1.*" # not avaialble for linux-aarch64
+meilisearch = "1.5.1.*" # not available for linux-aarch64
 
 [feature.taplo.dependencies]
 taplo = "=0.8.1" # not (yet?) available for linux-aarch64
