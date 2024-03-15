@@ -9,15 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class UInt32Type;
-    using UInt32Builder = NumericBuilder<UInt32Type>;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
     ///
@@ -83,17 +74,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Rgba32>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::UInt32Builder* builder, const components::Color* elements, size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Rgba32>::fill_arrow_array_builder(
-                builder,
-                &elements->rgba,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::Color` into an arrow array.

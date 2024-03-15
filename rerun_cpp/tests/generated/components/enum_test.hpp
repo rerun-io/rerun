@@ -49,15 +49,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::components::EnumTest` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::EnumTest* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::SparseUnionBuilder* builder, const components::EnumTest* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::components::EnumTest` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const components::EnumTest* instances, size_t num_instances
         );
     };
 } // namespace rerun

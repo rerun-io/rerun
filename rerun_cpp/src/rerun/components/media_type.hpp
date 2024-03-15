@@ -11,10 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class StringBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
     ///
@@ -108,18 +104,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const components::MediaType* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
-                builder,
-                &elements->value,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::MediaType` into an arrow array.

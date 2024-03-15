@@ -10,10 +10,6 @@
 #include <rerun/result.hpp>
 #include <utility>
 
-namespace arrow {
-    class StructBuilder;
-}
-
 namespace rerun::components {
     struct AffixFuzzer1 {
         rerun::datatypes::AffixFuzzer1 single_required;
@@ -47,18 +43,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::AffixFuzzer1>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::AffixFuzzer1* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::AffixFuzzer1>::fill_arrow_array_builder(
-                builder,
-                &elements->single_required,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer1` into an arrow array.

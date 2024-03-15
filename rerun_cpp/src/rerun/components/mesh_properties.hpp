@@ -12,10 +12,6 @@
 #include <optional>
 #include <utility>
 
-namespace arrow {
-    class StructBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: Optional triangle indices for a mesh.
     struct MeshProperties {
@@ -64,18 +60,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::MeshProperties>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::MeshProperties* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::MeshProperties>::fill_arrow_array_builder(
-                builder,
-                &elements->props,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::MeshProperties` into an arrow array.

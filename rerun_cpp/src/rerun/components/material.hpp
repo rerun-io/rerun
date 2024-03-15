@@ -11,10 +11,6 @@
 #include <memory>
 #include <optional>
 
-namespace arrow {
-    class StructBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: Material properties of a mesh.
     struct Material {
@@ -63,17 +59,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Material>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::Material* elements, size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Material>::fill_arrow_array_builder(
-                builder,
-                &elements->material,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::Material` into an arrow array.

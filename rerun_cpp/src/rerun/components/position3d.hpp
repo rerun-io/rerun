@@ -10,10 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class FixedSizeListBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: A position in 3D space.
     struct Position3D {
@@ -72,18 +68,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Vec3D>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::Position3D* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Vec3D>::fill_arrow_array_builder(
-                builder,
-                &elements->xyz,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::Position3D` into an arrow array.

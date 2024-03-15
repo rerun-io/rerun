@@ -11,10 +11,6 @@
 #include <optional>
 #include <rerun/result.hpp>
 
-namespace arrow {
-    class StructBuilder;
-}
-
 namespace rerun::components {
     struct AffixFuzzer22 {
         std::optional<rerun::datatypes::AffixFuzzer22> nullable_nested_array;
@@ -58,18 +54,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::AffixFuzzer22>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::AffixFuzzer22* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::AffixFuzzer22>::fill_arrow_array_builder(
-                builder,
-                &elements->nullable_nested_array,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer22` into an arrow array.

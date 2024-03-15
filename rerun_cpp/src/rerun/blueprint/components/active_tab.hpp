@@ -11,10 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class StringBuilder;
-}
-
 namespace rerun::blueprint::components {
     /// **Component**: The active tab in a tabbed container.
     struct ActiveTab {
@@ -58,18 +54,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::EntityPath>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const blueprint::components::ActiveTab* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
-                builder,
-                &elements->tab,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ActiveTab` into an arrow array.

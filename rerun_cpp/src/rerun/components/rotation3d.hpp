@@ -9,10 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class DenseUnionBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: A 3D rotation, represented either by a quaternion or a rotation around axis.
     struct Rotation3D {
@@ -58,18 +54,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Rotation3D>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const components::Rotation3D* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Rotation3D>::fill_arrow_array_builder(
-                builder,
-                &elements->repr,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::Rotation3D` into an arrow array.

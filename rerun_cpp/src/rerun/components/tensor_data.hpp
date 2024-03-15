@@ -10,10 +10,6 @@
 #include <memory>
 #include <utility>
 
-namespace arrow {
-    class StructBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: A multi-dimensional `Tensor` of data.
     ///
@@ -81,18 +77,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::TensorData>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::TensorData* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::TensorData>::fill_arrow_array_builder(
-                builder,
-                &elements->data,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::TensorData` into an arrow array.

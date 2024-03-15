@@ -10,10 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class FixedSizeListBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
     ///
@@ -71,18 +67,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::HalfSizes2D* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
-                builder,
-                &elements->xy,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::HalfSizes2D` into an arrow array.

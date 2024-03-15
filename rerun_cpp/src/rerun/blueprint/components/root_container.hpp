@@ -10,10 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class FixedSizeListBuilder;
-}
-
 namespace rerun::blueprint::components {
     /// **Component**: The container that sits at the root of a viewport.
     struct RootContainer {
@@ -55,18 +51,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder,
-            const blueprint::components::RootContainer* elements, size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
-                builder,
-                &elements->id,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::blueprint:: components::RootContainer` into an arrow array.

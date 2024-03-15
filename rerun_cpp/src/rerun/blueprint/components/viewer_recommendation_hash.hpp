@@ -9,15 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class UInt64Type;
-    using UInt64Builder = NumericBuilder<UInt64Type>;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: Hash of a viewer recommendation.
     ///
@@ -62,18 +53,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::UInt64>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::UInt64Builder* builder,
-            const blueprint::components::ViewerRecommendationHash* elements, size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::UInt64>::fill_arrow_array_builder(
-                builder,
-                &elements->value,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ViewerRecommendationHash` into an arrow array.

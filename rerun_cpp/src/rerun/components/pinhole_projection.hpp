@@ -10,10 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class FixedSizeListBuilder;
-}
-
 namespace rerun::components {
     /// **Component**: Camera projection, from image coordinates to view coordinates.
     ///
@@ -73,18 +69,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Mat3x3>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::PinholeProjection* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Mat3x3>::fill_arrow_array_builder(
-                builder,
-                &elements->image_from_camera,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::PinholeProjection` into an arrow array.

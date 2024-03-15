@@ -9,15 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class UInt16Type;
-    using UInt16Builder = NumericBuilder<UInt16Type>;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: A 16-bit ID representing a type of semantic class.
     struct ClassId {
@@ -58,17 +49,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::ClassId>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const components::ClassId* elements, size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::ClassId>::fill_arrow_array_builder(
-                builder,
-                &elements->id,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::ClassId` into an arrow array.

@@ -20,6 +20,26 @@ namespace rerun {
         return datatype;
     }
 
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::EnumTest>::to_arrow(
+        const components::EnumTest* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<components::EnumTest>::fill_arrow_array_builder(
+                static_cast<arrow::SparseUnionBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
+    }
+
     rerun::Error Loggable<components::EnumTest>::fill_arrow_array_builder(
         arrow::SparseUnionBuilder* builder, const components::EnumTest* elements,
         size_t num_elements
@@ -41,25 +61,5 @@ namespace rerun {
         }
 
         return Error::ok();
-    }
-
-    Result<std::shared_ptr<arrow::Array>> Loggable<components::EnumTest>::to_arrow(
-        const components::EnumTest* instances, size_t num_instances
-    ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<components::EnumTest>::fill_arrow_array_builder(
-                static_cast<arrow::SparseUnionBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
     }
 } // namespace rerun

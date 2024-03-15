@@ -9,10 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class BooleanBuilder;
-}
-
 namespace rerun::blueprint::components {
     /// **Component**: Whether an application panel is expanded or not.
     struct PanelExpanded {
@@ -53,18 +49,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::Bool>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const blueprint::components::PanelExpanded* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::Bool>::fill_arrow_array_builder(
-                builder,
-                &elements->expanded,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::blueprint:: components::PanelExpanded` into an arrow array.

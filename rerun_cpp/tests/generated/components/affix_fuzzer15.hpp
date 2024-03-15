@@ -11,10 +11,6 @@
 #include <rerun/result.hpp>
 #include <utility>
 
-namespace arrow {
-    class DenseUnionBuilder;
-}
-
 namespace rerun::components {
     struct AffixFuzzer15 {
         std::optional<rerun::datatypes::AffixFuzzer3> single_optional_union;
@@ -50,18 +46,6 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
             return Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype();
-        }
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const components::AffixFuzzer15* elements,
-            size_t num_elements
-        ) {
-            return Loggable<rerun::datatypes::AffixFuzzer3>::fill_arrow_array_builder(
-                builder,
-                &elements->single_optional_union,
-                num_elements
-            );
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer15` into an arrow array.
