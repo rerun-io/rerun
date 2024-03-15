@@ -91,6 +91,7 @@ jobs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
+      COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Set runner and target based on platform
         id: set-config
