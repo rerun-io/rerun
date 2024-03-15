@@ -1346,7 +1346,7 @@ fn add_copy_assignment_and_constructor(
 
 /// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
 fn transparent_forwarded_fqname(obj: &Object) -> Option<&str> {
-    if obj.is_arrow_transparent() {
+    if obj.is_arrow_transparent() && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
         if let Type::Object(fqname) = &obj.fields[0].typ {
             return Some(fqname);
         }

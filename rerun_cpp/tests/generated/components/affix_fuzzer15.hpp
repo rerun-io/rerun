@@ -11,6 +11,12 @@
 #include <rerun/result.hpp>
 #include <utility>
 
+namespace arrow {
+    class Array;
+    class DataType;
+    class DenseUnionBuilder;
+} // namespace arrow
+
 namespace rerun::components {
     struct AffixFuzzer15 {
         std::optional<rerun::datatypes::AffixFuzzer3> single_optional_union;
@@ -36,7 +42,8 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::AffixFuzzer3) == sizeof(components::AffixFuzzer15));
+    template <typename T>
+    struct Loggable;
 
     /// \private
     template <>
@@ -44,18 +51,17 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer15";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype();
-        }
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Serializes an array of `rerun::components::AffixFuzzer15` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AffixFuzzer15* instances, size_t num_instances
-        ) {
-            return Loggable<rerun::datatypes::AffixFuzzer3>::to_arrow(
-                &instances->single_optional_union,
-                num_instances
-            );
-        }
+        );
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const components::AffixFuzzer15* elements,
+            size_t num_elements
+        );
     };
 } // namespace rerun
