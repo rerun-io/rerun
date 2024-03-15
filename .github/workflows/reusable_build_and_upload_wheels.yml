@@ -102,7 +102,7 @@ jobs:
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
                 container="null"
-                compat="manylinux_2_35"
+                compat="manylinux_2_35" # TODO(#5512): bringing that down to manylinux_2_31 requires a custom container
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"

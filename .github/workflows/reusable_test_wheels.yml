@@ -56,6 +56,7 @@ jobs:
       - name: Set runner and target based on platform
         id: set-config
         shell: bash
+        # TODO(#5525): at least this target is broken, maybe others — we currently only use linux-x64 and windows-x64
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
