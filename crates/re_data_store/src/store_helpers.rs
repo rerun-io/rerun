@@ -6,6 +6,8 @@ use crate::{DataStore, LatestAtQuery};
 
 // --- Read ---
 
+// TODO(cmc): these helpers have got to go once the new APIs land.
+
 /// A [`Component`] at a specific _data_ time, versioned with a specific [`RowId`].
 ///
 /// This is not enough to globally, uniquely identify an instance of a component.
@@ -14,19 +16,16 @@ use crate::{DataStore, LatestAtQuery};
 /// `VersionedInstancePath`.
 #[derive(Debug, Clone)]
 pub struct VersionedComponent<C: Component> {
-    /// `None` if timeless.
-    pub data_time: Option<TimeInt>,
-
+    pub data_time: TimeInt,
     pub row_id: RowId,
-
     pub value: C,
 }
 
 impl<C: Component> VersionedComponent<C> {
     #[inline]
-    pub fn new(time: Option<TimeInt>, row_id: RowId, value: C) -> Self {
+    pub fn new(data_time: TimeInt, row_id: RowId, value: C) -> Self {
         Self {
-            data_time: time,
+            data_time,
             row_id,
             value,
         }
@@ -161,7 +160,7 @@ impl DataStore {
     }
 
     /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
-    /// assuming it is timeless.
+    /// assuming it is static.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -169,7 +168,7 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
-    pub fn query_timeless_component<C: Component>(
+    pub fn query_static_component<C: Component>(
         &self,
         entity_path: &EntityPath,
     ) -> Option<VersionedComponent<C>> {
@@ -177,13 +176,13 @@ impl DataStore {
 
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component(entity_path, &query).map(|vc| {
-            debug_assert!(vc.data_time.is_none());
+            debug_assert!(vc.data_time.is_static());
             vc
         })
     }
 
     /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`],
-    /// assuming it is timeless.
+    /// assuming it is static.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will return None and log a debug message otherwise.
@@ -191,7 +190,7 @@ impl DataStore {
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
     ///
     /// This is a best-effort helper, it will merely log debug on failure.
-    pub fn query_timeless_component_quiet<C: Component>(
+    pub fn query_static_component_quiet<C: Component>(
         &self,
         entity_path: &EntityPath,
     ) -> Option<VersionedComponent<C>> {
@@ -200,7 +199,7 @@ impl DataStore {
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component_quiet(entity_path, &query)
             .map(|vc| {
-                debug_assert!(vc.data_time.is_none());
+                debug_assert!(vc.data_time.is_static());
                 vc
             })
     }
