@@ -241,7 +241,11 @@ fn generate_object_files(
 
     let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
 
-    for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
+    for (extension, tokens) in [("hpp", Some(hpp)), ("cpp", cpp)] {
+        let Some(tokens) = tokens else {
+            continue;
+        };
+
         let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
         if let Some(hpp_extension_string) = &hpp_extension_string {
             contents = contents.replace(
@@ -348,7 +352,7 @@ fn generate_hpp_cpp(
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
-) -> Result<(TokenStream, TokenStream)> {
+) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
         QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
@@ -360,10 +364,12 @@ fn generate_hpp_cpp(
         #pragma_once
         #hpp
     };
-    let cpp = quote! {
-        #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
-        #cpp
-    };
+    let cpp = cpp.map(|cpp| {
+        quote! {
+            #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
+            #cpp
+        }
+    });
 
     Ok((hpp, cpp))
 }
@@ -377,7 +383,7 @@ fn pragma_once() -> TokenStream {
 
 struct QuotedObject {
     hpp: TokenStream,
-    cpp: TokenStream,
+    cpp: Option<TokenStream>,
 }
 
 impl QuotedObject {
@@ -637,7 +643,10 @@ impl QuotedObject {
             #deprecation_ignore_end
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     fn from_struct(
@@ -714,9 +723,6 @@ impl QuotedObject {
         }
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
-        let methods_cpp = methods
-            .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
             obj,
@@ -748,14 +754,23 @@ impl QuotedObject {
 
             #hpp_loggable
         };
-        let cpp = quote! {
-            #cpp_includes
 
-            namespace rerun::#quoted_namespace {
-                #(#methods_cpp)*
-            }
+        let cpp = if cpp_loggable.is_some() || methods.iter().any(|m| !m.inline) {
+            let methods_cpp = methods
+                .iter()
+                .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
-            #cpp_loggable
+            Some(quote! {
+                #cpp_includes
+
+                namespace rerun::#quoted_namespace {
+                    #(#methods_cpp)*
+                }
+
+                #cpp_loggable
+            })
+        } else {
+            None
         };
 
         Self { hpp, cpp }
@@ -1157,7 +1172,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     // C-style enum
@@ -1229,7 +1247,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 }
 
@@ -2426,7 +2447,7 @@ fn quote_loggable_hpp_and_cpp(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
-) -> (TokenStream, TokenStream) {
+) -> (TokenStream, Option<TokenStream>) {
     assert!(obj.kind != ObjectKind::Archetype);
 
     let namespace_ident = obj.namespace_ident();
@@ -2483,10 +2504,14 @@ fn quote_loggable_hpp_and_cpp(
         }
     };
 
-    let cpp = quote! {
-        namespace rerun {
-            #(#methods_cpp)*
-        }
+    let cpp = if methods.iter().any(|m| !m.inline) {
+        Some(quote! {
+            namespace rerun {
+                #(#methods_cpp)*
+            }
+        })
+    } else {
+        None
     };
 
     (hpp, cpp)
