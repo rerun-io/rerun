@@ -108,10 +108,6 @@ RUN pip install -r requirements-build.txt
 ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
-# Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
-RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_64"; fi) && \
-    curl --fail -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-${arch}-linux.tar.gz | tar xzk --strip-components 1
-
 # Increment this to invalidate cache
 ENV CACHE_KEY=rerun_docker_v0.12.0
 
