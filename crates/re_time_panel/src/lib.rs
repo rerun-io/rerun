@@ -593,7 +593,7 @@ impl TimePanel {
         if focused_entity_path.is_some_and(|entity_path| entity_path.is_descendant_of(&tree.path)) {
             CollapseScope::StreamsTree
                 .entity(tree.path.clone())
-                .set_open(&ui.ctx(), true);
+                .set_open(ui.ctx(), true);
         }
 
         let re_ui::list_item::ShowCollapsingResponse {
