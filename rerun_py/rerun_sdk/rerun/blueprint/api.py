@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
-from ..datatypes import EntityPathLike, Utf8Like
+from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..recording import MemoryRecording
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKindLike
 
-SpaceViewContentsLike = Union[str, Sequence[str], Utf8Like, SpaceViewContents]
+SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
 
 
 class SpaceView:
@@ -80,21 +80,11 @@ class SpaceView:
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        # Handle the cases for SpaceViewContentsLike
-        # TODO(#5483): Move this into a QueryExpressionExt class.
-        # This is a little bit tricky since QueryExpression is a delegating component for Utf8,
-        # and delegating components make extending things in this way a bit more complicated.
-        if isinstance(self.contents, str):
-            # str
-            contents = SpaceViewContents(query=self.contents)
-        elif isinstance(self.contents, Sequence) and len(self.contents) > 0 and isinstance(self.contents[0], str):
-            # list[str]
-            contents = SpaceViewContents(query="\n".join(self.contents))
-        elif isinstance(self.contents, SpaceViewContents):
-            # SpaceViewContents
+        if isinstance(self.contents, SpaceViewContents):
+            # If contents is already a SpaceViewContents, we can just use it directly
             contents = self.contents
         else:
-            # Anything else we let SpaceViewContents handle
+            # Otherwise we delegate to the SpaceViewContents constructor
             contents = SpaceViewContents(query=self.contents)  # type: ignore[arg-type]
 
         stream.log(self.blueprint_path() + "/SpaceViewContents", contents)  # type: ignore[attr-defined]
@@ -466,8 +456,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    # TODO(jleibs): This should use a monotonic seq
-    blueprint_stream.set_time_seconds("blueprint", 1)  # type: ignore[attr-defined]
+    blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
 
     blueprint._log_to_stream(blueprint_stream)
 

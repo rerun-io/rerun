@@ -237,7 +237,7 @@ impl ViewportBlueprint {
     ) -> Option<SpaceViewId> {
         let space_view = self.space_view(space_view_id)?;
 
-        let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
+        let new_space_view = space_view.duplicate(ctx.store_context, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
 
         let parent_and_pos =
@@ -364,11 +364,7 @@ impl ViewportBlueprint {
 
             self.add_space_views(
                 final_recommendations.map(|recommendation| {
-                    SpaceViewBlueprint::new(
-                        class_id,
-                        &recommendation.root,
-                        recommendation.query_filter.clone(),
-                    )
+                    SpaceViewBlueprint::new(class_id, recommendation.clone())
                 }),
                 ctx,
                 None,
