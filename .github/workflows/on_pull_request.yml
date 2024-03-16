@@ -85,8 +85,8 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       MODE: "pr"
-      PLATFORM: linux-x64
-      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: "linux-arm64-wheel-fast"
     secrets: inherit
 
   min-wheel-test:
@@ -96,8 +96,8 @@ jobs:
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PLATFORM: linux-x64
-      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: "linux-arm64-wheel-fast"
     secrets: inherit
 
   build-js:
