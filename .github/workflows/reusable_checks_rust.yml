@@ -55,13 +55,16 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      # We need to build the web viewer for `rust_checks.py` to succeed.
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          command: run
-          # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release
+          pixi-version: v0.16.1
+
+      # We need to build the web viewer for `rust_checks.py` to succeed.
+      # We build in release so that we can reuse the results for actual publishing, if necessary
+      - name: Build web-viewer (release)
+        shell: bash
+        run: |
+          pixi run cargo run --locked -p re_build_web_viewer -- --release
 
       - name: Rust checks & tests
         if: ${{ !inputs.ALL_CHECKS }}
@@ -103,12 +106,15 @@ jobs:
           command: check
           args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          command: run
-          # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release
+          pixi-version: v0.16.1
+
+      # We build in release so that we can reuse the results for actual publishing, if necessary
+      - name: Build web-viewer (release)
+        shell: bash
+        run: |
+          pixi run cargo run --locked -p re_build_web_viewer -- --release
 
   # ---------------------------------------------------------------------------
 
