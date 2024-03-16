@@ -76,6 +76,7 @@ examples = [
   "tapir",
   "widebaseline",
   "arflow",
+  "kiss-icp",
 ]
 
 [categories.setup]
