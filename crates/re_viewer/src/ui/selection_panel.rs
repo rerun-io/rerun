@@ -316,6 +316,7 @@ fn what_is_selected_ui(
 
             item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
         }
+
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
                 item_title_ui(
@@ -329,6 +330,7 @@ fn what_is_selected_ui(
                 );
             }
         }
+
         Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
@@ -354,6 +356,7 @@ fn what_is_selected_ui(
 
             list_existing_data_blueprints(ui, ctx, &entity_path.clone().into(), viewport);
         }
+
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
                 let space_view_class = space_view.class(ctx.space_view_class_registry);
@@ -381,6 +384,7 @@ fn what_is_selected_ui(
                     .on_hover_text(hover_text);
             }
         }
+
         Item::InstancePath(instance_path) => {
             let is_instance = !instance_path.instance_key.is_splat();
 
@@ -407,7 +411,7 @@ fn what_is_selected_ui(
             if let Some(parent) = parent {
                 if !parent.is_root() {
                     ui.horizontal(|ui| {
-                        ui.label("path");
+                        ui.label("Parent");
                         item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
                     });
                 }
@@ -446,7 +450,7 @@ fn what_is_selected_ui(
                 if let Some(parent) = parent {
                     if !parent.is_root() {
                         ui.horizontal(|ui| {
-                            ui.label("path");
+                            ui.label("Parent");
                             item_ui::entity_path_parts_buttons(
                                 ctx,
                                 &query,
