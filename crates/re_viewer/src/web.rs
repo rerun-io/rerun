@@ -222,6 +222,8 @@ pub fn set_email(email: String) {
 
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
+    ///
+    /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
     HttpRrd(String),
 
     /// A remote Rerun server.
@@ -232,7 +234,7 @@ enum EndpointCategory {
 }
 
 fn categorize_uri(uri: &str) -> EndpointCategory {
-    if uri.starts_with("http") || uri.ends_with(".rrd") {
+    if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
         EndpointCategory::HttpRrd(uri.into())
     } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
         EndpointCategory::WebSocket(uri.into())
