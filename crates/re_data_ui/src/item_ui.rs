@@ -62,6 +62,8 @@ pub fn entity_path_parts_buttons(
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
 ) -> egui::Response {
+    let with_icon = false; // too much noise with icons in a path
+
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 4.0;
 
@@ -70,14 +72,15 @@ pub fn entity_path_parts_buttons(
             accumulated.push(part.clone());
 
             ui.strong("/");
-            entity_path_button_to(
+            instance_path_button_to_ex(
                 ctx,
                 query,
                 store,
                 ui,
                 space_view_id,
-                &accumulated.clone().into(),
+                &InstancePath::entity_splat(accumulated.clone().into()),
                 part.syntax_highlighted(ui.style()),
+                with_icon,
             );
         }
     })
@@ -191,24 +194,51 @@ pub fn instance_path_button_to(
     instance_path: &InstancePath,
     text: impl Into<egui::WidgetText>,
 ) -> egui::Response {
+    instance_path_button_to_ex(
+        ctx,
+        query,
+        store,
+        ui,
+        space_view_id,
+        instance_path,
+        text,
+        true,
+    )
+}
+
+/// Show an instance id and make it selectable.
+#[allow(clippy::too_many_arguments)]
+fn instance_path_button_to_ex(
+    ctx: &ViewerContext<'_>,
+    query: &re_data_store::LatestAtQuery,
+    store: &re_data_store::DataStore,
+    ui: &mut egui::Ui,
+    space_view_id: Option<SpaceViewId>,
+    instance_path: &InstancePath,
+    text: impl Into<egui::WidgetText>,
+    with_icon: bool,
+) -> egui::Response {
     let item = if let Some(space_view_id) = space_view_id {
         Item::DataResult(space_view_id, instance_path.clone())
     } else {
         Item::InstancePath(instance_path.clone())
     };
 
-    let response = ctx
-        .re_ui
-        .selectable_label_with_icon(
+    let response = if with_icon {
+        ctx.re_ui.selectable_label_with_icon(
             ui,
             instance_path_icon(&query.timeline, store, instance_path),
             text,
             ctx.selection().contains_item(&item),
             re_ui::LabelStyle::Normal,
         )
-        .on_hover_ui(|ui| {
-            instance_hover_card_ui(ui, ctx, query, store, instance_path);
-        });
+    } else {
+        ui.selectable_label(ctx.selection().contains_item(&item), text)
+    };
+
+    let response = response.on_hover_ui(|ui| {
+        instance_hover_card_ui(ui, ctx, query, store, instance_path);
+    });
 
     cursor_interact_with_selectable(ctx, response, item)
 }
@@ -222,6 +252,8 @@ pub fn instance_path_parts_buttons(
     space_view_id: Option<SpaceViewId>,
     instance_path: &InstancePath,
 ) -> egui::Response {
+    let with_icon = false; // too much noise with icons in a path
+
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 4.0;
 
@@ -230,20 +262,21 @@ pub fn instance_path_parts_buttons(
             accumulated.push(part.clone());
 
             ui.strong("/");
-            entity_path_button_to(
+            instance_path_button_to_ex(
                 ctx,
                 query,
                 store,
                 ui,
                 space_view_id,
-                &accumulated.clone().into(),
+                &InstancePath::entity_splat(accumulated.clone().into()),
                 part.syntax_highlighted(ui.style()),
+                with_icon,
             );
         }
 
         if !instance_path.instance_key.is_splat() {
             ui.strong("/");
-            instance_path_button_to(
+            instance_path_button_to_ex(
                 ctx,
                 query,
                 store,
@@ -251,6 +284,7 @@ pub fn instance_path_parts_buttons(
                 space_view_id,
                 instance_path,
                 instance_path.instance_key.syntax_highlighted(ui.style()),
+                with_icon,
             );
         }
     })
