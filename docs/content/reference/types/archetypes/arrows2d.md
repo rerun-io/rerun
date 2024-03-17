@@ -21,7 +21,7 @@ title: "Arrows2D"
 
 ### Simple batch of 2D Arrows
 
-code-example: arrow2d_simple
+snippet: arrow2d_simple
 
 <center>
 <picture>

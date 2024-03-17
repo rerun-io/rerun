@@ -9,7 +9,7 @@ use quote::{format_ident, quote};
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples_for_api_docs, ExampleInfo},
+        common::{collect_snippets_for_api_docs, ExampleInfo},
         rust::{
             arrow::ArrowDataTypeTokenizer,
             deserializer::{
@@ -716,7 +716,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
 
-    let examples = collect_examples_for_api_docs(docs, "rs", true)
+    let examples = collect_snippets_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))
         .unwrap_or_default();
 

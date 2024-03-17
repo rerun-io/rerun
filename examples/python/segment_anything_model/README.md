@@ -8,7 +8,7 @@ channel = "release"
 -->
 
 
-<picture>
+<picture data-inline-viewer="segment_anything_model">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/1024w.png">
