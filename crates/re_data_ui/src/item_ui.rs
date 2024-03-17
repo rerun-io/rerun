@@ -65,7 +65,7 @@ pub fn entity_path_parts_buttons(
     let with_icon = false; // too much noise with icons in a path
 
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 4.0;
+        ui.spacing_mut().item_spacing.x = 2.0;
 
         let mut accumulated = Vec::new();
         for part in entity_path.iter() {
@@ -255,7 +255,7 @@ pub fn instance_path_parts_buttons(
     let with_icon = false; // too much noise with icons in a path
 
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 4.0;
+        ui.spacing_mut().item_spacing.x = 2.0;
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
