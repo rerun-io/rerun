@@ -348,7 +348,7 @@ impl DataQueryPropertyResolver<'_> {
         // the space-view. This isn't totally generic once we add container overrides, but it's a start.
         let (mut root_entity_properties, root_component_overrides) = self
             .space_view
-            .root_data_result(ctx, query)
+            .space_view_data_result(ctx, query)
             .property_overrides
             .map(|p| (p.accumulated_properties, p.resolved_component_overrides))
             .unwrap_or_default();

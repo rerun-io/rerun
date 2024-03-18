@@ -847,7 +847,8 @@ fn blueprint_ui_for_space_view(
         );
 
         // Space View don't inherit properties.
-        let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        let root_data_result =
+            space_view.space_view_data_result(ctx.store_context, ctx.blueprint_query);
 
         let query_result = ctx.lookup_query_result(space_view.id);
         let Some(data_result) = query_result
