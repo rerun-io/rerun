@@ -5,7 +5,7 @@ include "rust/attributes.fbs";
 
 include "rerun/attributes.fbs";
 
-include "./time_int.fbs";
+include "../../datatypes/time_int.fbs";
 
 namespace rerun.blueprint.datatypes;
 
@@ -33,7 +33,7 @@ struct VisibleTimeRangeBoundary (
   kind: rerun.blueprint.datatypes.VisibleTimeRangeBoundaryKind (order: 100);
 
   /// Value of the boundary (ignored for `Infinite` type).
-  time: rerun.blueprint.datatypes.TimeInt (order: 200);
+  time: rerun.datatypes.TimeInt (order: 200);
 }
 
 /// Visible time range bounds.

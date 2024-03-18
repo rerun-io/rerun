@@ -28,7 +28,7 @@ pub struct VisibleTimeRangeBoundary {
     pub kind: crate::blueprint::datatypes::VisibleTimeRangeBoundaryKind,
 
     /// Value of the boundary (ignored for `Infinite` type).
-    pub time: crate::blueprint::datatypes::TimeInt,
+    pub time: crate::datatypes::TimeInt,
 }
 
 impl ::re_types_core::SizeBytes for VisibleTimeRangeBoundary {
@@ -40,7 +40,7 @@ impl ::re_types_core::SizeBytes for VisibleTimeRangeBoundary {
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::datatypes::VisibleTimeRangeBoundaryKind>::is_pod()
-            && <crate::blueprint::datatypes::TimeInt>::is_pod()
+            && <crate::datatypes::TimeInt>::is_pod()
     }
 }
 
@@ -64,11 +64,7 @@ impl ::re_types_core::Loggable for VisibleTimeRangeBoundary {
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundaryKind>::arrow_datatype(),
                 false,
             ),
-            Field::new(
-                "time",
-                <crate::blueprint::datatypes::TimeInt>::arrow_datatype(),
-                false,
-            ),
+            Field::new("time", <crate::datatypes::TimeInt>::arrow_datatype(), false),
         ]))
     }
 
@@ -139,7 +135,7 @@ impl ::re_types_core::Loggable for VisibleTimeRangeBoundary {
                                 .map(|datum| {
                                     datum
                                         .map(|datum| {
-                                            let crate::blueprint::datatypes::TimeInt(data0) = datum;
+                                            let crate::datatypes::TimeInt(data0) = datum;
                                             data0
                                         })
                                         .unwrap_or_default()
@@ -220,9 +216,7 @@ impl ::re_types_core::Loggable for VisibleTimeRangeBoundary {
                         .with_context("rerun.blueprint.datatypes.VisibleTimeRangeBoundary#time")?
                         .into_iter()
                         .map(|opt| opt.copied())
-                        .map(|res_or_opt| {
-                            res_or_opt.map(|v| crate::blueprint::datatypes::TimeInt(v))
-                        })
+                        .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::TimeInt(v)))
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(kind, time),

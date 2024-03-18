@@ -113,6 +113,13 @@ impl From<TimeInt> for Duration {
     }
 }
 
+impl From<TimeInt> for re_types_core::datatypes::TimeInt {
+    #[inline]
+    fn from(int: TimeInt) -> Self {
+        Self(int.as_i64())
+    }
+}
+
 impl std::ops::Neg for TimeInt {
     type Output = Self;
 

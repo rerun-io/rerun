@@ -3,7 +3,7 @@
 
 #include "visible_time_range_boundary.hpp"
 
-#include "time_int.hpp"
+#include "../../datatypes/time_int.hpp"
 #include "visible_time_range_boundary_kind.hpp"
 
 #include <arrow/builder.h>
@@ -21,11 +21,7 @@ namespace rerun {
                 ),
                 false
             ),
-            arrow::field(
-                "time",
-                Loggable<rerun::blueprint::datatypes::TimeInt>::arrow_datatype(),
-                false
-            ),
+            arrow::field("time", Loggable<rerun::datatypes::TimeInt>::arrow_datatype(), false),
         });
         return datatype;
     }
@@ -58,13 +54,11 @@ namespace rerun {
             auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::blueprint::datatypes::TimeInt>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].time,
-                        1
-                    )
-                );
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].time,
+                    1
+                ));
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));

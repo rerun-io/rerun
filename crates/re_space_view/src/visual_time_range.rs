@@ -7,7 +7,7 @@
 //! The intent is to eventually remove the old types, but this bridge here is there in order
 //! to reduce the amount of changes in code that is likely to be refactored soon anyways.
 
-use re_log_types::{TimeInt, TimeRange};
+use re_log_types::TimeRange;
 use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 use re_types::blueprint::{
     components::VisibleTimeRange,
@@ -54,27 +54,19 @@ pub fn visible_time_range_to_time_range(
     let cursor = cursor.as_i64().into();
 
     let mut min = match time_type {
-        re_log_types::TimeType::Sequence => {
-            TimeInt::from_nanos(range.0.from_sequence.start_boundary_time(cursor).0)
-        }
-        re_log_types::TimeType::Time => {
-            TimeInt::from_nanos(range.0.from_time.start_boundary_time(cursor).0)
-        }
+        re_log_types::TimeType::Sequence => range.0.from_sequence.start_boundary_time(cursor).0,
+        re_log_types::TimeType::Time => range.0.from_time.start_boundary_time(cursor).0,
     };
     let mut max = match time_type {
-        re_log_types::TimeType::Sequence => {
-            TimeInt::from_nanos(range.0.to_sequence.end_boundary_time(cursor).0)
-        }
-        re_log_types::TimeType::Time => {
-            TimeInt::from_nanos(range.0.to_time.end_boundary_time(cursor).0)
-        }
+        re_log_types::TimeType::Sequence => range.0.to_sequence.end_boundary_time(cursor).0,
+        re_log_types::TimeType::Time => range.0.to_time.end_boundary_time(cursor).0,
     };
 
     if min > max {
         std::mem::swap(&mut min, &mut max);
     }
 
-    TimeRange::new(min, max)
+    TimeRange::new(min.into(), max.into())
 }
 
 pub fn query_visual_history(

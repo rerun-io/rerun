@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "blueprint/datatypes/time_int.hpp"
 #include "blueprint/datatypes/visible_time_range.hpp"
 #include "blueprint/datatypes/visible_time_range_boundary.hpp"
 #include "blueprint/datatypes/visible_time_range_boundary_kind.hpp"

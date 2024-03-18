@@ -1,4 +1,5 @@
-use super::{TimeInt, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
+use super::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
+use re_types_core::datatypes::TimeInt;
 
 impl VisibleTimeRangeBoundary {
     pub const AT_CURSOR: Self = Self {

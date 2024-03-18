@@ -10,6 +10,7 @@ from typing import Any, Sequence, Union
 import pyarrow as pa
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import BaseBatch, BaseExtensionType
 from ...blueprint import datatypes as blueprint_datatypes
 
@@ -22,22 +23,18 @@ __all__ = [
 ]
 
 
-def _visible_time_range_boundary__time__special_field_converter_override(
-    x: blueprint_datatypes.TimeIntLike,
-) -> blueprint_datatypes.TimeInt:
-    if isinstance(x, blueprint_datatypes.TimeInt):
+def _visible_time_range_boundary__time__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
+    if isinstance(x, datatypes.TimeInt):
         return x
     else:
-        return blueprint_datatypes.TimeInt(x)
+        return datatypes.TimeInt(x)
 
 
 @define(init=False)
 class VisibleTimeRangeBoundary:
     """**Datatype**: Type of boundary for visible history."""
 
-    def __init__(
-        self: Any, kind: blueprint_datatypes.VisibleTimeRangeBoundaryKindLike, time: blueprint_datatypes.TimeIntLike
-    ):
+    def __init__(self: Any, kind: blueprint_datatypes.VisibleTimeRangeBoundaryKindLike, time: datatypes.TimeIntLike):
         """
         Create a new instance of the VisibleTimeRangeBoundary datatype.
 
@@ -58,9 +55,7 @@ class VisibleTimeRangeBoundary:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time: blueprint_datatypes.TimeInt = field(
-        converter=_visible_time_range_boundary__time__special_field_converter_override
-    )
+    time: datatypes.TimeInt = field(converter=_visible_time_range_boundary__time__special_field_converter_override)
     # Value of the boundary (ignored for `Infinite` type).
     #
     # (Docstring intentionally commented out to hide this field from the docs)

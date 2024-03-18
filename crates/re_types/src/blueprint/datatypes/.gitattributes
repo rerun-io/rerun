@@ -2,7 +2,6 @@
 
 .gitattributes linguist-generated=true
 mod.rs linguist-generated=true
-time_int.rs linguist-generated=true
 visible_time_range.rs linguist-generated=true
 visible_time_range_boundary.rs linguist-generated=true
 visible_time_range_boundary_kind.rs linguist-generated=true

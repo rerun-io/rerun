@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "../../datatypes/time_int.hpp"
 #include "../../result.hpp"
-#include "time_int.hpp"
 #include "visible_time_range_boundary_kind.hpp"
 
 #include <cstdint>
@@ -23,7 +23,7 @@ namespace rerun::blueprint::datatypes {
         rerun::blueprint::datatypes::VisibleTimeRangeBoundaryKind kind;
 
         /// Value of the boundary (ignored for `Infinite` type).
-        rerun::blueprint::datatypes::TimeInt time;
+        rerun::datatypes::TimeInt time;
 
       public:
         VisibleTimeRangeBoundary() = default;

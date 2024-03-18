@@ -29,6 +29,7 @@ Data types are the lowest layer of the data model hierarchy
 * [`TensorBuffer`](datatypes/tensor_buffer.md)
 * [`TensorData`](datatypes/tensor_data.md)
 * [`TensorDimension`](datatypes/tensor_dimension.md)
+* [`TimeInt`](datatypes/time_int.md)
 * [`Transform3D`](datatypes/transform3d.md)
 * [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md)
 * [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md)
