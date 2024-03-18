@@ -264,9 +264,9 @@ def main() -> None:
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
     blueprint = rbl.Vertical(
-        rbl.Tabs(*sensor_space_views),
         rbl.Spatial3DView(name="3D", origin="world"),
-        row_shares=[1, 2],
+        rbl.Grid(*sensor_space_views),
+        row_shares=[3, 2],
     )
 
     rr.script_setup(args, "rerun_example_nuscenes", blueprint=blueprint)
