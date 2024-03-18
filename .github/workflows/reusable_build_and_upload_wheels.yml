@@ -86,7 +86,7 @@ jobs:
 
   set-config:
     name: Set Config (${{ inputs.PLATFORM }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
@@ -171,6 +171,7 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          targets: ${{ needs.set-config.outputs.TARGET }}
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:

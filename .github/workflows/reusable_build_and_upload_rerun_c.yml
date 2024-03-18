@@ -112,9 +112,12 @@ jobs:
 
   rs-build-rerun_c:
     name: Build rerun_c (${{ needs.set-config.outputs.RUNNER }})
+
     needs: [set-config]
+
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+
     steps:
       - name: Show context
         shell: bash
