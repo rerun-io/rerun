@@ -855,7 +855,7 @@ fn blueprint_ui_for_space_view(
             .root_handle()
             .and_then(|root| query_result.tree.lookup_result(root))
         else {
-            re_log::error!("Could not find root data result for Space View {space_view_id:?}");
+            re_log::error_once!("Could not find root data result for Space View {space_view_id:?}");
             return;
         };
 
