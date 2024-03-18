@@ -98,14 +98,16 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
         // subspace origin, we use it as origin.
         SpatialTopology::access(entity_db.store_id(), |topo| {
-            let subspace = topo.subspace_for_entity(&common_ancestor);
+            let common_ancestor_subspace = topo.subspace_for_entity(&common_ancestor);
 
-            let subspace_origin = if subspace.supports_3d_content() {
-                Some(subspace)
+            // Consider the case where the common ancestor might be in a 2D space that is connected
+            // to a parent space. In this case, the parent space is the correct space.
+            let subspace = if common_ancestor_subspace.supports_3d_content() {
+                Some(common_ancestor_subspace)
             } else {
-                topo.subspace_for_subspace_origin(subspace.parent_space)
-            }
-            .map(|subspace| subspace.origin.clone());
+                topo.subspace_for_subspace_origin(common_ancestor_subspace.parent_space)
+            };
+            let subspace_origin = subspace.map(|subspace| subspace.origin.clone());
 
             // Find the first ViewCoordinates3d logged, walking up from the common ancestor to the
             // subspace origin.
@@ -114,10 +116,12 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 .into_iter()
                 .rev()
                 .find(|path| {
-                    subspace
-                        .heuristic_hints
-                        .get(path)
-                        .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    subspace.is_some_and(|subspace| {
+                        subspace
+                            .heuristic_hints
+                            .get(path)
+                            .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    })
                 })
                 .or(subspace_origin)
         })
