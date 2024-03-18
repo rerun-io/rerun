@@ -116,7 +116,7 @@ jobs:
     needs: [py-deploy-docs]
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.11.0
+      image: rerunio/ci_docker:0.12.0
     steps:
       - name: Show context
         shell: bash
@@ -206,7 +206,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Doxygen C++ docs
         shell: bash

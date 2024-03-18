@@ -209,78 +209,90 @@ jobs:
 
   # -----------------------------------------------------------------------------------
 
-  build-wheel-linux:
+  build-wheel-linux-arm64:
     needs: [checks]
-    name: "Linux: Build & Upload Wheels"
+    name: "Linux-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      CONCURRENCY: push-linux-arm64-${{ github.ref_name }}
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: linux-arm64-wheel
       MODE: "pypi"
     secrets: inherit
 
-  build-wheel-windows:
+  build-wheel-linux-x64:
     needs: [checks]
-    name: "Windows: Build & Upload Wheels"
+    name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pypi"
     secrets: inherit
 
-  build-wheel-macos-arm:
+  build-wheel-windows-x64:
     needs: [checks]
-    name: "Macos-Arm: Build & Upload Wheels"
+    name: "Windows-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      CONCURRENCY: push-windows-x64-${{ github.ref_name }}
+      PLATFORM: windows-x64
+      WHEEL_ARTIFACT_NAME: windows-x64-wheel
       MODE: "pypi"
     secrets: inherit
 
-  build-wheel-macos-intel:
+  build-wheel-macos-arm64:
     needs: [checks]
-    name: "Macos-Intel: Build & Upload Wheels"
+    name: "Macos-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+      CONCURRENCY: push-macos-arm64-${{ github.ref_name }}
+      PLATFORM: macos-arm64
+      WHEEL_ARTIFACT_NAME: macos-arm64-wheel
       MODE: "pypi"
     secrets: inherit
 
-  test-wheel-linux:
-    needs: [checks, build-wheel-linux]
-    name: "Linux: Test Wheels"
+  build-wheel-macos-x64:
+    needs: [checks]
+    name: "Macos-x64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: push-macos-x64-${{ github.ref_name }}
+      PLATFORM: macos-x64
+      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
+      MODE: "pypi"
+    secrets: inherit
+
+  test-wheel-linux-x64:
+    needs: [checks, build-wheel-linux-x64]
+    name: "Linux-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
 
-  test-wheel-windows:
-    needs: [checks, build-wheel-windows]
-    name: "Windows: Test Wheels"
+  test-wheel-windows-x64:
+    needs: [checks, build-wheel-windows-x64]
+    name: "Windows-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
+      CONCURRENCY: push-windows-x64-${{ github.ref_name }}
+      PLATFORM: windows-x64
+      WHEEL_ARTIFACT_NAME: windows-x64-wheel
     secrets: inherit
 
   generate-pip-index:
     name: "Generate Pip Index"
     needs:
       [
-        build-wheel-linux,
-        build-wheel-windows,
-        build-wheel-macos-arm,
-        build-wheel-macos-intel,
+        build-wheel-linux-arm64,
+        build-wheel-linux-x64,
+        build-wheel-macos-arm64,
+        build-wheel-macos-x64,
+        build-wheel-windows-x64,
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
@@ -291,10 +303,10 @@ jobs:
     name: "Bundle and upload rerun_cpp_sdk.zip"
     needs:
       [
-        build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-linux-arm64,
-        build-rerun_c-and-upload-macos-x64,
+        build-rerun_c-and-upload-linux-x64,
         build-rerun_c-and-upload-macos-arm64,
+        build-rerun_c-and-upload-macos-x64,
         build-rerun_c-and-upload-windows-x64,
       ]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
@@ -307,19 +319,19 @@ jobs:
       cancel-in-progress: true
     needs:
       [
-        upload-web,
-        generate-pip-index,
-        build-rerun_c-and-upload-linux-x64,
-        build-rerun_c-and-upload-linux-arm64,
-        build-rerun_c-and-upload-macos-x64,
-        build-rerun_c-and-upload-macos-arm64,
-        build-rerun_c-and-upload-windows-x64,
-        build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-linux-arm64,
-        build-rerun-cli-and-upload-macos-x64,
+        build-rerun-cli-and-upload-linux-x64,
         build-rerun-cli-and-upload-macos-arm64,
+        build-rerun-cli-and-upload-macos-x64,
         build-rerun-cli-and-upload-windows-x64,
+        build-rerun_c-and-upload-linux-arm64,
+        build-rerun_c-and-upload-linux-x64,
+        build-rerun_c-and-upload-macos-arm64,
+        build-rerun_c-and-upload-macos-x64,
+        build-rerun_c-and-upload-windows-x64,
         bundle-and-upload-rerun_cpp,
+        generate-pip-index,
+        upload-web,
       ]
     runs-on: "ubuntu-latest"
     steps:

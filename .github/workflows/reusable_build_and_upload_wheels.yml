@@ -86,42 +86,54 @@ jobs:
 
   set-config:
     name: Set Config (${{ inputs.PLATFORM }})
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
+      COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Set runner and target based on platform
         id: set-config
         shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
+            linux-arm64)
+                runner="buildjet-8vcpu-ubuntu-2204-arm"
+                target="aarch64-unknown-linux-gnu"
+                container="{'image': 'rerunio/ci_docker:0.12.0'}"
+                compat="manylinux_2_31"
+                ;;
+            linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              compat="manylinux_2_31"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
               ;;
-            windows)
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
+              compat="manylinux_2_31"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
+              compat="manylinux_2_31"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "compat=$compat" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
 
@@ -151,7 +163,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -159,10 +171,11 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          targets: ${{ needs.set-config.outputs.TARGET }}
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Install dependencies
         shell: bash
@@ -185,7 +198,7 @@ jobs:
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat manylinux_2_31
+            --compat ${{ needs.set-config.outputs.COMPAT }}
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}

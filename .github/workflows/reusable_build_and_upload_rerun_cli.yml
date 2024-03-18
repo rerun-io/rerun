@@ -75,15 +75,15 @@ jobs:
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
-                runner="buildjet-8vcpu-ubuntu-2204-arm"
-                target="aarch64-unknown-linux-gnu"
-                container="null"
-                bin_name="rerun"
-                ;;
+              runner="buildjet-8vcpu-ubuntu-2204-arm"
+              target="aarch64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
+              bin_name="rerun"
+              ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -137,7 +137,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -147,23 +147,13 @@ jobs:
           targets: ${{ needs.set-config.outputs.TARGET }}
 
       - uses: prefix-dev/setup-pixi@v0.4.1
-        if: ${{ inputs.PLATFORM != 'linux-arm64' }} # TODO(#5507): see below
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Build web-viewer (release)
-        if: ${{ inputs.PLATFORM != 'linux-arm64' }} # TODO(#5507): see below
         shell: bash
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
-
-      # TODO(#5507): supress this workaround when pixi dependencies are available on linux-arm64
-      - name: Build web-viewer (release, Linux ARM64)
-        if: ${{ inputs.PLATFORM == 'linux-arm64' }}
-        shell: bash
-        run: |
-          sudo apt-get install binaryen
-          cargo run --locked -p re_build_web_viewer -- --release
 
       # This does not run in the pixi environment, doing so
       # causes it to select the wrong compiler on macos-arm64
@@ -180,12 +170,6 @@ jobs:
             --features native_viewer,web_viewer \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
-
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Get sha
         id: get-sha
