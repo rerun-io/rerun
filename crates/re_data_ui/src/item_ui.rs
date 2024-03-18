@@ -3,7 +3,6 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
-use re_log_types::external::re_types_core::components::InstanceKey;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::SyntaxHighlighting;
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
