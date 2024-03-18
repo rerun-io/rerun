@@ -10,16 +10,16 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::MarkerShape>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Circle", arrow::null(), false),
-            arrow::field("Diamond", arrow::null(), false),
-            arrow::field("Square", arrow::null(), false),
-            arrow::field("Cross", arrow::null(), false),
-            arrow::field("Plus", arrow::null(), false),
-            arrow::field("Up", arrow::null(), false),
-            arrow::field("Down", arrow::null(), false),
-            arrow::field("Left", arrow::null(), false),
-            arrow::field("Right", arrow::null(), false),
-            arrow::field("Asterisk", arrow::null(), false),
+            arrow::field("Circle", arrow::null(), true),
+            arrow::field("Diamond", arrow::null(), true),
+            arrow::field("Square", arrow::null(), true),
+            arrow::field("Cross", arrow::null(), true),
+            arrow::field("Plus", arrow::null(), true),
+            arrow::field("Up", arrow::null(), true),
+            arrow::field("Down", arrow::null(), true),
+            arrow::field("Left", arrow::null(), true),
+            arrow::field("Right", arrow::null(), true),
+            arrow::field("Asterisk", arrow::null(), true),
         });
         return datatype;
     }

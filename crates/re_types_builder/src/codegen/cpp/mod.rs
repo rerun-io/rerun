@@ -2345,7 +2345,7 @@ fn quote_arrow_field_type(
 ) -> TokenStream {
     let name = &field.name;
     let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
-    let is_nullable = field.is_nullable;
+    let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2359,9 +2359,9 @@ fn quote_arrow_elem_type(
 ) -> TokenStream {
     let typ: Type = elem_type.clone().into();
     let datatype = quote_arrow_data_type(&typ, objects, includes, false);
-
+    let is_nullable = typ == Type::Unit; // null type must be nullable
     quote! {
-        arrow::field("item", #datatype, false)
+        arrow::field("item", #datatype, #is_nullable)
     }
 }
 
