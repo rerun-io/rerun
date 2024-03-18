@@ -64,7 +64,10 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
-                    self.state.blueprint_tree_scroll_to_item = self.handle_focused_item(ctx, ui);
+                    self.state.blueprint_tree_scroll_to_item = ctx
+                        .focused_item
+                        .as_ref()
+                        .and_then(|item| self.handle_focused_item(ctx, ui, item));
 
                     self.root_container_tree_ui(ctx, ui);
 
@@ -86,8 +89,12 @@ impl Viewport<'_, '_> {
     }
 
     /// Expend all required items and compute which item we should scroll to.
-    fn handle_focused_item(&self, ctx: &ViewerContext<'_>, ui: &egui::Ui) -> Option<Item> {
-        let focused_item = ctx.focused_item.as_ref()?;
+    fn handle_focused_item(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &egui::Ui,
+        focused_item: &Item,
+    ) -> Option<Item> {
         match focused_item {
             Item::Container(container_id) => {
                 self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
@@ -129,8 +136,15 @@ impl Viewport<'_, '_> {
 
                 res
             }
+            Item::ComponentPath(component_path) => self.handle_focused_item(
+                ctx,
+                ui,
+                &Item::InstancePath(InstancePath::entity_splat(
+                    component_path.entity_path.clone(),
+                )),
+            ),
 
-            Item::StoreId(_) | Item::ComponentPath(_) => None,
+            Item::StoreId(_) => None,
         }
     }
 
