@@ -9,7 +9,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// The origin of a `SpaceView`.
+/// The range of values that will be included in a Space View query.
 table VisibleTimeRange (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",

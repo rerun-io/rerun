@@ -16,7 +16,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The origin of a `SpaceView`.
+    /// **Component**: The range of values that will be included in a Space View query.
     struct VisibleTimeRange {
         rerun::blueprint::datatypes::VisibleTimeRange value;
 
