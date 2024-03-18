@@ -4923,6 +4923,7 @@ dependencies = [
  "mime_guess2",
  "mint",
  "ndarray",
+ "nohash-hasher",
  "once_cell",
  "ply-rs",
  "rand",
