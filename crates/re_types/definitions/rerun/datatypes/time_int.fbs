@@ -9,6 +9,7 @@ namespace rerun.datatypes;
 
 /// A 64-bit number describing either nanoseconds OR sequence numbers.
 struct TimeInt (
+  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.tuple_struct",
