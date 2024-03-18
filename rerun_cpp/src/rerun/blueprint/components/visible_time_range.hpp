@@ -9,12 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StructBuilder;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: The range of values that will be included in a Space View query.
     struct VisibleTimeRange {
@@ -38,8 +32,10 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::blueprint::datatypes::VisibleTimeRange) ==
+        sizeof(blueprint::components::VisibleTimeRange)
+    );
 
     /// \private
     template <>
@@ -47,17 +43,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.VisibleTimeRange";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const blueprint::components::VisibleTimeRange* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::VisibleTimeRange` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::VisibleTimeRange* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::to_arrow(
+                &instances->value,
+                num_instances
+            );
+        }
     };
 } // namespace rerun
