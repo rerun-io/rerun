@@ -847,29 +847,19 @@ fn blueprint_ui_for_space_view(
         );
 
         // Space View don't inherit properties.
-        let root_data_result =
+        let space_view_data_result =
             space_view.space_view_data_result(ctx.store_context, ctx.blueprint_query);
-
-        let query_result = ctx.lookup_query_result(space_view.id);
-        let Some(data_result) = query_result
-            .tree
-            .root_handle()
-            .and_then(|root| query_result.tree.lookup_result(root))
-        else {
-            re_log::error_once!("Could not find root data result for Space View {space_view_id:?}");
-            return;
-        };
 
         visual_time_range_ui(
             ctx,
             ui,
-            &query_result.tree,
-            data_result,
+            None, // There is no tree above the space view yet
+            &space_view_data_result,
             class_identifier,
             true,
         );
 
-        let mut props = root_data_result
+        let mut props = space_view_data_result
             .individual_properties()
             .cloned()
             .unwrap_or_default();
@@ -890,7 +880,7 @@ fn blueprint_ui_for_space_view(
             );
         }
 
-        root_data_result.save_individual_override_properties(ctx, Some(props));
+        space_view_data_result.save_individual_override_properties(ctx, Some(props));
     }
 }
 
@@ -1123,7 +1113,7 @@ fn entity_props_ui(
     visual_time_range_ui(
         ctx,
         ui,
-        &query_result.tree,
+        Some(&query_result.tree),
         data_result,
         *space_view_class,
         false,

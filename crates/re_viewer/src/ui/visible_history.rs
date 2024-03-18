@@ -69,7 +69,7 @@ fn entity_with_visible_history(
 pub fn visual_time_range_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    data_result_tree: &re_viewer_context::DataResultTree,
+    data_result_tree: Option<&re_viewer_context::DataResultTree>,
     data_result: &re_viewer_context::DataResult,
     space_view_class: SpaceViewClassIdentifier,
     is_space_view: bool,
@@ -92,10 +92,18 @@ pub fn visual_time_range_ui(
     let mut resolved_range = data_result
         .lookup_override::<VisibleTimeRange>(ctx)
         .unwrap_or(default_time_range(space_view_class));
-    let mut has_individual_range = data_result
-        .component_override_source(data_result_tree, &VisibleTimeRange::name())
-        .as_ref()
-        == Some(&data_result.entity_path);
+    let mut has_individual_range = if let Some(data_result_tree) = data_result_tree {
+        // If there is a data-tree, we know we have individual settings if we are our own source.
+        data_result
+            .component_override_source(data_result_tree, &VisibleTimeRange::name())
+            .as_ref()
+            == Some(&data_result.entity_path)
+    } else {
+        // Otherwise we can inspect directly.
+        data_result
+            .lookup_override::<VisibleTimeRange>(ctx)
+            .is_some()
+    };
 
     let collapsing_response = re_ui.collapsing_header(ui, "Visible time range", false, |ui| {
         let has_individual_range_before = has_individual_range;
