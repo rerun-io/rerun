@@ -12,7 +12,7 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
+    codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
@@ -2199,7 +2199,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = true;
-    let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
+    let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {
@@ -2345,7 +2345,7 @@ fn quote_arrow_field_type(
 ) -> TokenStream {
     let name = &field.name;
     let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
-    let is_nullable = field.is_nullable;
+    let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2359,9 +2359,9 @@ fn quote_arrow_elem_type(
 ) -> TokenStream {
     let typ: Type = elem_type.clone().into();
     let datatype = quote_arrow_data_type(&typ, objects, includes, false);
-
+    let is_nullable = typ == Type::Unit; // null type must be nullable
     quote! {
-        arrow::field("item", #datatype, false)
+        arrow::field("item", #datatype, #is_nullable)
     }
 }
 

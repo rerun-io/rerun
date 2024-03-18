@@ -21,7 +21,7 @@ title: "LineStrips3D"
 
 ### Simple example
 
-code-example: line_strip3d_simple
+snippet: line_strip3d_simple
 
 <center>
 <picture>
@@ -35,7 +35,7 @@ code-example: line_strip3d_simple
 
 ### Many individual segments
 
-code-example: line_segments3d_simple
+snippet: line_segments3d_simple
 
 <center>
 <picture>
@@ -49,7 +49,7 @@ code-example: line_segments3d_simple
 
 ### Many strips
 
-code-example: line_strip3d_batch
+snippet: line_strip3d_batch
 
 <center>
 <picture>

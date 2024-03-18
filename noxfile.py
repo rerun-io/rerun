@@ -68,6 +68,6 @@ def roundtrips(session: nox.Session) -> None:
     extra_args.extend(session.posargs)
 
     session.run("python", "tests/roundtrips.py", "--no-py-build", *extra_args)
-    session.run("python", "docs/code-examples/compare_code_example_output.py", "--no-py-build", *extra_args)
+    session.run("python", "docs/snippets/compare_snippet_output.py", "--no-py-build", *extra_args)
 
     roundtrip_cpp_built = True

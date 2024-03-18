@@ -273,6 +273,10 @@ impl EntityDb {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
                 self.add_data_table(table)?;
             }
+
+            LogMsg::ActivateStore(_) => {
+                // Not for us to handle
+            }
         }
 
         Ok(())

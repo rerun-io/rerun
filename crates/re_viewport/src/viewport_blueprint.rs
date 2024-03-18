@@ -237,7 +237,7 @@ impl ViewportBlueprint {
     ) -> Option<SpaceViewId> {
         let space_view = self.space_view(space_view_id)?;
 
-        let new_space_view = space_view.duplicate(ctx.store_context.blueprint, ctx.blueprint_query);
+        let new_space_view = space_view.duplicate(ctx.store_context, ctx.blueprint_query);
         let new_space_view_id = new_space_view.id;
 
         let parent_and_pos =

@@ -56,7 +56,7 @@ Annotation contexts are logged with:
 * Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.AnnotationContext)
 * Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html#)
 
-code-example: annotation-context
+snippet: annotation-context
 
 
 ## Affected Entities

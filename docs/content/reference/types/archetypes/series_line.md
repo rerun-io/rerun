@@ -21,7 +21,7 @@ the `Scalar` archetype.
 
 ### Series Line
 
-code-example: series_line_style
+snippet: series_line_style
 
 <center>
 <picture>

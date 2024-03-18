@@ -6,7 +6,7 @@ file(GLOB sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
 # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
 list(REMOVE_ITEM sources_list ${CMAKE_CURRENT_SOURCE_DIR}/all/timelines_example.cpp)
 
-add_custom_target(doc_examples)
+add_custom_target(snippets)
 
 foreach(SOURCE_PATH ${sources_list})
     get_filename_component(SOURCE_NAME ${SOURCE_PATH} NAME_WLE)
@@ -22,7 +22,7 @@ foreach(SOURCE_PATH ${sources_list})
     rerun_strict_warning_settings(${EXAMPLE_TARGET})
     target_link_libraries(${EXAMPLE_TARGET} PRIVATE rerun_sdk)
 
-    add_dependencies(doc_examples ${EXAMPLE_TARGET})
+    add_dependencies(snippets ${EXAMPLE_TARGET})
 endforeach()
 
 # `text_log_integration` uses `loguru` as the example text logging library.

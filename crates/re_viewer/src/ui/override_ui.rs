@@ -13,8 +13,8 @@ use re_types_core::{
     ComponentName,
 };
 use re_viewer_context::{
-    blueprint_timepoint_for_writes, DataResult, OverridePath, SystemCommand,
-    SystemCommandSender as _, UiVerbosity, ViewSystemIdentifier, ViewerContext,
+    DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiVerbosity,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 pub fn override_ui(
@@ -267,7 +267,7 @@ pub fn add_new_override(
 
                         match DataRow::from_cells(
                             RowId::new(),
-                            blueprint_timepoint_for_writes(),
+                            ctx.store_context.blueprint_timepoint_for_writes(),
                             override_path.clone(),
                             1,
                             [splat_cell, initial_data],

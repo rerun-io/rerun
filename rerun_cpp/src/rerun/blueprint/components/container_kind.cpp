@@ -11,10 +11,10 @@ namespace rerun {
         Loggable<blueprint::components::ContainerKind>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Tabs", arrow::null(), false),
-            arrow::field("Horizontal", arrow::null(), false),
-            arrow::field("Vertical", arrow::null(), false),
-            arrow::field("Grid", arrow::null(), false),
+            arrow::field("Tabs", arrow::null(), true),
+            arrow::field("Horizontal", arrow::null(), true),
+            arrow::field("Vertical", arrow::null(), true),
+            arrow::field("Grid", arrow::null(), true),
         });
         return datatype;
     }

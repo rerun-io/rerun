@@ -10,12 +10,12 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<components::EnumTest>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Up", arrow::null(), false),
-            arrow::field("Down", arrow::null(), false),
-            arrow::field("Right", arrow::null(), false),
-            arrow::field("Left", arrow::null(), false),
-            arrow::field("Forward", arrow::null(), false),
-            arrow::field("Back", arrow::null(), false),
+            arrow::field("Up", arrow::null(), true),
+            arrow::field("Down", arrow::null(), true),
+            arrow::field("Right", arrow::null(), true),
+            arrow::field("Left", arrow::null(), true),
+            arrow::field("Forward", arrow::null(), true),
+            arrow::field("Back", arrow::null(), true),
         });
         return datatype;
     }

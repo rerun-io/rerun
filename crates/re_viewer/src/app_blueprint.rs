@@ -2,9 +2,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
 use re_types::blueprint::components::PanelExpanded;
-use re_viewer_context::{
-    blueprint_timepoint_for_writes, CommandSender, StoreContext, SystemCommand, SystemCommandSender,
-};
+use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 pub const BLUEPRINT_PANEL_PATH: &str = "blueprint_panel";
 pub const SELECTION_PANEL_PATH: &str = "selection_panel";
@@ -12,7 +10,7 @@ pub const TIME_PANEL_PATH: &str = "time_panel";
 
 /// Blueprint for top-level application
 pub struct AppBlueprint<'a> {
-    blueprint_db: Option<&'a EntityDb>,
+    store_ctx: Option<&'a StoreContext<'a>>,
     is_narrow_screen: bool,
     pub blueprint_panel_expanded: bool,
     pub selection_panel_expanded: bool,
@@ -28,7 +26,7 @@ impl<'a> AppBlueprint<'a> {
         let blueprint_db = store_ctx.map(|ctx| ctx.blueprint);
         let screen_size = egui_ctx.screen_rect().size();
         let mut ret = Self {
-            blueprint_db,
+            store_ctx,
             is_narrow_screen: screen_size.x < 600.0,
             blueprint_panel_expanded: screen_size.x > 750.0,
             selection_panel_expanded: screen_size.x > 1000.0,
@@ -111,10 +109,10 @@ impl<'a> AppBlueprint<'a> {
         is_expanded: bool,
         command_sender: &CommandSender,
     ) {
-        if let Some(blueprint_db) = self.blueprint_db {
+        if let Some(store_ctx) = self.store_ctx {
             let entity_path = EntityPath::from(panel_name);
 
-            let timepoint = blueprint_timepoint_for_writes();
+            let timepoint = store_ctx.blueprint_timepoint_for_writes();
 
             let component = PanelExpanded(is_expanded.into());
 
@@ -123,7 +121,7 @@ impl<'a> AppBlueprint<'a> {
                     .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
-                blueprint_db.store_id().clone(),
+                store_ctx.blueprint.store_id().clone(),
                 vec![row],
             ));
         }

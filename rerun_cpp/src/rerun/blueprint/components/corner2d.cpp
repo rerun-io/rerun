@@ -11,10 +11,10 @@ namespace rerun {
         Loggable<blueprint::components::Corner2D>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("LeftTop", arrow::null(), false),
-            arrow::field("RightTop", arrow::null(), false),
-            arrow::field("LeftBottom", arrow::null(), false),
-            arrow::field("RightBottom", arrow::null(), false),
+            arrow::field("LeftTop", arrow::null(), true),
+            arrow::field("RightTop", arrow::null(), true),
+            arrow::field("LeftBottom", arrow::null(), true),
+            arrow::field("RightBottom", arrow::null(), true),
         });
         return datatype;
     }
