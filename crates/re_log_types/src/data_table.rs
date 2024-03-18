@@ -11,7 +11,7 @@ use re_types_core::{ComponentName, Loggable, SizeBytes};
 
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    NonMinI64, NumInstances, RowId, TimePoint, Timeline,
+    NumInstances, RowId, TimePoint, Timeline,
 };
 
 // ---
