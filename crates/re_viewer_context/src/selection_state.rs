@@ -1,5 +1,6 @@
 use ahash::HashMap;
 use parking_lot::Mutex;
+use std::collections::BTreeMap;
 
 use re_entity_db::EntityPath;
 
@@ -82,12 +83,12 @@ impl InteractionHighlight {
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Selection(Vec<(Item, Option<SelectedSpaceContext>)>);
+pub struct Selection(BTreeMap<Item, Option<SelectedSpaceContext>>);
 
 impl From<Item> for Selection {
     #[inline]
     fn from(val: Item) -> Self {
-        Selection(vec![(val, None)])
+        Selection([(val, None)].into())
     }
 }
 
@@ -102,23 +103,42 @@ where
 }
 
 impl Selection {
-    /// For each item in this selection, if it refers to the first element of an instance with a single element, resolve it to a splatted entity path.
-    pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
-        for (item, _) in self.iter_mut() {
-            *item =
-                resolve_mono_instance_path_item(&ctx.current_query(), ctx.entity_db.store(), item);
-        }
+    // pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
+    //     for (item, _) in self.iter_mut() {
+    //         *item =
+    //             resolve_mono_instance_path_item(&ctx.current_query(), ctx.entity_db.store(), item);
+    //     }
+    // }
+
+    /// For each item in this selection, if it refers to the first element of an instance with a
+    /// single element, resolve it to a splatted entity path.
+    pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
+        Selection(
+            self.0
+                .into_iter()
+                .map(|(item, space_ctx)| {
+                    (
+                        resolve_mono_instance_path_item(
+                            &ctx.current_query(),
+                            ctx.entity_db.store(),
+                            &item,
+                        ),
+                        space_ctx,
+                    )
+                })
+                .collect(),
+        )
     }
 
     /// The first selected object if any.
     pub fn first_item(&self) -> Option<&Item> {
-        self.0.first().map(|(item, _)| item)
+        self.0.first_key_value().map(|(item, _)| item)
     }
 
     /// Check if the selection contains a single item and returns it if so.
     pub fn single_item(&self) -> Option<&Item> {
-        if self.0.len() == 1 {
-            Some(&self.0[0].0)
+        if self.len() == 1 {
+            self.first_item()
         } else {
             None
         }
@@ -153,8 +173,8 @@ impl Selection {
     }
 
     /// Retains elements that fulfill a certain condition.
-    pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
-        self.0.retain(|(item, _)| f(item));
+    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<SelectedSpaceContext>) -> bool) {
+        self.0.retain(f);
     }
 
     /// Returns the number of items in the selection.
@@ -168,12 +188,12 @@ impl Selection {
     }
 
     /// Returns an iterator over the items and their selected space context.
-    pub fn iter(&self) -> impl Iterator<Item = &(Item, Option<SelectedSpaceContext>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<SelectedSpaceContext>)> {
         self.0.iter()
     }
 
     /// Returns a mutable iterator over the items and their selected space context.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (Item, Option<SelectedSpaceContext>)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<SelectedSpaceContext>)> {
         self.0.iter_mut()
     }
 
@@ -280,14 +300,16 @@ impl ApplicationSelectionState {
     pub fn toggle_selection(&self, toggle_items: Selection) {
         re_tracing::profile_function!();
 
-        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> =
-            toggle_items.iter().cloned().collect();
+        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> = toggle_items
+            .iter()
+            .map(|(item, ctx)| (item.clone(), ctx.clone()))
+            .collect();
 
         let mut new_selection = self.selection_previous_frame.clone();
 
         // If an item was already selected with the exact same context remove it.
         // If an item was already selected and loses its context, remove it.
-        new_selection.0.retain(|(item, ctx)| {
+        new_selection.retain(|item, ctx| {
             if let Some(new_ctx) = toggle_items_set.get(item) {
                 if new_ctx == ctx || new_ctx.is_none() {
                     toggle_items_set.remove(item);
