@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
   "crates/*",
-  "docs/code-examples",
+  "docs/snippets",
   "examples/rust/*",
   "rerun_py",
   "run_wasm",

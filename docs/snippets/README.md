@@ -9,22 +9,22 @@ Most of these examples are automatically used as docstrings for the `Archetype` 
 You can run each example individually using the following:
 
 - **C++**:
-  - `pixi run cpp-build-doc-examples` to compile all examples
-  - `./build/docs/code-examples/all/<example_name>` to run, e.g. `./build/docs/code-examples/all/point3d_random`
+  - `pixi run cpp-build-snippets` to compile all examples
+  - `./build/docs/snippets/all/<example_name>` to run, e.g. `./build/docs/snippets/all/point3d_random`
 - **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
-- **Rust**: `cargo run -p code_examples -- <example_name> [args]`, e.g. `cargo run -p code_examples -- point3d_random`.
+- **Rust**: `cargo run -p snippets -- <example_name> [args]`, e.g. `cargo run -p snippets -- point3d_random`.
 
 ## Comparison test
 
-The script `compare_code_example_output.py` execute the same logging commands from all 3 SDKs, save the results to distinct rrd files, and finally compare these rrd files.
+The script `compare_snippet_output.py` execute the same logging commands from all 3 SDKs, save the results to distinct rrd files, and finally compare these rrd files.
 These tests are then automatically run by the CI, which will loudly complain if the resulting rrd files don't match.
 
 These tests check that A) all of our SDKs yield the exact same data when used the same way and B) act as regression tests, relying on the fact that it is extremely unlikely that all supported languages break in the exact same way at the exact same time.
 
 ### Usage
 
-To run the comparison tests, check out `./docs/code-examples/compare_code_example_output.py --help`.
-`./docs/code-examples/compare_code_example_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
+To run the comparison tests, check out `./docs/snippets/compare_snippet_output.py --help`.
+`./docs/snippets/compare_snippet_output.py` is a valid invocation that will build all 3 SDKs and run all tests for all of them.
 
 ### Implementing new tests
 

@@ -456,8 +456,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    # TODO(jleibs): This should use a monotonic seq
-    blueprint_stream.set_time_seconds("blueprint", 1)  # type: ignore[attr-defined]
+    blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
 
     blueprint._log_to_stream(blueprint_stream)
 

@@ -1,4 +1,4 @@
-//! Finds all the `*.rs` files in `docs/code-examples/all`,
+//! Finds all the `*.rs` files in `docs/snippets/all`,
 //! copies them to `src/examples` (with slight modifications), and generate a `examples/mod.rs` for them.
 //!
 //! The reason we combine all the examples into a single binary

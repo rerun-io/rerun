@@ -8,7 +8,7 @@ channel = "main"
 -->
 
 
-<picture>
+<picture data-inline-viewer="plots">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/1024w.png">

@@ -46,9 +46,9 @@ cpp-build:
 cpp-build-examples:
     pixi run cpp-build-examples
 
-# Build all our C++ api doc examples.
-cpp-build-doc-examples:
-    pixi run cpp-build-doc-examples
+# Build all our C++ snippets.
+cpp-build-snippets:
+    pixi run cpp-build-snippets
 
 # Run our C++ tests
 cpp-test:
@@ -118,7 +118,7 @@ py-format:
     # NOTE: we need both `ruff check --fix` and `ruff format` in that order: https://twitter.com/charliermarsh/status/1717229721954799727
     ruff check --fix --config rerun_py/pyproject.toml {{py_folders}}
     ruff format --config rerun_py/pyproject.toml {{py_folders}}
-    blackdoc {{py_folders}} # Format code examples in docstring. Hopefully `ruff` can do this soon: https://github.com/astral-sh/ruff/issues/7146
+    blackdoc {{py_folders}} # Format snippets in docstring. Hopefully `ruff` can do this soon: https://github.com/astral-sh/ruff/issues/7146
 
 # Check that all the requirements.txt files for all the examples are correct
 py-requirements:
