@@ -11,12 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StringBuilder;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: An individual `QueryExpression` used to filter a set of `EntityPath`s.
     ///
@@ -58,8 +52,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::QueryExpression));
 
     /// \private
     template <>
@@ -67,17 +60,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.QueryExpression";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const blueprint::components::QueryExpression* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::QueryExpression` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::QueryExpression* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->filter, num_instances);
+        }
     };
 } // namespace rerun

@@ -11,12 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StringBuilder;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: The active tab in a tabbed container.
     struct ActiveTab {
@@ -50,8 +44,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::EntityPath) == sizeof(blueprint::components::ActiveTab));
 
     /// \private
     template <>
@@ -59,17 +52,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.ActiveTab";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const blueprint::components::ActiveTab* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::EntityPath>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::ActiveTab` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::ActiveTab* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::EntityPath>::to_arrow(&instances->tab, num_instances);
+        }
     };
 } // namespace rerun
