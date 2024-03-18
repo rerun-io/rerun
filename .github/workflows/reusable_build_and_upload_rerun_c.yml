@@ -136,7 +136,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -150,12 +150,6 @@ jobs:
         with:
           command: build
           args: --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
-
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Get sha
         id: get-sha

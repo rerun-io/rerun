@@ -137,7 +137,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -177,9 +177,6 @@ jobs:
         run: |
           full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
-
-      # IMPORTANT: we must NOT use google-github-actions/auth@v1 here, because it's already done by our setup-rust
-      # action. Authenticating twice will cause the second authentication's clean-up to fail.
 
       - name: "Upload rerun-cli (commit)"
         uses: google-github-actions/upload-cloud-storage@v1
