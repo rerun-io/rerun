@@ -854,7 +854,6 @@ impl ObjectField {
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
 
-        // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
         let is_deprecated = false;
 
         if attrs.has(crate::ATTR_ORDER) {
