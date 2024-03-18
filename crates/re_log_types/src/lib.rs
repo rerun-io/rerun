@@ -218,13 +218,20 @@ pub enum LogMsg {
 
     /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(StoreId, ArrowMsg),
+
+    /// Send after all messages in a blueprint to signal that the blueprint is complete.
+    ///
+    /// This is so that the viewer can wait with activating the blueprint until it is
+    /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
+    /// and also lead to problems with space-view heuristics.
+    ActivateStore(StoreId),
 }
 
 impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
-            Self::ArrowMsg(store_id, _) => store_id,
+            Self::ArrowMsg(store_id, _) | Self::ActivateStore(store_id) => store_id,
         }
     }
 
@@ -233,7 +240,7 @@ impl LogMsg {
             LogMsg::SetStoreInfo(store_info) => {
                 store_info.info.store_id = new_store_id;
             }
-            LogMsg::ArrowMsg(msg_store_id, _) => {
+            LogMsg::ArrowMsg(msg_store_id, _) | LogMsg::ActivateStore(msg_store_id) => {
                 *msg_store_id = new_store_id;
             }
         }

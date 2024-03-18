@@ -532,6 +532,7 @@ impl PrintCommand {
                     let SetStoreInfo { row_id: _, info } = msg;
                     println!("{info:#?}");
                 }
+
                 LogMsg::ArrowMsg(_row_id, arrow_msg) => {
                     let mut table =
                         DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
@@ -556,6 +557,10 @@ impl PrintCommand {
                             re_format::format_bytes(table.heap_size_bytes() as _),
                         );
                     }
+                }
+
+                LogMsg::ActivateStore(store_id) => {
+                    println!("ActivateStore({store_id})");
                 }
             }
         }
