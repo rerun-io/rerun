@@ -949,6 +949,7 @@ impl App {
                         // In that case, we want to make it the default.
                         // We wait with activaing blueprints until they are fully loaded,
                         // so that we don't run heuristics on half-loaded blueprints.
+                        // This is a fallback in case `LogMsg::ActivateStore` isn't sent (for whatever reason).
 
                         let blueprints = store_hub
                             .entity_dbs_from_channel_source(&channel_source)
@@ -998,21 +999,45 @@ impl App {
                 re_log::error_once!("Failed to add incoming msg: {err}");
             };
 
-            // Set the recording-id after potentially creating the store in the hub.
-            // This ordering is important because the `StoreHub` internally
-            // updates the app-id when changing the recording.
-            if let LogMsg::SetStoreInfo(msg) = &msg {
-                match msg.info.store_id.kind {
-                    StoreKind::Recording => {
-                        re_log::debug!("Opening a new recording: {:?}", msg.info);
-                        store_hub.set_recording_id(store_id.clone());
+            match &msg {
+                LogMsg::SetStoreInfo(_) => {
+                    // Set the recording-id after potentially creating the store in the hub.
+                    // This ordering is important because the `StoreHub` internally
+                    // updates the app-id when changing the recording.
+                    match store_id.kind {
+                        StoreKind::Recording => {
+                            re_log::debug!("Opening a new recording: {store_id}");
+                            store_hub.set_recording_id(store_id.clone());
+                        }
+                        StoreKind::Blueprint => {
+                            // We wait with activaing blueprints until they are fully loaded,
+                            // so that we don't run heuristics on half-loaded blueprints.
+                            // TODO(#5297): heed special "end-of-blueprint" message to activate blueprint.
+                            // Otherwise on a mixed connection (SDK sending both blueprint and recording)
+                            // the blueprint won't be activated until the whole _recording_ has finished loading.
+                        }
                     }
-                    StoreKind::Blueprint => {
-                        // We wait with activaing blueprints until they are fully loaded,
-                        // so that we don't run heuristics on half-loaded blueprints.
-                        // TODO(#5297): heed special "end-of-blueprint" message to activate blueprint.
-                        // Otherwise on a mixed connection (SDK sending both blueprint and recording)
-                        // the blueprint won't be activated until the whole _recording_ has finished loading.
+                }
+
+                LogMsg::ArrowMsg(_, _) => {
+                    // Andled by EntityDb::add
+                }
+
+                LogMsg::ActivateStore(store_id) => {
+                    match store_id.kind {
+                        StoreKind::Recording => {
+                            re_log::debug!("Opening a new recording: {store_id}");
+                            store_hub.set_recording_id(store_id.clone());
+                        }
+                        StoreKind::Blueprint => {
+                            re_log::debug!("Activating newly loaded blueprint");
+                            if let Some(info) = entity_db.store_info() {
+                                let app_id = info.application_id.clone();
+                                store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
+                            } else {
+                                re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
+                            }
+                        }
                     }
                 }
             }
