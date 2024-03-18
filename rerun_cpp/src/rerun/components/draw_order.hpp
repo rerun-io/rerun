@@ -54,14 +54,14 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const components::DrawOrder* elements, size_t num_elements
-        );
-
         /// Serializes an array of `rerun::components::DrawOrder` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::DrawOrder* instances, size_t num_instances
+        );
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FloatBuilder* builder, const components::DrawOrder* elements, size_t num_elements
         );
     };
 } // namespace rerun

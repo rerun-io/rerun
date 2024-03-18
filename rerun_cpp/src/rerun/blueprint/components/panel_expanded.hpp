@@ -9,12 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class BooleanBuilder;
-    class DataType;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: Whether an application panel is expanded or not.
     struct PanelExpanded {
@@ -45,8 +39,7 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Bool) == sizeof(blueprint::components::PanelExpanded));
 
     /// \private
     template <>
@@ -54,17 +47,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.PanelExpanded";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const blueprint::components::PanelExpanded* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Bool>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::PanelExpanded` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::PanelExpanded* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Bool>::to_arrow(&instances->expanded, num_instances);
+        }
     };
 } // namespace rerun

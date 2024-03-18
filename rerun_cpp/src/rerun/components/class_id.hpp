@@ -9,17 +9,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class Array;
-    class DataType;
-    class UInt16Type;
-    using UInt16Builder = NumericBuilder<UInt16Type>;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: A 16-bit ID representing a type of semantic class.
     struct ClassId {
@@ -50,8 +39,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::ClassId) == sizeof(components::ClassId));
 
     /// \private
     template <>
@@ -59,16 +47,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.ClassId";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const components::ClassId* elements, size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::ClassId>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::ClassId` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::ClassId* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::ClassId>::to_arrow(&instances->id, num_instances);
+        }
     };
 } // namespace rerun

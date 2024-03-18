@@ -133,22 +133,21 @@ fn create_app(
 
     let query_map = &cc.integration_info.web_info.location.query_map;
 
-    let manifest_url = match &manifest_url {
-        Some(url) => Some(url.as_str()),
-        None => query_map.get("manifest_url").map(String::as_str),
-    };
-    if let Some(url) = manifest_url {
-        app.set_examples_manifest_url(url.into());
-        re_log::info!("Using manifest_url={url:?}");
+    if let Some(manifest_url) = manifest_url {
+        app.set_examples_manifest_url(manifest_url.into());
+    } else {
+        for url in query_map.get("manifest_url").into_iter().flatten() {
+            app.set_examples_manifest_url(url.clone());
+        }
     }
 
-    let url = match &url {
-        Some(url) => Some(url.as_str()),
-        None => query_map.get("url").map(String::as_str),
-    };
     if let Some(url) = url {
-        let rx = url_to_receiver(url, egui_ctx.clone());
-        app.add_receiver(rx);
+        app.add_receiver(url_to_receiver(url, egui_ctx));
+    } else {
+        // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
+        for url in query_map.get("url").into_iter().flatten() {
+            app.add_receiver(url_to_receiver(url, egui_ctx.clone()));
+        }
     }
 
     app
@@ -223,6 +222,8 @@ pub fn set_email(email: String) {
 
 enum EndpointCategory {
     /// Could be a local path (`/foo.rrd`) or a remote url (`http://foo.com/bar.rrd`).
+    ///
+    /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
     HttpRrd(String),
 
     /// A remote Rerun server.
@@ -233,7 +234,7 @@ enum EndpointCategory {
 }
 
 fn categorize_uri(uri: &str) -> EndpointCategory {
-    if uri.starts_with("http") || uri.ends_with(".rrd") {
+    if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
         EndpointCategory::HttpRrd(uri.into())
     } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
         EndpointCategory::WebSocket(uri.into())
@@ -261,21 +262,27 @@ fn get_persist_state(info: &eframe::IntegrationInfo) -> bool {
 
 fn get_query_bool(info: &eframe::IntegrationInfo, key: &str, default: bool) -> bool {
     let default_int = default as i32;
-    match info
-        .web_info
-        .location
-        .query_map
-        .get(key)
-        .map(String::as_str)
-    {
-        Some("0") => false,
-        Some("1") => true,
-        Some(other) => {
+
+    if let Some(values) = info.web_info.location.query_map.get(key) {
+        if values.len() == 1 {
+            match values[0].as_str() {
+                "0" => false,
+                "1" => true,
+                other => {
+                    re_log::warn!(
+                            "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
+                        );
+                    default
+                }
+            }
+        } else {
             re_log::warn!(
-                "Unexpected value for '{key}' query: {other:?}. Expected either '0' or '1'. Defaulting to '{default_int}'."
+                "Found {} values for '{key}' query. Expected one or none. Defaulting to '{default_int}'.",
+                values.len()
             );
             default
         }
-        _ => default,
+    } else {
+        default
     }
 }
