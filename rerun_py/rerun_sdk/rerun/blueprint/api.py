@@ -142,7 +142,7 @@ class Container:
             This is only applicable to `Horizontal` or `Grid` containers.
         row_shares
             The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
-            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
+            row should take up. The row with index `i` will take up the fraction `shares[i] / total_shares`.
             This is only applicable to `Vertical` or `Grid` containers.
         grid_columns
             The number of columns in the grid. This is only applicable to `Grid` containers.
