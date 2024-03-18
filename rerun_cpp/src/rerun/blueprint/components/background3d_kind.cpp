@@ -11,9 +11,9 @@ namespace rerun {
         Loggable<blueprint::components::Background3DKind>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("GradientDark", arrow::null(), false),
-            arrow::field("GradientBright", arrow::null(), false),
-            arrow::field("SolidColor", arrow::null(), false),
+            arrow::field("GradientDark", arrow::null(), true),
+            arrow::field("GradientBright", arrow::null(), true),
+            arrow::field("SolidColor", arrow::null(), true),
         });
         return datatype;
     }
