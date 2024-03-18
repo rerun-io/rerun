@@ -27,7 +27,7 @@ def load_urdf_from_msg(msg: String) -> URDF:
     return URDF.load(f, filename_handler=ament_locate_package)
 
 
-def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless: bool = False) -> None:
+def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, static: bool = False) -> None:
     """Log a trimesh scene to rerun."""
     path = path + "/" + node if path else node
 
@@ -46,7 +46,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless
                     translation=world_from_mesh[3, 0:3],
                     mat3x3=world_from_mesh[0:3, 0:3],
                 ),
-                timeless=timeless,
+                static=static,
             )
 
         # Log this node's mesh, if it has one.
@@ -82,9 +82,9 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless
                     vertex_normals=mesh.vertex_normals,
                     mesh_material=rr.Material(albedo_factor=albedo_factor),
                 ),
-                timeless=timeless,
+                static=static,
             )
 
     if children:
         for child in children:
-            log_scene(scene, child, path, timeless)
+            log_scene(scene, child, path, static)
