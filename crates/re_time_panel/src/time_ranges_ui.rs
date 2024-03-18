@@ -201,13 +201,14 @@ impl TimeRangesUi {
                 TimeReal::from(last.tight_time.max()),
             );
 
-            // Special: don't allow users dragging time between STATIC (-∞ = timeless data) and some real time.
+            // Special: don't allow users dragging time between MIN_TIME_PANEL (-∞ = timeless data)
+            // and some real time.
             //
             // Otherwise we get weird times (e.g. dates in 1923).
             // Selecting times between other segments is not as problematic, as all other segments are
             // real times, so interpolating between them always produces valid times
             // (we want users to have a smooth experience dragging the time handle anywhere else).
-            // By disallowing times between STATIC and the first real segment,
+            // By disallowing times between MIN_TIME_PANEL and the first real segment,
             // we also disallow users dragging the time to be between -∞ and the
             // real beginning of their data. That further highlights the specialness of -∞.
             //

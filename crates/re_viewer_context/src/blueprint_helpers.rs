@@ -19,9 +19,10 @@ impl StoreContext<'_> {
             .times_per_timeline()
             .get(&timeline)
             .and_then(|times| times.last_key_value())
-            .map_or(0, |(time, _)| time.as_i64());
+            .map_or(0, |(time, _)| time.as_i64())
+            .saturating_add(1);
 
-        TimePoint::from([(timeline, TimeInt::new_temporal(max_time + 1))])
+        TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
     }
 }
 

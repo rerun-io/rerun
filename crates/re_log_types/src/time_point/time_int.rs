@@ -114,15 +114,13 @@ impl TimeInt {
     /// For time timelines.
     #[inline]
     pub fn from_milliseconds(millis: NonMinI64) -> Self {
-        // Soundness: we cannot hit the min value with a saturing positive multiplication.
-        Self(NonMinI64::new(millis.get().saturating_mul(1_000_000)))
+        Self::new_temporal(millis.get().saturating_mul(1_000_000))
     }
 
     /// For time timelines.
     #[inline]
     pub fn from_seconds(seconds: NonMinI64) -> Self {
-        // Soundness: we cannot hit the min value with a saturing positive multiplication.
-        Self(NonMinI64::new(seconds.get().saturating_mul(1_000_000_000)))
+        Self::new_temporal(seconds.get().saturating_mul(1_000_000_000))
     }
 
     /// For sequence timelines.

@@ -991,7 +991,7 @@ fn help_button(ui: &mut egui::Ui) {
 
 /// A user can drag the time slider to between the timeless data and the first real data.
 ///
-/// The time interpolated there is really weird, as it goes from [`TimeInt::MIN`]
+/// The time interpolated there is really weird, as it goes from [`TimeInt::MIN_TIME_PANEL`]
 /// (which is extremely long time ago) to whatever tim the user logged.
 /// So we do not want to display these times to the user.
 ///
