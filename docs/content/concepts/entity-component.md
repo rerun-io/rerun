@@ -52,15 +52,15 @@ own set of components, bypassing archetypes altogether.
 
 In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/common/custom_data/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:
 
-code-example: extra_values
+snippet: extra_values
 
 It can also be used log an entirely custom set of components:
 
-code-example: any_values
+snippet: any_values
 
 For more complex use-cases, custom objects implementing the `rr.AsComponents` protocol can be used. For Rust, the `rerun::AsComponents` trait must be implemented:
 
-code-example: custom_data
+snippet: custom_data
 
 ### Empty Entities
 

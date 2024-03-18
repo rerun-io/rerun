@@ -21,7 +21,7 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
 ### Simple 3D asset
 
-code-example: asset3d_simple
+snippet: asset3d_simple
 
 <center>
 <picture>
@@ -35,5 +35,5 @@ code-example: asset3d_simple
 
 ### 3D asset with out-of-tree transform
 
-code-example: asset3d_out_of_tree
+snippet: asset3d_out_of_tree
 

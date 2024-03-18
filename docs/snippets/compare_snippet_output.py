@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Runs all our code-examples, for all our languages, and compares the .rrd they output."""
+"""Runs all our snippets, for all our languages, and compares the .rrd they output."""
 
 from __future__ import annotations
 
@@ -11,53 +11,26 @@ import sys
 import time
 from os import listdir
 from os.path import isfile, join
+from pathlib import Path
+
+import tomlkit
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../scripts/")
 from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
-# fmt: off
-
-# These entries won't run at all.
-#
-# You should only ever use this if the test isn't implemented and cannot yet be implemented
-# for one or more specific SDKs.
-opt_out_run = {
-    "any_values": ["cpp", "rust"], # Not yet implemented
-    "extra_values": ["cpp", "rust"], # Missing examples
-    "image_advanced": ["cpp", "rust"], # Missing examples
-    "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "timelines_example": ["py", "cpp", "rust"], # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
-
-    # This is this script, it's not an example.
-    "roundtrips": ["cpp", "py", "rust"],
+config_path = Path(__file__).parent / "snippets.toml"
+config = tomlkit.loads(config_path.read_text())
+OPT_OUT_RUN = config["opt_out"]["run"]
+OPT_OUT_COMPARE = config["opt_out"]["compare"]
+EXTRA_ARGS = {
+    name: [arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in args]
+    for name, args in config["extra_args"].items()
 }
 
-# These entries will run but their results won't be compared to the baseline.
-#
-# You should only ever use this if the test cannot yet be implemented in a way that yields the right
-# data, but you still want to check whether the test runs properly and outputs _something_.
-opt_out_compare = {
-    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "asset3d_out_of_tree": ["cpp", "py", "rust"], # float issues since calculation is done slightly differently (also, Python uses doubles)
-    "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
-    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
-    "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
-    "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
-    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "text_log_integration": ["cpp", "py", "rust"], # The entity path will differ because the Rust code is part of a library
-    "series_point_style": ["cpp", "py", "rust"], # TODO(#5116): trigonometric functions have slightly different outcomes
-    "series_line_style": ["cpp", "py", "rust"], # TODO(#5116):trigonometric functions have slightly different outcomes
-}
-
-extra_args = {
+EXTRA_ARGS = {
     "asset3d_simple": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
     "asset3d_out_of_tree": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
 }
-
-# fmt: on
 
 
 def main() -> None:
@@ -108,7 +81,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        run(["pixi", "run", "cpp-build-doc-examples"])
+        run(["pixi", "run", "cpp-build-snippets"])
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
@@ -139,7 +112,7 @@ def main() -> None:
     if not args.no_cpp_build:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
-            example_opt_out_entirely = opt_out_run.get(example, [])
+            example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
             if "cpp" in example_opt_out_entirely:
                 continue
             run_example(example, "cpp", args)
@@ -148,7 +121,7 @@ def main() -> None:
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
-            example_opt_out_entirely = opt_out_run.get(example, [])
+            example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
             for language in active_languages:
                 if language in example_opt_out_entirely or language == "cpp":  # cpp already processed in series.
                     continue
@@ -166,15 +139,15 @@ def main() -> None:
         print("----------------------------------------------------------")
         print(f"Comparing example '{example}'…")
 
-        example_opt_out_entirely = opt_out_run.get(example, [])
-        example_opt_out_compare = opt_out_compare.get(example, [])
+        example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
+        example_opt_out_compare = OPT_OUT_COMPARE.get(example, [])
 
         if "rust" in example_opt_out_entirely:
             continue  # No baseline to compare against
 
-        cpp_output_path = f"docs/code-examples/all/{example}_cpp.rrd"
-        python_output_path = f"docs/code-examples/all/{example}_py.rrd"
-        rust_output_path = f"docs/code-examples/all/{example}_rust.rrd"
+        cpp_output_path = f"docs/snippets/all/{example}_cpp.rrd"
+        python_output_path = f"docs/snippets/all/{example}_py.rrd"
+        rust_output_path = f"docs/snippets/all/{example}_rust.rrd"
 
         if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
@@ -202,15 +175,15 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
 
 
 def run_roundtrip_python(example: str) -> str:
-    main_path = f"docs/code-examples/all/{example}.py"
-    output_path = f"docs/code-examples/all/{example}_py.rrd"
+    main_path = f"docs/snippets/all/{example}.py"
+    output_path = f"docs/snippets/all/{example}_py.rrd"
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
     if python_executable is None:
         python_executable = "python3"
 
-    cmd = [python_executable, main_path] + (extra_args.get(example) or [])
+    cmd = [python_executable, main_path] + (EXTRA_ARGS.get(example) or [])
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -219,9 +192,9 @@ def run_roundtrip_python(example: str) -> str:
 
 
 def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
-    output_path = f"docs/code-examples/all/{example}_rust.rrd"
+    output_path = f"docs/snippets/all/{example}_rust.rrd"
 
-    cmd = ["cargo", "run", "--quiet", "-p", "code_examples"]
+    cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
 
     if target is not None:
         cmd += ["--target", target]
@@ -234,8 +207,8 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
     cmd += ["--", example]
 
-    if extra_args.get(example):
-        cmd += extra_args[example]
+    if EXTRA_ARGS.get(example):
+        cmd += EXTRA_ARGS[example]
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
@@ -244,9 +217,9 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
 
 
 def run_roundtrip_cpp(example: str, release: bool) -> str:
-    output_path = f"docs/code-examples/all/{example}_cpp.rrd"
+    output_path = f"docs/snippets/all/{example}_cpp.rrd"
 
-    cmd = [f"./build/debug/docs/code-examples/{example}"] + (extra_args.get(example) or [])
+    cmd = [f"./build/debug/docs/snippets/{example}"] + (EXTRA_ARGS.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 

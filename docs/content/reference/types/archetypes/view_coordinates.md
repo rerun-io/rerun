@@ -24,7 +24,7 @@ down, and the Z axis points forward.
 
 ### View coordinates for adjusting the eye camera
 
-code-example: view_coordinates_simple
+snippet: view_coordinates_simple
 
 <center>
 <picture>

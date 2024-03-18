@@ -10,7 +10,7 @@ By default, each log is added to the `log_time` timeline, with a timestamp assig
 
 You can use the _set time_ functions (Python reference: [set_time_sequence](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_sequence), [set_time_seconds](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds), [set_time_nanos](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_nanos)) to associate logs with other timestamps on other timelines. For example:
 
-code-example: timelines_example
+snippet: timelines_example
 
 This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`.
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.

@@ -21,7 +21,7 @@ title: "LineStrips2D"
 
 ### line_strip2d_simple
 
-code-example: line_strip2d_simple
+snippet: line_strip2d_simple
 
 <center>
 <picture>
@@ -35,7 +35,7 @@ code-example: line_strip2d_simple
 
 ### line_segments2d_simple
 
-code-example: line_segments2d_simple
+snippet: line_segments2d_simple
 
 <center>
 <picture>
@@ -49,7 +49,7 @@ code-example: line_segments2d_simple
 
 ### line_strip2d_batch
 
-code-example: line_strip2d_batch
+snippet: line_strip2d_batch
 
 <center>
 <picture>

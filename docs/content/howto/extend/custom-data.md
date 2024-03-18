@@ -40,7 +40,7 @@ You can also define and log your own custom archetypes and components completely
 
 In this example we extend the Rerun Points3D archetype with custom confidence and indicator components.
 
-code-example: custom_data
+snippet: custom_data
 
 <picture>
   <img src="https://static.rerun.io/custom_data/7bb90e1ab4244541164775473c5106e15152b8d0/full.png" alt="">

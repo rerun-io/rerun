@@ -23,17 +23,17 @@ const RUST_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides
 const HOW_DOES_IT_WORK_MARKDOWN: &str =
     include_str!("../../../data/quick_start_guides/how_does_it_work.md");
 
-const CPP_CONNECT_CODE_EXAMPLE: &str =
+const CPP_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.cpp");
-const CPP_SPAWN_CODE_EXAMPLE: &str =
+const CPP_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.cpp");
-const PYTHON_CONNECT_CODE_EXAMPLE: &str =
+const PYTHON_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.py");
-const PYTHON_SPAWN_CODE_EXAMPLE: &str =
+const PYTHON_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.py");
-const RUST_CONNECT_CODE_EXAMPLE: &str =
+const RUST_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.rs");
-const RUST_SPAWN_CODE_EXAMPLE: &str =
+const RUST_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
 
 struct Placeholder<'a> {
@@ -48,27 +48,27 @@ const PLACEHOLDERS: &[Placeholder<'_>] = &[
     },
     Placeholder {
         key: "EXAMPLE_CODE_CPP_CONNECT",
-        value: CPP_CONNECT_CODE_EXAMPLE,
+        value: CPP_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_CPP_SPAWN",
-        value: CPP_SPAWN_CODE_EXAMPLE,
+        value: CPP_SPAWN_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_PYTHON_CONNECT",
-        value: PYTHON_CONNECT_CODE_EXAMPLE,
+        value: PYTHON_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_PYTHON_SPAWN",
-        value: PYTHON_SPAWN_CODE_EXAMPLE,
+        value: PYTHON_SPAWN_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_RUST_CONNECT",
-        value: RUST_CONNECT_CODE_EXAMPLE,
+        value: RUST_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_RUST_SPAWN",
-        value: RUST_SPAWN_CODE_EXAMPLE,
+        value: RUST_SPAWN_SNIPPET,
     },
 ];
 

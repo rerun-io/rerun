@@ -261,3 +261,4 @@ jobs:
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ inputs.RELEASE_COMMIT }}
+          release_version: ${{ inputs.RELEASE_VERSION }}

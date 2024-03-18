@@ -133,7 +133,7 @@ cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --targe
 cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-doc-examples = { cmd = "cmake --build build/debug --config Debug --target doc_examples", depends_on = [
+cpp-build-snippets = { cmd = "cmake --build build/debug --config Debug --target snippets", depends_on = [
   "cpp-prepare",
 ] }
 cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends_on = [
