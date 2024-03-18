@@ -1,7 +1,9 @@
-use re_log_types::{EntityPath, EntityPathFilter, EntityPathSubs};
+use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
+
+use crate::SpaceViewClassIdentifier;
 
 /// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
-#[derive(Hash, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct RecommendedSpaceView {
     pub origin: EntityPath,
     pub query_filter: EntityPathFilter,
@@ -41,5 +43,23 @@ impl RecommendedSpaceView {
     #[inline]
     pub fn root() -> Self {
         Self::new_subtree(EntityPath::root())
+    }
+
+    /// Hash together with the Space View class id to the `ViewerRecommendationHash` component.
+    ///
+    /// Recommendations are usually tied to a specific Space View class.
+    /// Therefore, to identify a recommendation for identification purposes, the class id should be included in the hash.
+    pub fn recommendation_hash(
+        &self,
+        class_id: SpaceViewClassIdentifier,
+    ) -> re_types::blueprint::components::ViewerRecommendationHash {
+        let Self {
+            origin,
+            query_filter,
+        } = self;
+
+        Hash64::hash((origin, query_filter, class_id))
+            .hash64()
+            .into()
     }
 }

@@ -13,6 +13,7 @@ mod row_share;
 mod space_view_class;
 mod space_view_origin;
 mod viewer_recommendation_hash;
+mod viewer_recommendation_hash_ext;
 mod visible;
 mod visible_ext;
 mod visible_time_range;

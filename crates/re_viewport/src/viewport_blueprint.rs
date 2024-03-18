@@ -8,7 +8,6 @@ use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_log_types::hash::Hash64;
 use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
@@ -59,7 +58,7 @@ pub struct ViewportBlueprint {
     auto_space_views: AtomicBool,
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
-    past_viewer_recommendation_hashes: IntSet<Hash64>,
+    past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
     /// Channel to pass Blueprint mutation messages back to the [`crate::Viewport`]
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
@@ -80,7 +79,7 @@ impl ViewportBlueprint {
             maximized,
             auto_layout,
             auto_space_views,
-            past_viewer_recommendations: past_viewer_recommendation_hashes,
+            past_viewer_recommendations,
         } = match query_archetype(blueprint_db.store(), query, &VIEWPORT_PATH.into())
             .and_then(|arch| arch.to_archetype())
         {
@@ -149,10 +148,9 @@ impl ViewportBlueprint {
             root_container,
         );
 
-        let past_viewer_recommendation_hashes = past_viewer_recommendation_hashes
+        let past_viewer_recommendations = past_viewer_recommendations
             .unwrap_or_default()
             .into_iter()
-            .map(|h| Hash64::from_u64(h.0 .0))
             .collect();
 
         ViewportBlueprint {
@@ -163,7 +161,7 @@ impl ViewportBlueprint {
             maximized: maximized.map(|id| id.0.into()),
             auto_layout,
             auto_space_views,
-            past_viewer_recommendation_hashes,
+            past_viewer_recommendations,
             tree_action_sender,
         }
     }
@@ -301,8 +299,8 @@ impl ViewportBlueprint {
             // Remove all space views that we already spawned via heuristic before.
             recommended_space_views.retain(|recommended_view| {
                 !self
-                    .past_viewer_recommendation_hashes
-                    .contains(&Hash64::hash(recommended_view))
+                    .past_viewer_recommendations
+                    .contains(&recommended_view.recommendation_hash(class_id))
             });
 
             // Each of the remaining recommendations would individually be a candidate for spawning if there were
@@ -321,11 +319,14 @@ impl ViewportBlueprint {
             // mean we should suddenly add `/camera/**` to the viewport.
             if !recommended_space_views.is_empty() {
                 let new_viewer_recommendation_hashes = self
-                    .past_viewer_recommendation_hashes
+                    .past_viewer_recommendations
                     .iter()
                     .cloned()
-                    .chain(recommended_space_views.iter().map(Hash64::hash))
-                    .map(|hash| ViewerRecommendationHash(hash.hash64().into()))
+                    .chain(
+                        recommended_space_views
+                            .iter()
+                            .map(|recommendation| recommendation.recommendation_hash(class_id)),
+                    )
                     .collect::<Vec<_>>();
 
                 ctx.save_blueprint_component(
