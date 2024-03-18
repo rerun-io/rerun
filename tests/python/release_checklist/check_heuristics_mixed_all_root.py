@@ -21,8 +21,6 @@ You should see 4 space-views:
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
     rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
 
     rr.log("boxes3d", rr.Boxes3D(centers=[[0, 0, 0], [1, 1.5, 1.15], [3, 2, 1]], half_sizes=[0.5, 1, 0.5] * 3))
