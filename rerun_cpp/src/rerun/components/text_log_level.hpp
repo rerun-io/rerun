@@ -77,23 +77,26 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::TextLogLevel));
-
     /// \private
     template <>
     struct Loggable<components::TextLogLevel> {
+        using TypeFwd = rerun::datatypes::Utf8;
+        static_assert(sizeof(TypeFwd) == sizeof(components::TextLogLevel));
         static constexpr const char Name[] = "rerun.components.TextLogLevel";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::TextLogLevel` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TextLogLevel* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->value, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

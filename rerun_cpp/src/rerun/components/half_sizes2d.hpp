@@ -57,23 +57,26 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::HalfSizes2D));
-
     /// \private
     template <>
     struct Loggable<components::HalfSizes2D> {
+        using TypeFwd = rerun::datatypes::Vec2D;
+        static_assert(sizeof(TypeFwd) == sizeof(components::HalfSizes2D));
         static constexpr const char Name[] = "rerun.components.HalfSizes2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::HalfSizes2D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::HalfSizes2D* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Vec2D>::to_arrow(&instances->xy, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

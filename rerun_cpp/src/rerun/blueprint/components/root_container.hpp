@@ -41,23 +41,26 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::RootContainer));
-
     /// \private
     template <>
     struct Loggable<blueprint::components::RootContainer> {
+        using TypeFwd = rerun::datatypes::Uuid;
+        static_assert(sizeof(TypeFwd) == sizeof(blueprint::components::RootContainer));
         static constexpr const char Name[] = "rerun.blueprint.components.RootContainer";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::RootContainer` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::RootContainer* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Uuid>::to_arrow(&instances->id, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

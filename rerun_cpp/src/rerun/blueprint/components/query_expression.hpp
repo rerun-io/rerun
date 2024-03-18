@@ -52,23 +52,26 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(blueprint::components::QueryExpression));
-
     /// \private
     template <>
     struct Loggable<blueprint::components::QueryExpression> {
+        using TypeFwd = rerun::datatypes::Utf8;
+        static_assert(sizeof(TypeFwd) == sizeof(blueprint::components::QueryExpression));
         static constexpr const char Name[] = "rerun.blueprint.components.QueryExpression";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::QueryExpression` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::QueryExpression* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->filter, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

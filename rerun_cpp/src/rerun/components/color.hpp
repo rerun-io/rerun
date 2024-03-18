@@ -64,23 +64,26 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(components::Color));
-
     /// \private
     template <>
     struct Loggable<components::Color> {
+        using TypeFwd = rerun::datatypes::Rgba32;
+        static_assert(sizeof(TypeFwd) == sizeof(components::Color));
         static constexpr const char Name[] = "rerun.components.Color";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Rgba32>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::Color` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Color* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Rgba32>::to_arrow(&instances->rgba, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

@@ -44,23 +44,26 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::EntityPath) == sizeof(blueprint::components::ActiveTab));
-
     /// \private
     template <>
     struct Loggable<blueprint::components::ActiveTab> {
+        using TypeFwd = rerun::datatypes::EntityPath;
+        static_assert(sizeof(TypeFwd) == sizeof(blueprint::components::ActiveTab));
         static constexpr const char Name[] = "rerun.blueprint.components.ActiveTab";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::EntityPath>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ActiveTab` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::ActiveTab* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::EntityPath>::to_arrow(&instances->tab, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

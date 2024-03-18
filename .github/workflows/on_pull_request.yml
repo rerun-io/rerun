@@ -54,6 +54,7 @@ jobs:
               - '**/*.cpp'
               - '**/CMakeLists.txt'
               - '**/*cmake'
+              - 'pixi.toml'
 
   rust-checks:
     name: "Rust Checks"

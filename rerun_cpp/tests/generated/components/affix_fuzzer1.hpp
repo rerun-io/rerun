@@ -33,24 +33,24 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::AffixFuzzer1) == sizeof(components::AffixFuzzer1));
-
     /// \private
     template <>
     struct Loggable<components::AffixFuzzer1> {
+        using TypeFwd = rerun::datatypes::AffixFuzzer1;
+        static_assert(sizeof(TypeFwd) == sizeof(components::AffixFuzzer1));
         static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer1";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::AffixFuzzer1>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::AffixFuzzer1` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AffixFuzzer1* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::AffixFuzzer1>::to_arrow(
-                &instances->single_required,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }

@@ -39,23 +39,26 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(components::KeypointId));
-
     /// \private
     template <>
     struct Loggable<components::KeypointId> {
+        using TypeFwd = rerun::datatypes::KeypointId;
+        static_assert(sizeof(TypeFwd) == sizeof(components::KeypointId));
         static constexpr const char Name[] = "rerun.components.KeypointId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::KeypointId>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::KeypointId` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::KeypointId* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::KeypointId>::to_arrow(&instances->id, num_instances);
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
+                num_instances
+            );
         }
     };
 } // namespace rerun

@@ -33,24 +33,24 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(components::Transform3D));
-
     /// \private
     template <>
     struct Loggable<components::Transform3D> {
+        using TypeFwd = rerun::datatypes::Transform3D;
+        static_assert(sizeof(TypeFwd) == sizeof(components::Transform3D));
         static constexpr const char Name[] = "rerun.components.Transform3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Transform3D>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::Transform3D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Transform3D* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Transform3D>::to_arrow(
-                &instances->repr,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }

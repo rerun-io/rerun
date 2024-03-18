@@ -32,27 +32,24 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::blueprint::datatypes::VisibleTimeRange) ==
-        sizeof(blueprint::components::VisibleTimeRange)
-    );
-
     /// \private
     template <>
     struct Loggable<blueprint::components::VisibleTimeRange> {
+        using TypeFwd = rerun::blueprint::datatypes::VisibleTimeRange;
+        static_assert(sizeof(TypeFwd) == sizeof(blueprint::components::VisibleTimeRange));
         static constexpr const char Name[] = "rerun.blueprint.components.VisibleTimeRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::VisibleTimeRange` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::VisibleTimeRange* instances, size_t num_instances
         ) {
-            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::to_arrow(
-                &instances->value,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }

@@ -67,24 +67,24 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(components::TensorData));
-
     /// \private
     template <>
     struct Loggable<components::TensorData> {
+        using TypeFwd = rerun::datatypes::TensorData;
+        static_assert(sizeof(TypeFwd) == sizeof(components::TensorData));
         static constexpr const char Name[] = "rerun.components.TensorData";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::TensorData>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::TensorData` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TensorData* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::TensorData>::to_arrow(
-                &instances->data,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }

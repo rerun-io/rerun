@@ -54,24 +54,24 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::Resolution));
-
     /// \private
     template <>
     struct Loggable<components::Resolution> {
+        using TypeFwd = rerun::datatypes::Vec2D;
+        static_assert(sizeof(TypeFwd) == sizeof(components::Resolution));
         static constexpr const char Name[] = "rerun.components.Resolution";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::Resolution` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Resolution* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Vec2D>::to_arrow(
-                &instances->resolution,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }

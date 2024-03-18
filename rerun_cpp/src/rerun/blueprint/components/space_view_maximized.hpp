@@ -42,26 +42,24 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(
-        sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::SpaceViewMaximized)
-    );
-
     /// \private
     template <>
     struct Loggable<blueprint::components::SpaceViewMaximized> {
+        using TypeFwd = rerun::datatypes::Uuid;
+        static_assert(sizeof(TypeFwd) == sizeof(blueprint::components::SpaceViewMaximized));
         static constexpr const char Name[] = "rerun.blueprint.components.SpaceViewMaximized";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
+            return Loggable<TypeFwd>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::SpaceViewMaximized` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::SpaceViewMaximized* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::Uuid>::to_arrow(
-                &instances->space_view_id,
+            return Loggable<TypeFwd>::to_arrow(
+                reinterpret_cast<const TypeFwd*>(instances),
                 num_instances
             );
         }
