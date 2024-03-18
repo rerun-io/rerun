@@ -67,6 +67,10 @@ pub fn entity_path_parts_buttons(
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
 
+        // Show one single icon up-front instead:
+        let instance_path = InstancePath::entity_splat(entity_path.clone());
+        ui.add(instance_path_icon(&query.timeline, store, &instance_path).as_image());
+
         let mut accumulated = Vec::new();
         for part in entity_path.iter() {
             accumulated.push(part.clone());
@@ -256,6 +260,9 @@ pub fn instance_path_parts_buttons(
 
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
+
+        // Show one single icon up-front instead:
+        ui.add(instance_path_icon(&query.timeline, store, instance_path).as_image());
 
         let mut accumulated = Vec::new();
         for part in instance_path.entity_path.iter() {
