@@ -74,7 +74,7 @@ rr.log(
     static=True,
 )
 ```
-Here, the mesh is logged to the [world/mesh entity](recording://world/mesh) and is marked as timeless, since it does not
+Here, the mesh is logged to the [world/mesh entity](recording://world/mesh) and is marked as static, since it does not
 change in the context of this visualization.
 
 ### 3D bounding boxes

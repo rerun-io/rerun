@@ -47,7 +47,7 @@ logged with `rr.log(…, static=True` as it should apply to the whole sequence.
 The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a
 similar combination of two entities.
 
-First, a timeless
+First, a static
 [rr.ClassDescription](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged (note, that
 this is equivalent to logging an
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) as in the

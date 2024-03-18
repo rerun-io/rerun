@@ -54,7 +54,7 @@ def run_segmentation() -> None:
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
 
-    rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), timeless=False)
+    rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), static=False)
 
     rr.log(
         "logs/seg_test_log",
@@ -68,7 +68,7 @@ def run_segmentation() -> None:
     rr.log(
         "seg_test",
         rr.AnnotationContext([(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]),
-        timeless=False,
+        static=False,
     )
     rr.log("logs/seg_test_log", rr.TextLog("points/rects with user specified colors"))
 
@@ -84,7 +84,7 @@ def run_segmentation() -> None:
                 rr.AnnotationInfo(99, label="label3"),
             ]
         ),
-        timeless=False,
+        static=False,
     )
     rr.log("logs/seg_test_log", rr.TextLog("label1 disappears and everything with label3 is now default colored again"))
 
