@@ -504,11 +504,7 @@ impl DataTable {
                     col_timelines
                         .iter()
                         .filter_map(|(timeline, times)| {
-                            times[i]
-                                // Soundness: it should never happen that we have timestamps with an `i64::MIN`
-                                // value in the data since users cannot create those.
-                                .and_then(NonMinI64::new)
-                                .map(|time| (*timeline, time.into()))
+                            times[i].map(|time| (*timeline, crate::TimeInt::new_temporal(time)))
                         })
                         .collect::<BTreeMap<_, _>>(),
                 ),
@@ -530,9 +526,7 @@ impl DataTable {
                 .flatten()
                 .max()
                 .copied()
-                // Soundness: it should never happen that we have timestamps with an `i64::MIN`
-                // value in the data since users cannot create those.
-                .and_then(NonMinI64::new);
+                .map(crate::TimeInt::new_temporal);
 
             if let Some(time) = time {
                 timepoint.insert(*timeline, time);

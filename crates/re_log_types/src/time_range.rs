@@ -80,8 +80,7 @@ impl TimeRange {
 
     #[inline]
     pub fn center(&self) -> TimeInt {
-        let center =
-            NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::new(0).unwrap());
+        let center = NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::MIN);
         self.min + TimeInt::from(center)
     }
 

@@ -1947,7 +1947,7 @@ impl RecordingStream {
                 time
             } else {
                 re_log::error!(
-                    illegal_value = time.nanos_since_epoch(),
+                    illegal_value = seconds,
                     new_value = TimeInt::MIN.as_i64(),
                     "set_time_seconds() called with illegal value - clamped to minimum legal value"
                 );
@@ -1990,9 +1990,9 @@ impl RecordingStream {
                 time
             } else {
                 re_log::error!(
-                    illegal_value = time.nanos_since_epoch(),
+                    illegal_value = ns,
                     new_value = TimeInt::MIN.as_i64(),
-                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
+                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
                 );
                 TimeInt::MIN
             };
