@@ -793,7 +793,8 @@ fn assert_receive_into_entity_db(
 ) -> anyhow::Result<re_entity_db::EntityDb> {
     re_log::info!("Receiving messages into a EntityDb…");
 
-    let mut db: Option<re_entity_db::EntityDb> = None;
+    let mut rec: Option<re_entity_db::EntityDb> = None;
+    let mut bp: Option<re_entity_db::EntityDb> = None;
 
     let mut num_messages = 0;
 
@@ -810,9 +811,14 @@ fn assert_receive_into_entity_db(
 
                 match msg.payload {
                     SmartMessagePayload::Msg(msg) => {
-                        let mut_db = db.get_or_insert_with(|| {
-                            re_entity_db::EntityDb::new(msg.store_id().clone())
-                        });
+                        let mut_db = match msg.store_id().kind {
+                            re_log_types::StoreKind::Recording => rec.get_or_insert_with(|| {
+                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                            }),
+                            re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                re_entity_db::EntityDb::new(msg.store_id().clone())
+                            }),
+                        };
 
                         mut_db.add(&msg)?;
                         num_messages += 1;
@@ -820,7 +826,7 @@ fn assert_receive_into_entity_db(
                     SmartMessagePayload::Quit(err) => {
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")
-                        } else if let Some(db) = db {
+                        } else if let Some(db) = rec {
                             db.store().sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
                             re_log::info!("Successfully ingested {num_messages} messages.");
