@@ -23,18 +23,20 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Finally, run the following script to install the dependencies and CLI tools needed for Rerun's build environment:
-
-```sh
-./scripts/setup_dev.sh
-```
-
 Make sure `cargo --version` prints `1.74.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
 rustup set default-host aarch64-apple-darwin && rustup install 1.74.0
+```
+
+Additionally, we use [Cargo-Cranky](https://github.com/ericseppanen/cargo-cranky) for defining which Clippy lints are active and [Cargo-Deny](https://github.com/EmbarkStudios/cargo-deny) for linting crate versions.
+You don't need to install these for building, but it's highly recommended when contributing changes to
+Rust code.
+```sh
+cargo install cargo-cranky
+cargo install --locked cargo-deny
 ```
 
 ## Building and running the viewer
