@@ -758,7 +758,7 @@ fn show_list_item_for_container_child(
         &response,
         SelectionUpdateBehavior::Ignore,
     );
-    ctx.select_hovered_on_click(&response, std::iter::once(item));
+    ctx.select_hovered_on_click(&response, item);
 
     if remove_contents {
         viewport.blueprint.mark_user_interaction(ctx);

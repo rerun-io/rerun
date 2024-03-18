@@ -109,7 +109,7 @@ impl<'a> ViewerContext<'a> {
         }
 
         if response.double_clicked() {
-            if let Some((item, _)) = selection.first() {
+            if let Some(item) = selection.first_item() {
                 self.command_sender
                     .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }

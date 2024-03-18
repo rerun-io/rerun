@@ -641,7 +641,7 @@ pub fn picking(
         });
     };
 
-    ctx.select_hovered_on_click(&response, re_viewer_context::Selection(hovered_items));
+    ctx.select_hovered_on_click(&response, hovered_items.into_iter());
 
     Ok(response)
 }

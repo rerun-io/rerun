@@ -82,7 +82,7 @@ impl InteractionHighlight {
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Selection(pub Vec<(Item, Option<SelectedSpaceContext>)>);
+pub struct Selection(Vec<(Item, Option<SelectedSpaceContext>)>);
 
 impl From<Item> for Selection {
     #[inline]
@@ -93,27 +93,11 @@ impl From<Item> for Selection {
 
 impl<T> From<T> for Selection
 where
-    T: Iterator<Item = Item>,
+    T: Iterator<Item = (Item, Option<SelectedSpaceContext>)>,
 {
     #[inline]
     fn from(value: T) -> Self {
-        Selection(value.map(|item| (item, None)).collect())
-    }
-}
-
-impl std::ops::Deref for Selection {
-    type Target = Vec<(Item, Option<SelectedSpaceContext>)>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Selection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        Selection(value.collect())
     }
 }
 
@@ -171,6 +155,34 @@ impl Selection {
     /// Retains elements that fulfill a certain condition.
     pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
         self.0.retain(|(item, _)| f(item));
+    }
+
+    /// Returns the number of items in the selection.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the selection is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns an iterator over the items and their selected space context.
+    pub fn iter(&self) -> impl Iterator<Item = &(Item, Option<SelectedSpaceContext>)> {
+        self.0.iter()
+    }
+
+    /// Returns a mutable iterator over the items and their selected space context.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (Item, Option<SelectedSpaceContext>)> {
+        self.0.iter_mut()
+    }
+
+    /// Extend the selection with more items.
+    pub fn extend(
+        &mut self,
+        other: impl IntoIterator<Item = (Item, Option<SelectedSpaceContext>)>,
+    ) {
+        self.0.extend(other);
     }
 }
 
