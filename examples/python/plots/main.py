@@ -39,7 +39,7 @@ Additionally, the plots are styled using the
 archetypes respectively.
 
 For the [parabola](recording://curves/parabola) the radius and color is changed over time,
-the other plots use timeless for their styling properties where possible.
+the other plots use static for their styling properties where possible.
 
 [sin](recording://trig/sin) and [cos](recording://trig/cos) are logged with the same parent entity (i.e.,
 `trig/{cos,sin}`) which will put them in the same view by default.

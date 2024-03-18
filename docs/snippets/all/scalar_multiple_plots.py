@@ -9,7 +9,7 @@ rr.init("rerun_example_scalar_multiple_plots", spawn=True)
 lcg_state = np.int64(0)
 
 # Set up plot styling:
-# They are logged timeless as they don't change over time and apply to all timelines.
+# They are logged statically as they don't change over time and apply to all timelines.
 # Log two lines series under a shared root so that they show in the same plot by default.
 rr.log("trig/sin", rr.SeriesLine(color=[255, 0, 0], name="sin(0.01t)"), static=True)
 rr.log("trig/cos", rr.SeriesLine(color=[0, 255, 0], name="cos(0.01t)"), static=True)

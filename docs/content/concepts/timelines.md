@@ -28,11 +28,11 @@ An _event_ refer to an instance of logging one or more component batches to one 
 </picture>
 
 
-## Timeless data
+## Static data
 
-The [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function has a `timeless=False` default argument.
-If `static=True` is used instead, the entity become *timeless*. Timeless entities belong to all timelines (existing ones, and ones not yet created) and are shown leftmost in the time panel in the viewer.
-This is useful for entities that aren't part of normal data capture, but set the scene for how they are shown.
-For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be timeless.
+The [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function has a `static=False` default argument.
+If `static=True` is used instead, the data logged becomes *static*. Static data belongs to all timelines (existing ones, and ones not yet created) and shadows any temporal data of the same type on the same entity.
+This is useful for data that isn't part of normal data capture, but sets the scene for how it should be shown.
+For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
 
-Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically timeless.
+Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically static.
