@@ -145,7 +145,7 @@ impl Selection {
     }
 
     pub fn iter_items(&self) -> impl Iterator<Item = &Item> {
-        self.0.iter().map(|(item, _)| item)
+        self.0.keys()
     }
 
     pub fn iter_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
