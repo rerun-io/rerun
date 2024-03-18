@@ -3,11 +3,16 @@ use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response, Ui};
 
-use re_entity_db::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
+use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeType, TimeZone};
+use re_space_view::{
+    default_time_range, time_range_boundary_to_visible_history_boundary,
+    visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
+};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types_core::ComponentName;
+use re_types::blueprint::components::VisibleTimeRange;
+use re_types_core::{ComponentName, Loggable as _};
 use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
@@ -44,45 +49,37 @@ static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<Comp
 
 // TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the Visualizer
 // system is able to report its ability to handle the visible history feature.
-fn has_visible_history(
-    ctx: &ViewerContext<'_>,
-    time_ctrl: &TimeControl,
-    space_view_class: &SpaceViewClassIdentifier,
-    entity_path: Option<&EntityPath>,
-) -> bool {
-    if !VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(space_view_class) {
-        return false;
-    }
-
-    if let Some(entity_path) = entity_path {
-        let store = ctx.entity_db.store();
-        let component_names = store.all_components(time_ctrl.timeline(), entity_path);
-        if let Some(component_names) = component_names {
-            if !component_names
-                .iter()
-                .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
-            {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    true
+fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -> bool {
+    VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
 }
 
-pub fn visible_history_ui(
+fn entity_with_visible_history(
     ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view_class: &SpaceViewClassIdentifier,
+    time_ctrl: &TimeControl,
+    entity_path: &EntityPath,
+) -> bool {
+    let store = ctx.entity_db.store();
+    let component_names = store.all_components(time_ctrl.timeline(), entity_path);
+    component_names
+        .iter()
+        .flatten()
+        .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
+}
+
+pub fn visual_time_range_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    data_result_tree: &re_viewer_context::DataResultTree,
+    data_result: &re_viewer_context::DataResult,
+    space_view_class: SpaceViewClassIdentifier,
     is_space_view: bool,
-    entity_path: Option<&EntityPath>,
-    visible_history_prop: &mut ExtraQueryHistory,
-    resolved_visible_history_prop: &ExtraQueryHistory,
 ) {
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
-    if !has_visible_history(ctx, &time_ctrl, space_view_class, entity_path) {
+
+    if is_space_view && !space_view_with_visible_history(space_view_class) {
+        return;
+    }
+    if !is_space_view && !entity_with_visible_history(ctx, &time_ctrl, &data_result.entity_path) {
         return;
     }
 
@@ -92,24 +89,33 @@ pub fn visible_history_ui(
 
     let mut interacting_with_controls = false;
 
+    let mut resolved_range = data_result
+        .lookup_override::<VisibleTimeRange>(ctx)
+        .unwrap_or(default_time_range(space_view_class));
+    let mut has_individual_range = data_result
+        .component_override_source(data_result_tree, &VisibleTimeRange::name())
+        .as_ref()
+        == Some(&data_result.entity_path);
+
     let collapsing_response = re_ui.collapsing_header(ui, "Visible time range", false, |ui| {
+        let has_individual_range_before = has_individual_range;
+        let resolved_range_before = resolved_range.clone();
+
         ui.horizontal(|ui| {
             re_ui
-                .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
+                .radio_value(ui, &mut has_individual_range, false, "Default")
                 .on_hover_text(if is_space_view {
                     "Default visible time range settings for this kind of Space View"
                 } else {
-                    "Visible time range settings inherited from parent Group(s) or enclosing \
+                    "Visible time range settings inherited from parent Entity or enclosing \
                         Space View"
                 });
             re_ui
-                .radio_value(ui, &mut visible_history_prop.enabled, true, "Override")
+                .radio_value(ui, &mut has_individual_range, true, "Override")
                 .on_hover_text(if is_space_view {
                     "Set visible time range settings for the contents of this Space View"
-                } else if entity_path.is_some() {
-                    "Set visible time range settings for this entity"
                 } else {
-                    "Set visible time range settings for he contents of this Group"
+                    "Set visible time range settings for this entity"
                 });
         });
 
@@ -125,22 +131,29 @@ pub fn visible_history_ui(
             .unwrap_or_default()
             .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
 
-        let (resolved_visible_history, visible_history) = match time_type {
+        // pick right from/to depending on the timeline type.
+        let (from, to) = match time_type {
             TimeType::Time => (
-                &resolved_visible_history_prop.nanos,
-                &mut visible_history_prop.nanos,
+                &mut resolved_range.0.from_time,
+                &mut resolved_range.0.to_time,
             ),
             TimeType::Sequence => (
-                &resolved_visible_history_prop.sequences,
-                &mut visible_history_prop.sequences,
+                &mut resolved_range.0.from_sequence,
+                &mut resolved_range.0.to_sequence,
             ),
         };
 
-        if visible_history_prop.enabled {
-            let current_low_boundary = visible_history
+        // Convert to legacy visual history type.
+        let mut visible_history = VisibleHistory {
+            from: time_range_boundary_to_visible_history_boundary(from),
+            to: time_range_boundary_to_visible_history_boundary(to),
+        };
+
+        if has_individual_range {
+            let current_from = visible_history
                 .range_start_from_cursor(current_time.into())
                 .as_i64();
-            let current_high_boundary = visible_history
+            let current_to = visible_history
                 .range_end_from_cursor(current_time.into())
                 .as_i64();
 
@@ -156,7 +169,7 @@ pub fn visible_history_ui(
                             current_time,
                             &timeline_spec,
                             true,
-                            current_high_boundary,
+                            current_to,
                         )
                     })
                     .inner;
@@ -173,23 +186,23 @@ pub fn visible_history_ui(
                             current_time,
                             &timeline_spec,
                             false,
-                            current_low_boundary,
+                            current_from,
                         )
                     })
                     .inner;
                 ui.end_row();
             });
 
-            current_range_ui(ctx, ui, current_time, time_type, visible_history);
+            current_range_ui(ctx, ui, current_time, time_type, &visible_history);
         } else {
             // Show the resolved visible range as labels (user can't edit them):
 
-            if resolved_visible_history.from == VisibleHistoryBoundary::Infinite
-                && resolved_visible_history.to == VisibleHistoryBoundary::Infinite
+            if visible_history.from == VisibleHistoryBoundary::Infinite
+                && visible_history.to == VisibleHistoryBoundary::Infinite
             {
                 ui.label("Entire timeline");
-            } else if resolved_visible_history.from == VisibleHistoryBoundary::AT_CURSOR
-                && resolved_visible_history.to == VisibleHistoryBoundary::AT_CURSOR
+            } else if visible_history.from == VisibleHistoryBoundary::AT_CURSOR
+                && visible_history.to == VisibleHistoryBoundary::AT_CURSOR
             {
                 let current_time = time_type.format(current_time.into(), ctx.app_options.time_zone);
                 match time_type {
@@ -206,7 +219,7 @@ pub fn visible_history_ui(
                     resolved_visible_history_boundary_ui(
                         ctx,
                         ui,
-                        &resolved_visible_history.from,
+                        &visible_history.from,
                         time_type,
                         true,
                     );
@@ -216,14 +229,31 @@ pub fn visible_history_ui(
                     resolved_visible_history_boundary_ui(
                         ctx,
                         ui,
-                        &resolved_visible_history.to,
+                        &visible_history.to,
                         time_type,
                         false,
                     );
                     ui.end_row();
                 });
 
-                current_range_ui(ctx, ui, current_time, time_type, resolved_visible_history);
+                current_range_ui(ctx, ui, current_time, time_type, &visible_history);
+            }
+        }
+
+        // Convert back from visual history type.
+        *from = visible_history_boundary_to_time_range_boundary(&visible_history.from);
+        *to = visible_history_boundary_to_time_range_boundary(&visible_history.to);
+
+        // Save to blueprint store if anything has changed.
+        if has_individual_range != has_individual_range_before
+            || resolved_range != resolved_range_before
+        {
+            if has_individual_range {
+                re_log::debug!("override!");
+                data_result.save_recursive_override(ctx, &resolved_range);
+            } else {
+                re_log::debug!("clear!");
+                data_result.clear_recursive_override::<VisibleTimeRange>(ctx);
             }
         }
     });
@@ -251,22 +281,15 @@ pub fn visible_history_ui(
 
     if should_display_visible_history {
         if let Some(current_time) = time_ctrl.time_int() {
-            let visible_history = match (visible_history_prop.enabled, time_type) {
-                (true, TimeType::Sequence) => visible_history_prop.sequences,
-                (true, TimeType::Time) => visible_history_prop.nanos,
-                (false, TimeType::Sequence) => resolved_visible_history_prop.sequences,
-                (false, TimeType::Time) => resolved_visible_history_prop.nanos,
-            };
-
-            ctx.rec_cfg.time_ctrl.write().highlighted_range =
-                Some(visible_history.time_range(current_time));
+            let range = visible_time_range_to_time_range(&resolved_range, time_type, current_time);
+            ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(range);
         }
     }
 
     let markdown = format!("# Visible time range\n
 This feature controls the time range used to display data in the Space View.
 
-The settings are inherited from parent Group(s) or enclosing Space View if not overridden.
+The settings are inherited from the parent Entity or enclosing Space View if not overridden.
 
 Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
 whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.

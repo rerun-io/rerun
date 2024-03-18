@@ -171,17 +171,57 @@ impl DataResult {
         }
     }
 
+    /// Saves a recursive override, does not take into current or default values.
+    ///
+    /// Ignores individual overrides and current value.
+    pub fn save_recursive_override<C: re_types::Component + Eq>(
+        &self,
+        ctx: &ViewerContext<'_>,
+        desired_override: &C,
+    ) {
+        re_tracing::profile_function!();
+
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(recursive_override_path) = self.recursive_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_blueprint_component(recursive_override_path, desired_override);
+    }
+
+    /// Clears the recursive override for a given component
+    pub fn clear_recursive_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+        // TODO(jleibs): Make it impossible for this to happen with different type structure
+        // This should never happen unless we're doing something with a partially processed
+        // query.
+        let Some(recursive_override_path) = self.recursive_override_path() else {
+            re_log::warn!(
+                "Tried to save override for {:?} but it has no override path",
+                self.entity_path
+            );
+            return;
+        };
+
+        ctx.save_empty_blueprint_component::<C>(recursive_override_path);
+    }
+
     /// Write the [`EntityProperties`] for this result back to the Blueprint store on the recursive override.
     ///
     /// Setting `new_recursive_props` to `None` will always clear the override.
     /// Otherwise, writes only if the recursive properties aren't already the same value.
     /// (does *not* take into account what the accumulated properties are which are a combination of recursive and individual overwrites)
-    pub fn save_recursive_override(
+    pub fn save_recursive_override_properties(
         &self,
         ctx: &ViewerContext<'_>,
         new_recursive_props: Option<EntityProperties>,
     ) {
-        self.save_override_internal(
+        self.save_override_properties_internal(
             ctx,
             new_recursive_props,
             self.recursive_override_path(),
@@ -194,12 +234,12 @@ impl DataResult {
     /// Setting `new_individual_props` to `None` will always clear the override.
     /// Otherwise, writes only if the individual properties aren't already the same value.
     /// (does *not* take into account what the accumulated properties are which are a combination of recursive and individual overwrites)
-    pub fn save_individual_override(
+    pub fn save_individual_override_properties(
         &self,
-        new_individual_props: Option<EntityProperties>,
         ctx: &ViewerContext<'_>,
+        new_individual_props: Option<EntityProperties>,
     ) {
-        self.save_override_internal(
+        self.save_override_properties_internal(
             ctx,
             new_individual_props,
             self.individual_override_path(),
@@ -207,7 +247,7 @@ impl DataResult {
         );
     }
 
-    fn save_override_internal(
+    fn save_override_properties_internal(
         &self,
         ctx: &ViewerContext<'_>,
         new_individual_props: Option<EntityProperties>,

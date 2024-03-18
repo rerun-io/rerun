@@ -1,9 +1,9 @@
 use itertools::{FoldWhile, Itertools};
-use re_data_store::LatestAtQuery;
-use re_entity_db::{EntityDb, EntityPath, EntityProperties, VisibleHistory};
-use re_entity_db::{EntityPropertiesComponent, EntityPropertyMap};
+use nohash_hasher::IntMap;
 
 use crate::SpaceViewContents;
+use re_data_store::LatestAtQuery;
+use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathSubs, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
@@ -14,9 +14,9 @@ use re_types::{
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    DataResult, PerSystemEntities, PropertyOverrides, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    DataResult, OverridePath, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
+    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
@@ -416,46 +416,56 @@ impl SpaceViewBlueprint {
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
-        let entity_path = self.entity_path();
+        let base_override_root = self.entity_path();
+        let individual_override_path =
+            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+        let recursive_override_path =
+            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
-        let is_time_series = self.class_identifier == "Time Series";
-
-        let mut individual_properties = ctx
+        let individual_properties = ctx
             .blueprint
             .store()
-            .query_latest_component_quiet::<EntityPropertiesComponent>(&self.entity_path(), query)
+            .query_latest_component_quiet::<EntityPropertiesComponent>(
+                &individual_override_path,
+                query,
+            )
             .map(|result| result.value.0);
+        let accumulated_properties = individual_properties.clone().unwrap_or_default();
 
-        // TODO(#4194): this should come from delegation to the space-view-class
-        if individual_properties.is_none() && is_time_series {
-            let mut time_series_defaults = EntityProperties::default();
-            time_series_defaults.visible_history.nanos = VisibleHistory::ALL;
-            time_series_defaults.visible_history.sequences = VisibleHistory::ALL;
-            individual_properties = Some(time_series_defaults);
-        }
-
-        let mut accumulated_properties = individual_properties.clone().unwrap_or_default();
-
-        if is_time_series {
-            // TODO(#4194): enabled == false means use defaults
-            if !accumulated_properties.visible_history.enabled {
-                accumulated_properties.visible_history.enabled = true;
-                accumulated_properties.visible_history.nanos = VisibleHistory::ALL;
-                accumulated_properties.visible_history.sequences = VisibleHistory::ALL;
+        // Gather recursive component overrides.
+        // Ignore individual overrides on SpaceView root.
+        let mut recursive_component_overrides = IntMap::default();
+        if let Some(recursive_override_subtree) =
+            ctx.blueprint.tree().subtree(&recursive_override_path)
+        {
+            for component in recursive_override_subtree.entity.components.keys() {
+                if let Some(component_data) = ctx
+                    .blueprint
+                    .store()
+                    .latest_at(query, &recursive_override_path, *component, &[*component])
+                    .and_then(|(_, _, cells)| cells[0].clone())
+                {
+                    if !component_data.is_empty() {
+                        recursive_component_overrides.insert(
+                            *component,
+                            OverridePath::blueprint_path(recursive_override_path.clone()),
+                        );
+                    }
+                }
             }
         }
 
         DataResult {
-            entity_path: entity_path.clone(),
+            entity_path: base_override_root,
             visualizers: Default::default(),
             tree_prefix_only: false,
             property_overrides: Some(PropertyOverrides {
                 accumulated_properties,
                 individual_properties,
                 recursive_properties: Default::default(),
-                resolved_component_overrides: Default::default(),
-                recursive_override_path: entity_path.clone(),
-                individual_override_path: entity_path,
+                resolved_component_overrides: recursive_component_overrides,
+                recursive_override_path,
+                individual_override_path,
             }),
         }
     }
@@ -464,7 +474,7 @@ impl SpaceViewBlueprint {
 #[cfg(test)]
 mod tests {
     use crate::data_query::{DataQuery, PropertyResolver};
-    use re_entity_db::EntityDb;
+    use re_entity_db::{EntityDb, EntityProperties, EntityPropertiesComponent};
     use re_log_types::{
         example_components::{MyColor, MyLabel, MyPoint},
         DataCell, DataRow, RowId, StoreId, StoreKind, TimePoint,
@@ -672,110 +682,6 @@ mod tests {
             for result in [parent, child1, child2] {
                 assert!(!result.accumulated_properties().interactive);
             }
-        }
-
-        // Override interactive range on root
-        {
-            let root = space_view.root_data_result(
-                &StoreContext {
-                    app_id: re_log_types::ApplicationId::unknown(),
-                    blueprint: &blueprint,
-                    recording: Some(&recording),
-                    all_recordings: vec![],
-                },
-                &blueprint_query,
-            );
-            let mut overrides = root.individual_properties().cloned().unwrap_or_default();
-            overrides.visible_history.enabled = true;
-            overrides.visible_history.nanos = VisibleHistory::ALL;
-
-            save_override(
-                overrides,
-                root.recursive_override_path().unwrap(),
-                &mut blueprint,
-            );
-        }
-
-        // Everyone has interactive history
-        {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
-            };
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
-
-            let parent = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent"))
-                .unwrap();
-            let child1 = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
-                .unwrap();
-            let child2 = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
-                .unwrap();
-
-            for result in [parent, child1, child2] {
-                assert!(result.accumulated_properties().visible_history.enabled);
-                assert_eq!(
-                    result.accumulated_properties().visible_history.nanos,
-                    VisibleHistory::ALL
-                );
-            }
-
-            let mut overrides = child2.individual_properties().cloned().unwrap_or_default();
-            overrides.visible_history.enabled = true;
-
-            save_override(
-                overrides,
-                child2.individual_override_path().unwrap(),
-                &mut blueprint,
-            );
-        }
-
-        // Child2 has its own interactive history
-        {
-            let ctx = StoreContext {
-                app_id: re_log_types::ApplicationId::unknown(),
-                blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
-            };
-
-            let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
-
-            let parent = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent"))
-                .unwrap();
-            let child1 = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent/skip/child1"))
-                .unwrap();
-            let child2 = query_result
-                .tree
-                .lookup_result_by_path(&EntityPath::from("parent/skip/child2"))
-                .unwrap();
-
-            for result in [parent, child1] {
-                assert!(result.accumulated_properties().visible_history.enabled);
-                assert_eq!(
-                    result.accumulated_properties().visible_history.nanos,
-                    VisibleHistory::ALL
-                );
-            }
-
-            assert!(child2.accumulated_properties().visible_history.enabled);
-            assert_eq!(
-                child2.accumulated_properties().visible_history.nanos,
-                VisibleHistory::OFF
-            );
         }
     }
 

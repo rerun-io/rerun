@@ -1,3 +1,5 @@
+include "./blueprint/datatypes/visible_time_range.fbs";
+
 include "./blueprint/components/active_tab.fbs";
 include "./blueprint/components/auto_layout.fbs";
 include "./blueprint/components/auto_space_views.fbs";
@@ -18,6 +20,7 @@ include "./blueprint/components/space_view_class.fbs";
 include "./blueprint/components/space_view_maximized.fbs";
 include "./blueprint/components/space_view_origin.fbs";
 include "./blueprint/components/viewer_recommendation_hash.fbs";
+include "./blueprint/components/visible_time_range.fbs";
 include "./blueprint/components/visible.fbs";
 
 include "./blueprint/archetypes/background_3d.fbs";

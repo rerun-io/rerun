@@ -1,0 +1,58 @@
+
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+include "../../datatypes/time_int.fbs";
+
+namespace rerun.blueprint.datatypes;
+
+/// Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
+enum VisibleTimeRangeBoundaryKind: byte (
+  "attr.rerun.scope": "blueprint",
+  "attr.docs.unreleased"
+) {
+  /// Boundary is a value relative to the time cursor.
+  RelativeToTimeCursor,
+
+  /// Boundary is an absolute value.
+  Absolute,
+
+  /// The boundary extends to infinity.
+  Infinite,
+}
+
+/// Type of boundary for visible history.
+struct VisibleTimeRangeBoundary (
+  "attr.rerun.scope": "blueprint",
+  "attr.docs.unreleased"
+) {
+  /// Type of the boundary.
+  kind: rerun.blueprint.datatypes.VisibleTimeRangeBoundaryKind (order: 100);
+
+  /// Value of the boundary (ignored for `Infinite` type).
+  time: rerun.datatypes.TimeInt (order: 200);
+}
+
+/// Visible time range bounds.
+struct VisibleTimeRange (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.docs.unreleased"
+) {
+  // TODO(andreas): Split this up into two separate components.
+
+  /// Low time boundary for sequence timeline.
+  from_sequence: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 100);
+
+  /// High time boundary for sequence timeline.
+  to_sequence: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 200);
+
+  /// Low time boundary for time timeline.
+  from_time: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 300);
+
+  /// High time boundary for time timeline.
+  to_time: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 400);
+}

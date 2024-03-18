@@ -587,7 +587,7 @@ fn code_for_struct(
     if obj.is_delegating_component() {
         let delegate = obj.delegate_datatype(objects).unwrap();
         let scope = match delegate.scope() {
-            Some(scope) => format!("{scope}."),
+            Some(scope) => format!("{scope}_"),
             None => String::new(),
         };
         superclasses.push(format!(
