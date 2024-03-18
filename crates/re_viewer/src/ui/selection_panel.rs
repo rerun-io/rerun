@@ -316,6 +316,7 @@ fn what_is_selected_ui(
 
             item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
         }
+
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
                 item_title_ui(
@@ -329,6 +330,7 @@ fn what_is_selected_ui(
                 );
             }
         }
+
         Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
@@ -354,6 +356,7 @@ fn what_is_selected_ui(
 
             list_existing_data_blueprints(ui, ctx, &entity_path.clone().into(), viewport);
         }
+
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
                 let space_view_class = space_view.class(ctx.space_view_class_registry);
@@ -381,20 +384,10 @@ fn what_is_selected_ui(
                     .on_hover_text(hover_text);
             }
         }
+
         Item::InstancePath(instance_path) => {
-            let is_instance = !instance_path.instance_key.is_splat();
-
             let typ = item.kind();
-
-            let (query, store) =
-                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-
             let name = instance_path.syntax_highlighted(ui.style());
-            let parent = if is_instance {
-                Some(instance_path.entity_path.clone())
-            } else {
-                instance_path.entity_path.parent()
-            };
 
             item_title_ui(
                 ctx.re_ui,
@@ -404,10 +397,18 @@ fn what_is_selected_ui(
                 &format!("{typ} '{instance_path}'"),
             );
 
+            let is_instance = !instance_path.instance_key.is_splat();
+            let parent = if is_instance {
+                Some(instance_path.entity_path.clone())
+            } else {
+                instance_path.entity_path.parent()
+            };
             if let Some(parent) = parent {
                 if !parent.is_root() {
+                    let (query, store) =
+                        guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
                     ui.horizontal(|ui| {
-                        ui.label("path");
+                        ui.label("Parent");
                         item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
                     });
                 }
@@ -417,21 +418,10 @@ fn what_is_selected_ui(
         }
 
         Item::DataResult(space_view_id, instance_path) => {
-            let is_instance = !instance_path.instance_key.is_splat();
-
-            let typ = item.kind();
-
-            let (query, store) =
-                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-
             let name = instance_path.syntax_highlighted(ui.style());
-            let parent = if is_instance {
-                Some(instance_path.entity_path.clone())
-            } else {
-                instance_path.entity_path.parent()
-            };
 
             if let Some(space_view) = viewport.space_view(space_view_id) {
+                let typ = item.kind();
                 item_title_ui(
                     ctx.re_ui,
                     ui,
@@ -443,10 +433,21 @@ fn what_is_selected_ui(
                     ),
                 );
 
+                let is_instance = !instance_path.instance_key.is_splat();
+                let parent = if is_instance {
+                    Some(instance_path.entity_path.clone())
+                } else {
+                    instance_path.entity_path.parent()
+                };
                 if let Some(parent) = parent {
                     if !parent.is_root() {
                         ui.horizontal(|ui| {
-                            ui.label("path");
+                            let (query, store) = guess_query_and_store_for_selected_entity(
+                                ctx,
+                                &instance_path.entity_path,
+                            );
+
+                            ui.label("Parent");
                             item_ui::entity_path_parts_buttons(
                                 ctx,
                                 &query,
