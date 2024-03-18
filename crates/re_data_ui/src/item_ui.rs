@@ -141,17 +141,19 @@ pub fn instance_path_icon(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) -> &'static re_ui::icons::Icon {
-    if instance_path.instance_key != InstanceKey::SPLAT {
-        return &re_ui::icons::ENTITY;
-    }
-
-    if store
-        .all_components(timeline, &instance_path.entity_path)
-        .is_some()
-    {
-        &re_ui::icons::ENTITY
+    if instance_path.is_splat() {
+        // It is an entity path
+        if store
+            .all_components(timeline, &instance_path.entity_path)
+            .is_some()
+        {
+            &re_ui::icons::ENTITY
+        } else {
+            &re_ui::icons::ENTITY_EMPTY
+        }
     } else {
-        &re_ui::icons::ENTITY_EMPTY
+        // An instance path
+        &re_ui::icons::ENTITY
     }
 }
 
