@@ -263,6 +263,7 @@ impl App {
     }
 
     pub fn set_examples_manifest_url(&mut self, url: String) {
+        re_log::info!("Using manifest_url={url:?}");
         self.state
             .set_examples_manifest_url(&self.re_ui.egui_ctx, url);
     }
