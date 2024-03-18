@@ -11,12 +11,6 @@
 #include <string>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StringBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: The severity level of a text log message.
     ///
@@ -83,8 +77,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::TextLogLevel));
 
     /// \private
     template <>
@@ -92,17 +85,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.TextLogLevel";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const components::TextLogLevel* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::TextLogLevel` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TextLogLevel* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->value, num_instances);
+        }
     };
 } // namespace rerun

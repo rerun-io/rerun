@@ -49,15 +49,15 @@ namespace rerun {
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
+        /// Serializes an array of `rerun::blueprint:: components::ColumnShare` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::components::ColumnShare* instances, size_t num_instances
+        );
+
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const blueprint::components::ColumnShare* elements,
             size_t num_elements
-        );
-
-        /// Serializes an array of `rerun::blueprint:: components::ColumnShare` into an arrow array.
-        static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const blueprint::components::ColumnShare* instances, size_t num_instances
         );
     };
 } // namespace rerun

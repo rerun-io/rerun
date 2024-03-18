@@ -10,12 +10,6 @@
 #include <memory>
 #include <utility>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class StructBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: A multi-dimensional `Tensor` of data.
     ///
@@ -73,8 +67,7 @@ namespace rerun::components {
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(components::TensorData));
 
     /// \private
     template <>
@@ -82,17 +75,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.TensorData";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const components::TensorData* elements,
-            size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::TensorData>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::TensorData` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TensorData* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::TensorData>::to_arrow(
+                &instances->data,
+                num_instances
+            );
+        }
     };
 } // namespace rerun
