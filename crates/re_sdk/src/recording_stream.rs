@@ -1686,6 +1686,24 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
+        self.stdout_opts(None)
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
+    pub fn stdout_opts(
+        &self,
+        blueprint: Option<Vec<LogMsg>>,
+    ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
             return Ok(());
@@ -1698,6 +1716,12 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::stdout()?;
+
+        // If a blueprint was provided, write it first.
+        if let Some(blueprint) = blueprint {
+            Self::send_blueprint(blueprint, &sink);
+        }
+
         self.set_sink(Box::new(sink));
 
         Ok(())

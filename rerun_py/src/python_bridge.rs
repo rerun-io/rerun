@@ -580,8 +580,12 @@ fn save(
 }
 
 #[pyfunction]
-#[pyo3(signature = (recording = None))]
-fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
+#[pyo3(signature = (blueprint = None, recording = None))]
+fn stdout(
+    blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
@@ -590,7 +594,7 @@ fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()>
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .stdout()
+            .stdout_opts(blueprint.map(|b| b.inner.take()))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res

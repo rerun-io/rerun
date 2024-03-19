@@ -102,7 +102,7 @@ def script_setup(
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.stdout:
-        rec.stdout()  # type: ignore[attr-defined]
+        rec.stdout(blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.serve:
         rec.serve(blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.connect:
