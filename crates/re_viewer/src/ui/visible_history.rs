@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeType, TimeZone};
+use re_log_types::{TimeType, TimeZone};
 use re_space_view::{
     default_time_range, time_range_boundary_to_visible_history_boundary,
     visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
@@ -12,9 +12,9 @@ use re_space_view::{
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::components::VisibleTimeRange;
-use re_types_core::{ComponentName, Loggable as _};
+use re_types_core::Loggable as _;
 use re_ui::{markdown_ui, ReUi};
-use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
+use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
@@ -29,41 +29,10 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
     .into()
 });
 
-/// Entities containing one of these components support the visible history feature.
-static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.HalfSizes2D",
-            "rerun.components.HalfSizes3D",
-            "rerun.components.LineStrip2D",
-            "rerun.components.LineStrip3D",
-            "rerun.components.Position2D",
-            "rerun.components.Position3D",
-            "rerun.components.Scalar",
-            "rerun.components.TensorData",
-            "rerun.components.Vector3D",
-        ]
-        .map(Into::into)
-        .into()
-    });
-
 // TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the Visualizer
 // system is able to report its ability to handle the visible history feature.
 fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -> bool {
     VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
-}
-
-fn entity_with_visible_history(
-    ctx: &ViewerContext<'_>,
-    time_ctrl: &TimeControl,
-    entity_path: &EntityPath,
-) -> bool {
-    let store = ctx.entity_db.store();
-    let component_names = store.all_components(time_ctrl.timeline(), entity_path);
-    component_names
-        .iter()
-        .flatten()
-        .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
 }
 
 pub fn visual_time_range_ui(
@@ -77,9 +46,6 @@ pub fn visual_time_range_ui(
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
 
     if is_space_view && !space_view_with_visible_history(space_view_class) {
-        return;
-    }
-    if !is_space_view && !entity_with_visible_history(ctx, &time_ctrl, &data_result.entity_path) {
         return;
     }
 
