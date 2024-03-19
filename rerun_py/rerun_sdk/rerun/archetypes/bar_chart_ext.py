@@ -23,7 +23,7 @@ class BarChartExt:
         # once we coerce to a canonical non-arrow type.
         shape_dims = tensor_data.as_arrow_array()[0].value["shape"].values.field(0).to_numpy()
 
-        if len(shape_dims) != 1:
+        if len([d for d in shape_dims if d != 1]) != 1:
             _send_warning_or_raise(
                 f"Bar chart data should only be 1D. Got values with shape: {shape_dims}",
                 2,
