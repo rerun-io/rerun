@@ -1654,6 +1654,7 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     ///
     /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
     pub fn save_opts(
         &self,
         path: impl Into<std::path::PathBuf>,
