@@ -2640,6 +2640,7 @@ checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.2",
+ "serde",
 ]
 
 [[package]]
@@ -5088,6 +5089,7 @@ dependencies = [
  "egui_tiles",
  "glam",
  "half 2.3.1",
+ "indexmap 2.1.0",
  "itertools 0.12.0",
  "macaw",
  "ndarray",

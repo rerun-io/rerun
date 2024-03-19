@@ -1,4 +1,5 @@
 use ahash::HashMap;
+use indexmap::IndexMap;
 use parking_lot::Mutex;
 
 use re_entity_db::EntityPath;
@@ -82,66 +83,62 @@ impl InteractionHighlight {
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Selection(pub Vec<(Item, Option<SelectedSpaceContext>)>);
+pub struct Selection(IndexMap<Item, Option<SelectedSpaceContext>>);
 
 impl From<Item> for Selection {
     #[inline]
     fn from(val: Item) -> Self {
-        Selection(vec![(val, None)])
+        Selection([(val, None)].into())
     }
 }
 
 impl<T> From<T> for Selection
 where
-    T: Iterator<Item = Item>,
+    T: Iterator<Item = (Item, Option<SelectedSpaceContext>)>,
 {
     #[inline]
     fn from(value: T) -> Self {
-        Selection(value.map(|item| (item, None)).collect())
-    }
-}
-
-impl std::ops::Deref for Selection {
-    type Target = Vec<(Item, Option<SelectedSpaceContext>)>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Selection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        Selection(value.collect())
     }
 }
 
 impl Selection {
-    /// For each item in this selection, if it refers to the first element of an instance with a single element, resolve it to a splatted entity path.
-    pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
-        for (item, _) in self.iter_mut() {
-            *item =
-                resolve_mono_instance_path_item(&ctx.current_query(), ctx.entity_db.store(), item);
-        }
+    /// For each item in this selection, if it refers to the first element of an instance with a
+    /// single element, resolve it to a splatted entity path.
+    pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
+        Selection(
+            self.0
+                .into_iter()
+                .map(|(item, space_ctx)| {
+                    (
+                        resolve_mono_instance_path_item(
+                            &ctx.current_query(),
+                            ctx.entity_db.store(),
+                            &item,
+                        ),
+                        space_ctx,
+                    )
+                })
+                .collect(),
+        )
     }
 
     /// The first selected object if any.
     pub fn first_item(&self) -> Option<&Item> {
-        self.0.first().map(|(item, _)| item)
+        self.0.keys().next()
     }
 
     /// Check if the selection contains a single item and returns it if so.
     pub fn single_item(&self) -> Option<&Item> {
-        if self.0.len() == 1 {
-            Some(&self.0[0].0)
+        if self.len() == 1 {
+            self.first_item()
         } else {
             None
         }
     }
 
     pub fn iter_items(&self) -> impl Iterator<Item = &Item> {
-        self.0.iter().map(|(item, _)| item)
+        self.0.keys()
     }
 
     pub fn iter_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
@@ -169,8 +166,36 @@ impl Selection {
     }
 
     /// Retains elements that fulfill a certain condition.
-    pub fn retain(&mut self, f: impl Fn(&Item) -> bool) {
-        self.0.retain(|(item, _)| f(item));
+    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<SelectedSpaceContext>) -> bool) {
+        self.0.retain(f);
+    }
+
+    /// Returns the number of items in the selection.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the selection is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns an iterator over the items and their selected space context.
+    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<SelectedSpaceContext>)> {
+        self.0.iter()
+    }
+
+    /// Returns a mutable iterator over the items and their selected space context.
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<SelectedSpaceContext>)> {
+        self.0.iter_mut()
+    }
+
+    /// Extend the selection with more items.
+    pub fn extend(
+        &mut self,
+        other: impl IntoIterator<Item = (Item, Option<SelectedSpaceContext>)>,
+    ) {
+        self.0.extend(other);
     }
 }
 
@@ -268,14 +293,16 @@ impl ApplicationSelectionState {
     pub fn toggle_selection(&self, toggle_items: Selection) {
         re_tracing::profile_function!();
 
-        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> =
-            toggle_items.iter().cloned().collect();
+        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> = toggle_items
+            .iter()
+            .map(|(item, ctx)| (item.clone(), ctx.clone()))
+            .collect();
 
         let mut new_selection = self.selection_previous_frame.clone();
 
         // If an item was already selected with the exact same context remove it.
         // If an item was already selected and loses its context, remove it.
-        new_selection.0.retain(|(item, ctx)| {
+        new_selection.retain(|item, ctx| {
             if let Some(new_ctx) = toggle_items_set.get(item) {
                 if new_ctx == ctx || new_ctx.is_none() {
                     toggle_items_set.remove(item);
