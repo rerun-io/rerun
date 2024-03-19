@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
 
 use arrow2::datatypes::{DataType, Field};
@@ -67,6 +67,19 @@ impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
         };
 
         keys_size_bytes + values_size_bytes
+    }
+}
+
+impl<K: SizeBytes> SizeBytes for BTreeSet<K> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // NOTE: It's all on the heap at this point.
+
+        if K::is_pod() {
+            (self.len() * std::mem::size_of::<K>()) as _
+        } else {
+            self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+        }
     }
 }
 
