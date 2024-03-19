@@ -330,31 +330,29 @@ def main() -> None:
 
     primary_camera_entity = highres_entity_path if args.include_highres else lowres_posed_entity_path
 
-    rr.script_setup(
-        args,
-        "rerun_example_arkit_scenes",
-        blueprint=rbl.Horizontal(
-            rbl.Spatial3DView(name="3D"),
-            rbl.Vertical(
-                rbl.Tabs(
-                    # Note that we re-project the annotations into the 2D views:
-                    # For this to work, the origin of the 2D views has to be a pinhole camera,
-                    # this way the viewer knows how to project the 3D annotations into the 2D views.
-                    rbl.Spatial2DView(
-                        name="RGB",
-                        origin=primary_camera_entity,
-                        contents=[f"{primary_camera_entity}/rgb", "/world/annotations/**"],
-                    ),
-                    rbl.Spatial2DView(
-                        name="Depth",
-                        origin=primary_camera_entity,
-                        contents=[f"{primary_camera_entity}/depth", "/world/annotations/**"],
-                    ),
+    blueprint = rbl.Horizontal(
+        rbl.Spatial3DView(name="3D"),
+        rbl.Vertical(
+            rbl.Tabs(
+                # Note that we re-project the annotations into the 2D views:
+                # For this to work, the origin of the 2D views has to be a pinhole camera,
+                # this way the viewer knows how to project the 3D annotations into the 2D views.
+                rbl.Spatial2DView(
+                    name="RGB",
+                    origin=primary_camera_entity,
+                    contents=["$origin/rgb", "/world/annotations/**"],
                 ),
-                rbl.TextDocumentView(name="Readme"),
+                rbl.Spatial2DView(
+                    name="Depth",
+                    origin=primary_camera_entity,
+                    contents=["$origin/depth", "/world/annotations/**"],
+                ),
             ),
+            rbl.TextDocumentView(name="Readme"),
         ),
     )
+
+    rr.script_setup(args, "rerun_example_arkit_scenes", blueprint=blueprint)
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 

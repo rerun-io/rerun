@@ -1,0 +1,19 @@
+
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+/// A 64-bit number describing either nanoseconds OR sequence numbers.
+struct TimeInt (
+  "attr.docs.unreleased",
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.tuple_struct",
+  "attr.rust.override_crate": "re_types_core"
+) {
+  value: long (order: 100);
+}

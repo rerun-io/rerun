@@ -13,8 +13,11 @@ mod row_share;
 mod space_view_class;
 mod space_view_origin;
 mod viewer_recommendation_hash;
+mod viewer_recommendation_hash_ext;
 mod visible;
 mod visible_ext;
+mod visible_time_range;
+mod visible_time_range_ext;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background3d_kind::Background3DKind;
@@ -29,3 +32,4 @@ pub use self::space_view_class::SpaceViewClass;
 pub use self::space_view_origin::SpaceViewOrigin;
 pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
 pub use self::visible::Visible;
+pub use self::visible_time_range::VisibleTimeRange;

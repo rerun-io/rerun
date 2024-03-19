@@ -15,10 +15,6 @@ on:
         description: "Release Version Number (Must match Cargo.toml)"
         type: string
         required: true
-      linux-wheel-name:
-        description: "Name of the wheel built for linux"
-        type: string
-        required: true
       release-commit:
         description: "Which commit to build+publish"
         type: string
@@ -44,81 +40,100 @@ jobs:
 
   ## Build
 
-  build-linux:
-    name: "Linux: Build Wheels"
+  build-linux-x64:
+    name: "Linux-x64: Build Wheels"
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      CONCURRENCY: wheels-build-linux-x64-${{ inputs.concurrency }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
       MODE: "pypi"
     secrets: inherit
 
-  build-windows:
-    name: "Windows: Build Wheels"
+  build-linux-arm64:
+    name: "Linux-arm64: Build Wheels"
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
+      CONCURRENCY: wheels-build-linux-arm64-${{ inputs.concurrency }}
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: linux-arm64-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
       MODE: "pypi"
     secrets: inherit
 
-  build-macos-arm:
-    name: "Macos-Arm: Build Wheels"
+  build-windows-x64:
+    name: "Windows-x64: Build Wheels"
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      CONCURRENCY: wheels-build-windows-x64-${{ inputs.concurrency }}
+      PLATFORM: windows-x64
+      WHEEL_ARTIFACT_NAME: windows-x64-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
       MODE: "pypi"
     secrets: inherit
 
-  build-macos-intel:
-    name: "Macos-Intel: Build Wheels"
+  build-macos-arm64:
+    name: "Macos-arm64: Build Wheels"
     needs: [get-commit-sha]
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+      CONCURRENCY: wheels-build-macos-arm64-${{ inputs.concurrency }}
+      PLATFORM: macos-arm64
+      WHEEL_ARTIFACT_NAME: macos-arm64-wheel
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+      MODE: "pypi"
+    secrets: inherit
+
+  build-macos-x64:
+    name: "Macos-x64: Build Wheels"
+    needs: [get-commit-sha]
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: wheels-build-macos-x64-${{ inputs.concurrency }}
+      PLATFORM: macos-x64
+      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
       RELEASE_COMMIT: ${{ inputs.release-commit }}
       MODE: "pypi"
     secrets: inherit
 
   ## Test
 
-  test-windows:
-    name: "Windows: Test Wheels"
-    needs: [build-windows]
+  test-windows-x64:
+    name: "Windows-x64: Test Wheels"
+    needs: [build-windows-x64]
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: wheels-test-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
+      CONCURRENCY: wheels-test-windows-x64-${{ inputs.concurrency }}
+      PLATFORM: windows-x64
+      WHEEL_ARTIFACT_NAME: windows-x64-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   test-linux:
-    name: "Linux: Test Wheels"
-    needs: [build-linux]
+    name: "Linux-x64: Test Wheels"
+    needs: [build-linux-x64]
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: wheels-test-linux-${{ inputs.concurrency }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      CONCURRENCY: wheels-test-linux-x64-${{ inputs.concurrency }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   generate-wheel-index:
     name: "Generate Pip Index"
-    needs: [build-linux, build-windows, build-macos-arm, build-macos-intel]
+    needs:
+      [
+        build-linux-x64,
+        build-linux-arm64,
+        build-windows-x64,
+        build-macos-arm64,
+        build-macos-x64,
+      ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:
       CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}

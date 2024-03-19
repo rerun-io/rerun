@@ -1,0 +1,17 @@
+[package]
+name = "snippets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+ndarray.workspace = true
+rand = { workspace = true, features = ["std", "std_rng"] }
+rerun = { path = "../../crates/rerun" }
+
+[build-dependencies]
+itertools.workspace = true
+re_build_tools.workspace = true
+rust-format.workspace = true

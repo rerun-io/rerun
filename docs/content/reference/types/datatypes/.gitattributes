@@ -23,6 +23,7 @@ scale3d.md linguist-generated=true
 tensor_buffer.md linguist-generated=true
 tensor_data.md linguist-generated=true
 tensor_dimension.md linguist-generated=true
+time_int.md linguist-generated=true
 transform3d.md linguist-generated=true
 translation_and_mat3x3.md linguist-generated=true
 translation_rotation_scale3d.md linguist-generated=true

@@ -24,6 +24,7 @@
 #include "datatypes/tensor_buffer.hpp"
 #include "datatypes/tensor_data.hpp"
 #include "datatypes/tensor_dimension.hpp"
+#include "datatypes/time_int.hpp"
 #include "datatypes/transform3d.hpp"
 #include "datatypes/translation_and_mat3x3.hpp"
 #include "datatypes/translation_rotation_scale3d.hpp"

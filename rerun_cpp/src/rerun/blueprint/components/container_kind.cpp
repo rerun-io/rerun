@@ -11,12 +11,34 @@ namespace rerun {
         Loggable<blueprint::components::ContainerKind>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Tabs", arrow::null(), false),
-            arrow::field("Horizontal", arrow::null(), false),
-            arrow::field("Vertical", arrow::null(), false),
-            arrow::field("Grid", arrow::null(), false),
+            arrow::field("Tabs", arrow::null(), true),
+            arrow::field("Horizontal", arrow::null(), true),
+            arrow::field("Vertical", arrow::null(), true),
+            arrow::field("Grid", arrow::null(), true),
         });
         return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<blueprint::components::ContainerKind>::to_arrow(
+        const blueprint::components::ContainerKind* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(
+                Loggable<blueprint::components::ContainerKind>::fill_arrow_array_builder(
+                    static_cast<arrow::SparseUnionBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
     }
 
     rerun::Error Loggable<blueprint::components::ContainerKind>::fill_arrow_array_builder(
@@ -40,27 +62,5 @@ namespace rerun {
         }
 
         return Error::ok();
-    }
-
-    Result<std::shared_ptr<arrow::Array>> Loggable<blueprint::components::ContainerKind>::to_arrow(
-        const blueprint::components::ContainerKind* instances, size_t num_instances
-    ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_datatype();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(
-                Loggable<blueprint::components::ContainerKind>::fill_arrow_array_builder(
-                    static_cast<arrow::SparseUnionBuilder*>(builder.get()),
-                    instances,
-                    num_instances
-                )
-            );
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
     }
 } // namespace rerun

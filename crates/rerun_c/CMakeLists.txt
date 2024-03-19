@@ -2,11 +2,11 @@
 
 # Determine Rust's librerun path.
 if(APPLE)
-    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/release/librerun_c.a)
+    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/$ENV{CARGO_BUILD_TARGET}/release/librerun_c.a)
 elseif(WIN32)
-    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/release/rerun_c.lib)
+    set(RERUN_C_BUILD_ARTIFACT ${CMAKE_CURRENT_SOURCE_DIR}/../../target/$ENV{CARGO_BUILD_TARGET}/release/rerun_c.lib)
 else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()

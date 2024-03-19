@@ -10,7 +10,7 @@ use unindent::unindent;
 use crate::{
     codegen::{
         autogen_warning,
-        common::{collect_examples_for_api_docs, Example},
+        common::{collect_snippets_for_api_docs, Example},
         StringExt as _,
     },
     format_path,
@@ -587,7 +587,7 @@ fn code_for_struct(
     if obj.is_delegating_component() {
         let delegate = obj.delegate_datatype(objects).unwrap();
         let scope = match delegate.scope() {
-            Some(scope) => format!("{scope}."),
+            Some(scope) => format!("{scope}_"),
             None => String::new(),
         };
         superclasses.push(format!(
@@ -1156,7 +1156,7 @@ fn quote_obj_docs(obj: &Object) -> String {
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
 
-    let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
+    let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
         lines.push(String::new());
         let (section_title, divider) = if examples.len() == 1 {
@@ -1212,7 +1212,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
             }
         }
 
-        let examples = collect_examples_for_api_docs(&field.docs, "py", true).unwrap();
+        let examples = collect_snippets_for_api_docs(&field.docs, "py", true).unwrap();
         if !examples.is_empty() {
             content.push(String::new()); // blank line between docs and examples
             quote_examples(examples, &mut lines);

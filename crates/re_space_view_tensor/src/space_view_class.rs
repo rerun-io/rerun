@@ -15,9 +15,10 @@ use re_types::{
 };
 use re_viewer_context::{
     gpu_bridge::{self, colormap_dropdown_button_ui},
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
@@ -169,6 +170,27 @@ impl SpaceViewClass for TensorSpaceView {
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
         Box::<ViewTensorState>::default()
+    }
+
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> re_viewer_context::SmallVisualizerSet {
+        // Default implementation would not suggest the Tensor visualizer for images,
+        // since they're not indicated with a Tensor indicator.
+        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
+
+        // Keeping this implementation simple: We know there's only a single visualizer here.
+        if visualizable_entities_per_visualizer
+            .get(&TensorSystem::identifier())
+            .map_or(false, |entities| entities.contains(entity_path))
+        {
+            std::iter::once(TensorSystem::identifier()).collect()
+        } else {
+            Default::default()
+        }
     }
 
     fn selection_ui(

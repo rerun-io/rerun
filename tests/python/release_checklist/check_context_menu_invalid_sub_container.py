@@ -5,22 +5,14 @@ from argparse import Namespace
 from uuid import uuid4
 
 import rerun as rr
+import rerun.blueprint as rrb
 
 README = """
 # Context Menu - Invalid sub-container kind
 
-## Preparation
 
-TODO(ab): automate this with blueprints
-
-- Reset the blueprint
-- Add a Horizontal container and a Vertical container in the viewport, and move one space view into each.
-
-
-## Checks
-
-* Single-select a horizontal container, check that it disallow adding a horizontal container inside it.
-* Same for a vertical container.
+* Single-select the horizontal container, check that it disallow adding a horizontal container inside it.
+* Same for the vertical container.
 * Single select a space view inside a horizontal container, check that it disallow moving to a new horizontal container.
 * Same for a space view inside a vertical container.
 """
@@ -28,6 +20,24 @@ TODO(ab): automate this with blueprints
 
 def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+
+
+def blueprint() -> rrb.BlueprintLike:
+    return rrb.Viewport(
+        rrb.Horizontal(
+            rrb.TextDocumentView(origin="readme"),
+            rrb.Grid(
+                rrb.Vertical(
+                    rrb.Spatial3DView(origin="/"),
+                ),
+                rrb.Horizontal(
+                    rrb.Spatial2DView(origin="/"),
+                ),
+                grid_columns=1,
+            ),
+            column_shares=[2, 1],
+        )
+    )
 
 
 def log_some_space_views() -> None:
@@ -38,9 +48,7 @@ def log_some_space_views() -> None:
 
 
 def run(args: Namespace) -> None:
-    # TODO(cmc): I have no idea why this works without specifying a `recording_id`, but
-    # I'm not gonna rely on it anyway.
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), blueprint=blueprint())
 
     log_readme()
     log_some_space_views()

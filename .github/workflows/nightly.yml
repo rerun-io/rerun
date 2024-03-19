@@ -53,8 +53,8 @@ jobs:
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: nightly-linux
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pr"
     secrets: inherit
 
@@ -65,7 +65,7 @@ jobs:
     with:
       CONCURRENCY: nightly
       CHANNEL: nightly
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
 
   upload-examples:

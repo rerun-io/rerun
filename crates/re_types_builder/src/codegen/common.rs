@@ -45,7 +45,7 @@ pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
 pub struct ExampleInfo<'a> {
     /// The snake_case name of the example.
     ///
-    /// Used with `code-example:`, `std::fs::read_to_string`, etc.
+    /// Used with `snippet:`, `std::fs::read_to_string`, etc.
     pub name: &'a str,
 
     /// The human-readable name of the example.
@@ -242,7 +242,7 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples_for_api_docs<'a>(
+pub fn collect_snippets_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
@@ -250,7 +250,7 @@ pub fn collect_examples_for_api_docs<'a>(
     let mut out = Vec::new();
 
     if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/code-examples/all");
+        let base_path = crate::rerun_workspace_path().join("docs/snippets/all");
 
         for base @ ExampleInfo {
             name,
@@ -267,7 +267,7 @@ pub fn collect_examples_for_api_docs<'a>(
                 Ok(content) => content,
                 Err(_) if !required => continue,
                 Err(err) => {
-                    return Err(err).with_context(|| format!("couldn't open code example {path:?}"))
+                    return Err(err).with_context(|| format!("couldn't open snippet {path:?}"))
                 }
             };
             let mut content = content

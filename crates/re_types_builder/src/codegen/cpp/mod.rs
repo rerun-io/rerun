@@ -12,7 +12,7 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
+    codegen::{autogen_warning, common::collect_snippets_for_api_docs},
     format_path,
     objects::ObjectClass,
     ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
@@ -241,7 +241,11 @@ fn generate_object_files(
 
     let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions)?;
 
-    for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
+    for (extension, tokens) in [("hpp", Some(hpp)), ("cpp", cpp)] {
+        let Some(tokens) = tokens else {
+            continue;
+        };
+
         let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
         if let Some(hpp_extension_string) = &hpp_extension_string {
             contents = contents.replace(
@@ -348,7 +352,7 @@ fn generate_hpp_cpp(
     obj: &Object,
     hpp_includes: Includes,
     hpp_type_extensions: &TokenStream,
-) -> Result<(TokenStream, TokenStream)> {
+) -> Result<(TokenStream, Option<TokenStream>)> {
     let QuotedObject { hpp, cpp } =
         QuotedObject::new(objects, obj, hpp_includes, hpp_type_extensions)?;
     let snake_case_name = obj.snake_case_name();
@@ -360,10 +364,12 @@ fn generate_hpp_cpp(
         #pragma_once
         #hpp
     };
-    let cpp = quote! {
-        #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
-        #cpp
-    };
+    let cpp = cpp.map(|cpp| {
+        quote! {
+            #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
+            #cpp
+        }
+    });
 
     Ok((hpp, cpp))
 }
@@ -377,7 +383,7 @@ fn pragma_once() -> TokenStream {
 
 struct QuotedObject {
     hpp: TokenStream,
-    cpp: TokenStream,
+    cpp: Option<TokenStream>,
 }
 
 impl QuotedObject {
@@ -637,7 +643,10 @@ impl QuotedObject {
             #deprecation_ignore_end
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     fn from_struct(
@@ -714,9 +723,6 @@ impl QuotedObject {
         }
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
-        let methods_cpp = methods
-            .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
         let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
             obj,
@@ -748,14 +754,23 @@ impl QuotedObject {
 
             #hpp_loggable
         };
-        let cpp = quote! {
-            #cpp_includes
 
-            namespace rerun::#quoted_namespace {
-                #(#methods_cpp)*
-            }
+        let cpp = if cpp_loggable.is_some() || methods.iter().any(|m| !m.inline) {
+            let methods_cpp = methods
+                .iter()
+                .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
-            #cpp_loggable
+            Some(quote! {
+                #cpp_includes
+
+                namespace rerun::#quoted_namespace {
+                    #(#methods_cpp)*
+                }
+
+                #cpp_loggable
+            })
+        } else {
+            None
         };
 
         Self { hpp, cpp }
@@ -1157,7 +1172,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 
     // C-style enum
@@ -1229,7 +1247,10 @@ impl QuotedObject {
             #cpp_loggable
         };
 
-        Self { hpp, cpp }
+        Self {
+            hpp,
+            cpp: Some(cpp),
+        }
     }
 }
 
@@ -1323,6 +1344,16 @@ fn add_copy_assignment_and_constructor(
     methods
 }
 
+/// If the type forwards to another rerun defined type, returns the fully qualified name of that type.
+fn transparent_forwarded_fqname(obj: &Object) -> Option<&str> {
+    if obj.is_arrow_transparent() && obj.fields.len() == 1 && !obj.fields[0].is_nullable {
+        if let Type::Object(fqname) = &obj.fields[0].typ {
+            return Some(fqname);
+        }
+    }
+    None
+}
+
 fn arrow_data_type_method(
     obj: &Object,
     objects: &Objects,
@@ -1331,15 +1362,35 @@ fn arrow_data_type_method(
     hpp_declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    cpp_includes.insert_system("arrow/type_fwd.h");
-    hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
-    let quoted_datatype = quote_arrow_data_type(
-        &Type::Object(obj.fqname.clone()),
-        objects,
-        cpp_includes,
-        true,
-    );
+    let (inline, definition_body) =
+        if let Some(forwarded_fqname) = transparent_forwarded_fqname(obj) {
+            let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+            (
+                true,
+                quote! {
+                    return Loggable<#forwarded_type>::arrow_datatype();
+                },
+            )
+        } else {
+            cpp_includes.insert_system("arrow/type_fwd.h");
+            hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
+
+            let quoted_datatype = quote_arrow_data_type(
+                &Type::Object(obj.fqname.clone()),
+                objects,
+                cpp_includes,
+                true,
+            );
+
+            (
+                false,
+                quote! {
+                    static const auto datatype = #quoted_datatype;
+                    return datatype;
+                },
+            )
+        };
 
     Method {
         docs: "Returns the arrow data type this type corresponds to.".into(),
@@ -1348,11 +1399,8 @@ fn arrow_data_type_method(
             return_type: quote! { const std::shared_ptr<arrow::DataType>& },
             name_and_parameters: quote! { arrow_datatype() },
         },
-        definition_body: quote! {
-            static const auto datatype = #quoted_datatype;
-            return datatype;
-        },
-        inline: false,
+        definition_body,
+        inline,
     }
 }
 
@@ -1405,22 +1453,61 @@ fn to_arrow_method(
     declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    hpp_includes.insert_rerun("result.hpp");
-    declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
-
-    let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
-
-    // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
-    let arrow_builder_type =
-        arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
 
     let type_ident = obj.ident();
     let namespace_ident = obj.namespace_ident();
+
     let quoted_namespace = if let Some(scope) = obj.scope() {
         let scope = format_ident!("{}", scope);
         quote! { #scope::#namespace_ident}
     } else {
         quote! {#namespace_ident}
+    };
+
+    let (inline, definition_body) = if let Some(forwarded_fqname) =
+        transparent_forwarded_fqname(obj)
+    {
+        let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+        let field_name = format_ident!("{}", obj.fields[0].snake_case_name());
+
+        (
+            true,
+            quote! {
+                return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
+            },
+        )
+    } else {
+        hpp_includes.insert_rerun("result.hpp");
+        declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
+
+        let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
+
+        // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
+        let arrow_builder_type =
+            arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
+
+        (
+            false,
+            quote! {
+                #NEWLINE_TOKEN
+                #todo_pool
+                arrow::MemoryPool* pool = arrow::default_memory_pool();
+                auto datatype = arrow_datatype();
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+                if (instances && num_instances > 0) {
+                    RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
+                        static_cast<arrow::#arrow_builder_type*>(builder.get()),
+                        instances,
+                        num_instances
+                    ));
+                }
+                std::shared_ptr<arrow::Array> array;
+                ARROW_RETURN_NOT_OK(builder->Finish(&array));
+                return array;
+            },
+        )
     };
 
     Method {
@@ -1435,26 +1522,8 @@ fn to_arrow_method(
                 to_arrow(const #quoted_namespace::#type_ident* instances, size_t num_instances)
             },
         },
-        definition_body: quote! {
-            #NEWLINE_TOKEN
-            #todo_pool
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
-            auto datatype = arrow_datatype();
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-            if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
-                    static_cast<arrow::#arrow_builder_type*>(builder.get()),
-                    instances,
-                    num_instances
-                ));
-            }
-            std::shared_ptr<arrow::Array> array;
-            ARROW_RETURN_NOT_OK(builder->Finish(&array));
-            return array;
-        },
-        inline: false,
+        definition_body,
+        inline,
     }
 }
 
@@ -2199,7 +2268,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
     let required = true;
-    let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
+    let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
         let section_title = if examples.len() == 1 {
@@ -2345,7 +2414,7 @@ fn quote_arrow_field_type(
 ) -> TokenStream {
     let name = &field.name;
     let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
-    let is_nullable = field.is_nullable;
+    let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2359,9 +2428,9 @@ fn quote_arrow_elem_type(
 ) -> TokenStream {
     let typ: Type = elem_type.clone().into();
     let datatype = quote_arrow_data_type(&typ, objects, includes, false);
-
+    let is_nullable = typ == Type::Unit; // null type must be nullable
     quote! {
-        arrow::field("item", #datatype, false)
+        arrow::field("item", #datatype, #is_nullable)
     }
 }
 
@@ -2371,7 +2440,7 @@ fn quote_loggable_hpp_and_cpp(
     hpp_includes: &mut Includes,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
-) -> (TokenStream, TokenStream) {
+) -> (TokenStream, Option<TokenStream>) {
     assert!(obj.kind != ObjectKind::Archetype);
 
     let namespace_ident = obj.namespace_ident();
@@ -2385,14 +2454,38 @@ fn quote_loggable_hpp_and_cpp(
     };
 
     let fqname = &obj.fqname;
+    let loggable_type_name = quote! { Loggable<#quoted_namespace::#type_ident> };
 
-    let methods = vec![
+    let mut methods = vec![
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
-        fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
         to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
     ];
 
-    let loggable_type_name = quote! { Loggable<#quoted_namespace::#type_ident> };
+    let predeclarations_and_static_assertions = if let Some(forwarded_fqname) =
+        transparent_forwarded_fqname(obj)
+    {
+        // We only actually need `to_arrow`, everything else is just nice to have.
+
+        let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
+
+        // Don't to pre-declare `Loggable` if we're forwarding to another type - it's already known in this case.
+        quote! { static_assert(sizeof(#forwarded_type) == sizeof(#quoted_namespace::#type_ident)); }
+    } else {
+        // `fill_arrow_array_builder_method` is used as a utility to implement `to_arrow`.
+        // We only need it if we're not forwarding to another type.
+        methods.push(fill_arrow_array_builder_method(
+            obj,
+            cpp_includes,
+            hpp_declarations,
+            objects,
+        ));
+
+        quote! {
+            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
+            template<typename T>
+            struct Loggable;
+        }
+    };
 
     let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
@@ -2400,9 +2493,7 @@ fn quote_loggable_hpp_and_cpp(
 
     let hpp = quote! {
         namespace rerun {
-            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
-            template<typename T>
-            struct Loggable;
+            #predeclarations_and_static_assertions
 
             #hide_from_docs_comment
             template<>
@@ -2415,10 +2506,14 @@ fn quote_loggable_hpp_and_cpp(
         }
     };
 
-    let cpp = quote! {
-        namespace rerun {
-            #(#methods_cpp)*
-        }
+    let cpp = if methods.iter().any(|m| !m.inline) {
+        Some(quote! {
+            namespace rerun {
+                #(#methods_cpp)*
+            }
+        })
+    } else {
+        None
     };
 
     (hpp, cpp)

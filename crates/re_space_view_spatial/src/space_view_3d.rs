@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityDb, EntityProperties};
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::EntityPath;
 use re_space_view::query_space_view_sub_archetype;
 use re_types::{
     blueprint::{archetypes::Background3D, components::Background3DKind},
@@ -98,14 +98,16 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Also, if a ViewCoordinate3D is logged somewhere between the common ancestor and the
         // subspace origin, we use it as origin.
         SpatialTopology::access(entity_db.store_id(), |topo| {
-            let subspace = topo.subspace_for_entity(&common_ancestor);
+            let common_ancestor_subspace = topo.subspace_for_entity(&common_ancestor);
 
-            let subspace_origin = if subspace.supports_3d_content() {
-                Some(subspace)
+            // Consider the case where the common ancestor might be in a 2D space that is connected
+            // to a parent space. In this case, the parent space is the correct space.
+            let subspace = if common_ancestor_subspace.supports_3d_content() {
+                Some(common_ancestor_subspace)
             } else {
-                topo.subspace_for_subspace_origin(subspace.parent_space)
-            }
-            .map(|subspace| subspace.origin.clone());
+                topo.subspace_for_subspace_origin(common_ancestor_subspace.parent_space)
+            };
+            let subspace_origin = subspace.map(|subspace| subspace.origin.clone());
 
             // Find the first ViewCoordinates3d logged, walking up from the common ancestor to the
             // subspace origin.
@@ -114,10 +116,12 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 .into_iter()
                 .rev()
                 .find(|path| {
-                    subspace
-                        .heuristic_hints
-                        .get(path)
-                        .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    subspace.is_some_and(|subspace| {
+                        subspace
+                            .heuristic_hints
+                            .get(path)
+                            .is_some_and(|hint| hint.contains(HeuristicHints::ViewCoordinates3d))
+                    })
                 })
                 .or(subspace_origin)
         })
@@ -212,39 +216,58 @@ impl SpaceViewClass for SpatialSpaceView3D {
             recommended_space_views: topo
                 .iter_subspaces()
                 .filter_map(|subspace| {
-                    if !subspace.supports_3d_content() || subspace.entities.is_empty() {
-                        None
-                    } else {
-                        // Creates space views at each view coordinates if there's any.
-                        // (yes, we do so even if they're empty at the moment!)
-                        //
-                        // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
-                        // (e.g. this also has a camera or a `disconnect` logged there)
-                        let mut roots = subspace
-                            .heuristic_hints
-                            .iter()
-                            .filter(|(path, hint)| {
-                                hint.contains(HeuristicHints::ViewCoordinates3d)
-                                    && !subspace.child_spaces.contains(path)
-                            })
-                            .map(|(path, _)| path.clone())
-                            .collect::<Vec<_>>();
-
-                        // If there's no view coordinates or there are still some entities not covered,
-                        // create a view at the subspace origin.
-                        if !roots.iter().contains(&subspace.origin)
-                            && indicated_entities
-                                .intersection(&subspace.entities)
-                                .any(|e| roots.iter().all(|root| !e.starts_with(root)))
-                        {
-                            roots.push(subspace.origin.clone());
-                        }
-
-                        Some(roots.into_iter().map(|root| RecommendedSpaceView {
-                            query_filter: EntityPathFilter::subtree_entity_filter(&root),
-                            root,
-                        }))
+                    if !subspace.supports_3d_content() {
+                        return None;
                     }
+
+                    let mut pinhole_child_spaces = subspace
+                        .child_spaces
+                        .iter()
+                        .filter(|child| {
+                            topo.subspace_for_subspace_origin(child.hash()).map_or(
+                                false,
+                                |child_space| {
+                                    child_space.connection_to_parent.is_connected_pinhole()
+                                },
+                            )
+                        })
+                        .peekable(); // Don't collect the iterator, we're only interested in 'any'-style operations.
+
+                    // Empty space views are still of interest if any of the child spaces is connected via a pinhole.
+                    if subspace.entities.is_empty() && pinhole_child_spaces.peek().is_none() {
+                        return None;
+                    }
+
+                    // Creates space views at each view coordinates if there's any.
+                    // (yes, we do so even if they're empty at the moment!)
+                    //
+                    // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
+                    // (e.g. this also has a camera or a `disconnect` logged there)
+                    let mut origins = subspace
+                        .heuristic_hints
+                        .iter()
+                        .filter(|(path, hint)| {
+                            hint.contains(HeuristicHints::ViewCoordinates3d)
+                                && !subspace.child_spaces.contains(path)
+                        })
+                        .map(|(path, _)| path.clone())
+                        .collect::<Vec<_>>();
+
+                    let path_not_covered_yet =
+                        |e: &EntityPath| origins.iter().all(|origin| !e.starts_with(origin));
+
+                    // If there's no view coordinates or there are still some entities not covered,
+                    // create a view at the subspace origin.
+                    if !origins.iter().contains(&subspace.origin)
+                        && (indicated_entities
+                            .intersection(&subspace.entities)
+                            .any(path_not_covered_yet)
+                            || pinhole_child_spaces.any(path_not_covered_yet))
+                    {
+                        origins.push(subspace.origin.clone());
+                    }
+
+                    Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
                 })
                 .flatten()
                 .collect(),

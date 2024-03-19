@@ -2,12 +2,13 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.11.0"
+LABEL version="0.12.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
-# This mirrors scripts/setup.sh
 ENV DEBIAN_FRONTEND=noninteractive
+ARG TARGETARCH
+
 RUN set -eux; \
     apt-get update; \
     apt-get install -y ca-certificates lsb-release wget; \
@@ -58,8 +59,10 @@ RUN git clone --depth 1 --branch v23.5.9 https://github.com/google/flatbuffers.g
     make install && \
     cd .. && rm -rf flatbuffers
 
+
 # We need a more modern patchelf than ships on ubuntu-20.04
-RUN curl --fail -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-x86_64.tar.gz | tar -xz ./bin/patchelf
+RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_64"; fi) && \
+    curl --fail -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-0.17.2-${arch}.tar.gz | tar -xz ./bin/patchelf
 
 # TODO(andreas): Update cargo-deny below when updating rust version to 1.70.0 or above!
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -70,9 +73,10 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 
 # Install Rust
 # Borrowed from: https://github.com/rust-lang/docker-rust/blob/a8a2a9d/1.71.0/bookworm/Dockerfile
-RUN set -eux; \
-    rustArch='x86_64-unknown-linux-gnu'; \
-    rustupSha256='0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db'; \
+RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_64"; fi) && \
+    set -eux; \
+    rustArch="${arch}-unknown-linux-gnu"; \
+    rustupSha256=$(if [ "$TARGETARCH" = "arm64" ]; then echo "673e336c81c65e6b16dcdede33f4cc9ed0f08bde1dbe7a935f113605292dc800"; else echo "0b2f6c8f85a3d02fde2efc0ced4657869d73fccfce59defb4e8d29233116e6db"; fi); \
     url="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rustArch}/rustup-init"; \
     wget "$url"; \
     echo "${rustupSha256} *rustup-init" | sha256sum -c -; \
@@ -103,11 +107,8 @@ RUN pip install -r requirements-build.txt
 ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
-# Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
-RUN curl --fail -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
-
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.10.0
+ENV CACHE_KEY=rerun_docker_v0.12.0
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

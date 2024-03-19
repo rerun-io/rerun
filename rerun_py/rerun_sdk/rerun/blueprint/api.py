@@ -142,7 +142,7 @@ class Container:
             This is only applicable to `Horizontal` or `Grid` containers.
         row_shares
             The layout shares of the rows in the container. The share is used to determine what fraction of the total height each
-            row should take up. The ros with index `i` will take up the fraction `shares[i] / total_shares`.
+            row should take up. The row with index `i` will take up the fraction `shares[i] / total_shares`.
             This is only applicable to `Vertical` or `Grid` containers.
         grid_columns
             The number of columns in the grid. This is only applicable to `Grid` containers.
@@ -456,8 +456,7 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
         )
     )
 
-    # TODO(jleibs): This should use a monotonic seq
-    blueprint_stream.set_time_seconds("blueprint", 1)  # type: ignore[attr-defined]
+    blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
 
     blueprint._log_to_stream(blueprint_stream)
 

@@ -26,9 +26,9 @@ use re_viewport::{
 };
 
 use crate::ui::override_ui::override_ui;
-use crate::ui::{override_ui::override_visualizer_ui, visible_history::visible_history_ui};
+use crate::ui::override_ui::override_visualizer_ui;
 
-use super::selection_history_ui::SelectionHistoryUi;
+use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_time_range_ui};
 
 // ---
 
@@ -316,6 +316,7 @@ fn what_is_selected_ui(
 
             item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
         }
+
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
                 item_title_ui(
@@ -329,6 +330,7 @@ fn what_is_selected_ui(
                 );
             }
         }
+
         Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
@@ -354,6 +356,7 @@ fn what_is_selected_ui(
 
             list_existing_data_blueprints(ui, ctx, &entity_path.clone().into(), viewport);
         }
+
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
                 let space_view_class = space_view.class(ctx.space_view_class_registry);
@@ -381,20 +384,10 @@ fn what_is_selected_ui(
                     .on_hover_text(hover_text);
             }
         }
+
         Item::InstancePath(instance_path) => {
-            let is_instance = !instance_path.instance_key.is_splat();
-
             let typ = item.kind();
-
-            let (query, store) =
-                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-
             let name = instance_path.syntax_highlighted(ui.style());
-            let parent = if is_instance {
-                Some(instance_path.entity_path.clone())
-            } else {
-                instance_path.entity_path.parent()
-            };
 
             item_title_ui(
                 ctx.re_ui,
@@ -404,10 +397,18 @@ fn what_is_selected_ui(
                 &format!("{typ} '{instance_path}'"),
             );
 
+            let is_instance = !instance_path.instance_key.is_splat();
+            let parent = if is_instance {
+                Some(instance_path.entity_path.clone())
+            } else {
+                instance_path.entity_path.parent()
+            };
             if let Some(parent) = parent {
                 if !parent.is_root() {
+                    let (query, store) =
+                        guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
                     ui.horizontal(|ui| {
-                        ui.label("path");
+                        ui.label("Parent");
                         item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
                     });
                 }
@@ -417,21 +418,10 @@ fn what_is_selected_ui(
         }
 
         Item::DataResult(space_view_id, instance_path) => {
-            let is_instance = !instance_path.instance_key.is_splat();
-
-            let typ = item.kind();
-
-            let (query, store) =
-                guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-
             let name = instance_path.syntax_highlighted(ui.style());
-            let parent = if is_instance {
-                Some(instance_path.entity_path.clone())
-            } else {
-                instance_path.entity_path.parent()
-            };
 
             if let Some(space_view) = viewport.space_view(space_view_id) {
+                let typ = item.kind();
                 item_title_ui(
                     ctx.re_ui,
                     ui,
@@ -443,10 +433,21 @@ fn what_is_selected_ui(
                     ),
                 );
 
+                let is_instance = !instance_path.instance_key.is_splat();
+                let parent = if is_instance {
+                    Some(instance_path.entity_path.clone())
+                } else {
+                    instance_path.entity_path.parent()
+                };
                 if let Some(parent) = parent {
                     if !parent.is_root() {
                         ui.horizontal(|ui| {
-                            ui.label("path");
+                            let (query, store) = guess_query_and_store_for_selected_entity(
+                                ctx,
+                                &instance_path.entity_path,
+                            );
+
+                            ui.label("Parent");
                             item_ui::entity_path_parts_buttons(
                                 ctx,
                                 &query,
@@ -837,34 +838,33 @@ fn blueprint_ui_for_space_view(
     ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
     if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-        let space_view_class = *space_view.class_identifier();
+        let class_identifier = *space_view.class_identifier();
 
         let space_view_state = viewport.state.space_view_state_mut(
             ctx.space_view_class_registry,
             space_view.id,
-            space_view.class_identifier(),
+            &class_identifier,
         );
 
         // Space View don't inherit properties.
-        let root_data_result = space_view.root_data_result(ctx.store_context, ctx.blueprint_query);
+        let space_view_data_result =
+            space_view.space_view_data_result(ctx.store_context, ctx.blueprint_query);
 
-        let mut props = root_data_result
+        visual_time_range_ui(
+            ctx,
+            ui,
+            None, // There is no tree above the space view yet
+            &space_view_data_result,
+            class_identifier,
+            true,
+        );
+
+        let mut props = space_view_data_result
             .individual_properties()
             .cloned()
             .unwrap_or_default();
 
-        visible_history_ui(
-            ctx,
-            ui,
-            &space_view_class,
-            true,
-            None,
-            &mut props.visible_history,
-            &root_data_result.accumulated_properties().visible_history,
-        );
-
         let space_view_class = space_view.class(ctx.space_view_class_registry);
-
         if let Err(err) = space_view_class.selection_ui(
             ctx,
             ui,
@@ -880,7 +880,7 @@ fn blueprint_ui_for_space_view(
             );
         }
 
-        root_data_result.save_individual_override(Some(props), ctx);
+        space_view_data_result.save_individual_override_properties(ctx, Some(props));
     }
 }
 
@@ -915,9 +915,8 @@ fn blueprint_ui_for_data_result(
                     &space_view_class,
                     entity_path,
                     &mut props,
-                    data_result.accumulated_properties(),
                 );
-                data_result.save_individual_override(Some(props), ctx);
+                data_result.save_individual_override_properties(ctx, Some(props));
             }
         }
     }
@@ -1058,7 +1057,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 
     // Apply the edit.
-    let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
+    let new_filter = EntityPathFilter::parse_forgiving(&filter_string, &Default::default());
     if &new_filter == filter {
         None // no change
     } else {
@@ -1073,7 +1072,6 @@ fn entity_props_ui(
     space_view_class: &SpaceViewClassIdentifier,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
-    resolved_entity_props: &EntityProperties,
 ) {
     use re_types::blueprint::components::Visible;
     use re_types::Loggable as _;
@@ -1112,14 +1110,13 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    visible_history_ui(
+    visual_time_range_ui(
         ctx,
         ui,
-        space_view_class,
+        Some(&query_result.tree),
+        data_result,
+        *space_view_class,
         false,
-        Some(entity_path),
-        &mut entity_props.visible_history,
-        &resolved_entity_props.visible_history,
     );
 
     egui::Grid::new("entity_properties")
