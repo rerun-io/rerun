@@ -17,7 +17,7 @@ use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 /// * `--opened-recording-id <opened_store_id>` (if set)
 /// * `--entity-path-prefix <entity_path_prefix>` (if set)
 /// * `--static` (if `timepoint` is set to the timeless timepoint)
-/// * `--timeless` [deprecated] (if `timepoint` is set to the timeless timepoint)
+/// * `--timeless` \[deprecated\] (if `timepoint` is set to the timeless timepoint)
 /// * `--time <timeline1>=<time1> <timeline2>=<time2> ...` (if `timepoint` contains temporal data)
 /// * `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (if `timepoint` contains sequence data)
 #[derive(Debug, Clone)]
