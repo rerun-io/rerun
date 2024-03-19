@@ -57,7 +57,12 @@ impl Snippets {
                 continue;
             }
 
-            if config.opt_out.run.contains_key(&name) {
+            let is_opted_out = config
+                .opt_out
+                .run
+                .get(&name)
+                .is_some_and(|languages| languages.iter().any(|v| v == "py"));
+            if is_opted_out {
                 println!(
                     "Skipping {}: explicit opt-out in `snippets.toml`",
                     path.display()
