@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use camino::Utf8PathBuf;
 
+use crate::codegen::common::ViewerId;
 use crate::{
     codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
     ObjectKind, Objects, Reporter, Type,
@@ -456,8 +457,9 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o);
         putln!(o, "snippet: {name}");
         if let Some(image_url) = image {
+            let inline_viewer = ViewerId::Snippet(name);
             putln!(o);
-            for line in image_url.image_stack() {
+            for line in image_url.image_stack(Some(inline_viewer)) {
                 putln!(o, "{line}");
             }
         }

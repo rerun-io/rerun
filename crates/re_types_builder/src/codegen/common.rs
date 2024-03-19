@@ -143,12 +143,31 @@ impl ImageUrl<'_> {
         RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
     }
 
-    pub fn image_stack(&self) -> Vec<String> {
+    /// Try to generate a `<picture>` stack, falling back to a single `<img>` element.
+    ///
+    /// To tag this image stack as an inline viewer, set `inline_viewer_id`
+    /// If we successfully generate a `<picture>` stack, it will also receive a
+    /// `data-inline-viewer` attribute with the value of `inline_viewer_id`.
+    pub fn image_stack(&self, viewer_id: Option<ViewerId<'_>>) -> Vec<String> {
         match self {
-            ImageUrl::Rerun(rerun) => rerun.image_stack(),
+            ImageUrl::Rerun(rerun) => rerun.image_stack(viewer_id),
             ImageUrl::Other(url) => {
                 vec![format!(r#"<img src="{url}">"#)]
             }
+        }
+    }
+}
+
+pub enum ViewerId<'a> {
+    Example(&'a str),
+    Snippet(&'a str),
+}
+
+impl<'a> std::fmt::Display for ViewerId<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ViewerId::Example(id) => write!(f, "examples/{id}"),
+            ViewerId::Snippet(id) => write!(f, "snippets/{id}"),
         }
     }
 }
@@ -186,7 +205,7 @@ impl RerunImageUrl<'_> {
         })
     }
 
-    pub fn image_stack(&self) -> Vec<String> {
+    pub fn image_stack(&self, viewer_id: Option<ViewerId<'_>>) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
         // Don't let the images take up too much space on the page.
@@ -199,7 +218,13 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<center>".into(), "<picture>".into()];
+        let mut stack = vec!["<center>".into()];
+
+        match viewer_id {
+            Some(id) => stack.push(format!(r#"<picture data-inline-viewer="{id}">"#)),
+            None => stack.push("<picture>".into()),
+        }
+
         if let Some(max_width) = max_width {
             for width in WIDTHS {
                 if width > max_width {
