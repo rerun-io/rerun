@@ -1,9 +1,11 @@
 //! Provide query-centric access to the [`re_data_store`].
 
 mod clamped_zip;
+mod promise;
 mod visible_history;
 
 pub use self::clamped_zip::*;
+pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
 pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 
 // ---
