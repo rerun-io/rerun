@@ -757,7 +757,8 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
             lines.push("```".into());
 
             if let Some(image) = &image {
-                lines.extend(image.image_stack(None).into_iter());
+                // Don't let the images take up too much space on the page.
+                lines.extend(image.image_stack().center().width(640).finish());
             }
             if examples.peek().is_some() {
                 // blank line between examples

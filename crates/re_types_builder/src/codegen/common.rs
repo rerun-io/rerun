@@ -138,19 +138,48 @@ pub enum ImageUrl<'a> {
     Other(&'a str),
 }
 
-impl ImageUrl<'_> {
+impl<'a> ImageUrl<'a> {
     pub fn parse(s: &str) -> ImageUrl<'_> {
         RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
     }
 
     /// Try to generate a `<picture>` stack, falling back to a single `<img>` element.
-    ///
-    /// To tag this image stack as an inline viewer, set `inline_viewer_id`
-    /// If we successfully generate a `<picture>` stack, it will also receive a
-    /// `data-inline-viewer` attribute with the value of `inline_viewer_id`.
-    pub fn image_stack(&self, viewer_id: Option<SnippetId<'_>>) -> Vec<String> {
-        match self {
-            ImageUrl::Rerun(rerun) => rerun.image_stack(viewer_id),
+    pub fn image_stack(&self) -> ImageStack<'_> {
+        ImageStack {
+            url: self,
+            width: None,
+            snippet_id: None,
+            center: false,
+        }
+    }
+}
+
+pub struct ImageStack<'a> {
+    url: &'a ImageUrl<'a>,
+    width: Option<u16>,
+    snippet_id: Option<SnippetId<'a>>,
+    center: bool,
+}
+
+impl<'a> ImageStack<'a> {
+    pub fn width(mut self, v: u16) -> Self {
+        self.width = Some(v);
+        self
+    }
+
+    pub fn center(mut self) -> Self {
+        self.center = true;
+        self
+    }
+
+    pub fn snippet_id(mut self, id: SnippetId<'a>) -> Self {
+        self.snippet_id = Some(id);
+        self
+    }
+
+    pub fn finish(self) -> Vec<String> {
+        match self.url {
+            ImageUrl::Rerun(rerun) => rerun.image_stack(self.snippet_id, self.width, self.center),
             ImageUrl::Other(url) => {
                 vec![format!(r#"<img src="{url}">"#)]
             }
@@ -199,11 +228,13 @@ impl RerunImageUrl<'_> {
         })
     }
 
-    pub fn image_stack(&self, viewer_id: Option<SnippetId<'_>>) -> Vec<String> {
+    pub fn image_stack(
+        &self,
+        snippet_id: Option<SnippetId<'_>>,
+        desired_width: Option<u16>,
+        center: bool,
+    ) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
-
-        // Don't let the images take up too much space on the page.
-        let desired_with = Some(640);
 
         let RerunImageUrl {
             name,
@@ -212,9 +243,13 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<center>".into()];
+        let mut stack = vec![];
 
-        match viewer_id {
+        if center {
+            stack.push("<center>".into());
+        }
+
+        match snippet_id {
             Some(id) => stack.push(format!(r#"<picture data-inline-viewer="{id}">"#)),
             None => stack.push("<picture>".into()),
         }
@@ -230,9 +265,9 @@ impl RerunImageUrl<'_> {
             }
         }
 
-        if let Some(desired_with) = desired_with {
+        if let Some(desired_width) = desired_width {
             stack.push(format!(
-                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_with}">"#
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_width}">"#
             ));
         } else {
             stack.push(format!(
@@ -240,7 +275,10 @@ impl RerunImageUrl<'_> {
             ));
         }
         stack.push("</picture>".into());
-        stack.push("</center>".into());
+
+        if center {
+            stack.push("</center>".into());
+        }
 
         stack
     }
