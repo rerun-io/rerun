@@ -21,7 +21,7 @@ impl TensorData {
         self.shape.as_slice()
     }
 
-    /// Returns the shape of the tensor with all trailing dimensions of size 1 ignored.
+    /// Returns the shape of the tensor with all leading & trailing dimensions of size 1 ignored.
     ///
     /// If all dimension sizes are one, this returns only the first dimension.
     #[inline]
@@ -29,12 +29,9 @@ impl TensorData {
         if self.shape.is_empty() {
             &self.shape
         } else {
-            self.shape
-                .iter()
-                .enumerate()
-                .rev()
-                .find(|(_, dim)| dim.size != 1)
-                .map_or(&self.shape[0..1], |(i, _)| &self.shape[..(i + 1)])
+            let first_not_one = self.shape.iter().position(|dim| dim.size != 1);
+            let last_not_one = self.shape.iter().rev().position(|dim| dim.size != 1);
+            &self.shape[first_not_one.unwrap_or(0)..self.shape.len() - last_not_one.unwrap_or(0)]
         }
     }
 
