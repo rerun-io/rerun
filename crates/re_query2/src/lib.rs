@@ -1,6 +1,6 @@
 //! Provide query-centric access to the [`re_data_store`].
 
-mod clamped_zip;
+pub mod clamped_zip;
 mod latest_at;
 mod promise;
 mod visible_history;

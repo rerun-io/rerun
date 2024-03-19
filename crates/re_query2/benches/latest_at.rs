@@ -286,7 +286,7 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
         let colors = results.get_optional::<Color>();
 
         let points = points
-            .to_dense::<Position2D>(&mut resolver)
+            .iter_dense::<Position2D>(&mut resolver)
             .flatten()
             .unwrap();
 
@@ -328,7 +328,7 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
         let colors = results.get_optional::<Text>();
 
         let points = points
-            .to_dense::<Position2D>(&mut resolver)
+            .iter_dense::<Position2D>(&mut resolver)
             .flatten()
             .unwrap();
 
