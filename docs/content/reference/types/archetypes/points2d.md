@@ -24,7 +24,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 snippet: point2d_simple
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/point2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1024w.png">
@@ -38,7 +38,7 @@ snippet: point2d_simple
 snippet: point2d_random
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/point2d_random">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">

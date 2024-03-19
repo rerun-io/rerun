@@ -24,7 +24,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 snippet: mesh3d_indexed
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/mesh3d_indexed">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/1024w.png">
@@ -38,7 +38,7 @@ snippet: mesh3d_indexed
 snippet: mesh3d_partial_updates
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/mesh3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/1024w.png">

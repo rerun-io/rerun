@@ -24,7 +24,7 @@ Camera perspective projection (a.k.a. intrinsics).
 snippet: pinhole_simple
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/pinhole_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
@@ -38,7 +38,7 @@ snippet: pinhole_simple
 snippet: pinhole_perspective
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/pinhole_perspective">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/d0bd02a0cf354a5c8eafb79a84fe8674335cab98/1024w.png">

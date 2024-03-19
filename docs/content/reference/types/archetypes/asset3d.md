@@ -24,7 +24,7 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 snippet: asset3d_simple
 
 <center>
-<picture>
+<picture data-inline-viewer="snippets/asset3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1024w.png">
