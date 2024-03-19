@@ -66,7 +66,10 @@ pub fn visible_time_range_to_time_range(
         std::mem::swap(&mut min, &mut max);
     }
 
-    TimeRange::new(min.into(), max.into())
+    let min: re_log_types::TimeInt = min.into();
+    let max: re_log_types::TimeInt = max.into();
+
+    TimeRange::new(min, max)
 }
 
 pub fn query_visual_history(
