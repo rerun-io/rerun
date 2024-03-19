@@ -9,8 +9,6 @@ use crate::LatestAtResults;
 /// Queries for the given `component_names` using latest-at semantics.
 ///
 /// See [`LatestAtResults`] for more information about how to handle the results.
-///
-/// This is a direct API -- no caching involved.
 pub fn latest_at(
     store: &DataStore,
     query: &LatestAtQuery,

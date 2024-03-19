@@ -19,8 +19,8 @@ pub struct LatestAtResults {
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
-    /// The index of that compound result corresponds to the index of most recent row in all the
-    /// sub-results.
+    /// The index of that compound result corresponds to the index of most the recent row in all the
+    /// sub-results, as defined by time and row-id order.
     pub compound_index: (TimeInt, RowId),
 
     /// Raw results for each individual component.
@@ -83,20 +83,24 @@ impl LatestAtResults {
     #[doc(hidden)]
     #[inline]
     pub fn add(&mut self, component_name: ComponentName, index: (TimeInt, RowId), cell: DataCell) {
-        let (data_time, row_id) = index;
-        let (compound_data_time, _) = self.compound_index;
-
-        // NOTE: Since this is a compound API that actually emits multiple queries, the data time of the
-        // final result is the most recent data time among all of its components.
-        if data_time > compound_data_time {
-            self.compound_index = (data_time, row_id);
+        // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
+        // final result is the most recent index among all of its components, as defined by time
+        // and row-id order.
+        //
+        // TODO(#5303): We have to ignore the cluster key in this piece of logic for backwards compatibility
+        // reasons with the legacy instance-key model. This will go away next.
+        use re_types_core::Loggable as _;
+        if component_name != re_types_core::components::InstanceKey::name()
+            && index > self.compound_index
+        {
+            self.compound_index = index;
         }
 
         self.components.insert(
             component_name,
             LatestAtComponentResults {
                 index,
-                cell: Some(Promise::new(cell)),
+                promise: Some(Promise::new(cell)),
             },
         );
     }
@@ -110,7 +114,7 @@ pub struct LatestAtComponentResults {
     index: (TimeInt, RowId),
 
     // Option so we can have a constant default value for `Self` for the optional+empty case.
-    cell: Option<Promise>,
+    promise: Option<Promise>,
 }
 
 impl Default for LatestAtComponentResults {
@@ -125,7 +129,7 @@ impl LatestAtComponentResults {
     const fn empty() -> Self {
         Self {
             index: (TimeInt::STATIC, RowId::ZERO),
-            cell: None,
+            promise: None,
         }
     }
 }
@@ -147,7 +151,7 @@ impl LatestAtComponentResults {
         &self,
         resolver: &mut PromiseResolver,
     ) -> PromiseResult<DeserializationResult<Vec<C>>> {
-        if let Some(cell) = self.cell.as_ref() {
+        if let Some(cell) = self.promise.as_ref() {
             resolver.resolve(cell).map(|cell| {
                 cell.try_to_native()
                     .map_err(|err| DeserializationError::DataCellError(err.to_string()))
@@ -185,11 +189,11 @@ impl LatestAtComponentResults {
         resolver: &mut PromiseResolver,
     ) -> PromiseResult<DeserializationResult<Vec<Option<C>>>> {
         // Manufactured empty result.
-        if self.cell.is_none() {
+        if self.promise.is_none() {
             return PromiseResult::Ready(Ok(vec![]));
         }
 
-        if let Some(cell) = self.cell.as_ref() {
+        if let Some(cell) = self.promise.as_ref() {
             resolver.resolve(cell).map(|cell| {
                 cell.try_to_native_opt()
                     .map_err(|err| DeserializationError::DataCellError(err.to_string()))
