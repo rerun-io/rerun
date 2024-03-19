@@ -103,13 +103,6 @@ where
 }
 
 impl Selection {
-    // pub fn resolve_mono_instance_path_items(&mut self, ctx: &ViewerContext<'_>) {
-    //     for (item, _) in self.iter_mut() {
-    //         *item =
-    //             resolve_mono_instance_path_item(&ctx.current_query(), ctx.entity_db.store(), item);
-    //     }
-    // }
-
     /// For each item in this selection, if it refers to the first element of an instance with a
     /// single element, resolve it to a splatted entity path.
     pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
