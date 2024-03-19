@@ -162,16 +162,19 @@ pub struct ImageStack<'a> {
 }
 
 impl<'a> ImageStack<'a> {
+    #[inline]
     pub fn width(mut self, v: u16) -> Self {
         self.width = Some(v);
         self
     }
 
+    #[inline]
     pub fn center(mut self) -> Self {
         self.center = true;
         self
     }
 
+    #[inline]
     pub fn snippet_id(mut self, id: SnippetId<'a>) -> Self {
         self.snippet_id = Some(id);
         self
