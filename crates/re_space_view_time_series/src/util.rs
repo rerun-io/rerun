@@ -1,4 +1,4 @@
-use re_log_types::{EntityPath, TimeInt, TimeRange};
+use re_log_types::{EntityPath, TimeRange};
 use re_space_view::{default_time_range, visible_time_range_to_time_range};
 use re_types::datatypes::Utf8;
 use re_viewer_context::{
