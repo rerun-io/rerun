@@ -85,7 +85,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         rr.log(
             "map/box",
             rr.Boxes3D(half_sizes=[3, 3, 1], centers=[0, 0, 1], colors=[255, 255, 255, 255]),
-            timeless=True,
+            static=True,
         )
 
         # Subscriptions
@@ -264,7 +264,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         urdf.scene.graph.update(frame_to="camera_link", matrix=orig.dot(scale))
         scaled = urdf.scene.scaled(1.0)
 
-        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", timeless=True)
+        rerun_urdf.log_scene(scene=scaled, node=urdf.base_link, path="map/robot/urdf", static=True)
 
 
 def main() -> None:

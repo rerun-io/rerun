@@ -119,7 +119,7 @@ class FaceDetectorLogger:
             rr.ClassDescription(
                 info=rr.AnnotationInfo(id=0), keypoint_connections=[(0, 1), (1, 2), (2, 0), (2, 3), (0, 4), (1, 5)]
             ),
-            timeless=True,
+            static=True,
         )
 
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
@@ -222,11 +222,11 @@ class FaceLandmarkerLogger:
                 )
             )
 
-        rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), timeless=True)
-        rr.log("reconstruction", rr.AnnotationContext(class_descriptions), timeless=True)
+        rr.log("video/landmarker", rr.AnnotationContext(class_descriptions), static=True)
+        rr.log("reconstruction", rr.AnnotationContext(class_descriptions), static=True)
 
         # properly align the 3D face in the viewer
-        rr.log("reconstruction", rr.ViewCoordinates.RDF, timeless=True)
+        rr.log("reconstruction", rr.ViewCoordinates.RDF, static=True)
 
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         height, width, _ = image.shape

@@ -19,14 +19,14 @@ If so, you can close this recording.
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_plots() -> None:
     from math import sin, tau
 
-    rr.log("plots/line", rr.SeriesLine(), timeless=True)
-    rr.log("plots/point", rr.SeriesPoint(), timeless=True)
+    rr.log("plots/line", rr.SeriesLine(), static=True)
+    rr.log("plots/point", rr.SeriesPoint(), static=True)
 
     for t in range(0, int(tau * 2 * 10.0)):
         rr.set_time_sequence("frame_nr", t)

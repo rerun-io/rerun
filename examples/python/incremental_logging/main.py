@@ -44,7 +44,7 @@ Move the time cursor around, and notice how the colors and radii from frame 0 ar
 
 rr.script_setup(args, "rerun_example_incremental_logging")
 
-rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 # TODO(#5264): just log one once clamp-to-edge semantics land.
 colors = rr.components.ColorBatch(np.repeat(0xFF0000FF, 10))
@@ -53,8 +53,8 @@ radii = rr.components.RadiusBatch(np.repeat(0.1, 10))
 # Only log colors and radii once.
 rr.set_time_sequence("frame_nr", 0)
 rr.log_components("points", [colors, radii])
-# Logging timelessly would also work.
-# rr.log_components("points", [colors, radii], timeless=True)
+# Logging statically would also work.
+# rr.log_components("points", [colors, radii], static=True)
 
 rng = default_rng(12345)
 

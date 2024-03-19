@@ -21,7 +21,7 @@ rr.log(
             )
         ]
     ),
-    timeless=True,
+    static=True,
 )
 
 rr.log(

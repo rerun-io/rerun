@@ -314,7 +314,7 @@ fn invalidation() {
 
 // Test the following scenario:
 // ```py
-// rr.log("points", rr.Points3D([1, 2, 3]), timeless=True)
+// rr.log("points", rr.Points3D([1, 2, 3]), static=True)
 //
 // # Do first query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[]

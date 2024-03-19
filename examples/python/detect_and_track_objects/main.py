@@ -62,7 +62,7 @@ contains the id for each pixel. It is logged to the [segmentation entity](record
 
 The color and label for each class is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged to the root entity using `rr.log("/", …, timeless=True` as it should apply to the whole sequence and all
+logged to the root entity using `rr.log("/", …, static=True` as it should apply to the whole sequence and all
 entities that have a class id.
 
 ### Detections
@@ -369,7 +369,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     class_descriptions = [
         rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rr.log("/", rr.AnnotationContext(class_descriptions), timeless=True)
+    rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
 
     detector = Detector(coco_categories=coco_categories)
 
@@ -460,7 +460,7 @@ def main() -> None:
 
     setup_logging()
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     video_path: str = args.video_path
     if not video_path:

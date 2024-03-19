@@ -60,6 +60,7 @@ def log(
     entity: AsComponents | Iterable[ComponentBatchLike],
     *extra: AsComponents | Iterable[ComponentBatchLike],
     timeless: bool = False,
+    static: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -113,24 +114,45 @@ def log(
 
     entity:
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
+
     *extra:
-        An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][] interface, that are logged to the same entity path.
+        An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][]
+        interface, that are logged to the same entity path.
+
     timeless:
-        If true, the logged components will be timeless.
+        Deprecated. Refer to `static` instead.
+
+    static:
+        If true, the components will be logged as static data.
+
+        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+        any temporal data of the same type.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
         [`rerun.set_time_nanos`][] will also be included.
+
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
     strict:
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
 
     """
+
+    if timeless is True:
+        import warnings
+
+        warnings.warn(
+            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
+            category=DeprecationWarning,
+        )
+        static = True
+
     # TODO(jleibs): Profile is_instance with runtime_checkable vs has_attr
     # Note from: https://docs.python.org/3/library/typing.html#typing.runtime_checkable
     #
@@ -168,7 +190,7 @@ def log(
         entity_path=entity_path,
         components=components,
         num_instances=num_instances,
-        timeless=timeless,
+        static=static,
         recording=recording,
     )
 
@@ -180,6 +202,7 @@ def log_components(
     *,
     num_instances: int | None = None,
     timeless: bool = False,
+    static: bool = False,
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -203,21 +226,45 @@ def log_components(
 
     components:
         A collection of `ComponentBatchLike` objects that
+
     num_instances:
         Optional. The number of instances in each batch. If not provided, the max of all
         components will be used instead.
+
     timeless:
-        If true, the entity will be timeless (default: False).
+        Deprecated. Refer to `static` instead.
+
+    static:
+        If true, the components will be logged as static data.
+
+        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+        any temporal data of the same type.
+
+        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+        [`rerun.set_time_nanos`][] will also be included.
+
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
         defaults to the current active data recording, if there is one. See
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
     strict:
         If True, raise exceptions on non-loggable data.
         If False, warn on non-loggable data.
         if None, use the global default from `rerun.strict_mode()`
 
     """
+
+    if timeless is True:
+        import warnings
+
+        warnings.warn(
+            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
+            category=DeprecationWarning,
+        )
+        static = True
+
     # Convert to a native recording
     recording = RecordingStream.to_native(recording)
 
@@ -269,7 +316,7 @@ def log_components(
         bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
             entity_path,
             components=splats,
-            timeless=timeless,
+            statically=static,
             recording=recording,
         )
 
@@ -277,7 +324,7 @@ def log_components(
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,
         components=instanced,
-        timeless=timeless,
+        statically=static,
         recording=recording,
     )
 
@@ -288,6 +335,7 @@ def log_file_from_path(
     file_path: str | Path,
     *,
     entity_path_prefix: str | None = None,
+    static: bool = False,
     timeless: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -310,7 +358,17 @@ def log_file_from_path(
         What should the logged entity paths be prefixed with?
 
     timeless:
-        Should the logged data be timeless? (default: False)
+        Deprecated. Refer to `static` instead.
+
+    static:
+        If true, the components will be logged as static data.
+
+        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+        any temporal data of the same type.
+
+        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+        [`rerun.set_time_nanos`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -318,11 +376,19 @@ def log_file_from_path(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
+    if timeless is True:
+        import warnings
+
+        warnings.warn(
+            message=("`timeless` is deprecated as an argument to `log`; prefer `static` instead"),
+            category=DeprecationWarning,
+        )
+        static = True
 
     bindings.log_file_from_path(
         Path(file_path),
         entity_path_prefix=entity_path_prefix,
-        timeless=timeless,
+        statically=static,
         recording=recording,
     )
 
@@ -334,6 +400,7 @@ def log_file_from_contents(
     file_contents: bytes,
     *,
     entity_path_prefix: str | None = None,
+    static: bool = False,
     timeless: bool | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -359,7 +426,17 @@ def log_file_from_contents(
         What should the logged entity paths be prefixed with?
 
     timeless:
-        Should the logged data be timeless? (default: False)
+        Deprecated. Refer to `static` instead.
+
+    static:
+        If true, the components will be logged as static data.
+
+        Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+        any temporal data of the same type.
+
+        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or
+        [`rerun.set_time_nanos`][] will also be included.
 
     recording:
         Specifies the [`rerun.RecordingStream`][] to use. If left unspecified,
@@ -372,7 +449,7 @@ def log_file_from_contents(
         Path(file_path),
         file_contents,
         entity_path_prefix=entity_path_prefix,
-        timeless=timeless,
+        statically=static,
         recording=recording,
     )
 

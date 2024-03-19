@@ -73,7 +73,7 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     first_sample_token = scene["first_sample_token"]
     first_sample = nusc.get("sample", scene["first_sample_token"])
@@ -200,7 +200,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
 
     # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
     # annotation_context = [(i, label) for label, i in label2id.items()]
-    # rr.log("world/anns", rr.AnnotationContext(annotation_context), timeless=True)
+    # rr.log("world/anns", rr.AnnotationContext(annotation_context), static=True)
 
 
 def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes) -> None:
@@ -216,7 +216,7 @@ def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes)
             rotation=rr.Quaternion(xyzw=rotation_xyzw),
             from_parent=False,
         ),
-        timeless=True,
+        static=True,
     )
     if len(calibrated_sensor["camera_intrinsic"]) != 0:
         rr.log(
@@ -226,7 +226,7 @@ def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes)
                 width=sample_data["width"],
                 height=sample_data["height"],
             ),
-            timeless=True,
+            static=True,
         )
 
 

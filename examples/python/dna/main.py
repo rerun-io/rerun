@@ -47,7 +47,7 @@ the Blueprint settings on the right-hand side. You will see one static frame (i.
 
 
 def log_data() -> None:
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     rr.set_time_seconds("stable_time", 0)
 

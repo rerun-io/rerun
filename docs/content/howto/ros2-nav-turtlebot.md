@@ -396,7 +396,7 @@ def urdf_callback(self, urdf_msg: String) -> None:
     rerun_urdf.log_scene(scene=scaled,
                          node=urdf.base_link,
                          path="map/robot/urdf",
-                         timeless=True)
+                         static=True)
 ```
 
 Back in `rerun_urdf.log_scene` all the code is doing is recursively walking through

@@ -17,7 +17,7 @@ def log_car_data() -> None:
     NUM_FRAMES = 40
 
     # Set our preferred up-axis on the space that we will log the points to:
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
     for sample in generate_car_data(num_frames=NUM_FRAMES):
         # This will assign logged entities a timeline called `frame_nr`.
@@ -29,7 +29,7 @@ def log_car_data() -> None:
             "world/camera",
             rr.Transform3D(translation=sample.camera.position, rotation=rr.Quaternion(xyzw=sample.camera.rotation_q)),
         )
-        rr.log("world/camera", rr.ViewCoordinates.RDF, timeless=True)  # X=Right, Y=Down, Z=Forward
+        rr.log("world/camera", rr.ViewCoordinates.RDF, static=True)  # X=Right, Y=Down, Z=Forward
 
         # Log the camera projection matrix:
         rr.log(
