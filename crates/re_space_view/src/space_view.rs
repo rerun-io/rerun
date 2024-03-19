@@ -391,8 +391,9 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let root_data_result = self.root_data_result(ctx.store_context, ctx.blueprint_query);
-        let props = root_data_result
+        let space_view_data_result =
+            self.space_view_data_result(ctx.store_context, ctx.blueprint_query);
+        let props = space_view_data_result
             .individual_properties()
             .cloned()
             .unwrap_or_default();
@@ -415,7 +416,16 @@ impl SpaceViewBlueprint {
         self.id.as_entity_path()
     }
 
-    pub fn root_data_result(&self, ctx: &StoreContext<'_>, query: &LatestAtQuery) -> DataResult {
+    /// A special data result for the space view that sits "above" the [`SpaceViewContents`].
+    ///
+    /// This allows us to use interfaces that take a [`DataResult`] to modify things on the
+    /// space view that can then be inherited into the contents. For example, controlling
+    /// visible history.
+    pub fn space_view_data_result(
+        &self,
+        ctx: &StoreContext<'_>,
+        query: &LatestAtQuery,
+    ) -> DataResult {
         let base_override_root = self.entity_path();
         let individual_override_path =
             base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
