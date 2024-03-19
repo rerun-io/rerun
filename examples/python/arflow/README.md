@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "ARFlow: A Framework for Simplifying AR Experimentation Workflow"
 source = "https://github.com/cake-lab/ARFlow"
-tags = ["3D", "Augmented Reality", "Spatial Computing"]
+tags = ["3D", "Augmented Reality", "Spatial Computing", "Integration"]
 thumbnail = "https://static.rerun.io/arflow/cc3b0c748e8fc49a78b33631a7005ede3fce44be/480w.png"
 thumbnail_dimensions = [480, 261]
 -->

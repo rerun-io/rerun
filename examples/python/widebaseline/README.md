@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Learning to Render Novel Views from Wide-Baseline Stereo Pairs"
 source = "https://github.com/rerun-io/cross_attention_renderer/"
-tags = ["2D", "3D", "view-synthesis", "time-series", "pinhole-camera"]
+tags = ["2D", "3D", "view-synthesis", "time-series", "pinhole-camera", "Paper Walkthrough"]
 thumbnail = "https://static.rerun.io/widebaseline/7bee6a2a13ede34f06a962019080d0dc102707b5/480w.png"
 thumbnail_dimensions = [480, 316]
 -->

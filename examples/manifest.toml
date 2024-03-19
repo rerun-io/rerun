@@ -1,12 +1,11 @@
 #:schema ./schema.json
-
 # Examples listed in this manifest will appear on our website.
 # This has no effect whatsoever on whether they appear in the app itself.
 #
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.real-data]
+[categories.use-cases]
 order = 1
 title = "Examples with Real Data"
 prelude = """
@@ -41,9 +40,18 @@ examples = [
   "signed_distance_fields",
   "structure_from_motion",
   "vrs",
+  "arflow",
+  "differentiable_blocks_world",
+  "limap",
+  "mcc",
+  "shape_pointe",
+  "simplerecon",
+  "slahmr",
+  "tapir",
+  "widebaseline",
 ]
 
-[categories.artificial-data]
+[categories.feature-use]
 order = 2
 title = "Examples with Artificial Data"
 prelude = """
@@ -54,56 +62,9 @@ check out [Types](/docs/reference/types).
 """
 examples = [
   "minimal",
-  "car",
   "clock",
   "eigen_opencv",
   "multithreading",
   "multiprocessing",
   "plots",
 ]
-
-[categories.paper-visualizations]
-order = 3
-title = "Paper Visualizations"
-prelude = """
-The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
-from the official open-source implementations adding Rerun as the visualizer.
-Check out the respective READMEs for installation instructions.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-"""
-examples = [
-  "differentiable_blocks_world",
-  "limap",
-  "mcc",
-  "shape_pointe",
-  "simplerecon",
-  "slahmr",
-  "tapir",
-  "widebaseline",
-  "arflow",
-]
-
-[categories.setup]
-order = 4
-title = "Setup"
-prelude = """
-### Examples with Real / Artificial Data
-To run these examples, make sure you have the Rerun repository checked out
-and the latest SDK installed.
-
-```bash
-pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-cd rerun
-git checkout latest  # Check out the commit matching the latest SDK release
-```
-> Note: Make sure your SDK version matches the examples.
-For example, if your SDK version is `0.3.1`, check out the matching tag
-in the Rerun repository by running `git checkout v0.3.1`.
-
-### Paper Visualizations
-To reproduce the paper visualizations check out the README of the respective
-Rerun forks.
-"""
-examples = []
