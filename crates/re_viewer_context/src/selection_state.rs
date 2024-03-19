@@ -1,6 +1,6 @@
 use ahash::HashMap;
+use indexmap::IndexMap;
 use parking_lot::Mutex;
-use std::collections::BTreeMap;
 
 use re_entity_db::EntityPath;
 
@@ -83,7 +83,7 @@ impl InteractionHighlight {
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Selection(BTreeMap<Item, Option<SelectedSpaceContext>>);
+pub struct Selection(IndexMap<Item, Option<SelectedSpaceContext>>);
 
 impl From<Item> for Selection {
     #[inline]
@@ -125,7 +125,7 @@ impl Selection {
 
     /// The first selected object if any.
     pub fn first_item(&self) -> Option<&Item> {
-        self.0.first_key_value().map(|(item, _)| item)
+        self.0.keys().next()
     }
 
     /// Check if the selection contains a single item and returns it if so.
