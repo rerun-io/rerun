@@ -478,6 +478,7 @@ fn query_and_compare(
 
     for _ in 0..3 {
         let mut cached_data_time = None;
+        let mut cached_row_id = None;
         let mut cached_instance_keys = Vec::new();
         let mut cached_positions = Vec::new();
         let mut cached_colors = Vec::new();
@@ -486,8 +487,9 @@ fn query_and_compare(
                 store,
                 &query.clone().into(),
                 entity_path,
-                |((data_time, _), instance_keys, positions, colors)| {
+                |((data_time, row_id), instance_keys, positions, colors)| {
                     cached_data_time = Some(data_time);
+                    cached_row_id = Some(row_id);
                     cached_instance_keys.extend(instance_keys.iter().copied());
                     cached_positions.extend(positions.iter().copied());
                     cached_colors
@@ -498,6 +500,7 @@ fn query_and_compare(
 
         let expected = re_query::query_archetype::<MyPoints>(store, query, entity_path).unwrap();
         let expected_data_time = expected.data_time();
+        let expected_row_id = expected.primary_row_id();
 
         let expected_instance_keys = expected.iter_instance_keys().collect_vec();
         let expected_positions = expected
@@ -513,6 +516,7 @@ fn query_and_compare(
         // eprintln!("i={i} (expected={expected_data_time:?}, cached={cached_data_time:?})");
 
         similar_asserts::assert_eq!(Some(expected_data_time), cached_data_time);
+        similar_asserts::assert_eq!(Some(expected_row_id), cached_row_id);
         similar_asserts::assert_eq!(expected_instance_keys, cached_instance_keys);
         similar_asserts::assert_eq!(expected_positions, cached_positions);
         similar_asserts::assert_eq!(expected_colors, cached_colors);

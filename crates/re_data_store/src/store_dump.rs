@@ -100,7 +100,9 @@ impl DataStore {
                             .map(|cell| cell.num_instances.0)
                             .max()
                             .unwrap_or_default(),
-                        static_cells.into_iter().map(|static_cell| static_cell.cell),
+                        static_cells
+                            .into_iter()
+                            .flat_map(|static_cell| [static_cell.cell, static_cell.cluster_key]),
                     )
                     .ok()
                 });
