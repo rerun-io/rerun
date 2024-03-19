@@ -70,3 +70,8 @@ bench = false
 [[bin]]
 name = "clamped_zip"
 required-features = ["codegen"]
+
+
+[[bench]]
+name = "latest_at"
+harness = false
