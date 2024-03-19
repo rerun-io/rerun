@@ -384,8 +384,8 @@ impl ImageVisualizer {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
                                 ent_path.hash(),
-                                cloud.bbox(),
-                                cloud.world_from_rdf,
+                                cloud.world_space_bbox(),
+                                glam::Affine3A::IDENTITY,
                             );
                             self.depth_cloud_entities.insert(ent_path.hash());
                             depth_clouds.push(cloud);
