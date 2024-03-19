@@ -1132,7 +1132,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
         lines.extend(example_lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
-            lines.extend(image.image_stack());
+            lines.extend(image.image_stack(None));
         }
         if examples.peek().is_some() {
             // blank line between examples

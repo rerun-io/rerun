@@ -148,7 +148,7 @@ impl ImageUrl<'_> {
     /// To tag this image stack as an inline viewer, set `inline_viewer_id`
     /// If we successfully generate a `<picture>` stack, it will also receive a
     /// `data-inline-viewer` attribute with the value of `inline_viewer_id`.
-    pub fn image_stack(&self, viewer_id: Option<ViewerId<'_>>) -> Vec<String> {
+    pub fn image_stack(&self, viewer_id: Option<SnippetId<'_>>) -> Vec<String> {
         match self {
             ImageUrl::Rerun(rerun) => rerun.image_stack(viewer_id),
             ImageUrl::Other(url) => {
@@ -158,17 +158,11 @@ impl ImageUrl<'_> {
     }
 }
 
-pub enum ViewerId<'a> {
-    Example(&'a str),
-    Snippet(&'a str),
-}
+pub struct SnippetId<'a>(pub &'a str);
 
-impl<'a> std::fmt::Display for ViewerId<'a> {
+impl<'a> std::fmt::Display for SnippetId<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ViewerId::Example(id) => write!(f, "examples/{id}"),
-            ViewerId::Snippet(id) => write!(f, "snippets/{id}"),
-        }
+        write!(f, "snippets/{}", self.0)
     }
 }
 
@@ -205,7 +199,7 @@ impl RerunImageUrl<'_> {
         })
     }
 
-    pub fn image_stack(&self, viewer_id: Option<ViewerId<'_>>) -> Vec<String> {
+    pub fn image_stack(&self, viewer_id: Option<SnippetId<'_>>) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
         // Don't let the images take up too much space on the page.
