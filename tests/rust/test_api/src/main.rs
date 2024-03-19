@@ -424,7 +424,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
         rec: &RecordingStream,
         ent_path: impl Into<EntityPath>,
     ) -> anyhow::Result<()> {
-        rec.log_timeless(ent_path, &ViewCoordinates::RIGHT_HAND_Z_UP)
+        rec.log_static(ent_path, &ViewCoordinates::RIGHT_HAND_Z_UP)
             .map_err(Into::into)
     }
     log_coordinate_space(rec, "transforms3d")?;

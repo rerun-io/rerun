@@ -41,9 +41,13 @@ struct Args {
     #[argh(option)]
     entity_path_prefix: Option<String>,
 
-    /// optionally mark data to be logged as timeless
+    /// deprecated: alias for `--static`
     #[argh(switch)]
     timeless: bool,
+
+    /// optionally mark data to be logged statically
+    #[argh(arg_name = "static", switch)]
+    statically: bool,
 
     /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)
     #[argh(option)]
@@ -99,9 +103,9 @@ fn main() -> anyhow::Result<()> {
         .entity_path_prefix
         .map_or_else(|| rerun::EntityPath::new(vec![]), rerun::EntityPath::from);
 
-    rec.log_with_timeless(
+    rec.log_with_static(
         entity_path_prefix.join(&rerun::EntityPath::from_file_path(&args.filepath)),
-        args.timeless,
+        args.statically || args.timeless,
         &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
     )?;
 

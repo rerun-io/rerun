@@ -55,7 +55,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     ]);
 ///
 ///     // log the annotation and the image
-///     rec.log_timeless("/", &annotation)?;
+///     rec.log_static("/", &annotation)?;
 ///
 ///     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 ///
