@@ -104,7 +104,7 @@ def script_setup(
     if args.stdout:
         rec.stdout()  # type: ignore[attr-defined]
     elif args.serve:
-        rec.serve()  # type: ignore[attr-defined]
+        rec.serve(blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,

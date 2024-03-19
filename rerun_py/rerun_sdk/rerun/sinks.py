@@ -187,6 +187,7 @@ def serve(
     open_browser: bool = True,
     web_port: int | None = None,
     ws_port: int | None = None,
+    blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
 ) -> None:
@@ -210,6 +211,8 @@ def serve(
         The port to serve the web viewer on (defaults to 9090).
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
+    blueprint: Optional[BlueprintLike]
+        An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -220,8 +223,30 @@ def serve(
 
     """
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - serve() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.serve(open_browser, web_port, ws_port, server_memory_limit=server_memory_limit, recording=recording)
+    bindings.serve(
+        open_browser,
+        web_port,
+        ws_port,
+        server_memory_limit=server_memory_limit,
+        blueprint=blueprint_storage,
+        recording=recording,
+    )
 
 
 # TODO(#4019): application-level handshake

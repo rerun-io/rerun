@@ -1554,7 +1554,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, send it first.
         if let Some(blueprint) = blueprint {
-            send_blueprint(blueprint, &sink);
+            Self::send_blueprint(blueprint, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1669,7 +1669,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, store it first.
         if let Some(blueprint) = blueprint {
-            send_blueprint(blueprint, &sink);
+            Self::send_blueprint(blueprint, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1720,22 +1720,23 @@ impl RecordingStream {
             re_log::warn_once!("Recording disabled - call to disconnect() ignored");
         }
     }
-}
 
-fn send_blueprint(blueprint: Vec<LogMsg>, sink: &dyn crate::sink::LogSink) {
-    let mut store_id = None;
-    for msg in blueprint {
-        if store_id.is_none() {
-            store_id = Some(msg.store_id().clone());
+    /// Send the blueprint to the sink, and then activate it.
+    pub fn send_blueprint(blueprint: Vec<LogMsg>, sink: &dyn crate::sink::LogSink) {
+        let mut store_id = None;
+        for msg in blueprint {
+            if store_id.is_none() {
+                store_id = Some(msg.store_id().clone());
+            }
+            sink.send(msg);
         }
-        sink.send(msg);
-    }
-    if let Some(store_id) = store_id {
-        // Let the viewer know that the blueprint has been fully received,
-        // and that it can now be activated.
-        // We don't want to activate half-loaded blueprints, because that can be confusing,
-        // and can also lead to problems with space-view heuristics.
-        sink.send(LogMsg::ActivateStore(store_id));
+        if let Some(store_id) = store_id {
+            // Let the viewer know that the blueprint has been fully received,
+            // and that it can now be activated.
+            // We don't want to activate half-loaded blueprints, because that can be confusing,
+            // and can also lead to problems with space-view heuristics.
+            sink.send(LogMsg::ActivateStore(store_id));
+        }
     }
 }
 

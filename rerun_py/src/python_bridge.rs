@@ -675,12 +675,13 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, recording = None))]
+#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, blueprint = None, recording = None))]
 fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
     server_memory_limit: String,
+    blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
@@ -689,27 +690,32 @@ fn serve(
             return Ok(());
         };
 
-        let _guard = enter_tokio_runtime();
-
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
 
-        recording.set_sink(
-            rerun::web_viewer::new_sink(
-                open_browser,
-                "0.0.0.0",
-                web_port.map(WebViewerServerPort).unwrap_or_default(),
-                ws_port.map(RerunServerPort).unwrap_or_default(),
-                server_memory_limit,
-            )
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-        );
+        let _guard = enter_tokio_runtime();
+
+        let sink = rerun::web_viewer::new_sink(
+            open_browser,
+            "0.0.0.0",
+            web_port.map(WebViewerServerPort).unwrap_or_default(),
+            ws_port.map(RerunServerPort).unwrap_or_default(),
+            server_memory_limit,
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        if let Some(blueprint) = blueprint {
+            RecordingStream::send_blueprint(blueprint.inner.take(), &*sink);
+        }
+
+        recording.set_sink(sink);
 
         Ok(())
     }
 
     #[cfg(not(feature = "web_viewer"))]
     {
+        _ = blueprint;
         _ = recording;
         _ = web_port;
         _ = ws_port;
