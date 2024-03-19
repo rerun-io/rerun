@@ -4544,7 +4544,7 @@ dependencies = [
 
 [[package]]
 name = "re_query2"
-version = "0.15.0-alpha.2"
+version = "0.15.0-alpha.5"
 dependencies = [
  "ahash",
  "anyhow",
