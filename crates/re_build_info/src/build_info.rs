@@ -113,6 +113,10 @@ impl std::fmt::Display for BuildInfo {
             write!(f, ", built {datetime}")?;
         }
 
+        if cfg!(debug_assertions) {
+            write!(f, " (debug)")?;
+        }
+
         Ok(())
     }
 }
