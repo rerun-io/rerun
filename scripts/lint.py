@@ -779,6 +779,8 @@ def lint_file(filepath: str, args: Any) -> int:
 def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
+    tmp_crates = ["re_query2", "re_query_cache2"]
+
     crates_dir = Path("crates")
     architecture_md_file = Path("ARCHITECTURE.md")
 
@@ -799,7 +801,7 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
         if crate_name in listed_crates:
             del listed_crates[crate_name]
 
-        if should_ignore(crate):
+        if should_ignore(crate) or crate.name in tmp_crates:
             continue
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
