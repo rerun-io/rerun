@@ -15,6 +15,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rbl
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 
@@ -221,7 +222,17 @@ def main() -> None:
     if args.resize:
         args.resize = tuple(int(x) for x in args.resize.split("x"))
 
-    rr.script_setup(args, "rerun_example_structure_from_motion")
+    blueprint = rbl.Vertical(
+        rbl.Spatial3DView(name="3D", origin="/"),
+        rbl.Horizontal(
+            rbl.TextDocumentView(name="README", origin="/description"),
+            rbl.Spatial2DView(name="Camera", origin="/camera/image"),
+            rbl.TimeSeriesView(origin="/plot"),
+        ),
+        row_shares=[3, 2],
+    )
+
+    rr.script_setup(args, "rerun_example_structure_from_motion", blueprint=blueprint)
     dataset_path = get_downloaded_dataset_path(args.dataset)
     read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered, resize=args.resize)
     rr.script_teardown(args)
