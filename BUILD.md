@@ -93,7 +93,7 @@ This needs to be repeated each time the Rust source code is updated, for example
 
 Now you can run the python examples from the repository, given that you're still in the virtual environment.
 ```sh
-python examples/python/car/main.py
+python examples/python/minimal/main.py
 ```
 
 ## Building and installing the Rerun C++ SDK

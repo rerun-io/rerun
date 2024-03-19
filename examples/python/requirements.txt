@@ -1,6 +1,5 @@
 -r arkit_scenes/requirements.txt
 -r blueprint/requirements.txt
--r car/requirements.txt
 -r clock/requirements.txt
 -r controlnet/requirements.txt
 -r depth_guided_stable_diffusion/requirements.txt

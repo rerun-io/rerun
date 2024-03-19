@@ -47,7 +47,7 @@ python3 -m rerun
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-python3 examples/python/car/main.py --connect
+python3 python examples/python/plots/main.py --connect
 ```
 
 -------------------------
@@ -105,7 +105,7 @@ just py-test
 just py-lint
 
 # Run an example
-python examples/python/car/main.py
+python examples/python/minimal/main.py
 ```
 
 ## Building an installable Python Wheel

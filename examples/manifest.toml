@@ -48,7 +48,6 @@ check out [Types](/docs/reference/types).
 """
 examples = [
   "minimal",
-  "car",
   "clock",
   "eigen_opencv",
   "multithreading",
