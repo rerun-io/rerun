@@ -43,9 +43,8 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    application_id = get_application_id(recording=recording)
-    recording = RecordingStream.to_native(recording)
 
+    application_id = get_application_id(recording=recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -55,6 +54,8 @@ def connect(
     blueprint_storage = None
     if blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
+    recording = RecordingStream.to_native(recording)
 
     bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, blueprint=blueprint_storage, recording=recording)
 
