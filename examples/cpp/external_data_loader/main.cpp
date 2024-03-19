@@ -69,7 +69,8 @@ file with Rerun (`rerun file.cpp`).
       ("application-id", "Optional recommended ID for the application", cxxopts::value<std::string>())
       ("recording-id", "Optional recommended ID for the recording", cxxopts::value<std::string>())
       ("entity-path-prefix", "Optional prefix for all entity paths", cxxopts::value<std::string>())
-      ("timeless", "Optionally mark data to be logged as timeless", cxxopts::value<bool>()->default_value("false"))
+      ("timeless", "Deprecated: alias for `--static`", cxxopts::value<bool>()->default_value("false"))
+      ("static", "Optionally mark data to be logged as static", cxxopts::value<bool>()->default_value("false"))
       ("time", "Optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)", cxxopts::value<std::vector<std::string>>())
       ("sequence", "Optional sequences to log at (e.g. `--sequence sim_frame=42`) (repeatable)", cxxopts::value<std::vector<std::string>>())
     ;
@@ -118,9 +119,9 @@ file with Rerun (`rerun file.cpp`).
     if (args.count("entity-path-prefix")) {
         entity_path = args["entity-path-prefix"].as<std::string>() + "/" + filepath;
     }
-    rec.log_with_timeless(
+    rec.log_with_static(
         entity_path,
-        args["timeless"].as<bool>(),
+        args["static"].as<bool>() || args["timeless"].as<bool>(),
         rerun::TextDocument(text).with_media_type(rerun::MediaType::markdown())
     );
 }

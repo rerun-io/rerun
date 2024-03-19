@@ -164,7 +164,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     };
 
                     stream.log("as-carray", c_style_array);
-                    stream.log_timeless("as-carray", c_style_array);
+                    stream.log_static("as-carray", c_style_array);
                 }
                 THEN("components as std::initializer_list can be logged") {
                     const auto c_style_array = {
@@ -172,7 +172,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         rerun::components::Position2D{4.0, 5.0},
                     };
                     stream.log("as-initializer-list", c_style_array);
-                    stream.log_timeless("as-initializer-list", c_style_array);
+                    stream.log_static("as-initializer-list", c_style_array);
                 }
                 THEN("components as std::array can be logged") {
                     stream.log(
@@ -182,7 +182,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                             rerun::Vec2D{4.0, 5.0},
                         }
                     );
-                    stream.log_timeless(
+                    stream.log_static(
                         "as-array",
                         std::array<rerun::Position2D, 2>{
                             rerun::Vec2D{1.0, 2.0},
@@ -198,7 +198,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                             rerun::Vec2D{4.0, 5.0},
                         }
                     );
-                    stream.log_timeless(
+                    stream.log_static(
                         "as-vector",
                         std::vector<rerun::Position2D>{
                             rerun::Vec2D{1.0, 2.0},
@@ -226,7 +226,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         },
                         c_style_array
                     );
-                    stream.log_timeless(
+                    stream.log_static(
                         "as-mix",
                         std::vector{
                             rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
@@ -251,7 +251,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         },
                         std::array{rerun::Color(0xFF0000FF)}
                     );
-                    stream.log_timeless(
+                    stream.log_static(
                         "log-splat",
                         std::vector{
                             rerun::Position2D(rerun::Vec2D{0.0, 0.0}),
@@ -267,7 +267,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
                         ).with_colors(rerun::Color(0xFF0000FF))
                     );
-                    stream.log_timeless(
+                    stream.log_static(
                         "log_archetype-splat",
                         rerun::Points2D({rerun::Vec2D{1.0, 2.0}, rerun::Vec2D{4.0, 5.0}}
                         ).with_colors(rerun::Color(0xFF0000FF))

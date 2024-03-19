@@ -44,9 +44,9 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Set up plot styling:
-    ///     // They are logged timeless as they don't change over time and apply to all timelines.
+    ///     // They are logged static as they don't change over time and apply to all timelines.
     ///     // Log two point series under a shared root so that they show in the same plot by default.
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "trig/sin",
     ///         rerun::SeriesPoint()
     ///             .with_color({255, 0, 0})
@@ -54,7 +54,7 @@ namespace rerun::archetypes {
     ///             .with_marker(rerun::components::MarkerShape::Circle)
     ///             .with_marker_size(4)
     ///     );
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "trig/cos",
     ///         rerun::SeriesPoint()
     ///             .with_color({0, 255, 0})
