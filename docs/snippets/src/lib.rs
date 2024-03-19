@@ -1,5 +1,5 @@
 //! Snippets that we show in documentation.
 
-mod examples;
+mod snippets;
 
-pub use examples::run;
+pub use snippets::run;
