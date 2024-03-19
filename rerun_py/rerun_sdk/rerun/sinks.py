@@ -62,7 +62,9 @@ def connect(
 _connect = connect  # we need this because Python scoping is horrible
 
 
-def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> None:
+def save(
+    path: str | pathlib.Path, blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
+) -> None:
     """
     Stream all log-data to a file.
 
@@ -72,6 +74,9 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
     ----------
     path : str
         The path to save the data to.
+    blueprint: Optional[BlueprintLike]
+        An optional blueprint to configure the UI.
+        This will be written first to the .rrd file, before appending the recording data.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -83,8 +88,20 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.save(path=str(path), recording=recording)
+
+    bindings.save(path=str(path), blueprint=blueprint_storage, recording=recording)
 
 
 def stdout(recording: RecordingStream | None = None) -> None:

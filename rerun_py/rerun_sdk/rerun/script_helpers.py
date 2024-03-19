@@ -111,7 +111,7 @@ def script_setup(
         # which is `127.0.0.1:9876`.
         rec.connect(args.addr, blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
-        rec.save(args.save)  # type: ignore[attr-defined]
+        rec.save(args.save, blueprint=blueprint)  # type: ignore[attr-defined]
     elif not args.headless:
         rec.spawn(blueprint=blueprint)  # type: ignore[attr-defined]
 

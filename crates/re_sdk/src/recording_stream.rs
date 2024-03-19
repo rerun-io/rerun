@@ -1554,20 +1554,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, send it first.
         if let Some(blueprint) = blueprint {
-            let mut store_id = None;
-            for msg in blueprint {
-                if store_id.is_none() {
-                    store_id = Some(msg.store_id().clone());
-                }
-                sink.send(msg);
-            }
-            if let Some(store_id) = store_id {
-                // Let the viewer know that the blueprint has been fully received,
-                // and that it can now be activated.
-                // We don't want to activate half-loaded blueprints, because that can be confusing,
-                // and can also lead to problems with space-view heuristics.
-                sink.send(LogMsg::ActivateStore(store_id));
-            }
+            send_blueprint(blueprint, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1657,12 +1644,33 @@ impl RecordingStream {
         &self,
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
+        self.save_opts(path, None)
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    pub fn save_opts(
+        &self,
+        path: impl Into<std::path::PathBuf>,
+        blueprint: Option<Vec<LogMsg>>,
+    ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
             return Ok(());
         }
 
         let sink = crate::sink::FileSink::new(path)?;
+
+        // If a blueprint was provided, store it first.
+        if let Some(blueprint) = blueprint {
+            send_blueprint(blueprint, &sink);
+        }
+
         self.set_sink(Box::new(sink));
 
         Ok(())
@@ -1710,6 +1718,23 @@ impl RecordingStream {
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to disconnect() ignored");
         }
+    }
+}
+
+fn send_blueprint(blueprint: Vec<LogMsg>, sink: &dyn crate::sink::LogSink) {
+    let mut store_id = None;
+    for msg in blueprint {
+        if store_id.is_none() {
+            store_id = Some(msg.store_id().clone());
+        }
+        sink.send(msg);
+    }
+    if let Some(store_id) = store_id {
+        // Let the viewer know that the blueprint has been fully received,
+        // and that it can now be activated.
+        // We don't want to activate half-loaded blueprints, because that can be confusing,
+        // and can also lead to problems with space-view heuristics.
+        sink.send(LogMsg::ActivateStore(store_id));
     }
 }
 
