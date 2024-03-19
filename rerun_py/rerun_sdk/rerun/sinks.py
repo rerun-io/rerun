@@ -44,6 +44,10 @@ def connect(
 
     """
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - connect() call ignored")
+        return
+
     application_id = get_application_id(recording=recording)
     if application_id is None:
         raise ValueError(
