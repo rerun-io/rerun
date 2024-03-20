@@ -182,7 +182,7 @@ impl CachedLatestAtComponentResults {
     #[inline]
     pub fn to_dense<C: 'static + Component + Send + Sync>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<&[C]>> {
         if let Some(cell) = self.promise.as_ref() {
             resolver
@@ -203,7 +203,7 @@ impl CachedLatestAtComponentResults {
     #[inline]
     pub fn iter_dense<C: 'static + Component + Send + Sync>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = &C>>> {
         self.to_dense(resolver)
             .map(|data| data.map(|data| data.iter()))
@@ -218,7 +218,7 @@ impl CachedLatestAtComponentResults {
     #[inline]
     pub fn to_sparse<C: 'static + Component + Send + Sync>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<&[Option<C>]>> {
         if let Some(cell) = self.promise.as_ref() {
             resolver
@@ -239,7 +239,7 @@ impl CachedLatestAtComponentResults {
     #[inline]
     pub fn iter_sparse<C: 'static + Component + Send + Sync>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = Option<&C>>>> {
         self.to_sparse(resolver)
             .map(|data| data.map(|data| data.iter().map(Option::as_ref)))

@@ -476,7 +476,7 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     for _ in 0..3 {
         let cached = caches.latest_at(
@@ -488,13 +488,13 @@ fn query_and_compare(
 
         let cached_points = cached.get_required::<MyPoint>().unwrap();
         let cached_point_data = cached_points
-            .to_dense::<MyPoint>(&mut resolver)
+            .to_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
         let cached_colors = cached.get_optional::<MyColor>();
         let cached_color_data = cached_colors
-            .to_sparse::<MyColor>(&mut resolver)
+            .to_sparse::<MyColor>(&resolver)
             .flatten()
             .unwrap();
 
@@ -507,13 +507,13 @@ fn query_and_compare(
 
         let expected_points = expected.get_required::<MyPoint>().unwrap();
         let expected_point_data = expected_points
-            .to_dense::<MyPoint>(&mut resolver)
+            .to_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
         let expected_colors = expected.get_optional::<MyColor>();
         let expected_color_data = expected_colors
-            .to_sparse::<MyColor>(&mut resolver)
+            .to_sparse::<MyColor>(&resolver)
             .flatten()
             .unwrap();
 
