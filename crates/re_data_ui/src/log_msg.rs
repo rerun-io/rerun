@@ -39,7 +39,6 @@ impl DataUi for SetStoreInfo {
             store_id,
             started,
             store_source,
-            is_official_example,
             store_kind,
         } = info;
 
@@ -58,10 +57,6 @@ impl DataUi for SetStoreInfo {
 
             ui.monospace("store_source:");
             ui.label(format!("{store_source}"));
-            ui.end_row();
-
-            ui.monospace("is_official_example:");
-            ui.label(format!("{is_official_example}"));
             ui.end_row();
 
             ui.monospace("store_kind:");
