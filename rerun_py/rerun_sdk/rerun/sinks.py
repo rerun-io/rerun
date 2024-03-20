@@ -29,13 +29,13 @@ def connect(
 
     Parameters
     ----------
-    addr
+    addr:
         The ip:port to connect to
-    flush_timeout_sec: float
+    flush_timeout_sec:
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
         and can cause a call to `flush` to block indefinitely.
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -77,9 +77,9 @@ def save(
 
     Parameters
     ----------
-    path : str
+    path:
         The path to save the data to.
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
         This will be written first to the .rrd file, before appending the recording data.
     recording:
@@ -122,7 +122,7 @@ def stdout(blueprint: BlueprintLike | None = None, recording: RecordingStream | 
 
     Parameters
     ----------
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -218,13 +218,13 @@ def serve(
 
     Parameters
     ----------
-    open_browser
+    open_browser:
         Open the default browser to the viewer.
     web_port:
         The port to serve the web viewer on (defaults to 9090).
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -296,19 +296,19 @@ def spawn(
 
     Parameters
     ----------
-    port : int
+    port:
         The port to listen on.
-    connect
+    connect:
         also connect to the viewer and stream logging data to it.
-    memory_limit
+    memory_limit:
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
-    recording
+    recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
 
     """
