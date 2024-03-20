@@ -208,8 +208,8 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
                 if `guidance_scale` is less than `1`).
         """
         batch_size = len(prompt) if isinstance(prompt, list) else 1
-        rr.log("prompt/text", rr.TextLog(prompt))
-        rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
+        rr.log("prompt/text", rr.TextDocument(prompt))
+        rr.log("prompt/text_negative", rr.TextDocument(negative_prompt))
         text_inputs = self.tokenizer(
             prompt,
             padding="max_length",
