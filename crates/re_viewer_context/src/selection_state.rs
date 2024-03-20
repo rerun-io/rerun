@@ -286,6 +286,17 @@ impl ApplicationSelectionState {
         *self.hovered_this_frame.lock() = hovered.into();
     }
 
+    /// Remove given items from the selection.
+    ///
+    /// Has no effect on items that were not selected in the first place.
+    /// Ignores `ItemSpaceContext`s in the passed collection if any.
+    pub fn remove_from_selection(&self, items: impl Into<ItemCollection>) {
+        let removed_items = items.into();
+        self.selection_this_frame
+            .lock()
+            .retain(|item, _| !removed_items.contains_item(item));
+    }
+
     /// Select passed objects unless already selected in which case they get unselected.
     /// If however an object is already selected but now gets passed a *different* selected space context, it stays selected after all
     /// but with an updated selected space context!
