@@ -20,6 +20,17 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<egui::InnerResponse<R>>,
 }
 
+/// Indentation mode to use with [`ListItem::show`].
+#[derive(Default, Clone, Copy, Debug)]
+pub enum IndentMode {
+    /// Don't indent the item
+    #[default]
+    Flat,
+
+    /// Indent the item such that it is aligned with (non-leaf) siblings
+    Hierarchical,
+}
+
 /// Specification of how the width of the [`ListItem`] must be allocated.
 #[derive(Default, Clone, Copy, Debug)]
 pub enum WidthAllocationMode {
@@ -287,9 +298,20 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item.
-    pub fn show(self, ui: &mut Ui) -> Response {
+    pub fn show(self, ui: &mut Ui, indent_mode: IndentMode) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
-        ui.scope(|ui| self.ui(ui, None)).inner.response
+        ui.scope(|ui| match indent_mode {
+            IndentMode::Flat => self.ui(ui, None),
+            IndentMode::Hierarchical => {
+                ui.horizontal(|ui| {
+                    ui.add_space(ReUi::small_icon_size().x + ReUi::text_to_icon_padding());
+                    ui.vertical(|ui| self.ui(ui, None)).inner
+                })
+                .inner
+            }
+        })
+        .inner
+        .response
     }
 
     /// Draw the item as a collapsing header.

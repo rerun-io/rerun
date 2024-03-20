@@ -756,7 +756,7 @@ impl TimePanel {
                             == HoverHighlight::Hovered,
                     )
                     .with_icon(&re_ui::icons::COMPONENT)
-                    .show(ui);
+                    .show(ui, re_ui::list_item::IndentMode::Hierarchical);
 
                 ui.set_clip_rect(clip_rect_save);
 

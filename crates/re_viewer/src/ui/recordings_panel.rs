@@ -92,7 +92,7 @@ fn loading_receivers_ui(
                     }
                     resp
                 })
-                .show(ui);
+                .show(ui, re_ui::list_item::IndentMode::Flat); // never more than one level deep
             if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
@@ -203,15 +203,17 @@ fn recording_ui(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item.show(ui).on_hover_ui(|ui| {
-        entity_db.data_ui(
-            ctx,
-            ui,
-            re_viewer_context::UiVerbosity::Full,
-            &ctx.current_query(),
-            entity_db.store(),
-        );
-    });
+    let response = list_item
+        .show(ui, re_ui::list_item::IndentMode::Flat) // never more than one level deep
+        .on_hover_ui(|ui| {
+            entity_db.data_ui(
+                ctx,
+                ui,
+                re_viewer_context::UiVerbosity::Full,
+                &ctx.current_query(),
+                entity_db.store(),
+            );
+        });
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());

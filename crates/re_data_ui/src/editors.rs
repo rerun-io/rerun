@@ -260,6 +260,9 @@ fn edit_marker_shape_ui(
         .width(100.0)
         .height(320.0)
         .show_ui(ui, |ui| {
+            // no spacing between list items
+            ui.spacing_mut().item_spacing.y = 0.0;
+
             // Hack needed for ListItem to click its highlight bg rect correctly:
             ui.set_clip_rect(
                 ui.clip_rect()
@@ -272,7 +275,10 @@ fn edit_marker_shape_ui(
                         paint_marker(ui, marker.into(), rect, visuals.text_color());
                     })
                     .selected(edit_marker == marker);
-                if list_item.show(ui).clicked() {
+                if list_item
+                    .show(ui, re_ui::list_item::IndentMode::Flat)
+                    .clicked()
+                {
                     edit_marker = marker;
                 }
             }

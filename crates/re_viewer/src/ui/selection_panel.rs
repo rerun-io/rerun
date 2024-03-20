@@ -227,7 +227,7 @@ fn container_children(
                 .weak(true)
                 .italics(true)
                 .active(false)
-                .show(ui);
+                .show(ui, re_ui::list_item::IndentMode::Flat);
         }
     };
 
@@ -380,7 +380,7 @@ fn what_is_selected_ui(
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
-                    .show(ui)
+                    .show(ui, re_ui::list_item::IndentMode::Flat)
                     .on_hover_text(hover_text);
             }
         }
@@ -485,7 +485,9 @@ fn item_title_ui(
         list_item = list_item.with_icon(icon);
     }
 
-    list_item.show(ui).on_hover_text(hover)
+    list_item
+        .show(ui, re_ui::list_item::IndentMode::Flat)
+        .on_hover_text(hover)
 }
 
 /// Display a list of all the space views an entity appears in.
@@ -749,7 +751,7 @@ fn show_list_item_for_container_child(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item.show(ui);
+    let response = list_item.show(ui, re_ui::list_item::IndentMode::Flat);
 
     context_menu_ui_for_item(
         ctx,
