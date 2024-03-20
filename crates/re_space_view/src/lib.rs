@@ -27,6 +27,10 @@ pub use visual_time_range::{
 };
 pub use visualizable::determine_visualizable_entities;
 
+pub mod external {
+    pub use re_entity_db::external::*;
+}
+
 // -----------
 
 use re_entity_db::external::re_data_store;

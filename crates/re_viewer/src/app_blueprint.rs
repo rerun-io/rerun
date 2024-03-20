@@ -134,8 +134,8 @@ fn load_panel_state(
     query: &LatestAtQuery,
 ) -> Option<bool> {
     re_tracing::profile_function!();
+    // TODO: pending behavior
     blueprint_db
-        .store()
-        .query_latest_component_quiet::<PanelExpanded>(path, query)
+        .latest_at_component_quiet::<PanelExpanded>(path, query)
         .map(|p| p.0 .0)
 }

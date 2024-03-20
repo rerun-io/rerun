@@ -48,19 +48,23 @@ impl VisualizerSystem for BarChartVisualizerSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = ctx.entity_db.store();
-
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
+            // TODO: pending behavior
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor = store.query_latest_component::<re_types::components::TensorData>(
-                &data_result.entity_path,
-                &query,
-            );
 
-            let color = store.query_latest_component::<re_types::components::Color>(
-                &data_result.entity_path,
-                &query,
-            );
+            let tensor = ctx
+                .entity_db
+                .latest_at_component::<re_types::components::TensorData>(
+                    &data_result.entity_path,
+                    &query,
+                );
+
+            let color = ctx
+                .entity_db
+                .latest_at_component::<re_types::components::Color>(
+                    &data_result.entity_path,
+                    &query,
+                );
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {

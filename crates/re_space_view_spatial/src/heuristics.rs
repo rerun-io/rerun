@@ -111,17 +111,21 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        let store = ctx.entity_db.store();
-        let Some(tensor) =
-            store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
+        // TODO: pending behavior
+        let Some(tensor) = ctx
+            .entity_db
+            .latest_at_component::<TensorData>(ent_path, &ctx.current_query())
         else {
             continue;
         };
 
-        let meaning = image_meaning_for_entity(ent_path, &ctx.current_query(), store);
+        let meaning =
+            image_meaning_for_entity(ent_path, &ctx.current_query(), ctx.entity_db.store());
 
-        let meter = store
-            .query_latest_component::<DepthMeter>(ent_path, &ctx.current_query())
+        // TODO: pending behavior
+        let meter = ctx
+            .entity_db
+            .latest_at_component::<DepthMeter>(ent_path, &ctx.current_query())
             .map(|meter| meter.value.0);
 
         let mut properties = entity_properties.get(ent_path);
@@ -163,17 +167,17 @@ fn update_transform3d_lines_heuristics(
         .unwrap_or(&BTreeSet::new())
     {
         fn is_pinhole_extrinsics_of<'a>(
-            store: &re_data_store::DataStore,
             ent_path: &'a EntityPath,
             ctx: &'a ViewerContext<'_>,
         ) -> Option<&'a EntityPath> {
-            if query_pinhole(store, &ctx.current_query(), ent_path).is_some() {
+            if query_pinhole(ctx.entity_db, &ctx.current_query(), ent_path).is_some() {
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
                 if let Some(child_tree) = ctx.entity_db.tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
-                        if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
+                        if query_pinhole(ctx.entity_db, &ctx.current_query(), &child.path).is_some()
+                        {
                             return Some(&child.path);
                         }
                     }
@@ -196,15 +200,12 @@ fn update_transform3d_lines_heuristics(
                         .all(|c| re_types::archetypes::Transform3D::all_components().contains(c))
                 });
             properties.transform_3d_visible = EditableAutoValue::Auto(
-                only_has_transform_components
-                    || is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx).is_some(),
+                only_has_transform_components || is_pinhole_extrinsics_of(ent_path, ctx).is_some(),
             );
         }
 
         if properties.transform_3d_size.is_auto() {
-            if let Some(pinhole_path) =
-                is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx)
-            {
+            if let Some(pinhole_path) = is_pinhole_extrinsics_of(ent_path, ctx) {
                 // If there's a pinhole, we orient ourselves on its image plane distance
                 let pinhole_path_props = entity_properties.get(pinhole_path);
                 properties.transform_3d_size = EditableAutoValue::Auto(
