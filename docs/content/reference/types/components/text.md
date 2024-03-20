@@ -26,4 +26,3 @@ A string of text, e.g. for labels and text documents.
 * [`Points3D`](../archetypes/points3d.md)
 * [`TextDocument`](../archetypes/text_document.md)
 * [`TextLog`](../archetypes/text_log.md)
-* [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

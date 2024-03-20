@@ -56,7 +56,7 @@ def log_some_space_views() -> None:
 
     for i in range(10):
         rr.set_time_sequence("frame_nr", i)
-        rr.log("timeseries", rr.TimeSeriesScalar(random.randint(0, 100)))
+        rr.log("timeseries", rr.Scalar(random.randint(0, 100)))
 
 
 def run(args: Namespace) -> None:
