@@ -53,7 +53,7 @@ impl ViewContextSystem for EntityDepthOffsets {
                 continue;
             }
 
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             if let Some(draw_order) = ctx
                 .store_context
                 .recording

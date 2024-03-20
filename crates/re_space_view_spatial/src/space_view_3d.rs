@@ -305,7 +305,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
-        // TODO: pending behavior
+        // TODO(#5607): what should happen if the promise is still pending?
         let scene_view_coordinates = ctx
             .recording()
             .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())

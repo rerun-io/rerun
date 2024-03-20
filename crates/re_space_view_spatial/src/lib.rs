@@ -42,7 +42,7 @@ fn resolution_from_tensor(
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<Resolution> {
-    // TODO: pending behavior
+    // TODO(#5607): what should happen if the promise is still pending?
     entity_db
         .latest_at_component::<TensorData>(entity_path, query)
         .and_then(|tensor| {
@@ -61,7 +61,7 @@ fn query_pinhole(
     query: &re_data_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<re_types::archetypes::Pinhole> {
-    // TODO: pending behavior x3
+    // TODO(#5607): what should happen if the promise is still pending?
     entity_db
         .latest_at_component::<re_types::components::PinholeProjection>(entity_path, query)
         .map(|image_from_camera| re_types::archetypes::Pinhole {

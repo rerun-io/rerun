@@ -47,7 +47,7 @@ impl Caches {
     ///
     /// This is a best-effort helper, it will merely log messages on failure.
     //
-    // TODO: issue about figuring out what to do when these things are pending
+    // TODO(#5607): what should happen if the promise is still pending?
     pub fn latest_at_component_with_log_level<C: Component>(
         &self,
         store: &DataStore,

@@ -505,7 +505,7 @@ pub fn picking(
                 store,
             );
 
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             ctx.recording()
                 .latest_at_component::<TensorData>(&instance_path.entity_path, &ctx.current_query())
                 .and_then(|tensor| {
@@ -540,7 +540,7 @@ pub fn picking(
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords
         {
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             let meter = ctx
                 .recording()
                 .latest_at_component::<DepthMeter>(&instance_path.entity_path, &ctx.current_query())

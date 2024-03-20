@@ -49,7 +49,7 @@ impl VisualizerSystem for BarChartVisualizerSystem {
         re_tracing::profile_function!();
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let tensor = ctx

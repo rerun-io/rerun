@@ -38,7 +38,7 @@ impl EntityDataUi for re_types::components::TensorData {
     ) {
         re_tracing::profile_function!();
 
-        // TODO: pending handling
+        // TODO(#5607): what should happen if the promise is still pending?
         let tensor_data_row_id = ctx
             .recording()
             .latest_at_component::<re_types::components::TensorData>(entity_path, query)
@@ -93,7 +93,7 @@ pub fn tensor_ui(
     let meaning = image_meaning_for_entity(entity_path, query, store);
 
     let meter = if meaning == TensorDataMeaning::Depth {
-        // TODO: pending handling
+        // TODO(#5607): what should happen if the promise is still pending?
         ctx.recording()
             .latest_at_component::<DepthMeter>(entity_path, query)
             .map(|meter| meter.value.0)

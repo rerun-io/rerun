@@ -444,7 +444,7 @@ pub fn view_3d(
 
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
-    // TODO: pending behavior
+    // TODO(#5607): what should happen if the promise is still pending?
     let scene_view_coordinates = ctx
         .recording()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
