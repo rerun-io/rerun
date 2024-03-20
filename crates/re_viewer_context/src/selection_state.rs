@@ -286,7 +286,10 @@ impl ApplicationSelectionState {
         *self.hovered_this_frame.lock() = hovered.into();
     }
 
-    /// Remove items from the selection, ignoring whether they are actually selected.
+    /// Remove given items from the selection.
+    ///
+    /// Has no effect on items that were not selected in the first place.
+    /// Ignores `ItemSpaceContext`s in the passed collection if any.
     pub fn remove_from_selection(&self, items: impl Into<ItemCollection>) {
         let removed_items = items.into();
         self.selection_this_frame
