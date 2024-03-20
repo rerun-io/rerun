@@ -76,7 +76,7 @@ impl Viewport<'_, '_> {
 
                     // clear selection upon clicking on empty space
                     if empty_space_response.clicked() {
-                        ctx.selection_state().clear_current();
+                        ctx.selection_state().clear_selection();
                     }
 
                     // handle drag and drop interaction on empty space
