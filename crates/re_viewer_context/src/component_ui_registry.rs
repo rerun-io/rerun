@@ -33,6 +33,7 @@ pub enum UiVerbosity {
     Full,
 }
 
+// TODO: 10 bucks says we're gonna have to do this one...
 type ComponentUiCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,

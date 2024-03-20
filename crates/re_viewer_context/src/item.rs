@@ -155,6 +155,8 @@ pub fn resolve_mono_instance_path_item(
 }
 
 /// If the given path refers to the first element of an instance with a single element, resolve to a splatted entity path.
+//
+// TODO: leave that one be cause it requires figuring out post-instancekey stuff
 pub fn resolve_mono_instance_path(
     query: &re_data_store::LatestAtQuery,
     store: &re_data_store::DataStore,

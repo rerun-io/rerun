@@ -16,7 +16,7 @@ impl DataUi for [u8; 4] {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self;
         let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
@@ -37,7 +37,7 @@ impl DataUi for Color {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let [r, g, b, a] = self.to_array();
         let color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
@@ -58,7 +58,7 @@ impl DataUi for ViewCoordinates {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
             UiVerbosity::Small => {
@@ -78,7 +78,7 @@ impl DataUi for re_types::datatypes::Mat3x3 {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         egui::Grid::new("mat3").num_columns(3).show(ui, |ui| {
             ui.monospace(self[0].to_string());
@@ -106,7 +106,7 @@ impl DataUi for re_types::datatypes::Vec2D {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         ui.label(self.to_string());
     }
@@ -119,7 +119,7 @@ impl DataUi for re_types::datatypes::Vec3D {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         ui.label(self.to_string());
     }
@@ -132,7 +132,7 @@ impl DataUi for LineStrip2D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced => {
@@ -179,7 +179,7 @@ impl DataUi for LineStrip3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced => {
@@ -232,7 +232,7 @@ impl DataUi for MeshProperties {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let show_optional_indices = |ui: &mut egui::Ui| {
             if let Some(indices) = self.indices.as_ref() {
