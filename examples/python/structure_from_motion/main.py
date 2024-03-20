@@ -15,7 +15,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rbl
+import rerun.blueprint as rrb
 from read_write_model import Camera, read_model
 from tqdm import tqdm
 
@@ -222,12 +222,12 @@ def main() -> None:
     if args.resize:
         args.resize = tuple(int(x) for x in args.resize.split("x"))
 
-    blueprint = rbl.Vertical(
-        rbl.Spatial3DView(name="3D", origin="/"),
-        rbl.Horizontal(
-            rbl.TextDocumentView(name="README", origin="/description"),
-            rbl.Spatial2DView(name="Camera", origin="/camera/image"),
-            rbl.TimeSeriesView(origin="/plot"),
+    blueprint = rrb.Vertical(
+        rrb.Spatial3DView(name="3D", origin="/"),
+        rrb.Horizontal(
+            rrb.TextDocumentView(name="README", origin="/description"),
+            rrb.Spatial2DView(name="Camera", origin="/camera/image"),
+            rrb.TimeSeriesView(origin="/plot"),
         ),
         row_shares=[3, 2],
     )
