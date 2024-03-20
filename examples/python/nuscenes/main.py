@@ -9,7 +9,7 @@ from typing import Any, Final
 import matplotlib
 import numpy as np
 import rerun as rr
-import rerun.blueprint as rbl
+import rerun.blueprint as rrb
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
 
@@ -257,15 +257,15 @@ def main() -> None:
 
     # Set up the Rerun Blueprint (how the visualization is organized):
     sensor_space_views = [
-        rbl.Spatial2DView(
+        rrb.Spatial2DView(
             name=sensor_name,
             origin=f"world/ego_vehicle/{sensor_name}",
         )
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
-    blueprint = rbl.Vertical(
-        rbl.Spatial3DView(name="3D", origin="world"),
-        rbl.Grid(*sensor_space_views),
+    blueprint = rrb.Vertical(
+        rrb.Spatial3DView(name="3D", origin="world"),
+        rrb.Grid(*sensor_space_views),
         row_shares=[3, 2],
     )
 
