@@ -6,7 +6,7 @@ use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, PerVisualizer, Selection,
+    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
     SpaceViewClassRegistry, SpaceViewId, StoreContext, SystemCommandSender as _, TimeControl,
 };
 
@@ -74,13 +74,13 @@ pub struct ViewerContext<'a> {
 
 impl<'a> ViewerContext<'a> {
     /// Returns the current selection.
-    pub fn selection(&self) -> &Selection {
-        self.rec_cfg.selection_state.current()
+    pub fn selection(&self) -> &ItemCollection {
+        self.rec_cfg.selection_state.selected_items()
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &Selection {
-        self.rec_cfg.selection_state.hovered()
+    pub fn hovered(&self) -> &ItemCollection {
+        self.rec_cfg.selection_state.hovered_items()
     }
 
     pub fn selection_state(&self) -> &ApplicationSelectionState {
@@ -96,7 +96,7 @@ impl<'a> ViewerContext<'a> {
     pub fn select_hovered_on_click(
         &self,
         response: &egui::Response,
-        selection: impl Into<Selection>,
+        selection: impl Into<ItemCollection>,
     ) {
         re_tracing::profile_function!();
 

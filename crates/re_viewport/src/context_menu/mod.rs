@@ -2,7 +2,7 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Item, Selection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Item, ItemCollection, SpaceViewId, ViewerContext};
 
 use crate::{ContainerBlueprint, Contents, ViewportBlueprint};
 
@@ -48,7 +48,7 @@ pub fn context_menu_ui_for_item(
             return;
         }
 
-        let mut show_context_menu = |selection: &Selection| {
+        let mut show_context_menu = |selection: &ItemCollection| {
             let context_menu_ctx = ContextMenuContext {
                 viewer_context: ctx,
                 viewport_blueprint,
@@ -68,7 +68,7 @@ pub fn context_menu_ui_for_item(
                     if item_response.hovered() && item_response.secondary_clicked() {
                         ctx.selection_state().set_selection(item.clone());
 
-                        show_context_menu(&Selection::from(item.clone()));
+                        show_context_menu(&ItemCollection::from(item.clone()));
                     } else {
                         show_context_menu(ctx.selection());
                     }
@@ -82,10 +82,12 @@ pub fn context_menu_ui_for_item(
                     ctx.selection_state().set_selection(item.clone());
                 }
 
-                show_context_menu(&Selection::from(item.clone()));
+                show_context_menu(&ItemCollection::from(item.clone()));
             }
 
-            SelectionUpdateBehavior::Ignore => show_context_menu(&Selection::from(item.clone())),
+            SelectionUpdateBehavior::Ignore => {
+                show_context_menu(&ItemCollection::from(item.clone()));
+            }
         };
     });
 }
@@ -196,7 +198,7 @@ struct ContextMenuContext<'a> {
     viewer_context: &'a ViewerContext<'a>,
     viewport_blueprint: &'a ViewportBlueprint,
     egui_context: egui::Context,
-    selection: &'a Selection,
+    selection: &'a ItemCollection,
     clicked_item: &'a Item,
 }
 
@@ -235,9 +237,9 @@ impl<'a> ContextMenuContext<'a> {
 /// Context menu actions must implement this trait.
 ///
 /// Actions must do three things, corresponding to three core methods:
-/// 1. Decide if it can operate a given [`Selection`] ([`Self::supports_selection`]).
+/// 1. Decide if it can operate a given [`ItemCollection`] ([`Self::supports_selection`]).
 /// 2. If so, draw some UI in the context menu ([`Self::ui`]).
-/// 3. If clicked, actually process the [`Selection`] ([`Self::process_selection`]).
+/// 3. If clicked, actually process the [`ItemCollection`] ([`Self::process_selection`]).
 ///
 /// For convenience, these core methods have default implementations which delegates to simpler
 /// methods (see their respective docstrings). Implementor may either implement the core method for
@@ -293,7 +295,7 @@ trait ContextMenuAction {
 
     // ---
 
-    /// Process the provided [`Selection`].
+    /// Process the provided [`ItemCollection`].
     ///
     /// The default implementation dispatches to [`Self::process_store_id`] and friends.
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {

@@ -174,7 +174,7 @@ impl AppState {
             recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            rec_cfg.selection_state.clear_current();
+            rec_cfg.selection_state.clear_selection();
         }
 
         let applicable_entities_per_visualizer = space_view_class_registry

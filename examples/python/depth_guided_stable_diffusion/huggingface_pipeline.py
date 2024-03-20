@@ -218,7 +218,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             return_tensors="pt",
         )
         text_input_ids = text_inputs.input_ids
-        rr.log("prompt/text_input/ids", rr.Tensor(text_input_ids))
+        rr.log("prompt/text_input/ids", rr.BarChart(text_input_ids))
         untruncated_ids = self.tokenizer(prompt, padding="longest", return_tensors="pt").input_ids
 
         if untruncated_ids.shape[-1] >= text_input_ids.shape[-1] and not torch.equal(text_input_ids, untruncated_ids):
@@ -229,7 +229,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline):
             )
 
         if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
-            rr.log("prompt/text_input/attention_mask", rr.Tensor(text_inputs.attention_mask))
+            rr.log("prompt/text_input/attention_mask", rr.BarChart(text_inputs.attention_mask))
             attention_mask = text_inputs.attention_mask.to(device)
         else:
             attention_mask = None

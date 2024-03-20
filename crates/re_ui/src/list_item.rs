@@ -11,7 +11,7 @@ struct ListItemResponse {
     collapse_response: Option<Response>,
 }
 
-/// Responses returned by [`ListItem::show_collapsing`].
+/// Responses returned by [`ListItem::show_hierarchical_with_content`].
 pub struct ShowCollapsingResponse<R> {
     /// Response from the item itself.
     pub item_response: Response,
@@ -226,8 +226,8 @@ impl<'a> ListItem<'a> {
     /// Override the hovered state even if the item is not actually hovered.
     ///
     /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
-    /// the [`egui::Response`] returned by [`Self::show`] and ]`Self::show_collapsing`] will still
-    /// reflect the actual hover state.
+    /// the [`egui::Response`] returned by [`Self::show_flat`], [`Self::show_hierarchical`], and
+    /// [`Self::show_hierarchical_with_content`] will still reflect the actual hover state.
     #[inline]
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
@@ -286,14 +286,29 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Draw the item.
-    pub fn show(self, ui: &mut Ui) -> Response {
+    /// Draw the item as part of a flat list.
+    pub fn show_flat(self, ui: &mut Ui) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| self.ui(ui, None)).inner.response
     }
 
-    /// Draw the item as a collapsing header.
-    pub fn show_collapsing<R>(
+    /// Draw the item as a leaf node from a hierarchical list.
+    pub fn show_hierarchical(self, ui: &mut Ui) -> Response {
+        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.scope(|ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(ReUi::small_icon_size().x + ReUi::text_to_icon_padding());
+                ui.vertical(|ui| self.ui(ui, None))
+            })
+        })
+        .inner
+        .inner
+        .inner
+        .response
+    }
+
+    /// Draw the item as a non-leaf node from a hierarchical list.
+    pub fn show_hierarchical_with_content<R>(
         mut self,
         ui: &mut Ui,
         id: impl Into<egui::Id>,

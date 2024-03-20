@@ -9,7 +9,7 @@ use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
+    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
     UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
@@ -613,7 +613,7 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
+            SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_space2d
@@ -621,7 +621,7 @@ pub fn picking(
             },
             SpatialSpaceViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
-                SelectedSpaceContext::ThreeD {
+                ItemSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),
