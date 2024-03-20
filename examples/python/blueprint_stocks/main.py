@@ -61,13 +61,13 @@ def one_stock_no_peaks(symbol: str) -> rrb.ViewportLike:
 def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ViewportLike:
     """Create a grid of stocks and their time series over all days."""
     return rrb.Vertical(
-        *(
+        contents=[
             rrb.Horizontal(
-                rrb.TextDocumentView(name=f"{symbol}", origin=f"/stocks/{symbol}/info"),
-                *(rrb.TimeSeriesView(name=f"{day}", origin=f"/stocks/{symbol}/{day}") for day in dates),
+                contents=[rrb.TextDocumentView(name=f"{symbol}", origin=f"/stocks/{symbol}/info")]
+                + [rrb.TimeSeriesView(name=f"{day}", origin=f"/stocks/{symbol}/{day}") for day in dates],
             )
             for symbol in symbols
-        )
+        ]
     )
 
 
