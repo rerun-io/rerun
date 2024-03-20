@@ -16,7 +16,7 @@ API has been replaced by one (or more) new Archetypes. You can find more informa
 
 In practice, the changes are mostly demonstrated in the following example:
 
-code-example: log_line
+snippet: log_line
 
 Note that for any Archetype that supports batching the object names are now plural. For example, points are now logged
 with the `Points3D` archetype. Even if you are logging a single point, under the hood it is always implemented as a

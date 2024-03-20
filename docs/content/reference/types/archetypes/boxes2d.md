@@ -21,7 +21,7 @@ title: "Boxes2D"
 
 ### Simple 2D boxes
 
-code-example: box2d_simple
+snippet: box2d_simple
 
 <center>
 <picture>

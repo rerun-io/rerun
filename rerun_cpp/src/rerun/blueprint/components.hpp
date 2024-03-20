@@ -14,7 +14,7 @@
 #include "blueprint/components/included_content.hpp"
 #include "blueprint/components/included_space_view.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
-#include "blueprint/components/panel_view.hpp"
+#include "blueprint/components/panel_expanded.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
@@ -23,3 +23,4 @@
 #include "blueprint/components/space_view_origin.hpp"
 #include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"
+#include "blueprint/components/visible_time_range.hpp"

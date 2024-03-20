@@ -1,7 +1,7 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSpawnHeuristics,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_entity_db::EntityProperties;
 
@@ -10,10 +10,13 @@ use re_entity_db::EntityProperties;
 pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
-    type State = ();
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Unknown Space View Class".into()
+    }
 
-    const IDENTIFIER: &'static str = "Unknown Space View Class";
-    const DISPLAY_NAME: &'static str = "Unknown Space View Class";
+    fn display_name(&self) -> &'static str {
+        "Unknown Space View Class"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_UNKNOWN
@@ -30,6 +33,10 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         Ok(())
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<()>::default()
+    }
+
     fn layout_priority(&self) -> crate::SpaceViewClassLayoutPriority {
         crate::SpaceViewClassLayoutPriority::Low
     }
@@ -40,22 +47,11 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         }
     }
 
-    fn selection_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut (),
-        _space_origin: &re_log_types::EntityPath,
-        _space_view_id: crate::SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
-    ) {
-    }
-
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,

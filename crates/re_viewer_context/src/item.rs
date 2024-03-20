@@ -6,7 +6,7 @@ use crate::{ContainerId, SpaceViewId};
 /// One "thing" in the UI.
 ///
 /// This is the granularity of what is selectable and hoverable.
-#[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
 pub enum Item {
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),

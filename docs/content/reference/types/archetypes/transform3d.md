@@ -17,7 +17,7 @@ A 3D transform.
 
 ### Variety of 3D transforms
 
-code-example: transform3d_simple
+snippet: transform3d_simple
 
 <center>
 <picture>

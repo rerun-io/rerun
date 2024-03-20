@@ -29,7 +29,7 @@ To log the contents of a file from the SDK you can use the `log_file_from_path` 
 
 Note: when calling these APIs from the SDK, the data will be loaded by the process running the SDK, not the Viewer!
 
-code-example: log-file
+snippet: log-file
 
 ## Adding support for arbitrary filetypes
 

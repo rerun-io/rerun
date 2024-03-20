@@ -11,34 +11,11 @@ namespace rerun {
         Loggable<blueprint::components::Background3DKind>::arrow_datatype() {
         static const auto datatype = arrow::sparse_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("GradientDark", arrow::null(), false),
-            arrow::field("GradientBright", arrow::null(), false),
-            arrow::field("SolidColor", arrow::null(), false),
+            arrow::field("GradientDark", arrow::null(), true),
+            arrow::field("GradientBright", arrow::null(), true),
+            arrow::field("SolidColor", arrow::null(), true),
         });
         return datatype;
-    }
-
-    rerun::Error Loggable<blueprint::components::Background3DKind>::fill_arrow_array_builder(
-        arrow::SparseUnionBuilder* builder, const blueprint::components::Background3DKind* elements,
-        size_t num_elements
-    ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
-        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-            const auto variant = elements[elem_idx];
-            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(variant)));
-        }
-
-        return Error::ok();
     }
 
     Result<std::shared_ptr<arrow::Array>>
@@ -62,5 +39,28 @@ namespace rerun {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
         return array;
+    }
+
+    rerun::Error Loggable<blueprint::components::Background3DKind>::fill_arrow_array_builder(
+        arrow::SparseUnionBuilder* builder, const blueprint::components::Background3DKind* elements,
+        size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        }
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
+            );
+        }
+
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto variant = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(variant)));
+        }
+
+        return Error::ok();
     }
 } // namespace rerun

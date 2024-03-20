@@ -51,14 +51,19 @@ if(NOT TARGET rerun_c)
     if(APPLE)
         if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
-        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
         else()
             message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
         endif()
     elseif(UNIX) # if(LINUX) # CMake 3.25
-        # TODO(andreas): Arm support.
-        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
+        if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_arm64.a)
+        else()
+            message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
+        endif()
     elseif(WIN32)
         # TODO(andreas): Arm support.
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/rerun_c__win_x64.lib)
@@ -127,8 +132,10 @@ install(TARGETS rerun_sdk
 install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp")
 
 option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
+
 # if rerun_sdk is a static library it is compulsory to install rerun_c
 get_target_property(rerun_sdk_TYPE rerun_sdk TYPE)
+
 if(rerun_sdk_TYPE STREQUAL "STATIC_LIBRARY" AND NOT RERUN_INSTALL_RERUN_C)
     message(FATAL_ERROR "It is not possible to disable RERUN_INSTALL_RERUN_C option if rerun_sdk is compiled as static library.")
 endif()

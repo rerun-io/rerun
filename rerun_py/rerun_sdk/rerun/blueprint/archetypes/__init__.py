@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .background3d import Background3D
 from .container_blueprint import ContainerBlueprint
+from .panel_blueprint import PanelBlueprint
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
@@ -13,6 +14,7 @@ from .viewport_blueprint import ViewportBlueprint
 __all__ = [
     "Background3D",
     "ContainerBlueprint",
+    "PanelBlueprint",
     "PlotLegend",
     "ScalarAxis",
     "SpaceViewBlueprint",

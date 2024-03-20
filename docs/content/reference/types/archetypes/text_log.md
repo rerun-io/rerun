@@ -21,7 +21,7 @@ A log entry in a text log, comprised of a text body and its log level.
 
 ### text_log_integration
 
-code-example: text_log_integration
+snippet: text_log_integration
 
 <center>
 <picture>

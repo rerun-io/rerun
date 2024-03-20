@@ -102,8 +102,6 @@ pub fn execute_systems_for_space_view<'a>(
 ) -> (ViewQuery<'a>, SystemExecutionOutput) {
     re_tracing::profile_function!(space_view.class_identifier().as_str());
 
-    let class = space_view.class(ctx.space_view_class_registry);
-
     let query_result = ctx.lookup_query_result(space_view.id);
 
     let mut per_system_data_results = PerSystemDataResults::default();
@@ -130,7 +128,8 @@ pub fn execute_systems_for_space_view<'a>(
         highlights,
     };
 
-    let system_output = create_and_run_space_view_systems(ctx, class.identifier(), &query);
+    let system_output =
+        create_and_run_space_view_systems(ctx, *space_view.class_identifier(), &query);
 
     (query, system_output)
 }

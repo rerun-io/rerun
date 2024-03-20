@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.components;
+
+// ---
+
+/// The range of values that will be included in a Space View query.
+table VisibleTimeRange (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.repr": "transparent",
+  "attr.rust.derive": "PartialEq, Eq"
+) {
+  value: rerun.blueprint.datatypes.VisibleTimeRange (order: 100);
+}

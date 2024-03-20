@@ -12,18 +12,7 @@ until the next time we roll out a site-update. We will generally to do this at l
 
 The site documentation lives in Markdown files inside [`/content`](./content).
 
-The entry point to the documentation is [`/content/index.md`](./content/index.md)
-
-Code examples can be rendered in multiple languages by placing them in `code-examples/all`, like so:
-
-```
-/docs
-  /code-examples
-    /all
-      /my-example
-        /example.py
-        /example.rs
-```
+The entry point to the documentation is [`/content/index.md`](./content/index.md).
 
 ## Special syntax
 
@@ -38,9 +27,31 @@ order: 6
 ```
 
 
-### Code Examples
+### Snippets
 
-Code-examples can be referenced in Markdown using this syntax:
+Snippets are small, self-contained code examples.
+
+To ensure all the code blocks in our documentation contain valid code, we give each one a name, and move it into `snippets/all`:
 ```
-code-example: my-example
+/docs
+  /snippets
+    /all
+      /my-example
+        /example.py
+```
+
+Each snippet can and should be written in all our supported languages:
+```
+/docs
+  /snippets
+    /all
+      /my-example
+        /example.cpp
+        /example.py
+        /example.rs
+```
+
+Once the snippet is in `snippet/all`, it may be referenced in a documentation Markdown file using this syntax:
+```
+snippet: my-example
 ```

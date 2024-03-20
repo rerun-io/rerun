@@ -17,7 +17,7 @@ A generic n-dimensional Tensor.
 
 ### Simple Tensor
 
-code-example: tensor_simple
+snippet: tensor_simple
 
 <center>
 <picture>

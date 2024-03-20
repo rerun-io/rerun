@@ -66,8 +66,7 @@ pub fn context_menu_ui_for_item(
                     // When the context menu is triggered open, we check if we're part of the selection,
                     // and, if not, we update the selection to include only the item that was clicked.
                     if item_response.hovered() && item_response.secondary_clicked() {
-                        ctx.selection_state()
-                            .set_selection(std::iter::once(item.clone()));
+                        ctx.selection_state().set_selection(item.clone());
 
                         show_context_menu(&Selection::from(item.clone()));
                     } else {
@@ -80,8 +79,7 @@ pub fn context_menu_ui_for_item(
 
             SelectionUpdateBehavior::OverrideSelection => {
                 if item_response.secondary_clicked() {
-                    ctx.selection_state()
-                        .set_selection(std::iter::once(item.clone()));
+                    ctx.selection_state().set_selection(item.clone());
                 }
 
                 show_context_menu(&Selection::from(item.clone()));
@@ -116,7 +114,7 @@ fn action_list(
             vec![Box::new(CloneSpaceViewAction)],
             vec![
                 Box::new(SubMenu {
-                    label: "Add Container".to_owned(),
+                    label: "Add container".to_owned(),
                     actions: vec![
                         Box::new(AddContainerAction(egui_tiles::ContainerKind::Tabs)),
                         Box::new(AddContainerAction(egui_tiles::ContainerKind::Horizontal)),
@@ -131,14 +129,14 @@ fn action_list(
                         .iter_registry()
                         .sorted_by_key(|entry| entry.class.display_name())
                         .map(|entry| {
-                            Box::new(AddSpaceViewAction(entry.class.identifier()))
+                            Box::new(AddSpaceViewAction(entry.identifier))
                                 as Box<dyn ContextMenuAction + Sync + Send>
                         })
                         .collect(),
                 }),
             ],
             vec![Box::new(SubMenu {
-                label: "Move to new Container".to_owned(),
+                label: "Move to new container".to_owned(),
                 actions: vec![
                     Box::new(MoveContentsToNewContainerAction(
                         egui_tiles::ContainerKind::Tabs,

@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 angle.md linguist-generated=true
 annotation_info.md linguist-generated=true
+bool.md linguist-generated=true
 class_description.md linguist-generated=true
 class_description_map_elem.md linguist-generated=true
 class_id.md linguist-generated=true
@@ -22,6 +23,7 @@ scale3d.md linguist-generated=true
 tensor_buffer.md linguist-generated=true
 tensor_data.md linguist-generated=true
 tensor_dimension.md linguist-generated=true
+time_int.md linguist-generated=true
 transform3d.md linguist-generated=true
 translation_and_mat3x3.md linguist-generated=true
 translation_rotation_scale3d.md linguist-generated=true

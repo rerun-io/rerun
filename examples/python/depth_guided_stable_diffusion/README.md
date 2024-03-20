@@ -7,7 +7,7 @@ channel = "nightly"
 -->
 
 
-<picture>
+<picture data-inline-viewer="depth_guided_stable_diffusion">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_guided_stable_diffusion/a85516aba09f72649517891d767e15383ce7f4ea/1024w.png">

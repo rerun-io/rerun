@@ -21,7 +21,7 @@ Camera perspective projection (a.k.a. intrinsics).
 
 ### Simple Pinhole Camera
 
-code-example: pinhole_simple
+snippet: pinhole_simple
 
 <center>
 <picture>
@@ -35,7 +35,7 @@ code-example: pinhole_simple
 
 ### Perspective Pinhole Camera
 
-code-example: pinhole_perspective
+snippet: pinhole_perspective
 
 <center>
 <picture>

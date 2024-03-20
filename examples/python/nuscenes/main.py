@@ -9,6 +9,7 @@ from typing import Any, Final
 import matplotlib
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rbl
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
 
@@ -47,9 +48,28 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
         raise ValueError(f"{scene_name=} not found in dataset")
 
 
-def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str, max_time_sec: float) -> None:
+def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> set[str]:
+    """Return all sensor names in the scene."""
+
+    sensor_names = set()
+
+    scene = next(s for s in nusc.scene if s["name"] == scene_name)
+    first_sample = nusc.get("sample", scene["first_sample_token"])
+    for sample_data_token in first_sample["data"].values():
+        sample_data = nusc.get("sample_data", sample_data_token)
+        if sample_data["sensor_modality"] == "camera":
+            current_camera_token = sample_data_token
+            while current_camera_token != "":
+                sample_data = nusc.get("sample_data", current_camera_token)
+                sensor_name = sample_data["channel"]
+                sensor_names.add(sensor_name)
+                current_camera_token = sample_data["next"]
+
+    return sensor_names
+
+
+def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) -> None:
     """Log nuScenes scene."""
-    nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
@@ -233,8 +253,25 @@ def main() -> None:
 
     ensure_scene_available(args.root_dir, args.dataset_version, args.scene_name)
 
-    rr.script_setup(args, "rerun_example_nuscenes")
-    log_nuscenes(args.root_dir, args.dataset_version, args.scene_name, max_time_sec=args.seconds)
+    nusc = nuscenes.NuScenes(version=args.dataset_version, dataroot=args.root_dir, verbose=True)
+
+    # Set up the Rerun Blueprint (how the visualization is organized):
+    sensor_space_views = [
+        rbl.Spatial2DView(
+            name=sensor_name,
+            origin=f"world/ego_vehicle/{sensor_name}",
+        )
+        for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
+    ]
+    blueprint = rbl.Vertical(
+        rbl.Spatial3DView(name="3D", origin="world"),
+        rbl.Grid(*sensor_space_views),
+        row_shares=[3, 2],
+    )
+
+    rr.script_setup(args, "rerun_example_nuscenes", blueprint=blueprint)
+
+    log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)
 
     rr.script_teardown(args)
 

@@ -798,7 +798,7 @@ impl ObjectField {
         let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
+        let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
         let is_deprecated = field.deprecated();
 
         Self {
@@ -852,8 +852,8 @@ impl ObjectField {
             &attrs,
         );
 
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE);
-        // TODO(cmc): not sure about this, but fbs unions are a bit weird that way
+        let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
+
         let is_deprecated = false;
 
         if attrs.has(crate::ATTR_ORDER) {

@@ -10,6 +10,7 @@ from .annotation_info import (
     AnnotationInfoLike,
     AnnotationInfoType,
 )
+from .bool import Bool, BoolArrayLike, BoolBatch, BoolLike, BoolType
 from .class_description import (
     ClassDescription,
     ClassDescriptionArrayLike,
@@ -59,6 +60,7 @@ from .tensor_dimension import (
     TensorDimensionLike,
     TensorDimensionType,
 )
+from .time_int import TimeInt, TimeIntArrayLike, TimeIntBatch, TimeIntLike, TimeIntType
 from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -96,6 +98,11 @@ __all__ = [
     "AnnotationInfoBatch",
     "AnnotationInfoLike",
     "AnnotationInfoType",
+    "Bool",
+    "BoolArrayLike",
+    "BoolBatch",
+    "BoolLike",
+    "BoolType",
     "ClassDescription",
     "ClassDescriptionArrayLike",
     "ClassDescriptionBatch",
@@ -191,6 +198,11 @@ __all__ = [
     "TensorDimensionBatch",
     "TensorDimensionLike",
     "TensorDimensionType",
+    "TimeInt",
+    "TimeIntArrayLike",
+    "TimeIntBatch",
+    "TimeIntLike",
+    "TimeIntType",
     "Transform3D",
     "Transform3DArrayLike",
     "Transform3DBatch",

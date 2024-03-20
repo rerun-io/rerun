@@ -21,7 +21,7 @@ the `Scalar` archetype.
 
 ### Series Point
 
-code-example: series_point_style
+snippet: series_point_style
 
 <center>
 <picture>

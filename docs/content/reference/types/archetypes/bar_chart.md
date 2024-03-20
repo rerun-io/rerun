@@ -21,7 +21,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 ### Simple bar chart
 
-code-example: bar_chart
+snippet: bar_chart
 
 <center>
 <picture>

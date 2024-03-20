@@ -157,4 +157,4 @@ add_subdirectory(crates/rerun_c) # The Rerun C SDK library, must be included bef
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
-add_subdirectory(docs/code-examples)
+add_subdirectory(docs/snippets)

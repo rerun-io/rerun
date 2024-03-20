@@ -25,7 +25,7 @@ the plot-specific archetypes through the blueprint.
 
 ### Simple line plot
 
-code-example: scalar_simple
+snippet: scalar_simple
 
 <center>
 <picture>
@@ -39,7 +39,7 @@ code-example: scalar_simple
 
 ### Multiple time series plots
 
-code-example: scalar_multiple_plots
+snippet: scalar_multiple_plots
 
 <center>
 <picture>

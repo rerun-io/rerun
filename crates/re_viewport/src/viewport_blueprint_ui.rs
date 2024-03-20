@@ -1,11 +1,13 @@
 use egui::{Response, Ui};
 use itertools::Itertools;
 use re_data_ui::item_ui::guess_instance_path_icon;
+use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
 use re_space_view::{SpaceViewBlueprint, SpaceViewName};
+use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
 use re_viewer_context::{CollapseScope, DataResultTree};
 use re_viewer_context::{
@@ -54,7 +56,7 @@ impl<'a> DataResultNodeOrPath<'a> {
 
 impl Viewport<'_, '_> {
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
 
         egui::ScrollArea::both()
@@ -62,6 +64,11 @@ impl Viewport<'_, '_> {
             .auto_shrink([true, false])
             .show(ui, |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
+                    self.state.blueprint_tree_scroll_to_item = ctx
+                        .focused_item
+                        .as_ref()
+                        .and_then(|item| self.handle_focused_item(ctx, ui, item));
+
                     self.root_container_tree_ui(ctx, ui);
 
                     let empty_space_response =
@@ -79,6 +86,142 @@ impl Viewport<'_, '_> {
                     );
                 });
             });
+    }
+
+    /// Expend all required items and compute which item we should scroll to.
+    fn handle_focused_item(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &egui::Ui,
+        focused_item: &Item,
+    ) -> Option<Item> {
+        match focused_item {
+            Item::Container(container_id) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
+                Some(focused_item.clone())
+            }
+            Item::SpaceView(space_view_id) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                ctx.focused_item.clone()
+            }
+            Item::DataResult(space_view_id, instance_path) => {
+                self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(*space_view_id));
+                self.expand_all_data_results_until(
+                    ctx,
+                    ui.ctx(),
+                    space_view_id,
+                    &instance_path.entity_path,
+                );
+
+                ctx.focused_item.clone()
+            }
+            Item::InstancePath(instance_path) => {
+                let space_view_ids =
+                    self.list_space_views_with_entity(ctx, &instance_path.entity_path);
+
+                // focus on the first matching data result
+                let res = space_view_ids
+                    .first()
+                    .map(|id| Item::DataResult(*id, instance_path.clone()));
+
+                for space_view_id in space_view_ids {
+                    self.expand_all_contents_until(ui.ctx(), &Contents::SpaceView(space_view_id));
+                    self.expand_all_data_results_until(
+                        ctx,
+                        ui.ctx(),
+                        &space_view_id,
+                        &instance_path.entity_path,
+                    );
+                }
+
+                res
+            }
+            Item::ComponentPath(component_path) => self.handle_focused_item(
+                ctx,
+                ui,
+                &Item::InstancePath(InstancePath::entity_splat(
+                    component_path.entity_path.clone(),
+                )),
+            ),
+
+            Item::StoreId(_) => None,
+        }
+    }
+
+    /// Expand all containers until reaching the provided content.
+    fn expand_all_contents_until(&self, egui_ctx: &egui::Context, focused_contents: &Contents) {
+        //TODO(ab): this could look nicer if `Contents` was declared in re_view_context :)
+        let expend_contents = |contents: &Contents| match contents {
+            Contents::Container(container_id) => CollapseScope::BlueprintTree
+                .container(*container_id)
+                .set_open(egui_ctx, true),
+            Contents::SpaceView(space_view_id) => CollapseScope::BlueprintTree
+                .space_view(*space_view_id)
+                .set_open(egui_ctx, true),
+        };
+
+        self.blueprint.visit_contents(&mut |contents, hierarchy| {
+            if contents == focused_contents {
+                expend_contents(contents);
+                for parent in hierarchy {
+                    expend_contents(&Contents::Container(*parent));
+                }
+            }
+        });
+    }
+
+    /// List all space views that have the provided entity as data result.
+    #[inline]
+    fn list_space_views_with_entity(
+        &self,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> SmallVec<[SpaceViewId; 4]> {
+        let mut space_view_ids = SmallVec::new();
+        self.blueprint.visit_contents(&mut |contents, _| {
+            if let Contents::SpaceView(space_view_id) = contents {
+                let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+                if result_tree.lookup_node_by_path(entity_path).is_some() {
+                    space_view_ids.push(*space_view_id);
+                }
+            }
+        });
+        space_view_ids
+    }
+
+    /// Expand data results of the provided space view all the way to the provided entity.
+    #[allow(clippy::unused_self)]
+    fn expand_all_data_results_until(
+        &self,
+        ctx: &ViewerContext<'_>,
+        egui_ctx: &egui::Context,
+        space_view_id: &SpaceViewId,
+        entity_path: &EntityPath,
+    ) {
+        let result_tree = &ctx.lookup_query_result(*space_view_id).tree;
+        if result_tree.lookup_node_by_path(entity_path).is_some() {
+            if let Some(root_node) = result_tree.root_node() {
+                EntityPath::incremental_walk(Some(&root_node.data_result.entity_path), entity_path)
+                    .chain(std::iter::once(root_node.data_result.entity_path.clone()))
+                    .for_each(|entity_path| {
+                        CollapseScope::BlueprintTree
+                            .data_result(*space_view_id, entity_path)
+                            .set_open(egui_ctx, true);
+                    });
+            }
+        }
+    }
+
+    /// Check if the provided item should be scrolled to.
+    fn scroll_to_me_if_needed(&self, ui: &egui::Ui, item: &Item, response: &egui::Response) {
+        if Some(item) == self.state.blueprint_tree_scroll_to_item.as_ref() {
+            // Scroll only if the entity isn't already visible. This is important because that's what
+            // happens when double-clicking an entity _in the blueprint tree_. In such case, it would be
+            // annoying to induce a scroll motion.
+            if !ui.clip_rect().contains_rect(response.rect) {
+                response.scroll_to_me(Some(egui::Align::Center));
+            }
+        }
     }
 
     /// If a group or spaceview has a total of this number of elements, show its subtree by default?
@@ -145,6 +288,7 @@ impl Viewport<'_, '_> {
             &item_response,
             SelectionUpdateBehavior::UseSelection,
         );
+        self.scroll_to_me_if_needed(ui, &item, &item_response);
         ctx.select_hovered_on_click(&item_response, item);
 
         self.handle_root_container_drag_and_drop_interaction(
@@ -218,6 +362,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         self.blueprint
@@ -304,7 +449,7 @@ impl Viewport<'_, '_> {
                     );
 
                     // Show 'projections' if there's any items that weren't part of the tree under origin but are directly included.
-                    // The later is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
+                    // The latter is important since `+ image/camera/**` necessarily has `image` and `image/camera` in the data result tree.
                     let mut projections = Vec::new();
                     result_tree.visit(&mut |node| {
                         if node
@@ -312,7 +457,7 @@ impl Viewport<'_, '_> {
                             .entity_path
                             .starts_with(&space_view.space_origin)
                         {
-                            false // If its under the origin, we're not interested, stop recursing.
+                            false // If it's under the origin, we're not interested, stop recursing.
                         } else if node.data_result.tree_prefix_only {
                             true // Keep recursing until we find a projection.
                         } else {
@@ -351,6 +496,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
 
         let content = Contents::SpaceView(*space_view_id);
@@ -408,12 +554,7 @@ impl Viewport<'_, '_> {
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-        let visible =
-            data_result_node.map_or(false, |n| n.data_result.accumulated_properties().visible);
-        let mut recursive_properties = data_result_node
-            .and_then(|n| n.data_result.recursive_properties())
-            .cloned()
-            .unwrap_or_default();
+        let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
 
         let item_label = if entity_path.is_root() {
             "/ (root)".to_owned()
@@ -442,12 +583,20 @@ impl Viewport<'_, '_> {
             .subdued(subdued)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
-                let vis_response = visibility_button_ui(
-                    re_ui,
-                    ui,
-                    space_view_visible,
-                    &mut recursive_properties.visible,
-                );
+                let mut visible_after = visible;
+                let vis_response =
+                    visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
+                if visible_after != visible {
+                    if let Some(data_result_node) = data_result_node {
+                        data_result_node
+                            .data_result
+                            .save_recursive_override_or_clear_if_redundant(
+                                ctx,
+                                &query_result.tree,
+                                &Visible(visible_after),
+                            );
+                    }
+                }
 
                 let response = remove_button_ui(
                     re_ui,
@@ -471,11 +620,10 @@ impl Viewport<'_, '_> {
             let default_open = entity_path.starts_with(&space_view.space_origin)
                 && Self::default_open_for_data_result(node);
 
-            let response = list_item
+            list_item
                 .show_collapsing(
                     ui,
-                    CollapseScope::BlueprintTree
-                        .data_result(space_view.id, node.data_result.entity_path.clone()),
+                    CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
                     default_open,
                     |_, ui| {
                         for child in node.children.iter().sorted_by_key(|c| {
@@ -504,12 +652,7 @@ impl Viewport<'_, '_> {
                         }
                     },
                 )
-                .item_response;
-
-            node.data_result
-                .save_recursive_override(ctx, Some(recursive_properties));
-
-            response
+                .item_response
         } else {
             list_item.show(ui)
         };
@@ -526,6 +669,7 @@ impl Viewport<'_, '_> {
             &response,
             SelectionUpdateBehavior::UseSelection,
         );
+        self.scroll_to_me_if_needed(ui, &item, &response);
         ctx.select_hovered_on_click(&response, item);
     }
 

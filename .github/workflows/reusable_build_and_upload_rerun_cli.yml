@@ -21,22 +21,25 @@ on:
   workflow_dispatch:
     inputs:
       ADHOC_NAME:
-        required: true
+        required: false
         type: string
+        default: ""
         description: "Name of the adhoc build, used for upload directory"
       PLATFORM:
         type: choice
         options:
-          - linux
-          - windows
-          - macos-arm
-          - macos-intel
+          - linux-arm64
+          - linux-x64
+          - windows-x64
+          - macos-arm64
+          - macos-x64
         description: "Platform to build for"
         required: true
       CONCURRENCY:
         required: false
         type: string
         default: "adhoc"
+        description: "Concurrency group to use"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-rerun-cli
@@ -71,25 +74,31 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
-            linux)
-              runner="ubuntu-latest-16-cores"
-              target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.11.0'}"
+            linux-arm64)
+              runner="buildjet-8vcpu-ubuntu-2204-arm"
+              target="aarch64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
               bin_name="rerun"
               ;;
-            windows)
+            linux-x64)
+              runner="ubuntu-latest-16-cores"
+              target="x86_64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.12.0'}"
+              bin_name="rerun"
+              ;;
+            windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
               container="null"
               bin_name="rerun.exe"
               ;;
-            macos-arm)
+            macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               container="null"
               bin_name="rerun"
               ;;
-            macos-intel)
+            macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               container="null"
@@ -128,7 +137,7 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - name: Set up Rust
+      - name: Set up Rust and Authenticate to GCS
         uses: ./.github/actions/setup-rust
         with:
           cache_key: "build-${{ inputs.PLATFORM }}"
@@ -139,7 +148,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Build web-viewer (release)
         shell: bash
@@ -147,7 +156,7 @@ jobs:
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
       # This does not run in the pixi environment, doing so
-      # causes it to select the wrong compiler on macos-arm
+      # causes it to select the wrong compiler on macos-arm64
       - name: Build rerun-cli
         shell: bash
         env:
@@ -161,12 +170,6 @@ jobs:
             --features native_viewer,web_viewer \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
-
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Get sha
         id: get-sha

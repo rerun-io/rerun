@@ -27,7 +27,7 @@ data (i.e. discontinuous lines).
 
 ### Flat
 
-code-example: clear_simple
+snippet: clear_simple
 
 <center>
 <picture>
@@ -41,5 +41,5 @@ code-example: clear_simple
 
 ### Recursive
 
-code-example: clear_recursive
+snippet: clear_recursive
 

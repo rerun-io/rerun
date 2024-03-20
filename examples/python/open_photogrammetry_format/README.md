@@ -8,7 +8,7 @@ channel = "release"
 build_args = ["--jpeg-quality=50"]
 -->
 
-<picture>
+<picture data-inline-viewer="open_photogrammetry_format">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/1024w.png">

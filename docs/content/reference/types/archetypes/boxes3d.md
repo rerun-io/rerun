@@ -21,7 +21,7 @@ title: "Boxes3D"
 
 ### Simple 3D boxes
 
-code-example: box3d_simple
+snippet: box3d_simple
 
 <center>
 <picture>
@@ -35,7 +35,7 @@ code-example: box3d_simple
 
 ### Batch of 3D boxes
 
-code-example: box3d_batch
+snippet: box3d_batch
 
 <center>
 <picture>

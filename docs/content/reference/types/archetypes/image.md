@@ -27,7 +27,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ### image_simple
 
-code-example: image_simple
+snippet: image_simple
 
 <center>
 <picture>

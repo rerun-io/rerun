@@ -22,6 +22,10 @@ inputs:
     description: "Release commit to update the deployment to"
     type: string
     required: true
+  release_version:
+    description: "Which release version to update the deployment to"
+    type: string
+    required: true
 
 runs:
   using: "node20"

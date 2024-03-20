@@ -23,17 +23,17 @@ const RUST_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides
 const HOW_DOES_IT_WORK_MARKDOWN: &str =
     include_str!("../../../data/quick_start_guides/how_does_it_work.md");
 
-const CPP_CONNECT_CODE_EXAMPLE: &str =
+const CPP_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.cpp");
-const CPP_SPAWN_CODE_EXAMPLE: &str =
+const CPP_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.cpp");
-const PYTHON_CONNECT_CODE_EXAMPLE: &str =
+const PYTHON_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.py");
-const PYTHON_SPAWN_CODE_EXAMPLE: &str =
+const PYTHON_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.py");
-const RUST_CONNECT_CODE_EXAMPLE: &str =
+const RUST_CONNECT_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.rs");
-const RUST_SPAWN_CODE_EXAMPLE: &str =
+const RUST_SPAWN_SNIPPET: &str =
     include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
 
 struct Placeholder<'a> {
@@ -48,27 +48,27 @@ const PLACEHOLDERS: &[Placeholder<'_>] = &[
     },
     Placeholder {
         key: "EXAMPLE_CODE_CPP_CONNECT",
-        value: CPP_CONNECT_CODE_EXAMPLE,
+        value: CPP_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_CPP_SPAWN",
-        value: CPP_SPAWN_CODE_EXAMPLE,
+        value: CPP_SPAWN_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_PYTHON_CONNECT",
-        value: PYTHON_CONNECT_CODE_EXAMPLE,
+        value: PYTHON_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_PYTHON_SPAWN",
-        value: PYTHON_SPAWN_CODE_EXAMPLE,
+        value: PYTHON_SPAWN_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_RUST_CONNECT",
-        value: RUST_CONNECT_CODE_EXAMPLE,
+        value: RUST_CONNECT_SNIPPET,
     },
     Placeholder {
         key: "EXAMPLE_CODE_RUST_SPAWN",
-        value: RUST_SPAWN_CODE_EXAMPLE,
+        value: RUST_SPAWN_SNIPPET,
     },
 ];
 
@@ -138,7 +138,7 @@ fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_co
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(move |ui, command_sender| {
-                if large_text_button(ui, "Quick Start").clicked() {
+                if large_text_button(ui, "Quick start").clicked() {
                     let entries = if accepts_connections {
                         QUICK_START_ENTRIES_CONNECT
                     } else {
@@ -169,7 +169,7 @@ fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_co
                 interactively in the viewer or (coming soon) directly from code in the SDK.",
             image: &re_ui::icons::WELCOME_SCREEN_CONFIGURE,
             add_buttons: Box::new(|ui, _| {
-                url_large_text_button(ui, "Learn about Views", SPACE_VIEWS_HELP);
+                url_large_text_button(ui, "Learn about views", SPACE_VIEWS_HELP);
             }),
         },
     ];
@@ -306,7 +306,7 @@ fn open_quick_start(
     }
 
     let store_info = StoreInfo {
-        application_id: "Quick Start".into(),
+        application_id: "Quick start".into(),
         store_id: StoreId::random(StoreKind::Recording),
         is_official_example: true,
         started: Time::now(),

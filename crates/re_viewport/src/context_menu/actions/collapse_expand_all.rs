@@ -46,7 +46,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
         ctx.viewport_blueprint
-            .visit_contents_in_container(container_id, &mut |contents| match contents {
+            .visit_contents_in_container(container_id, &mut |contents, _| match contents {
                 Contents::Container(container_id) => CollapseScope::BlueprintTree
                     .container(*container_id)
                     .set_open(&ctx.egui_context, self.open()),

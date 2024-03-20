@@ -73,7 +73,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -83,6 +83,14 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      # Workaround for ASAN issues on Github images https://github.com/actions/runner-images/issues/9491
+      - name: Fix kernel mmap rnd bits
+        if: runner.os == 'Linux'
+        # Asan in llvm 14 provided in ubuntu 22.04 is incompatible with
+        # high-entropy ASLR in much newer kernels that GitHub runners are
+        # using leading to random crashes: https://reviews.llvm.org/D148280
+        run: sudo sysctl vm.mmap_rnd_bits=28
 
       - name: Build and run C++ tests
         shell: bash

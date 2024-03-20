@@ -48,7 +48,7 @@ impl VisualizerSystem for TensorSystem {
         re_tracing::profile_function!();
 
         let store = ctx.entity_db.store();
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
+        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) = store

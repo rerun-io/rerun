@@ -2,12 +2,12 @@ use re_entity_db::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
-use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -40,10 +40,13 @@ impl SpaceViewState for TextSpaceViewState {
 pub struct TextSpaceView;
 
 impl SpaceViewClass for TextSpaceView {
-    type State = TextSpaceViewState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "TextLog".into()
+    }
 
-    const IDENTIFIER: &'static str = "TextLog";
-    const DISPLAY_NAME: &'static str = "Text Log";
+    fn display_name(&self) -> &'static str {
+        "Text Log"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_LOG
@@ -60,7 +63,11 @@ impl SpaceViewClass for TextSpaceView {
         system_registry.register_visualizer::<TextLogSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<TextSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         Some(2.0) // Make text logs wide
     }
 
@@ -84,10 +91,7 @@ impl SpaceViewClass for TextSpaceView {
             SpaceViewSpawnHeuristics::default()
         } else {
             SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView {
-                    root: EntityPath::root(),
-                    query_filter: EntityPathFilter::subtree_entity_filter(&EntityPath::root()),
-                }],
+                recommended_space_views: vec![RecommendedSpaceView::root()],
             }
         }
     }
@@ -96,11 +100,12 @@ impl SpaceViewClass for TextSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<TextSpaceViewState>()?;
         let ViewTextFilters {
             col_timelines,
             col_entity_path,
@@ -138,18 +143,22 @@ impl SpaceViewClass for TextSpaceView {
             });
             ui.end_row();
         });
+
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+
+        let state = state.downcast_mut::<TextSpaceViewState>()?;
         let text = system_output.view_systems.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.

@@ -21,7 +21,7 @@ Supports raw text and markdown.
 
 ### Markdown text document
 
-code-example: text_document
+snippet: text_document
 
 <center>
 <picture>

@@ -100,7 +100,7 @@
 //!
 //! ### Examples
 //!
-//! You can add an example to `docs/code-examples/all`, and then include its source code in
+//! You can add an example to `docs/snippets/all`, and then include its source code in
 //! the docs using the `\example` tag. The example will also be included in the list of
 //! examples for type's generated docs.
 //!

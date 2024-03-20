@@ -2,14 +2,15 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
-use re_log_types::{EntityPath, EntityPathFilter};
+use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
     Archetype, ComponentName,
 };
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
     VisualizableFilterContext,
 };
 
@@ -42,10 +43,13 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 pub struct SpatialSpaceView2D;
 
 impl SpaceViewClass for SpatialSpaceView2D {
-    type State = SpatialSpaceViewState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "2D".into()
+    }
 
-    const IDENTIFIER: &'static str = "2D";
-    const DISPLAY_NAME: &'static str = "2D";
+    fn display_name(&self) -> &'static str {
+        "2D"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_2D
@@ -68,9 +72,18 @@ impl SpaceViewClass for SpatialSpaceView2D {
         Ok(())
     }
 
-    fn preferred_tile_aspect_ratio(&self, state: &Self::State) -> Option<f32> {
-        let size = state.bounding_boxes.accumulated.size();
-        Some(size.x / size.y)
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<SpatialSpaceViewState>::default()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        state
+            .downcast_ref::<SpatialSpaceViewState>()
+            .ok()
+            .map(|state| {
+                let size = state.bounding_boxes.accumulated.size();
+                size.x / size.y
+            })
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
@@ -136,10 +149,13 @@ impl SpaceViewClass for SpatialSpaceView2D {
     fn on_frame_start(
         &self,
         ctx: &ViewerContext<'_>,
-        state: &Self::State,
+        state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
+        let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
+            return;
+        };
         update_object_property_heuristics(
             ctx,
             ent_paths,
@@ -157,7 +173,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         let indicated_entities = default_visualized_entities_for_visualizer_kind(
             ctx,
-            self.identifier(),
+            Self::identifier(),
             SpatialSpaceViewKind::TwoD,
         );
 
@@ -221,11 +237,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         ctx.re_ui
             .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -233,19 +250,21 @@ impl SpaceViewClass for SpatialSpaceView2D {
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
                 ui.end_row();
             });
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         state.bounding_boxes.update(&system_output.view_systems);
         state.scene_num_primitives = system_output
             .context_systems
@@ -368,10 +387,9 @@ fn recommended_space_views_with_image_splits(
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
         if entities.contains(recommended_root) {
-            recommended.push(RecommendedSpaceView {
-                root: recommended_root.clone(),
-                query_filter: EntityPathFilter::single_entity_filter(recommended_root),
-            });
+            recommended.push(RecommendedSpaceView::new_single_entity(
+                recommended_root.clone(),
+            ));
         }
 
         // And then recurse into the children
@@ -394,9 +412,6 @@ fn recommended_space_views_with_image_splits(
         }
     } else {
         // Otherwise we can use the space as it is
-        recommended.push(RecommendedSpaceView {
-            root: recommended_root.clone(),
-            query_filter: EntityPathFilter::subtree_entity_filter(recommended_root),
-        });
+        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }

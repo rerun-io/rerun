@@ -36,7 +36,7 @@ impl SelectionHistory {
 
         let mut i = 0;
         self.stack.retain_mut(|selection| {
-            selection.retain(f);
+            selection.retain(|item, _| f(item));
             let retain = !selection.is_empty();
             if !retain && i <= self.current {
                 self.current = self.current.saturating_sub(1);

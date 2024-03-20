@@ -8,8 +8,9 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
-    SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
+    ApplicationId, DataCell, DataRow, DataTable, DataTableResult, EntityPath, EntityPathHash,
+    LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
+    Timeline,
 };
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
@@ -81,9 +82,6 @@ fn insert_row_with_retries(
 ///
 /// NOTE: all mutation is to be done via public functions!
 pub struct EntityDb {
-    /// The [`StoreId`] for this log.
-    store_id: StoreId,
-
     /// Set by whomever created this [`EntityDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
@@ -125,7 +123,6 @@ impl EntityDb {
         );
         let query_caches = re_query_cache::Caches::new(&data_store);
         Self {
-            store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
@@ -192,11 +189,11 @@ impl EntityDb {
     }
 
     pub fn store_kind(&self) -> StoreKind {
-        self.store_id.kind
+        self.store_id().kind
     }
 
     pub fn store_id(&self) -> &StoreId {
-        &self.store_id
+        self.data_store.id()
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -275,6 +272,10 @@ impl EntityDb {
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
                 self.add_data_table(table)?;
+            }
+
+            LogMsg::ActivateStore(_) => {
+                // Not for us to handle
             }
         }
 
@@ -485,7 +486,6 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         let Self {
-            store_id: _,
             data_source: _,
             set_store_info: _,
             last_modified_at: _,
@@ -509,6 +509,44 @@ impl EntityDb {
     pub fn sort_key(&self) -> impl Ord + '_ {
         self.store_info()
             .map(|info| (info.application_id.0.as_str(), info.started))
+    }
+
+    /// Export the contents of the current database to a sequence of messages.
+    ///
+    /// If `time_selection` is specified, then only data for that specific timeline over that
+    /// specific time range will be accounted for.
+    pub fn to_messages(
+        &self,
+        time_selection: Option<(Timeline, TimeRangeF)>,
+    ) -> DataTableResult<Vec<LogMsg>> {
+        re_tracing::profile_function!();
+
+        self.store().sort_indices_if_needed();
+
+        let set_store_info_msg = self
+            .store_info_msg()
+            .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
+
+        let time_filter = time_selection.map(|(timeline, range)| {
+            (
+                timeline,
+                TimeRange::new(range.min.floor(), range.max.ceil()),
+            )
+        });
+
+        let data_messages = self.store().to_data_tables(time_filter).map(|table| {
+            table
+                .to_arrow_msg()
+                .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
+        });
+
+        let messages: Result<Vec<_>, _> = set_store_info_msg
+            .map(re_log_types::DataTableResult::Ok)
+            .into_iter()
+            .chain(data_messages)
+            .collect();
+
+        messages
     }
 }
 

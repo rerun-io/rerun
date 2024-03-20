@@ -11,7 +11,6 @@ use crate::{query_archetype, range::range_archetype, ArchetypeView};
 /// For [`VisibleHistoryBoundary::RelativeToTimeCursor`] and [`VisibleHistoryBoundary::Absolute`],
 /// the value are either nanos or frames, depending on the type of timeline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum VisibleHistoryBoundary {
     /// Boundary is a value relative to the time cursor
     RelativeToTimeCursor(i64),
@@ -36,7 +35,6 @@ impl Default for VisibleHistoryBoundary {
 
 /// Visible history bounds.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct VisibleHistory {
     /// Low time boundary.
     pub from: VisibleHistoryBoundary,
@@ -99,8 +97,6 @@ impl VisibleHistory {
 
 /// When showing an entity in the history view, add this much history to it.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct ExtraQueryHistory {
     /// Is the feature enabled?
     pub enabled: bool,
@@ -110,19 +106,6 @@ pub struct ExtraQueryHistory {
 
     /// Visible history settings for frame timelines
     pub sequences: VisibleHistory,
-}
-
-impl ExtraQueryHistory {
-    /// Multiply/and these together.
-    pub fn with_child(&self, child: &Self) -> Self {
-        if child.enabled {
-            *child
-        } else if self.enabled {
-            *self
-        } else {
-            Self::default()
-        }
-    }
 }
 
 // ---

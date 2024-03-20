@@ -1,1 +1,1 @@
-../../../../docs/code-examples/all/quick_start_connect.rs
+../../../../docs/snippets/all/quick_start_connect.rs

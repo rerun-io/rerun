@@ -50,7 +50,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.13.0
+          pixi-version: v0.16.1
 
       - name: Download Wheel
         uses: actions/download-artifact@v3
@@ -92,6 +92,12 @@ jobs:
           pixi run build-examples rrd \
             --channel ${{ inputs.CHANNEL }} \
             example_data
+
+      - name: Build snippets
+        shell: bash
+        run: |
+          pixi run build-examples snippets \
+            example_data/snippets
 
       - name: Upload assets
         uses: actions/upload-artifact@v3

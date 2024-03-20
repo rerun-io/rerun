@@ -14,9 +14,11 @@ use re_types::{
     tensor_data::{DecodedTensor, TensorDataMeaning},
 };
 use re_viewer_context::{
-    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorStatsCache, ViewQuery, ViewerContext,
+    gpu_bridge::{self, colormap_dropdown_button_ui},
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
@@ -135,10 +137,13 @@ impl PerTensorState {
 }
 
 impl SpaceViewClass for TensorSpaceView {
-    type State = ViewTensorState;
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Tensor".into()
+    }
 
-    const IDENTIFIER: &'static str = "Tensor";
-    const DISPLAY_NAME: &'static str = "Tensor";
+    fn display_name(&self) -> &'static str {
+        "Tensor"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TENSOR
@@ -155,7 +160,7 @@ impl SpaceViewClass for TensorSpaceView {
         system_registry.register_visualizer::<TensorSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -163,20 +168,47 @@ impl SpaceViewClass for TensorSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Medium
     }
 
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<ViewTensorState>::default()
+    }
+
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> re_viewer_context::SmallVisualizerSet {
+        // Default implementation would not suggest the Tensor visualizer for images,
+        // since they're not indicated with a Tensor indicator.
+        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
+
+        // Keeping this implementation simple: We know there's only a single visualizer here.
+        if visualizable_entities_per_visualizer
+            .get(&TensorSystem::identifier())
+            .map_or(false, |entities| entities.contains(entity_path))
+        {
+            std::iter::once(TensorSystem::identifier()).collect()
+        } else {
+            Default::default()
+        }
+    }
+
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let state = state.downcast_mut::<ViewTensorState>()?;
         if let Some(selected_tensor) = &state.selected_tensor {
             if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
                 state_tensor.ui(ctx, ui);
             }
         }
+        Ok(())
     }
 
     fn spawn_heuristics(
@@ -192,12 +224,13 @@ impl SpaceViewClass for TensorSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _root_entity_properties: &EntityProperties,
         _query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
+        let state = state.downcast_mut::<ViewTensorState>()?;
 
         let tensors = &system_output.view_systems.get::<TensorSystem>()?.tensors;
 

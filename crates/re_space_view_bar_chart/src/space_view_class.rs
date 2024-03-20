@@ -4,8 +4,8 @@ use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity};
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    auto_color, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::BarChartVisualizerSystem;
@@ -14,13 +14,20 @@ use super::visualizer_system::BarChartVisualizerSystem;
 pub struct BarChartSpaceView;
 
 impl SpaceViewClass for BarChartSpaceView {
-    type State = ();
+    fn identifier() -> SpaceViewClassIdentifier {
+        "Bar Chart".into()
+    }
 
-    const IDENTIFIER: &'static str = "Bar Chart";
-    const DISPLAY_NAME: &'static str = "Bar Chart";
+    fn display_name(&self) -> &'static str {
+        "Bar Chart"
+    }
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM
+    }
+
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::<()>::default()
     }
 
     fn help_text(&self, re_ui: &re_ui::ReUi) -> egui::WidgetText {
@@ -55,7 +62,7 @@ impl SpaceViewClass for BarChartSpaceView {
         system_registry.register_visualizer::<BarChartVisualizerSystem>()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &Self::State) -> Option<f32> {
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
     }
 
@@ -75,11 +82,11 @@ impl SpaceViewClass for BarChartSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
         root_entity_properties: &mut EntityProperties,
-    ) {
+    ) -> Result<(), SpaceViewSystemExecutionError> {
         ctx.re_ui
             .selection_grid(ui, "bar_chart_selection_ui")
             .show(ui, |ui| {
@@ -128,13 +135,15 @@ impl SpaceViewClass for BarChartSpaceView {
                 });
                 ui.end_row();
             });
+
+        Ok(())
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        _state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,

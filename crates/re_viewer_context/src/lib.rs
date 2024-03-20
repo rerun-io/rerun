@@ -29,7 +29,7 @@ pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
 };
 pub use app_options::AppOptions;
-pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
+pub use blueprint_helpers::blueprint_timeline;
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
 pub use caches::{Cache, Caches};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
@@ -45,15 +45,15 @@ pub use selection_state::{
     Selection, SelectionHighlight,
 };
 pub use space_view::{
-    DataResult, DynSpaceViewClass, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
     PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass,
     SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
-    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewContextCollection, ViewContextSystem,
-    ViewQuery, ViewSystemIdentifier, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
-    VisualizerSystem,
+    SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystem, ViewQuery, ViewSystemIdentifier,
+    VisualizableFilterContext, VisualizerAdditionalApplicabilityFilter, VisualizerCollection,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};

@@ -71,6 +71,7 @@ itertools.workspace = true
 linked-hash-map.workspace = true
 mime_guess2.workspace = true
 ndarray.workspace = true
+nohash-hasher.workspace = true
 once_cell.workspace = true
 ply-rs.workspace = true
 smallvec.workspace = true

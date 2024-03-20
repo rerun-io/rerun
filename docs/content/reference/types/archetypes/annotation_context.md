@@ -23,7 +23,7 @@ path.
 
 ### Rectangles
 
-code-example: annotation_context_rects
+snippet: annotation_context_rects
 
 <center>
 <picture>
@@ -37,7 +37,7 @@ code-example: annotation_context_rects
 
 ### Segmentation
 
-code-example: annotation_context_segmentation
+snippet: annotation_context_segmentation
 
 <center>
 <picture>
@@ -51,7 +51,7 @@ code-example: annotation_context_segmentation
 
 ### Connections
 
-code-example: annotation_context_connections
+snippet: annotation_context_connections
 
 <center>
 <picture>

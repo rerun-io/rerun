@@ -8,6 +8,7 @@ const token = getRequiredInput("vercel_token");
 const teamName = getRequiredInput("vercel_team_name");
 const projectName = getRequiredInput("vercel_project_name");
 const releaseCommit = getRequiredInput("release_commit");
+const releaseVersion = getRequiredInput("release_version");
 
 const client = new Client(token);
 
@@ -25,14 +26,26 @@ assert(project, `failed to get project "${projectName}"`);
 info`Fetching latest production deployment`;
 const productionDeployments = await client.deployments(team.id, project.id);
 const latestProductionDeployment = productionDeployments[0];
-assert(latestProductionDeployment, `failed to get latest production deployment`);
+assert(
+  latestProductionDeployment,
+  `failed to get latest production deployment`,
+);
 
+const environment = await client.envs(team.id, project.id);
 const RELEASE_COMMIT_KEY = "RELEASE_COMMIT";
+const RELEASE_VERSION_KEY = "RELEASE_VERSION";
 
 info`Fetching "${RELEASE_COMMIT_KEY}" env var`;
-const environment = await client.envs(team.id, project.id);
-const releaseCommitEnv = environment.find((env) => env.key === RELEASE_COMMIT_KEY);
+const releaseCommitEnv = environment.find(
+  (env) => env.key === RELEASE_COMMIT_KEY,
+);
 assert(releaseCommitEnv, `failed to get "${RELEASE_COMMIT_KEY}" env var`);
+
+info`Fetching "${RELEASE_VERSION_KEY}" env var`;
+const releaseVersionEnv = environment.find(
+  (env) => env.key === RELEASE_VERSION_KEY,
+);
+assert(releaseVersionEnv, `failed to get "${RELEASE_VERSION_KEY}" env var`);
 
 info`Setting "${RELEASE_COMMIT_KEY}" env to "${releaseCommit}"`;
 await client.setEnv(team.id, project.id, releaseCommitEnv.id, {
@@ -40,6 +53,11 @@ await client.setEnv(team.id, project.id, releaseCommitEnv.id, {
   value: releaseCommit,
 });
 
+info`Setting "${RELEASE_VERSION_KEY}" env to "${releaseVersion}"`;
+await client.setEnv(team.id, project.id, releaseVersionEnv.id, {
+  key: RELEASE_VERSION_KEY,
+  value: releaseVersion,
+});
+
 info`Triggering redeploy`;
 await client.redeploy(team.id, latestProductionDeployment.uid, "landing");
-

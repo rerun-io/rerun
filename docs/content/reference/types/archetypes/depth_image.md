@@ -22,7 +22,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 ### Simple example
 
-code-example: depth_image_simple
+snippet: depth_image_simple
 
 <center>
 <picture>
@@ -36,7 +36,7 @@ code-example: depth_image_simple
 
 ### Depth to 3D example
 
-code-example: depth_image_3d
+snippet: depth_image_3d
 
 <center>
 <picture>

@@ -51,10 +51,6 @@ rerun = { workspace = true, features = [
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
-# TODO(jleibs): Dependency on re_viewer and re_viewport should go away as part of https://github.com/rerun-io/rerun/issues/2089
-re_viewer.workspace = true
-re_viewport.workspace = true
-
 arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
 crossbeam.workspace = true
 document-features.workspace = true

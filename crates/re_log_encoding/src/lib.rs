@@ -3,7 +3,6 @@
 #[cfg(feature = "decoder")]
 pub mod decoder;
 #[cfg(feature = "encoder")]
-#[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
 pub mod encoder;
 
 #[cfg(feature = "encoder")]
@@ -121,7 +120,6 @@ impl FileHeader {
     pub const SIZE: usize = 12;
 
     #[cfg(feature = "encoder")]
-    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
             .write_all(&self.magic)
@@ -165,7 +163,6 @@ impl MessageHeader {
     pub const SIZE: usize = 8;
 
     #[cfg(feature = "encoder")]
-    #[cfg(not(target_arch = "wasm32"))] // we do no yet support encoding LogMsgs in the browser
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
         write
             .write_all(&self.compressed_len.to_le_bytes())

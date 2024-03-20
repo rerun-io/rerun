@@ -10,6 +10,8 @@ use anyhow::Context as _;
 #[derive(Debug, Clone)]
 pub enum DataSource {
     /// A remote RRD file, served over http.
+    ///
+    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl(String),
 
     /// A path to a local file.
@@ -86,7 +88,7 @@ impl DataSource {
             DataSource::FilePath(file_source, path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
-            || (uri.starts_with("www.") && uri.ends_with(".rrd"))
+            || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
         {
             DataSource::RrdHttpUrl(uri)
         } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
@@ -95,7 +97,7 @@ impl DataSource {
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
             DataSource::FilePath(file_source, path)
-        } else if uri.ends_with(".rrd") {
+        } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             DataSource::RrdHttpUrl(uri)
         } else {
             // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
@@ -106,6 +108,24 @@ impl DataSource {
             }
             DataSource::WebSocketAddr(uri)
         }
+    }
+
+    pub fn file_name(&self) -> Option<String> {
+        match self {
+            DataSource::RrdHttpUrl(url) => url.split('/').last().map(|r| r.to_owned()),
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::FilePath(_, path) => {
+                path.file_name().map(|s| s.to_string_lossy().to_string())
+            }
+            DataSource::FileContents(_, file_contents) => Some(file_contents.name.clone()),
+            DataSource::WebSocketAddr(_) => None,
+            #[cfg(not(target_arch = "wasm32"))]
+            DataSource::Stdin => None,
+        }
+    }
+
+    pub fn is_blueprint(&self) -> Option<bool> {
+        self.file_name().map(|name| name.ends_with(".rbl"))
     }
 
     /// Stream the data from the given data source.
@@ -216,6 +236,7 @@ fn test_data_source_from_uri() {
         "https://foo.zip",
         "example.zip/foo.rrd",
         "www.foo.zip/foo.rrd",
+        "www.foo.zip/blueprint.rbl",
     ];
     let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
 

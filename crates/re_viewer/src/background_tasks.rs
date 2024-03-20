@@ -44,10 +44,9 @@ impl BackgroundTasks {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn spawn_file_saver<F, T>(&mut self, f: F) -> anyhow::Result<()>
+    pub fn spawn_file_saver<F>(&mut self, f: F) -> anyhow::Result<()>
     where
-        F: FnOnce() -> T + Send + 'static,
-        T: Send + 'static,
+        F: FnOnce() -> anyhow::Result<PathBuf> + Send + 'static,
     {
         self.spawn_threaded_promise(FILE_SAVER_PROMISE, f)
     }

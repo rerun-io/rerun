@@ -16,6 +16,9 @@ impl DataUi for LogMsg {
         match self {
             LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, store),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, store),
+            LogMsg::ActivateStore(store_id) => {
+                ui.label(format!("ActivateStore({store_id})"));
+            }
         }
     }
 }

@@ -14,7 +14,8 @@ import random
 from math import cos, sin, tau
 
 import numpy as np
-import rerun as rr  # pip install rerun-sdk
+import rerun as rr
+import rerun.blueprint as rrb
 
 DESCRIPTION = """
 # Plots
@@ -126,7 +127,22 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_plot")
+    blueprint = rrb.Blueprint(
+        rrb.Horizontal(
+            rrb.Grid(
+                rrb.BarChartView(name="Bar Chart", origin="/bar_chart"),
+                rrb.TimeSeriesView(name="Curves", origin="/curves"),
+                rrb.TimeSeriesView(name="Trig", origin="/trig"),
+                rrb.TimeSeriesView(name="Classification", origin="/classification"),
+            ),
+            rrb.TextDocumentView(name="Description", origin="/description"),
+            column_shares=[2, 1],
+        ),
+        rrb.SelectionPanel(expanded=False),
+        rrb.TimePanel(expanded=False),
+    )
+
+    rr.script_setup(args, "rerun_example_plot", blueprint=blueprint)
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     log_bar_chart()

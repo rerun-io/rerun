@@ -10,12 +10,6 @@
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
-
 namespace rerun::blueprint::components {
     /// **Component**: Whether a space view is maximized.
     ///
@@ -48,8 +42,9 @@ namespace rerun::blueprint::components {
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(
+        sizeof(rerun::datatypes::Uuid) == sizeof(blueprint::components::SpaceViewMaximized)
+    );
 
     /// \private
     template <>
@@ -57,17 +52,18 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.blueprint.components.SpaceViewMaximized";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder,
-            const blueprint::components::SpaceViewMaximized* elements, size_t num_elements
-        );
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Uuid>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::blueprint:: components::SpaceViewMaximized` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::SpaceViewMaximized* instances, size_t num_instances
-        );
+        ) {
+            return Loggable<rerun::datatypes::Uuid>::to_arrow(
+                &instances->space_view_id,
+                num_instances
+            );
+        }
     };
 } // namespace rerun

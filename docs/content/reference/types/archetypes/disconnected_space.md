@@ -22,7 +22,7 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 
 ### Disconnected Space
 
-code-example: disconnected_space
+snippet: disconnected_space
 
 <center>
 <picture>

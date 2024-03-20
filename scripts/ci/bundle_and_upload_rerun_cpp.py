@@ -34,15 +34,18 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
     # See reusable_build_and_upload_rerun_c.yml for available libraries.
     # See rerun_cpp_sdk/CMakeLists.txt for library names.
     for src, dst in [
-        ("linux/librerun_c.a", "librerun_c__linux_x64.a"),
-        ("macos-arm/librerun_c.a", "librerun_c__macos_arm64.a"),
-        ("macos-intel/librerun_c.a", "librerun_c__macos_x64.a"),
-        ("windows/rerun_c.lib", "rerun_c__win_x64.lib"),
+        ("linux-arm64/librerun_c.a", "librerun_c__linux_arm64.a"),
+        ("linux-x64/librerun_c.a", "librerun_c__linux_x64.a"),
+        ("macos-arm64/librerun_c.a", "librerun_c__macos_arm64.a"),
+        ("macos-x64/librerun_c.a", "librerun_c__macos_x64.a"),
+        ("windows-x64/rerun_c.lib", "rerun_c__win_x64.lib"),
     ]:
         if platform_filter is not None and src.startswith(platform_filter) is False:
             continue
 
         blob = bucket.get_blob(f"commit/{git_hash}/rerun_c/{src}")
+        if blob is None:
+            raise RuntimeError(f"Blob not found: commit/{git_hash}/rerun_c/{src}")
         with open(f"{target_dir}/{dst}", "wb") as f:
             logging.info(f"Copying {blob.path} to {target_dir}/{dst}")
             blob.download_to_file(f)

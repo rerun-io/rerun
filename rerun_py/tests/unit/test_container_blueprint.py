@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Optional, cast
+from typing import Any, Optional, Sequence, cast
 
 from rerun.blueprint.archetypes.container_blueprint import ContainerBlueprint
 from rerun.blueprint.components.active_tab import ActiveTab, ActiveTabBatch
@@ -30,7 +30,7 @@ def test_container_blueprint() -> None:
         "my container",
     ]
 
-    contents_arrays = [
+    contents_arrays: Sequence[Any] = [
         None,
         [],
         ["space_view/1234", "container/5678"],

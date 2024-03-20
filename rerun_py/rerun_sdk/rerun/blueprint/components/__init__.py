@@ -44,7 +44,7 @@ from .lock_range_during_zoom import (
     LockRangeDuringZoomLike,
     LockRangeDuringZoomType,
 )
-from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+from .panel_expanded import PanelExpanded, PanelExpandedBatch, PanelExpandedType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareArrayLike, RowShareBatch, RowShareLike, RowShareType
@@ -57,6 +57,7 @@ from .viewer_recommendation_hash import (
     ViewerRecommendationHashType,
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
+from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
 
 __all__ = [
     "ActiveTab",
@@ -113,11 +114,9 @@ __all__ = [
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomLike",
     "LockRangeDuringZoomType",
-    "PanelView",
-    "PanelViewArrayLike",
-    "PanelViewBatch",
-    "PanelViewLike",
-    "PanelViewType",
+    "PanelExpanded",
+    "PanelExpandedBatch",
+    "PanelExpandedType",
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
@@ -145,5 +144,8 @@ __all__ = [
     "VisibleArrayLike",
     "VisibleBatch",
     "VisibleLike",
+    "VisibleTimeRange",
+    "VisibleTimeRangeBatch",
+    "VisibleTimeRangeType",
     "VisibleType",
 ]
