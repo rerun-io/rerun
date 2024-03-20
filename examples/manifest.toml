@@ -1,5 +1,11 @@
 #:schema ./schema.json
 
+# Examples listed in this manifest will appear on our website.
+# This has no effect whatsoever on whether they appear in the app itself.
+#
+# To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
+# See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
+
 [categories.real-data]
 order = 1
 title = "Examples with Real Data"
