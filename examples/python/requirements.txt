@@ -1,4 +1,5 @@
 -r arkit_scenes/requirements.txt
+-r blueprint_stocks/requirements.txt
 -r blueprint/requirements.txt
 -r clock/requirements.txt
 -r controlnet/requirements.txt
@@ -16,8 +17,8 @@
 -r live_depth_sensor/requirements.txt
 -r llm_embedding_ner/requirements.txt
 -r log_file/requirements.txt
--r minimal/requirements.txt
 -r minimal_options/requirements.txt
+-r minimal/requirements.txt
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
 -r notebook/requirements.txt
