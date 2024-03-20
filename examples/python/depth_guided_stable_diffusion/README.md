@@ -24,7 +24,7 @@ Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stabled
 Depth Guided Stable Diffusion enriches the image generation process by incorporating depth information, providing a unique way to control the spatial composition of generated images. This approach allows for more nuanced and layered creations, making it especially useful for scenes requiring a sense of three-dimensionality.
 
 # Logging and Visualizing with Rerun
-The visualizations in this example were created with the Rerun SDK, demonstrating the integration of depth information in the Stable Diffusion image generation process. Here is the code for generating the visualisation in Rerun.
+The visualizations in this example were created with the Rerun SDK, demonstrating the integration of depth information in the Stable Diffusion image generation process. Here is the code for generating the visualization in Rerun.
 
 ## Prompt
 Visualizing the prompt and negative prompt
