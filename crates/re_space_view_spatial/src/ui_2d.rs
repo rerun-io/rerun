@@ -364,7 +364,7 @@ pub fn view_2d(
         ));
 
         // Make sure to _first_ draw the selected, and *then* the hovered context on top!
-        for selected_context in ctx.selection_state().item_space_contexts() {
+        for selected_context in ctx.selection_state().selection_space_contexts() {
             painter.extend(show_projections_from_3d_space(
                 ui,
                 query.space_origin,

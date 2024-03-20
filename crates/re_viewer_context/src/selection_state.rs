@@ -334,7 +334,7 @@ impl ApplicationSelectionState {
         *self.selection_this_frame.lock() = new_selection;
     }
 
-    pub fn item_space_contexts(&self) -> impl Iterator<Item = &ItemSpaceContext> {
+    pub fn selection_space_contexts(&self) -> impl Iterator<Item = &ItemSpaceContext> {
         self.selection_previous_frame.iter_space_context()
     }
 

@@ -615,7 +615,7 @@ pub fn view_3d(
             .ok();
     }
 
-    for selected_context in ctx.selection_state().item_space_contexts() {
+    for selected_context in ctx.selection_state().selection_space_contexts() {
         show_projections_from_2d_space(
             &mut line_builder,
             space_cameras,
