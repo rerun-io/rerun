@@ -1,4 +1,4 @@
-use re_ui::list_item::ListItem;
+use re_ui::list_item::{IndentMode, ListItem};
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
@@ -260,7 +260,8 @@ impl eframe::App for ExampleApp {
                                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
                                 |_, ui, _| {
                                     for idx in 0..10 {
-                                        ListItem::new(&self.re_ui, format!("Item {idx}")).show(ui);
+                                        ListItem::new(&self.re_ui, format!("Item {idx}"))
+                                            .show(ui, IndentMode::Flat);
                                     }
                                 },
                             );
@@ -401,7 +402,7 @@ impl eframe::App for ExampleApp {
                                         item.with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
                                     };
 
-                                    if item.show(ui).clicked() {
+                                    if item.show(ui, IndentMode::Flat).clicked() {
                                         self.selected_list_item = Some(i);
                                     }
                                 }
@@ -419,13 +420,26 @@ impl eframe::App for ExampleApp {
                             .list_item("Collapsing list item with icon")
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D)
                             .show_collapsing(ui, "collapsing example", true, |_re_ui, ui| {
-                                self.re_ui.list_item("Sub-item").show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
+                                self.re_ui
+                                    .list_item("Sub-item")
+                                    .show(ui, IndentMode::Hierarchical);
+                                self.re_ui
+                                    .list_item("Sub-item")
+                                    .show(ui, IndentMode::Hierarchical);
                                 self.re_ui
                                     .list_item("Sub-item with icon")
                                     .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                    .show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
+                                    .show(ui, IndentMode::Hierarchical);
+                                self.re_ui.list_item("Sub-item").show_collapsing(
+                                    ui,
+                                    "sub-collapsing",
+                                    true,
+                                    |_re_ui, ui| {
+                                        self.re_ui
+                                            .list_item("Sub-sub-item")
+                                            .show(ui, IndentMode::Hierarchical)
+                                    },
+                                );
                             });
                     });
                 });
@@ -643,6 +657,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
 // DRAG AND DROP DEMO
 
 mod drag_and_drop {
+    use re_ui::list_item::IndentMode;
     use std::collections::HashSet;
 
     #[derive(Hash, Clone, Copy, PartialEq, Eq)]
@@ -678,7 +693,7 @@ mod drag_and_drop {
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
                     .draggable(true)
-                    .show(ui);
+                    .show(ui, IndentMode::Flat);
 
                 //
                 // Handle item selection
@@ -769,6 +784,7 @@ mod hierarchical_drag_and_drop {
     use std::collections::{HashMap, HashSet};
 
     use egui::NumExt;
+    use re_ui::list_item::IndentMode;
 
     use re_ui::ReUi;
 
@@ -1087,7 +1103,7 @@ mod hierarchical_drag_and_drop {
                 .list_item(label)
                 .selected(self.selected(item_id))
                 .draggable(true)
-                .show(ui);
+                .show(ui, IndentMode::Hierarchical);
 
             self.handle_interaction(ui, item_id, false, &response, None);
         }
