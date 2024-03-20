@@ -5,66 +5,95 @@
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.use-cases]
+[categories.spatial-computing]
 order = 1
-title = "Examples with Real Data"
+title = "Spatial computing and XR"
 prelude = """
-The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
-They all require additional data to be downloaded, so an internet connection is needed at least once.
-Each example downloads it's own data, so no additional steps are needed.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-
-You can try these examples live at <https://app.rerun.io/>.
+TODO
 """
 examples = [
   "arkit_scenes",
+  "objectron",
+  "vrs",
+  "arflow",
+  "widebaseline",
+  "simplerecon",
+  "slahmr",
+  "limap",
+]
+
+[categories.robotics]
+order = 2
+title = "Robotics"
+prelude = """
+TODO
+"""
+examples = ["nuscenes", "ros_node"]
+
+[categories.generative-vision]
+order = 3
+title = "Generative computer vision"
+prelude = """
+TODO
+"""
+examples = [
   "controlnet",
   "depth_guided_stable_diffusion",
+  "mcc",
+  "shape_pointe",
+]
+
+[categories.video-image]
+order = 4
+title = "Video and image understanding"
+prelude = """
+TODO
+"""
+examples = [
   "detect_and_track_objects",
-  "dicom_mri",
   "face_tracking",
   "human_pose_tracking",
   "gesture_detection",
-  "lidar",
-  "live_camera_edge_detection",
-  "live_depth_sensor",
-  "llm_embedding_ner",
-  "nuscenes",
-  "objectron",
-  "open_photogrammetry_format",
-  "raw_mesh",
-  "rgbd",
-  "ros_node",
   "segment_anything_model",
-  "signed_distance_fields",
-  "structure_from_motion",
-  "vrs",
-  "arflow",
-  "differentiable_blocks_world",
-  "limap",
-  "mcc",
-  "shape_pointe",
-  "simplerecon",
-  "slahmr",
   "tapir",
-  "widebaseline",
+  "live_camera_edge_detection",
 ]
 
-[categories.feature-use]
-order = 2
-title = "Examples with Artificial Data"
+[categories.3d-reconstruction]
+order = 4
+title = "3D reconstruction and modelling"
 prelude = """
-The following examples serve to illustrate various uses of the Rerun logging SDK.
-They should not require any additional data downloads, and should run offline.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
+TODO
 """
 examples = [
-  "minimal",
-  "clock",
-  "eigen_opencv",
-  "multithreading",
-  "multiprocessing",
-  "plots",
+  "signed_distance_fields",
+  "structure_from_motion",
+  "differentiable_blocks_world",
+  "open_photogrammetry_format",
 ]
+
+examples_other = ["live_depth_sensor", "llm_embedding_ner", "raw_mesh"]
+
+[categories.sensor-output]
+order = 2
+title = "Sensor output"
+prelude = """
+TODO
+"""
+examples = ["rgbd", "lidar"]
+
+[categories.integrations]
+order = 2
+title = "Integrations"
+prelude = """
+TODO
+"""
+examples = ["vrs", "ros_node", "eigen_opencv", "dicom_mri"]
+
+[categories.feature-showcase]
+order = 2
+title = "Feature showcase"
+prelude = """
+TODO
+"""
+examples = ["minimal", "clock", "multithreading", "multiprocessing", "plots"]
