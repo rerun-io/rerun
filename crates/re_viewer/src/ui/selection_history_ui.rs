@@ -1,6 +1,6 @@
 use egui::RichText;
 use re_ui::UICommand;
-use re_viewer_context::{Item, Selection, SelectionHistory};
+use re_viewer_context::{Item, ItemCollection, SelectionHistory};
 use re_viewport::ViewportBlueprint;
 
 // ---
@@ -16,7 +16,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         let next = self.next_button_ui(re_ui, ui, blueprint, history);
         let prev = self.prev_button_ui(re_ui, ui, blueprint, history);
         prev.or(next)
@@ -28,7 +28,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         // undo selection
         if let Some(previous) = history.previous() {
             let response = re_ui
@@ -78,7 +78,7 @@ impl SelectionHistoryUi {
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
-    ) -> Option<Selection> {
+    ) -> Option<ItemCollection> {
         // redo selection
         if let Some(next) = history.next() {
             let response = re_ui
@@ -156,7 +156,7 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn selection_to_string(blueprint: &ViewportBlueprint, selection: &Selection) -> String {
+fn selection_to_string(blueprint: &ViewportBlueprint, selection: &ItemCollection) -> String {
     debug_assert!(
         !selection.is_empty(),
         "History should never contain empty selections."

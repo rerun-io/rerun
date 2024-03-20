@@ -9,8 +9,8 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
-    gpu_bridge, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 use super::{
@@ -364,7 +364,7 @@ pub fn view_2d(
         ));
 
         // Make sure to _first_ draw the selected, and *then* the hovered context on top!
-        for selected_context in ctx.selection_state().selected_space_context() {
+        for selected_context in ctx.selection_state().item_space_contexts() {
             painter.extend(show_projections_from_3d_space(
                 ui,
                 query.space_origin,
@@ -507,11 +507,11 @@ fn show_projections_from_3d_space(
     ui: &egui::Ui,
     space: &EntityPath,
     ui_from_canvas: &RectTransform,
-    space_context: &SelectedSpaceContext,
+    space_context: &ItemSpaceContext,
     color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
-    if let SelectedSpaceContext::ThreeD {
+    if let ItemSpaceContext::ThreeD {
         point_in_space_cameras: target_spaces,
         ..
     } = space_context

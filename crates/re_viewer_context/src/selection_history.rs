@@ -1,4 +1,4 @@
-use crate::selection_state::Selection;
+use crate::selection_state::ItemCollection;
 
 use super::Item;
 
@@ -6,11 +6,11 @@ use super::Item;
 #[derive(Debug, Clone)]
 pub struct HistoricalSelection {
     pub index: usize,
-    pub selection: Selection,
+    pub selection: ItemCollection,
 }
 
-impl From<(usize, Selection)> for HistoricalSelection {
-    fn from((index, selection): (usize, Selection)) -> Self {
+impl From<(usize, ItemCollection)> for HistoricalSelection {
+    fn from((index, selection): (usize, ItemCollection)) -> Self {
         Self { index, selection }
     }
 }
@@ -26,7 +26,7 @@ pub struct SelectionHistory {
     pub current: usize,
 
     /// Oldest first.
-    pub stack: Vec<Selection>,
+    pub stack: Vec<ItemCollection>,
 }
 
 impl SelectionHistory {
@@ -69,7 +69,7 @@ impl SelectionHistory {
     }
 
     #[must_use]
-    pub fn select_previous(&mut self) -> Option<Selection> {
+    pub fn select_previous(&mut self) -> Option<ItemCollection> {
         if let Some(previous) = self.previous() {
             if previous.index != self.current {
                 self.current = previous.index;
@@ -80,7 +80,7 @@ impl SelectionHistory {
     }
 
     #[must_use]
-    pub fn select_next(&mut self) -> Option<Selection> {
+    pub fn select_next(&mut self) -> Option<ItemCollection> {
         if let Some(next) = self.next() {
             if next.index != self.current {
                 self.current = next.index;
@@ -90,7 +90,7 @@ impl SelectionHistory {
         None
     }
 
-    pub fn update_selection(&mut self, selection: &Selection) {
+    pub fn update_selection(&mut self, selection: &ItemCollection) {
         // Selecting nothing is irrelevant from a history standpoint.
         if selection.is_empty() {
             return;

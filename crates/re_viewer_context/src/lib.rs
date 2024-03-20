@@ -41,8 +41,8 @@ pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
-    ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectedSpaceContext,
-    Selection, SelectionHighlight,
+    ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
+    ItemSpaceContext, SelectionHighlight,
 };
 pub use space_view::{
     DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
