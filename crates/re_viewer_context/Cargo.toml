@@ -37,6 +37,7 @@ egui.workspace = true
 egui_tiles.workspace = true
 glam = { workspace = true, features = ["serde"] }
 half.workspace = true
+indexmap = { workspace = true, features = ["std", "serde"] }
 itertools.workspace = true
 macaw.workspace = true
 ndarray.workspace = true

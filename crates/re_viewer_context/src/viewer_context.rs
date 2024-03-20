@@ -100,8 +100,7 @@ impl<'a> ViewerContext<'a> {
     ) {
         re_tracing::profile_function!();
 
-        let mut selection = selection.into();
-        selection.resolve_mono_instance_path_items(self);
+        let selection = selection.into().into_mono_instance_path_items(self);
         let selection_state = self.selection_state();
 
         if response.hovered() {
@@ -109,7 +108,7 @@ impl<'a> ViewerContext<'a> {
         }
 
         if response.double_clicked() {
-            if let Some((item, _)) = selection.first() {
+            if let Some(item) = selection.first_item() {
                 self.command_sender
                     .send_system(crate::SystemCommand::SetFocus(item.clone()));
             }
