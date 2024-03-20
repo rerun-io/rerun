@@ -10,7 +10,7 @@ use re_types_core::Loggable as _;
 
 #[test]
 fn simple_query() -> anyhow::Result<()> {
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -62,13 +62,13 @@ fn simple_query() -> anyhow::Result<()> {
 
         let points = results.get_required::<MyPoint>()?;
         let point_data = points
-            .iter_dense::<MyPoint>(&mut resolver)
+            .iter_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
         let colors = results.get_optional::<MyColor>();
         let color_data = colors
-            .iter_sparse::<MyColor>(&mut resolver)
+            .iter_sparse::<MyColor>(&resolver)
             .flatten()
             .unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
@@ -85,7 +85,7 @@ fn simple_query() -> anyhow::Result<()> {
 
 #[test]
 fn static_query() -> anyhow::Result<()> {
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -138,13 +138,13 @@ fn static_query() -> anyhow::Result<()> {
 
         let points = results.get_required::<MyPoint>()?;
         let point_data = points
-            .iter_dense::<MyPoint>(&mut resolver)
+            .iter_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
         let colors = results.get_optional::<MyColor>();
         let color_data = colors
-            .iter_sparse::<MyColor>(&mut resolver)
+            .iter_sparse::<MyColor>(&resolver)
             .flatten()
             .unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
@@ -161,7 +161,7 @@ fn static_query() -> anyhow::Result<()> {
 
 #[test]
 fn no_instance_join_query() -> anyhow::Result<()> {
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
@@ -213,13 +213,13 @@ fn no_instance_join_query() -> anyhow::Result<()> {
 
         let points = results.get_required::<MyPoint>()?;
         let point_data = points
-            .iter_dense::<MyPoint>(&mut resolver)
+            .iter_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
         let colors = results.get_optional::<MyColor>();
         let color_data = colors
-            .iter_sparse::<MyColor>(&mut resolver)
+            .iter_sparse::<MyColor>(&resolver)
             .flatten()
             .unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));

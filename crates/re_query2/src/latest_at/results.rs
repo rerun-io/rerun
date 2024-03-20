@@ -149,7 +149,7 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn to_dense<C: Component>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<DeserializationResult<Vec<C>>> {
         if let Some(cell) = self.promise.as_ref() {
             resolver.resolve(cell).map(|cell| {
@@ -171,7 +171,7 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn iter_dense<C: Component>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<DeserializationResult<impl ExactSizeIterator<Item = C>>> {
         self.to_dense(resolver)
             .map(|data| data.map(|data| data.into_iter()))
@@ -186,7 +186,7 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn to_sparse<C: Component>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<DeserializationResult<Vec<Option<C>>>> {
         // Manufactured empty result.
         if self.promise.is_none() {
@@ -213,7 +213,7 @@ impl LatestAtComponentResults {
     #[inline]
     pub fn iter_sparse<C: Component>(
         &self,
-        resolver: &mut PromiseResolver,
+        resolver: &PromiseResolver,
     ) -> PromiseResult<DeserializationResult<impl ExactSizeIterator<Item = Option<C>>>> {
         self.to_sparse(resolver)
             .map(|data| data.map(|data| data.into_iter()))

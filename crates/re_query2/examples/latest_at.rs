@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{}", store.to_data_table()?);
 
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
     // shouldn't be using anything but `iter_dense`.
 
-    let points = match points.iter_dense::<MyPoint>(&mut resolver).flatten() {
+    let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let colors = match colors.iter_dense::<MyColor>(&mut resolver).flatten() {
+    let colors = match colors.iter_dense::<MyColor>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let labels = match labels.iter_sparse::<MyLabel>(&mut resolver).flatten() {
+    let labels = match labels.iter_sparse::<MyLabel>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());

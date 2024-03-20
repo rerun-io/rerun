@@ -63,7 +63,9 @@ impl PromiseResolver {
     /// idempotent (the [`PromiseResolver`] keeps track of the state of all [`Promise`]s, both
     /// pending and already resolved).
     #[inline]
-    pub fn resolve(&mut self, promise: &Promise) -> PromiseResult<DataCell> {
+    pub fn resolve(&self, promise: &Promise) -> PromiseResult<DataCell> {
+        // NOTE: we're pretending there's gonna be some kind of interior mutability when
+        // everything's said and done.
         _ = self;
         _ = promise.id;
         PromiseResult::Ready(promise.source.clone())
