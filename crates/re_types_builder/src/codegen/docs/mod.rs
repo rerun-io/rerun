@@ -2,7 +2,6 @@ use std::fmt::Write;
 
 use camino::Utf8PathBuf;
 
-use crate::codegen::common::SnippetId;
 use crate::{
     codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
     ObjectKind, Objects, Reporter, Type,
