@@ -444,11 +444,12 @@ pub fn view_3d(
 
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
+    // TODO: pending behavior
     let scene_view_coordinates = ctx
-        .recording_store()
+        .recording()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
-        .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
+        .latest_at_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
         .map(|(_, c)| c.value);
 
     let (rect, mut response) =

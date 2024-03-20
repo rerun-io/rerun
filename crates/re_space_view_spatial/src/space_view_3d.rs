@@ -305,9 +305,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
+        // TODO: pending behavior
         let scene_view_coordinates = ctx
-            .recording_store()
-            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
+            .recording()
+            .latest_at_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
         ctx.re_ui

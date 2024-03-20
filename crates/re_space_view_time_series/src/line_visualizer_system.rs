@@ -282,8 +282,9 @@ fn load_series(
     let series_name = if let Some(override_name) = override_series_name {
         Some(override_name)
     } else {
-        ctx.recording_store()
-            .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+        // TODO: pending behavior
+        ctx.recording()
+            .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
             .map(|name| name.value.0)
     };
 

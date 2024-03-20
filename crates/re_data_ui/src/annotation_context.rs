@@ -86,11 +86,12 @@ fn annotation_info(
     query: &re_data_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
+    // TODO: pending behavior
     let class_id = ctx
-        .recording_store()
-        .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
+        .recording()
+        .latest_at_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
-    let class = annotations.resolved_class_description(Some(*class_id));
+    let class = annotations.resolved_class_description(Some(class_id.value));
     class.keypoint_map?.get(&keypoint_id).cloned()
 }
 

@@ -392,10 +392,10 @@ impl DataQueryPropertyResolver<'_> {
             .unwrap_or_default();
 
         for prefix in &self.default_stack {
+            // TODO: pending behavior
             if let Some(overrides) = ctx
                 .blueprint
-                .store()
-                .query_latest_component::<EntityPropertiesComponent>(prefix, query)
+                .latest_at_component::<EntityPropertiesComponent>(prefix, query)
             {
                 root_entity_properties = root_entity_properties.with_child(&overrides.value.0);
             }
@@ -439,9 +439,9 @@ impl DataQueryPropertyResolver<'_> {
 
         if let Some(tree) = blueprint.tree().subtree(override_root) {
             tree.visit_children_recursively(&mut |path: &EntityPath, _| {
-                if let Some(props) = blueprint
-                    .store()
-                    .query_latest_component_quiet::<EntityPropertiesComponent>(path, query)
+                // TODO: pending behavior
+                if let Some(props) =
+                    blueprint.latest_at_component_quiet::<EntityPropertiesComponent>(path, query)
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[override_root.len()..path.len()]);
@@ -500,10 +500,10 @@ impl DataQueryPropertyResolver<'_> {
                     re_tracing::profile_scope!("Update visualizers from overrides");
 
                     // If the user has overridden the visualizers, update which visualizers are used.
+                    // TODO: pending behavior
                     if let Some(viz_override) = ctx
                         .blueprint
-                        .store()
-                        .query_latest_component::<VisualizerOverrides>(
+                        .latest_at_component::<VisualizerOverrides>(
                             &individual_override_path,
                             query,
                         )
