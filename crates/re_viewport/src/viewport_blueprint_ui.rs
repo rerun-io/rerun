@@ -570,9 +570,7 @@ impl Viewport<'_, '_> {
             ctx.re_ui.warning_text(item_label)
         };
 
-        let subdued = !space_view_visible
-            || !visible
-            || data_result_node.map_or(true, |n| n.data_result.visualizers.is_empty());
+        let subdued = !space_view_visible || !visible;
 
         let list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)
