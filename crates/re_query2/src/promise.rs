@@ -101,6 +101,21 @@ impl<T> PromiseResult<T> {
         }
     }
 
+    /// Applies the given transformation to the [`PromiseResult`] iff it's `Ready`.
+    ///
+    /// Able to modify the result itself, not just the value contained within.
+    #[inline]
+    pub fn remap<B, F>(self, mut f: F) -> PromiseResult<B>
+    where
+        F: FnMut(T) -> PromiseResult<B>,
+    {
+        match self {
+            PromiseResult::Ready(v) => f(v),
+            PromiseResult::Pending => PromiseResult::Pending,
+            PromiseResult::Error(err) => PromiseResult::Error(err),
+        }
+    }
+
     /// Unwraps the resolved result if it's `Ready`, panics otherwise.
     #[inline]
     pub fn unwrap(self) -> T {
@@ -118,13 +133,9 @@ impl<T, E: 'static + std::error::Error + Send + Sync> PromiseResult<Result<T, E>
     /// Given a [`PromiseResult`] of a `Result`, flattens it down to a single layer [`PromiseResult`].
     #[inline]
     pub fn flatten(self) -> PromiseResult<T> {
-        match self {
-            PromiseResult::Ready(res) => match res {
-                Ok(v) => PromiseResult::Ready(v),
-                Err(err) => PromiseResult::Error(Arc::new(err) as _),
-            },
-            PromiseResult::Pending => PromiseResult::Pending,
-            PromiseResult::Error(err) => PromiseResult::Error(err),
-        }
+        self.remap(|res| match res {
+            Ok(v) => PromiseResult::Ready(v),
+            Err(err) => PromiseResult::Error(Arc::new(err) as _),
+        })
     }
 }

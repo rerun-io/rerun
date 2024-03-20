@@ -432,9 +432,9 @@ impl SpaceViewBlueprint {
         let recursive_override_path =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
+        // TODO: pending handling
         let individual_properties = ctx
             .blueprint
-            .store()
             .query_latest_component_quiet::<EntityPropertiesComponent>(
                 &individual_override_path,
                 query,
