@@ -32,6 +32,7 @@ Available choices are:
 
 -   `auto`: Reset the blueprint to the auto layout used by the viewer.
 -   `one-stock`: Uses a filter to show only a single chart.
+-   `one-stock-with-info`: Uses a container to layout a chart and its info document.
 -   `one-stock-no-peaks`: Uses a filter to additionally remove some of the data from the chart.
 -   `compare-two`: Adds data from multiple sources to a single chart.
 -   `grid`: Shows all the charts in a grid layout.

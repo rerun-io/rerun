@@ -31,6 +31,15 @@ def one_stock(symbol: str) -> rrb.ViewportLike:
     return rrb.TimeSeriesView(name=f"{symbol}", origin=f"/stocks/{symbol}")
 
 
+def one_stock_with_info(symbol: str) -> rrb.ViewportLike:
+    """Create a blueprint showing a single stock with its info arranged vertically."""
+    return rrb.Vertical(
+        rrb.TextDocumentView(name=f"{symbol}", origin=f"/stocks/{symbol}/info"),
+        rrb.TimeSeriesView(name=f"{symbol}", origin=f"/stocks/{symbol}"),
+        row_shares=[1, 4],
+    )
+
+
 def compare_two(symbol1: str, symbol2: str, day: Any) -> rrb.ViewportLike:
     """Create a blueprint comparing 2 stocks for a single day."""
     return rrb.TimeSeriesView(
@@ -117,7 +126,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Visualize stock data using the Rerun SDK")
     parser.add_argument(
         "--blueprint",
-        choices=["auto", "one-stock", "compare-two", "one-stock-no-peaks", "grid"],
+        choices=["auto", "one-stock", "one-stock-with-info", "compare-two", "one-stock-no-peaks", "grid"],
         default="grid",
         help="Select the blueprint to use",
     )
@@ -141,10 +150,12 @@ def main() -> None:
         blueprint = auto_blueprint()
     elif args.blueprint == "one-stock":
         blueprint = one_stock("AAPL")
+    elif args.blueprint == "one-stock-with-info":
+        blueprint = one_stock_with_info("AMZN")
     elif args.blueprint == "one-stock-no-peaks":
-        blueprint = one_stock_no_peaks("AAPL")
+        blueprint = one_stock_no_peaks("GOOGL")
     elif args.blueprint == "compare-two":
-        blueprint = compare_two("AMZN", "AAPL", dates[-1])
+        blueprint = compare_two("META", "MSFT", dates[-1])
     elif args.blueprint == "grid":
         blueprint = stock_grid(symbols, dates)
     else:
