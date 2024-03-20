@@ -432,7 +432,7 @@ impl SpaceViewBlueprint {
         let recursive_override_path =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
-        // TODO: pending handling
+        // TODO(#5607): what should happen if the promise is still pending?
         let individual_properties = ctx
             .blueprint
             .latest_at_component_quiet::<EntityPropertiesComponent>(

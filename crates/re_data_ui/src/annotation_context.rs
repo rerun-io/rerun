@@ -86,7 +86,7 @@ fn annotation_info(
     query: &re_data_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
-    // TODO: pending behavior
+    // TODO(#5607): what should happen if the promise is still pending?
     let class_id = ctx
         .entity_db
         .latest_at_component::<re_types::components::ClassId>(entity_path, query)?;

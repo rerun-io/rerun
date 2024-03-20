@@ -111,7 +111,7 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        // TODO: pending behavior
+        // TODO(#5607): what should happen if the promise is still pending?
         let Some(tensor) = ctx
             .entity_db
             .latest_at_component::<TensorData>(ent_path, &ctx.current_query())
@@ -122,7 +122,7 @@ fn update_depth_cloud_property_heuristics(
         let meaning =
             image_meaning_for_entity(ent_path, &ctx.current_query(), ctx.entity_db.store());
 
-        // TODO: pending behavior
+        // TODO(#5607): what should happen if the promise is still pending?
         let meter = ctx
             .entity_db
             .latest_at_component::<DepthMeter>(ent_path, &ctx.current_query())

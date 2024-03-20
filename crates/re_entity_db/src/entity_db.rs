@@ -111,8 +111,10 @@ pub struct EntityDb {
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
 
-    // TODO
+    /// The active promise resolver for this DB.
     resolver: re_query2::PromiseResolver,
+
+    /// Query caches for the data in [`Self::data_store`].
     query_caches2: re_query_cache2::Caches,
 
     stats: IngestionStatistics,
@@ -190,15 +192,13 @@ impl EntityDb {
         &self.query_caches
     }
 
-    // TODO: pub
-
     #[inline]
-    fn query_caches2(&self) -> &re_query_cache2::Caches {
+    pub fn query_caches2(&self) -> &re_query_cache2::Caches {
         &self.query_caches2
     }
 
     #[inline]
-    fn resolver(&self) -> &re_query2::PromiseResolver {
+    pub fn resolver(&self) -> &re_query2::PromiseResolver {
         &self.resolver
     }
 
@@ -229,6 +229,7 @@ impl EntityDb {
             query,
         )
     }
+
     #[inline]
     pub fn latest_at_component_at_closest_ancestor<C: re_types_core::Component>(
         &self,

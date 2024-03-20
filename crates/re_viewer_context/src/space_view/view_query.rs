@@ -320,7 +320,7 @@ impl DataResult {
             .as_ref()
             .and_then(|p| p.resolved_component_overrides.get(&C::name()))
             .and_then(|OverridePath { store_kind, path }| match store_kind {
-                // TODO: pending behavior
+                // TODO(#5607): what should happen if the promise is still pending?
                 StoreKind::Blueprint => ctx
                     .store_context
                     .blueprint

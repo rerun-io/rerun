@@ -47,7 +47,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         // Use a BTreeSet for entity hashes to get a stable order.
         let mut entities_per_draw_order = BTreeMap::<DrawOrder, BTreeSet<DrawOrderTarget>>::new();
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             if let Some(draw_order) = ctx
                 .entity_db
                 .latest_at_component::<DrawOrder>(&data_result.entity_path, &ctx.current_query())

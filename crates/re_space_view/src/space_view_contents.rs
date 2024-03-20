@@ -354,7 +354,7 @@ impl DataQueryPropertyResolver<'_> {
             .unwrap_or_default();
 
         for prefix in &self.default_stack {
-            // TODO: pending behavior
+            // TODO(#5607): what should happen if the promise is still pending?
             if let Some(overrides) = ctx
                 .blueprint
                 .latest_at_component::<EntityPropertiesComponent>(prefix, query)
@@ -401,7 +401,7 @@ impl DataQueryPropertyResolver<'_> {
 
         if let Some(tree) = blueprint.tree().subtree(override_root) {
             tree.visit_children_recursively(&mut |path: &EntityPath, _| {
-                // TODO: pending behavior
+                // TODO(#5607): what should happen if the promise is still pending?
                 if let Some(props) =
                     blueprint.latest_at_component_quiet::<EntityPropertiesComponent>(path, query)
                 {
@@ -462,7 +462,7 @@ impl DataQueryPropertyResolver<'_> {
                     re_tracing::profile_scope!("Update visualizers from overrides");
 
                     // If the user has overridden the visualizers, update which visualizers are used.
-                    // TODO: pending behavior
+                    // TODO(#5607): what should happen if the promise is still pending?
                     if let Some(viz_override) = ctx
                         .blueprint
                         .latest_at_component::<VisualizerOverrides>(
