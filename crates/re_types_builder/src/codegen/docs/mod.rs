@@ -458,7 +458,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "snippet: {name}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack().snippet_id(SnippetId(name)).finish() {
+            for line in image_url.image_stack().snippet_id(name).finish() {
                 putln!(o, "{line}");
             }
         }

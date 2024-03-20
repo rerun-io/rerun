@@ -162,21 +162,28 @@ pub struct ImageStack<'a> {
 }
 
 impl<'a> ImageStack<'a> {
+    /// Set the `width` attribute of the image.
     #[inline]
     pub fn width(mut self, v: u16) -> Self {
         self.width = Some(v);
         self
     }
 
+    /// Whether or not the image should be wrapped in `<center>`.
     #[inline]
     pub fn center(mut self) -> Self {
         self.center = true;
         self
     }
 
+    /// Set the snippet ID.
+    ///
+    /// If set, the resulting `<picture>` element will have the `data-inline-viewr`
+    /// attribute set with the value of this ID.
+    /// `data-inline-viewer` is not set for `<img>` elements.
     #[inline]
-    pub fn snippet_id(mut self, id: SnippetId<'a>) -> Self {
-        self.snippet_id = Some(id);
+    pub fn snippet_id(mut self, id: &'a str) -> Self {
+        self.snippet_id = Some(SnippetId(id));
         self
     }
 
