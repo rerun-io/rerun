@@ -214,7 +214,11 @@ class Viewport:
     """
 
     def __init__(
-        self, root_container: Container, *, auto_layout: bool | None = None, auto_space_views: bool | None = None
+        self,
+        root_container: Container | None = None,
+        *,
+        auto_layout: bool | None = None,
+        auto_space_views: bool | None = None,
     ):
         """
         Construct a new viewport.
@@ -255,11 +259,18 @@ class Viewport:
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        self.root_container._log_to_stream(stream)
+        if self.root_container is not None:
+            self.root_container._log_to_stream(stream)
+
+            root_container_id = self.root_container.id.bytes
+            space_views = list(self.root_container._iter_space_views())
+        else:
+            root_container_id = None
+            space_views = []
 
         arch = ViewportBlueprint(
-            space_views=list(self.root_container._iter_space_views()),
-            root_container=self.root_container.id.bytes,
+            space_views=space_views,
+            root_container=root_container_id,
             auto_layout=self.auto_layout,
             auto_space_views=self.auto_space_views,
         )

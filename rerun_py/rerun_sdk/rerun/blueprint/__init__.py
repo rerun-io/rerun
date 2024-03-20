@@ -5,6 +5,7 @@ __all__ = [
     "BarChartView",
     "Blueprint",
     "BlueprintLike",
+    "BlueprintLike",
     "BlueprintPanel",
     "components",
     "datatypes",
@@ -21,6 +22,7 @@ __all__ = [
     "TimeSeriesView",
     "Vertical",
     "Viewport",
+    "ViewportLike",
 ]
 
 from . import archetypes, components, datatypes
@@ -31,6 +33,7 @@ from .api import (
     SelectionPanel,
     TimePanel,
     Viewport,
+    ViewportLike,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .space_views import (
