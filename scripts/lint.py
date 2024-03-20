@@ -628,7 +628,7 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
 
     desc = fm.get("description", "")
     if len(desc) > 512:
-        return [f"Frontmatter: description is too long ({len(desc)} > 130)"]
+        return [f"Frontmatter: description is too long ({len(desc)} > 512)"]
     else:
         return []
 
