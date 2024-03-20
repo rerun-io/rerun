@@ -119,7 +119,8 @@ class Container:
 
     def __init__(
         self,
-        *contents: Container | SpaceView,
+        *args: Container | SpaceView,
+        contents: Optional[Iterable[Container | SpaceView]] = None,
         kind: ContainerKindLike,
         column_shares: Optional[ColumnShareArrayLike] = None,
         row_shares: Optional[RowShareArrayLike] = None,
@@ -131,8 +132,11 @@ class Container:
 
         Parameters
         ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
+        *args:
+            All positional arguments are forwarded to the `contents` parameter for convenience.
+        contents:
+            The contents of the container. Each item in the iterable must be a `SpaceView` or a `Container`.
+            This can only be used if no positional arguments are provided.
         kind
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
@@ -150,9 +154,17 @@ class Container:
             The active tab in the container. This is only applicable to `Tabs` containers.
 
         """
+
+        if args and contents is not None:
+            raise ValueError("Cannot provide both positional and keyword arguments for contents")
+
+        if contents is not None:
+            self.contents = contents
+        else:
+            self.contents = args
+
         self.id = uuid.uuid4()
         self.kind = kind
-        self.contents = contents
         self.column_shares = column_shares
         self.row_shares = row_shares
         self.grid_columns = grid_columns
