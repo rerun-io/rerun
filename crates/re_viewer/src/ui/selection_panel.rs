@@ -45,7 +45,7 @@ impl SelectionPanel {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
-        expanded: bool,
+        mut expanded: bool,
     ) {
         let screen_width = ui.ctx().screen_rect().width();
 
@@ -61,6 +61,8 @@ impl SelectionPanel {
 
         // Always reset the VH highlight, and let the UI re-set it if needed.
         ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
+
+        expanded &= !ctx.selection().is_empty();
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets
