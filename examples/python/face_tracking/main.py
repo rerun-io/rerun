@@ -16,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks.python import vision
 
@@ -430,7 +431,18 @@ def main() -> None:
     args, unknown = parser.parse_known_args()
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
-    rr.script_setup(args, "rerun_example_mp_face_detection")
+
+    rr.script_setup(
+        args,
+        "rerun_example_mp_face_detection",
+        # The Viewer's automatic Space View creation gets the layout for this example almost right!
+        # But depending on soon how data comes it might create undesired views at first.
+        # So instead, we specify the Blueprint manually to get the desired layout even if face has been detected yet.
+        blueprint=rrb.Horizontal(
+            rrb.Spatial3DView(origin="reconstruction"),
+            rrb.Vertical(rrb.Spatial2DView(origin="video"), rrb.TimeSeriesView(origin="blendshapes")),
+        ),
+    )
 
     if args.demo_image:
         if not SAMPLE_IMAGE_PATH.exists():

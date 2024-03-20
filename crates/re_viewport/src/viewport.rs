@@ -607,7 +607,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             // TODO(#4433): This should go to analytics
 
             if cfg!(debug_assertions) {
-                re_log::warn_once!(
+                re_log::debug_once!(
                 "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
                 space_view_blueprint.display_name_or_default()
             );
