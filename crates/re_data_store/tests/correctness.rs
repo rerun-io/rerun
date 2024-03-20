@@ -19,6 +19,24 @@ use re_types_core::Loggable as _;
 
 // ---
 
+fn query_latest_component<C: re_types_core::Component>(
+    store: &DataStore,
+    entity_path: &EntityPath,
+    query: &LatestAtQuery,
+) -> Option<(TimeInt, RowId, C)> {
+    re_tracing::profile_function!();
+
+    let (data_time, row_id, cells) =
+        store.latest_at(query, entity_path, C::name(), &[C::name()])?;
+    let cell = cells.first()?.as_ref()?;
+
+    cell.try_to_native_mono::<C>()
+        .ok()?
+        .map(|c| (data_time, row_id, c))
+}
+
+// ---
+
 #[test]
 fn row_id_ordering_semantics() -> anyhow::Result<()> {
     let entity_path: EntityPath = "some_entity".into();
@@ -60,10 +78,8 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
-            let got_point = store
-                .query_latest_component::<MyPoint>(&entity_path, &query)
-                .unwrap()
-                .value;
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point2, got_point);
         }
     }
@@ -129,10 +145,8 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
-            let got_point = store
-                .query_latest_component::<MyPoint>(&entity_path, &query)
-                .unwrap()
-                .value;
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point1, got_point);
         }
     }
@@ -170,10 +184,9 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_row(&row)?;
 
         {
-            let got_point = store
-                .query_static_component::<MyPoint>(&entity_path)
-                .unwrap()
-                .value;
+            let query = LatestAtQuery::new(Timeline::new_temporal("doesnt_matter"), TimeInt::MAX);
+            let (_, _, got_point) =
+                query_latest_component::<MyPoint>(&store, &entity_path, &query).unwrap();
             similar_asserts::assert_eq!(point1, got_point);
         }
     }
