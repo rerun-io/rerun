@@ -260,7 +260,8 @@ impl eframe::App for ExampleApp {
                                 || re_ui::modal::Modal::new("Modal window").full_span_content(true),
                                 |_, ui, _| {
                                     for idx in 0..10 {
-                                        ListItem::new(&self.re_ui, format!("Item {idx}")).show(ui);
+                                        ListItem::new(&self.re_ui, format!("Item {idx}"))
+                                            .show_flat(ui);
                                     }
                                 },
                             );
@@ -401,7 +402,7 @@ impl eframe::App for ExampleApp {
                                         item.with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
                                     };
 
-                                    if item.show(ui).clicked() {
+                                    if item.show_flat(ui).clicked() {
                                         self.selected_list_item = Some(i);
                                     }
                                 }
@@ -418,15 +419,31 @@ impl eframe::App for ExampleApp {
                         self.re_ui
                             .list_item("Collapsing list item with icon")
                             .with_icon(&re_ui::icons::SPACE_VIEW_2D)
-                            .show_collapsing(ui, "collapsing example", true, |_re_ui, ui| {
-                                self.re_ui.list_item("Sub-item").show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
-                                self.re_ui
-                                    .list_item("Sub-item with icon")
-                                    .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                    .show(ui);
-                                self.re_ui.list_item("Sub-item").show(ui);
-                            });
+                            .show_hierarchical_with_content(
+                                ui,
+                                "collapsing example",
+                                true,
+                                |_re_ui, ui| {
+                                    self.re_ui.list_item("Sub-item").show_hierarchical(ui);
+                                    self.re_ui.list_item("Sub-item").show_hierarchical(ui);
+                                    self.re_ui
+                                        .list_item("Sub-item with icon")
+                                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                                        .show_hierarchical(ui);
+                                    self.re_ui
+                                        .list_item("Sub-item")
+                                        .show_hierarchical_with_content(
+                                            ui,
+                                            "sub-collapsing",
+                                            true,
+                                            |_re_ui, ui| {
+                                                self.re_ui
+                                                    .list_item("Sub-sub-item")
+                                                    .show_hierarchical(ui)
+                                            },
+                                        );
+                                },
+                            );
                     });
                 });
             });
@@ -678,7 +695,7 @@ mod drag_and_drop {
                     .list_item(label.as_str())
                     .selected(self.selected_items.contains(item_id))
                     .draggable(true)
-                    .show(ui);
+                    .show_flat(ui);
 
                 //
                 // Handle item selection
@@ -1050,7 +1067,7 @@ mod hierarchical_drag_and_drop {
                 .selected(self.selected(item_id))
                 .draggable(true)
                 .drop_target_style(self.target_container == Some(item_id))
-                .show_collapsing(ui, item_id, true, |re_ui, ui| {
+                .show_hierarchical_with_content(ui, item_id, true, |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
                 });
 
@@ -1087,7 +1104,7 @@ mod hierarchical_drag_and_drop {
                 .list_item(label)
                 .selected(self.selected(item_id))
                 .draggable(true)
-                .show(ui);
+                .show_hierarchical(ui);
 
             self.handle_interaction(ui, item_id, false, &response, None);
         }

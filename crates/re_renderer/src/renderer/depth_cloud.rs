@@ -168,7 +168,7 @@ pub struct DepthCloud {
 
 impl DepthCloud {
     /// World-space bounding-box.
-    pub fn bbox(&self) -> macaw::BoundingBox {
+    pub fn world_space_bbox(&self) -> macaw::BoundingBox {
         let max_depth = self.max_depth_in_world;
         let w = self.depth_dimensions.x as f32;
         let h = self.depth_dimensions.y as f32;

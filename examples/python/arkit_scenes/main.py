@@ -10,7 +10,7 @@ from typing import Any, Tuple
 import cv2
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rbl
+import rerun.blueprint as rrb
 import trimesh
 from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
@@ -330,25 +330,25 @@ def main() -> None:
 
     primary_camera_entity = highres_entity_path if args.include_highres else lowres_posed_entity_path
 
-    blueprint = rbl.Horizontal(
-        rbl.Spatial3DView(name="3D"),
-        rbl.Vertical(
-            rbl.Tabs(
+    blueprint = rrb.Horizontal(
+        rrb.Spatial3DView(name="3D"),
+        rrb.Vertical(
+            rrb.Tabs(
                 # Note that we re-project the annotations into the 2D views:
                 # For this to work, the origin of the 2D views has to be a pinhole camera,
                 # this way the viewer knows how to project the 3D annotations into the 2D views.
-                rbl.Spatial2DView(
+                rrb.Spatial2DView(
                     name="RGB",
                     origin=primary_camera_entity,
                     contents=["$origin/rgb", "/world/annotations/**"],
                 ),
-                rbl.Spatial2DView(
+                rrb.Spatial2DView(
                     name="Depth",
                     origin=primary_camera_entity,
                     contents=["$origin/depth", "/world/annotations/**"],
                 ),
             ),
-            rbl.TextDocumentView(name="Readme"),
+            rrb.TextDocumentView(name="Readme"),
         ),
     )
 

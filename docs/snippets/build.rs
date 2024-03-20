@@ -1,7 +1,7 @@
 //! Finds all the `*.rs` files in `docs/snippets/all`,
-//! copies them to `src/examples` (with slight modifications), and generate a `examples/mod.rs` for them.
+//! copies them to `src/snippets` (with slight modifications), and generate a `snippets/mod.rs` for them.
 //!
-//! The reason we combine all the examples into a single binary
+//! The reason we combine all the snippets into a single binary
 //! is to reduce the amount of binaries in our workspace.
 //!
 //! Motivation: <https://github.com/rerun-io/rerun/issues/4623>
@@ -16,25 +16,25 @@ fn main() {
         Path::new(&re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let all_path = crate_path.join("all");
     let src_path = crate_path.join("src");
-    let examples_path = src_path.join("examples");
+    let snippets_path = src_path.join("snippets");
 
     assert!(
         all_path.exists() && all_path.is_dir(),
         "Failed to find {all_path:?}"
     );
 
-    let mut examples = Vec::new();
+    let mut snippets = Vec::new();
 
     re_build_tools::rerun_if_changed(&all_path);
     for entry in fs::read_dir(&all_path).unwrap().flatten() {
         let path = entry.path();
         if let Some(extension) = path.extension() {
             if extension == "rs" {
-                let example_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+                let snippet_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
 
                 let contents = fs::read_to_string(&path).unwrap();
 
-                // TODO(#515): some examples lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
+                // TODO(#515): some snippets lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
                 if contents.contains("fn main()") {
                     // Patch the source code so we can call into `main` and pass arguments to it:
                     let contents = contents.replace("fn main()", "pub fn main(_args: &[String])");
@@ -48,19 +48,20 @@ fn main() {
                         path.to_str().unwrap().replace('\\', "/"),
                     );
 
-                    let target_path = examples_path.join(format!("{example_name}.rs"));
+                    let target_path = snippets_path.join(format!("{snippet_name}.rs"));
+                    println!("{}", target_path.display());
                     re_build_tools::write_file_if_necessary(target_path, contents.as_bytes())
-                        .unwrap();
+                        .expect("failed to write snippet??");
 
-                    examples.push(example_name);
+                    snippets.push(snippet_name);
                 }
             }
         }
     }
 
     assert!(
-        examples.len() > 10,
-        "Found too few examples in {all_path:?}"
+        snippets.len() > 10,
+        "Found too few snippets in {all_path:?}"
     );
 
     let source = r#"
@@ -74,17 +75,17 @@ fn main() {
         let args: Vec<String> = std::env::args().skip(1).collect();
 
         if args.is_empty() {
-            eprintln!("Usage: {} <example-name>\n", std::env::args().next().unwrap());
-            eprintln!("Available examples ${EXAMPLES}:\n");
+            eprintln!("Usage: {} <snippet-name>\n", std::env::args().next().unwrap());
+            eprintln!("Available snippets ${SNIPPETS}:\n");
             std::process::exit(1);
         }
 
-        let example_name = args[0].as_str();
+        let snippet_name = args[0].as_str();
 
-        match example_name {
-            ${MATCH_EXAMPLES}
+        match snippet_name {
+            ${MATCH_SNIPPETS}
             _ => {
-                eprintln!("Unknown example: {example_name}");
+                eprintln!("Unknown snippet: {snippet_name}");
                 std::process::exit(1);
             }
         }
@@ -94,12 +95,12 @@ fn main() {
     .replace("${FILE}", file!())
     .replace(
         "${MODS}",
-        &examples.iter().map(|m| format!("mod {m};")).join("\n"),
+        &snippets.iter().map(|m| format!("mod {m};")).join("\n"),
     )
-    .replace("${EXAMPLES}", &examples.iter().join(" "))
+    .replace("${SNIPPETS}", &snippets.iter().join(" "))
     .replace(
-        "${MATCH_EXAMPLES}",
-        &examples
+        "${MATCH_SNIPPETS}",
+        &snippets
             .iter()
             .map(|m| {
                 format!(
@@ -117,6 +118,6 @@ fn main() {
         .format_str(source)
         .expect("Failed to format");
 
-    re_build_tools::write_file_if_necessary(examples_path.join("mod.rs"), source.as_bytes())
+    re_build_tools::write_file_if_necessary(snippets_path.join("mod.rs"), source.as_bytes())
         .unwrap();
 }
