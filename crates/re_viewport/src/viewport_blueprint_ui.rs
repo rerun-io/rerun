@@ -275,7 +275,7 @@ impl Viewport<'_, '_> {
         .with_icon(crate::icon_for_container_kind(
             &container_blueprint.container_kind,
         ))
-        .show(ui);
+        .show_flat(ui);
 
         for child in &container_blueprint.contents {
             self.contents_ui(ctx, ui, child, true);
@@ -344,7 +344,7 @@ impl Viewport<'_, '_> {
 
             remove_response | vis_response
         })
-        .show_collapsing(
+        .show_hierarchical_with_content(
             ui,
             CollapseScope::BlueprintTree.container(*container_id),
             default_open,
@@ -429,7 +429,7 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             })
-            .show_collapsing(
+            .show_hierarchical_with_content(
                 ui,
                 CollapseScope::BlueprintTree.space_view(*space_view_id),
                 default_open,
@@ -532,7 +532,7 @@ impl Viewport<'_, '_> {
                 .subdued(true)
                 .italics(true)
                 .with_icon(&re_ui::icons::LINK)
-                .show(ui)
+                .show_hierarchical(ui)
                 .on_hover_text(
                     "This subtree corresponds to the Space View's origin, and is displayed above \
                     the 'Projections' section. Click to select it.",
@@ -621,7 +621,7 @@ impl Viewport<'_, '_> {
                 && Self::default_open_for_data_result(node);
 
             list_item
-                .show_collapsing(
+                .show_hierarchical_with_content(
                     ui,
                     CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
                     default_open,
@@ -654,7 +654,7 @@ impl Viewport<'_, '_> {
                 )
                 .item_response
         } else {
-            list_item.show(ui)
+            list_item.show_hierarchical(ui)
         };
 
         let response = response.on_hover_ui(|ui| {
