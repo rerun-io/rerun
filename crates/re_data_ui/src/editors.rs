@@ -275,10 +275,7 @@ fn edit_marker_shape_ui(
                         paint_marker(ui, marker.into(), rect, visuals.text_color());
                     })
                     .selected(edit_marker == marker);
-                if list_item
-                    .show(ui, re_ui::list_item::IndentMode::Flat)
-                    .clicked()
-                {
+                if list_item.show_flat(ui).clicked() {
                     edit_marker = marker;
                 }
             }

@@ -92,7 +92,7 @@ fn loading_receivers_ui(
                     }
                     resp
                 })
-                .show(ui, re_ui::list_item::IndentMode::Flat); // never more than one level deep
+                .show_flat(ui); // never more than one level deep
             if let SmartChannelSource::TcpServer { .. } = source.as_ref() {
                 response.on_hover_text("You can connect to this viewer from a Rerun SDK");
             }
@@ -129,16 +129,19 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
             let entity_db = entity_dbs[0];
             recording_ui(ctx, ui, entity_db, Some(app_id), active_recording);
         } else {
-            ctx.re_ui.list_item(app_id).active(false).show_collapsing(
-                ui,
-                ui.make_persistent_id(app_id),
-                true,
-                |_, ui| {
-                    for entity_db in entity_dbs {
-                        recording_ui(ctx, ui, entity_db, None, active_recording);
-                    }
-                },
-            );
+            ctx.re_ui
+                .list_item(app_id)
+                .active(false)
+                .show_hierarchical_with_content(
+                    ui,
+                    ui.make_persistent_id(app_id),
+                    true,
+                    |_, ui| {
+                        for entity_db in entity_dbs {
+                            recording_ui(ctx, ui, entity_db, None, active_recording);
+                        }
+                    },
+                );
         }
     }
 
@@ -204,7 +207,7 @@ fn recording_ui(
     }
 
     let response = list_item
-        .show(ui, re_ui::list_item::IndentMode::Flat) // never more than one level deep
+        .show_flat(ui) // never more than one level deep
         .on_hover_ui(|ui| {
             entity_db.data_ui(
                 ctx,

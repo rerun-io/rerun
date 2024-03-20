@@ -11,24 +11,13 @@ struct ListItemResponse {
     collapse_response: Option<Response>,
 }
 
-/// Responses returned by [`ListItem::show_collapsing`].
+/// Responses returned by [`ListItem::show_hierarchical_with_content`].
 pub struct ShowCollapsingResponse<R> {
     /// Response from the item itself.
     pub item_response: Response,
 
     /// Response from the body, if it was displayed.
     pub body_response: Option<egui::InnerResponse<R>>,
-}
-
-/// Indentation mode to use with [`ListItem::show`].
-#[derive(Default, Clone, Copy, Debug)]
-pub enum IndentMode {
-    /// Don't indent the item
-    #[default]
-    Flat,
-
-    /// Indent the item such that it is aligned with (non-leaf) siblings
-    Hierarchical,
 }
 
 /// Specification of how the width of the [`ListItem`] must be allocated.
@@ -297,25 +286,29 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Draw the item.
-    pub fn show(self, ui: &mut Ui, indent_mode: IndentMode) -> Response {
+    /// Draw the item as part of a flat list.
+    pub fn show_flat(self, ui: &mut Ui) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
-        ui.scope(|ui| match indent_mode {
-            IndentMode::Flat => self.ui(ui, None),
-            IndentMode::Hierarchical => {
-                ui.horizontal(|ui| {
-                    ui.add_space(ReUi::small_icon_size().x + ReUi::text_to_icon_padding());
-                    ui.vertical(|ui| self.ui(ui, None)).inner
-                })
-                .inner
-            }
+        ui.scope(|ui| self.ui(ui, None)).inner.response
+    }
+
+    /// Draw the item as a leaf ndoe from a hierarchical list.
+    pub fn show_hierarchical(self, ui: &mut Ui) -> Response {
+        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.scope(|ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(ReUi::small_icon_size().x + ReUi::text_to_icon_padding());
+                ui.vertical(|ui| self.ui(ui, None))
+            })
         })
+        .inner
+        .inner
         .inner
         .response
     }
 
-    /// Draw the item as a collapsing header.
-    pub fn show_collapsing<R>(
+    /// Draw the item as a non-leaf node from a hierarchical list.
+    pub fn show_hierarchical_with_content<R>(
         mut self,
         ui: &mut Ui,
         id: impl Into<egui::Id>,

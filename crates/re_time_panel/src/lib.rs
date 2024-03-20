@@ -607,7 +607,7 @@ impl TimePanel {
             .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
-            .show_collapsing(
+            .show_hierarchical_with_content(
                 ui,
                 CollapseScope::StreamsTree.entity(tree.path.clone()),
                 default_open,
@@ -756,7 +756,7 @@ impl TimePanel {
                             == HoverHighlight::Hovered,
                     )
                     .with_icon(&re_ui::icons::COMPONENT)
-                    .show(ui, re_ui::list_item::IndentMode::Hierarchical);
+                    .show_hierarchical(ui);
 
                 ui.set_clip_rect(clip_rect_save);
 
