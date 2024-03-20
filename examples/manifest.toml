@@ -28,7 +28,7 @@ title = "Robotics"
 prelude = """
 TODO
 """
-examples = ["nuscenes", "ros_node"]
+examples = ["nuscenes", "ros_node", "rrt-star"]
 
 [categories.generative-vision]
 order = 3
@@ -87,7 +87,7 @@ title = "Sensor output"
 prelude = """
 TODO
 """
-examples = ["rgbd", "lidar", "live_depth_sensor"]
+examples = ["rgbd", "lidar", "live_depth_sensor", "nv12"]
 
 [categories.integrations]
 order = 2
@@ -110,4 +110,5 @@ examples = [
   "multiprocessing",
   "plots",
   "raw_mesh",
+  "log_file",
 ]
