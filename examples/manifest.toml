@@ -70,9 +70,16 @@ examples = [
   "structure_from_motion",
   "differentiable_blocks_world",
   "open_photogrammetry_format",
+  "raw_mesh",
 ]
 
-examples_other = ["live_depth_sensor", "llm_embedding_ner", "raw_mesh"]
+[categories.other-ai]
+order = 2
+title = "Other AI"
+prelude = """
+TODO
+"""
+examples = ["llm_embedding_ner"]
 
 [categories.sensor-output]
 order = 2
@@ -80,7 +87,7 @@ title = "Sensor output"
 prelude = """
 TODO
 """
-examples = ["rgbd", "lidar"]
+examples = ["rgbd", "lidar", "live_depth_sensor"]
 
 [categories.integrations]
 order = 2
@@ -96,4 +103,11 @@ title = "Feature showcase"
 prelude = """
 TODO
 """
-examples = ["minimal", "clock", "multithreading", "multiprocessing", "plots"]
+examples = [
+  "minimal",
+  "clock",
+  "multithreading",
+  "multiprocessing",
+  "plots",
+  "raw_mesh",
+]
