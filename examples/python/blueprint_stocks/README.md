@@ -2,16 +2,16 @@
 title = "Stock Charts"
 description = "Uses stock data as an example of how to leverage Rerun blueprints to control the layout and presentation of the viewer."
 tags = ["time-series", "blueprint"]
-thumbnail = "https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/480w.png"
+thumbnail = "https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png"
 thumbnail_dimensions = [480, 271]
 -->
 
 <picture>
-  <img src="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/stdio/25c5aba992d4c8b3861386d8d9539a4823dca117/1200w.png">
+  <img src="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/1200w.png">
 </picture>
 
 This example fetches the last 5 days of stock data for a few different stocks.
@@ -19,7 +19,7 @@ We show how Rerun blueprints can then be used to present many different views of
 
 ```bash
 pip install -r examples/python/blueprint_stocks/requirements.txt
-python examples/python/stocks/blueprint_main.py
+python examples/python/blueprint_stocks/blueprint_main.py
 ```
 
 The different blueprints can be explored using the `--blueprint` flag. For example:
