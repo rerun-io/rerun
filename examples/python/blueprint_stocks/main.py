@@ -93,14 +93,14 @@ brand_colors = {
 }
 
 
-def style_plot(symbol: str) -> rr.Archetype:
+def style_plot(symbol: str) -> rr.SeriesLine:
     return rr.SeriesLine(
         color=brand_colors[symbol],
         name=symbol,
     )
 
 
-def style_peak(symbol: str) -> rr.Archetype:
+def style_peak(symbol: str) -> rr.SeriesPoint:
     return rr.SeriesPoint(
         color=0xFF0000FF,
         name=f"{symbol} (peak)",
@@ -134,6 +134,8 @@ def main() -> None:
     current_date = dt.datetime.now(et_timezone).date()
     symbols = ["AAPL", "AMZN", "GOOGL", "META", "MSFT"]
     dates = list(filter(lambda x: x.weekday() < 5, [current_date - dt.timedelta(days=i) for i in range(7, 0, -1)]))
+
+    blueprint: rrb.BlueprintLike
 
     if args.blueprint == "auto":
         blueprint = auto_blueprint()

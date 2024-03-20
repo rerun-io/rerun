@@ -445,7 +445,7 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
 
 
-BlueprintLike = Union[Blueprint, Viewport, Container, SpaceView]
+BlueprintLike = Union[Blueprint, ViewportLike]
 
 """
 A type that can be converted to a blueprint.
