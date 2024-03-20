@@ -180,7 +180,7 @@ impl CachedLatestAtComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn to_dense<C: 'static + Component + Send + Sync>(
+    pub fn to_dense<C: Component>(
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<&[C]>> {
@@ -201,7 +201,7 @@ impl CachedLatestAtComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn iter_dense<C: 'static + Component + Send + Sync>(
+    pub fn iter_dense<C: Component>(
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = &C>>> {
@@ -216,7 +216,7 @@ impl CachedLatestAtComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn to_sparse<C: 'static + Component + Send + Sync>(
+    pub fn to_sparse<C: Component>(
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<&[Option<C>]>> {
@@ -237,7 +237,7 @@ impl CachedLatestAtComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn iter_sparse<C: 'static + Component + Send + Sync>(
+    pub fn iter_sparse<C: Component>(
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = Option<&C>>>> {
@@ -247,10 +247,7 @@ impl CachedLatestAtComponentResults {
 }
 
 impl CachedLatestAtComponentResults {
-    fn downcast_dense<C: 'static + Component + Send + Sync>(
-        &self,
-        cell: &DataCell,
-    ) -> crate::Result<&[C]> {
+    fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<&[C]> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.
         //
@@ -276,10 +273,7 @@ impl CachedLatestAtComponentResults {
         downcast(&**cached)
     }
 
-    fn downcast_sparse<C: 'static + Component + Send + Sync>(
-        &self,
-        cell: &DataCell,
-    ) -> crate::Result<&[Option<C>]> {
+    fn downcast_sparse<C: Component>(&self, cell: &DataCell) -> crate::Result<&[Option<C>]> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.
         //
@@ -306,9 +300,7 @@ impl CachedLatestAtComponentResults {
     }
 }
 
-fn downcast<C: 'static + Component + Send + Sync>(
-    cached: &(dyn ErasedFlatVecDeque + Send + Sync),
-) -> crate::Result<&[C]> {
+fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> crate::Result<&[C]> {
     let cached = cached
         .as_any()
         .downcast_ref::<FlatVecDeque<C>>()
@@ -324,7 +316,7 @@ fn downcast<C: 'static + Component + Send + Sync>(
     Ok(cached.iter().next().unwrap())
 }
 
-fn downcast_opt<C: 'static + Component + Send + Sync>(
+fn downcast_opt<C: Component>(
     cached: &(dyn ErasedFlatVecDeque + Send + Sync),
 ) -> crate::Result<&[Option<C>]> {
     let cached = cached

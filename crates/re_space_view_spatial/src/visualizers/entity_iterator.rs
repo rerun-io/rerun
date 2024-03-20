@@ -130,8 +130,8 @@ macro_rules! impl_process_archetype {
         where
             S: IdentifiedViewSystem,
             A: Archetype + 'a,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
             F: FnMut(
                 &ViewerContext<'_>,
                 &EntityPath,
