@@ -1,0 +1,3 @@
+humanize
+rerun-sdk>=0.15 # Uses the new blueprint APIs
+yfinance
