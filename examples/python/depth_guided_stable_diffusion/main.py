@@ -118,7 +118,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
         "rerun_example_depth_guided_stable_diffusion",
         # This example is very complex, making it too hard for the Viewer to infer a good layout.
         # Therefore, we specify everything explicitly:
-        # We set up three columns using a `Vertical` layout, one each for
+        # We set up three columns using a `Horizontal` layout, one each for
         # * inputs
         # * depth & initializations
         # * diffusion outputs
