@@ -632,6 +632,7 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     else:
         return []
 
+
 def lint_frontmatter(filepath: str, content: str) -> list[str]:
     """Only for Markdown files."""
 
