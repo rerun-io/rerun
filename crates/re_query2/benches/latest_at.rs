@@ -266,7 +266,7 @@ struct SavePoint {
 }
 
 fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
@@ -286,11 +286,11 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
         let colors = results.get_optional::<Color>();
 
         let points = points
-            .iter_dense::<Position2D>(&mut resolver)
+            .iter_dense::<Position2D>(&resolver)
             .flatten()
             .unwrap();
 
-        let colors = colors.iter_dense::<Color>(&mut resolver).flatten().unwrap();
+        let colors = colors.iter_dense::<Color>(&resolver).flatten().unwrap();
         let color_default_fn = || Color::from(0xFF00FFFF);
 
         for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
@@ -309,7 +309,7 @@ struct SaveString {
 }
 
 fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
-    let mut resolver = PromiseResolver::default();
+    let resolver = PromiseResolver::default();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
@@ -328,11 +328,11 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
         let colors = results.get_optional::<Text>();
 
         let points = points
-            .iter_dense::<Position2D>(&mut resolver)
+            .iter_dense::<Position2D>(&resolver)
             .flatten()
             .unwrap();
 
-        let labels = colors.iter_dense::<Text>(&mut resolver).flatten().unwrap();
+        let labels = colors.iter_dense::<Text>(&resolver).flatten().unwrap();
         let label_default_fn = || Text(String::new().into());
 
         for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {
