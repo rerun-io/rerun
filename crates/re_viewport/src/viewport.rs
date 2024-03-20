@@ -591,37 +591,13 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         }
 
-        let Some(latest_at) = self.ctx.rec_cfg.time_ctrl.read().time_int() else {
-            ui.centered_and_justified(|ui| {
-                ui.weak("No time selected");
-            });
+        let Some((query, system_output)) =
+            self.executed_systems_per_space_view.remove(space_view_id)
+        else {
+            // This may happen during some blueprint/ui operations which add a space view _after_ we execute systems.
+            re_log::debug!("Space view {space_view_id} did not execute its systems yet. This should be happening for a single frame at most.");
             return Default::default();
         };
-
-        let (query, system_output) =
-            self.executed_systems_per_space_view.remove(space_view_id).unwrap_or_else(|| {
-            // The space view's systems haven't been executed.
-            // This may indicate that the egui_tiles tree is not in sync
-            // with the blueprint tree.
-            // This shouldn't happen, but better safe than sorry:
-            // TODO(#4433): This should go to analytics
-
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                "Visualizers for space view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
-                space_view_blueprint.display_name_or_default()
-            );
-            }
-
-            let highlights =
-                crate::space_view_highlights::highlights_for_space_view(self.ctx, *space_view_id);
-            crate::system_execution::execute_systems_for_space_view(
-                self.ctx,
-                space_view_blueprint,
-                latest_at,
-                highlights,
-            )
-        });
 
         let PerSpaceViewState {
             auto_properties: _,
