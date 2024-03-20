@@ -226,8 +226,8 @@ impl<'a> ListItem<'a> {
     /// Override the hovered state even if the item is not actually hovered.
     ///
     /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
-    /// the [`egui::Response`] returned by [`Self::show`] and ]`Self::show_collapsing`] will still
-    /// reflect the actual hover state.
+    /// the [`egui::Response`] returned by [`Self::show_flat`], [`Self::show_hierarchical`], and
+    /// [`Self::show_hierarchical_with_content`] will still reflect the actual hover state.
     #[inline]
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
@@ -292,7 +292,7 @@ impl<'a> ListItem<'a> {
         ui.scope(|ui| self.ui(ui, None)).inner.response
     }
 
-    /// Draw the item as a leaf ndoe from a hierarchical list.
+    /// Draw the item as a leaf node from a hierarchical list.
     pub fn show_hierarchical(self, ui: &mut Ui) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
