@@ -27,14 +27,14 @@ Depth Guided Stable Diffusion enriches the image generation process by incorpora
 The visualizations in this example were created with the Rerun SDK, demonstrating the integration of depth information in the Stable Diffusion image generation process. Here is the code for generating the visualisation in Rerun.
 
 ## Prompt
-Visualising the prompt and negative prompt
+Visualizing the prompt and negative prompt
 ```python
 rr.log("prompt/text", rr.TextDocument(prompt))
 rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
 ```
 
 ## Text
-Visualisiong the text input ids, the text attention mask and the unconditional input ids
+Visualizing the text input ids, the text attention mask and the unconditional input ids
 ```python
 rr.log("prompt/text_input/ids", rr.Tensor(text_input_ids))
 rr.log("prompt/text_input/attention_mask", rr.Tensor(text_inputs.attention_mask))
@@ -42,14 +42,14 @@ rr.log("prompt/uncond_input/ids", rr.Tensor(uncond_input.input_ids))
 ```
 
 ## Text embeddings
-Visualising the text embeddings. The text embeddings are generated in response to the specific prompts used while the unconditional text embeddings represent a neutral or baseline state without specific input conditions.
+Visualizing the text embeddings. The text embeddings are generated in response to the specific prompts used while the unconditional text embeddings represent a neutral or baseline state without specific input conditions.
 ```python
 rr.log("prompt/text_embeddings", rr.Tensor(text_embeddings))
 rr.log("prompt/uncond_embeddings", rr.Tensor(uncond_embeddings))
 ```
 
 ## Depth map
-Visualising the pixel values of the depth estimation, estimated depth image, interpolated depth image and normalized depth image
+Visualizing the pixel values of the depth estimation, estimated depth image, interpolated depth image and normalized depth image
 ```python
 rr.log("depth/input_preprocessed", rr.Tensor(pixel_values))
 rr.log("depth/estimated", rr.DepthImage(depth_map))
