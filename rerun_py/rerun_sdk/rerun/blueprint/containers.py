@@ -35,7 +35,9 @@ class Horizontal(Container):
             The name of the container
 
         """
-        super().__init__(*args, contents=contents, kind=ContainerKind.Horizontal, column_shares=column_shares, name=name)
+        super().__init__(
+            *args, contents=contents, kind=ContainerKind.Horizontal, column_shares=column_shares, name=name
+        )
 
 
 class Vertical(Container):
