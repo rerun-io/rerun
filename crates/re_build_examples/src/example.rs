@@ -160,10 +160,15 @@ pub struct ExampleCategory {
 #[derive(Default, Clone, Copy, serde::Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Channel {
+    /// Our main examples, built on each PR
     #[default]
     Main,
-    Nightly,
+
+    /// Examples built for each release, plus all `Main` examples.
     Release,
+
+    /// Examples built nightly, plus all `Main` and `Nightly`.
+    Nightly,
 }
 
 impl Channel {

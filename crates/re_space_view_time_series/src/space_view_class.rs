@@ -19,7 +19,6 @@ use re_viewer_context::{
     ViewerContext, VisualizableEntities,
 };
 
-use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
 use crate::PlotSeriesKind;
@@ -121,7 +120,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()?;
         system_registry.register_visualizer::<SeriesLineSystem>()?;
         system_registry.register_visualizer::<SeriesPointSystem>()?;
         Ok(())
@@ -190,7 +188,6 @@ It can greatly improve performance (and readability) in such situations as it pr
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            LegacyTimeSeriesSystem::identifier(),
             SeriesLineSystem::identifier(),
             SeriesPointSystem::identifier(),
         ]
@@ -341,13 +338,10 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let timeline_name = timeline.name().to_string();
 
-        let legacy_time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
         let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
         let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
 
-        let all_plot_series: Vec<_> = legacy_time_series
-            .all_series
-            .iter()
+        let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
             .chain(point_series.all_series.iter())
             .collect();

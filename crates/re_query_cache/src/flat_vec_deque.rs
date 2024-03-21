@@ -111,8 +111,7 @@ impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
 /// optimizes for writes.
 ///
 /// You can think of this as the native/deserialized version of an Arrow `ListArray`.
-/// This is particularly useful when working with many small arrays of data (e.g. Rerun's
-/// `TimeSeriesScalar`s).
+/// This is particularly useful when working with many small arrays of data (e.g. Rerun's `Scalar`s).
 //
 // TODO(cmc): We could even use a bitmap for T=Option<Something>, which would bring this that much
 // closer to a deserialized version of an Arrow array.

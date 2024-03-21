@@ -17,17 +17,16 @@ from pathlib import Path
 from typing import Iterable, Iterator
 
 import numpy as np
-import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 from download_dataset import (
     ANNOTATIONS_FILENAME,
     AVAILABLE_RECORDINGS,
     GEOMETRY_FILENAME,
-    IMAGE_RESOLUTION,
     LOCAL_DATASET_DIR,
     ensure_recording_available,
 )
-from proto.objectron.proto import ARCamera, ARFrame, ARPointCloud, FrameAnnotation, Object, ObjectType, Sequence
+from proto.objectron.proto import ARCamera, ARFrame, ARPointCloud, Object, ObjectType, Sequence
 from scipy.spatial.transform import Rotation as R
 
 
@@ -120,8 +119,6 @@ def log_ar_frames(samples: Iterable[SampleARFrame], seq: Sequence) -> None:
         log_camera(sample.frame.camera)
         log_point_cloud(sample.frame.raw_feature_points)
 
-    log_frame_annotations(frame_times, seq.frame_annotations)
-
 
 def log_camera(cam: ARCamera) -> None:
     """Logs a camera from an `ARFrame` using the Rerun SDK."""
@@ -186,60 +183,6 @@ def log_annotated_bboxes(bboxes: Iterable[Object]) -> None:
         )
 
 
-def log_frame_annotations(frame_times: list[float], frame_annotations: list[FrameAnnotation]) -> None:
-    """Maps annotations to their associated `ARFrame` then logs them using the Rerun SDK."""
-
-    for frame_ann in frame_annotations:
-        frame_idx = frame_ann.frame_id
-        if frame_idx >= len(frame_times):
-            continue
-
-        time = frame_times[frame_idx]
-        rr.set_time_sequence("frame", frame_idx)
-        rr.set_time_seconds("time", time)
-
-        for obj_ann in frame_ann.annotations:
-            keypoint_ids = [kp.id for kp in obj_ann.keypoints]
-            keypoint_pos2s = np.asarray([[kp.point_2d.x, kp.point_2d.y] for kp in obj_ann.keypoints], dtype=np.float32)
-            # NOTE: These are normalized points, so we need to bring them back to image space
-            keypoint_pos2s *= IMAGE_RESOLUTION
-
-            if len(keypoint_pos2s) == 9:
-                log_projected_bbox(f"world/camera/estimates/box-{obj_ann.object_id}", keypoint_pos2s)
-            else:
-                for id, pos2 in zip(keypoint_ids, keypoint_pos2s):
-                    rr.log(
-                        f"world/camera/estimates/box-{obj_ann.object_id}/{id}",
-                        rr.Points2D(pos2, colors=[130, 160, 250, 255]),
-                    )
-
-
-# TODO(#3412): replace once we can auto project 3D bboxes on 2D views (need blueprints)
-def log_projected_bbox(path: str, keypoints: npt.NDArray[np.float32]) -> None:
-    """
-    Projects the 3D bounding box to a 2D plane, using line segments.
-
-    The 3D bounding box is described by the keypoints of an `ObjectAnnotation`
-    """
-    # fmt: off
-    segments = np.array([[keypoints[1], keypoints[2]],
-                         [keypoints[1], keypoints[3]],
-                         [keypoints[4], keypoints[2]],
-                         [keypoints[4], keypoints[3]],
-
-                         [keypoints[5], keypoints[6]],
-                         [keypoints[5], keypoints[7]],
-                         [keypoints[8], keypoints[6]],
-                         [keypoints[8], keypoints[7]],
-
-                         [keypoints[1], keypoints[5]],
-                         [keypoints[2], keypoints[6]],
-                         [keypoints[3], keypoints[7]],
-                         [keypoints[4], keypoints[8]]], dtype=np.float32)
-    # fmt: on
-    rr.log(path, rr.LineStrips2D(segments, colors=[130, 160, 250, 255]))
-
-
 def main() -> None:
     # Ensure the logging in download_dataset.py gets written to stderr:
     logging.getLogger().addHandler(logging.StreamHandler())
@@ -272,7 +215,14 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_objectron")
+    rr.script_setup(
+        args,
+        "rerun_example_objectron",
+        blueprint=rrb.Horizontal(
+            rrb.Spatial3DView(origin="/world", name="World"),
+            rrb.Spatial2DView(origin="/world/camera", name="Camera", contents=["+ $origin/**", "+ /world/**"]),
+        ),
+    )
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
 
