@@ -146,7 +146,7 @@ impl Caches {
         )
     }
 
-    /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
+    /// Call [`Self::latest_at_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn latest_at_component_at_closest_ancestor<C: Component>(
         &self,
         store: &DataStore,
