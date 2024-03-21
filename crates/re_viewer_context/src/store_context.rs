@@ -6,6 +6,8 @@ pub struct StoreContext<'a> {
     pub app_id: ApplicationId,
     pub blueprint: &'a EntityDb,
     pub recording: Option<&'a EntityDb>,
+
+    /// In no specific order.
     pub all_recordings: Vec<&'a EntityDb>,
 }
 

@@ -100,12 +100,12 @@ impl StoreHub {
 
         // Get or create the blueprint:
         self.store_bundle.blueprint_entry(blueprint_id);
-        let blueprint = self.store_bundle.blueprint(blueprint_id)?;
+        let blueprint = self.store_bundle.get(blueprint_id)?;
 
         let recording = self
             .selected_rec_id
             .as_ref()
-            .and_then(|id| self.store_bundle.recording(id));
+            .and_then(|id| self.store_bundle.get(id));
 
         Some(StoreContext {
             app_id,
@@ -128,7 +128,7 @@ impl StoreHub {
         // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
             .store_bundle
-            .recording(&recording_id)
+            .get(&recording_id)
             .as_ref()
             .and_then(|recording| recording.app_id())
         {
@@ -207,12 +207,12 @@ impl StoreHub {
     /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
     /// if needed.
     pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert_entity_db(entity_db);
+        self.store_bundle.insert(entity_db);
     }
 
     /// Mutable access to a [`EntityDb`] by id
     pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
-        self.store_bundle.entity_db_entry(store_id)
+        self.store_bundle.entry(store_id)
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
@@ -231,9 +231,9 @@ impl StoreHub {
             return;
         };
 
-        let entity_dbs = &mut self.store_bundle.entity_dbs;
+        let store_bundle = &mut self.store_bundle;
 
-        let Some(entity_db) = entity_dbs.get_mut(&store_id) else {
+        let Some(entity_db) = store_bundle.get_mut(&store_id) else {
             if cfg!(debug_assertions) {
                 unreachable!();
             }
@@ -260,7 +260,8 @@ impl StoreHub {
         //
         // If the user needs the memory for something else, they will get it back as soon as they
         // log new things anyhow.
-        if store_size_before == store_size_after && entity_dbs.len() > 1 {
+        let num_recordings = store_bundle.recordings().count();
+        if store_size_before == store_size_after && num_recordings > 1 {
             self.remove_recording_id(&store_id);
         }
 
@@ -277,12 +278,12 @@ impl StoreHub {
     pub fn current_recording(&self) -> Option<&EntityDb> {
         self.selected_rec_id
             .as_ref()
-            .and_then(|id| self.store_bundle.recording(id))
+            .and_then(|id| self.store_bundle.get(id))
     }
 
     /// Check whether the [`StoreHub`] contains the referenced store (recording or blueprint).
     pub fn contains_store(&self, id: &StoreId) -> bool {
-        self.store_bundle.contains_store(id)
+        self.store_bundle.contains(id)
     }
 
     pub fn entity_dbs_from_channel_source<'a>(
@@ -290,15 +291,14 @@ impl StoreHub {
         source: &'a re_smart_channel::SmartChannelSource,
     ) -> impl Iterator<Item = &EntityDb> + 'a {
         self.store_bundle
-            .entity_dbs
-            .values()
+            .entity_dbs()
             .filter(move |db| db.data_source.as_ref() == Some(source))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
     #[cfg(target_arch = "wasm32")]
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.store_bundle.entity_dbs.retain(|_, db| {
+        self.store_bundle.retain(|db| {
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;
@@ -321,7 +321,7 @@ impl StoreHub {
         re_tracing::profile_function!();
         if app_options.blueprint_gc {
             for blueprint_id in self.blueprint_by_app_id.values() {
-                if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
+                if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                     // TODO(jleibs): Decide a better tuning for this. Would like to save a
                     // reasonable amount of history, or incremental snapshots.
                     blueprint.gc_everything_but_the_latest_row();
@@ -343,7 +343,7 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
 
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
+            if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
                     if app_options.blueprint_gc {
                         blueprint.gc_everything_but_the_latest_row();
@@ -408,7 +408,7 @@ impl StoreHub {
                             .insert(app_id.clone(), store.store_id().clone());
                         self.blueprint_last_save
                             .insert(store.store_id().clone(), store.generation());
-                        self.store_bundle.insert_blueprint(store);
+                        self.store_bundle.insert(store);
                     } else {
                         anyhow::bail!(
                             "Found unexpected store while loading blueprint: {:?}",
@@ -433,7 +433,7 @@ impl StoreHub {
             .selected_application_id
             .as_ref()
             .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_bundle.blueprint(blueprint_id));
+            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
         let blueprint_stats = blueprint
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
@@ -446,7 +446,7 @@ impl StoreHub {
         let recording = self
             .selected_rec_id
             .as_ref()
-            .and_then(|rec_id| self.store_bundle.recording(rec_id));
+            .and_then(|rec_id| self.store_bundle.get(rec_id));
 
         let recording_stats = recording
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
