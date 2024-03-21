@@ -87,21 +87,14 @@ impl AppState {
         &self,
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
-        store_context
-            .as_ref()
-            .and_then(|ctx| ctx.recording)
-            .map(|rec| rec.store_id())
-            .and_then(|rec_id| {
-                self.recording_configs
-                    .get(rec_id)
-                    // is there an active loop selection?
-                    .and_then(|rec_cfg| {
-                        let time_ctrl = rec_cfg.time_ctrl.read();
-                        time_ctrl
-                            .loop_selection()
-                            .map(|q| (*time_ctrl.timeline(), q))
-                    })
-            })
+        let rec_id = store_context.as_ref()?.recording.store_id();
+        let rec_cfg = self.recording_configs.get(rec_id)?;
+
+        // is there an active loop selection?
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        time_ctrl
+            .loop_selection()
+            .map(|q| (*time_ctrl.timeline(), q))
     }
 
     #[allow(clippy::too_many_arguments)]

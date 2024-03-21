@@ -577,7 +577,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
+                recording: &recording,
                 all_recordings: vec![],
             };
 
@@ -620,7 +620,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
+                recording: &recording,
                 all_recordings: vec![],
             };
 
@@ -669,7 +669,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
+                recording: &recording,
                 all_recordings: vec![],
             };
 
@@ -941,7 +941,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
+                recording: &recording,
                 all_recordings: vec![],
             };
             let mut query_result = space_view

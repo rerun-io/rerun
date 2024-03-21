@@ -90,6 +90,14 @@ impl StoreHub {
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
+        static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
+            once_cell::sync::Lazy::new(|| {
+                EntityDb::new(re_log_types::StoreId::from_string(
+                    StoreKind::Recording,
+                    "<EMPTY>".to_owned(),
+                ))
+            });
+
         // If we have an app-id, then use it to look up the blueprint.
         let app_id = self.selected_application_id.clone()?;
 
@@ -110,7 +118,7 @@ impl StoreHub {
         Some(StoreContext {
             app_id,
             blueprint,
-            recording,
+            recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
             all_recordings: self.store_bundle.recordings().collect_vec(),
         })
     }

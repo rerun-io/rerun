@@ -122,7 +122,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
     }
 
-    let active_recording = ctx.store_context.recording.map(|rec| rec.store_id());
+    let active_recording = Some(ctx.store_context.recording.store_id());
 
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
