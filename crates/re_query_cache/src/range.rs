@@ -12,15 +12,12 @@ use crate::{CacheBucket, Caches};
 /// Caches the results of `Range` queries.
 #[derive(Default)]
 pub struct RangeCache {
-    /// All timeful data, organized by _data_ time.
+    /// All temporal data, organized by _data_ time.
     ///
     /// Query time is irrelevant for range queries.
     //
     // TODO(#4810): bucketize
     pub per_data_time: CacheBucket,
-
-    /// All timeless data.
-    pub timeless: CacheBucket,
 
     /// For debugging purposes.
     pub(crate) timeline: Timeline,
@@ -30,7 +27,6 @@ impl std::fmt::Debug for RangeCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             per_data_time,
-            timeless,
             timeline,
         } = self;
 
@@ -38,10 +34,6 @@ impl std::fmt::Debug for RangeCache {
 
         let mut data_time_min = TimeInt::MAX;
         let mut data_time_max = TimeInt::MIN;
-
-        if !timeless.is_empty() {
-            data_time_min = TimeInt::MIN;
-        }
 
         if !per_data_time.is_empty() {
             data_time_min = TimeInt::min(
@@ -59,11 +51,8 @@ impl std::fmt::Debug for RangeCache {
             timeline
                 .typ()
                 .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
-            re_format::format_bytes(
-                (timeless.total_size_bytes + per_data_time.total_size_bytes) as _
-            ),
+            re_format::format_bytes((per_data_time.total_size_bytes) as _),
         ));
-        strings.push(indent::indent_all_by(2, format!("{timeless:?}")));
         strings.push(indent::indent_all_by(2, format!("{per_data_time:?}")));
 
         f.write_str(&strings.join("\n").replace("\n\n", "\n"))
@@ -75,11 +64,10 @@ impl SizeBytes for RangeCache {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             per_data_time,
-            timeless,
             timeline: _,
         } = self;
 
-        per_data_time.total_size_bytes + timeless.total_size_bytes
+        per_data_time.total_size_bytes
     }
 }
 
@@ -87,7 +75,7 @@ impl RangeCache {
     /// Removes everything from the cache that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
-    /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
+    /// Reminder: invalidating static data is the same as invalidating everything, so just reset
     /// the `RangeCache` entirely in that case.
     ///
     /// Returns the number of bytes removed.
@@ -95,7 +83,6 @@ impl RangeCache {
     pub fn truncate_at_time(&mut self, threshold: TimeInt) -> u64 {
         let Self {
             per_data_time,
-            timeless: _,
             timeline: _,
         } = self;
 
@@ -181,7 +168,6 @@ macro_rules! impl_query_archetype_range {
             $($pov: Component + Send + Sync + 'static,)+
             $($comp: Component + Send + Sync + 'static,)*
             F: FnMut(
-                bool,
                 std::ops::Range<usize>,
                 (
                     &'_ std::collections::VecDeque<(re_data_store::TimeInt, re_log_types::RowId)>,
@@ -192,17 +178,27 @@ macro_rules! impl_query_archetype_range {
             ),
         {
             let range_results = |
-                timeless: bool,
                 bucket: &crate::CacheBucket,
                 time_range: TimeRange,
                 f: &mut F,
             | -> crate::Result<()> {
                 re_tracing::profile_scope!("iter");
 
-                let entry_range = bucket.entry_range(time_range);
-
+                // Yield the static data that's available first.
+                let static_range = bucket.static_range();
                 f(
-                    timeless,
+                    static_range,
+                    (
+                        &bucket.data_times,
+                        &bucket.pov_instance_keys,
+                        $(bucket.component::<$pov>()
+                            .ok_or_else(|| re_query::ComponentNotFoundError(<$pov>::name()))?,)+
+                        $(bucket.component_opt::<$comp>(),)*
+                    )
+                );
+
+                let entry_range = bucket.entry_range(time_range);
+                f(
                     entry_range,
                     (
                         &bucket.data_times,
@@ -237,7 +233,7 @@ macro_rules! impl_query_archetype_range {
                 let mut added_size_bytes = 0u64;
 
                 for arch_view in arch_views {
-                    let data_time = arch_view.data_time().unwrap_or(TimeInt::MIN);
+                    let data_time = arch_view.data_time();
 
                     if bucket.contains_data_row(data_time, arch_view.primary_row_id()) {
                         continue;
@@ -268,22 +264,6 @@ macro_rules! impl_query_archetype_range {
             let upsert_callback = |query: &RangeQuery, range_cache: &mut crate::RangeCache| -> crate::Result<()> {
                 re_tracing::profile_scope!("range", format!("{query:?}"));
 
-                // NOTE: Same logic as what the store does.
-                if query.range.min() <= TimeInt::MIN {
-                    let mut reduced_query = query.clone();
-                    // This is the reduced query corresponding to the timeless part of the data.
-                    // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
-                    reduced_query.range.set_max(TimeInt::MIN); // inclusive
-
-                    // NOTE: `+ 1` because we always grab the instance keys.
-                    let arch_views = ::re_query::range_component_set::<A, { $N + $M + 1 }>(
-                        store, &reduced_query, entity_path,
-                        &[$(<$pov>::name(),)+],
-                        [<InstanceKey as re_types_core::Loggable>::name(), $(<$pov>::name(),)+ $(<$comp>::name(),)*],
-                    );
-                    upsert_results::<A, $($pov,)+ $($comp,)*>(arch_views, &mut range_cache.timeless)?;
-                }
-
                 let mut query = query.clone();
                 query.range.set_min(TimeInt::max(TimeInt::MIN, query.range.min()));
 
@@ -311,23 +291,11 @@ macro_rules! impl_query_archetype_range {
                 // We can add the extra complexity if this proves to be glitchy in real-world
                 // scenarios -- otherwise all of this is giant hack meant to go away anyhow.
 
-                // NOTE: Same logic as what the store does.
-                if query.range.min() <= TimeInt::MIN {
-                    let mut reduced_query = query.clone();
-                    // This is the reduced query corresponding to the timeless part of the data.
-                    // It is inclusive and so it will yield `MIN..=MIN` = `[MIN]`.
-                    reduced_query.range.set_max(TimeInt::MIN); // inclusive
-
-                    if !range_cache.timeless.is_empty() {
-                        range_results(true, &range_cache.timeless, reduced_query.range, f)?;
-                    }
-                }
-
                 let mut query = query.clone();
                 query.range.set_min(TimeInt::max(TimeInt::MIN, query.range.min()));
 
                 if !range_cache.per_data_time.is_empty() {
-                    range_results(false, &range_cache.per_data_time, query.range, f)?;
+                    range_results(&range_cache.per_data_time, query.range, f)?;
                 }
 
                 Ok(())

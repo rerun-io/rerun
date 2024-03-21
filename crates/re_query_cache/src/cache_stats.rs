@@ -128,19 +128,14 @@ impl Caches {
                         let latest_at_cache @ LatestAtCache {
                             per_query_time: _,
                             per_data_time,
-                            timeless,
                             ..
                         } = &*latest_at_cache.read();
 
                         total_size_bytes += latest_at_cache.total_size_bytes();
-                        total_rows = per_data_time.len() as u64 + timeless.is_some() as u64;
+                        total_rows = per_data_time.len() as u64;
 
                         if let Some(per_component) = per_component.as_mut() {
                             re_tracing::profile_scope!("detailed");
-
-                            if let Some(bucket) = &timeless {
-                                upsert_bucket_stats(per_component, bucket);
-                            }
 
                             for bucket in per_data_time.values() {
                                 upsert_bucket_stats(per_component, bucket);
@@ -170,7 +165,6 @@ impl Caches {
                         .map(|range_cache| {
                             let range_cache @ RangeCache {
                                 per_data_time,
-                                timeless,
                                 timeline: _,
                             } = &*range_cache.read();
 
@@ -180,7 +174,6 @@ impl Caches {
                             if let Some(per_component) = per_component.as_mut() {
                                 re_tracing::profile_scope!("detailed");
 
-                                upsert_bucket_stats(per_component, timeless);
                                 upsert_bucket_stats(per_component, per_data_time);
                             }
 

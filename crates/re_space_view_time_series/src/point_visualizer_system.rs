@@ -167,7 +167,7 @@ impl SeriesPointSystem {
                     store,
                     &query,
                     entity_path,
-                    |_timeless, entry_range, (times, _, scalars, colors, _, marker_sizes, markers)| {
+                    |entry_range, (times, _, scalars, colors, _, marker_sizes, markers)| {
                         let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
 
                         // Allocate all points.

@@ -256,9 +256,7 @@ where
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
     /// The _data_ time of the most recent component in the view (not necessarily the primary!).
-    ///
-    /// `None` if timeless.
-    pub(crate) data_time: Option<TimeInt>,
+    pub(crate) data_time: TimeInt,
 
     /// The [`RowId`] of the primary component in the view.
     pub(crate) primary_row_id: RowId,
@@ -291,10 +289,8 @@ impl<A: Archetype> ArchetypeView<A> {
     }
 
     /// The _data_ time of the most recent component in the view (not necessarily the primary!).
-    ///
-    /// `None` if timeless.
     #[inline]
-    pub fn data_time(&self) -> Option<TimeInt> {
+    pub fn data_time(&self) -> TimeInt {
         self.data_time
     }
 
@@ -423,9 +419,9 @@ impl<A: Archetype> ArchetypeView<A> {
                 // case of an empty component.
                 // TODO(#1893):  This assert and the implementation both need to
                 // be addressed when we allow single rows containing splats.
-                debug_assert!(
-                    self.required_comp().instance_keys.num_instances()
-                        == component.values.num_instances()
+                debug_assert_eq!(
+                    self.required_comp().instance_keys.num_instances(),
+                    component.values.num_instances()
                 );
 
                 // NOTE: A component instance cannot be optional in itself, and if we're on this
@@ -527,7 +523,7 @@ impl<A: Archetype> ArchetypeView<A> {
     /// Helper function to produce an [`ArchetypeView`] from a collection of [`ComponentWithInstances`].
     #[inline]
     pub fn from_components(
-        data_time: Option<TimeInt>,
+        data_time: TimeInt,
         primary_row_id: RowId,
         components: impl IntoIterator<Item = ComponentWithInstances>,
     ) -> Self {

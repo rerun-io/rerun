@@ -3,10 +3,7 @@ use re_log_types::{
 };
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
-use crate::{
-    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
-    PersistentIndexedTable,
-};
+use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
 
 // ---
 
@@ -71,10 +68,6 @@ impl DataStore {
     /// Returns an error if anything looks wrong.
     pub fn sanity_check(&self) -> SanityResult<()> {
         re_tracing::profile_function!();
-
-        for table in self.timeless_tables.values() {
-            table.sanity_check()?;
-        }
 
         for table in self.tables.values() {
             table.sanity_check()?;
@@ -270,79 +263,6 @@ impl IndexedBucket {
                     origin: std::any::type_name::<Self>(),
                     expected: re_format::format_bytes(size_bytes_uncached as _),
                     got: re_format::format_bytes(size_bytes as _),
-                });
-            }
-        }
-
-        Ok(())
-    }
-}
-
-// --- Timeless ---
-
-impl PersistentIndexedTable {
-    /// Runs the sanity check suite for the entire table.
-    ///
-    /// Returns an error if anything looks wrong.
-    pub fn sanity_check(&self) -> SanityResult<()> {
-        re_tracing::profile_function!();
-
-        let Self {
-            ent_path: _,
-            cluster_key,
-            inner,
-        } = self;
-
-        let inner = &*inner.read();
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted: _,
-        } = inner;
-
-        // All columns should be `Self::num_rows` long.
-        {
-            let num_rows = inner.num_rows();
-
-            let column_lengths = [
-                (!col_insert_id.is_empty())
-                    .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
-                Some((RowId::name(), col_row_id.len())),
-                Some((NumInstances::name(), col_num_instances.len())),
-            ]
-            .into_iter()
-            .flatten()
-            .chain(
-                columns
-                    .iter()
-                    .map(|(component, column)| (*component, column.len())),
-            )
-            .map(|(component, len)| (component, len as u64));
-
-            for (component, len) in column_lengths {
-                if len != num_rows {
-                    return Err(SanityError::ColumnLengthMismatch {
-                        component,
-                        expected: num_rows,
-                        got: len,
-                    });
-                }
-            }
-        }
-
-        // The cluster column must be fully dense.
-        if inner.num_rows() > 0 {
-            let cluster_column =
-                columns
-                    .get(cluster_key)
-                    .ok_or(SanityError::ClusterColumnMissing {
-                        cluster_key: *cluster_key,
-                    })?;
-            if !cluster_column.iter().all(|cell| cell.is_some()) {
-                return Err(SanityError::ClusterColumnSparse {
-                    cluster_column: cluster_column.clone().into(),
                 });
             }
         }

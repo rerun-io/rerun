@@ -32,15 +32,6 @@ pub struct LatestAtCache {
     // NOTE: `Arc` so we can deduplicate buckets across query time & data time.
     pub per_data_time: BTreeMap<TimeInt, Arc<CacheBucket>>,
 
-    /// Dedicated bucket for timeless data, if any.
-    ///
-    /// Query time and data time are one and the same in the timeless case, therefore we only need
-    /// this one bucket.
-    //
-    // NOTE: Lives separately so we don't pay the extra `Option` cost in the much more common
-    // timeful case.
-    pub timeless: Option<Arc<CacheBucket>>,
-
     /// For debugging purposes.
     pub(crate) timeline: Timeline,
 
@@ -53,19 +44,11 @@ impl std::fmt::Debug for LatestAtCache {
         let Self {
             per_query_time,
             per_data_time,
-            timeless,
             timeline,
             total_size_bytes: _,
         } = self;
 
         let mut strings = Vec::new();
-
-        if let Some(bucket) = timeless.as_ref() {
-            strings.push(format!(
-                "query_time=<timeless> -> data_time=<timeless> ({})",
-                re_format::format_bytes(bucket.total_size_bytes as _),
-            ));
-        }
 
         let data_times_per_bucket: HashMap<_, _> = per_data_time
             .iter()
@@ -99,7 +82,7 @@ impl LatestAtCache {
     /// Removes everything from the cache that corresponds to a time equal or greater than the
     /// specified `threshold`.
     ///
-    /// Reminder: invalidating timeless data is the same as invalidating everything, so just reset
+    /// Reminder: invalidating static data is the same as invalidating everything, so just reset
     /// the `LatestAtCache` entirely in that case.
     ///
     /// Returns the number of bytes removed.
@@ -108,7 +91,6 @@ impl LatestAtCache {
         let Self {
             per_query_time,
             per_data_time,
-            timeless: _,
             timeline: _,
             total_size_bytes,
         } = self;
@@ -167,16 +149,16 @@ macro_rules! impl_query_archetype_latest_at {
             $($comp: Component + Send + Sync + 'static,)*
             F: FnMut(
                 (
-                    (Option<TimeInt>, RowId),
+                    (TimeInt, RowId),
                     &[InstanceKey],
                     $(&[$pov],)+
                     $(Option<&[Option<$comp>]>,)*
                 ),
             ),
         {
-            let iter_results = |timeless: bool, bucket: &crate::CacheBucket, f: &mut F| -> crate::Result<()> {
+            let iter_results = |bucket: &crate::CacheBucket, f: &mut F| -> crate::Result<()> {
                 // Profiling this in isolation can be useful, but adds a lot of noise for small queries.
-                //re_tracing::profile_scope!("iter");
+                // re_tracing::profile_scope!("iter");
 
                 let it = itertools::izip!(
                     bucket.iter_data_times(),
@@ -190,7 +172,7 @@ macro_rules! impl_query_archetype_latest_at {
                     )*
                 ).map(|((time, row_id), instance_keys, $($pov,)+ $($comp,)*)| {
                     (
-                        ((!timeless).then_some(*time), *row_id),
+                        (*time, *row_id),
                         instance_keys,
                         $($pov,)+
                         $((!$comp.is_empty()).then_some($comp),)*
@@ -239,7 +221,6 @@ macro_rules! impl_query_archetype_latest_at {
                 let crate::LatestAtCache {
                     per_query_time,
                     per_data_time,
-                    timeless,
                     timeline: _,
                     total_size_bytes,
                 } = latest_at_cache;
@@ -259,32 +240,24 @@ macro_rules! impl_query_archetype_latest_at {
 
                 // Fast path: we've run the query and realized that we already have the data for the resulting
                 // _data_ time, so let's use that to avoid join & deserialization costs.
-                if let Some(data_time) = data_time { // Reminder: `None` means timeless.
-                    if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
-                        re_log::trace!(query_time=?query.at(), ?data_time, "cache hit (data time)");
+                if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
+                    re_log::trace!(query_time=?query.at(), ?data_time, "cache hit (data time)");
 
-                        query_time_bucket_at_query_time.insert(Arc::clone(&data_time_bucket_at_data_time));
+                    query_time_bucket_at_query_time.insert(Arc::clone(&data_time_bucket_at_data_time));
 
-                        // We now know for a fact that a query at that data time would yield the same
-                        // results: copy the bucket accordingly so that the next cache hit for that query
-                        // time ends up taking the fastest path.
-                        let query_time_bucket_at_data_time = per_query_time.entry(data_time);
-                        query_time_bucket_at_data_time
-                            .and_modify(|v| *v = Arc::clone(&data_time_bucket_at_data_time))
-                            .or_insert(Arc::clone(&data_time_bucket_at_data_time));
+                    // We now know for a fact that a query at that data time would yield the same
+                    // results: copy the bucket accordingly so that the next cache hit for that query
+                    // time ends up taking the fastest path.
+                    let query_time_bucket_at_data_time = per_query_time.entry(data_time);
+                    query_time_bucket_at_data_time
+                        .and_modify(|v| *v = Arc::clone(&data_time_bucket_at_data_time))
+                        .or_insert(Arc::clone(&data_time_bucket_at_data_time));
 
-                        return Ok(());
-                    }
-                } else {
-                    if let Some(timeless) = timeless.as_ref() {
-                        re_log::trace!(query_time=?query.at(), "cache hit (data time, timeless)");
-                        query_time_bucket_at_query_time.insert(Arc::clone(timeless));
-                        return Ok(());
-                    }
+                    return Ok(());
                 }
 
                 // Slowest path: this is a complete cache miss.
-                if let Some(data_time) = data_time { // Reminder: `None` means timeless.
+                {
                     re_log::trace!(query_time=?query.at(), ?data_time, "cache miss");
 
                     let bucket = Arc::new(create_and_fill_bucket(data_time, &arch_view)?);
@@ -297,17 +270,6 @@ macro_rules! impl_query_archetype_latest_at {
                         .or_insert(Arc::clone(&query_time_bucket_at_query_time));
 
                     Ok(())
-                } else {
-                    re_log::trace!(query_time=?query.at(), "cache miss (timeless)");
-
-                    let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
-                    *total_size_bytes += bucket.total_size_bytes;
-
-                    let bucket = Arc::new(bucket);
-                    *timeless = Some(Arc::clone(&bucket));
-                    query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
-
-                    Ok(())
                 }
             };
 
@@ -317,18 +279,13 @@ macro_rules! impl_query_archetype_latest_at {
                 let crate::LatestAtCache {
                     per_query_time,
                     per_data_time: _,
-                    timeless,
                     timeline: _,
                     total_size_bytes: _,
                 } = latest_at_cache;
 
                 // Expected path: cache was properly upserted.
                 if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at()) {
-                    let is_timeless = std::ptr::eq(
-                        Arc::as_ptr(query_time_bucket_at_query_time),
-                        timeless.as_ref().map_or(std::ptr::null(), |bucket| Arc::as_ptr(bucket)),
-                    );
-                    return iter_results(is_timeless, query_time_bucket_at_query_time, f);
+                    return iter_results(query_time_bucket_at_query_time, f);
                 }
 
                 re_log::trace!(

@@ -190,7 +190,7 @@ impl StoreDiff {
     }
 
     #[inline]
-    pub fn is_timeless(&self) -> bool {
+    pub fn is_static(&self) -> bool {
         self.times.is_empty()
     }
 
@@ -221,7 +221,7 @@ mod tests {
     use super::*;
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
-    /// in the store a the lowest level of detail.
+    /// in the store at the lowest level of detail.
     ///
     /// The counts represent numbers of rows: e.g. how many unique rows contain this entity path?
     #[derive(Default, Debug, PartialEq, Eq)]
@@ -231,7 +231,7 @@ mod tests {
         entity_paths: BTreeMap<EntityPath, i64>,
         component_names: BTreeMap<ComponentName, i64>,
         times: BTreeMap<TimeInt, i64>,
-        timeless: i64,
+        num_static: i64,
     }
 
     impl GlobalCounts {
@@ -241,7 +241,7 @@ mod tests {
             entity_paths: impl IntoIterator<Item = (EntityPath, i64)>, //
             component_names: impl IntoIterator<Item = (ComponentName, i64)>, //
             times: impl IntoIterator<Item = (TimeInt, i64)>, //
-            timeless: i64,
+            num_static: i64,
         ) -> Self {
             Self {
                 row_ids: row_ids.into_iter().collect(),
@@ -249,7 +249,7 @@ mod tests {
                 entity_paths: entity_paths.into_iter().collect(),
                 component_names: component_names.into_iter().collect(),
                 times: times.into_iter().collect(),
-                timeless,
+                num_static,
             }
         }
     }
@@ -269,8 +269,8 @@ mod tests {
                     *self.component_names.entry(*component_name).or_default() += delta;
                 }
 
-                if event.is_timeless() {
-                    self.timeless += delta;
+                if event.is_static() {
+                    self.num_static += delta;
                 } else {
                     for &(timeline, time) in &event.times {
                         *self.timelines.entry(timeline).or_default() += delta;
@@ -446,7 +446,7 @@ mod tests {
                 [
                     (row_id1, 0), //
                     (row_id2, 0),
-                    (row_id3, 0),
+                    (row_id3, 1), // static -- no gc
                 ],
                 [
                     (timeline_frame, 0),
@@ -455,19 +455,19 @@ mod tests {
                 ],
                 [
                     (entity_path1.clone(), 0), //
-                    (entity_path2.clone(), 0), //
+                    (entity_path2.clone(), 1), // static -- no gc
                 ],
                 [
-                    (InstanceKey::name(), 0), //
+                    (InstanceKey::name(), 1), // static -- no gc
                     (MyPoint::name(), 0),     //
-                    (MyColor::name(), 0),     //
+                    (MyColor::name(), 1),     // static -- no gc
                 ],
                 [
                     (42.try_into().unwrap(), 0), //
                     (666.try_into().unwrap(), 0),
                     (1.try_into().unwrap(), 0),
                 ],
-                0,
+                1, // static -- no gc
             ),
             view,
         );

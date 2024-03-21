@@ -2,7 +2,7 @@ use re_format::{format_bytes, format_number};
 use re_log_types::TimeInt;
 use re_types_core::SizeBytes as _;
 
-use crate::{DataStore, IndexedBucket, IndexedTable, PersistentIndexedTable};
+use crate::{DataStore, IndexedBucket, IndexedTable, StaticTable};
 
 // --- Data store ---
 
@@ -17,7 +17,7 @@ impl std::fmt::Display for DataStore {
             type_registry: _,
             metadata_registry: _,
             tables,
-            timeless_tables,
+            static_tables,
             insert_id: _,
             query_id: _,
             gc_id: _,
@@ -37,16 +37,16 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
-                    "{} timeless indexed tables, for a total of {} across {} total rows\n",
-                    timeless_tables.len(),
-                    format_bytes(self.timeless_size_bytes() as _),
-                    format_number(self.num_timeless_rows() as _)
+                    "{} static tables, for a total of {} across {} total cells\n",
+                    static_tables.len(),
+                    format_bytes(self.static_size_bytes() as _),
+                    format_number(self.num_static_cells() as _)
                 ),
             ))?;
-            f.write_str(&indent::indent_all_by(4, "timeless_tables: [\n"))?;
-            for table in timeless_tables.values() {
-                f.write_str(&indent::indent_all_by(8, "PersistentIndexedTable {\n"))?;
-                f.write_str(&indent::indent_all_by(12, table.to_string() + "\n"))?;
+            f.write_str(&indent::indent_all_by(4, "static_tables: [\n"))?;
+            for static_table in static_tables.values() {
+                f.write_str(&indent::indent_all_by(8, "StaticTable {\n"))?;
+                f.write_str(&indent::indent_all_by(12, static_table.to_string() + "\n"))?;
                 f.write_str(&indent::indent_all_by(8, "}\n"))?;
             }
             f.write_str(&indent::indent_all_by(4, "]\n"))?;
@@ -84,7 +84,7 @@ impl std::fmt::Display for IndexedTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             timeline,
-            ent_path,
+            entity_path,
             buckets,
             cluster_key: _,
             all_components: _,
@@ -93,7 +93,7 @@ impl std::fmt::Display for IndexedTable {
         } = self;
 
         f.write_fmt(format_args!("timeline: {}\n", timeline.name()))?;
-        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
+        f.write_fmt(format_args!("entity: {entity_path}\n"))?;
 
         f.write_fmt(format_args!(
             "size: {} buckets for a total of {} across {} total rows\n",
@@ -156,21 +156,26 @@ impl std::fmt::Display for IndexedBucket {
     }
 }
 
-// --- Timeless ---
+// --- Static ---
 
-impl std::fmt::Display for PersistentIndexedTable {
+impl std::fmt::Display for StaticTable {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("entity: {}\n", self.ent_path))?;
+        f.write_fmt(format_args!("entity: {}\n", self.entity_path))?;
 
         f.write_fmt(format_args!(
-            "size: {} across {} rows\n",
-            format_bytes(self.total_size_bytes() as _),
-            format_number(self.inner.read().num_rows() as _),
+            "size: {} across {} cells\n",
+            format_bytes(
+                self.cells
+                    .values()
+                    .map(|cell| cell.cell.total_size_bytes())
+                    .sum::<u64>() as _
+            ),
+            format_number(self.cells.len()),
         ))?;
 
         let (schema, columns) = self.serialize().map_err(|err| {
-            re_log::error_once!("couldn't display timeless indexed table: {err}");
+            re_log::error_once!("couldn't display static table: {err}");
             std::fmt::Error
         })?;
         re_format::arrow::format_table(
