@@ -10,7 +10,7 @@ impl DataUi for PinholeProjection {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         if verbosity == UiVerbosity::Small {
             // See if this is a trivial pinhole, and can be displayed as such:
@@ -24,12 +24,12 @@ impl DataUi for PinholeProjection {
                 };
 
                 ui.label(format!("Focal length: {fl}\nPrincipal point: {pp}"))
-                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Reduced, query, store));
+                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Reduced, query, db));
                 return;
             }
         }
 
-        self.0.data_ui(ctx, ui, verbosity, query, store);
+        self.0.data_ui(ctx, ui, verbosity, query, db);
     }
 }
 
@@ -40,7 +40,7 @@ impl DataUi for Resolution {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
         ui.monospace(format!("{x}x{y}"));

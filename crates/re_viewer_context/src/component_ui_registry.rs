@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{DataStore, LatestAtQuery};
-use re_entity_db::EntityPath;
+use re_data_store::LatestAtQuery;
+use re_entity_db::{
+    external::re_query_cache2::CachedLatestAtComponentResults, EntityDb, EntityPath,
+};
 use re_log_types::DataCell;
-use re_query::ComponentWithInstances;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
 
 use crate::ViewerContext;
@@ -39,9 +40,9 @@ type ComponentUiCallback = Box<
             &mut egui::Ui,
             UiVerbosity,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
-            &ComponentWithInstances,
+            &CachedLatestAtComponentResults,
             &InstanceKey,
         ) + Send
         + Sync,
@@ -53,17 +54,17 @@ type ComponentEditCallback = Box<
             &mut egui::Ui,
             UiVerbosity,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
             &EntityPath,
-            &ComponentWithInstances,
+            &CachedLatestAtComponentResults,
             &InstanceKey,
         ) + Send
         + Sync,
 >;
 
 type DefaultValueCallback = Box<
-    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> DataCell + Send + Sync,
+    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> DataCell + Send + Sync,
 >;
 
 /// How to display components in a Ui.
@@ -119,14 +120,19 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
-        component: &ComponentWithInstances,
+        component: &CachedLatestAtComponentResults,
         instance_key: &InstanceKey,
     ) {
-        re_tracing::profile_function!(component.name().full_name());
+        let Some(component_name) = component.component_name(db.resolver()) else {
+            // TODO(#5607): what should happen if the promise is still pending?
+            return;
+        };
 
-        if component.name() == InstanceKey::name() {
+        re_tracing::profile_function!(component_name.full_name());
+
+        if component_name == InstanceKey::name() {
             // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
             ui.label(instance_key.to_string());
             return;
@@ -134,14 +140,14 @@ impl ComponentUiRegistry {
 
         let ui_callback = self
             .component_uis
-            .get(&component.name())
+            .get(&component_name)
             .unwrap_or(&self.fallback_ui);
         (*ui_callback)(
             ctx,
             ui,
             verbosity,
             query,
-            store,
+            db,
             entity_path,
             component,
             instance_key,
@@ -156,21 +162,26 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         override_path: &EntityPath,
-        component: &ComponentWithInstances,
+        component: &CachedLatestAtComponentResults,
         instance_key: &InstanceKey,
     ) {
-        re_tracing::profile_function!(component.name().full_name());
+        let Some(component_name) = component.component_name(db.resolver()) else {
+            // TODO(#5607): what should happen if the promise is still pending?
+            return;
+        };
 
-        if let Some((_, edit_callback)) = self.component_editors.get(&component.name()) {
+        re_tracing::profile_function!(component_name.full_name());
+
+        if let Some((_, edit_callback)) = self.component_editors.get(&component_name) {
             (*edit_callback)(
                 ctx,
                 ui,
                 verbosity,
                 query,
-                store,
+                db,
                 entity_path,
                 override_path,
                 component,
@@ -183,7 +194,7 @@ impl ComponentUiRegistry {
                 ui,
                 verbosity,
                 query,
-                store,
+                db,
                 entity_path,
                 component,
                 instance_key,
@@ -197,7 +208,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         component: &ComponentName,
     ) -> Option<DataCell> {
@@ -205,6 +216,6 @@ impl ComponentUiRegistry {
 
         self.component_editors
             .get(component)
-            .map(|(default_value, _)| (*default_value)(ctx, query, store, entity_path))
+            .map(|(default_value, _)| (*default_value)(ctx, query, db, entity_path))
     }
 }

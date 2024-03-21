@@ -13,9 +13,9 @@ impl DataUi for components::Rotation3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
-        self.0.data_ui(ctx, ui, verbosity, query, store);
+        self.0.data_ui(ctx, ui, verbosity, query, db);
     }
 }
 
@@ -26,7 +26,7 @@ impl DataUi for datatypes::Rotation3D {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         match self {
             datatypes::Rotation3D::Quaternion(q) => {
@@ -36,7 +36,7 @@ impl DataUi for datatypes::Rotation3D {
             datatypes::Rotation3D::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 egui::Grid::new("axis_angle").num_columns(2).show(ui, |ui| {
                     ui.label("axis");
-                    axis.data_ui(ctx, ui, verbosity, query, store);
+                    axis.data_ui(ctx, ui, verbosity, query, db);
                     ui.end_row();
 
                     ui.label("angle");

@@ -553,9 +553,9 @@ impl TimePanel {
     ) {
         let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
-        let store = match self.source {
-            TimePanelSource::Recording => ctx.entity_db.store(),
-            TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+        let db = match self.source {
+            TimePanelSource::Recording => ctx.entity_db,
+            TimePanelSource::Blueprint => ctx.store_context.blueprint,
         };
 
         // The last part of the path component
@@ -632,7 +632,7 @@ impl TimePanel {
                 ui,
                 ctx,
                 &time_ctrl.current_query(),
-                store,
+                db,
                 &tree.path,
             );
         });
@@ -689,7 +689,7 @@ impl TimePanel {
                     &mut self.data_density_graph_painter,
                     ctx,
                     time_ctrl,
-                    store,
+                    db,
                     time_area_response,
                     time_area_painter,
                     ui,
@@ -807,16 +807,16 @@ impl TimePanel {
 
                     highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
-                    let store = match self.source {
-                        TimePanelSource::Recording => ctx.entity_db.store(),
-                        TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+                    let db = match self.source {
+                        TimePanelSource::Recording => ctx.entity_db,
+                        TimePanelSource::Blueprint => ctx.store_context.blueprint,
                     };
 
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,
                         ctx,
                         time_ctrl,
-                        store,
+                        db,
                         time_area_response,
                         time_area_painter,
                         ui,

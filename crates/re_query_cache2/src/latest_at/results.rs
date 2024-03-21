@@ -139,6 +139,15 @@ impl CachedLatestAtComponentResults {
             cached_heap_size_bytes: AtomicU64::new(0),
         }
     }
+
+    /// Returns the [`ComponentName`] of the resolved data, if available.
+    #[inline]
+    pub fn component_name(&self, resolver: &PromiseResolver) -> Option<ComponentName> {
+        match self.resolved(resolver) {
+            PromiseResult::Ready(cell) => Some(cell.component_name()),
+            _ => None,
+        }
+    }
 }
 
 impl SizeBytes for CachedLatestAtComponentResults {
@@ -171,6 +180,16 @@ impl CachedLatestAtComponentResults {
     #[inline]
     pub fn index(&self) -> &(TimeInt, RowId) {
         &self.index
+    }
+
+    /// Returns the raw resolved data, if it's ready.
+    #[inline]
+    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<DataCell> {
+        if let Some(cell) = self.promise.as_ref() {
+            resolver.resolve(cell)
+        } else {
+            PromiseResult::Pending
+        }
     }
 
     /// Returns the component data as a dense vector.
