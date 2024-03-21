@@ -1,8 +1,7 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{CollapseScope, ContainerId, Item, SpaceViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, SpaceViewId};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
-use crate::Contents;
 
 /// Collapse or expand all items in the selection.
 // TODO(ab): the current implementation makes strong assumptions of which CollapseScope to use based

@@ -1,8 +1,7 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Item, SpaceViewId};
+use re_viewer_context::{ContainerId, Contents, Item, SpaceViewId};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
-use crate::Contents;
 
 pub(crate) struct ShowAction;
 
