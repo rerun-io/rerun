@@ -31,7 +31,10 @@ RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controln
 
 # (pipe, step_index, timestep, callback_kwargs):
 
-def controlnet_callback(pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict) -> None:
+
+def controlnet_callback(
+    pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict
+) -> None:
     rr.set_time_sequence("iteration", step_index)
     rr.set_time_seconds("timestep", timestep)
     latents = callback_kwargs["latents"]
@@ -130,7 +133,22 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_controlnet")
+    rr.script_setup(
+        args,
+        "rerun_example_controlnet",
+        blueprint=rrb.Horizontal(
+            rrb.Grid(
+                rrb.Spatial2DView(origin="input/raw"),
+                rrb.Spatial2DView(origin="input/canny"),
+                rrb.Vertical(
+                    rrb.TextDocumentView(origin="positive_prompt"),
+                    rrb.TextDocumentView(origin="negative_prompt"),
+                ),
+                rrb.TensorView(origin="latent"),
+            ),
+            rrb.Spatial2DView(origin="output"),
+        ),
+    )
     run_canny_controlnet(args.img_path, args.prompt, args.negative_prompt)
     rr.script_teardown(args)
 
