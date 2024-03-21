@@ -69,7 +69,7 @@ pub fn get_component_with_instances(
 /// its _most recent component_.
 ///
 /// If you expect only one instance (e.g. for mono-components like `Transform` `Tensor`]
-/// and have no additional components you can use [`DataStore::query_latest_component`] instead.
+/// and have no additional components you can use `Caches::latest_at_component` instead.
 ///
 /// ```
 /// # use re_data_store::LatestAtQuery;

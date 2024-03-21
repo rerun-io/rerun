@@ -134,8 +134,8 @@ fn load_panel_state(
     query: &LatestAtQuery,
 ) -> Option<bool> {
     re_tracing::profile_function!();
+    // TODO(#5607): what should happen if the promise is still pending?
     blueprint_db
-        .store()
-        .query_latest_component_quiet::<PanelExpanded>(path, query)
+        .latest_at_component_quiet::<PanelExpanded>(path, query)
         .map(|p| p.0 .0)
 }
