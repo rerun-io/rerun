@@ -249,6 +249,7 @@ jobs:
       release-version: ${{ needs.version.outputs.current }}
       release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
+      wheel-artifact-name: linux-x64-wheel
       update-latest: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
