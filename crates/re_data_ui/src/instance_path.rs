@@ -1,6 +1,7 @@
+use std::sync::Arc;
+
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_query::get_component_with_instances;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -74,12 +75,13 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in normal_components {
-                    let Some((_, _, component_data)) = get_component_with_instances(
+                    let results = db.query_caches2().latest_at(
                         db.store(),
                         query,
                         entity_path,
-                        component_name,
-                    ) else {
+                        [component_name],
+                    );
+                    let Some(results) = results.components.get(&component_name) else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
@@ -90,9 +92,10 @@ impl DataUi for InstancePath {
                     );
 
                     if instance_key.is_splat() {
-                        super::component::EntityComponentWithInstances {
+                        crate::EntityLatestAtResults {
                             entity_path: entity_path.clone(),
-                            component_data,
+                            component_name,
+                            results: Arc::clone(results),
                         }
                         .data_ui(ctx, ui, UiVerbosity::Small, query, db);
                     } else {
@@ -103,7 +106,7 @@ impl DataUi for InstancePath {
                             query,
                             db,
                             entity_path,
-                            &component_data,
+                            results,
                             instance_key,
                         );
                     }

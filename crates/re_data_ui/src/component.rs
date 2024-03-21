@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use egui::NumExt;
 
-use re_entity_db::{EntityPath, InstancePath};
-use re_query::ComponentWithInstances;
+use re_entity_db::{
+    external::re_query_cache2::CachedLatestAtComponentResults, EntityPath, InstancePath,
+};
 use re_types::ComponentName;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -9,26 +12,14 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 use super::{table_for_verbosity, DataUi};
 use crate::item_ui;
 
-// We do NOT implement `DataUi` for just `ComponentWithInstances`
-// because we also want the context of what entity it is part of!
-
 /// All the values of a specific [`re_log_types::ComponentPath`].
-pub struct EntityComponentWithInstances {
+pub struct EntityLatestAtResults {
     pub entity_path: EntityPath,
-    pub component_data: ComponentWithInstances,
+    pub component_name: ComponentName,
+    pub results: Arc<CachedLatestAtComponentResults>,
 }
 
-impl EntityComponentWithInstances {
-    pub fn component_name(&self) -> ComponentName {
-        self.component_data.name()
-    }
-
-    pub fn num_instances(&self) -> usize {
-        self.component_data.len()
-    }
-}
-
-impl DataUi for EntityComponentWithInstances {
+impl DataUi for EntityLatestAtResults {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,
@@ -37,10 +28,17 @@ impl DataUi for EntityComponentWithInstances {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        re_tracing::profile_function!(self.component_name().full_name());
+        re_tracing::profile_function!(self.component_name);
 
-        let instance_keys = self.component_data.instance_keys();
-        let num_instances = self.num_instances();
+        // TODO(#5607): what should happen if the promise is still pending?
+        let Some(num_instances) = self
+            .results
+            .raw(db.resolver(), self.component_name)
+            .map(|data| data.len())
+        else {
+            ui.weak("<pending>");
+            return;
+        };
 
         let one_line = match verbosity {
             UiVerbosity::Small => true,
@@ -71,7 +69,7 @@ impl DataUi for EntityComponentWithInstances {
         // ├───┼───┼───┼───┤ │
         // │   │ x │…+2│…+3│ │
         // └───┴───┴───┴───┘ ┘
-        let displayed_row = if num_instances <= max_row {
+        let num_displayed_rows = if num_instances <= max_row {
             num_instances
         } else {
             // this accounts for the "…x more" using a row and handles `num_instances == 0`
@@ -81,20 +79,16 @@ impl DataUi for EntityComponentWithInstances {
         if num_instances == 0 {
             ui.weak("(empty)");
         } else if num_instances == 1 {
-            if let Some(instance_key) = instance_keys.first() {
-                ctx.component_ui_registry.ui(
-                    ctx,
-                    ui,
-                    verbosity,
-                    query,
-                    db,
-                    &self.entity_path,
-                    &self.component_data,
-                    instance_key,
-                );
-            } else {
-                ui.label(ctx.re_ui.error_text("Error: missing instance key"));
-            }
+            ctx.component_ui_registry.ui(
+                ctx,
+                ui,
+                verbosity,
+                query,
+                db,
+                &self.entity_path,
+                &self.results,
+                &re_types::components::InstanceKey(0),
+            );
         } else if one_line {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
@@ -106,49 +100,49 @@ impl DataUi for EntityComponentWithInstances {
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {
-                        ui.label("Index");
+                        ui.label("Instance");
                     });
                     header.col(|ui| {
-                        ui.label(self.component_name().short_name());
+                        ui.label(self.component_name.short_name());
                     });
                 })
                 .body(|mut body| {
                     re_ui::ReUi::setup_table_body(&mut body);
                     let row_height = re_ui::ReUi::table_line_height();
-                    body.rows(row_height, displayed_row, |mut row| {
-                        if let Some(instance_key) = instance_keys.get(row.index()) {
-                            row.col(|ui| {
-                                let instance_path =
-                                    InstancePath::instance(self.entity_path.clone(), *instance_key);
-                                item_ui::instance_path_button_to(
-                                    ctx,
-                                    query,
-                                    db,
-                                    ui,
-                                    None,
-                                    &instance_path,
-                                    instance_key.syntax_highlighted(ui.style()),
-                                );
-                            });
-                            row.col(|ui| {
-                                ctx.component_ui_registry.ui(
-                                    ctx,
-                                    ui,
-                                    UiVerbosity::Small,
-                                    query,
-                                    db,
-                                    &self.entity_path,
-                                    &self.component_data,
-                                    instance_key,
-                                );
-                            });
-                        }
+                    body.rows(row_height, num_displayed_rows, |mut row| {
+                        let instance_key = re_types::components::InstanceKey(row.index() as _);
+                        row.col(|ui| {
+                            let instance_path =
+                                InstancePath::instance(self.entity_path.clone(), instance_key);
+                            item_ui::instance_path_button_to(
+                                ctx,
+                                query,
+                                db,
+                                ui,
+                                None,
+                                &instance_path,
+                                instance_key.syntax_highlighted(ui.style()),
+                            );
+                        });
+                        row.col(|ui| {
+                            ctx.component_ui_registry.ui(
+                                ctx,
+                                ui,
+                                UiVerbosity::Small,
+                                query,
+                                db,
+                                &self.entity_path,
+                                &self.results,
+                                &instance_key,
+                            );
+                        });
                     });
                 });
-            if num_instances > displayed_row {
+
+            if num_instances > num_displayed_rows {
                 ui.label(format!(
                     "…and {} more.",
-                    re_format::format_uint(num_instances - displayed_row)
+                    re_format::format_uint(num_instances - num_displayed_rows)
                 ));
             }
         }
