@@ -133,6 +133,16 @@ impl StoreBundle {
             .filter(|log| log.store_kind() == StoreKind::Blueprint)
     }
 
+    /// All stores that came from the given source
+    pub fn entity_dbs_from_channel_source<'a>(
+        &'a self,
+        source: &'a re_smart_channel::SmartChannelSource,
+    ) -> impl Iterator<Item = &EntityDb> + 'a {
+        self.entity_dbs
+            .values()
+            .filter(move |db| db.data_source.as_ref() == Some(source))
+    }
+
     // --
 
     pub fn retain(&mut self, mut f: impl FnMut(&EntityDb) -> bool) {

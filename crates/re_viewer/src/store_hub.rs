@@ -82,6 +82,12 @@ impl StoreHub {
         }
     }
 
+    /// All the loaded recordings and blueprints.
+    #[inline]
+    pub fn store_bundle(&self) -> &StoreBundle {
+        &self.store_bundle
+    }
+
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
     ///
     /// All of the returned references to blueprints and recordings will have a
@@ -284,20 +290,6 @@ impl StoreHub {
         self.selected_rec_id
             .as_ref()
             .and_then(|id| self.store_bundle.get(id))
-    }
-
-    /// Check whether the [`StoreHub`] contains the referenced store (recording or blueprint).
-    pub fn contains_store(&self, id: &StoreId) -> bool {
-        self.store_bundle.contains(id)
-    }
-
-    pub fn entity_dbs_from_channel_source<'a>(
-        &'a self,
-        source: &'a re_smart_channel::SmartChannelSource,
-    ) -> impl Iterator<Item = &EntityDb> + 'a {
-        self.store_bundle
-            .entity_dbs()
-            .filter(move |db| db.data_source.as_ref() == Some(source))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.

@@ -925,6 +925,7 @@ impl App {
                         // This is a fallback in case `LogMsg::ActivateStore` isn't sent (for whatever reason).
 
                         let blueprints = store_hub
+                            .store_bundle()
                             .entity_dbs_from_channel_source(&channel_source)
                             .filter_map(|entity_db| {
                                 if let Some(store_info) = entity_db.store_info() {
