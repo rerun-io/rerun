@@ -14,10 +14,6 @@ on:
         description: "Commit to release"
         type: string
         required: true
-      wheel-artifact-name:
-        description: "Name of the wheel to use when running examples"
-        type: string
-        required: true
       update-latest:
         description: "Whether to update the latest version of app"
         type: boolean
@@ -80,7 +76,7 @@ jobs:
       - name: Download Wheel
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.wheel-artifact-name }}
+          name: linux-x64-wheel
           path: wheel
 
       - name: Install example dependencies

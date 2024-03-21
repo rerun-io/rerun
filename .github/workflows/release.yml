@@ -238,7 +238,6 @@ jobs:
     with:
       release-version: ${{ needs.version.outputs.current }}
       concurrency: ${{ github.ref_name }}
-      linux-wheel-name: linux-wheel
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
@@ -250,7 +249,6 @@ jobs:
       release-version: ${{ needs.version.outputs.current }}
       release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
-      wheel-artifact-name: linux-wheel
       update-latest: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
