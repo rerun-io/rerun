@@ -301,9 +301,7 @@ impl AppState {
             if ctx.selection().is_empty() {
                 // Make sure something is selected before showing the selection panel.
                 ctx.selection_state()
-                    .set_selection(re_viewer_context::Item::StoreId(
-                        ctx.entity_db.store_id().clone(),
-                    ));
+                    .set_selection(re_viewer_context::Item::StoreId(ctx.recording_id().clone()));
             }
             selection_panel.show_panel(
                 &ctx,
