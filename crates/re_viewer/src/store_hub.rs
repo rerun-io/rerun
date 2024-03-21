@@ -3,12 +3,10 @@ use itertools::Itertools as _;
 
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
-
-use crate::StoreBundle;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{loading::load_blueprint_file, saving::default_blueprint_path};

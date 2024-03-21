@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_entity_db::EntityDb;
+use crate::EntityDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{StoreId, StoreKind};
 
@@ -10,7 +10,7 @@ pub enum StoreLoadError {
     Decode(#[from] re_log_encoding::decoder::DecodeError),
 
     #[error(transparent)]
-    DataStore(#[from] re_entity_db::Error),
+    DataStore(#[from] crate::Error),
 }
 
 /// Stores many [`EntityDb`]s of recordings and blueprints.
