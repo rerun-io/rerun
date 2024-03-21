@@ -14,6 +14,7 @@ from collections import defaultdict
 from typing import Any
 
 import rerun as rr
+import rerun.blueprint as rrb
 import torch
 import umap
 from transformers import AutoModelForTokenClassification, AutoTokenizer, pipeline
@@ -165,7 +166,19 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_llm_embedding_ner")
+    rr.script_setup(
+        args,
+        "rerun_example_llm_embedding_ner",
+        blueprint=rrb.Horizontal(
+            rrb.Vertical(
+                rrb.TextDocumentView(origin="/text", name="Original Text"),
+                rrb.TextDocumentView(origin="/tokenized_text", name="Tokenized Text"),
+                rrb.TextDocumentView(origin="/named_entities", name="Named Entities"),
+                row_shares=[3, 2, 2],
+            ),
+            rrb.Spatial3DView(origin="/umap_embeddings", name="UMAP Embeddings"),
+        ),
+    )
     run_llm_ner(args.text)
     rr.script_teardown(args)
 
