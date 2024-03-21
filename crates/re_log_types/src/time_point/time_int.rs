@@ -5,7 +5,7 @@ use crate::{time::Time, Duration, NonMinI64, TryFromIntError};
 /// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeInt(Option<NonMinI64>);
 
@@ -33,25 +33,6 @@ impl std::fmt::Debug for TimeInt {
                 .finish(),
             Some(t) => f.debug_tuple("TimeInt").field(&t).finish(),
             None => f.debug_tuple("TimeInt::STATIC").finish(),
-        }
-    }
-}
-
-impl PartialOrd for TimeInt {
-    #[inline]
-    fn partial_cmp(&self, rhs: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(rhs))
-    }
-}
-
-impl Ord for TimeInt {
-    #[inline]
-    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
-        match (self.0, rhs.0) {
-            (None, None) => std::cmp::Ordering::Equal,
-            (None, Some(_)) => std::cmp::Ordering::Less,
-            (Some(_), None) => std::cmp::Ordering::Greater,
-            (Some(lhs), Some(rhs)) => lhs.cmp(&rhs),
         }
     }
 }

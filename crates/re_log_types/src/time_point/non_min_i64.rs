@@ -93,7 +93,7 @@ impl NonMinI64 {
 impl Default for NonMinI64 {
     #[inline]
     fn default() -> Self {
-        unsafe { Self::new_unchecked(0) }
+        Self::ZERO
     }
 }
 
