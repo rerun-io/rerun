@@ -190,23 +190,6 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
     return str(destination_path)
 
 
-def get_blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.Vertical(
-                rrb.Spatial2DView(origin="video", name="Segmentation/reprojection"),
-                rrb.Spatial3DView(origin="person", name="3D pose"),
-            ),
-            rrb.Vertical(
-                rrb.Spatial2DView(origin="video/rgb", name="Raw video"),
-                rrb.TextDocumentView(origin="description", name="Description"),
-                row_shares=[1, 3],
-            ),
-            column_shares=[2, 1],
-        )
-    )
-
-
 def main() -> None:
     # Ensure the logging gets written to stderr:
     logging.getLogger().addHandler(logging.StreamHandler())
@@ -231,7 +214,22 @@ def main() -> None:
     rr.script_add_args(parser)
 
     args = parser.parse_args()
-    rr.script_setup(args, "rerun_example_human_pose_tracking", blueprint=get_blueprint())
+    rr.script_setup(
+        args,
+        "rerun_example_human_pose_tracking",
+        blueprint=rrb.Horizontal(
+            rrb.Vertical(
+                rrb.Spatial2DView(origin="video", name="Result"),
+                rrb.Spatial3DView(origin="person", name="3D pose"),
+            ),
+            rrb.Vertical(
+                rrb.Spatial2DView(origin="video/rgb", name="Raw video"),
+                rrb.TextDocumentView(origin="description", name="Description"),
+                row_shares=[2, 3],
+            ),
+            column_shares=[3, 2],
+        ),
+    )
 
     video_path = args.video_path  # type: str
     if not video_path:
