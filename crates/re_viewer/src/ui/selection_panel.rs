@@ -17,11 +17,12 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataQueryResult, HoverHighlight, Item,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{
-    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style, Contents,
+    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style,
     SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 

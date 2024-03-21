@@ -10,16 +10,15 @@ use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
-    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier,
+    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
-use crate::container::blueprint_id_to_tile_id;
 use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
-    context_menu_ui_for_item, icon_for_container_kind,
-    space_view_entity_picker::SpaceViewEntityPicker,
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
+    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
     ViewportBlueprint,
 };

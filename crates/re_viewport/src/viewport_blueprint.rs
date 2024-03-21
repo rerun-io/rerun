@@ -12,15 +12,15 @@ use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, SpaceViewSpawnHeuristics,
-    ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier, SpaceViewId,
+    SpaceViewSpawnHeuristics, ViewerContext,
 };
 
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
     },
-    container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
+    container::ContainerBlueprint,
     viewport::TreeAction,
     VIEWPORT_PATH,
 };

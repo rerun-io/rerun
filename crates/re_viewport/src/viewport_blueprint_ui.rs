@@ -6,22 +6,22 @@ use smallvec::SmallVec;
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
-use re_space_view::{SpaceViewBlueprint, SpaceViewName};
+use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
-use re_viewer_context::{CollapseScope, DataResultTree};
+use re_viewer_context::{CollapseScope, Contents, ContentsName, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::context_menu::context_menu_ui_for_item;
-use crate::{container::Contents, SelectionUpdateBehavior, Viewport};
+use crate::{SelectionUpdateBehavior, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
-pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
+pub fn space_view_name_style(name: &ContentsName) -> re_ui::LabelStyle {
     match name {
-        SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
-        SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+        ContentsName::Named(_) => re_ui::LabelStyle::Normal,
+        ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
     }
 }
 
