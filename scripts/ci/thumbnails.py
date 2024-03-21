@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Generator
@@ -52,7 +52,7 @@ def update() -> None:
             width, height = get_thumbnail_dimensions(example.fm["thumbnail"])
 
             if "thumbnail_dimensions" not in example.fm:
-                start = example.readme.find("thumbnail: ")
+                start = example.readme.find("thumbnail = ")
                 assert start != -1
                 end = example.readme.find("\n", start)
                 assert end != -1
@@ -69,7 +69,10 @@ def update() -> None:
 
             print(f"✔ {example.path}")
 
-        ex.map(work, examples_with_thumbnails())
+        futures = [ex.submit(work, example) for example in examples_with_thumbnails()]
+        ex.shutdown()
+        for future in futures:
+            future.result()
 
 
 def check() -> None:
@@ -91,7 +94,10 @@ def check() -> None:
             else:
                 print(f"✔ {example.path}")
 
-        ex.map(work, examples_with_thumbnails())
+        futures = [ex.submit(work, example) for example in examples_with_thumbnails()]
+        ex.shutdown()
+        for future in futures:
+            future.result()
 
     if bad:
         print("Please run `scripts/ci/thumbnails.py update`.")
