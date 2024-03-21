@@ -156,7 +156,7 @@ fn load_series(
     re_tracing::profile_function!();
 
     let store = ctx.recording_store();
-    let query_caches = ctx.entity_db.query_caches();
+    let query_caches = ctx.recording.query_caches();
 
     let annotation_info = annotations
         .resolved_class_description(None)

@@ -28,7 +28,7 @@ pub struct ViewerContext<'a> {
 
     /// The current recording. Short for [`Self.store_context.recording`].
     /// TODO(jleibs): This can be replaced with `store_context.recording`, perhaps with a helper function.
-    pub entity_db: &'a EntityDb,
+    pub recording: &'a EntityDb,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -76,13 +76,13 @@ impl<'a> ViewerContext<'a> {
     /// The data store of the active recording.
     #[inline]
     pub fn recording_store(&self) -> &re_data_store::DataStore {
-        self.entity_db.store()
+        self.recording.store()
     }
 
     /// The `StoreId` of the active recording.
     #[inline]
     pub fn recording_id(&self) -> &re_log_types::StoreId {
-        self.entity_db.store_id()
+        self.recording.store_id()
     }
 
     /// Returns the current selection.

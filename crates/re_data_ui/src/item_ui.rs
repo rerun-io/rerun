@@ -512,7 +512,7 @@ pub fn instance_hover_card_ui(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
-    if !ctx.entity_db.is_known_entity(&instance_path.entity_path) {
+    if !ctx.recording.is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
         return;
     }
@@ -529,7 +529,7 @@ pub fn instance_hover_card_ui(
     // Then we can move the size view into `data_ui`.
 
     if instance_path.instance_key.is_splat() {
-        if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
+        if let Some(subtree) = ctx.recording.tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline, subtree);
         }
     } else {

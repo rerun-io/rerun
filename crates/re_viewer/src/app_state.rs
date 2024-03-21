@@ -103,7 +103,7 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        entity_db: &EntityDb,
+        recording: &EntityDb,
         store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
@@ -159,21 +159,21 @@ impl AppState {
             return;
         }
 
-        recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db)
+        recording_config_entry(recording_configs, recording.store_id().clone(), recording)
             .selection_state
             .on_frame_start(|item| viewport.is_item_valid(item));
 
         let rec_cfg =
-            recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
+            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
             rec_cfg.selection_state.clear_selection();
         }
 
         let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(entity_db.store_id());
+            .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
-            space_view_class_registry.indicated_entities_per_visualizer(entity_db.store_id());
+            space_view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -188,7 +188,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -210,7 +210,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
+            recording,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -239,7 +239,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -266,7 +266,7 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
+            recording,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -293,7 +293,7 @@ impl AppState {
         time_panel.show_panel(
             &ctx,
             &viewport_blueprint,
-            ctx.entity_db,
+            ctx.recording,
             ctx.rec_cfg,
             ui,
             app_blueprint.time_panel_expanded,
@@ -376,14 +376,14 @@ impl AppState {
             let dt = ui.ctx().input(|i| i.stable_dt);
 
             // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &entity_db.data_source {
+            let more_data_is_coming = if let Some(store_source) = &recording.data_source {
                 rx.sources().iter().any(|s| s.as_ref() == store_source)
             } else {
                 false
             };
 
             let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                entity_db.times_per_timeline(),
+                recording.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );

@@ -346,7 +346,7 @@ fn recommended_space_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.entity_db.tree();
+    let tree = ctx.recording.tree();
 
     let Some(subtree) = tree.subtree(recommended_root) else {
         if cfg!(debug_assertions) {

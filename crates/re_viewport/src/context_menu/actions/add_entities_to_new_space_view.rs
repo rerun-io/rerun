@@ -87,7 +87,7 @@ fn recommended_space_views_for_selection(
     let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
 
     let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
-    let entity_db = ctx.viewer_context.entity_db;
+    let entity_db = ctx.viewer_context.recording;
     let applicable_entities_per_visualizer =
         space_view_class_registry.applicable_entities_for_visualizer_systems(entity_db.store_id());
 
@@ -144,7 +144,7 @@ fn create_space_view_for_selected_entities(
         .viewer_context
         .space_view_class_registry
         .get_class_or_log_error(&identifier)
-        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.entity_db)
+        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording)
         .unwrap_or_else(EntityPath::root);
 
     let mut filter = EntityPathFilter::default();

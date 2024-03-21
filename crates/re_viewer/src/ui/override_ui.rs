@@ -313,7 +313,7 @@ pub fn override_visualizer_ui(
             instance_key: _,
         } = instance_path;
 
-        let entity_db = ctx.entity_db;
+        let entity_db = ctx.recording;
 
         let query_result = ctx.lookup_query_result(space_view.id);
         let Some(data_result) = query_result

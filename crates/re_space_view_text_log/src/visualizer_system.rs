@@ -50,7 +50,7 @@ impl VisualizerSystem for TextLogSystem {
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let query_caches = ctx.entity_db.query_caches();
+        let query_caches = ctx.recording.query_caches();
         let store = ctx.recording_store();
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {

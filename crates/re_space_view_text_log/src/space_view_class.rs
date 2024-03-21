@@ -255,7 +255,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.entity_db.timelines() {
+        for timeline in ctx.recording.timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 

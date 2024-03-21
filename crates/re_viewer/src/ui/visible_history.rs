@@ -93,7 +93,7 @@ pub fn visual_time_range_ui(
                 });
         });
 
-        let timeline_spec = if let Some(times) = ctx.entity_db.time_histogram(time_ctrl.timeline())
+        let timeline_spec = if let Some(times) = ctx.recording.time_histogram(time_ctrl.timeline())
         {
             TimelineSpec::from_time_histogram(times)
         } else {

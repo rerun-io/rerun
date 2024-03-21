@@ -91,7 +91,7 @@ impl ViewContextSystem for TransformContext {
     ) {
         re_tracing::profile_function!();
 
-        let entity_tree = ctx.entity_db.tree();
+        let entity_tree = ctx.recording.tree();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -123,7 +123,7 @@ impl ViewContextSystem for TransformContext {
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
-            ctx.entity_db,
+            ctx.recording,
             &time_query,
             &entity_prop_map,
             glam::Affine3A::IDENTITY,
@@ -148,7 +148,7 @@ impl ViewContextSystem for TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 current_tree,
-                ctx.entity_db,
+                ctx.recording,
                 &time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -169,7 +169,7 @@ impl ViewContextSystem for TransformContext {
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 parent_tree,
-                ctx.entity_db,
+                ctx.recording,
                 &time_query,
                 &entity_prop_map,
                 reference_from_ancestor,
