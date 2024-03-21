@@ -554,7 +554,7 @@ impl TimePanel {
         let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
         let store = match self.source {
-            TimePanelSource::Recording => ctx.entity_db.store(),
+            TimePanelSource::Recording => ctx.recording_store(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
         };
 
@@ -808,7 +808,7 @@ impl TimePanel {
                     highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
                     let store = match self.source {
-                        TimePanelSource::Recording => ctx.entity_db.store(),
+                        TimePanelSource::Recording => ctx.recording_store(),
                         TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
                     };
 

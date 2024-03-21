@@ -87,21 +87,21 @@ fn recommended_space_views_for_selection(
     let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
 
     let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
-    let entity_db = ctx.viewer_context.entity_db;
+    let recording = ctx.viewer_context.recording();
     let applicable_entities_per_visualizer =
-        space_view_class_registry.applicable_entities_for_visualizer_systems(entity_db.store_id());
+        space_view_class_registry.applicable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in space_view_class_registry.iter_registry() {
         let Some(suggested_root) = entry
             .class
-            .recommended_root_for_entities(&entities_of_interest, entity_db)
+            .recommended_root_for_entities(&entities_of_interest, recording)
         else {
             continue;
         };
 
         let visualizable_entities = determine_visualizable_entities(
             &applicable_entities_per_visualizer,
-            entity_db,
+            recording,
             &space_view_class_registry.new_visualizer_collection(entry.identifier),
             &*entry.class,
             &suggested_root,
@@ -144,7 +144,7 @@ fn create_space_view_for_selected_entities(
         .viewer_context
         .space_view_class_registry
         .get_class_or_log_error(&identifier)
-        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.entity_db)
+        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
 
     let mut filter = EntityPathFilter::default();
