@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 
-use re_data_store::{DataStore, LatestAtQuery};
+use re_data_store::LatestAtQuery;
 use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
@@ -33,7 +33,7 @@ pub fn override_ui(
     // entity from the blueprint-inspector since it isn't "part" of a space-view to provide
     // the overrides.
     let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let db = ctx.entity_db;
 
     let query_result = ctx.lookup_query_result(space_view.id);
     let Some(data_result) = query_result
@@ -80,7 +80,7 @@ pub fn override_ui(
     add_new_override(
         ctx,
         &query,
-        store,
+        db,
         ui,
         &view_systems,
         &component_to_vis,
@@ -144,9 +144,12 @@ pub fn override_ui(
                                 let query = ctx.blueprint_query;
                                 get_component_with_instances(store, query, path, *component_name)
                             }
-                            StoreKind::Recording => {
-                                get_component_with_instances(store, &query, path, *component_name)
-                            }
+                            StoreKind::Recording => get_component_with_instances(
+                                db.store(),
+                                &query,
+                                path,
+                                *component_name,
+                            ),
                         };
 
                         if let Some((_, _, component_data)) = component_data {
@@ -155,7 +158,7 @@ pub fn override_ui(
                                 ui,
                                 UiVerbosity::Small,
                                 &query,
-                                store,
+                                db,
                                 path,
                                 &overrides.individual_override_path,
                                 &component_data,
@@ -176,7 +179,7 @@ pub fn override_ui(
 pub fn add_new_override(
     ctx: &ViewerContext<'_>,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     ui: &mut egui::Ui,
     view_systems: &re_viewer_context::VisualizerCollection,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
@@ -228,7 +231,8 @@ pub fn add_new_override(
                         let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
                         splat_cell.compute_size_bytes();
 
-                        let Some(mut initial_data) = store
+                        let Some(mut initial_data) = db
+                            .store()
                             .latest_at(query, &data_result.entity_path, *component, &components)
                             .and_then(|result| result.2[0].clone())
                             .and_then(|cell| {
@@ -243,7 +247,7 @@ pub fn add_new_override(
                                     sys.initial_override_value(
                                         ctx,
                                         query,
-                                        store,
+                                        db.store(),
                                         &data_result.entity_path,
                                         component,
                                     )
@@ -253,7 +257,7 @@ pub fn add_new_override(
                                 ctx.component_ui_registry.default_value(
                                     ctx,
                                     query,
-                                    store,
+                                    db,
                                     &data_result.entity_path,
                                     component,
                                 )

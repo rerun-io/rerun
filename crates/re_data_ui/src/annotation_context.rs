@@ -17,7 +17,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
         let class = annotations
@@ -63,7 +63,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         _verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
             ui.horizontal(|ui| {
@@ -102,7 +102,7 @@ impl DataUi for AnnotationContext {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
             UiVerbosity::Small | UiVerbosity::Reduced => {

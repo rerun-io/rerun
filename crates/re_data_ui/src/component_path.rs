@@ -10,7 +10,7 @@ impl DataUi for ComponentPath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let Self {
             entity_path,
@@ -22,13 +22,13 @@ impl DataUi for ComponentPath {
                 "Indicator component for the {archetype_name} archetype"
             ));
         } else if let Some((_, _, component_data)) =
-            re_query::get_component_with_instances(store, query, entity_path, *component_name)
+            re_query::get_component_with_instances(db.store(), query, entity_path, *component_name)
         {
             super::component::EntityComponentWithInstances {
                 entity_path: self.entity_path.clone(),
                 component_data,
             }
-            .data_ui(ctx, ui, verbosity, query, store);
+            .data_ui(ctx, ui, verbosity, query, db);
         } else if let Some(entity_tree) = ctx.entity_db.tree().subtree(entity_path) {
             if entity_tree.entity.components.contains_key(component_name) {
                 ui.label("<unset>");

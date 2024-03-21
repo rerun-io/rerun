@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use re_data_store::{DataStore, LatestAtQuery};
-use re_entity_db::EntityPath;
+use re_data_store::LatestAtQuery;
+use re_entity_db::{EntityDb, EntityPath};
 use re_log_types::DataCell;
 use re_query::ComponentWithInstances;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
@@ -39,7 +39,7 @@ type ComponentUiCallback = Box<
             &mut egui::Ui,
             UiVerbosity,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
             &ComponentWithInstances,
             &InstanceKey,
@@ -53,7 +53,7 @@ type ComponentEditCallback = Box<
             &mut egui::Ui,
             UiVerbosity,
             &LatestAtQuery,
-            &DataStore,
+            &EntityDb,
             &EntityPath,
             &EntityPath,
             &ComponentWithInstances,
@@ -63,7 +63,7 @@ type ComponentEditCallback = Box<
 >;
 
 type DefaultValueCallback = Box<
-    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> DataCell + Send + Sync,
+    dyn Fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> DataCell + Send + Sync,
 >;
 
 /// How to display components in a Ui.
@@ -119,7 +119,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         component: &ComponentWithInstances,
         instance_key: &InstanceKey,
@@ -141,7 +141,7 @@ impl ComponentUiRegistry {
             ui,
             verbosity,
             query,
-            store,
+            db,
             entity_path,
             component,
             instance_key,
@@ -156,7 +156,7 @@ impl ComponentUiRegistry {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         override_path: &EntityPath,
         component: &ComponentWithInstances,
@@ -170,7 +170,7 @@ impl ComponentUiRegistry {
                 ui,
                 verbosity,
                 query,
-                store,
+                db,
                 entity_path,
                 override_path,
                 component,
@@ -183,7 +183,7 @@ impl ComponentUiRegistry {
                 ui,
                 verbosity,
                 query,
-                store,
+                db,
                 entity_path,
                 component,
                 instance_key,
@@ -197,7 +197,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         query: &LatestAtQuery,
-        store: &DataStore,
+        db: &EntityDb,
         entity_path: &EntityPath,
         component: &ComponentName,
     ) -> Option<DataCell> {
@@ -205,6 +205,6 @@ impl ComponentUiRegistry {
 
         self.component_editors
             .get(component)
-            .map(|(default_value, _)| (*default_value)(ctx, query, store, entity_path))
+            .map(|(default_value, _)| (*default_value)(ctx, query, db, entity_path))
     }
 }

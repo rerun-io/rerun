@@ -147,13 +147,7 @@ impl SelectionPanel {
                         } else {
                             (ctx.current_query(), ctx.entity_db)
                         };
-                        data_ui_item.data_ui(
-                            ctx,
-                            ui,
-                            multi_selection_verbosity,
-                            &query,
-                            db.store(),
-                        );
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, db);
                     });
                 }
 
@@ -357,7 +351,7 @@ fn what_is_selected_ui(
 
             ui.horizontal(|ui| {
                 ui.label("component of");
-                item_ui::entity_path_button(ctx, &query, db.store(), ui, None, entity_path);
+                item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
             });
 
             list_existing_data_blueprints(ui, ctx, &entity_path.clone().into(), viewport);
@@ -415,14 +409,7 @@ fn what_is_selected_ui(
                         guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
                     ui.horizontal(|ui| {
                         ui.label("Parent");
-                        item_ui::entity_path_parts_buttons(
-                            ctx,
-                            &query,
-                            db.store(),
-                            ui,
-                            None,
-                            &parent,
-                        );
+                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, &parent);
                     });
                 }
             }
@@ -464,7 +451,7 @@ fn what_is_selected_ui(
                             item_ui::entity_path_parts_buttons(
                                 ctx,
                                 &query,
-                                db.store(),
+                                db,
                                 ui,
                                 Some(*space_view_id),
                                 &parent,
@@ -522,7 +509,7 @@ fn list_existing_data_blueprints(
                     item_ui::instance_path_button_to(
                         ctx,
                         &query,
-                        db.store(),
+                        db,
                         ui,
                         Some(*space_view_id),
                         instance_path,
@@ -1238,17 +1225,10 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(
-            ctx,
-            &query,
-            db.store(),
-            ui,
-            None,
-            &image_projection_ent_path,
-        )
-        .on_hover_text(
-            "The entity path of the pinhole transform being used to do the backprojection.",
-        );
+        item_ui::entity_path_button(ctx, &query, db, ui, None, &image_projection_ent_path)
+            .on_hover_text(
+                "The entity path of the pinhole transform being used to do the backprojection.",
+            );
         ui.end_row();
 
         depth_from_world_scale_ui(ui, &mut entity_props.depth_from_world_scale);

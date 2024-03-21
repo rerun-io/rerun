@@ -1,4 +1,5 @@
-use re_data_store::{DataStore, LatestAtQuery};
+use re_data_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 use re_log_types::{external::arrow2, EntityPath};
 use re_query::ComponentWithInstances;
 use re_types::external::arrow2::array::Utf8Array;
@@ -39,11 +40,11 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add(
         C::name(),
         Box::new(
-            |ctx, ui, verbosity, query, store, entity_path, component, instance| match component
+            |ctx, ui, verbosity, query, db, entity_path, component, instance| match component
                 .lookup::<C>(instance)
             {
                 Ok(component) => {
-                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query, store);
+                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query, db);
                 }
                 Err(re_query::QueryError::ComponentNotFound(_)) => {
                     ui.weak("(not found)");
@@ -62,7 +63,7 @@ fn fallback_component_ui(
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
     component: &ComponentWithInstances,
     instance_key: &re_types::components::InstanceKey,

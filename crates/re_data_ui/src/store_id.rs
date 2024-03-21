@@ -5,10 +5,10 @@ impl crate::DataUi for re_log_types::StoreId {
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         if let Some(entity_db) = ctx.store_context.recording(self) {
-            entity_db.data_ui(ctx, ui, verbosity, query, store);
+            entity_db.data_ui(ctx, ui, verbosity, query, db);
         } else {
             ui.label(format!("{} ID {} (not found)", self.kind, self.id));
         }
