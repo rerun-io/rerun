@@ -22,7 +22,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 use re_viewport::{
-    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style,
+    contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
     SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 
@@ -281,7 +281,7 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
-            space_view_name_style(&space_view_name),
+            contents_name_style(&space_view_name),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -320,15 +320,26 @@ fn what_is_selected_ui(
 
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    &format!("{:?}", container_blueprint.container_kind),
-                    Some(re_viewport::icon_for_container_kind(
+                let hover_text =
+                    if let Some(display_name) = container_blueprint.display_name.as_ref() {
+                        format!(
+                            "{:?} Container {display_name:?}",
+                            container_blueprint.container_kind,
+                        )
+                    } else {
+                        format!("Unnamed {:?} Container", container_blueprint.container_kind,)
+                    };
+
+                let container_name = container_blueprint.display_name_or_default();
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
+                    .with_icon(re_viewport::icon_for_container_kind(
                         &container_blueprint.container_kind,
-                    )),
-                    &format!("{:?} container", container_blueprint.container_kind),
-                );
+                    ))
+                    .with_height(ReUi::title_bar_height())
+                    .selected(true)
+                    .show_flat(ui)
+                    .on_hover_text(hover_text);
             }
         }
 
@@ -377,7 +388,7 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -587,6 +598,15 @@ fn container_top_level_properties(
     egui::Grid::new("container_top_level_properties")
         .num_columns(2)
         .show(ui, |ui| {
+            let mut name = container.display_name.clone().unwrap_or_default();
+            ui.label("Name").on_hover_text(
+                "The name of the Container used for display purposes. This can be any text string.",
+            );
+            ui.text_edit_singleline(&mut name);
+            container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+
+            ui.end_row();
+
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
@@ -702,7 +722,7 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
@@ -723,10 +743,12 @@ fn show_list_item_for_container_child(
                 return false;
             };
 
+            let container_name = container.display_name_or_default();
+
             (
                 Item::Container(*container_id),
-                ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
-                    .label_style(re_ui::LabelStyle::Unnamed)
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui

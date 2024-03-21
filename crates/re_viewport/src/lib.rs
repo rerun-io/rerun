@@ -28,7 +28,7 @@ pub use container::ContainerBlueprint;
 pub use context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 pub use viewport::{Viewport, ViewportState};
 pub use viewport_blueprint::ViewportBlueprint;
-pub use viewport_blueprint_ui::space_view_name_style;
+pub use viewport_blueprint_ui::contents_name_style;
 
 pub mod external {
     pub use re_space_view;
