@@ -322,8 +322,7 @@ impl DataResult {
                     .store()
                     .query_latest_component::<C>(path, ctx.blueprint_query),
                 StoreKind::Recording => ctx
-                    .entity_db
-                    .store()
+                    .recording_store()
                     .query_latest_component::<C>(path, &ctx.current_query()),
             })
             .map(|c| c.value)

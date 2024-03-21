@@ -29,7 +29,6 @@ pub(crate) use {
 };
 
 pub use app::{App, StartupOptions};
-pub use store_hub::StoreBundle;
 
 pub mod external {
     pub use re_data_ui;

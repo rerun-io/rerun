@@ -521,7 +521,7 @@ impl Viewport<'_, '_> {
         space_view_visible: bool,
         projection_mode: bool,
     ) {
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         let entity_path = node_or_path.path();
 
@@ -562,7 +562,7 @@ impl Viewport<'_, '_> {
                 .last()
                 .map_or("unknown".to_owned(), |e| e.ui_string())
         };
-        let item_label = if ctx.entity_db.is_known_entity(entity_path) {
+        let item_label = if ctx.recording().is_known_entity(entity_path) {
             egui::RichText::new(item_label)
         } else {
             ctx.re_ui.warning_text(item_label)

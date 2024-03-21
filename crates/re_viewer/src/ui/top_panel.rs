@@ -408,7 +408,7 @@ fn e2e_latency_ui(
     store_context: Option<&StoreContext<'_>>,
 ) -> Option<egui::Response> {
     let store_context = store_context?;
-    let recording = store_context.recording?;
+    let recording = store_context.recording;
     let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
 
     if e2e_latency_sec > 60.0 {
