@@ -85,7 +85,7 @@ impl StoreBundle {
 
     /// Creates one if it doesn't exist.
     ///
-    /// Like [`Self::entity_db_entry`] but also sets `StoreInfo` to a default value.
+    /// Like [`Self::entry`] but also sets `StoreInfo` to a default value.
     pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
         debug_assert_eq!(id.kind, StoreKind::Blueprint);
 
