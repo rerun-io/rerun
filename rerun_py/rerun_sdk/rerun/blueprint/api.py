@@ -473,9 +473,15 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     # Convert the BlueprintLike to a full blueprint
     blueprint = blueprint.to_blueprint()
 
+    # We only use this stream object directly, so don't need to make it
+    # default or thread default. Making it the thread-default will also
+    # lead to an unnecessary warning on mac/win.
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
             application_id=application_id,
+            make_default=False,
+            make_thread_default=False,
+            default_enabled=True,
         )
     )
 
