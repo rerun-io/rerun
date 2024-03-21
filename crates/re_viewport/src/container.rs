@@ -7,9 +7,11 @@ use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
+use re_types::components::Name;
 use re_types_core::archetypes::Clear;
 use re_viewer_context::{
-    ContainerId, Contents, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewerContext,
+    ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    ViewerContext,
 };
 
 use crate::blueprint::components::GridColumns;
@@ -26,7 +28,7 @@ use crate::blueprint::components::GridColumns;
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
-    pub display_name: String,
+    pub display_name: Option<String>,
     pub contents: Vec<Contents>,
     pub col_shares: Vec<f32>,
     pub row_shares: Vec<f32>,
@@ -67,10 +69,7 @@ impl ContainerBlueprint {
             .ok()?;
 
         let container_kind = container_kind.into();
-
-        // TODO(jleibs): Don't use debug print for this
-        let display_name =
-            display_name.map_or_else(|| format!("{container_kind:?}"), |v| v.0.to_string());
+        let display_name = display_name.map(|v| v.0.to_string());
 
         let contents = contents
             .unwrap_or_default()
@@ -137,11 +136,17 @@ impl ContainerBlueprint {
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
         let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
-            .with_display_name(display_name.clone())
             .with_contents(&contents)
             .with_col_shares(col_shares.clone())
             .with_row_shares(row_shares.clone())
             .with_visible(*visible);
+
+        // Note: it's important to _not_ clear the `Name` component if `display_name` is set to
+        // `None`, as we call this function with `ContainerBlueprint` recreated from `egui_tiles`,
+        // which is lossy with custom names.
+        if let Some(display_name) = display_name {
+            arch = arch.with_display_name(display_name.clone());
+        }
 
         // TODO(jleibs): The need for this pattern is annoying. Should codegen
         // a version of this that can take an Option.
@@ -199,7 +204,7 @@ impl ContainerBlueprint {
                 Self {
                     id: container_id,
                     container_kind: egui_tiles::ContainerKind::Tabs,
-                    display_name: format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                    display_name: None, // keep whatever name is already set
                     contents,
                     col_shares: vec![],
                     row_shares: vec![],
@@ -214,7 +219,7 @@ impl ContainerBlueprint {
                     Self {
                         id: container_id,
                         container_kind: kind,
-                        display_name: format!("{kind:?}"),
+                        display_name: None, // keep whatever name is already set
                         contents,
                         col_shares: linear
                             .children
@@ -232,7 +237,7 @@ impl ContainerBlueprint {
                     Self {
                         id: container_id,
                         container_kind: kind,
-                        display_name: format!("{kind:?}"),
+                        display_name: None, // keep whatever name is already set
                         contents,
                         col_shares: vec![],
                         row_shares: linear
@@ -249,7 +254,7 @@ impl ContainerBlueprint {
             egui_tiles::Container::Grid(grid) => Self {
                 id: container_id,
                 container_kind: egui_tiles::ContainerKind::Grid,
-                display_name: format!("{:?}", egui_tiles::ContainerKind::Grid),
+                display_name: None, // keep whatever name is already set
                 contents,
                 col_shares: grid.col_shares.clone(),
                 row_shares: grid.row_shares.clone(),
@@ -260,6 +265,40 @@ impl ContainerBlueprint {
                     egui_tiles::GridLayout::Auto => None,
                 },
             },
+        }
+    }
+
+    /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
+    #[inline]
+    pub fn missing_name_placeholder(&self) -> String {
+        format!("{:?}", self.container_kind)
+    }
+
+    /// Returns this container's display name
+    ///
+    /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
+    /// `re_ui::LabelStyle::Unnamed`.
+    #[inline]
+    pub fn display_name_or_default(&self) -> ContentsName {
+        self.display_name.clone().map_or_else(
+            || ContentsName::Placeholder(self.missing_name_placeholder()),
+            ContentsName::Named,
+        )
+    }
+
+    /// Sets the display name for this container.
+    #[inline]
+    pub fn set_display_name(&self, ctx: &ViewerContext<'_>, name: Option<String>) {
+        if name != self.display_name {
+            match name {
+                Some(name) => {
+                    let component = Name(name.into());
+                    ctx.save_blueprint_component(&self.entity_path(), &component);
+                }
+                None => {
+                    ctx.save_empty_blueprint_component::<Name>(&self.entity_path());
+                }
+            }
         }
     }
 
