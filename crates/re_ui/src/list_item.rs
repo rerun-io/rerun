@@ -441,12 +441,9 @@ impl<'a> ListItem<'a> {
         let mut collapse_response = None;
 
         if ui.is_rect_visible(bg_rect) {
-            let mut visuals = if self.interactive {
-                ui.style()
-                    .interact_selectable(&style_response, self.selected)
-            } else {
-                ui.visuals().widgets.inactive
-            };
+            let mut visuals = ui
+                .style()
+                .interact_selectable(&style_response, self.selected);
 
             // TODO(ab): use design tokens instead
             if self.weak {
