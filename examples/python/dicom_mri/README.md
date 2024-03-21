@@ -59,17 +59,4 @@ If you wish to customize it, explore additional features, or save it, use the CL
 
 ```bash
 python examples/python/dicom_mri/main.py --help
-
-usage: main.py [-h] [--headless] [--connect] [--serve] [--addr ADDR] [--save SAVE] [-o]
-
-Example using MRI scan data in the DICOM format.
-
-optional arguments:
-  -h, --help    show this help message and exit
-  --headless    Don t show GUI
-  --connect     Connect to an external viewer
-  --serve       Serve a web viewer (WARNING: experimental feature)
-  --addr ADDR   Connect to this ip:port
-  --save SAVE   Save data to a .rrd file at this path
-  -o, --stdout  Log data to standard output, to be piped into a Rerun Viewer
 ```
