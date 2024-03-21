@@ -183,27 +183,4 @@ python examples/python/face_tracking/main.py # run the example
 If you wish to customize it for various videos, adjust the maximum frames, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
 python examples/python/face_tracking/main.py --help 
-
-usage: main.py [-h] [--demo-image] [--image IMAGE] [--video VIDEO] [--camera CAMERA] [--max-frame MAX_FRAME] [--max-dim MAX_DIM] [--num-faces NUM_FACES] [--headless]
-               [--connect] [--serve] [--addr ADDR] [--save SAVE] [-o]
-
-Uses the MediaPipe Face Detection to track a human pose in video.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --demo-image          Run on a demo image automatically downloaded
-  --image IMAGE         Run on the provided image
-  --video VIDEO         Run on the provided video file.
-  --camera CAMERA       Run from the camera stream (parameter is the camera ID, usually 0)
-  --max-frame MAX_FRAME
-                        Stop after processing this many frames. If not specified, will run until interrupted.
-  --max-dim MAX_DIM     Resize the image such as its maximum dimension is not larger than this value.
-  --num-faces NUM_FACES
-                        Max number of faces detected by the landmark model (temporal smoothing is applied only for a value of 1).
-  --headless            Don t show GUI
-  --connect             Connect to an external viewer
-  --serve               Serve a web viewer (WARNING: experimental feature)
-  --addr ADDR           Connect to this ip:port
-  --save SAVE           Save data to a .rrd file at this path
-  -o, --stdout          Log data to standard output, to be piped into a Rerun Viewer
 ```
