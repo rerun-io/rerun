@@ -110,9 +110,7 @@ impl SelectionPanel {
         re_tracing::profile_function!();
 
         if ctx.selection().is_empty() {
-            // If nothing is selected, we fall back to selecting the current recording.
-            ctx.selection_state()
-                .set_selection(Item::StoreId(ctx.entity_db.store_id().clone()));
+            return;
         }
 
         // no gap before the first item title
