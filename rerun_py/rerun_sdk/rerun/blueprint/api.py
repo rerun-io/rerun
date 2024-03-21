@@ -21,10 +21,16 @@ class SpaceView:
     Base class for all space view types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [Spatial3D][] for 3D space views
-    - [Spatial2D][] for 2D space views
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
+    - [rerun.blueprint.BarChartView][]
+    - [rerun.blueprint.Spatial2DView][]
+    - [rerun.blueprint.Spatial3DView][]
+    - [rerun.blueprint.TensorView][]
+    - [rerun.blueprint.TextDocumentView][]
+    - [rerun.blueprint.TextLogView][]
+    - [rerun.blueprint.TimeSeriesView][]
+
+    This is an ergonomic helper on top of `rerun.blueprint.archetypes.SpaceViewBlueprint`.
     """
 
     def __init__(
@@ -109,12 +115,13 @@ class Container:
     Base class for all container types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [Horizontal][] for horizontal containers
-    - [Vertical][] for vertical containers
-    - [Grid][] for grid containers
-    - [Tabs][] for tab containers
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
+    - [rerun.blueprint.Horizontal][]
+    - [rerun.blueprint.Vertical][]
+    - [rerun.blueprint.Grid][]
+    - [rerun.blueprint.Tabs][]
+
+    This is an ergonomic helper on top of `rerun.blueprint.archetypes.ContainerBlueprint`.
     """
 
     def __init__(
@@ -227,7 +234,7 @@ class Viewport:
     """
     The top-level description of the Viewport.
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
+    This is an ergonomic helper on top of `rerun.blueprint.archetypes.ViewportBlueprint`.
     """
 
     def __init__(
@@ -300,11 +307,12 @@ class Panel:
     Base class for the panel types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [BlueprintPanel][]
-    - [SelectionPanel][]
-    - [TimePanel][]
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.PanelBlueprint][].
+    - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
+    - [SelectionPanel][rerun.blueprint.SelectionPanel]
+    - [TimePanel][rerun.blueprint.TimePanel]
+
+    This is an ergonomic helper on top of `rerun.blueprint.archetypes.PanelBlueprint`.
     """
 
     def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
@@ -412,11 +420,12 @@ class Blueprint:
         """
         Construct a new blueprint from the given parts.
 
-        Each [BlueprintPart][] can be one of the following:
-        - [Viewport][]
-        - [BlueprintPanel][]
-        - [SelectionPanel][]
-        - [TimePanel][]
+        Each [BlueprintPart][rerun.blueprint.BlueprintPart] can be one of the following:
+
+        - [Viewport][rerun.blueprint.Viewport]
+        - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
+        - [SelectionPanel][rerun.blueprint.SelectionPanel]
+        - [TimePanel][rerun.blueprint.TimePanel]
 
         It is an error to provide more than one of any type of part.
 

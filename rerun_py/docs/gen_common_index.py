@@ -109,6 +109,33 @@ SECTION_TABLE: Final[list[Section]] = [
         ],
     ),
     ################################################################################
+    # Blueprint APIs
+    Section(
+        title="Blueprint APIs",
+        mod_path="rerun.blueprint",
+        class_list=[
+            "Blueprint",
+            "BlueprintPart",
+            "Container",
+            "Horizontal",
+            "Vertical",
+            "Grid",
+            "Tabs",
+            "SpaceView",
+            "BarChartView",
+            "Spatial2DView",
+            "Spatial3DView",
+            "TensorView",
+            "TextDocumentView",
+            "TextLogView",
+            "TimeSeriesView",
+            "BlueprintPanel",
+            "SelectionPanel",
+            "TimePanel",
+            "Viewport",
+        ],
+    ),
+    ################################################################################
     # These sections don't have tables, but generate pages containing all the archetypes, components, datatypes
     Section(
         title="Archetypes",
@@ -375,6 +402,9 @@ overview of what's possible and how.
                 index_file.write("Class | Description\n")
                 index_file.write("-------- | -----------\n")
                 for class_name in section.class_list:
+                    if section.mod_path != "rerun":
+                        mod_tail = section.mod_path.split(".")[1:]
+                        class_name = ".".join(mod_tail + [class_name])
                     cls = rerun_pkg[class_name]
                     show_class = class_name
                     for maybe_strip in ["archetypes.", "components.", "datatypes."]:
