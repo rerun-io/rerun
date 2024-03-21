@@ -26,8 +26,8 @@ pub struct ViewerContext<'a> {
     /// Registry of all known classes of space views.
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
-    /// The current recording.
-    /// TODO(jleibs): This can go away
+    /// The current recording. Short for [`Self.store_context.recording`].
+    /// TODO(jleibs): This can be replaced with `store_context.recording`, perhaps with a helper function.
     pub entity_db: &'a EntityDb,
 
     /// The current view of the store
