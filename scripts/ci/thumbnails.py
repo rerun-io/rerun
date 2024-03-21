@@ -34,7 +34,7 @@ def examples_with_thumbnails() -> Generator[Example, None, None]:
     def single_language(lang: str) -> Generator[Example, None, None]:
         for path in Path(f"examples/{lang}").iterdir():
             if (path / "README.md").exists():
-                readme = (path / "README.md").read_text()
+                readme = (path / "README.md").read_text(encoding="utf-8")
                 fm = load_frontmatter(readme)
                 if fm is not None and fm.get("thumbnail"):
                     yield Example(path, readme, fm)
@@ -64,7 +64,9 @@ def update() -> None:
                 assert end != -1
 
             (example.path / "README.md").write_text(
-                example.readme[:start] + f"thumbnail_dimensions = [{width}, {height}]" + example.readme[end:]
+                example.readme[:start] + f"thumbnail_dimensions = [{width}, {height}]" + example.readme[end:],
+                encoding="utf-8",
+                newline='\n',
             )
 
             print(f"✔ {example.path}")
