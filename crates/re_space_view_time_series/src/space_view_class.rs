@@ -404,6 +404,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                     time_zone_for_timestamps,
                 )
             })
+            .y_axis_width(3) // in digits
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(

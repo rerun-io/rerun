@@ -119,7 +119,8 @@ class Container:
 
     def __init__(
         self,
-        *contents: Container | SpaceView,
+        *args: Container | SpaceView,
+        contents: Optional[Iterable[Container | SpaceView]] = None,
         kind: ContainerKindLike,
         column_shares: Optional[ColumnShareArrayLike] = None,
         row_shares: Optional[RowShareArrayLike] = None,
@@ -131,8 +132,11 @@ class Container:
 
         Parameters
         ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
+        *args:
+            All positional arguments are forwarded to the `contents` parameter for convenience.
+        contents:
+            The contents of the container. Each item in the iterable must be a `SpaceView` or a `Container`.
+            This can only be used if no positional arguments are provided.
         kind
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
@@ -150,9 +154,17 @@ class Container:
             The active tab in the container. This is only applicable to `Tabs` containers.
 
         """
+
+        if args and contents is not None:
+            raise ValueError("Cannot provide both positional and keyword arguments for contents")
+
+        if contents is not None:
+            self.contents = contents
+        else:
+            self.contents = args
+
         self.id = uuid.uuid4()
         self.kind = kind
-        self.contents = contents
         self.column_shares = column_shares
         self.row_shares = row_shares
         self.grid_columns = grid_columns
@@ -214,7 +226,11 @@ class Viewport:
     """
 
     def __init__(
-        self, root_container: Container, *, auto_layout: bool | None = None, auto_space_views: bool | None = None
+        self,
+        root_container: Container | None = None,
+        *,
+        auto_layout: bool | None = None,
+        auto_space_views: bool | None = None,
     ):
         """
         Construct a new viewport.
@@ -255,11 +271,18 @@ class Viewport:
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        self.root_container._log_to_stream(stream)
+        if self.root_container is not None:
+            self.root_container._log_to_stream(stream)
+
+            root_container_id = self.root_container.id.bytes
+            space_views = list(self.root_container._iter_space_views())
+        else:
+            root_container_id = None
+            space_views = []
 
         arch = ViewportBlueprint(
-            space_views=list(self.root_container._iter_space_views()),
-            root_container=self.root_container.id.bytes,
+            space_views=space_views,
+            root_container=root_container_id,
             auto_layout=self.auto_layout,
             auto_space_views=self.auto_space_views,
         )
@@ -434,7 +457,7 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
 
 
-BlueprintLike = Union[Blueprint, Viewport, Container, SpaceView]
+BlueprintLike = Union[Blueprint, ViewportLike]
 
 """
 A type that can be converted to a blueprint.
