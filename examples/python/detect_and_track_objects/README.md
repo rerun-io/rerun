@@ -2,8 +2,8 @@
 title = "Detect and Track Objects"
 tags = ["2D", "huggingface", "object-detection", "object-tracking", "opencv"]
 description = "Visualize object detection and segmentation using the Huggingface `transformers` library."
-thumbnail = "https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png"
-thumbnail_dimensions = [480, 279]
+thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
 

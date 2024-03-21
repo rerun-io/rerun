@@ -2,8 +2,8 @@
 title = "Plots"
 tags = ["2D", "plots", "api-example"]
 description = "Demonstration of various plots and charts supported by Rerun."
-thumbnail = "https://static.rerun.io/plots/c5b91cf0bf2eaf91c71d6cdcd4fe312d4aeac572/480w.png"
-thumbnail_dimensions = [480, 271]
+thumbnail = "https://static.rerun.io/plots/e8e51071f6409f61dc04a655d6b9e1caf8179226/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 

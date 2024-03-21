@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "ROS Node"
 tags = ["2D", "3D", "mesh", "pinhole-camera", "ros", "time-series"]
-thumbnail = "https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png"
-thumbnail_dimensions = [480, 266]
+thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06372842/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 
