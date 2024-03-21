@@ -2,13 +2,13 @@
 title = "Dicom MRI"
 tags = ["tensor", "mri", "dicom"]
 description = "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."
-thumbnail = "https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png"
-thumbnail_dimensions = [480, 285]
+thumbnail = "https://static.rerun.io/dicom-mri/d5a434f92504e8dda8af6c7f4eded2a9d662c991/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
 
-<picture>
+<picture data-inline-viewer="examples/dicom_mri">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/1024w.png">

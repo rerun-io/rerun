@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Multithreading"
-thumbnail = "https://static.rerun.io/multithreading/8521bf95a7ff6004c932e8fb72429683928fbab4/480w.png"
-thumbnail_dimensions = [480, 312]
+thumbnail = "https://static.rerun.io/multithreading/80a3e566d6d9f8f17b04c839cd0ae2380c2baf02/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 
