@@ -2,6 +2,7 @@
 title = "Raw Mesh"
 description = "Demonstrates logging of raw 3D mesh data with simple material properties."
 thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c32673909071cb40/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 <picture>
