@@ -18,8 +18,6 @@ namespace arrow {
 
 namespace rerun::blueprint::components {
     /// **Component**: The configurable set of overridable properties.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct EntityPropertiesComponent {
         rerun::Collection<uint8_t> props;
 

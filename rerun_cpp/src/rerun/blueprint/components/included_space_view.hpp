@@ -11,9 +11,7 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: The id of a `SpaceView`.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
+    /// **Component**: The unique id of a Space View, used to refer to views in containers.
     struct IncludedSpaceView {
         rerun::datatypes::Uuid space_view_id;
 

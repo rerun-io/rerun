@@ -9,9 +9,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether a space view is maximized.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
+/// Whether a Space View is maximized.
 table SpaceViewMaximized (
   "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",

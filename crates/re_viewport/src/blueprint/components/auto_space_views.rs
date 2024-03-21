@@ -21,9 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Whether or not space views should be created automatically.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
+/// **Component**: Whether or not Space Views should be created automatically.
 #[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct AutoSpaceViews(pub bool);
