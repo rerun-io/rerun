@@ -296,12 +296,22 @@ impl AppState {
             ui,
             app_blueprint.time_panel_expanded,
         );
-        selection_panel.show_panel(
-            &ctx,
-            ui,
-            &mut viewport,
-            app_blueprint.selection_panel_expanded,
-        );
+
+        {
+            if ctx.selection().is_empty() {
+                // Make sure something is selected before showing the selection panel.
+                ctx.selection_state()
+                    .set_selection(re_viewer_context::Item::StoreId(
+                        ctx.entity_db.store_id().clone(),
+                    ));
+            }
+            selection_panel.show_panel(
+                &ctx,
+                ui,
+                &mut viewport,
+                app_blueprint.selection_panel_expanded,
+            );
+        }
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
