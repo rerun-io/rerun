@@ -1,5 +1,4 @@
 use ahash::{HashMap, HashMapExt};
-use itertools::Itertools as _;
 
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
@@ -117,7 +116,7 @@ impl StoreHub {
             app_id,
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
-            all_recordings: self.store_bundle.recordings().collect_vec(),
+            bundle: &self.store_bundle,
         })
     }
 

@@ -644,7 +644,7 @@ mod tests {
             app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
             recording: &recording,
-            all_recordings: vec![],
+            bundle: &Default::default(),
         };
 
         struct Scenario {

@@ -299,7 +299,7 @@ fn what_is_selected_ui(
         Item::StoreId(store_id) => {
             let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
-            let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
+            let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
                 if let Some(info) = entity_db.store_info() {
                     let time = info
                         .started

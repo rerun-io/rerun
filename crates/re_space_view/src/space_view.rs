@@ -578,7 +578,7 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
-                all_recordings: vec![],
+                bundle: &Default::default(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -621,7 +621,7 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
-                all_recordings: vec![],
+                bundle: &Default::default(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -670,7 +670,7 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
-                all_recordings: vec![],
+                bundle: &Default::default(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -942,7 +942,7 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
-                all_recordings: vec![],
+                bundle: &Default::default(),
             };
             let mut query_result = space_view
                 .contents

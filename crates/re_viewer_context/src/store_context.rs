@@ -1,4 +1,4 @@
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::ApplicationId;
 
 /// The current Blueprint and Recording being displayed by the viewer
@@ -14,15 +14,6 @@ pub struct StoreContext<'a> {
     /// If none is open, this will point to a dummy empty recording.
     pub recording: &'a EntityDb,
 
-    /// In no specific order.
-    pub all_recordings: Vec<&'a EntityDb>,
-}
-
-impl<'a> StoreContext<'a> {
-    pub fn recording(&self, store_id: &re_log_types::StoreId) -> Option<&'a EntityDb> {
-        self.all_recordings
-            .iter()
-            .find(|rec| rec.store_id() == store_id)
-            .copied()
-    }
+    /// All the loaded recordings and blueprints.
+    pub bundle: &'a StoreBundle,
 }
