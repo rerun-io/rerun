@@ -2,8 +2,8 @@
 title = "Hand Tracking and Gesture Recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Gesture Detection solution to track hand and recognize gestures in image/video."
-thumbnail = "https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/480w.png"
-thumbnail_dimensions = [480, 259]
+thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 
