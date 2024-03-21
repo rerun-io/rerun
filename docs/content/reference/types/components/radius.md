@@ -24,4 +24,3 @@ A Radius component.
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
-* [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

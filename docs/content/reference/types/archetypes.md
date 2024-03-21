@@ -33,8 +33,3 @@ Archetypes are bundles of components
 * [`TextLog`](archetypes/text_log.md)
 * [`Transform3D`](archetypes/transform3d.md)
 * [`ViewCoordinates`](archetypes/view_coordinates.md)
-
-
-## Deprecated archetypes
-
-* [`TimeSeriesScalar`](archetypes/time_series_scalar.md)
