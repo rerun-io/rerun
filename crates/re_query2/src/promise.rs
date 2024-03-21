@@ -116,6 +116,15 @@ impl<T> PromiseResult<T> {
         }
     }
 
+    /// Returns the inner value if it's ready.
+    #[inline]
+    pub fn ok(self) -> Option<T> {
+        match self {
+            PromiseResult::Ready(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Unwraps the resolved result if it's `Ready`, panics otherwise.
     #[inline]
     pub fn unwrap(self) -> T {
