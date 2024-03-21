@@ -496,7 +496,7 @@ impl<'a> ListItem<'a> {
                 icon_fn(re_ui, ui, icon_rect, visuals);
             }
 
-            // We can't use `.hovered()` or the buttons dissappear just as the user clicks,
+            // We can't use `.hovered()` or the buttons disappear just as the user clicks,
             // so we use `contains_pointer` instead. That also means we need to check
             // that we aren't dragging anything.
             let should_show_buttons = interactive
