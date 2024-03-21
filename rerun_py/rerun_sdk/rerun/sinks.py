@@ -29,13 +29,13 @@ def connect(
 
     Parameters
     ----------
-    addr
+    addr:
         The ip:port to connect to
-    flush_timeout_sec: float
+    flush_timeout_sec:
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
         and can cause a call to `flush` to block indefinitely.
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -43,9 +43,12 @@ def connect(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    application_id = get_application_id(recording=recording)
-    recording = RecordingStream.to_native(recording)
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - connect() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -56,13 +59,17 @@ def connect(
     if blueprint is not None:
         blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
 
+    recording = RecordingStream.to_native(recording)
+
     bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, blueprint=blueprint_storage, recording=recording)
 
 
 _connect = connect  # we need this because Python scoping is horrible
 
 
-def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> None:
+def save(
+    path: str | pathlib.Path, blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
+) -> None:
     """
     Stream all log-data to a file.
 
@@ -70,8 +77,11 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
 
     Parameters
     ----------
-    path : str
+    path:
         The path to save the data to.
+    blueprint:
+        An optional blueprint to configure the UI.
+        This will be written first to the .rrd file, before appending the recording data.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -83,11 +93,23 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.save(path=str(path), recording=recording)
+
+    bindings.save(path=str(path), blueprint=blueprint_storage, recording=recording)
 
 
-def stdout(recording: RecordingStream | None = None) -> None:
+def stdout(blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to stdout.
 
@@ -100,6 +122,8 @@ def stdout(recording: RecordingStream | None = None) -> None:
 
     Parameters
     ----------
+    blueprint:
+        An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -111,8 +135,19 @@ def stdout(recording: RecordingStream | None = None) -> None:
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.stdout(recording=recording)
+    bindings.stdout(blueprint=blueprint_storage, recording=recording)
 
 
 def disconnect(recording: RecordingStream | None = None) -> None:
@@ -165,6 +200,7 @@ def serve(
     open_browser: bool = True,
     web_port: int | None = None,
     ws_port: int | None = None,
+    blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
 ) -> None:
@@ -182,12 +218,14 @@ def serve(
 
     Parameters
     ----------
-    open_browser
+    open_browser:
         Open the default browser to the viewer.
     web_port:
         The port to serve the web viewer on (defaults to 9090).
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
+    blueprint:
+        An optional blueprint to configure the UI.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -198,8 +236,30 @@ def serve(
 
     """
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - serve() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.serve(open_browser, web_port, ws_port, server_memory_limit=server_memory_limit, recording=recording)
+    bindings.serve(
+        open_browser,
+        web_port,
+        ws_port,
+        server_memory_limit=server_memory_limit,
+        blueprint=blueprint_storage,
+        recording=recording,
+    )
 
 
 # TODO(#4019): application-level handshake
@@ -236,19 +296,19 @@ def spawn(
 
     Parameters
     ----------
-    port : int
+    port:
         The port to listen on.
-    connect
+    connect:
         also connect to the viewer and stream logging data to it.
-    memory_limit
+    memory_limit:
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
-    recording
+    recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    blueprint: Optional[BlueprintLike]
+    blueprint:
         An optional blueprint to configure the UI.
 
     """

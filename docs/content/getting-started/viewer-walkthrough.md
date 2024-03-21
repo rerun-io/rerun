@@ -125,7 +125,7 @@ primitives, also known as [entities](../concepts/entity-component.md):
 * a [pinhole](../reference/types/archetypes/pinhole.md) camera model that describes the relationship between 2D and 3D space.
 * [3D points](../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
 * A sequence of [transforms](../reference/types/archetypes/transform3d.md) describing the 3D location of the camera in space.
-* A [scalar](../reference/types/archetypes/time_series_scalar.md) error metric that was computed by the algorithm for each frame.
+* A [scalar](../reference/types/archetypes/scalar.md) error metric that was computed by the algorithm for each frame.
 
 ### Hover and selection
 You can find out more about these entities by hovering over them in the different views. Hovering will bring up a

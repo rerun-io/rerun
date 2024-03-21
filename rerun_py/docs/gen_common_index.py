@@ -168,7 +168,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Scalar",
             "archetypes.SeriesLine",
             "archetypes.SeriesPoint",
-            "archetypes.TimeSeriesScalar",
         ],
         gen_page=False,
     ),

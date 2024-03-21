@@ -56,7 +56,6 @@ __all__ = [
     "TextDocument",
     "TextLog",
     "TextLogLevel",
-    "TimeSeriesScalar",
     "Transform3D",
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
@@ -137,7 +136,6 @@ from .archetypes import (
     Tensor,
     TextDocument,
     TextLog,
-    TimeSeriesScalar,
     Transform3D,
     ViewCoordinates,
 )

@@ -55,3 +55,24 @@ Once the snippet is in `snippet/all`, it may be referenced in a documentation Ma
 ```
 snippet: my-example
 ```
+
+### Screenshot links
+
+If a screenshot shows an example or snippet which is runnable and built on CI, then you can turn the screenshot
+to a link to `app.rerun.io` pointing at the example using the `data-inline-viewer` attribute.
+
+Add the attribute to any `<picture>` element like so:
+
+```html
+<picture data-inline-viewer="snippets/segmentation_image_simple">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
+  <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+</picture>
+```
+
+The value should be:
+- `examples/{NAME}` for examples
+- `snippets/{NAME}` for snippets

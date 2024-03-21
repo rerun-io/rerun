@@ -212,7 +212,7 @@ fn space_view_space_origin_widget_editing_ui(
             )
             .weak(true)
             .italics(true)
-            .active(false)
+            .interactive(false)
             .show_flat(ui);
         }
     };

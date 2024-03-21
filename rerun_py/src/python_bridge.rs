@@ -557,8 +557,13 @@ fn connect(
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, recording = None))]
-fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
+#[pyo3(signature = (path, blueprint = None, recording = None))]
+fn save(
+    path: &str,
+    blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
@@ -567,7 +572,7 @@ fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> Py
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .save(path)
+            .save_opts(path, blueprint.map(|b| b.inner.take()))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -575,8 +580,12 @@ fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> Py
 }
 
 #[pyfunction]
-#[pyo3(signature = (recording = None))]
-fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
+#[pyo3(signature = (blueprint = None, recording = None))]
+fn stdout(
+    blueprint: Option<&PyMemorySinkStorage>,
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
@@ -585,7 +594,7 @@ fn stdout(recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()>
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .stdout()
+            .stdout_opts(blueprint.map(|b| b.inner.take()))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -670,12 +679,13 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, recording = None))]
+#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, blueprint = None, recording = None))]
 fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
     server_memory_limit: String,
+    blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
@@ -684,27 +694,32 @@ fn serve(
             return Ok(());
         };
 
-        let _guard = enter_tokio_runtime();
-
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
 
-        recording.set_sink(
-            rerun::web_viewer::new_sink(
-                open_browser,
-                "0.0.0.0",
-                web_port.map(WebViewerServerPort).unwrap_or_default(),
-                ws_port.map(RerunServerPort).unwrap_or_default(),
-                server_memory_limit,
-            )
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
-        );
+        let _guard = enter_tokio_runtime();
+
+        let sink = rerun::web_viewer::new_sink(
+            open_browser,
+            "0.0.0.0",
+            web_port.map(WebViewerServerPort).unwrap_or_default(),
+            ws_port.map(RerunServerPort).unwrap_or_default(),
+            server_memory_limit,
+        )
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        if let Some(blueprint) = blueprint {
+            RecordingStream::send_blueprint(blueprint.inner.take(), &*sink);
+        }
+
+        recording.set_sink(sink);
 
         Ok(())
     }
 
     #[cfg(not(feature = "web_viewer"))]
     {
+        _ = blueprint;
         _ = recording;
         _ = web_port;
         _ = ws_port;
