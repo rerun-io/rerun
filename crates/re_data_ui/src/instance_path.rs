@@ -13,14 +13,17 @@ impl DataUi for InstancePath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let Self {
             entity_path,
             instance_key,
         } = self;
 
-        let Some(components) = store.all_components(&query.timeline(), entity_path) else {
+        let Some(components) = ctx
+            .recording_store()
+            .all_components(&query.timeline(), entity_path)
+        else {
             if ctx.recording().is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
                 ui.label(format!(
@@ -71,9 +74,12 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in normal_components {
-                    let Some((_, _, component_data)) =
-                        get_component_with_instances(store, query, entity_path, component_name)
-                    else {
+                    let Some((_, _, component_data)) = get_component_with_instances(
+                        db.store(),
+                        query,
+                        entity_path,
+                        component_name,
+                    ) else {
                         continue; // no need to show components that are unset at this point in time
                     };
 
@@ -88,14 +94,14 @@ impl DataUi for InstancePath {
                             entity_path: entity_path.clone(),
                             component_data,
                         }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query, store);
+                        .data_ui(ctx, ui, UiVerbosity::Small, query, db);
                     } else {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
                             UiVerbosity::Small,
                             query,
-                            store,
+                            db,
                             entity_path,
                             &component_data,
                             instance_key,

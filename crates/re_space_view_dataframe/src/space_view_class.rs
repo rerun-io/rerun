@@ -148,7 +148,7 @@ impl SpaceViewClass for DataframeSpaceView {
             // of bounds" (aka cannot be joined to a primary component).
 
             row.col(|ui| {
-                instance_path_button(ctx, &latest_at_query, store, ui, None, instance);
+                instance_path_button(ctx, &latest_at_query, ctx.recording(), ui, None, instance);
             });
 
             for comp in &sorted_components {
@@ -171,7 +171,7 @@ impl SpaceViewClass for DataframeSpaceView {
                             ui,
                             UiVerbosity::Small,
                             &latest_at_query,
-                            store,
+                            ctx.recording(),
                             &instance.entity_path,
                             &comp_inst,
                             &instance.instance_key,

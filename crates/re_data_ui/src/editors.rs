@@ -1,7 +1,8 @@
 // TODO(jleibs): Turn this into a trait
 
 use egui::NumExt as _;
-use re_data_store::{DataStore, LatestAtQuery};
+use re_data_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_query::ComponentWithInstances;
 use re_types::{
@@ -20,7 +21,7 @@ fn edit_color_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -29,7 +30,7 @@ fn edit_color_ui(
     let current_color = component
         .lookup::<Color>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_color(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_color(ctx, query, db, entity_path));
 
     let current_color = current_color.into();
     let mut edit_color = current_color;
@@ -49,7 +50,7 @@ fn edit_color_ui(
 fn default_color(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Color {
     Color::from_rgb(255, 255, 255)
@@ -63,7 +64,7 @@ fn edit_text_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -72,7 +73,7 @@ fn edit_text_ui(
     let current_text = component
         .lookup::<Text>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_text(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_text(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
     let mut edit_text = current_text.clone();
@@ -90,7 +91,7 @@ fn edit_text_ui(
 fn default_text(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     entity_path: &EntityPath,
 ) -> Text {
     Text::from(entity_path.to_string())
@@ -103,7 +104,7 @@ fn edit_name_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -112,7 +113,7 @@ fn edit_name_ui(
     let current_text = component
         .lookup::<Name>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_name(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_name(ctx, query, db, entity_path));
 
     let current_text = current_text.to_string();
     let mut edit_text = current_text.clone();
@@ -130,7 +131,7 @@ fn edit_name_ui(
 fn default_name(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     entity_path: &EntityPath,
 ) -> Name {
     Name::from(entity_path.to_string())
@@ -144,7 +145,7 @@ fn edit_scatter_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -153,7 +154,7 @@ fn edit_scatter_ui(
     let current_scatter = component
         .lookup::<ScalarScattering>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_scatter(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_scatter(ctx, query, db, entity_path));
 
     let current_scatter = current_scatter.0;
     let mut edit_scatter = current_scatter;
@@ -179,7 +180,7 @@ fn edit_scatter_ui(
 fn default_scatter(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> ScalarScattering {
     ScalarScattering::from(false)
@@ -193,7 +194,7 @@ fn edit_radius_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -202,7 +203,7 @@ fn edit_radius_ui(
     let current_radius = component
         .lookup::<Radius>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_radius(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_radius(ctx, query, db, entity_path));
 
     let current_radius = current_radius.0;
     let mut edit_radius = current_radius;
@@ -226,7 +227,7 @@ fn edit_radius_ui(
 fn default_radius(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> Radius {
     Radius::from(1.0)
@@ -240,7 +241,7 @@ fn edit_marker_shape_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -249,7 +250,7 @@ fn edit_marker_shape_ui(
     let current_marker = component
         .lookup::<MarkerShape>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_marker_shape(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_marker_shape(ctx, query, db, entity_path));
 
     let mut edit_marker = current_marker;
 
@@ -290,7 +291,7 @@ fn edit_marker_shape_ui(
 fn default_marker_shape(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> MarkerShape {
     MarkerShape::default()
@@ -326,7 +327,7 @@ fn edit_stroke_width_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -335,7 +336,7 @@ fn edit_stroke_width_ui(
     let current_stroke_width = component
         .lookup::<StrokeWidth>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_stroke_width(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_stroke_width(ctx, query, db, entity_path));
 
     let current_stroke_width = current_stroke_width.0;
     let mut edit_stroke_width = current_stroke_width;
@@ -359,7 +360,7 @@ fn edit_stroke_width_ui(
 fn default_stroke_width(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> StrokeWidth {
     StrokeWidth::from(1.0)
@@ -373,7 +374,7 @@ fn edit_marker_size_ui(
     ui: &mut egui::Ui,
     _verbosity: UiVerbosity,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
     component: &ComponentWithInstances,
@@ -382,7 +383,7 @@ fn edit_marker_size_ui(
     let current_marker_size = component
         .lookup::<MarkerSize>(instance_key)
         .ok()
-        .unwrap_or_else(|| default_marker_size(ctx, query, store, entity_path));
+        .unwrap_or_else(|| default_marker_size(ctx, query, db, entity_path));
 
     let current_marker_size = current_marker_size.0;
     let mut edit_marker_size = current_marker_size;
@@ -406,7 +407,7 @@ fn edit_marker_size_ui(
 fn default_marker_size(
     _ctx: &ViewerContext<'_>,
     _query: &LatestAtQuery,
-    _store: &DataStore,
+    _db: &EntityDb,
     _entity_path: &EntityPath,
 ) -> MarkerSize {
     MarkerSize::from(1.0)
@@ -416,13 +417,13 @@ fn default_marker_size(
 
 fn register_editor<'a, C: Component + Loggable + 'static>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
-    default: fn(&ViewerContext<'_>, &LatestAtQuery, &DataStore, &EntityPath) -> C,
+    default: fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> C,
     edit: fn(
         &ViewerContext<'_>,
         &mut egui::Ui,
         UiVerbosity,
         &LatestAtQuery,
-        &DataStore,
+        &EntityDb,
         &EntityPath,
         &EntityPath,
         &ComponentWithInstances,
@@ -433,8 +434,8 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
 {
     registry.add_editor(
         C::name(),
-        Box::new(move |ctx, query, store, entity_path| {
-            let c = default(ctx, query, store, entity_path);
+        Box::new(move |ctx, query, db, entity_path| {
+            let c = default(ctx, query, db, entity_path);
             [c].into()
         }),
         Box::new(edit),
