@@ -29,12 +29,10 @@ from diffusers import (
 
 RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controlnet/rerun-icon-1000.png"
 
-# (pipe, step_index, timestep, callback_kwargs):
-
 
 def controlnet_callback(
     pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict
-) -> None:
+) -> dict:
     rr.set_time_sequence("iteration", step_index)
     rr.set_time_seconds("timestep", timestep)
     latents = callback_kwargs["latents"]
