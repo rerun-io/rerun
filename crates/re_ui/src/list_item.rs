@@ -111,7 +111,7 @@ pub enum WidthAllocationMode {
 pub struct ListItem<'a> {
     text: egui::WidgetText,
     re_ui: &'a ReUi,
-    active: bool,
+    interactive: bool,
     selected: bool,
     draggable: bool,
     drag_target: bool,
@@ -133,7 +133,7 @@ impl<'a> ListItem<'a> {
         Self {
             text: text.into(),
             re_ui,
-            active: true,
+            interactive: true,
             selected: false,
             draggable: false,
             drag_target: false,
@@ -150,10 +150,12 @@ impl<'a> ListItem<'a> {
         }
     }
 
-    /// Set the active state the item.
+    /// Can the user click and interact with it?
+    ///
+    /// Set to `false` for items that only show info, but shouldn't be interactive.
     #[inline]
-    pub fn active(mut self, active: bool) -> Self {
-        self.active = active;
+    pub fn interactive(mut self, interactive: bool) -> Self {
+        self.interactive = interactive;
         self
     }
 
@@ -407,14 +409,15 @@ impl<'a> ListItem<'a> {
         };
 
         let desired_size = egui::vec2(desired_width, self.height);
-        let (rect, mut response) = ui.allocate_at_least(
-            desired_size,
-            if self.draggable {
-                egui::Sense::click_and_drag()
-            } else {
-                egui::Sense::click()
-            },
-        );
+
+        let sense = if !self.interactive {
+            egui::Sense::hover()
+        } else if self.draggable {
+            egui::Sense::click_and_drag()
+        } else {
+            egui::Sense::click()
+        };
+        let (rect, mut response) = ui.allocate_at_least(desired_size, sense);
 
         // compute the full-span background rect
         let mut bg_rect = rect;
@@ -423,7 +426,7 @@ impl<'a> ListItem<'a> {
 
         // we want to be able to select/hover the item across its full span, so we sense that and
         // update the response accordingly.
-        let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
+        let full_span_response = ui.interact(bg_rect, response.id, sense);
         response.clicked = full_span_response.clicked;
         response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
@@ -438,7 +441,7 @@ impl<'a> ListItem<'a> {
         let mut collapse_response = None;
 
         if ui.is_rect_visible(bg_rect) {
-            let mut visuals = if self.active {
+            let mut visuals = if self.interactive {
                 ui.style()
                     .interact_selectable(&style_response, self.selected)
             } else {
@@ -484,7 +487,7 @@ impl<'a> ListItem<'a> {
             // We can't use `.hovered()` or the buttons dissappear just as the user clicks,
             // so we use `contains_pointer` instead. That also means we need to check
             // that we aren't dragging anything.
-            let should_show_buttons = self.active
+            let should_show_buttons = self.interactive
                 && full_span_response.contains_pointer()
                 && !egui::DragAndDrop::has_any_payload(ui.ctx())
                 || self.selected; // by showing the buttons when selected, we allow users to find them on touch screens
