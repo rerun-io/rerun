@@ -272,6 +272,8 @@ impl<'a> ListItem<'a> {
 
     /// Provide a closure to display on-hover buttons on the right of the item.
     ///
+    /// Buttons also show when the item is selected, in order to support clicking them on touch screens.
+    ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
@@ -484,7 +486,8 @@ impl<'a> ListItem<'a> {
             // that we aren't dragging anything.
             let should_show_buttons = self.active
                 && full_span_response.contains_pointer()
-                && !egui::DragAndDrop::has_any_payload(ui.ctx());
+                && !egui::DragAndDrop::has_any_payload(ui.ctx())
+                || self.selected; // by showing the buttons when selected, we allow users to find them on touch screens
             let button_response = if should_show_buttons {
                 if let Some(buttons) = self.buttons_fn {
                     let mut ui =
