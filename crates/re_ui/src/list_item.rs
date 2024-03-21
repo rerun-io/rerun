@@ -479,13 +479,11 @@ impl<'a> ListItem<'a> {
                 icon_fn(self.re_ui, ui, icon_rect, visuals);
             }
 
-            // Handle buttons
-            // Note: We should be able to just use `response.hovered()` here, which only returns `true` if no drag is in
-            // progress. Due to the response merging we do above, this breaks though. This is why we do an explicit
-            // rectangle and drag payload check.
-            //TODO(ab): refactor responses to address that.
+            // We can't use `.hovered()` or the buttons dissappear just as the user clicks,
+            // so we use `contains_pointer` instead. That also means we need to check
+            // that we aren't dragging anything.
             let should_show_buttons = self.active
-                && ui.rect_contains_pointer(rect)
+                && full_span_response.contains_pointer()
                 && !egui::DragAndDrop::has_any_payload(ui.ctx());
             let button_response = if should_show_buttons {
                 if let Some(buttons) = self.buttons_fn {
