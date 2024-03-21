@@ -33,7 +33,7 @@ where
     let recommended_space_views = applicable_entities
         .intersection(indicator_matching_entities)
         .filter_map(|entity| {
-            let context = space_view.visualizable_filter_context(entity, ctx.recording);
+            let context = space_view.visualizable_filter_context(entity, ctx.recording());
             if visualizer
                 .filter_visualizable_entities(
                     ApplicableEntities(std::iter::once(entity.clone()).collect()),

@@ -100,7 +100,7 @@ impl SeriesPointSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let query_caches = ctx.recording.query_caches();
+        let query_caches = ctx.recording().query_caches();
         let store = ctx.recording_store();
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);

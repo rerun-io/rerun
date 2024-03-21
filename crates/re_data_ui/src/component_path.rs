@@ -29,7 +29,7 @@ impl DataUi for ComponentPath {
                 component_data,
             }
             .data_ui(ctx, ui, verbosity, query, store);
-        } else if let Some(entity_tree) = ctx.recording.tree().subtree(entity_path) {
+        } else if let Some(entity_tree) = ctx.recording().tree().subtree(entity_path) {
             if entity_tree.entity.components.contains_key(component_name) {
                 ui.label("<unset>");
             } else {

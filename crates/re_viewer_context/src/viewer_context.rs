@@ -26,10 +26,6 @@ pub struct ViewerContext<'a> {
     /// Registry of all known classes of space views.
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
 
-    /// The current recording. Short for [`Self.store_context.recording`].
-    /// TODO(jleibs): This can be replaced with `store_context.recording`, perhaps with a helper function.
-    pub recording: &'a EntityDb,
-
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
 
@@ -73,16 +69,22 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
+    /// The active recording.
+    #[inline]
+    pub fn recording(&self) -> &EntityDb {
+        self.store_context.recording
+    }
+
     /// The data store of the active recording.
     #[inline]
     pub fn recording_store(&self) -> &re_data_store::DataStore {
-        self.recording.store()
+        self.store_context.recording.store()
     }
 
     /// The `StoreId` of the active recording.
     #[inline]
     pub fn recording_id(&self) -> &re_log_types::StoreId {
-        self.recording.store_id()
+        self.store_context.recording.store_id()
     }
 
     /// Returns the current selection.

@@ -213,7 +213,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
         // TODO(#4926): This seems to be unnecessarily complicated.
-        let subtree_of_root_entity = &ctx.recording.tree().children;
+        let subtree_of_root_entity = &ctx.recording().tree().children;
         if indicated_entities.contains(&EntityPath::root())
             || subtree_of_root_entity
                 .iter()

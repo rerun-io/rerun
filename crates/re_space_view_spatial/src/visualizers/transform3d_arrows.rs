@@ -51,7 +51,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        let query_caches = ctx.recording.query_caches();
+        let query_caches = ctx.recording().query_caches();
         let store = ctx.recording_store();
 
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
@@ -83,7 +83,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
                 &data_result.entity_path,
-                ctx.recording,
+                ctx.recording(),
                 &latest_at_query,
             ) else {
                 continue;
