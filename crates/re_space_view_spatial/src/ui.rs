@@ -489,7 +489,7 @@ pub fn picking(
             continue;
         }
 
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         // Special hover ui for images.
         let is_depth_cloud = images
@@ -674,7 +674,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         );
     } else {
         // Show it all, like we do for any other thing we hover
@@ -683,7 +683,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         );
     }
 

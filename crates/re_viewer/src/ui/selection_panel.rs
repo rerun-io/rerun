@@ -145,7 +145,7 @@ impl SelectionPanel {
                         let (query, store) = if let Some(entity_path) = item.entity_path() {
                             guess_query_and_store_for_selected_entity(ctx, entity_path)
                         } else {
-                            (ctx.current_query(), ctx.entity_db.store())
+                            (ctx.current_query(), ctx.recording_store())
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });

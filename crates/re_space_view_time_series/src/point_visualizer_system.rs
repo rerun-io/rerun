@@ -101,7 +101,7 @@ impl SeriesPointSystem {
         re_tracing::profile_function!();
 
         let query_caches = ctx.entity_db.query_caches();
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
 
@@ -253,8 +253,7 @@ impl SeriesPointSystem {
             let series_name = if let Some(override_name) = override_series_name {
                 Some(override_name)
             } else {
-                ctx.entity_db
-                    .store()
+                ctx.recording_store()
                     .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
                     .map(|name| name.value.0)
             };

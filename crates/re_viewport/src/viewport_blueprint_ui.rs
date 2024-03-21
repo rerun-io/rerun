@@ -523,7 +523,7 @@ impl Viewport<'_, '_> {
         space_view_visible: bool,
         projection_mode: bool,
     ) {
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         let entity_path = node_or_path.path();
 

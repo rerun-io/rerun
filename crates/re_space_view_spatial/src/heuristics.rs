@@ -111,7 +111,7 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImageVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
         let Some(tensor) =
             store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
@@ -188,8 +188,7 @@ fn update_transform3d_lines_heuristics(
             // By default show the transform if it is a camera extrinsic,
             // or if this entity only contains Transform3D components.
             let only_has_transform_components = ctx
-                .entity_db
-                .store()
+                .recording_store()
                 .all_components(&ctx.current_query().timeline, ent_path)
                 .map_or(false, |c| {
                     c.iter()
@@ -197,13 +196,13 @@ fn update_transform3d_lines_heuristics(
                 });
             properties.transform_3d_visible = EditableAutoValue::Auto(
                 only_has_transform_components
-                    || is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx).is_some(),
+                    || is_pinhole_extrinsics_of(ctx.recording_store(), ent_path, ctx).is_some(),
             );
         }
 
         if properties.transform_3d_size.is_auto() {
             if let Some(pinhole_path) =
-                is_pinhole_extrinsics_of(ctx.entity_db.store(), ent_path, ctx)
+                is_pinhole_extrinsics_of(ctx.recording_store(), ent_path, ctx)
             {
                 // If there's a pinhole, we orient ourselves on its image plane distance
                 let pinhole_path_props = entity_properties.get(pinhole_path);

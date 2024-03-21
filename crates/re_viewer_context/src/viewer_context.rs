@@ -73,6 +73,12 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
+    /// The data store of the active recording.
+    #[inline]
+    pub fn recording_store(&self) -> &re_data_store::DataStore {
+        self.entity_db.store()
+    }
+
     /// Returns the current selection.
     pub fn selection(&self) -> &ItemCollection {
         self.rec_cfg.selection_state.selected_items()

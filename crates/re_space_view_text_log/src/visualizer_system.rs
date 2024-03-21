@@ -51,7 +51,7 @@ impl VisualizerSystem for TextLogSystem {
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let query_caches = ctx.entity_db.query_caches();
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());

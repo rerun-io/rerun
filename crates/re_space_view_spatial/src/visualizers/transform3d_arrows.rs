@@ -52,7 +52,7 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         let transforms = view_ctx.get::<TransformContext>()?;
 
         let query_caches = ctx.entity_db.query_caches();
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 

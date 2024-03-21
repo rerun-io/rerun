@@ -176,7 +176,7 @@ pub fn guess_query_and_store_for_selected_entity<'a>(
     } else {
         (
             ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         )
     }
 }

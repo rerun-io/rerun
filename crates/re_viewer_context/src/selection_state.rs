@@ -115,7 +115,7 @@ impl ItemCollection {
                     (
                         resolve_mono_instance_path_item(
                             &ctx.current_query(),
-                            ctx.entity_db.store(),
+                            ctx.recording_store(),
                             &item,
                         ),
                         space_ctx,

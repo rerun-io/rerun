@@ -306,8 +306,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
         let scene_view_coordinates = ctx
-            .entity_db
-            .store()
+            .recording_store()
             .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 

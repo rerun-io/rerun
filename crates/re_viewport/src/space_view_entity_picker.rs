@@ -154,7 +154,7 @@ fn add_entities_line_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let store = ctx.recording_store();
 
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
