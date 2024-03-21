@@ -10,6 +10,7 @@ import argparse
 
 import cv2
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 
 def run_canny(num_frames: int | None) -> None:
@@ -62,7 +63,18 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_live_camera_edge_detection")
+    rr.script_setup(
+        args,
+        "rerun_example_live_camera_edge_detection",
+        blueprint=rrb.Vertical(
+            rrb.Horizontal(
+                rrb.Spatial2DView(origin="/image/rgb", name="Video"),
+                rrb.Spatial2DView(origin="/image/gray", name="Video (Grayscale)"),
+            ),
+            rrb.Spatial2DView(origin="/image/canny", name="Canny Edge Detector"),
+            row_shares=[1, 2],
+        ),
+    )
 
     run_canny(args.num_frames)
 
