@@ -152,4 +152,21 @@ If you wish to customize it for various videos, adjust the maximum frames, or ex
 
 ```bash
 python examples/python/human_pose_tracking/main.py --help
+
+Uses the MediaPipe Pose solution to track a human pose in video.
+
+optional arguments:
+  -h, --help                  show this help message and exit
+  --video {backflip,soccer}   The example video to run on.
+  --dataset-dir DATASET_DIR   Directory to save example videos to.
+  --video-path VIDEO_PATH     Full path to video to run on. Overrides `--video`.
+  --no-segment                Don t run person segmentation.
+  --max-frame MAX_FRAME       Stop after processing this many frames. If not specified, will run until interrupted.
+  --headless                  Don t show GUI
+  --connect                   Connect to an external viewer
+  --serve                     Serve a web viewer (WARNING: experimental feature)
+  --addr ADDR                 Connect to this ip:port
+  --save SAVE                 Save data to a .rrd file at this path
+  -o, --stdout                Log data to standard output, to be piped into a Rerun Viewer
+
 ```
