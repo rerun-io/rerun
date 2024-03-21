@@ -226,7 +226,7 @@ fn container_children(
             ListItem::new(ctx.re_ui, "empty — use the + button to add content")
                 .weak(true)
                 .italics(true)
-                .active(false)
+                .interactive(false)
                 .show_flat(ui);
         }
     };

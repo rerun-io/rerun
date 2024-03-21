@@ -131,7 +131,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         } else {
             ctx.re_ui
                 .list_item(app_id)
-                .active(false)
+                .interactive(false)
                 .show_hierarchical_with_content(
                     ui,
                     ui.make_persistent_id(app_id),
