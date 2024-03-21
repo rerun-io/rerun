@@ -6,7 +6,6 @@ use re_data_store::LatestAtQuery;
 use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
-use re_query_cache::external::re_query::get_component_with_instances;
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
 use re_types_core::{
     components::{InstanceKey, VisualizerOverrides},
@@ -142,17 +141,22 @@ pub fn override_ui(
                             StoreKind::Blueprint => {
                                 let store = ctx.store_context.blueprint.store();
                                 let query = ctx.blueprint_query;
-                                get_component_with_instances(store, query, path, *component_name)
+                                db.query_caches2()
+                                    .latest_at(store, query, entity_path, [*component_name])
+                                    .components
+                                    .get(component_name)
+                                    .cloned() /* arc */
                             }
-                            StoreKind::Recording => get_component_with_instances(
-                                db.store(),
-                                &query,
-                                path,
-                                *component_name,
-                            ),
+                            StoreKind::Recording => {
+                                db.query_caches2()
+                                    .latest_at(db.store(), &query, entity_path, [*component_name])
+                                    .components
+                                    .get(component_name)
+                                    .cloned() /* arc */
+                            }
                         };
 
-                        if let Some((_, _, component_data)) = component_data {
+                        if let Some(results) = component_data {
                             ctx.component_ui_registry.edit_ui(
                                 ctx,
                                 ui,
@@ -161,7 +165,7 @@ pub fn override_ui(
                                 db,
                                 path,
                                 &overrides.individual_override_path,
-                                &component_data,
+                                &results,
                                 instance_key,
                             );
                         } else {
