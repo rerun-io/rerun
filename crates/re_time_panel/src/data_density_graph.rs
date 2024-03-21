@@ -400,8 +400,8 @@ pub fn data_density_graph_ui(
             }
 
             if let (Some(min_x), Some(max_x)) = (
-                time_ranges_ui.x_from_time_f32(time_range.min.into()),
-                time_ranges_ui.x_from_time_f32(time_range.max.into()),
+                time_ranges_ui.x_from_time_f32(time_range.min().into()),
+                time_ranges_ui.x_from_time_f32(time_range.max().into()),
             ) {
                 density_graph.add_range((min_x, max_x), count as _);
 
@@ -435,7 +435,10 @@ pub fn data_density_graph_ui(
             }
         };
 
-        add_data_point(TimeRange::point(TimeInt::BEGINNING), num_timeless_messages);
+        add_data_point(
+            TimeRange::point(TimeInt::MIN_TIME_PANEL),
+            num_timeless_messages,
+        );
 
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
@@ -449,7 +452,7 @@ pub fn data_density_graph_ui(
             re_tracing::profile_scope!("time_histogram.range");
             time_histogram
                 .range(
-                    visible_time_range.min.as_i64()..=visible_time_range.max.as_i64(),
+                    visible_time_range.min().as_i64()..=visible_time_range.max().as_i64(),
                     time_chunk_size,
                 )
                 .collect()
@@ -458,18 +461,18 @@ pub fn data_density_graph_ui(
         re_tracing::profile_scope!("add_data_point");
         for (time_range, num_messages_at_time) in ranges {
             add_data_point(
-                TimeRange::new(time_range.min.into(), time_range.max.into()),
+                TimeRange::new(time_range.min, time_range.max),
                 num_messages_at_time as _,
             );
         }
     }
 
     let hovered_x_range = (time_ranges_ui
-        .x_from_time_f32(hovered_time_range.min.into())
+        .x_from_time_f32(hovered_time_range.min().into())
         .unwrap_or(f32::MAX)
         - MARGIN_X)
         ..=(time_ranges_ui
-            .x_from_time_f32(hovered_time_range.max.into())
+            .x_from_time_f32(hovered_time_range.max().into())
             .unwrap_or(f32::MIN)
             + MARGIN_X);
 
@@ -488,7 +491,7 @@ pub fn data_density_graph_ui(
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.selection_state().set_selection(item.to_item());
-            time_ctrl.set_time(hovered_time_range.min);
+            time_ctrl.set_time(hovered_time_range.min());
             time_ctrl.pause();
         } else if ui.ctx().dragged_id().is_none() {
             show_row_ids_tooltip(
@@ -545,7 +548,7 @@ fn show_row_ids_tooltip(
             ui.label(format!("{num_events} events"));
         }
 
-        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
+        let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
         let verbosity = UiVerbosity::Reduced;
 

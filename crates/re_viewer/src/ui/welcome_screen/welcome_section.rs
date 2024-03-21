@@ -298,7 +298,7 @@ fn open_quick_start(
 
         let row = DataRow::from_archetype(
             RowId::new(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             EntityPath::from(entry.entity_path),
             &text_doc,
         )?;

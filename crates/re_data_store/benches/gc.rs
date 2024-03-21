@@ -76,7 +76,7 @@ fn plotting_dashboard(c: &mut Criterion) {
     let mut timegen = |i| {
         [
             build_log_time(Time::from_seconds_since_epoch(i as _)),
-            build_frame_nr((i as i64).into()),
+            build_frame_nr(i as i64),
         ]
         .into()
     };
@@ -160,7 +160,7 @@ fn timeless_logs(c: &mut Criterion) {
         time_budget: std::time::Duration::MAX,
     };
 
-    let mut timegen = |_| TimePoint::timeless();
+    let mut timegen = |_| TimePoint::default();
 
     let mut datagen = |i: usize| {
         Box::new(re_types::archetypes::TextLog::new(i.to_string())) as Box<dyn AsComponents>

@@ -4464,6 +4464,7 @@ dependencies = [
  "serde_bytes",
  "similar-asserts",
  "smallvec",
+ "static_assertions",
  "thiserror",
  "time",
  "typenum",

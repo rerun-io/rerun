@@ -89,7 +89,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     ] {
         let entity_path = EntityPath::from(panel_name);
         // TODO(jleibs): Seq instead of timeless?
-        let timepoint = TimePoint::timeless();
+        let timepoint = TimePoint::default();
 
         let component = PanelExpanded(is_expanded.into());
 

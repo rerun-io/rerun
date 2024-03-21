@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use arrow2::Either;
 use re_log_types::{
-    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeRange, Timeline,
+    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeInt, TimeRange,
+    Timeline,
 };
 
 use crate::{
@@ -248,6 +249,6 @@ fn filter_column<'a, T: 'a + Clone>(
     col_time
         .iter()
         .zip(column)
-        .filter(move |(time, _)| time_filter.contains((**time).into()))
+        .filter(move |(&time, _)| time_filter.contains(TimeInt::new_temporal(time)))
         .map(|(_, v)| v.clone())
 }
