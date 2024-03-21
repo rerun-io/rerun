@@ -1,4 +1,4 @@
-use crate::{store_hub::StoreLoadError, StoreBundle};
+use crate::{StoreBundle, StoreLoadError};
 
 #[derive(thiserror::Error, Debug)]
 enum BlueprintLoadError {
