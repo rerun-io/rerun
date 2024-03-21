@@ -923,9 +923,27 @@ impl TabWidget {
                 if let Some(Contents::Container(container_id)) =
                     tab_viewer.contents_per_tile_id.get(&tile_id)
                 {
+                    let (label, user_named) = if let Some(container_blueprint) =
+                        tab_viewer.viewport_blueprint.container(container_id)
+                    {
+                        (
+                            container_blueprint
+                                .display_name_or_default()
+                                .as_ref()
+                                .into(),
+                            container_blueprint.display_name.is_some(),
+                        )
+                    } else {
+                        re_log::warn_once!("Container {container_id} missing during egui_tiles");
+                        (
+                            tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                            false,
+                        )
+                    };
+
                     TabDesc {
-                        label: format!("{:?}", container.kind()).into(),
-                        user_named: false,
+                        label,
+                        user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
                     }
