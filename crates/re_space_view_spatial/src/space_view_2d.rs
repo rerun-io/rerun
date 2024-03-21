@@ -177,16 +177,15 @@ impl SpaceViewClass for SpatialSpaceView2D {
             SpatialSpaceViewKind::TwoD,
         );
 
-        let image_dimensions =
-            MaxImageDimensions::access(ctx.entity_db.store_id(), |image_dimensions| {
-                image_dimensions.clone()
-            })
-            .unwrap_or_default();
+        let image_dimensions = MaxImageDimensions::access(ctx.recording_id(), |image_dimensions| {
+            image_dimensions.clone()
+        })
+        .unwrap_or_default();
 
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
             recommended_space_views: topo
                 .iter_subspaces()
                 .flat_map(|subspace| {

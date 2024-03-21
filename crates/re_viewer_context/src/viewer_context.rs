@@ -79,6 +79,12 @@ impl<'a> ViewerContext<'a> {
         self.entity_db.store()
     }
 
+    /// The `StoreId` of the active recording.
+    #[inline]
+    pub fn recording_id(&self) -> &re_log_types::StoreId {
+        self.entity_db.store_id()
+    }
+
     /// Returns the current selection.
     pub fn selection(&self) -> &ItemCollection {
         self.rec_cfg.selection_state.selected_items()

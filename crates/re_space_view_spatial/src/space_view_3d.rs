@@ -212,7 +212,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
             recommended_space_views: topo
                 .iter_subspaces()
                 .filter_map(|subspace| {
