@@ -5,7 +5,6 @@ __all__ = [
     "BarChartView",
     "Blueprint",
     "BlueprintLike",
-    "BlueprintLike",
     "BlueprintPanel",
     "components",
     "datatypes",

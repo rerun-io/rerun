@@ -164,9 +164,9 @@ def main() -> None:
     if not args.show_panels:
         blueprint = hide_panels(blueprint)
 
-    rr.init("rerun_example_stocks", spawn=True, blueprint=blueprint)
+    rr.init("rerun_example_blueprint_stocks", spawn=True, blueprint=blueprint)
 
-    # In a future blueprint release, this will move into the blueprint as well
+    # In a future blueprint release, this can move into the blueprint as well
     for symbol in symbols:
         for day in dates:
             rr.log(f"stocks/{symbol}/{day}", style_plot(symbol), timeless=True)
