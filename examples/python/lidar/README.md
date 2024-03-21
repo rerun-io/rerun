@@ -56,21 +56,4 @@ python examples/python/lidar/main.py # run the example
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
 python examples/python/lidar/main.py --help 
-
-usage: main.py [-h] [--root-dir ROOT_DIR] [--scene-name SCENE_NAME] [--dataset-version DATASET_VERSION] [--headless] [--connect] [--serve] [--addr ADDR]
-               [--save SAVE] [-o]
-
-Visualizes lidar scans using the Rerun SDK.
-
-optional arguments:
-  -h, --help                          show this help message and exit
-  --root-dir ROOT_DIR                 Root directory of nuScenes dataset
-  --scene-name SCENE_NAME             Scene name to visualize (typically of form 'scene-xxxx')
-  --dataset-version DATASET_VERSION   Scene id to visualize
-  --headless                          Don t show GUI
-  --connect                           Connect to an external viewer
-  --serve                             Serve a web viewer (WARNING: experimental feature)
-  --addr ADDR                         Connect to this ip:port
-  --save SAVE                         Save data to a .rrd file at this path
-  -o, --stdout                        Log data to standard output, to be piped into a Rerun Viewer
 ```
