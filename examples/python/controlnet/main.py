@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import argparse
 import os
+from typing import Any
 
 import cv2
 import numpy as np
 import PIL.Image
 import requests
 import rerun as rr
+import rerun.blueprint as rrb
 import torch
 from diffusers import (
     AutoencoderKL,
@@ -30,15 +32,18 @@ RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controln
 
 
 def controlnet_callback(
-    iteration: int, timestep: float, latents: torch.Tensor, pipeline: StableDiffusionXLControlNetPipeline
-) -> None:
-    rr.set_time_sequence("iteration", iteration)
+    pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict[str, Any]
+) -> dict[str, Any]:
+    rr.set_time_sequence("iteration", step_index)
     rr.set_time_seconds("timestep", timestep)
+    latents = callback_kwargs["latents"]
 
-    image = pipeline.vae.decode(latents / pipeline.vae.config.scaling_factor, return_dict=False)[0]
-    image = pipeline.image_processor.postprocess(image, output_type="np").squeeze()
+    image = pipe.vae.decode(latents / pipe.vae.config.scaling_factor, return_dict=False)[0]
+    image = pipe.image_processor.postprocess(image, output_type="np").squeeze()
     rr.log("output", rr.Image(image))
     rr.log("latent", rr.Tensor(latents.squeeze(), dim_names=["channel", "height", "width"]))
+
+    return callback_kwargs
 
 
 def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> None:
@@ -98,7 +103,7 @@ def run_canny_controlnet(image_path: str, prompt: str, negative_prompt: str) -> 
         negative_prompt=negative_prompt,
         image=canny_image,  # add batch dimension
         controlnet_conditioning_scale=0.5,
-        callback=lambda i, t, latents: controlnet_callback(i, t, latents, pipeline),
+        callback_on_step_end=controlnet_callback,
     ).images[0]
 
     rr.log("output", rr.Image(images))
@@ -127,7 +132,22 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_controlnet")
+    rr.script_setup(
+        args,
+        "rerun_example_controlnet",
+        blueprint=rrb.Horizontal(
+            rrb.Grid(
+                rrb.Spatial2DView(origin="input/raw"),
+                rrb.Spatial2DView(origin="input/canny"),
+                rrb.Vertical(
+                    rrb.TextDocumentView(origin="positive_prompt"),
+                    rrb.TextDocumentView(origin="negative_prompt"),
+                ),
+                rrb.TensorView(origin="latent"),
+            ),
+            rrb.Spatial2DView(origin="output"),
+        ),
+    )
     run_canny_controlnet(args.img_path, args.prompt, args.negative_prompt)
     rr.script_teardown(args)
 
