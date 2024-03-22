@@ -69,6 +69,18 @@ impl crate::DataUi for EntityDb {
             }
         });
 
+        if ctx.store_context.is_active(self.store_id()) {
+            ui.add_space(8.0);
+            match self.store_kind() {
+                StoreKind::Recording => {
+                    ui.label("This is the active recording");
+                }
+                StoreKind::Blueprint => {
+                    ui.label("This is the active blueprint");
+                }
+            }
+        }
+
         sibling_stores_ui(ctx, ui, self);
     }
 }
@@ -103,7 +115,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
     }
 
     if !other_recordings.is_empty() {
-        ui.add_space(4.0);
+        ui.add_space(8.0);
         if entity_db.store_kind() == StoreKind::Recording {
             ui.strong("Other recordings in this data source");
         } else {
@@ -116,7 +128,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
         });
     }
     if !other_blueprints.is_empty() {
-        ui.add_space(4.0);
+        ui.add_space(8.0);
         if entity_db.store_kind() == StoreKind::Blueprint {
             ui.strong("Other blueprints in this data source");
         } else {
