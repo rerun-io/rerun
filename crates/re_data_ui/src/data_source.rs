@@ -45,7 +45,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             ui.strong("Recordings in this data source");
             ui.indent("recordings", |ui| {
                 for entity_db in recordings {
-                    entity_db_button_ui(ctx, ui, entity_db, None);
+                    entity_db_button_ui(ctx, ui, entity_db, true);
                 }
             });
         }
@@ -55,7 +55,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             ui.strong("Blueprints in this data source");
             ui.indent("blueprints", |ui| {
                 for entity_db in blueprints {
-                    entity_db_button_ui(ctx, ui, entity_db, None);
+                    entity_db_button_ui(ctx, ui, entity_db, true);
                 }
             });
         }

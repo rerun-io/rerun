@@ -125,7 +125,8 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
             let entity_db = entity_dbs[0];
-            entity_db_button_ui(ctx, ui, entity_db, Some(app_id));
+            let include_app_id = true;
+            entity_db_button_ui(ctx, ui, entity_db, include_app_id);
         } else {
             ctx.re_ui
                 .list_item(app_id)
@@ -136,7 +137,8 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                     true,
                     |_, ui| {
                         for entity_db in entity_dbs {
-                            entity_db_button_ui(ctx, ui, entity_db, None);
+                            let include_app_id = false; // we already show it in the parent
+                            entity_db_button_ui(ctx, ui, entity_db, include_app_id);
                         }
                     },
                 );

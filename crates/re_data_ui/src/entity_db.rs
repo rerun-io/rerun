@@ -132,7 +132,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
         }
         ui.indent("recordings", |ui| {
             for entity_db in other_recordings {
-                entity_db_button_ui(ctx, ui, entity_db, None);
+                entity_db_button_ui(ctx, ui, entity_db, true);
             }
         });
     }
@@ -145,7 +145,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
         }
         ui.indent("blueprints", |ui| {
             for entity_db in other_blueprints {
-                entity_db_button_ui(ctx, ui, entity_db, None);
+                entity_db_button_ui(ctx, ui, entity_db, true);
             }
         });
     }

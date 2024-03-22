@@ -580,18 +580,23 @@ pub fn data_source_button_ui(
 
 /// Show button for a store (recording or blueprint).
 ///
-/// If an `app_id_label` is provided, it will be shown in front of the recording time.
+/// You can set `include_app_id` to hide the App Id, but usually you want to show it.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
-    app_id_label: Option<&str>,
+    include_app_id: bool,
 ) {
     use re_types_core::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
-    let app_id_label =
-        app_id_label.map_or(String::new(), |app_id_label| format!("{app_id_label} - "));
+    let app_id_prefix = if include_app_id {
+        entity_db
+            .app_id()
+            .map_or(String::default(), |app_id| format!("{app_id} - "))
+    } else {
+        String::default()
+    };
 
     let time = entity_db
         .store_info()
@@ -602,7 +607,7 @@ pub fn entity_db_button_ui(
         .unwrap_or("<unknown time>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_label}{time} - {size}");
+    let title = format!("{app_id_prefix}{time} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
