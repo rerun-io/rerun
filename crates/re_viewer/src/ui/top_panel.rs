@@ -100,6 +100,28 @@ fn top_bar_ui(
             connection_status_ui(ui, app.msg_receive_set());
         }
 
+        if let Some(wgpu) = frame.wgpu_render_state() {
+            let info = wgpu.adapter.get_info();
+            if info.device_type == wgpu::DeviceType::Cpu {
+                // TODO(#4304): replace with a panel showing recent log messages
+                ui.hyperlink_to(
+                    egui::RichText::new("⚠ Software rasterizer ⚠")
+                        .small()
+                        .color(ui.visuals().warn_fg_color),
+                    "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+                )
+                .on_hover_ui(|ui| {
+                    ui.label("Software rasterizer detected - expect poor performance.");
+                    ui.label("Click for torubleshooting.");
+                    ui.add_space(8.0);
+                    ui.label(format!(
+                        "wgpu adapter {}",
+                        re_renderer::adapter_info_summary(&info)
+                    ));
+                });
+            }
+        }
+
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {

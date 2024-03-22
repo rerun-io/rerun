@@ -543,7 +543,7 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
 }
 
 /// A human-readable summary about an adapter
-fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
+pub fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
     let wgpu::AdapterInfo {
         name,
         vendor: _, // skip integer id
