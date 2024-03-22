@@ -23,6 +23,7 @@ pub struct StoreHub {
     active_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     blueprint_by_recording_id: HashMap<StoreId, StoreId>,
+    prefer_recording_blueprint: bool,
     store_bundle: StoreBundle,
 
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
@@ -76,6 +77,7 @@ impl StoreHub {
             active_application_id: None,
             blueprint_by_app_id,
             blueprint_by_recording_id: Default::default(),
+            prefer_recording_blueprint: false,
             store_bundle,
 
             was_recording_active: false,
@@ -88,6 +90,11 @@ impl StoreHub {
     #[inline]
     pub fn store_bundle(&self) -> &StoreBundle {
         &self.store_bundle
+    }
+
+    /// Set whether the [`StoreHub`] should prefer the recording blueprint over the app blueprint.
+    pub fn set_prefer_recording_blueprint(&mut self, prefer_recording_blueprint: bool) {
+        self.prefer_recording_blueprint = prefer_recording_blueprint;
     }
 
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
@@ -103,13 +110,26 @@ impl StoreHub {
                 ))
             });
 
-        // If we have an app-id, then use it to look up the blueprint.
+        // We can't create a context without having an app-id.
         let app_id = self.active_application_id.clone()?;
 
+        // If we currently prefer the recording blueprint, try to look it up
+        // TODO(jleibs): Should this state be per-app-id?
         let blueprint_id = self
-            .blueprint_by_app_id
-            .entry(app_id.clone())
-            .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+            .prefer_recording_blueprint
+            .then(|| {
+                // If we have an app-id, then use it to look up the blueprint.
+                let recording_id = self.active_rec_id.clone()?;
+
+                // TODO(jleibs)
+                self.blueprint_by_recording_id.get(&recording_id)
+            })
+            .flatten()
+            .unwrap_or_else(|| {
+                self.blueprint_by_app_id
+                    .entry(app_id.clone())
+                    .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0))
+            });
 
         // Get or create the blueprint:
         self.store_bundle.blueprint_entry(blueprint_id);
