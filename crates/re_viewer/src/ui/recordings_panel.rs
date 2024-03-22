@@ -122,12 +122,10 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
     }
 
-    let active_recording = Some(ctx.store_context.recording.store_id());
-
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
             let entity_db = entity_dbs[0];
-            recording_ui(ctx, ui, entity_db, Some(app_id), active_recording);
+            recording_button(ctx, ui, entity_db, Some(app_id));
         } else {
             ctx.re_ui
                 .list_item(app_id)
@@ -138,7 +136,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                     true,
                     |_, ui| {
                         for entity_db in entity_dbs {
-                            recording_ui(ctx, ui, entity_db, None, active_recording);
+                            recording_button(ctx, ui, entity_db, None);
                         }
                     },
                 );
@@ -151,12 +149,11 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
 /// Show the UI for a single recording.
 ///
 /// If an `app_id_label` is provided, it will be shown in front of the recording time.
-fn recording_ui(
+fn recording_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
     app_id_label: Option<&str>,
-    active_recording: Option<&re_log_types::StoreId>,
 ) {
     let app_id_label =
         app_id_label.map_or(String::new(), |app_id_label| format!("{app_id_label} - "));
@@ -179,7 +176,9 @@ fn recording_ui(
         .list_item(title)
         .selected(ctx.selection().contains_item(&item))
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
-            let color = if active_recording == Some(&store_id) {
+            let active_recording = ctx.store_context.recording.store_id();
+            let is_active_recording = &store_id == active_recording;
+            let color = if is_active_recording {
                 visuals.fg_stroke.color
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color
