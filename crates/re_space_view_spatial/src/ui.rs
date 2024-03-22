@@ -17,7 +17,7 @@ use re_viewer_context::{
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
-    contexts::{AnnotationSceneContext, NonInteractiveEntities},
+    contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
@@ -454,7 +454,6 @@ pub fn picking(
         ctx.app_options.show_picking_debug_overlay,
     );
 
-    let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
 
@@ -482,10 +481,12 @@ pub fn picking(
             instance_path.instance_key = InstanceKey::SPLAT;
         }
 
-        if non_interactive
-            .0
-            .contains(&instance_path.entity_path.hash())
-        {
+        let interactive = ctx
+            .lookup_query_result(query.space_view_id)
+            .tree
+            .lookup_result_by_path(&instance_path.entity_path)
+            .map_or(false, |result| result.accumulated_properties().interactive);
+        if !interactive {
             continue;
         }
 
