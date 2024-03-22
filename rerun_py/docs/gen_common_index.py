@@ -65,6 +65,7 @@ def all_archetypes() -> list[str]:
 @dataclass
 class Section:
     title: str
+    sub_title: str | None = None
     func_list: list[str] | None = None
     class_list: list[str] | None = None
     gen_page: bool = True
@@ -106,33 +107,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "set_time_nanos",
             "disable_timeline",
             "reset_time",
-        ],
-    ),
-    ################################################################################
-    # Blueprint APIs
-    Section(
-        title="Blueprint APIs",
-        mod_path="rerun.blueprint",
-        class_list=[
-            "Blueprint",
-            "BlueprintPart",
-            "Container",
-            "Horizontal",
-            "Vertical",
-            "Grid",
-            "Tabs",
-            "SpaceView",
-            "BarChartView",
-            "Spatial2DView",
-            "Spatial3DView",
-            "TensorView",
-            "TextDocumentView",
-            "TextLogView",
-            "TimeSeriesView",
-            "BlueprintPanel",
-            "SelectionPanel",
-            "TimePanel",
-            "Viewport",
         ],
     ),
     ################################################################################
@@ -240,7 +214,7 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     ################################################################################
-    # Remaining sections of other referenced things
+    # Other referenced things
     Section(
         title="Enums",
         mod_path="rerun",
@@ -257,6 +231,54 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["AsComponents", "ComponentBatchLike"],
         default_filters=False,
     ),
+    ################################################################################
+    # Blueprint APIs
+    Section(
+        title="Blueprint",
+        sub_title="APIs",
+        mod_path="rerun.blueprint",
+        class_list=[
+            "Blueprint",
+            "BlueprintPart",
+            "Container",
+            "Horizontal",
+            "Vertical",
+            "Grid",
+            "Tabs",
+            "SpaceView",
+            "BarChartView",
+            "Spatial2DView",
+            "Spatial3DView",
+            "TensorView",
+            "TextDocumentView",
+            "TextLogView",
+            "TimeSeriesView",
+            "BlueprintPanel",
+            "SelectionPanel",
+            "TimePanel",
+            "Viewport",
+        ],
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Archetypes",
+        mod_path="rerun.blueprint.archetypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Components",
+        mod_path="rerun.blueprint.datatypes",
+        show_tables=False,
+    ),
+    Section(
+        title="Blueprint",
+        sub_title="Datatypes",
+        mod_path="rerun.blueprint.components",
+        show_tables=False,
+    ),
+    ################################################################################
+    # Remaining sections
     Section(
         title="Script Helpers",
         func_list=[
@@ -364,9 +386,14 @@ overview of what's possible and how.
     for section in SECTION_TABLE:
         if section.gen_page:
             # Turn the heading into a slug and add it to the nav
-            md_name = make_slug(section.title)
-            md_file = md_name + ".md"
-            nav[section.title] = md_file
+            if section.sub_title:
+                md_name = make_slug("_".join([section.title, section.sub_title]))
+                md_file = md_name + ".md"
+                nav[(section.title, section.sub_title)] = md_file
+            else:
+                md_name = make_slug(section.title)
+                md_file = md_name + ".md"
+                nav[section.title] = md_file
 
             # Write out the contents of this section
             write_path = common_dir.joinpath(md_file)

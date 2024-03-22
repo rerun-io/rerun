@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Iterable, Optional, Union
+from typing import Iterable, Optional, Sequence, Union
 
 import rerun_bindings as bindings
 
@@ -30,7 +30,7 @@ class SpaceView:
     - [rerun.blueprint.TextLogView][]
     - [rerun.blueprint.TimeSeriesView][]
 
-    This is an ergonomic helper on top of `rerun.blueprint.archetypes.SpaceViewBlueprint`.
+    This is an ergonomic helper on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
     """
 
     def __init__(
@@ -55,8 +55,8 @@ class SpaceView:
             The `EntityPath` to use as the origin of this space view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the space view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
 
         """
         self.id = uuid.uuid4()
@@ -121,7 +121,7 @@ class Container:
     - [rerun.blueprint.Grid][]
     - [rerun.blueprint.Tabs][]
 
-    This is an ergonomic helper on top of `rerun.blueprint.archetypes.ContainerBlueprint`.
+    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
     """
 
     def __init__(
@@ -234,7 +234,7 @@ class Viewport:
     """
     The top-level description of the Viewport.
 
-    This is an ergonomic helper on top of `rerun.blueprint.archetypes.ViewportBlueprint`.
+    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
     """
 
     def __init__(
@@ -312,7 +312,7 @@ class Panel:
     - [SelectionPanel][rerun.blueprint.SelectionPanel]
     - [TimePanel][rerun.blueprint.TimePanel]
 
-    This is an ergonomic helper on top of `rerun.blueprint.archetypes.PanelBlueprint`.
+    This is an ergonomic helper on top of [rerun.blueprint.archetypes.PanelBlueprint][].
     """
 
     def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
