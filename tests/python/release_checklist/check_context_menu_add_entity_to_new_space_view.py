@@ -30,18 +30,16 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.TextDocumentView(origin="readme"),
-            rrb.Vertical(
-                rrb.Spatial3DView(origin="/boxes3d"),
-                rrb.Spatial2DView(origin="/boxes2d"),
-                rrb.TextLogView(origin="/text_logs"),
-                rrb.BarChartView(origin="/bars"),
-                rrb.TensorView(origin="/tensor"),
-            ),
-            column_shares=[2, 1],
-        )
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Vertical(
+            rrb.Spatial3DView(origin="/boxes3d"),
+            rrb.Spatial2DView(origin="/boxes2d"),
+            rrb.TextLogView(origin="/text_logs"),
+            rrb.BarChartView(origin="/bars"),
+            rrb.TensorView(origin="/tensor"),
+        ),
+        column_shares=[2, 1],
     )
 
 

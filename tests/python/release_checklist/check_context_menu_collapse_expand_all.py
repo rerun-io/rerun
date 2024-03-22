@@ -31,18 +31,16 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.TextDocumentView(origin="readme"),
-            rrb.Vertical(
-                rrb.Horizontal(
-                    rrb.Vertical(
-                        rrb.Spatial3DView(origin="/"),
-                    )
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Vertical(
+            rrb.Horizontal(
+                rrb.Vertical(
+                    rrb.Spatial3DView(origin="/"),
                 )
-            ),
-            column_shares=[2, 1],
-        )
+            )
+        ),
+        column_shares=[2, 1],
     )
 
 
