@@ -1,13 +1,11 @@
 mod annotation_context;
 mod depth_offsets;
-mod non_interactive_entities;
 mod transform_context;
 
 use std::sync::atomic::AtomicUsize;
 
 pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
-pub use non_interactive_entities::NonInteractiveEntities;
 pub use transform_context::TransformContext;
 
 // -----------------------------------------------------------------------------
@@ -62,7 +60,6 @@ pub fn register_spatial_contexts(
     system_registry.register_context_system::<TransformContext>()?;
     system_registry.register_context_system::<EntityDepthOffsets>()?;
     system_registry.register_context_system::<AnnotationSceneContext>()?;
-    system_registry.register_context_system::<NonInteractiveEntities>()?;
     system_registry.register_context_system::<PrimitiveCounter>()?;
     Ok(())
 }
