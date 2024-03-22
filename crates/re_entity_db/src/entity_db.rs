@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
@@ -274,7 +274,7 @@ impl EntityDb {
                 self.add_data_table(table)?;
             }
 
-            LogMsg::ActivateStore(_) => {
+            LogMsg::ActivateBlueprint(_) => {
                 // Not for us to handle
             }
         }
@@ -518,6 +518,7 @@ impl EntityDb {
     pub fn to_messages(
         &self,
         time_selection: Option<(Timeline, TimeRangeF)>,
+        blueprint_activation: Option<re_log_types::ActivateBlueprint>,
     ) -> DataTableResult<Vec<LogMsg>> {
         re_tracing::profile_function!();
 
@@ -540,14 +541,14 @@ impl EntityDb {
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
         });
 
-        // Signal that the store is done loading.
-        // Important for blueprints.
-        let activate_store_msg = LogMsg::ActivateStore(self.store_id().clone());
-
         let messages: Result<Vec<_>, _> = set_store_info_msg
             .into_iter()
             .chain(data_messages)
-            .chain(std::iter::once(Ok(activate_store_msg)))
+            .chain(
+                blueprint_activation.map_or(Either::Left(std::iter::empty()), |msg| {
+                    Either::Right(std::iter::once(Ok(LogMsg::ActivateBlueprint(msg))))
+                }),
+            )
             .collect();
 
         messages

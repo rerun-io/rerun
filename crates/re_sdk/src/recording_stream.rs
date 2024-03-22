@@ -9,10 +9,10 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
-    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ActivateBlueprint, ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow,
+    DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg,
+    RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType,
+    Timeline, TimelineName,
 };
 use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
@@ -1759,7 +1759,9 @@ impl RecordingStream {
             // and that it can now be activated.
             // We don't want to activate half-loaded blueprints, because that can be confusing,
             // and can also lead to problems with space-view heuristics.
-            sink.send(LogMsg::ActivateStore(store_id));
+            sink.send(LogMsg::ActivateBlueprint(ActivateBlueprint::AppBlueprint {
+                blueprint: store_id,
+            }));
         }
     }
 }

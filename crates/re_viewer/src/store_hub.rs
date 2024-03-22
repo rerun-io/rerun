@@ -3,7 +3,7 @@ use ahash::{HashMap, HashMapExt};
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_log_types::{ActivateBlueprint, ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
 
@@ -22,6 +22,7 @@ pub struct StoreHub {
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    blueprint_by_recording_id: HashMap<StoreId, StoreId>,
     store_bundle: StoreBundle,
 
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
@@ -74,6 +75,7 @@ impl StoreHub {
             active_rec_id: None,
             active_application_id: None,
             blueprint_by_app_id,
+            blueprint_by_recording_id: Default::default(),
             store_bundle,
 
             was_recording_active: false,
@@ -221,6 +223,14 @@ impl StoreHub {
     pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
         re_log::debug!("Switching blueprint for {app_id} to {blueprint_id}");
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
+    }
+
+    /// Change which blueprint is active for a given [`RecordingId`]
+    #[inline]
+    pub fn set_blueprint_for_recording_id(&mut self, blueprint_id: StoreId, recording_id: StoreId) {
+        re_log::debug!("Switching blueprint for {recording_id} to {blueprint_id}");
+        self.blueprint_by_recording_id
+            .insert(recording_id, blueprint_id);
     }
 
     /// Is the given blueprint id the active blueprint for any app id?
@@ -378,7 +388,10 @@ impl StoreHub {
                         let blueprint_path = default_blueprint_path(app_id)?;
                         re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
 
-                        let messages = blueprint.to_messages(None)?;
+                        let blueprint_activation = ActivateBlueprint::AppBlueprint {
+                            blueprint: blueprint_id.clone(),
+                        };
+                        let messages = blueprint.to_messages(None, Some(blueprint_activation))?;
 
                         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                         // be small & fast to save, but maybe not once we start adding big pieces of user data?

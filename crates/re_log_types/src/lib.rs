@@ -205,6 +205,22 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+/// A message to activate a blueprint.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum ActivateBlueprint {
+    /// Activate this blueprint as an "App Blueprint", associating it with
+    /// its application id.
+    AppBlueprint { blueprint: StoreId },
+
+    /// Activate this blueprint as "Recording Blueprint", associating it with
+    /// the specified recording.
+    RecordingBlueprint {
+        blueprint: StoreId,
+        recording: StoreId,
+    },
+}
+
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
@@ -224,14 +240,23 @@ pub enum LogMsg {
     /// This is so that the viewer can wait with activating the blueprint until it is
     /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
     /// and also lead to problems with space-view heuristics.
-    ActivateStore(StoreId),
+    ActivateBlueprint(ActivateBlueprint),
 }
 
 impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
-            Self::ArrowMsg(store_id, _) | Self::ActivateStore(store_id) => store_id,
+            Self::ArrowMsg(store_id, _)
+            | Self::ActivateBlueprint(
+                ActivateBlueprint::AppBlueprint {
+                    blueprint: store_id,
+                }
+                | ActivateBlueprint::RecordingBlueprint {
+                    blueprint: store_id,
+                    ..
+                },
+            ) => store_id,
         }
     }
 
@@ -240,7 +265,16 @@ impl LogMsg {
             LogMsg::SetStoreInfo(store_info) => {
                 store_info.info.store_id = new_store_id;
             }
-            LogMsg::ArrowMsg(msg_store_id, _) | LogMsg::ActivateStore(msg_store_id) => {
+            LogMsg::ArrowMsg(msg_store_id, _)
+            | Self::ActivateBlueprint(
+                ActivateBlueprint::AppBlueprint {
+                    blueprint: msg_store_id,
+                }
+                | ActivateBlueprint::RecordingBlueprint {
+                    blueprint: msg_store_id,
+                    ..
+                },
+            ) => {
                 *msg_store_id = new_store_id;
             }
         }
