@@ -30,7 +30,7 @@ class SpaceView:
     - [rerun.blueprint.TextLogView][]
     - [rerun.blueprint.TimeSeriesView][]
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
     """
 
     def __init__(
@@ -121,7 +121,7 @@ class Container:
     - [rerun.blueprint.Grid][]
     - [rerun.blueprint.Tabs][]
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
     """
 
     def __init__(
@@ -312,7 +312,7 @@ class Panel:
     - [SelectionPanel][rerun.blueprint.SelectionPanel]
     - [TimePanel][rerun.blueprint.TimePanel]
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.PanelBlueprint][].
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.PanelBlueprint][].
     """
 
     def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
