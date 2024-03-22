@@ -241,6 +241,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "Blueprint",
             "BlueprintPart",
             "Container",
+            "ContainerLike",
             "Horizontal",
             "Vertical",
             "Grid",
