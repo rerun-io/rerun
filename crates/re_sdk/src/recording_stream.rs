@@ -1554,7 +1554,11 @@ impl RecordingStream {
 
         // If a blueprint was provided, send it first.
         if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+            Self::send_blueprint(
+                blueprint,
+                self.store_info().map(|info| info.store_id),
+                &sink,
+            );
         }
 
         self.set_sink(Box::new(sink));
@@ -1669,7 +1673,11 @@ impl RecordingStream {
 
         // If a blueprint was provided, store it first.
         if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+            Self::send_blueprint(
+                blueprint,
+                self.store_info().map(|info| info.store_id),
+                &sink,
+            );
         }
 
         self.set_sink(Box::new(sink));
@@ -1719,7 +1727,11 @@ impl RecordingStream {
 
         // If a blueprint was provided, write it first.
         if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+            Self::send_blueprint(
+                blueprint,
+                self.store_info().map(|info| info.store_id),
+                &sink,
+            );
         }
 
         self.set_sink(Box::new(sink));
@@ -1746,22 +1758,37 @@ impl RecordingStream {
     }
 
     /// Send the blueprint to the sink, and then activate it.
-    pub fn send_blueprint(blueprint: Vec<LogMsg>, sink: &dyn crate::sink::LogSink) {
-        let mut store_id = None;
+    pub fn send_blueprint(
+        blueprint: Vec<LogMsg>,
+        recording_id: Option<StoreId>,
+        sink: &dyn crate::sink::LogSink,
+    ) {
+        let mut blueprint_id = None;
         for msg in blueprint {
-            if store_id.is_none() {
-                store_id = Some(msg.store_id().clone());
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
             }
             sink.send(msg);
         }
-        if let Some(store_id) = store_id {
+        if let Some(blueprint_id) = blueprint_id {
             // Let the viewer know that the blueprint has been fully received,
             // and that it can now be activated.
             // We don't want to activate half-loaded blueprints, because that can be confusing,
             // and can also lead to problems with space-view heuristics.
+
+            // TODO(jleibs): configure if we send one of these or the other
+            // for now it's interesting to send both
             sink.send(LogMsg::ActivateBlueprint(ActivateBlueprint::AppBlueprint {
-                blueprint: store_id,
+                blueprint: blueprint_id.clone(),
             }));
+            if let Some(recording_id) = recording_id {
+                sink.send(LogMsg::ActivateBlueprint(
+                    ActivateBlueprint::RecordingBlueprint {
+                        blueprint: blueprint_id,
+                        recording: recording_id,
+                    },
+                ));
+            }
         }
     }
 }
