@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from typing import Any
 
 import cv2
 import numpy as np
@@ -31,8 +32,8 @@ RERUN_LOGO_URL = "https://storage.googleapis.com/rerun-example-datasets/controln
 
 
 def controlnet_callback(
-    pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict
-) -> dict:
+    pipe: StableDiffusionXLControlNetPipeline, step_index: int, timestep: float, callback_kwargs: dict[str, Any]
+) -> dict[str, Any]:
     rr.set_time_sequence("iteration", step_index)
     rr.set_time_seconds("timestep", timestep)
     latents = callback_kwargs["latents"]
