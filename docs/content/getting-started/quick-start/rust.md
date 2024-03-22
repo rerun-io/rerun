@@ -66,7 +66,7 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 ## What's next
 
 If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](viewer-walkthrough.md) or our
-more advanced guide for [Logging Data in Rust](logging-rust.md) where we will explore the core concepts that make
+more advanced guide for [Logging Data in Rust](../tutorial/rust.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
 If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.

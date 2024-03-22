@@ -1,6 +1,6 @@
 ---
-title: Logging Data in Rust
-order: 7
+title: C++ SDK Tutorial
+order: 5
 ---
 
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.
@@ -13,38 +13,107 @@ In a few lines of code, we'll go from a blank sheet to something you don't see e
 This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
-At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/rust/dna/src/main.rs) to better keep track of the overall picture.
-To run the example from the repository, run `cargo run -p dna`.
+At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp) to better keep track of the overall picture.
+To build the example from the repository, run:
+
+```bash
+cd examples/cpp/dna
+cmake -B build
+cmake --build build -j
+```
+
+And then to run it on Linux/Mac:
+```
+./build/example_dna
+```
+and windows respectively:
+```
+build\Debug\example_dna.exe
+```
+
 
 ## Prerequisites
 
-We assume you have a working Rust environment and have started a new project with the `rerun` dependency. If not, check out the [setup page](rust.md).
+You should have already [installed the viewer](installing-viewer.md).
 
-For this example in particular, we're going to need all of these:
-```toml
-[dependencies]
-rerun = "0.9"
-itertools = "0.11"
-rand = "0.8"
+We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
+we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
+To learn more about how Rerun's CMake script can be configured, see [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2cmake__setup__in__detail.html) in the C++ reference documentation.
+
+
+## Setting up your CMakeLists.txt
+
+A minimal CMakeLists.txt for this example looks like this:
+
+```cmake
+cmake_minimum_required(VERSION 3.16...3.27)
+project(example_dna LANGUAGES CXX)
+
+add_executable(example_dna main.cpp)
+
+# Download the rerun_sdk
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+
+# Rerun requires at least C++17, but it should be compatible with newer versions.
+set_property(TARGET example_dna PROPERTY CXX_STANDARD 17)
+
+# Link against rerun_sdk.
+target_link_libraries(example_dna PRIVATE rerun_sdk)
 ```
 
-While we're at it, let's get imports out of the way:
-```rust
-use std::f32::consts::TAU;
+## Includes
 
-use itertools::Itertools as _;
+To use Rerun all you need to include is `rerun.hpp`, however for this example we will pull in a few extra headers.
 
-use rerun::{
-    demo_util::{bounce_lerp, color_spiral},
-    external::glam,
-};
+Starting our `main.cpp`:
+```cpp
+#include <rerun.hpp>
+#include <rerun/demo_utils.hpp>
+
+#include <algorithm> // std::generate
+#include <random>
+#include <vector>
+
+using namespace rerun::demo;
+using namespace std::chrono_literals;
+
+static constexpr size_t NUM_POINTS = 100;
 ```
 
-## Starting the viewer
-Just run `rerun` to start the [Rerun Viewer](../reference/viewer/overview.md). It will wait for your application to log some data to it. This viewer is in fact a server that's ready to accept data over TCP (it's listening on `0.0.0.0:9876` by default).
+## Initializing the SDK
 
-Checkout `rerun --help` for more options.
+To get going we want to create a [`RecordingStream`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/recording_stream.hpp), which is the main interface for sending data to Rerun.
+When creating the `RecordingStream` we also need to specify the name of the application we're working on
+by setting it's `ApplicationId`.
 
+We then use the stream to spawn a new rerun viewer via [`spawn`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L151).
+
+Add our initial `main` to `main.cpp`:
+```cpp
+int main() {
+    auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
+    rec.spawn().exit_on_failure();
+}
+```
+
+Among other things, a stable `ApplicationId` will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+
+Check out the reference to learn more about how Rerun deals with [applications and recordings](../concepts/apps-and-recordings.md).
+
+## Testing our app
+
+Even though we haven't logged any data yet this is a good time to verify everything is working.
+
+```bash
+cmake -B build
+cmake --build build -j
+./build/example_dna
+```
+
+When everything finishes compiling, an empty Rerun viewer should be spawned:
 <picture>
   <img src="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/480w.png">
@@ -53,51 +122,34 @@ Checkout `rerun --help` for more options.
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/1200w.png">
 </picture>
 
-## Initializing the SDK
-
-To get going we want to create a [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html):
-We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html).
-We then connect it to the already running viewer via [`connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect), returning the `RecordingStream` upon success.
-
-```rust
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
-
-    Ok(())
-}
-```
-
-Among other things, a stable [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html) will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
-
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../concepts/apps-and-recordings.md).
-
-
 ## Logging our first points
+
+Now let's add some data to the viewer.
 
 The core structure of our DNA looking shape can easily be described using two point clouds shaped like spirals.
 Add the following to your `main` function:
-```rust
-const NUM_POINTS: usize = 100;
-
-let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
-let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
+```cpp
+std::vector<rerun::Position3D> points1, points2;
+std::vector<rerun::Color> colors1, colors2;
+color_spiral(NUM_POINTS, 2.0f, 0.02f, 0.0f, 0.1f, points1, colors1);
+color_spiral(NUM_POINTS, 2.0f, 0.02f, TAU * 0.5f, 0.1f, points2, colors2);
 
 rec.log(
     "dna/structure/left",
-    &rerun::Points3D::new(points1.iter().copied())
-        .with_colors(colors1)
-        .with_radii([0.08]),
-)?;
+    rerun::Points3D(points1).with_colors(colors1).with_radii({0.08f})
+);
 rec.log(
     "dna/structure/right",
-    &rerun::Points3D::new(points2.iter().copied())
-        .with_colors(colors2)
-        .with_radii([0.08]),
-)?;
+    rerun::Points3D(points2).with_colors(colors2).with_radii({0.08f})
+);
 ```
 
-Run your program with `cargo run` and you should now see this scene in the viewer:
+Re-compile and run your program again:
+```bash
+cmake --build build -j
+./build/example_dna
+```
+and now you should now see this scene in the viewer:
 
 <picture>
   <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">
@@ -116,23 +168,19 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-<!-- TODO(andreas): UPDATE DOC LINKS -->
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
-of components that are recognized and correctly displayed by the Rerun viewer.
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/archetypes/points3d.hpp). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
-Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual *components* like positions, colors,
+Under the hood, the Rerun C++ SDK logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
 For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
-Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
-<!-- TODO(andreas): UPDATE DOC LINKS -->
-will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
+Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
+will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
-
 
 ### Entities & hierarchies
 
@@ -155,45 +203,44 @@ Good news is: once you've digested all of the above, logging any other Entity wi
 ## Adding the missing pieces
 
 We can represent the scaffolding using a batch of 3D line segments:
-```rust
-let points_interleaved: Vec<[glam::Vec3; 2]> = points1
-    .into_iter()
-    .interleave(points2)
-    .chunks(2)
-    .into_iter()
-    .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
-    .collect_vec();
+```cpp
+std::vector<rerun::LineStrip3D> lines;
+for (size_t i = 0; i < points1.size(); ++i) {
+    lines.emplace_back(rerun::LineStrip3D({points1[i].xyz, points2[i].xyz}));
+}
 
 rec.log(
     "dna/structure/scaffolding",
-    &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
-        .with_colors([rerun::Color::from([128, 128, 128, 255])]),
-)?;
+    rerun::LineStrips3D(lines).with_colors(rerun::Color(128, 128, 128))
+);
 ```
 
 Which only leaves the beads:
-```rust
-use rand::Rng as _;
-let mut rng = rand::thread_rng();
-let offsets = (0..NUM_POINTS).map(|_| rng.gen::<f32>()).collect_vec();
+```cpp
+std::default_random_engine gen;
+std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+std::vector<float> offsets(NUM_POINTS);
+std::generate(offsets.begin(), offsets.end(), [&] { return dist(gen); });
 
-let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
-    .iter()
-    .enumerate()
-    .map(|(n, &[p1, p2])| {
-        let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
-        (
-            rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
-            rerun::Color::from_rgb(c, c, c),
-        )
-    })
-    .unzip();
+std::vector<rerun::Position3D> beads_positions(lines.size());
+std::vector<rerun::Color> beads_colors(lines.size());
+
+for (size_t i = 0; i < lines.size(); ++i) {
+    float offset = offsets[i];
+    auto c = static_cast<uint8_t>(bounce_lerp(80.0f, 230.0f, offset * 2.0f));
+
+    beads_positions[i] = rerun::Position3D(
+        bounce_lerp(lines[i].points[0].x(), lines[i].points[1].x(), offset),
+        bounce_lerp(lines[i].points[0].y(), lines[i].points[1].y(), offset),
+        bounce_lerp(lines[i].points[0].z(), lines[i].points[1].z(), offset)
+    );
+    beads_colors[i] = rerun::Color(c, c, c);
+}
+
 rec.log(
     "dna/structure/scaffolding/beads",
-    &rerun::Points3D::new(beads)
-        .with_colors(colors)
-        .with_radii([0.06]),
-)?;
+    rerun::Points3D(beads_positions).with_colors(beads_colors).with_radii({0.06f})
+);
 ```
 
 Once again, although we are getting fancier and fancier with our iterator mappings, there is nothing new here: it's all about populating archetypes and feeding them to the Rerun API.
@@ -228,36 +275,35 @@ For that, we need to introduce our own custom timeline that uses a deterministic
 
 Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ the timeline(s). You will find a lot of flexibility in there.
 
-Let's add our custom timeline:
-```rust
-for i in 0..400 {
-    let time = i as f32 * 0.01;
+Let's add our custom timeline.
 
-    rec.set_time_seconds("stable_time", time as f64);
+Replace the section that logs the beads with a loop that logs the beads at different timestamps:
+```cpp
+for (int t = 0; t < 400; t++) {
+    auto time = std::chrono::duration<float>(t) * 0.01f;
 
-    let times = offsets.iter().map(|offset| time + offset).collect_vec();
-    let (beads, colors): (Vec<_>, Vec<_>) = points_interleaved
-        .iter()
-        .enumerate()
-        .map(|(n, &[p1, p2])| {
-            let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
-            (
-                rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
-                rerun::Color::from_rgb(c, c, c),
-            )
-        })
-        .unzip();
+    rec.set_time("stable_time");
+
+    for (size_t i = 0; i < lines.size(); ++i) {
+        float time_offset = time.count() + offsets[i];
+        auto c = static_cast<uint8_t>(bounce_lerp(80.0f, 230.0f, time_offset * 2.0f));
+
+        beads_positions[i] = rerun::Position3D(
+            bounce_lerp(lines[i].points[0].x(), lines[i].points[1].x(), time_offset),
+            bounce_lerp(lines[i].points[0].y(), lines[i].points[1].y(), time_offset),
+            bounce_lerp(lines[i].points[0].z(), lines[i].points[1].z(), time_offset)
+        );
+        beads_colors[i] = rerun::Color(c, c, c);
+    }
 
     rec.log(
         "dna/structure/scaffolding/beads",
-        &rerun::Points3D::new(beads)
-            .with_colors(colors)
-            .with_radii([0.06]),
-    )?;
+        rerun::Points3D(beads_positions).with_colors(beads_colors).with_radii({0.06f})
+    );
 }
 ```
 
-First we use [`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds) to declare our own custom `Timeline` and set the current timestamp.
+First we use [`RecordingStream::set_time_seconds`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L192) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -269,9 +315,18 @@ Enter…
 ### Latest At semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the *default* timeline (called `log_time`).
-To fix this, add this at the beginning of the main function:
-```rust
-rec.set_time_seconds("stable_time", 0f64);
+To fix this,  go back to the top of your main and initialize your timeline before logging the initial structure:
+```cpp
+rec.set_time_seconds("stable_time", 0.0f);
+
+rec.log(
+    "dna/structure/left",
+    rerun::Points3D(points1).with_colors(colors1).with_radii({0.08f})
+);
+rec.log(
+    "dna/structure/right",
+    rerun::Points3D(points2).with_colors(colors2).with_radii({0.08f})
+);
 ```
 
 <picture>
@@ -296,17 +351,17 @@ Now it's just a matter of combining the two: we need to log the transform of the
 
 Either expand the previous loop to include logging transforms or
 simply add a second loop like this:
-```rust
-for i in 0..400 {
-    // …everything else…
+```cpp
+for (int t = 0; t < 400; t++) {
+    float time = static_cast<float>(t) * 0.01f;
 
     rec.log(
         "dna/structure",
-        &rerun::archetypes::Transform3D::new(rerun::RotationAxisAngle::new(
-            glam::Vec3::Z,
-            rerun::Angle::Radians(time / 4.0 * TAU),
-        )),
-    )?;
+        rerun::archetypes::Transform3D(rerun::RotationAxisAngle(
+            {0.0f, 0.0f, 1.0f},
+            rerun::Angle::radians(time.count() / 4.0f * TAU)
+        ))
+    );
 }
 ```
 
@@ -324,45 +379,12 @@ Voila!
 Sometimes, sending the data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.
 
 Rerun has you covered:
-- Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save) to stream all logging data to disk.
+- Use [`RecordingStream::save`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L162) to stream all logging data to disk.
 - Visualize it via `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
 ⚠️  [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
-
-### Spawning the Viewer from your process
-
-If the Rerun Viewer is [installed](installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a viewer in a new process and connect to it over TCP.
-If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
-
-```rust
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .spawn()?;
-
-    // … log data to `rec` …
-
-    Ok(())
-}
-```
-
-Alternatively, you can use [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html) to start a viewer on the main thread (for platform-compatibility reasons) and feed it data from memory.
-This requires the `native_viewer` feature to be enabled in `Cargo.toml`:
-```toml
-rerun = { version = "0.9", features = ["native_viewer"] }
-```
-Doing so means you're building the Rerun Viewer itself as part of your project, meaning compilation will take a bit longer the first time.
-
-Unlike `spawn` however, this expects a complete recording instead of being fed in real-time:
-```rust
-let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").memory()?;
-
-// … log data to `rec` …
-
-rerun::native_viewer::show(storage.take())?;
-```
-The viewer will block the main thread until it is closed.
 
 ### Closing
 

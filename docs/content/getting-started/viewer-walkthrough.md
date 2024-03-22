@@ -1,6 +1,6 @@
 ---
 title: Viewer Walkthrough
-order: 4
+order: 2
 ---
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
@@ -327,8 +327,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 Again, if you ran into any issues following this guide, please don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
 
 ### Up next
-To get started with writing a program to logging data with the Rerun SDK see the [Python](logging-python.md) or
-[Rust](logging-rust.md) getting started guides.
+To get started with writing a program to logging data with the Rerun SDK see the [getting started guides](./quick-start).
 
 To see and explore other data, you can check out the [examples](/examples).
 

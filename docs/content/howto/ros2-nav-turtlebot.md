@@ -30,7 +30,7 @@ All of the code for this guide can be found on GitHub in
 ## Prerequisites
 
 Other relevant tutorials:
- - [Logging with Python](../getting-started/logging-python.md)
+ - [Python SDK Tutorial](../getting-started/tutorial/python.md)
  - [Viewer Walkthrough](../getting-started/viewer-walkthrough.md)
 
 ### ROS 2 & navigation

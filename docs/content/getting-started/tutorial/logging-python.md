@@ -1,5 +1,5 @@
 ---
-title: Logging Data in Python
+title: Python SDK Tutorial
 order: 6
 ---
 
