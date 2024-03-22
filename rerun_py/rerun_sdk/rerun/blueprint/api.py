@@ -126,6 +126,7 @@ class Container:
         row_shares: Optional[RowShareArrayLike] = None,
         grid_columns: Optional[int] = None,
         active_tab: Optional[int | str] = None,
+        name: Utf8Like | None,
     ):
         """
         Construct a new container.
@@ -152,6 +153,8 @@ class Container:
             The number of columns in the grid. This is only applicable to `Grid` containers.
         active_tab
             The active tab in the container. This is only applicable to `Tabs` containers.
+        name
+            The name of the container
 
         """
 
@@ -169,6 +172,7 @@ class Container:
         self.row_shares = row_shares
         self.grid_columns = grid_columns
         self.active_tab = active_tab
+        self.name = name
 
     def blueprint_path(self) -> str:
         """
@@ -207,6 +211,7 @@ class Container:
             visible=True,
             grid_columns=self.grid_columns,
             active_tab=active_tab_path,
+            display_name=self.name,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
@@ -473,9 +478,15 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     # Convert the BlueprintLike to a full blueprint
     blueprint = blueprint.to_blueprint()
 
+    # We only use this stream object directly, so don't need to make it
+    # default or thread default. Making it the thread-default will also
+    # lead to an unnecessary warning on mac/win.
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
             application_id=application_id,
+            make_default=False,
+            make_thread_default=False,
+            default_enabled=True,
         )
     )
 
