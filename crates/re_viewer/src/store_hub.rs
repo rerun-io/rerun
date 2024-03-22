@@ -17,7 +17,7 @@ use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently active in the viewer. These can be configured
-/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_actve_app_id`] respectively.
+/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app_id`] respectively.
 pub struct StoreHub {
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
