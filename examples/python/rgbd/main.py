@@ -171,6 +171,7 @@ def main() -> None:
                 # This enables interactions like clicking on a point in the 3D space to show the corresponding point in the 2D spaces and vice versa.
                 rrb.Spatial2DView(name="Depth & RGB", origin="world/camera/image"),
                 rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),
+                name="2D",
             ),
             column_shares=[2, 1],
         ),

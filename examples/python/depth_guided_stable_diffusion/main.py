@@ -128,6 +128,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
                     rrb.Tabs(
                         rrb.Spatial2DView(name="Image original", origin="image/original"),
                         rrb.TensorView(name="Image preprocessed", origin="input_image/preprocessed"),
+                        name="Image Inputs",
                     ),
                     rrb.Vertical(
                         rrb.TextLogView(name="Prompt", contents=["prompt/text", "prompt/text_negative"]),
@@ -136,7 +137,9 @@ expense of slower inference. This parameter will be modulated by `strength`.
                             rrb.TensorView(name="Unconditional embeddings", origin="prompt/uncond_embeddings"),
                         ),
                         rrb.BarChartView(name="Prompt ids", origin="prompt/text_input"),
+                        name="Prompt Inputs",
                     ),
+                    name="Inputs",
                 ),
                 rrb.Vertical(
                     rrb.Tabs(
@@ -145,11 +148,14 @@ expense of slower inference. This parameter will be modulated by `strength`.
                         rrb.Spatial2DView(name="Depth normalized", origin="depth/normalized"),
                         rrb.TensorView(name="Depth input pre-processed", origin="depth/input_preprocessed"),
                         active_tab="Depth interpolated",
+                        name="Depth",
                     ),
                     rrb.Tabs(
                         rrb.TensorView(name="Encoded input", origin="encoded_input_image"),
                         rrb.TensorView(name="Decoded init latents", origin="decoded_init_latents"),
+                        name="Initialization",
                     ),
+                    name="Depth & Initialization",
                 ),
                 rrb.Vertical(
                     rrb.Spatial2DView(name="Image diffused", origin="image/diffused"),
@@ -158,6 +164,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
                         rrb.TensorView(name="Diffusion latents", origin="diffusion/latents"),
                         # rrb.TensorView(name="Noise Prediction", origin="diffusion/noise_pred"),
                     ),
+                    name="Output & Iteration",
                 ),
             ),
             rrb.SelectionPanel(expanded=False),

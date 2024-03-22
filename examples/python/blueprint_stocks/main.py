@@ -74,6 +74,7 @@ def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ViewportLike:
             rrb.Horizontal(
                 contents=[rrb.TextDocumentView(name=f"{symbol}", origin=f"/stocks/{symbol}/info")]
                 + [rrb.TimeSeriesView(name=f"{day}", origin=f"/stocks/{symbol}/{day}") for day in dates],
+                name=symbol,
             )
             for symbol in symbols
         ]
