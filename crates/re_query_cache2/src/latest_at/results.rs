@@ -51,20 +51,29 @@ impl CachedLatestAtResults {
 
     /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
     #[inline]
-    pub fn get<C: Component>(&self) -> Option<&CachedLatestAtComponentResults> {
-        self.components.get(&C::name()).map(|arc| &**arc)
+    pub fn get(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<&CachedLatestAtComponentResults> {
+        self.components
+            .get(&component_name.into())
+            .map(|arc| &**arc)
     }
 
     /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
-    pub fn get_required<C: Component>(&self) -> crate::Result<&CachedLatestAtComponentResults> {
-        if let Some(component) = self.components.get(&C::name()) {
+    pub fn get_required(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> crate::Result<&CachedLatestAtComponentResults> {
+        let component_name = component_name.into();
+        if let Some(component) = self.components.get(&component_name) {
             Ok(component)
         } else {
             Err(DeserializationError::MissingComponent {
-                component: C::name(),
+                component: component_name,
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             }
             .into())
@@ -75,8 +84,12 @@ impl CachedLatestAtResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_or_empty<C: Component>(&self) -> &CachedLatestAtComponentResults {
-        if let Some(component) = self.components.get(&C::name()) {
+    pub fn get_or_empty(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> &CachedLatestAtComponentResults {
+        let component_name = component_name.into();
+        if let Some(component) = self.components.get(&component_name) {
             component
         } else {
             static EMPTY: CachedLatestAtComponentResults = CachedLatestAtComponentResults::empty();

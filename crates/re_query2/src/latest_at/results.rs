@@ -43,34 +43,45 @@ impl LatestAtResults {
         self.components.contains_key(&component_name.into())
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
     #[inline]
-    pub fn get<C: Component>(&self) -> Option<&LatestAtComponentResults> {
-        self.components.get(&C::name())
+    pub fn get(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<&LatestAtComponentResults> {
+        self.components.get(&component_name.into())
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
     ///
     /// Returns an error if the component is not present.
     #[inline]
-    pub fn get_required<C: Component>(&self) -> crate::Result<&LatestAtComponentResults> {
-        if let Some(component) = self.components.get(&C::name()) {
+    pub fn get_required(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> crate::Result<&LatestAtComponentResults> {
+        let component_name = component_name.into();
+        if let Some(component) = self.components.get(&component_name) {
             Ok(component)
         } else {
             Err(DeserializationError::MissingComponent {
-                component: C::name(),
+                component: component_name,
                 backtrace: ::backtrace::Backtrace::new_unresolved(),
             }
             .into())
         }
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_or_empty<C: Component>(&self) -> &LatestAtComponentResults {
-        if let Some(component) = self.components.get(&C::name()) {
+    pub fn get_or_empty(
+        &self,
+        component_name: impl Into<ComponentName>,
+    ) -> &LatestAtComponentResults {
+        let component_name = component_name.into();
+        if let Some(component) = self.components.get(&component_name) {
             component
         } else {
             static DEFAULT: LatestAtComponentResults = LatestAtComponentResults::EMPTY;
