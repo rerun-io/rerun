@@ -6,6 +6,7 @@ __all__ = [
     "Blueprint",
     "BlueprintLike",
     "BlueprintPanel",
+    "BlueprintPart",
     "components",
     "datatypes",
     "Grid",
@@ -22,6 +23,8 @@ __all__ = [
     "Vertical",
     "Viewport",
     "ViewportLike",
+    "SpaceView",
+    "Container",
 ]
 
 from . import archetypes, components, datatypes
@@ -29,7 +32,10 @@ from .api import (
     Blueprint,
     BlueprintLike,
     BlueprintPanel,
+    BlueprintPart,
+    Container,
     SelectionPanel,
+    SpaceView,
     TimePanel,
     Viewport,
     ViewportLike,
