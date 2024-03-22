@@ -65,7 +65,9 @@ impl crate::DataUi for EntityDb {
             {
                 re_ui.grid_left_hand_label(ui, "Size");
                 ui.label(re_format::format_bytes(self.total_size_bytes() as _))
-                    .on_hover_text("Approximate size in RAM (decompressed)");
+                    .on_hover_text(
+                        "Approximate size in RAM (decompressed).\n\
+                         If you hover an entity in the streams view (bottom panel) you can see the size of individual entities.");
                 ui.end_row();
             }
 
