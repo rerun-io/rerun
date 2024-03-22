@@ -2,8 +2,8 @@
 title = "3D Line Mapping Revisited"
 source = "https://github.com/rerun-io/limap"
 tags = ["2D", "3D", "structure-from-motion", "time-series", "line-detection", "pinhole-camera"]
-thumbnail = "https://static.rerun.io/limap/30b9ad1ae36df7dc809edfd40c11620292bc7294/480w.png"
-thumbnail_dimensions = [480, 277]
+thumbnail = "https://static.rerun.io/3d-line-mapping-revisited/be0a3b8ac0836036862d773b4276ea9d7ffb27b8/480w.png" # NOLINT
+thumbnail_dimensions = [480, 480]
 -->
 
 

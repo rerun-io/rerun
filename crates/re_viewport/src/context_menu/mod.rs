@@ -2,9 +2,9 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Item, ItemCollection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
 
-use crate::{ContainerBlueprint, Contents, ViewportBlueprint};
+use crate::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
 mod sub_menu;

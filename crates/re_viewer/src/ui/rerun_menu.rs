@@ -162,7 +162,7 @@ impl App {
         }
     }
 
-    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_view: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
         use re_ui::UICommandSender;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
@@ -182,9 +182,7 @@ impl App {
                 });
             });
         } else {
-            let entity_db_is_nonempty = store_view
-                .and_then(|view| view.recording)
-                .map_or(false, |recording| !recording.is_empty());
+            let entity_db_is_nonempty = store_ctx.map_or(false, |ctx| !ctx.recording.is_empty());
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
                     .add(save_recording_button)
@@ -199,7 +197,7 @@ impl App {
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
                 // at the moment so…
-                let loop_selection = self.state.loop_selection(store_view);
+                let loop_selection = self.state.loop_selection(store_ctx);
 
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)

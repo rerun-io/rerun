@@ -1,6 +1,7 @@
 <!--[metadata]
 title = "Clock"
-thumbnail = "https://static.rerun.io/clock/ae4b8970edba8480431cb71e57b8cddd9e1769c7/480w.png"
+thumbnail = "https://static.rerun.io/clock/8c49e25f5cac4d6a1d7d0490b14cf6881bdb707b/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 

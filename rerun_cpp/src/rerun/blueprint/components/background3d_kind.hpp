@@ -15,7 +15,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The type of the background in 3D Space Views.
+    /// **Component**: The type of the background in 3D space views.
     enum class Background3DKind : uint8_t {
 
         /// Gradient depending on the direction of the view, dark theme.

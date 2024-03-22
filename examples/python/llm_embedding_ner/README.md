@@ -2,9 +2,8 @@
 title = "LLM Embedding-Based Named Entity Recognition"
 tags = ["LLM", "embeddings", "classification", "huggingface", "text"]
 description = "Visualize the BERT-based named entity recognition NER with UMAP Embeddings."
-thumbnail = "https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/480w.png"
-thumbnail_dimensions = [480, 279]
--->
+thumbnail = "https://static.rerun.io/llm-embedding/999737b3b78d762e70116bc23929ebfde78e18c6/480w.png"
+thumbnail_dimensions = [480, 480]
 
 <picture>
   <img src="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/full.png" alt="">

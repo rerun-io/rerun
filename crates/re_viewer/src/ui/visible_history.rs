@@ -93,12 +93,12 @@ pub fn visual_time_range_ui(
                 });
         });
 
-        let timeline_spec = if let Some(times) = ctx.entity_db.time_histogram(time_ctrl.timeline())
-        {
-            TimelineSpec::from_time_histogram(times)
-        } else {
-            TimelineSpec::from_time_range(0..=0)
-        };
+        let timeline_spec =
+            if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
+                TimelineSpec::from_time_histogram(times)
+            } else {
+                TimelineSpec::from_time_range(0..=0)
+            };
 
         let current_time = time_ctrl
             .time_i64()

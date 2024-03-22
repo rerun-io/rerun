@@ -51,8 +51,8 @@ fn loading_receivers_ui(
 ) -> bool {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
         .store_context
-        .all_recordings
-        .iter()
+        .bundle
+        .recordings()
         .filter_map(|store| store.data_source.clone())
         .collect();
 
@@ -107,11 +107,11 @@ fn loading_receivers_ui(
 /// Returns `true` if any recordings were shown.
 fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     let mut entity_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-    for entity_db in &ctx.store_context.all_recordings {
+    for entity_db in ctx.store_context.bundle.recordings() {
         let key = entity_db
             .store_info()
             .map_or("<unknown>", |info| info.application_id.as_str());
-        entity_dbs_map.entry(key).or_default().push(*entity_db);
+        entity_dbs_map.entry(key).or_default().push(entity_db);
     }
 
     if entity_dbs_map.is_empty() {
@@ -122,7 +122,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
     }
 
-    let active_recording = ctx.store_context.recording.map(|rec| rec.store_id());
+    let active_recording = Some(ctx.store_context.recording.store_id());
 
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
@@ -131,7 +131,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         } else {
             ctx.re_ui
                 .list_item(app_id)
-                .active(false)
+                .interactive(false)
                 .show_hierarchical_with_content(
                     ui,
                     ui.make_persistent_id(app_id),

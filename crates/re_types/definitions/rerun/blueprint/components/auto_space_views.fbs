@@ -10,8 +10,6 @@ namespace rerun.blueprint.components;
 // ---
 
 /// Whether or not space views should be created automatically.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 struct AutoSpaceViews (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",

@@ -10,16 +10,15 @@ use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId,
-    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier,
+    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
-use crate::container::blueprint_id_to_tile_id;
 use crate::screenshot::handle_pending_space_view_screenshots;
 use crate::{
-    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, container::Contents,
-    context_menu_ui_for_item, icon_for_container_kind,
-    space_view_entity_picker::SpaceViewEntityPicker,
+    add_space_view_or_container_modal::AddSpaceViewOrContainerModal, context_menu_ui_for_item,
+    icon_for_container_kind, space_view_entity_picker::SpaceViewEntityPicker,
     system_execution::execute_systems_for_all_space_views, SelectionUpdateBehavior,
     ViewportBlueprint,
 };
@@ -924,9 +923,27 @@ impl TabWidget {
                 if let Some(Contents::Container(container_id)) =
                     tab_viewer.contents_per_tile_id.get(&tile_id)
                 {
+                    let (label, user_named) = if let Some(container_blueprint) =
+                        tab_viewer.viewport_blueprint.container(container_id)
+                    {
+                        (
+                            container_blueprint
+                                .display_name_or_default()
+                                .as_ref()
+                                .into(),
+                            container_blueprint.display_name.is_some(),
+                        )
+                    } else {
+                        re_log::warn_once!("Container {container_id} missing during egui_tiles");
+                        (
+                            tab_viewer.ctx.re_ui.error_text("Internal error").into(),
+                            false,
+                        )
+                    };
+
                     TabDesc {
-                        label: format!("{:?}", container.kind()).into(),
-                        user_named: false,
+                        label,
+                        user_named,
                         icon: icon_for_container_kind(&container.kind()),
                         item: Some(Item::Container(*container_id)),
                     }
