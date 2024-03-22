@@ -358,10 +358,16 @@ impl ApplicationSelectionState {
             .hovered_previous_frame
             .iter_items()
             .any(|current| match current {
-                Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => current == test,
+                Item::DataSource(_)
+                | Item::StoreId(_)
+                | Item::SpaceView(_)
+                | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
-                    Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => false,
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
+                    | Item::SpaceView(_)
+                    | Item::Container(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path
@@ -377,10 +383,12 @@ impl ApplicationSelectionState {
                 },
 
                 Item::InstancePath(current_instance_path) => match test {
-                    Item::StoreId(_)
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
                     | Item::Container(_) => false,
+
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path
@@ -392,10 +400,12 @@ impl ApplicationSelectionState {
                 },
 
                 Item::DataResult(_current_space_view_id, current_instance_path) => match test {
-                    Item::StoreId(_)
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
                     | Item::Container(_) => false,
+
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path

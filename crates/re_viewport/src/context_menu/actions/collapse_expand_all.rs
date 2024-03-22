@@ -24,8 +24,10 @@ impl ContextMenuAction for CollapseExpandAllAction {
         // TODO(ab): in an ideal world, we'd check the fully expended/collapsed state of the item to
         // avoid showing a command that wouldn't have an effect but that's lots of added complexity.
         match item {
-            Item::StoreId(_) | Item::ComponentPath(_) => false,
+            Item::DataSource(_) | Item::StoreId(_) | Item::ComponentPath(_) => false,
+
             Item::SpaceView(_) | Item::Container(_) | Item::InstancePath(_) => true,
+
             //TODO(ab): for DataResult, walk the data result tree instead!
             Item::DataResult(_, instance_path) => ctx
                 .viewer_context

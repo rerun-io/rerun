@@ -551,6 +551,33 @@ pub fn entity_hover_card_ui(
     instance_hover_card_ui(ui, ctx, query, store, &instance_path);
 }
 
+pub fn data_source_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    data_source: &re_smart_channel::SmartChannelSource,
+) -> egui::Response {
+    let item = Item::DataSource(data_source.clone());
+
+    // TODO(emilk): an icon for data sources
+
+    let response = ui.selectable_label(
+        ctx.selection().contains_item(&item),
+        data_source.to_string(),
+    );
+
+    let response = response.on_hover_ui(|ui| {
+        data_source.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Full,
+            &ctx.current_query(),
+            ctx.recording_store(), // unused
+        );
+    });
+
+    cursor_interact_with_selectable(ctx, response, item)
+}
+
 /// Show button for a store (recording or blueprint).
 ///
 /// If an `app_id_label` is provided, it will be shown in front of the recording time.

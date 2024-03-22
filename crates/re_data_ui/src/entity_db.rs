@@ -2,7 +2,7 @@ use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_viewer_context::ViewerContext;
 
-use crate::item_ui::entity_db_button_ui;
+use crate::item_ui::{data_source_button_ui, entity_db_button_ui};
 
 impl crate::DataUi for EntityDb {
     fn data_ui(
@@ -64,7 +64,7 @@ impl crate::DataUi for EntityDb {
 
             if let Some(data_source) = &self.data_source {
                 re_ui.grid_left_hand_label(ui, "Data source");
-                ui.label(data_source.to_string());
+                data_source_button_ui(ctx, ui, data_source);
                 ui.end_row();
             }
         });

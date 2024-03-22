@@ -256,7 +256,11 @@ impl ViewportBlueprint {
     /// If `false`, the item is referring to data that is not present in this blueprint.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
-            Item::StoreId(_) | Item::ComponentPath(_) | Item::InstancePath(_) => true,
+            Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::ComponentPath(_)
+            | Item::InstancePath(_) => true,
+
             Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
                 self.space_view(space_view_id).is_some()
             }

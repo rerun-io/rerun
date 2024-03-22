@@ -88,7 +88,7 @@ impl Viewport<'_, '_> {
             });
     }
 
-    /// Expend all required items and compute which item we should scroll to.
+    /// Expand all required items and compute which item we should scroll to.
     fn handle_focused_item(
         &self,
         ctx: &ViewerContext<'_>,
@@ -144,7 +144,7 @@ impl Viewport<'_, '_> {
                 )),
             ),
 
-            Item::StoreId(_) => None,
+            Item::DataSource(_) | Item::StoreId(_) => None,
         }
     }
 
