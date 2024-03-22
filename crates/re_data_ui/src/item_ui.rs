@@ -569,7 +569,7 @@ pub fn data_source_button_ui(
         data_source.data_ui(
             ctx,
             ui,
-            re_viewer_context::UiVerbosity::Full,
+            re_viewer_context::UiVerbosity::Reduced,
             &ctx.current_query(),
             ctx.recording_store(), // unused
         );
@@ -657,7 +657,7 @@ pub fn entity_db_button_ui(
             entity_db.data_ui(
                 ctx,
                 ui,
-                re_viewer_context::UiVerbosity::Full,
+                re_viewer_context::UiVerbosity::Reduced,
                 &ctx.current_query(),
                 entity_db.store(),
             );
