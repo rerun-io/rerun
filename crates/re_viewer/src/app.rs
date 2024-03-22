@@ -423,11 +423,17 @@ impl App {
                 }
             }
 
-            SystemCommand::SetSelection(store_id, item) => {
-                if let Some(rec_cfg) = self.state.recording_config_mut(&store_id) {
-                    rec_cfg.selection_state.set_selection(item);
-                } else {
-                    re_log::debug!("Failed to select item {item:?}");
+            SystemCommand::SetSelection { recording_id, item } => {
+                let recording_id =
+                    recording_id.or_else(|| store_hub.current_recording_id().cloned());
+                if let Some(recording_id) = recording_id {
+                    if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
+                        rec_cfg.selection_state.set_selection(item);
+                    } else {
+                        re_log::debug!(
+                            "Failed to select item {item:?}: failed to find recording {recording_id}"
+                        );
+                    }
                 }
             }
 

@@ -550,3 +550,110 @@ pub fn entity_hover_card_ui(
     let instance_path = InstancePath::entity_splat(entity_path.clone());
     instance_hover_card_ui(ui, ctx, query, store, &instance_path);
 }
+
+/// Show button for a store (recording or blueprint).
+///
+/// If an `app_id_label` is provided, it will be shown in front of the recording time.
+pub fn entity_db_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_db: &re_entity_db::EntityDb,
+    app_id_label: Option<&str>,
+) {
+    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+
+    let app_id_label =
+        app_id_label.map_or(String::new(), |app_id_label| format!("{app_id_label} - "));
+
+    let time = entity_db
+        .store_info()
+        .and_then(|info| {
+            info.started
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
+        })
+        .unwrap_or("<unknown time>".to_owned());
+
+    let title = format!("{app_id_label}{time}");
+
+    let store_id = entity_db.store_id().clone();
+    let item = re_viewer_context::Item::StoreId(store_id.clone());
+
+    let mut list_item = ctx
+        .re_ui
+        .list_item(title)
+        .selected(ctx.selection().contains_item(&item))
+        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+            // Color icon based on whether this is the active recording or not:
+            let color = if ctx.store_context.is_active(&store_id) {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+            re_ui::icons::STORE
+                .as_image()
+                .tint(color)
+                .paint_at(ui, rect);
+        })
+        .with_buttons(|re_ui, ui| {
+            // Close-button:
+            let resp = re_ui
+                .small_icon_button(ui, &re_ui::icons::REMOVE)
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
+            if resp.clicked() {
+                ctx.command_sender
+                    .send_system(SystemCommand::CloseStore(store_id.clone()));
+            }
+            resp
+        });
+
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item
+        .show_flat(ui) // never more than one level deep
+        .on_hover_ui(|ui| {
+            entity_db.data_ui(
+                ctx,
+                ui,
+                re_viewer_context::UiVerbosity::Full,
+                &ctx.current_query(),
+                entity_db.store(),
+            );
+        });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        // Open the recording / switch to this blueprint…
+        ctx.command_sender
+            .send_system(SystemCommand::ActivateStore(store_id.clone()));
+
+        // …and select the store in the selection panel.
+        // Note that we must do it in this order, since the selection state is stored in the recording.
+        // That's also why we use a command to set the selection.
+        match store_id.kind {
+            re_log_types::StoreKind::Recording => {
+                ctx.command_sender.send_system(SystemCommand::SetSelection {
+                    recording_id: Some(store_id),
+                    item,
+                });
+            }
+            re_log_types::StoreKind::Blueprint => {
+                ctx.command_sender.send_system(SystemCommand::SetSelection {
+                    recording_id: None,
+                    item,
+                });
+            }
+        }
+    }
+}

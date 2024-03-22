@@ -152,6 +152,18 @@ impl StoreHub {
         }
     }
 
+    /// Directly access the [`EntityDb`] for the selected recording
+    pub fn current_recording_id(&self) -> Option<&StoreId> {
+        self.selected_rec_id.as_ref()
+    }
+
+    /// Directly access the [`EntityDb`] for the selected recording
+    pub fn current_recording(&self) -> Option<&EntityDb> {
+        self.selected_rec_id
+            .as_ref()
+            .and_then(|id| self.store_bundle.get(id))
+    }
+
     /// Change the selected/visible recording id.
     /// This will also change the application-id to match the newly selected recording.
     pub fn set_recording_id(&mut self, recording_id: StoreId) {
@@ -302,13 +314,6 @@ impl StoreHub {
         // our actual target goal.
         // We cannot do that though: there are other subsystems that need to release memory before
         // we can get an accurate reading of the current memory used and decide if we should go on.
-    }
-
-    /// Directly access the [`EntityDb`] for the selected recording
-    pub fn current_recording(&self) -> Option<&EntityDb> {
-        self.selected_rec_id
-            .as_ref()
-            .and_then(|id| self.store_bundle.get(id))
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
