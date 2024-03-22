@@ -161,7 +161,10 @@ impl AppState {
 
         recording_config_entry(recording_configs, recording.store_id().clone(), recording)
             .selection_state
-            .on_frame_start(|item| viewport.is_item_valid(item));
+            .on_frame_start(
+                |item| viewport.is_item_valid(item),
+                re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+            );
 
         let rec_cfg =
             recording_config_entry(recording_configs, recording.store_id().clone(), recording);
@@ -297,19 +300,12 @@ impl AppState {
             app_blueprint.time_panel_expanded,
         );
 
-        {
-            if ctx.selection().is_empty() {
-                // Make sure something is selected before showing the selection panel.
-                ctx.selection_state()
-                    .set_selection(re_viewer_context::Item::StoreId(ctx.recording_id().clone()));
-            }
-            selection_panel.show_panel(
-                &ctx,
-                ui,
-                &mut viewport,
-                app_blueprint.selection_panel_expanded,
-            );
-        }
+        selection_panel.show_panel(
+            &ctx,
+            ui,
+            &mut viewport,
+            app_blueprint.selection_panel_expanded,
+        );
 
         let central_panel_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
