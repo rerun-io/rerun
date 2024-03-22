@@ -32,9 +32,6 @@ impl ContextMenuAction for RemoveAction {
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
             .remove_contents(Contents::Container(*container_id));
-        ctx.viewer_context
-            .selection_state()
-            .remove_from_selection(Item::Container(*container_id));
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
@@ -42,9 +39,6 @@ impl ContextMenuAction for RemoveAction {
             .mark_user_interaction(ctx.viewer_context);
         ctx.viewport_blueprint
             .remove_contents(Contents::SpaceView(*space_view_id));
-        ctx.viewer_context
-            .selection_state()
-            .remove_from_selection(Item::SpaceView(*space_view_id));
     }
 
     fn process_data_result(
@@ -58,10 +52,6 @@ impl ContextMenuAction for RemoveAction {
                 ctx.viewer_context,
                 EntityPathRule::including_subtree(instance_path.entity_path.clone()),
             );
-
-            ctx.viewer_context
-                .selection_state()
-                .remove_from_selection(Item::DataResult(*space_view_id, instance_path.clone()));
         }
     }
 }

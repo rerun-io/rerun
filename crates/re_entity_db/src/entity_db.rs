@@ -525,7 +525,7 @@ impl EntityDb {
 
         let set_store_info_msg = self
             .store_info_msg()
-            .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
+            .map(|msg| Ok(LogMsg::SetStoreInfo(msg.clone())));
 
         let time_filter = time_selection.map(|(timeline, range)| {
             (
@@ -540,10 +540,14 @@ impl EntityDb {
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
         });
 
+        // Signal that the store is done loading.
+        // Important for blueprints.
+        let activate_store_msg = LogMsg::ActivateStore(self.store_id().clone());
+
         let messages: Result<Vec<_>, _> = set_store_info_msg
-            .map(re_log_types::DataTableResult::Ok)
             .into_iter()
             .chain(data_messages)
+            .chain(std::iter::once(Ok(activate_store_msg)))
             .collect();
 
         messages
