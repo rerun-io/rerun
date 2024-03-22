@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: Whether a Space View is maximized.
+/// **Component**: Whether a space view is maximized.
 #[derive(Clone, Debug, Default)]
 #[repr(transparent)]
 pub struct SpaceViewMaximized(pub crate::datatypes::Uuid);

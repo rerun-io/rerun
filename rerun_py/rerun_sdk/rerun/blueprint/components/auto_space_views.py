@@ -24,7 +24,7 @@ __all__ = [
 
 @define(init=False)
 class AutoSpaceViews(AutoSpaceViewsExt):
-    """**Component**: Whether or not Space Views should be created automatically."""
+    """**Component**: Whether or not space views should be created automatically."""
 
     def __init__(self: Any, auto_space_views: AutoSpaceViewsLike):
         """Create a new instance of the AutoSpaceViews component."""

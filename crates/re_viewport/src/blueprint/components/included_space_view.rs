@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The unique id of a Space View, used to refer to views in containers.
+/// **Component**: The unique id of a space view, used to refer to views in containers.
 #[derive(Clone, Debug, Default)]
 #[repr(transparent)]
 pub struct IncludedSpaceView(pub crate::datatypes::Uuid);

@@ -12,7 +12,7 @@ __all__ = ["IncludedSpaceView", "IncludedSpaceViewBatch", "IncludedSpaceViewType
 
 
 class IncludedSpaceView(datatypes.Uuid):
-    """**Component**: The unique id of a Space View, used to refer to views in containers."""
+    """**Component**: The unique id of a space view, used to refer to views in containers."""
 
     # You can define your own __init__ function as a member of IncludedSpaceViewExt in included_space_view_ext.py
 

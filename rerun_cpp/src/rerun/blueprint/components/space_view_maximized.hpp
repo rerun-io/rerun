@@ -11,7 +11,7 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: Whether a Space View is maximized.
+    /// **Component**: Whether a space view is maximized.
     struct SpaceViewMaximized {
         rerun::datatypes::Uuid space_view_id;
 

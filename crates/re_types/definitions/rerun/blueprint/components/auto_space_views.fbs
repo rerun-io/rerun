@@ -9,7 +9,7 @@ namespace rerun.blueprint.components;
 
 // ---
 
-/// Whether or not Space Views should be created automatically.
+/// Whether or not space views should be created automatically.
 struct AutoSpaceViews (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",
