@@ -66,7 +66,7 @@ def update() -> None:
             (example.path / "README.md").write_text(
                 example.readme[:start] + f"thumbnail_dimensions = [{width}, {height}]" + example.readme[end:],
                 encoding="utf-8",
-                newline='\n',
+                newline="\n",
             )
 
             print(f"✔ {example.path}")
