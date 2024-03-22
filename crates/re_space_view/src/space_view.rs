@@ -553,6 +553,8 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
+                prefer_recording_blueprint: false,
+                is_recording_blueprint: false,
                 bundle: &Default::default(),
             };
 
@@ -596,6 +598,8 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
+                prefer_recording_blueprint: false,
+                is_recording_blueprint: false,
                 bundle: &Default::default(),
             };
 
@@ -645,6 +649,8 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
+                prefer_recording_blueprint: false,
+                is_recording_blueprint: false,
                 bundle: &Default::default(),
             };
 
@@ -917,6 +923,8 @@ mod tests {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
                 recording: &recording,
+                prefer_recording_blueprint: false,
+                is_recording_blueprint: false,
                 bundle: &Default::default(),
             };
             let mut query_result = space_view

@@ -92,9 +92,9 @@ impl StoreHub {
         &self.store_bundle
     }
 
-    /// Set whether the [`StoreHub`] should prefer the recording blueprint over the app blueprint.
-    pub fn set_prefer_recording_blueprint(&mut self, prefer_recording_blueprint: bool) {
-        self.prefer_recording_blueprint = prefer_recording_blueprint;
+    /// Toggle the preference for showing the recording blueprint.
+    pub fn toggle_prefer_recording_blueprint(&mut self) {
+        self.prefer_recording_blueprint ^= true;
     }
 
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
@@ -112,6 +112,7 @@ impl StoreHub {
 
         // We can't create a context without having an app-id.
         let app_id = self.active_application_id.clone()?;
+        let mut is_recording_blueprint = false;
 
         // If we currently prefer the recording blueprint, try to look it up
         // TODO(jleibs): Should this state be per-app-id?
@@ -121,8 +122,11 @@ impl StoreHub {
                 // If we have an app-id, then use it to look up the blueprint.
                 let recording_id = self.active_rec_id.clone()?;
 
-                // TODO(jleibs)
-                self.blueprint_by_recording_id.get(&recording_id)
+                let blueprint = self.blueprint_by_recording_id.get(&recording_id)?;
+
+                is_recording_blueprint = true;
+
+                Some(blueprint)
             })
             .flatten()
             .unwrap_or_else(|| {
@@ -144,6 +148,8 @@ impl StoreHub {
             app_id,
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
+            prefer_recording_blueprint: self.prefer_recording_blueprint,
+            is_recording_blueprint,
             bundle: &self.store_bundle,
         })
     }

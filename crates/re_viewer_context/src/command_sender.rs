@@ -25,6 +25,9 @@ pub enum SystemCommand {
     /// and make this blueprint the active blueprint for that `AppId`.
     ActivateStore(StoreId),
 
+    /// Toggle the preference for showing the app blueprint or recording blueprint
+    TogglePreferRecordingBlueprint,
+
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),
 

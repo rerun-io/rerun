@@ -379,6 +379,9 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
+            SystemCommand::TogglePreferRecordingBlueprint => {
+                store_hub.toggle_prefer_recording_blueprint();
+            }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
                 // disabled. This is because the blueprint inspector allows you to change the
@@ -489,6 +492,12 @@ impl App {
                     file
                 }));
             }
+
+            UICommand::TogglePreferRecordingBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::TogglePreferRecordingBlueprint);
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
