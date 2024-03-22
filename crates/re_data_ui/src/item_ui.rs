@@ -558,7 +558,7 @@ pub fn data_source_button_ui(
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 
-    // TODO(emilk): an icon for data sources
+    // TODO(#5645): an icon for data sources
 
     let response = ui.selectable_label(
         ctx.selection().contains_item(&item),

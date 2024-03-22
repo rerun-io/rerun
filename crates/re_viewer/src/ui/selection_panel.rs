@@ -300,7 +300,7 @@ fn what_is_selected_ui(
     match item {
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            let icon = None; // TODO(emilk): an icon for data sources
+            let icon = None; // TODO(#5645): an icon for data sources
             item_title_ui(ctx.re_ui, ui, &title, icon, &title);
         }
 
