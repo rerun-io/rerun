@@ -16,11 +16,11 @@ use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 /// to store both blueprints and recordings.
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
-/// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
+/// id` ([`StoreId`]) are currently active in the viewer. These can be configured
 /// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
 pub struct StoreHub {
-    selected_rec_id: Option<StoreId>,
-    selected_application_id: Option<ApplicationId>,
+    active_rec_id: Option<StoreId>,
+    active_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
@@ -71,8 +71,8 @@ impl StoreHub {
         crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
 
         Self {
-            selected_rec_id: None,
-            selected_application_id: None,
+            active_rec_id: None,
+            active_application_id: None,
             blueprint_by_app_id,
             store_bundle,
 
@@ -102,7 +102,7 @@ impl StoreHub {
             });
 
         // If we have an app-id, then use it to look up the blueprint.
-        let app_id = self.selected_application_id.clone()?;
+        let app_id = self.active_application_id.clone()?;
 
         let blueprint_id = self
             .blueprint_by_app_id
@@ -114,7 +114,7 @@ impl StoreHub {
         let blueprint = self.store_bundle.get(blueprint_id)?;
 
         let recording = self
-            .selected_rec_id
+            .active_rec_id
             .as_ref()
             .and_then(|id| self.store_bundle.get(id));
 
@@ -140,33 +140,36 @@ impl StoreHub {
     /// and make this blueprint the active blueprint for that `AppId`.
     pub fn activate_store(&mut self, store_id: StoreId) {
         match store_id.kind {
-            StoreKind::Recording => self.set_recording_id(store_id),
+            StoreKind::Recording => self.set_active_recording_id(store_id),
             StoreKind::Blueprint => {
                 if let Some(store) = self.store_bundle.get(&store_id) {
                     if let Some(app_id) = store.app_id().cloned() {
                         self.set_blueprint_for_app_id(store_id.clone(), app_id.clone());
-                        self.set_app_id(app_id.clone());
+                        self.set_active_app_id(app_id.clone());
                     }
                 }
             }
         }
     }
 
-    /// Directly access the [`EntityDb`] for the selected recording
-    pub fn current_recording_id(&self) -> Option<&StoreId> {
-        self.selected_rec_id.as_ref()
+    /// Directly access the [`EntityDb`] for the active recording.
+    pub fn active_recording_id(&self) -> Option<&StoreId> {
+        self.active_rec_id.as_ref()
     }
 
-    /// Directly access the [`EntityDb`] for the selected recording
-    pub fn current_recording(&self) -> Option<&EntityDb> {
-        self.selected_rec_id
+    /// Directly access the [`EntityDb`] for the active recording.
+    pub fn active_recording(&self) -> Option<&EntityDb> {
+        self.active_rec_id
             .as_ref()
             .and_then(|id| self.store_bundle.get(id))
     }
 
-    /// Change the selected/visible recording id.
-    /// This will also change the application-id to match the newly selected recording.
-    pub fn set_recording_id(&mut self, recording_id: StoreId) {
+    /// Change the active/visible recording id.
+    ///
+    /// This will also change the application-id to match the newly active recording.
+    pub fn set_active_recording_id(&mut self, recording_id: StoreId) {
+        debug_assert_eq!(recording_id.kind, StoreKind::Recording);
+
         // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
             .store_bundle
@@ -174,28 +177,28 @@ impl StoreHub {
             .as_ref()
             .and_then(|recording| recording.app_id())
         {
-            self.set_app_id(app_id.clone());
+            self.set_active_app_id(app_id.clone());
         }
 
-        self.selected_rec_id = Some(recording_id);
+        self.active_rec_id = Some(recording_id);
         self.was_recording_active = true;
     }
 
     pub fn remove(&mut self, store_id: &StoreId) {
-        if self.selected_rec_id.as_ref() == Some(store_id) {
+        if self.active_rec_id.as_ref() == Some(store_id) {
             if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
-                self.set_recording_id(new_selection.clone());
+                self.set_active_recording_id(new_selection.clone());
             } else {
-                self.selected_application_id = None;
-                self.selected_rec_id = None;
+                self.active_application_id = None;
+                self.active_rec_id = None;
             }
         }
 
         self.store_bundle.remove(store_id);
     }
 
-    /// Change the selected [`ApplicationId`]
-    pub fn set_app_id(&mut self, app_id: ApplicationId) {
+    /// Change the active [`ApplicationId`]
+    pub fn set_active_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
         // TODO(#2579): implement web-storage for blueprints as well
@@ -206,11 +209,11 @@ impl StoreHub {
             }
         }
 
-        self.selected_application_id = Some(app_id);
+        self.active_application_id = Some(app_id);
     }
 
-    pub fn selected_application_id(&self) -> Option<&ApplicationId> {
-        self.selected_application_id.as_ref()
+    pub fn active_application_id(&self) -> Option<&ApplicationId> {
+        self.active_application_id.as_ref()
     }
 
     /// Change which blueprint is active for a given [`ApplicationId`]
@@ -227,9 +230,9 @@ impl StoreHub {
             .any(|id| id == blueprint_id)
     }
 
-    /// Clear the current blueprint
-    pub fn clear_current_blueprint(&mut self) {
-        if let Some(app_id) = &self.selected_application_id {
+    /// Clear the currently active blueprint
+    pub fn clear_active_blueprint(&mut self) {
+        if let Some(app_id) = &self.active_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
                 self.store_bundle.remove(&blueprint_id);
@@ -442,16 +445,16 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Populate a [`StoreHubStats`] based on the selected app.
+    /// Populate a [`StoreHubStats`] based on the active app.
     //
     // TODO(jleibs): We probably want stats for all recordings, not just
-    // the currently selected recording.
+    // the active recording.
     pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
         re_tracing::profile_function!();
 
         // If we have an app-id, then use it to look up the blueprint.
         let blueprint = self
-            .selected_application_id
+            .active_application_id
             .as_ref()
             .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
@@ -465,7 +468,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording = self
-            .selected_rec_id
+            .active_rec_id
             .as_ref()
             .and_then(|rec_id| self.store_bundle.get(rec_id));
 

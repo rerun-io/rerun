@@ -368,7 +368,7 @@ impl App {
             SystemCommand::LoadStoreDb(entity_db) => {
                 let store_id = entity_db.store_id().clone();
                 store_hub.insert_entity_db(entity_db);
-                store_hub.set_recording_id(store_id);
+                store_hub.set_active_recording_id(store_id);
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
@@ -376,7 +376,7 @@ impl App {
                 // By clearing the blueprint it will be re-populated with the defaults
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint");
-                store_hub.clear_current_blueprint();
+                store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
@@ -423,7 +423,7 @@ impl App {
 
             SystemCommand::SetSelection { recording_id, item } => {
                 let recording_id =
-                    recording_id.or_else(|| store_hub.current_recording_id().cloned());
+                    recording_id.or_else(|| store_hub.active_recording_id().cloned());
                 if let Some(recording_id) = recording_id {
                     if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
                         rec_cfg.selection_state.set_selection(item);
@@ -951,7 +951,7 @@ impl App {
                     match store_id.kind {
                         StoreKind::Recording => {
                             re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_recording_id(store_id.clone());
+                            store_hub.set_active_recording_id(store_id.clone());
                         }
                         StoreKind::Blueprint => {
                             // We wait with activaing blueprints until they are fully loaded,
@@ -971,7 +971,7 @@ impl App {
                     match store_id.kind {
                         StoreKind::Recording => {
                             re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_recording_id(store_id.clone());
+                            store_hub.set_active_recording_id(store_id.clone());
                         }
                         StoreKind::Blueprint => {
                             re_log::debug!("Activating newly loaded blueprint");
@@ -1083,7 +1083,7 @@ impl App {
     pub fn recording_db(&self) -> Option<&EntityDb> {
         self.store_hub
             .as_ref()
-            .and_then(|store_hub| store_hub.current_recording())
+            .and_then(|store_hub| store_hub.active_recording())
     }
 
     fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
@@ -1125,8 +1125,7 @@ impl App {
     /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
-        if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
-        {
+        if store_hub.active_recording().is_some() || store_hub.active_application_id().is_some() {
             return false;
         }
 
@@ -1285,7 +1284,7 @@ impl eframe::App for App {
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
         if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_app_id(StoreHub::welcome_screen_app_id());
+            store_hub.set_active_app_id(StoreHub::welcome_screen_app_id());
         }
 
         let store_context = store_hub.read_context();
