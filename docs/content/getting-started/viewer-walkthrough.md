@@ -31,7 +31,7 @@ to take the images.
 ## Prerequisites
 Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
 you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
-experimentation and working with examples. You can either follow the [Python Quickstart](python.md) or simply run:
+experimentation and working with examples. You can either follow the [Python Quickstart](./quick-start/python.md) or simply run:
 
 ```bash
 pip install rerun-sdk

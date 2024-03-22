@@ -11,7 +11,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
 * `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
 * `cargo install rerun-cli` - build it from source (this requires Rust 1.74+)
 * Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/)
-* Together with the Rerun [Python SDK](python.md):
+* Together with the Rerun [Python SDK](./quick-start/python.md):
   * `pip3 install rerun-sdk` - download it via pip
   * `conda install -c conda-forge rerun-sdk` - download via Conda
   * `pixi global install rerun-sdk` - download it via [Pixi](https://prefix.dev/docs/pixi/overview)
@@ -23,6 +23,6 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](../howto/open-any-file.md) without needing to modify the Rerun codebase itself.
 
 To start getting your own data logged & visualized in the viewer check one of the respective getting started guides:
-* [Python](python.md)
-* [C++](cpp.md)
-* [Rust](rust.md)
+* [Python](./quick-start/python.md)
+* [C++](./quick-start/cpp.md)
+* [Rust](./quick-start/rust.md)
