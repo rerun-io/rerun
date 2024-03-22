@@ -1,6 +1,6 @@
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{FileSource, LogMsg, StoreKind};
+use re_log_types::{ActivateBlueprint, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -379,6 +379,9 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
+            SystemCommand::TogglePreferRecordingBlueprint => {
+                store_hub.toggle_prefer_recording_blueprint();
+            }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 // We only want to update the blueprint if the "inspect blueprint timeline" mode is
                 // disabled. This is because the blueprint inspector allows you to change the
@@ -489,6 +492,12 @@ impl App {
                     file
                 }));
             }
+
+            UICommand::TogglePreferRecordingBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::TogglePreferRecordingBlueprint);
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
@@ -967,17 +976,24 @@ impl App {
                     // Andled by EntityDb::add
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    match store_id.kind {
-                        StoreKind::Recording => {
+                LogMsg::ActivateBlueprint(activate_blueprint) => {
+                    match activate_blueprint {
+                        ActivateBlueprint::AppBlueprint { .. } => {
                             re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_active_recording_id(store_id.clone());
-                        }
-                        StoreKind::Blueprint => {
-                            re_log::debug!("Activating newly loaded blueprint");
                             if let Some(info) = entity_db.store_info() {
                                 let app_id = info.application_id.clone();
                                 store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
+                            } else {
+                                re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
+                            }
+                        }
+                        ActivateBlueprint::RecordingBlueprint { recording, .. } => {
+                            re_log::debug!("Opening a new recording: {store_id}");
+                            if entity_db.store_info().is_some() {
+                                store_hub.set_blueprint_for_recording_id(
+                                    store_id.clone(),
+                                    recording.clone(),
+                                );
                             } else {
                                 re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
                             }
@@ -1536,7 +1552,7 @@ fn save_recording(
     };
 
     save_entity_db(app, file_name.to_owned(), title.to_owned(), || {
-        entity_db.to_messages(loop_selection)
+        entity_db.to_messages(loop_selection, None)
     })
 }
 
@@ -1553,7 +1569,12 @@ fn save_blueprint(app: &mut App, store_context: Option<&StoreContext<'_>>) -> an
     // which mean they will merge in a strange way.
     // This is also related to https://github.com/rerun-io/rerun/issues/5295
     let new_store_id = re_log_types::StoreId::random(StoreKind::Blueprint);
-    let mut messages = store_context.blueprint.to_messages(None)?;
+    let blueprint_activation = ActivateBlueprint::AppBlueprint {
+        blueprint: new_store_id.clone(),
+    };
+    let mut messages = store_context
+        .blueprint
+        .to_messages(None, Some(blueprint_activation))?;
     for message in &mut messages {
         message.set_store_id(new_store_id.clone());
     }

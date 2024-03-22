@@ -14,6 +14,10 @@ pub struct StoreContext<'a> {
     /// If none is open, this will point to a dummy empty recording.
     pub recording: &'a EntityDb,
 
+    // TODO(jleibs): Better way to represent this state
+    pub prefer_recording_blueprint: bool,
+    pub is_recording_blueprint: bool,
+
     /// All the loaded recordings and blueprints.
     pub bundle: &'a StoreBundle,
 }

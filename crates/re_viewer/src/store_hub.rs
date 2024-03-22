@@ -3,7 +3,7 @@ use ahash::{HashMap, HashMapExt};
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
-use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_log_types::{ActivateBlueprint, ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
 
@@ -22,6 +22,8 @@ pub struct StoreHub {
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    blueprint_by_recording_id: HashMap<StoreId, StoreId>,
+    prefer_recording_blueprint: bool,
     store_bundle: StoreBundle,
 
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
@@ -74,6 +76,8 @@ impl StoreHub {
             active_rec_id: None,
             active_application_id: None,
             blueprint_by_app_id,
+            blueprint_by_recording_id: Default::default(),
+            prefer_recording_blueprint: false,
             store_bundle,
 
             was_recording_active: false,
@@ -86,6 +90,11 @@ impl StoreHub {
     #[inline]
     pub fn store_bundle(&self) -> &StoreBundle {
         &self.store_bundle
+    }
+
+    /// Toggle the preference for showing the recording blueprint.
+    pub fn toggle_prefer_recording_blueprint(&mut self) {
+        self.prefer_recording_blueprint ^= true;
     }
 
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
@@ -101,13 +110,30 @@ impl StoreHub {
                 ))
             });
 
-        // If we have an app-id, then use it to look up the blueprint.
+        // We can't create a context without having an app-id.
         let app_id = self.active_application_id.clone()?;
+        let mut is_recording_blueprint = false;
 
+        // If we currently prefer the recording blueprint, try to look it up
+        // TODO(jleibs): Should this state be per-app-id?
         let blueprint_id = self
-            .blueprint_by_app_id
-            .entry(app_id.clone())
-            .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+            .prefer_recording_blueprint
+            .then(|| {
+                // If we have an app-id, then use it to look up the blueprint.
+                let recording_id = self.active_rec_id.clone()?;
+
+                let blueprint = self.blueprint_by_recording_id.get(&recording_id)?;
+
+                is_recording_blueprint = true;
+
+                Some(blueprint)
+            })
+            .flatten()
+            .unwrap_or_else(|| {
+                self.blueprint_by_app_id
+                    .entry(app_id.clone())
+                    .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0))
+            });
 
         // Get or create the blueprint:
         self.store_bundle.blueprint_entry(blueprint_id);
@@ -122,6 +148,8 @@ impl StoreHub {
             app_id,
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
+            prefer_recording_blueprint: self.prefer_recording_blueprint,
+            is_recording_blueprint,
             bundle: &self.store_bundle,
         })
     }
@@ -221,6 +249,14 @@ impl StoreHub {
     pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
         re_log::debug!("Switching blueprint for {app_id} to {blueprint_id}");
         self.blueprint_by_app_id.insert(app_id, blueprint_id);
+    }
+
+    /// Change which blueprint is active for a given [`RecordingId`]
+    #[inline]
+    pub fn set_blueprint_for_recording_id(&mut self, blueprint_id: StoreId, recording_id: StoreId) {
+        re_log::debug!("Switching blueprint for {recording_id} to {blueprint_id}");
+        self.blueprint_by_recording_id
+            .insert(recording_id, blueprint_id);
     }
 
     /// Is the given blueprint id the active blueprint for any app id?
@@ -378,7 +414,10 @@ impl StoreHub {
                         let blueprint_path = default_blueprint_path(app_id)?;
                         re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
 
-                        let messages = blueprint.to_messages(None)?;
+                        let blueprint_activation = ActivateBlueprint::AppBlueprint {
+                            blueprint: blueprint_id.clone(),
+                        };
+                        let messages = blueprint.to_messages(None, Some(blueprint_activation))?;
 
                         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
                         // be small & fast to save, but maybe not once we start adding big pieces of user data?

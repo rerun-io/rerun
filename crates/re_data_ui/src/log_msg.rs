@@ -1,4 +1,4 @@
-use re_log_types::{ArrowMsg, DataTable, LogMsg, SetStoreInfo, StoreInfo};
+use re_log_types::{ActivateBlueprint, ArrowMsg, DataTable, LogMsg, SetStoreInfo, StoreInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -14,10 +14,14 @@ impl DataUi for LogMsg {
         store: &re_data_store::DataStore,
     ) {
         match self {
-            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, store),
-            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, store),
-            LogMsg::ActivateStore(store_id) => {
-                ui.label(format!("ActivateStore({store_id})"));
+            LogMsg::SetStoreInfo(msg) => {
+                msg.data_ui(ctx, ui, verbosity, query, store);
+            }
+            LogMsg::ArrowMsg(_, msg) => {
+                msg.data_ui(ctx, ui, verbosity, query, store);
+            }
+            LogMsg::ActivateBlueprint(activation) => {
+                activation.data_ui(ctx, ui, verbosity, query, store);
             }
         }
     }
@@ -114,5 +118,28 @@ impl DataUi for ArrowMsg {
                 }
             }
         }
+    }
+}
+
+impl DataUi for ActivateBlueprint {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_data_store::LatestAtQuery,
+        _store: &re_data_store::DataStore,
+    ) {
+        match self {
+            ActivateBlueprint::AppBlueprint { blueprint } => ui.label(format!(
+                "ActivateBlueprint::AppBlueprint(blueprint={blueprint})"
+            )),
+            ActivateBlueprint::RecordingBlueprint {
+                blueprint,
+                recording,
+            } => ui.label(format!(
+                "ActivateBlueprint::RecordingBlueprint(blueprint={blueprint}, recording={recording})"
+            )),
+        };
     }
 }

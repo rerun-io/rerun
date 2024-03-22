@@ -18,6 +18,7 @@ pub enum UICommand {
     SaveRecordingSelection,
     SaveBlueprint,
     CloseCurrentRecording,
+    TogglePreferRecordingBlueprint,
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -108,6 +109,11 @@ impl UICommand {
             Self::CloseCurrentRecording => (
                 "Close current Recording",
                 "Close the current Recording (unsaved data will be lost)",
+            ),
+
+            Self::TogglePreferRecordingBlueprint => (
+                "Toggle app vs recording blueprint",
+                "Toggle between using the app blueprint or the recording blueprint",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -251,6 +257,7 @@ impl UICommand {
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
+            Self::TogglePreferRecordingBlueprint => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),

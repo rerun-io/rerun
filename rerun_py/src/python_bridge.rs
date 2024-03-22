@@ -709,7 +709,8 @@ fn serve(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(blueprint) = blueprint {
-            RecordingStream::send_blueprint(blueprint.inner.take(), &*sink);
+            let recording_id = recording.store_info().map(|info| info.store_id.clone());
+            RecordingStream::send_blueprint(blueprint.inner.take(), recording_id, &*sink);
         }
 
         recording.set_sink(sink);
