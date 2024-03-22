@@ -382,7 +382,7 @@ impl eframe::App for ExampleApp {
                                     let mut item = re_ui
                                         .list_item(label)
                                         .selected(Some(i) == self.selected_list_item)
-                                        .active(i != 3)
+                                        .interactive(i != 3)
                                         .with_buttons(|re_ui, ui| {
                                             re_ui.small_icon_button(ui, &re_ui::icons::ADD)
                                                 | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)

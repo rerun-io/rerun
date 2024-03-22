@@ -192,6 +192,7 @@ fn onboarding_content_ui(ui: &mut Ui, command_sender: &CommandSender, accepts_co
     let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
         - grid_spacing.x)
         .floor()
+        .at_least(MIN_COLUMN_WIDTH)
         .at_most(MAX_COLUMN_WIDTH);
 
     ui.horizontal(|ui| {

@@ -22,8 +22,6 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether a space view is maximized.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Default)]
 #[repr(transparent)]
 pub struct SpaceViewMaximized(pub crate::datatypes::Uuid);

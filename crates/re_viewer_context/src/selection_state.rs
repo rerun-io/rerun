@@ -115,7 +115,7 @@ impl ItemCollection {
                     (
                         resolve_mono_instance_path_item(
                             &ctx.current_query(),
-                            ctx.entity_db.store(),
+                            ctx.recording_store(),
                             &item,
                         ),
                         space_ctx,
@@ -227,18 +227,29 @@ pub struct ApplicationSelectionState {
 
 impl ApplicationSelectionState {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
+    pub fn on_frame_start(
+        &mut self,
+        item_retain_condition: impl Fn(&Item) -> bool,
+        fallback_selection: Item,
+    ) {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
 
+        // Purge history of invalid items.
         let history = self.history.get_mut();
         history.retain(&item_retain_condition);
+
+        // Purge selection of invalid items.
+        let selection_this_frame = self.selection_this_frame.get_mut();
+        selection_this_frame.retain(|item, _| item_retain_condition(item));
+        if selection_this_frame.is_empty() {
+            *selection_this_frame = ItemCollection::from(fallback_selection);
+        }
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
         self.hovered_previous_frame = std::mem::take(self.hovered_this_frame.get_mut());
 
         // Selection in contrast, is sticky!
-        let selection_this_frame = self.selection_this_frame.get_mut();
         if selection_this_frame != &self.selection_previous_frame {
             history.update_selection(selection_this_frame);
             self.selection_previous_frame = selection_this_frame.clone();
@@ -284,17 +295,6 @@ impl ApplicationSelectionState {
     /// Set the hovered objects. Will be in [`Self::hovered_items`] on the next frame.
     pub fn set_hovered(&self, hovered: impl Into<ItemCollection>) {
         *self.hovered_this_frame.lock() = hovered.into();
-    }
-
-    /// Remove given items from the selection.
-    ///
-    /// Has no effect on items that were not selected in the first place.
-    /// Ignores `ItemSpaceContext`s in the passed collection if any.
-    pub fn remove_from_selection(&self, items: impl Into<ItemCollection>) {
-        let removed_items = items.into();
-        self.selection_this_frame
-            .lock()
-            .retain(|item, _| !removed_items.contains_item(item));
     }
 
     /// Select passed objects unless already selected in which case they get unselected.

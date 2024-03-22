@@ -1,5 +1,3 @@
-use itertools::Itertools as _;
-
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{FileSource, LogMsg, StoreKind};
@@ -486,9 +484,7 @@ impl App {
                 }));
             }
             UICommand::CloseCurrentRecording => {
-                let cur_rec = store_context
-                    .and_then(|ctx| ctx.recording)
-                    .map(|rec| rec.store_id());
+                let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
                         .send_system(SystemCommand::CloseRecordingId(cur_rec.clone()));
@@ -571,8 +567,7 @@ impl App {
             UICommand::SelectionPrevious => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_context
-                    .and_then(|ctx| ctx.recording)
-                    .map(|rec| rec.store_id())
+                    .map(|ctx| ctx.recording.store_id())
                     .and_then(|rec_id| state.recording_config_mut(rec_id))
                 {
                     rec_cfg.selection_state.select_previous();
@@ -581,8 +576,7 @@ impl App {
             UICommand::SelectionNext => {
                 let state = &mut self.state;
                 if let Some(rec_cfg) = store_context
-                    .and_then(|store_context| store_context.recording)
-                    .map(|rec| rec.store_id())
+                    .map(|ctx| ctx.recording.store_id())
                     .and_then(|rec_id| state.recording_config_mut(rec_id))
                 {
                     rec_cfg.selection_state.select_next();
@@ -615,19 +609,17 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDataStore => {
                 if let Some(ctx) = store_context {
-                    if let Some(recording) = ctx.recording {
-                        let table = recording.store().to_data_table();
-                        match table {
-                            Ok(table) => {
-                                let text = format!("{table}");
-                                self.re_ui
-                                    .egui_ctx
-                                    .output_mut(|o| o.copied_text = text.clone());
-                                println!("{text}");
-                            }
-                            Err(err) => {
-                                println!("{err}");
-                            }
+                    let table = ctx.recording.store().to_data_table();
+                    match table {
+                        Ok(table) => {
+                            let text = format!("{table}");
+                            self.re_ui
+                                .egui_ctx
+                                .output_mut(|o| o.copied_text = text.clone());
+                            println!("{text}");
+                        }
+                        Err(err) => {
+                            println!("{err}");
                         }
                     }
                 }
@@ -653,21 +645,17 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ClearPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    if let Some(recording) = ctx.recording {
-                        recording.query_caches().clear();
-                    }
+                    ctx.recording.query_caches().clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    if let Some(recording) = ctx.recording {
-                        let text = format!("{:?}", recording.query_caches());
-                        self.re_ui
-                            .egui_ctx
-                            .output_mut(|o| o.copied_text = text.clone());
-                        println!("{text}");
-                    }
+                    let text = format!("{:?}", ctx.recording.query_caches());
+                    self.re_ui
+                        .egui_ctx
+                        .output_mut(|o| o.copied_text = text.clone());
+                    println!("{text}");
                 }
             }
 
@@ -697,7 +685,7 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         command: TimeControlCommand,
     ) {
-        let Some(entity_db) = store_context.as_ref().and_then(|ctx| ctx.recording) else {
+        let Some(entity_db) = store_context.as_ref().map(|ctx| ctx.recording) else {
             return;
         };
         let rec_id = entity_db.store_id();
@@ -743,7 +731,7 @@ impl App {
             href = format!("{href}/{path}");
         }
         let direct_link = match store_context
-            .and_then(|ctx| ctx.recording)
+            .map(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
             Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
@@ -849,24 +837,7 @@ impl App {
                 self.egui_debug_panel_ui(ui);
 
                 if let Some(store_view) = store_context {
-                    static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
-                        once_cell::sync::Lazy::new(|| {
-                            EntityDb::new(re_log_types::StoreId::from_string(
-                                StoreKind::Recording,
-                                "<EMPTY>".to_owned(),
-                            ))
-                        });
-
-                    // We want the regular UI as soon as a blueprint is available (or, rather, an
-                    // app ID is set). If no recording is available, we use a default, empty one.
-                    // Note that EMPTY_STORE_DB is *not* part of the list of available recordings
-                    // (StoreContext::alternate_recordings), which means that it's not displayed in
-                    // the recordings UI.
-                    let entity_db = if let Some(entity_db) = store_view.recording {
-                        entity_db
-                    } else {
-                        &EMPTY_ENTITY_DB
-                    };
+                    let entity_db = store_view.recording;
 
                     // TODO(andreas): store the re_renderer somewhere else.
                     let egui_renderer = {
@@ -944,39 +915,6 @@ impl App {
                         re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
-
-                        // This could be the signal that we finished loading a blueprint.
-                        // In that case, we want to make it the default.
-                        // We wait with activaing blueprints until they are fully loaded,
-                        // so that we don't run heuristics on half-loaded blueprints.
-                        // This is a fallback in case `LogMsg::ActivateStore` isn't sent (for whatever reason).
-
-                        let blueprints = store_hub
-                            .entity_dbs_from_channel_source(&channel_source)
-                            .filter_map(|entity_db| {
-                                if let Some(store_info) = entity_db.store_info() {
-                                    match store_info.store_id.kind {
-                                        StoreKind::Recording => {
-                                            // Recordings become active as soon as we start streaming them.
-                                        }
-                                        StoreKind::Blueprint => {
-                                            return Some(store_info.clone());
-                                        }
-                                    }
-                                }
-                                None
-                            })
-                            .collect_vec();
-
-                        for re_log_types::StoreInfo {
-                            store_id,
-                            application_id,
-                            ..
-                        } in blueprints
-                        {
-                            re_log::debug!("Activating newly loaded blueprint");
-                            store_hub.set_blueprint_for_app_id(store_id, application_id);
-                        }
                     }
                     continue;
                 }
@@ -1579,7 +1517,7 @@ fn save_recording(
     store_context: Option<&StoreContext<'_>>,
     loop_selection: Option<(re_entity_db::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<()> {
-    let Some(entity_db) = store_context.as_ref().and_then(|view| view.recording) else {
+    let Some(entity_db) = store_context.as_ref().map(|view| view.recording) else {
         // NOTE: Can only happen if saving through the command palette.
         anyhow::bail!("No recording data to save");
     };

@@ -4,6 +4,7 @@ tags = ["2D"]
 description = "Visualization of the path finding algorithm RRT* in a simple environment."
 thumbnail= "https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/full.png"
 thumbnail_dimensions = [1496, 840]
+channel = "main"
 -->
 
 <picture>

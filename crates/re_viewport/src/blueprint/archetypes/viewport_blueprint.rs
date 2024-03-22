@@ -39,19 +39,19 @@ pub struct ViewportBlueprint {
     /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     pub auto_layout: Option<crate::blueprint::components::AutoLayout>,
 
-    /// Whether or not Space Views should be created automatically.
+    /// Whether or not space views should be created automatically.
     ///
-    /// If `true`, the viewer will only add Space Views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
-    /// and which aren't deemed redundant to existing Space Views.
-    /// This defaults to `false` and is automatically set to `false` when the user adds Space Views manually in the viewer.
+    /// If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    /// and which aren't deemed redundant to existing space views.
+    /// This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
     pub auto_space_views: Option<crate::blueprint::components::AutoSpaceViews>,
 
-    /// Hashes of all recommended Space Views the viewer has already added and that should not be added again.
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     ///
     /// This is an internal field and should not be set usually.
-    /// If you want the viewer from stopping to add Space Views, you should set `auto_space_views` to `false`.
+    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
     ///
-    /// The viewer uses this to determine whether it should keep adding Space Views.
+    /// The viewer uses this to determine whether it should keep adding space views.
     pub past_viewer_recommendations:
         Option<Vec<crate::blueprint::components::ViewerRecommendationHash>>,
 }

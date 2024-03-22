@@ -223,10 +223,11 @@ impl DataQuery for SpaceViewContents {
         let executor =
             QueryExpressionEvaluator::new(self, visualizable_entities_for_visualizer_systems);
 
-        let root_handle = ctx.recording.and_then(|store| {
+        let root_handle = {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
-            executor.add_entity_tree_to_data_results_recursive(store.tree(), &mut data_results)
-        });
+            executor
+                .add_entity_tree_to_data_results_recursive(ctx.recording.tree(), &mut data_results)
+        };
 
         DataQueryResult {
             tree: DataResultTree::new(data_results, root_handle),
@@ -642,8 +643,8 @@ mod tests {
         let ctx = StoreContext {
             app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
-            recording: Some(&recording),
-            all_recordings: vec![],
+            recording: &recording,
+            bundle: &Default::default(),
         };
 
         struct Scenario {

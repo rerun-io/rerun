@@ -331,7 +331,7 @@ impl UICommand {
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
         if anything_has_focus {
             return None; // e.g. we're typing in a TextField
         }

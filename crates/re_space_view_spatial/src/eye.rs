@@ -439,7 +439,7 @@ impl ViewEye {
     ///
     /// Returns `true` if we did anything.
     fn keyboard_navigation(&mut self, egui_ctx: &egui::Context, speed: f32) -> bool {
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
         if anything_has_focus {
             return false; // e.g. we're typing in a TextField
         }

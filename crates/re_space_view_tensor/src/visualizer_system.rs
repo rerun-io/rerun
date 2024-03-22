@@ -47,7 +47,7 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 

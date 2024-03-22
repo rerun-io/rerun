@@ -1,8 +1,7 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{CollapseScope, ContainerId, Item, SpaceViewId};
+use re_viewer_context::{CollapseScope, ContainerId, Contents, Item, SpaceViewId};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
-use crate::Contents;
 
 /// Collapse or expand all items in the selection.
 // TODO(ab): the current implementation makes strong assumptions of which CollapseScope to use based
@@ -30,7 +29,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             //TODO(ab): for DataResult, walk the data result tree instead!
             Item::DataResult(_, instance_path) => ctx
                 .viewer_context
-                .entity_db
+                .recording()
                 .tree()
                 .subtree(&instance_path.entity_path)
                 .is_some_and(|subtree| !subtree.is_leaf()),
@@ -80,7 +79,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
         // but the current API isn't super ergonomic.
         let Some(subtree) = ctx
             .viewer_context
-            .entity_db
+            .recording()
             .tree()
             .subtree(&instance_path.entity_path)
         else {
@@ -97,7 +96,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
     fn process_instance_path(&self, ctx: &ContextMenuContext<'_>, instance_path: &InstancePath) {
         let Some(subtree) = ctx
             .viewer_context
-            .entity_db
+            .recording()
             .tree()
             .subtree(&instance_path.entity_path)
         else {

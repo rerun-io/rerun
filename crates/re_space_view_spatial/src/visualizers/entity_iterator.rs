@@ -51,7 +51,7 @@ where
             } else {
                 transforms.reference_from_entity_ignoring_pinhole(
                     &data_result.entity_path,
-                    ctx.entity_db,
+                    ctx.recording(),
                     &query.latest_at_query(),
                 )
             };
@@ -75,7 +75,7 @@ where
         let extra_history = query_visual_history(ctx, data_result);
 
         match query_archetype_with_history::<A, N>(
-            ctx.entity_db.store(),
+            ctx.recording_store(),
             &query.timeline,
             &query.latest_at,
             &extra_history,
@@ -161,7 +161,7 @@ macro_rules! impl_process_archetype {
                 } else {
                     transforms.reference_from_entity_ignoring_pinhole(
                         &data_result.entity_path,
-                        ctx.entity_db,
+                        ctx.recording(),
                         &query.latest_at_query(),
                     )
                 };
@@ -184,8 +184,8 @@ macro_rules! impl_process_archetype {
 
                 let extra_history = query_visual_history(ctx, data_result);
 
-                match ctx.entity_db.query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    ctx.entity_db.store(),
+                match ctx.recording().query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
+                    ctx.recording_store(),
                     &query.timeline,
                     &query.latest_at,
                     &extra_history,
@@ -265,7 +265,7 @@ pub fn count_instances_in_archetype_views<
         let extra_history = query_visual_history(ctx, data_result);
 
         match query_archetype_with_history::<A, N>(
-            ctx.entity_db.store(),
+            ctx.recording_store(),
             &query.timeline,
             &query.latest_at,
             &extra_history,

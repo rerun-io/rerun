@@ -57,7 +57,7 @@ impl SpaceViewEntityPicker {
 fn add_entities_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, space_view: &SpaceViewBlueprint) {
     re_tracing::profile_function!();
 
-    let tree = &ctx.entity_db.tree();
+    let tree = &ctx.recording().tree();
     // TODO(jleibs): Avoid clone
     let query_result = ctx.lookup_query_result(space_view.id).clone();
     let entity_path_filter = &space_view.contents.entity_path_filter;
@@ -154,7 +154,7 @@ fn add_entities_line_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let store = ctx.recording_store();
 
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
@@ -322,7 +322,7 @@ fn create_entity_add_info(
     let class = space_view.class(ctx.space_view_class_registry);
     let visualizable_entities = determine_visualizable_entities(
         ctx.applicable_entities_per_visualizer,
-        ctx.entity_db,
+        ctx.recording(),
         &ctx.space_view_class_registry
             .new_visualizer_collection(*space_view.class_identifier()),
         class,
