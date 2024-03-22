@@ -550,6 +550,13 @@ impl EntityDb {
     }
 }
 
+impl re_types_core::SizeBytes for EntityDb {
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(emilk): size of entire EntityDb, including secondary indices etc
+        self.data_store.heap_size_bytes()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 pub struct IngestionStatistics {

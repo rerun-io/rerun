@@ -1,5 +1,6 @@
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
+use re_types::SizeBytes;
 use re_viewer_context::ViewerContext;
 
 use crate::item_ui::{data_source_button_ui, entity_db_button_ui};
@@ -28,9 +29,11 @@ impl crate::DataUi for EntityDb {
         }
 
         egui::Grid::new("entity_db").num_columns(2).show(ui, |ui| {
-            re_ui.grid_left_hand_label(ui, &format!("{} ID", self.store_id().kind));
-            ui.label(self.store_id().to_string());
-            ui.end_row();
+            {
+                re_ui.grid_left_hand_label(ui, &format!("{} ID", self.store_id().kind));
+                ui.label(self.store_id().to_string());
+                ui.end_row();
+            }
 
             if let Some(store_info) = self.store_info() {
                 let re_log_types::StoreInfo {
@@ -54,12 +57,16 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_source.to_string());
                 ui.end_row();
 
-                // We are in the recordings menu, we know the kind
-                if false {
-                    re_ui.grid_left_hand_label(ui, "Kind");
-                    ui.label(store_kind.to_string());
-                    ui.end_row();
-                }
+                re_ui.grid_left_hand_label(ui, "Kind");
+                ui.label(store_kind.to_string());
+                ui.end_row();
+            }
+
+            {
+                re_ui.grid_left_hand_label(ui, "Size");
+                ui.label(re_format::format_bytes(self.total_size_bytes() as _))
+                    .on_hover_text("Approximate size in RAM (decompressed)");
+                ui.end_row();
             }
 
             if let Some(data_source) = &self.data_source {

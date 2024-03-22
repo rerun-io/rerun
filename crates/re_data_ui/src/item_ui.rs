@@ -587,6 +587,7 @@ pub fn entity_db_button_ui(
     entity_db: &re_entity_db::EntityDb,
     app_id_label: Option<&str>,
 ) {
+    use re_types_core::SizeBytes as _;
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let app_id_label =
@@ -600,7 +601,8 @@ pub fn entity_db_button_ui(
         })
         .unwrap_or("<unknown time>".to_owned());
 
-    let title = format!("{app_id_label}{time}");
+    let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
+    let title = format!("{app_id_label}{time} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
