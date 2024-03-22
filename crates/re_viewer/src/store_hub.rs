@@ -291,15 +291,6 @@ impl StoreHub {
         self.store_bundle.contains(id)
     }
 
-    pub fn entity_dbs_from_channel_source<'a>(
-        &'a self,
-        source: &'a re_smart_channel::SmartChannelSource,
-    ) -> impl Iterator<Item = &EntityDb> + 'a {
-        self.store_bundle
-            .entity_dbs()
-            .filter(move |db| db.data_source.as_ref() == Some(source))
-    }
-
     /// Remove any recordings with a network source pointing at this `uri`.
     #[cfg(target_arch = "wasm32")]
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
