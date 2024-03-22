@@ -133,6 +133,25 @@ impl StoreHub {
         self.was_recording_active
     }
 
+    /// Activate a store by its [`StoreId`].
+    ///
+    /// If this is a recording, switch to it.
+    /// If this is a blueprint, switch to the `AppId` of the blueprint,
+    /// and make this blueprint the active blueprint for that `AppId`.
+    pub fn activate_store(&mut self, store_id: StoreId) {
+        match store_id.kind {
+            StoreKind::Recording => self.set_recording_id(store_id),
+            StoreKind::Blueprint => {
+                if let Some(store) = self.store_bundle.get(&store_id) {
+                    if let Some(app_id) = store.app_id().cloned() {
+                        self.set_blueprint_for_app_id(store_id.clone(), app_id.clone());
+                        self.set_app_id(app_id.clone());
+                    }
+                }
+            }
+        }
+    }
+
     /// Change the selected/visible recording id.
     /// This will also change the application-id to match the newly selected recording.
     pub fn set_recording_id(&mut self, recording_id: StoreId) {

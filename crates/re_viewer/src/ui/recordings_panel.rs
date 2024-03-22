@@ -125,7 +125,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     for (app_id, entity_dbs) in entity_dbs_map {
         if entity_dbs.len() == 1 {
             let entity_db = entity_dbs[0];
-            recording_button(ctx, ui, entity_db, Some(app_id));
+            entity_db_button_ui(ctx, ui, entity_db, Some(app_id));
         } else {
             ctx.re_ui
                 .list_item(app_id)
@@ -136,7 +136,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                     true,
                     |_, ui| {
                         for entity_db in entity_dbs {
-                            recording_button(ctx, ui, entity_db, None);
+                            entity_db_button_ui(ctx, ui, entity_db, None);
                         }
                     },
                 );
@@ -146,10 +146,10 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     true
 }
 
-/// Show the UI for a single recording.
+/// Show button for a store (recording or blueprint).
 ///
 /// If an `app_id_label` is provided, it will be shown in front of the recording time.
-fn recording_button(
+fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_db: &re_entity_db::EntityDb,
@@ -176,14 +176,12 @@ fn recording_button(
         .list_item(title)
         .selected(ctx.selection().contains_item(&item))
         .with_icon_fn(|_re_ui, ui, rect, visuals| {
-            let active_recording = ctx.store_context.recording.store_id();
-            let is_active_recording = &store_id == active_recording;
-            let color = if is_active_recording {
+            // Color icon based on whether this is the active recording or not:
+            let color = if ctx.store_context.is_active(&store_id) {
                 visuals.fg_stroke.color
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color
             };
-
             re_ui::icons::STORE
                 .as_image()
                 .tint(color)
@@ -193,7 +191,14 @@ fn recording_button(
             // Close-button:
             let resp = re_ui
                 .small_icon_button(ui, &re_ui::icons::REMOVE)
-                .on_hover_text("Close this Recording (unsaved data will be lost)");
+                .on_hover_text(match store_id.kind {
+                    re_log_types::StoreKind::Recording => {
+                        "Close this recording (unsaved data will be lost)"
+                    }
+                    re_log_types::StoreKind::Blueprint => {
+                        "Close this blueprint (unsaved data will be lost)"
+                    }
+                });
             if resp.clicked() {
                 ctx.command_sender
                     .send_system(SystemCommand::CloseStore(store_id.clone()));
@@ -222,11 +227,11 @@ fn recording_button(
     }
 
     if response.clicked() {
-        // Open the recording…
+        // Open the recording / switch to this blueprint…
         ctx.command_sender
-            .send_system(SystemCommand::SetRecordingId(store_id.clone()));
+            .send_system(SystemCommand::ActivateStore(store_id.clone()));
 
-        // …and select the recording in the recording.
+        // …and select the store in the selection panel.
         // Note that we must do it in this order, since the selection state is stored in the recording.
         // That's also why we use a command to set the selection.
         ctx.command_sender

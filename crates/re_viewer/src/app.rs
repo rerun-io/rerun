@@ -338,8 +338,8 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
-            SystemCommand::SetRecordingId(recording_id) => {
-                store_hub.set_recording_id(recording_id);
+            SystemCommand::ActivateStore(store_id) => {
+                store_hub.activate_store(store_id);
             }
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
