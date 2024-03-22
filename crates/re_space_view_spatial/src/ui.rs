@@ -481,13 +481,12 @@ pub fn picking(
             instance_path.instance_key = InstanceKey::SPLAT;
         }
 
-        if !ctx
+        let interactive = ctx
             .lookup_query_result(query.space_view_id)
             .tree
             .lookup_result_by_path(&instance_path.entity_path)
-            .map_or(false, |result| result.accumulated_properties().interactive)
-        {
-            // Skip non-interactive entities.
+            .map_or(false, |result| result.accumulated_properties().interactive);
+        if !interactive {
             continue;
         }
 
