@@ -196,7 +196,7 @@ fn recording_button(
                 .on_hover_text("Close this Recording (unsaved data will be lost)");
             if resp.clicked() {
                 ctx.command_sender
-                    .send_system(SystemCommand::CloseRecordingId(store_id.clone()));
+                    .send_system(SystemCommand::CloseStore(store_id.clone()));
             }
             resp
         });

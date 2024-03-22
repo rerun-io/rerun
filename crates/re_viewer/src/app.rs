@@ -341,8 +341,8 @@ impl App {
             SystemCommand::SetRecordingId(recording_id) => {
                 store_hub.set_recording_id(recording_id);
             }
-            SystemCommand::CloseRecordingId(recording_id) => {
-                store_hub.remove_recording_id(&recording_id);
+            SystemCommand::CloseStore(store_id) => {
+                store_hub.remove(&store_id);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -489,7 +489,7 @@ impl App {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
                     self.command_sender
-                        .send_system(SystemCommand::CloseRecordingId(cur_rec.clone()));
+                        .send_system(SystemCommand::CloseStore(cur_rec.clone()));
                 }
             }
 

@@ -150,9 +150,9 @@ impl StoreHub {
         self.was_recording_active = true;
     }
 
-    pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
-        if self.selected_rec_id.as_ref() == Some(recording_id) {
-            if let Some(new_selection) = self.store_bundle.find_closest_recording(recording_id) {
+    pub fn remove(&mut self, store_id: &StoreId) {
+        if self.selected_rec_id.as_ref() == Some(store_id) {
+            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
                 self.set_recording_id(new_selection.clone());
             } else {
                 self.selected_application_id = None;
@@ -160,7 +160,7 @@ impl StoreHub {
             }
         }
 
-        self.store_bundle.remove(recording_id);
+        self.store_bundle.remove(store_id);
     }
 
     /// Change the selected [`ApplicationId`]
@@ -259,7 +259,7 @@ impl StoreHub {
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
-            self.remove_recording_id(&store_id);
+            self.remove(&store_id);
             return;
         }
 
@@ -273,7 +273,7 @@ impl StoreHub {
         // log new things anyhow.
         let num_recordings = store_bundle.recordings().count();
         if store_size_before == store_size_after && num_recordings > 1 {
-            self.remove_recording_id(&store_id);
+            self.remove(&store_id);
         }
 
         // Either we've reached our target goal or we couldn't fetch memory stats, in which case

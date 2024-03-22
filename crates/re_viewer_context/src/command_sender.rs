@@ -23,8 +23,8 @@ pub enum SystemCommand {
     /// Change the active recording-id in the `StoreHub`
     SetRecordingId(StoreId),
 
-    /// Close a recording
-    CloseRecordingId(StoreId),
+    /// Close a recording or blueprint (free its memory).
+    CloseStore(StoreId),
 
     /// Update the blueprint with additional data
     ///
