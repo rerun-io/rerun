@@ -10,9 +10,7 @@ namespace rerun.blueprint.components;
 // ---
 
 
-/// The id of a `SpaceView`.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
+/// The unique id of a space view, used to refer to views in containers.
 table IncludedSpaceView (
   "attr.rerun.scope": "blueprint",
   "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",

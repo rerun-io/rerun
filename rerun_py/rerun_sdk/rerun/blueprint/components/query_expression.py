@@ -23,8 +23,6 @@ class QueryExpression(datatypes.Utf8):
     The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
     (`/world/**` matches both `/world` and `/world/car/driver`).
     Other uses of `*` are not (yet) supported.
-
-    Unstable. Used for the ongoing blueprint experimentations.
     """
 
     # You can define your own __init__ function as a member of QueryExpressionExt in query_expression_ext.py

@@ -28,11 +28,7 @@ __all__ = [
 
 @define(init=False)
 class EntityPropertiesComponent:
-    """
-    **Component**: The configurable set of overridable properties.
-
-    Unstable. Used for the ongoing blueprint experimentations.
-    """
+    """**Component**: The configurable set of overridable properties."""
 
     def __init__(self: Any, props: EntityPropertiesComponentLike):
         """Create a new instance of the EntityPropertiesComponent component."""

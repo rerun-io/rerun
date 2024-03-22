@@ -12,7 +12,7 @@ __all__ = ["VisibleTimeRange", "VisibleTimeRangeBatch", "VisibleTimeRangeType"]
 
 
 class VisibleTimeRange(blueprint_datatypes.VisibleTimeRange):
-    """**Component**: The range of values that will be included in a Space View query."""
+    """**Component**: The range of values that will be included in a space view query."""
 
     # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
 

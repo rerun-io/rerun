@@ -24,7 +24,7 @@ from enum import Enum
 
 
 class Background3DKind(Enum):
-    """**Component**: The type of the background in 3D Space Views."""
+    """**Component**: The type of the background in 3D space views."""
 
     GradientDark = 1
     """Gradient depending on the direction of the view, dark theme."""
