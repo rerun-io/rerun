@@ -60,10 +60,10 @@ fn simple_query() -> anyhow::Result<()> {
             Some(MyColor::from_rgb(255, 0, 0)),
         ];
 
-        let points = results.get_required::<MyPoint>()?;
+        let points = results.get_required(MyPoint::name())?;
         let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
+        let colors = results.get_optional(MyColor::name());
         let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 
@@ -130,10 +130,10 @@ fn static_query() -> anyhow::Result<()> {
             Some(MyColor::from_rgb(255, 0, 0)),
         ];
 
-        let points = results.get_required::<MyPoint>()?;
+        let points = results.get_required(MyPoint::name())?;
         let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
+        let colors = results.get_optional(MyColor::name());
         let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 
@@ -199,10 +199,10 @@ fn no_instance_join_query() -> anyhow::Result<()> {
             Some(MyColor::from_rgb(0, 255, 0)),
         ];
 
-        let points = results.get_required::<MyPoint>()?;
+        let points = results.get_required(MyPoint::name())?;
         let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
+        let colors = results.get_optional(MyColor::name());
         let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 

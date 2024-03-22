@@ -282,8 +282,8 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
             Points2D::all_components().iter().cloned(), // no generics!
         );
 
-        let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_optional::<Color>();
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_optional(Color::name());
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
@@ -324,8 +324,8 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
             Points2D::all_components().iter().cloned(), // no generics!
         );
 
-        let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_optional::<Text>();
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_optional(Text::name());
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
