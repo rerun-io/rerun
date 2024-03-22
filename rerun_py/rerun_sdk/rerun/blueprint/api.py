@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Iterable, Optional, Sequence, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
