@@ -74,15 +74,15 @@ class SpaceView:
         """
         return f"space_view/{self.id}"
 
-    def to_viewport(self) -> Viewport:
-        """Convert this space view to a viewport."""
+    def to_container(self) -> Container:
+        """Convert this space view to a container."""
         from .containers import Grid
 
-        return Viewport(Grid(self))
+        return Grid(self)
 
     def to_blueprint(self) -> Blueprint:
         """Convert this space view to a full blueprint."""
-        return Blueprint(self.to_viewport())
+        return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -190,13 +190,13 @@ class Container:
         """
         return f"container/{self.id}"
 
-    def to_viewport(self) -> Viewport:
-        """Convert this container to a viewport."""
-        return Viewport(self)
+    def to_container(self) -> Container:
+        """Convert this space view to a container."""
+        return self
 
     def to_blueprint(self) -> Blueprint:
         """Convert this container to a full blueprint."""
-        return Blueprint(self.to_viewport())
+        return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -228,78 +228,6 @@ class Container:
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
         return itertools.chain.from_iterable(sub._iter_space_views() for sub in self.contents)
-
-
-class Viewport:
-    """
-    The top-level description of the Viewport.
-
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
-    """
-
-    def __init__(
-        self,
-        root_container: Container | None = None,
-        *,
-        auto_layout: bool | None = None,
-        auto_space_views: bool | None = None,
-    ):
-        """
-        Construct a new viewport.
-
-        Parameters
-        ----------
-        root_container:
-            The container that sits at the top of the viewport hierarchy. The only content visible
-            in this viewport must be contained within this container.
-        auto_layout:
-            Whether to automatically layout the viewport. If `True`, the container layout will be
-            reset whenever a new space view is added to the viewport. Defaults to `False`.
-        auto_space_views:
-            Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store. Defaults to `False`.
-
-        """
-        self.root_container = root_container
-        self.auto_layout = auto_layout
-        self.auto_space_views = auto_space_views
-
-    def blueprint_path(self) -> str:
-        """
-        The blueprint path where this space view will be logged.
-
-        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
-        not a part of the regular data hierarchy.
-        """
-        return "viewport"
-
-    def to_viewport(self) -> Viewport:
-        """Conform with the `ViewportLike` interface."""
-        return self
-
-    def to_blueprint(self) -> Blueprint:
-        """Convert this viewport to a full blueprint."""
-        return Blueprint(self)
-
-    def _log_to_stream(self, stream: RecordingStream) -> None:
-        """Internal method to convert to an archetype and log to the stream."""
-        if self.root_container is not None:
-            self.root_container._log_to_stream(stream)
-
-            root_container_id = self.root_container.id.bytes
-            space_views = list(self.root_container._iter_space_views())
-        else:
-            root_container_id = None
-            space_views = []
-
-        arch = ViewportBlueprint(
-            space_views=space_views,
-            root_container=root_container_id,
-            auto_layout=self.auto_layout,
-            auto_space_views=self.auto_space_views,
-        )
-
-        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
 
 class Panel:
@@ -396,15 +324,15 @@ class TimePanel(Panel):
         super().__init__(blueprint_path="time_panel", expanded=expanded)
 
 
-ViewportLike = Union[Viewport, Container, SpaceView]
+ContainerLike = Union[Container, SpaceView]
 """
-A type that can be converted to a viewport.
+A type that can be converted to a container.
 
-These types all implement a `to_viewport()` method that wraps them in the necessary
+These types all implement a `to_container()` method that wraps them in the necessary
 helper classes.
 """
 
-BlueprintPart = Union[ViewportLike, BlueprintPanel, SelectionPanel, TimePanel]
+BlueprintPart = Union[ContainerLike, BlueprintPanel, SelectionPanel, TimePanel]
 """
 The types that make up a blueprint.
 """
@@ -416,31 +344,44 @@ class Blueprint:
     def __init__(
         self,
         *parts: BlueprintPart,
+        auto_layout: bool | None = None,
+        auto_space_views: bool | None = None,
     ):
         """
         Construct a new blueprint from the given parts.
 
         Each [BlueprintPart][rerun.blueprint.BlueprintPart] can be one of the following:
 
-        - [Viewport][rerun.blueprint.Viewport]
+        - [ContainerLike][rerun.blueprint.ContainerLike]
         - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
         - [SelectionPanel][rerun.blueprint.SelectionPanel]
         - [TimePanel][rerun.blueprint.TimePanel]
 
         It is an error to provide more than one of any type of part.
 
+        Blueprints only have a single top-level "root" container that defines the viewport. Any
+        other content should be nested under this container (or a nested sub-container).
+
         Parameters
         ----------
         *parts:
             The parts of the blueprint.
+        auto_layout:
+            Whether to automatically layout the viewport. If `True`, the container layout will be
+            reset whenever a new space view is added to the viewport. Defaults to `False`.
+        auto_space_views:
+            Whether to automatically add space views to the viewport. If `True`, the viewport will
+            automatically add space views based on content in the data store. Defaults to `False`.
 
         """
 
         for part in parts:
-            if isinstance(part, (Viewport, Container, SpaceView)):
-                if hasattr(self, "viewport"):
-                    raise ValueError("Only one viewport can be provided")
-                self.viewport = part.to_viewport()
+            if isinstance(part, (Container, SpaceView)):
+                if hasattr(self, "root_container"):
+                    raise ValueError(
+                        "Only one ContainerLike can be provided to serve as the root container for the viewport"
+                    )
+                self.root_container = part.to_container()
             elif isinstance(part, BlueprintPanel):
                 if hasattr(self, "blueprint_panel"):
                     raise ValueError("Only one blueprint panel can be provided")
@@ -456,13 +397,33 @@ class Blueprint:
             else:
                 raise ValueError(f"Unknown part type: {part}")
 
+        self.auto_layout = auto_layout
+        self.auto_space_views = auto_space_views
+
     def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
         return self
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        self.viewport._log_to_stream(stream)
+        if hasattr(self, "root_container"):
+            self.root_container._log_to_stream(stream)
+
+            root_container_id = self.root_container.id.bytes
+            space_views = list(self.root_container._iter_space_views())
+        else:
+            root_container_id = None
+            space_views = []
+
+        viewport_arch = ViewportBlueprint(
+            space_views=space_views,
+            root_container=root_container_id,
+            auto_layout=self.auto_layout,
+            auto_space_views=self.auto_space_views,
+        )
+
+        stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
+
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
         if hasattr(self, "selection_panel"):
@@ -471,8 +432,7 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
 
 
-BlueprintLike = Union[Blueprint, ViewportLike]
-
+BlueprintLike = Union[Blueprint, SpaceView, Container]
 """
 A type that can be converted to a blueprint.
 

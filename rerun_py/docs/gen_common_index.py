@@ -256,7 +256,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "BlueprintPanel",
             "SelectionPanel",
             "TimePanel",
-            "Viewport",
         ],
     ),
     Section(
