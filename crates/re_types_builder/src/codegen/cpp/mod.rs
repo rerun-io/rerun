@@ -2265,7 +2265,7 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and(&["cpp", "c++"]);
+    let mut lines = docs.doc_lines_for_untagged_and("cpp");
 
     let required = true;
     let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();

@@ -714,7 +714,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 }
 
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = docs.doc_lines_for_untagged_and(&["rs", "rust"]);
+    let mut lines = docs.doc_lines_for_untagged_and("rs");
 
     let examples = collect_snippets_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))

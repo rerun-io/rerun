@@ -141,7 +141,7 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = object.docs.doc_lines_for_untagged_and(&[]);
+    let top_level_docs = object.docs.untagged();
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");

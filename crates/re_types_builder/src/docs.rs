@@ -125,6 +125,11 @@ impl Docs {
             let mut tagged_docs = BTreeMap::new();
 
             for cur_tag in all_tags {
+                assert!(
+                    matches!(cur_tag.as_str(), "example" | "py" | "rs" | "cpp"),
+                    "Unsupported tag: \\{cur_tag}"
+                );
+
                 tagged_docs.insert(
                     cur_tag.clone(),
                     tagged_lines
@@ -152,21 +157,24 @@ impl Docs {
         }
     }
 
-    /// Get all doc lines that are untagged, or match any of the given tags.
+    /// Get all doc lines that are untagged.
+    pub fn untagged(&self) -> Vec<String> {
+        self.doc_lines_for_untagged_and("")
+    }
+
+    /// Get all doc lines that are untagged, or match the given tag.
     ///
-    /// For instance, pass `["py"]` to get all lines that are untagged or starta with `"\python"`.
-    pub fn doc_lines_for_untagged_and(&self, tags: &[&str]) -> Vec<String> {
+    /// For instance, pass `"py"` to get all lines that are untagged or starta with `"\py"`.
+    pub fn doc_lines_for_untagged_and(&self, tag: &str) -> Vec<String> {
         let mut lines = self.doc.clone();
 
-        for tag in tags {
-            lines.extend(
-                self.tagged_docs
-                    .get(*tag)
-                    .unwrap_or(&Vec::new())
-                    .iter()
-                    .cloned(),
-            );
-        }
+        lines.extend(
+            self.tagged_docs
+                .get(tag)
+                .unwrap_or(&Vec::new())
+                .iter()
+                .cloned(),
+        );
 
         // NOTE: remove duplicated blank lines.
         lines.dedup();
