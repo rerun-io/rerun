@@ -486,13 +486,13 @@ fn query_and_compare(
             MyPoints::all_components().iter().copied(),
         );
 
-        let cached_points = cached.get_required::<MyPoint>().unwrap();
+        let cached_points = cached.get_required(MyPoint::name()).unwrap();
         let cached_point_data = cached_points
             .to_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
-        let cached_colors = cached.get_optional::<MyColor>();
+        let cached_colors = cached.get_optional(MyColor::name());
         let cached_color_data = cached_colors
             .to_sparse::<MyColor>(&resolver)
             .flatten()
@@ -505,13 +505,13 @@ fn query_and_compare(
             MyPoints::all_components().iter().copied(),
         );
 
-        let expected_points = expected.get_required::<MyPoint>().unwrap();
+        let expected_points = expected.get_required(MyPoint::name()).unwrap();
         let expected_point_data = expected_points
             .to_dense::<MyPoint>(&resolver)
             .flatten()
             .unwrap();
 
-        let expected_colors = expected.get_optional::<MyColor>();
+        let expected_colors = expected.get_optional(MyColor::name());
         let expected_color_data = expected_colors
             .to_sparse::<MyColor>(&resolver)
             .flatten()

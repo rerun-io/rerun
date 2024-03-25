@@ -14,6 +14,7 @@ pub(crate) use self::latest_at::LatestAtCache;
 
 pub use re_query2::{
     clamped_zip::*, Promise, PromiseId, PromiseResolver, PromiseResult, QueryError, Result,
+    ToArchetype,
 };
 
 pub mod external {

@@ -40,9 +40,9 @@ fn main() -> anyhow::Result<()> {
     // * `get_required` returns an error if the component batch is missing
     // * `get_optional` returns an empty set of results if the component if missing
     // * `get` returns an option
-    let points: &LatestAtComponentResults = results.get_required::<MyPoint>()?;
-    let colors: &LatestAtComponentResults = results.get_optional::<MyColor>();
-    let labels: &LatestAtComponentResults = results.get_optional::<MyLabel>();
+    let points: &LatestAtComponentResults = results.get_required(MyPoint::name())?;
+    let colors: &LatestAtComponentResults = results.get_optional(MyColor::name());
+    let labels: &LatestAtComponentResults = results.get_optional(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.

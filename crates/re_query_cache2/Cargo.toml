@@ -18,7 +18,10 @@ all-features = true
 
 
 [features]
-default = []
+default = ["to_archetype"]
+
+## Implements `ToArchetype<A>` for all builtin archetypes on `CachedLatestAtResults`.
+to_archetype = ["dep:re_types"]
 
 [dependencies]
 # Rerun dependencies:
@@ -30,6 +33,9 @@ re_log_types.workspace = true
 re_query2.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
+
+# Rerun dependencies (optional):
+re_types = { workspace = true, optional = true }
 
 # External dependencies:
 ahash.workspace = true
@@ -55,6 +61,11 @@ similar-asserts.workspace = true
 
 [lib]
 bench = false
+
+
+[[example]]
+name = "latest_at_archetype"
+required-features = ["to_archetype"]
 
 
 [[bench]]
