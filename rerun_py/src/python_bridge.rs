@@ -930,7 +930,7 @@ fn version() -> String {
 /// Get a url to an instance of the web-viewer
 ///
 /// This may point to app.rerun.io or localhost depending on
-/// whether `host_assets` was called.
+/// whether [`start_web_viewer_server()`] was called.
 #[pyfunction]
 fn get_app_url() -> String {
     #[cfg(feature = "web_viewer")]
@@ -939,8 +939,14 @@ fn get_app_url() -> String {
     }
 
     let build_info = re_build_info::build_info!();
-    let short_git_hash = &build_info.git_hash[..7];
-    format!("https://app.rerun.io/commit/{short_git_hash}")
+    if let Some(short_git_hash) = build_info.git_hash.get(..7) {
+        format!("https://app.rerun.io/commit/{short_git_hash}")
+    } else {
+        re_log::warn_once!(
+            "No valid git hash found in build info. Defaulting to app.rerun.io for app url."
+        );
+        "https://app.rerun.io".to_owned()
+    }
 }
 
 // TODO(jleibs) expose this as a python type
