@@ -974,8 +974,10 @@ impl App {
                             store_hub.set_active_recording_id(store_id.clone());
                         }
                         StoreKind::Blueprint => {
-                            re_log::debug!("Activating newly loaded blueprint");
                             if let Some(info) = entity_db.store_info() {
+                                re_log::debug!(
+                                    "Activating blueprint that was loaded from {channel_source}"
+                                );
                                 let app_id = info.application_id.clone();
                                 store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
                             } else {
