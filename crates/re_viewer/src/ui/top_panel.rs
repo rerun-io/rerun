@@ -112,7 +112,7 @@ fn top_bar_ui(
                 )
                 .on_hover_ui(|ui| {
                     ui.label("Software rasterizer detected - expect poor performance.");
-                    ui.label("Click for torubleshooting.");
+                    ui.label("Click for troubleshooting.");
                     ui.add_space(8.0);
                     ui.label(format!(
                         "wgpu adapter {}",
