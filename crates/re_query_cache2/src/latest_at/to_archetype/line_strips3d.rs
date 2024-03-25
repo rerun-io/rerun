@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::LineStrips3D> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::LineStrips3D>> {
         re_tracing::profile_function!(<re_types::archetypes::LineStrips3D>::name());
 
         // --- Required ---
@@ -22,22 +22,28 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
         use re_types::components::LineStrip3D;
         let strips = match self.get_required(<LineStrip3D>::name()) {
             Ok(strips) => strips,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let strips = match strips.to_dense::<LineStrip3D>(resolver).flatten() {
-            PromiseResult::Ready(data) => data.to_vec(),
+        let strips = match strips.to_dense::<LineStrip3D>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => data.to_vec(),
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
 
         use re_types::components::Radius;
         let radii = if let Some(radii) = self.get(<Radius>::name()) {
-            match radii.to_dense::<Radius>(resolver).flatten() {
-                PromiseResult::Ready(data) => Some(data.to_vec()),
+            match radii.to_dense::<Radius>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => Some(data.to_vec()),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -45,10 +51,13 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
 
         use re_types::components::Color;
         let colors = if let Some(colors) = self.get(<Color>::name()) {
-            match colors.to_dense::<Color>(resolver).flatten() {
-                PromiseResult::Ready(data) => Some(data.to_vec()),
+            match colors.to_dense::<Color>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => Some(data.to_vec()),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -56,10 +65,13 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
 
         use re_types::components::Text;
         let labels = if let Some(labels) = self.get(<Text>::name()) {
-            match labels.to_dense::<Text>(resolver).flatten() {
-                PromiseResult::Ready(data) => Some(data.to_vec()),
+            match labels.to_dense::<Text>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => Some(data.to_vec()),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -67,10 +79,13 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
 
         use re_types::components::ClassId;
         let class_ids = if let Some(class_ids) = self.get(<ClassId>::name()) {
-            match class_ids.to_dense::<ClassId>(resolver).flatten() {
-                PromiseResult::Ready(data) => Some(data.to_vec()),
+            match class_ids.to_dense::<ClassId>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => Some(data.to_vec()),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -86,6 +101,6 @@ impl crate::ToArchetype<re_types::archetypes::LineStrips3D> for CachedLatestAtRe
             class_ids,
         };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

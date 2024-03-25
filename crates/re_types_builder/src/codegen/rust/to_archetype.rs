@@ -145,7 +145,7 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
 
             let quoted_type_name = format_ident!("{type_name}");
             let quoted_type_fqname =
-            quote_fqname_as_type_path(&objects[type_fqname].crate_name(), type_fqname);
+                quote_fqname_as_type_path(&objects[type_fqname].crate_name(), type_fqname);
 
             let quoted_data = if obj_field.typ.is_plural() {
                 quote!(data.to_vec())
@@ -166,12 +166,15 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
                 use #quoted_type_fqname;
                 let #quoted_name = match self.get_required(<#quoted_type_name>::name()) {
                     Ok(#quoted_name) => #quoted_name,
-                    Err(err) => return PromiseResult::Error(Arc::new(err)),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
                 };
-                let #quoted_name = match #quoted_name.to_dense::<#quoted_type_name>(resolver).flatten() {
-                    PromiseResult::Ready(data) => #quoted_data,
+                let #quoted_name = match #quoted_name.to_dense::<#quoted_type_name>(resolver) {
                     PromiseResult::Pending => return PromiseResult::Pending,
-                    PromiseResult::Error(err) => return PromiseResult::Error(err),
+                    PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                    PromiseResult::Ready(query_res) => match query_res {
+                        Ok(data) => #quoted_data,
+                        Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                    },
                 };
             })
         });
@@ -201,10 +204,13 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
 
                 use #quoted_type_fqname;
                 let #quoted_name = if let Some(#quoted_name) = self.get(<#quoted_type_name>::name()) {
-                    match #quoted_name.to_dense::<#quoted_type_name>(resolver).flatten() {
-                        PromiseResult::Ready(data) => #quoted_data,
+                    match #quoted_name.to_dense::<#quoted_type_name>(resolver) {
                         PromiseResult::Pending => return PromiseResult::Pending,
-                        PromiseResult::Error(err) => return PromiseResult::Error(err),
+                        PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                        PromiseResult::Ready(query_res) => match query_res {
+                            Ok(data) => #quoted_data,
+                            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                        },
                     }
                 } else {
                     None
@@ -223,7 +229,7 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
             fn to_archetype(
                 &self,
                 resolver: &PromiseResolver,
-            ) -> PromiseResult<#quoted_arch_fqname> {
+            ) -> PromiseResult<crate::Result<#quoted_arch_fqname>> {
                 #NEWLINE_TOKEN
                 re_tracing::profile_function!(<#quoted_arch_fqname>::name());
                 #NEWLINE_TOKEN
@@ -249,7 +255,7 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
 
                 #NEWLINE_TOKEN
 
-                PromiseResult::Ready(arch)
+                PromiseResult::Ready(Ok(arch))
             }
         }
     }

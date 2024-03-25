@@ -69,5 +69,8 @@ pub trait ToArchetype<A: re_types_core::Archetype> {
     ///
     /// Automatically handles all aspects of the query process: deserialization, caching, promise
     /// resolution, etc.
-    fn to_archetype(&self, resolver: &crate::PromiseResolver) -> crate::PromiseResult<A>;
+    fn to_archetype(
+        &self,
+        resolver: &crate::PromiseResolver,
+    ) -> crate::PromiseResult<crate::Result<A>>;
 }

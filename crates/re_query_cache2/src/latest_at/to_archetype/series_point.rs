@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::SeriesPoint> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::SeriesPoint>> {
         re_tracing::profile_function!(<re_types::archetypes::SeriesPoint>::name());
 
         // --- Required ---
@@ -23,10 +23,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
 
         use re_types::components::Color;
         let color = if let Some(color) = self.get(<Color>::name()) {
-            match color.to_dense::<Color>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match color.to_dense::<Color>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -34,10 +37,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
 
         use re_types::components::MarkerShape;
         let marker = if let Some(marker) = self.get(<MarkerShape>::name()) {
-            match marker.to_dense::<MarkerShape>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match marker.to_dense::<MarkerShape>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -45,10 +51,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
 
         use re_types::components::Name;
         let name = if let Some(name) = self.get(<Name>::name()) {
-            match name.to_dense::<Name>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match name.to_dense::<Name>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -56,10 +65,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
 
         use re_types::components::MarkerSize;
         let marker_size = if let Some(marker_size) = self.get(<MarkerSize>::name()) {
-            match marker_size.to_dense::<MarkerSize>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match marker_size.to_dense::<MarkerSize>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -74,6 +86,6 @@ impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtRes
             marker_size,
         };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

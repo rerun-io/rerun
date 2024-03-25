@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::TextDocument> for CachedLatestAtRe
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::TextDocument> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::TextDocument>> {
         re_tracing::profile_function!(<re_types::archetypes::TextDocument>::name());
 
         // --- Required ---
@@ -22,29 +22,35 @@ impl crate::ToArchetype<re_types::archetypes::TextDocument> for CachedLatestAtRe
         use re_types::components::Text;
         let text = match self.get_required(<Text>::name()) {
             Ok(text) => text,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let text = match text.to_dense::<Text>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let text = match text.to_dense::<Text>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
 
         use re_types::components::MediaType;
         let media_type = if let Some(media_type) = self.get(<MediaType>::name()) {
-            match media_type.to_dense::<MediaType>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match media_type.to_dense::<MediaType>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -54,6 +60,6 @@ impl crate::ToArchetype<re_types::archetypes::TextDocument> for CachedLatestAtRe
 
         let arch = re_types::archetypes::TextDocument { text, media_type };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

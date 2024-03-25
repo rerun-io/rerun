@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::Scalar> for CachedLatestAtResults 
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::Scalar> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::Scalar>> {
         re_tracing::profile_function!(<re_types::archetypes::Scalar>::name());
 
         // --- Required ---
@@ -22,19 +22,22 @@ impl crate::ToArchetype<re_types::archetypes::Scalar> for CachedLatestAtResults 
         use re_types::components::Scalar;
         let scalar = match self.get_required(<Scalar>::name()) {
             Ok(scalar) => scalar,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let scalar = match scalar.to_dense::<Scalar>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let scalar = match scalar.to_dense::<Scalar>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
@@ -43,6 +46,6 @@ impl crate::ToArchetype<re_types::archetypes::Scalar> for CachedLatestAtResults 
 
         let arch = re_types::archetypes::Scalar { scalar };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }
