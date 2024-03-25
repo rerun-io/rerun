@@ -9,8 +9,6 @@ use crate::{
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
 
-use super::common::get_documentation;
-
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
     ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
@@ -143,7 +141,7 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = get_documentation(&object.docs, &[]);
+    let top_level_docs = object.docs.doc_lines_for(&[]);
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");

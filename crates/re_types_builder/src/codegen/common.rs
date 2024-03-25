@@ -12,35 +12,6 @@ fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
 }
 
-/// Retrieves the global and tagged documentation from a [`Docs`] object.
-pub fn get_documentation(docs: &Docs, tags: &[&str]) -> Vec<String> {
-    let mut lines = docs.doc.clone();
-
-    for tag in tags {
-        lines.extend(
-            docs.tagged_docs
-                .get(*tag)
-                .unwrap_or(&Vec::new())
-                .iter()
-                .cloned(),
-        );
-    }
-
-    // NOTE: remove duplicated blank lines.
-    lines.dedup();
-
-    // NOTE: remove trailing blank lines.
-    while let Some(line) = lines.last() {
-        if line.is_empty() {
-            lines.pop();
-        } else {
-            break;
-        }
-    }
-
-    lines
-}
-
 #[derive(Clone)]
 pub struct ExampleInfo<'a> {
     /// The snake_case name of the example.

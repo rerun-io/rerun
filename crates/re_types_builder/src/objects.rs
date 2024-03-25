@@ -395,6 +395,37 @@ impl Docs {
             included_files,
         }
     }
+
+    /// Get all doc lines that are untagged, or match any of the given tags.
+    ///
+    /// For instance, pass `["py"]` to get all lines that are untagged or starta with `"\python"`.
+    pub fn doc_lines_for(&self, tags: &[&str]) -> Vec<String> {
+        let mut lines = self.doc.clone();
+
+        for tag in tags {
+            lines.extend(
+                self.tagged_docs
+                    .get(*tag)
+                    .unwrap_or(&Vec::new())
+                    .iter()
+                    .cloned(),
+            );
+        }
+
+        // NOTE: remove duplicated blank lines.
+        lines.dedup();
+
+        // NOTE: remove trailing blank lines.
+        while let Some(line) = lines.last() {
+            if line.is_empty() {
+                lines.pop();
+            } else {
+                break;
+            }
+        }
+
+        lines
+    }
 }
 
 /// A high-level representation of a flatbuffers object, which can be either a struct, a union or
