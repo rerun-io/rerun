@@ -63,8 +63,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        // Ensure spatial topology is registered.
+        // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        crate::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
@@ -410,7 +411,7 @@ fn recommended_space_views_with_image_splits(
             }
         }
     } else {
-        // Otherwise we can use the space as it is
+        // Otherwise use
         recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }
