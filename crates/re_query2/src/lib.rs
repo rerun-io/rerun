@@ -60,3 +60,14 @@ pub enum QueryError {
 }
 
 pub type Result<T> = std::result::Result<T, QueryError>;
+
+// ---
+
+/// Helper extension trait to convert query results into [`re_types_core::Archetype`]s.
+pub trait ToArchetype<A: re_types_core::Archetype> {
+    /// Converts the result into an [`re_types_core::Archetype`].
+    ///
+    /// Automatically handles all aspects of the query process: deserialization, caching, promise
+    /// resolution, etc.
+    fn to_archetype(&self, resolver: &crate::PromiseResolver) -> crate::PromiseResult<A>;
+}
