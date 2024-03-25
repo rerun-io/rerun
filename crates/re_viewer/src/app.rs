@@ -967,25 +967,25 @@ impl App {
                     // Andled by EntityDb::add
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_active_recording_id(store_id.clone());
-                        }
-                        StoreKind::Blueprint => {
-                            if let Some(info) = entity_db.store_info() {
-                                re_log::debug!(
-                                    "Activating blueprint that was loaded from {channel_source}"
-                                );
-                                let app_id = info.application_id.clone();
-                                store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
-                            } else {
-                                re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
-                            }
+                LogMsg::ActivateStore(store_id) => match store_id.kind {
+                    StoreKind::Recording => {
+                        re_log::debug!("Opening a new recording: {store_id}");
+                        store_hub.set_active_recording_id(store_id.clone());
+                    }
+                    StoreKind::Blueprint => {
+                        if let Some(info) = entity_db.store_info() {
+                            re_log::debug!(
+                                "Activating blueprint that was loaded from {channel_source}"
+                            );
+                            let app_id = info.application_id.clone();
+                            store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
+                        } else {
+                            re_log::warn!(
+                                "Got ActivateStore message without first receiving a SetStoreInfo"
+                            );
                         }
                     }
-                }
+                },
             }
 
             // Do analytics after ingesting the new message,
