@@ -974,8 +974,10 @@ impl App {
                             store_hub.set_active_recording_id(store_id.clone());
                         }
                         StoreKind::Blueprint => {
-                            re_log::debug!("Activating newly loaded blueprint");
                             if let Some(info) = entity_db.store_info() {
+                                re_log::debug!(
+                                    "Activating blueprint that was loaded from {channel_source}"
+                                );
                                 let app_id = info.application_id.clone();
                                 store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
                             } else {
@@ -1179,20 +1181,26 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        if self.startup_options.persist_state {
-            // Save the app state
-            eframe::set_value(storage, eframe::APP_KEY, &self.state);
+        if !self.startup_options.persist_state {
+            return;
+        }
 
-            // Save the blueprints
-            // TODO(#2579): implement web-storage for blueprints as well
-            if let Some(hub) = &mut self.store_hub {
-                match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
-                    Ok(f) => f,
-                    Err(err) => {
-                        re_log::error!("Saving blueprints failed: {err}");
-                    }
-                };
-            }
+        re_tracing::profile_function!();
+
+        // Save the app state
+        eframe::set_value(storage, eframe::APP_KEY, &self.state);
+
+        // Save the blueprints
+        // TODO(#2579): implement web-storage for blueprints as well
+        if let Some(hub) = &mut self.store_hub {
+            match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
+                Ok(f) => f,
+                Err(err) => {
+                    re_log::error!("Saving blueprints failed: {err}");
+                }
+            };
+        } else {
+            re_log::error!("Could not save blueprints: the store hub is not available");
         }
     }
 

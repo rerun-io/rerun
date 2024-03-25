@@ -367,33 +367,40 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
 
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
-                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    if app_options.blueprint_gc {
-                        blueprint.gc_everything_but_the_latest_row();
-                    }
+            let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
+                re_log::debug!("Failed to find blueprint {blueprint_id}.");
+                continue;
+            };
+            if self.blueprint_last_save.get(blueprint_id) == Some(&blueprint.generation()) {
+                continue; // no change since last save
+            }
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let blueprint_path = default_blueprint_path(app_id)?;
-                        re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
+            if app_options.blueprint_gc {
+                blueprint.gc_everything_but_the_latest_row();
+            }
 
-                        let messages = blueprint.to_messages(None)?;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let blueprint_path = default_blueprint_path(app_id)?;
 
-                        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                        // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+                let messages = blueprint.to_messages(None)?;
 
-                        self.blueprint_last_save
-                            .insert(blueprint_id.clone(), blueprint.generation());
-                    }
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        _ = app_id;
-                    }
-                }
+                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+                re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+                self.blueprint_last_save
+                    .insert(blueprint_id.clone(), blueprint.generation());
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                _ = app_id;
             }
         }
+
         Ok(())
     }
 
