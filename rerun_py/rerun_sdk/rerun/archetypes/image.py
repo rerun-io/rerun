@@ -32,7 +32,6 @@ class Image(ImageExt, Archetype):
 
     Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
     Using these formats can save a lot of bandwidth and memory.
-
     To compress an image, use [`rerun.Image.compress`][].
     To pass in an already encoded image, use  [`rerun.ImageEncoded`][].
 
