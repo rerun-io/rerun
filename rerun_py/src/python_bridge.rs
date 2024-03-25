@@ -930,7 +930,7 @@ fn version() -> String {
 /// Get a url to an instance of the web-viewer
 ///
 /// This may point to app.rerun.io or localhost depending on
-/// whether `start_web_viewer_server` was called.
+/// whether [`start_web_viewer_server`] was called.
 #[pyfunction]
 fn get_app_url() -> String {
     #[cfg(feature = "web_viewer")]
