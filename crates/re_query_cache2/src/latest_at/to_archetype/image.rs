@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::Image> for CachedLatestAtResults {
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::Image> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::Image>> {
         re_tracing::profile_function!(<re_types::archetypes::Image>::name());
 
         // --- Required ---
@@ -22,29 +22,35 @@ impl crate::ToArchetype<re_types::archetypes::Image> for CachedLatestAtResults {
         use re_types::components::TensorData;
         let data = match self.get_required(<TensorData>::name()) {
             Ok(data) => data,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let data = match data.to_dense::<TensorData>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let data = match data.to_dense::<TensorData>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
 
         use re_types::components::DrawOrder;
         let draw_order = if let Some(draw_order) = self.get(<DrawOrder>::name()) {
-            match draw_order.to_dense::<DrawOrder>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match draw_order.to_dense::<DrawOrder>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -54,6 +60,6 @@ impl crate::ToArchetype<re_types::archetypes::Image> for CachedLatestAtResults {
 
         let arch = re_types::archetypes::Image { data, draw_order };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

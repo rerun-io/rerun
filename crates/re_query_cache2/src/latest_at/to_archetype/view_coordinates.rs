@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::ViewCoordinates> for CachedLatestA
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::ViewCoordinates> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::ViewCoordinates>> {
         re_tracing::profile_function!(<re_types::archetypes::ViewCoordinates>::name());
 
         // --- Required ---
@@ -22,19 +22,22 @@ impl crate::ToArchetype<re_types::archetypes::ViewCoordinates> for CachedLatestA
         use re_types::components::ViewCoordinates;
         let xyz = match self.get_required(<ViewCoordinates>::name()) {
             Ok(xyz) => xyz,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let xyz = match xyz.to_dense::<ViewCoordinates>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let xyz = match xyz.to_dense::<ViewCoordinates>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
@@ -43,6 +46,6 @@ impl crate::ToArchetype<re_types::archetypes::ViewCoordinates> for CachedLatestA
 
         let arch = re_types::archetypes::ViewCoordinates { xyz };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

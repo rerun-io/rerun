@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::Pinhole> for CachedLatestAtResults
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::Pinhole> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::Pinhole>> {
         re_tracing::profile_function!(<re_types::archetypes::Pinhole>::name());
 
         // --- Required ---
@@ -22,32 +22,35 @@ impl crate::ToArchetype<re_types::archetypes::Pinhole> for CachedLatestAtResults
         use re_types::components::PinholeProjection;
         let image_from_camera = match self.get_required(<PinholeProjection>::name()) {
             Ok(image_from_camera) => image_from_camera,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let image_from_camera = match image_from_camera
-            .to_dense::<PinholeProjection>(resolver)
-            .flatten()
-        {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let image_from_camera = match image_from_camera.to_dense::<PinholeProjection>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
 
         use re_types::components::Resolution;
         let resolution = if let Some(resolution) = self.get(<Resolution>::name()) {
-            match resolution.to_dense::<Resolution>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match resolution.to_dense::<Resolution>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -55,10 +58,13 @@ impl crate::ToArchetype<re_types::archetypes::Pinhole> for CachedLatestAtResults
 
         use re_types::components::ViewCoordinates;
         let camera_xyz = if let Some(camera_xyz) = self.get(<ViewCoordinates>::name()) {
-            match camera_xyz.to_dense::<ViewCoordinates>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match camera_xyz.to_dense::<ViewCoordinates>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -72,6 +78,6 @@ impl crate::ToArchetype<re_types::archetypes::Pinhole> for CachedLatestAtResults
             camera_xyz,
         };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::TextLog> for CachedLatestAtResults
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::TextLog> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::TextLog>> {
         re_tracing::profile_function!(<re_types::archetypes::TextLog>::name());
 
         // --- Required ---
@@ -22,29 +22,35 @@ impl crate::ToArchetype<re_types::archetypes::TextLog> for CachedLatestAtResults
         use re_types::components::Text;
         let text = match self.get_required(<Text>::name()) {
             Ok(text) => text,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let text = match text.to_dense::<Text>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let text = match text.to_dense::<Text>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
 
         use re_types::components::TextLogLevel;
         let level = if let Some(level) = self.get(<TextLogLevel>::name()) {
-            match level.to_dense::<TextLogLevel>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match level.to_dense::<TextLogLevel>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -52,10 +58,13 @@ impl crate::ToArchetype<re_types::archetypes::TextLog> for CachedLatestAtResults
 
         use re_types::components::Color;
         let color = if let Some(color) = self.get(<Color>::name()) {
-            match color.to_dense::<Color>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match color.to_dense::<Color>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -65,6 +74,6 @@ impl crate::ToArchetype<re_types::archetypes::TextLog> for CachedLatestAtResults
 
         let arch = re_types::archetypes::TextLog { text, level, color };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

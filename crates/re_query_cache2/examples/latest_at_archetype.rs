@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     // cache an entire archetype all at once.
     use re_query_cache2::ToArchetype as _;
 
-    let arch: Points2D = match results.to_archetype(&resolver) {
+    let arch: Points2D = match results.to_archetype(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());

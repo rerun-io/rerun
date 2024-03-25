@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::SeriesLine> for CachedLatestAtResu
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::SeriesLine> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::SeriesLine>> {
         re_tracing::profile_function!(<re_types::archetypes::SeriesLine>::name());
 
         // --- Required ---
@@ -23,10 +23,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesLine> for CachedLatestAtResu
 
         use re_types::components::Color;
         let color = if let Some(color) = self.get(<Color>::name()) {
-            match color.to_dense::<Color>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match color.to_dense::<Color>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -34,10 +37,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesLine> for CachedLatestAtResu
 
         use re_types::components::StrokeWidth;
         let width = if let Some(width) = self.get(<StrokeWidth>::name()) {
-            match width.to_dense::<StrokeWidth>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match width.to_dense::<StrokeWidth>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -45,10 +51,13 @@ impl crate::ToArchetype<re_types::archetypes::SeriesLine> for CachedLatestAtResu
 
         use re_types::components::Name;
         let name = if let Some(name) = self.get(<Name>::name()) {
-            match name.to_dense::<Name>(resolver).flatten() {
-                PromiseResult::Ready(data) => data.first().cloned(),
+            match name.to_dense::<Name>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(err) => return PromiseResult::Error(err),
+                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                PromiseResult::Ready(query_res) => match query_res {
+                    Ok(data) => data.first().cloned(),
+                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                },
             }
         } else {
             None
@@ -58,6 +67,6 @@ impl crate::ToArchetype<re_types::archetypes::SeriesLine> for CachedLatestAtResu
 
         let arch = re_types::archetypes::SeriesLine { color, width, name };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }

@@ -14,7 +14,7 @@ impl crate::ToArchetype<re_types::archetypes::Tensor> for CachedLatestAtResults 
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<re_types::archetypes::Tensor> {
+    ) -> PromiseResult<crate::Result<re_types::archetypes::Tensor>> {
         re_tracing::profile_function!(<re_types::archetypes::Tensor>::name());
 
         // --- Required ---
@@ -22,19 +22,22 @@ impl crate::ToArchetype<re_types::archetypes::Tensor> for CachedLatestAtResults 
         use re_types::components::TensorData;
         let data = match self.get_required(<TensorData>::name()) {
             Ok(data) => data,
-            Err(err) => return PromiseResult::Error(Arc::new(err)),
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let data = match data.to_dense::<TensorData>(resolver).flatten() {
-            PromiseResult::Ready(data) => {
-                let Some(first) = data.first().cloned() else {
-                    return PromiseResult::Error(std::sync::Arc::new(
-                        re_types_core::DeserializationError::missing_data(),
-                    ));
-                };
-                first
-            }
+        let data = match data.to_dense::<TensorData>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
-            PromiseResult::Error(err) => return PromiseResult::Error(err),
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => {
+                    let Some(first) = data.first().cloned() else {
+                        return PromiseResult::Error(std::sync::Arc::new(
+                            re_types_core::DeserializationError::missing_data(),
+                        ));
+                    };
+                    first
+                }
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
         };
 
         // --- Recommended/Optional ---
@@ -43,6 +46,6 @@ impl crate::ToArchetype<re_types::archetypes::Tensor> for CachedLatestAtResults 
 
         let arch = re_types::archetypes::Tensor { data };
 
-        PromiseResult::Ready(arch)
+        PromiseResult::Ready(Ok(arch))
     }
 }
