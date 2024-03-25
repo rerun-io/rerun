@@ -1950,7 +1950,8 @@ fn quote_init_method(
         obj.fields
             .iter()
             .filter_map(|field| {
-                if field.docs.doc.is_empty() {
+                let doc_content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+                if doc_content.is_empty() {
                     if !field.is_testing() && obj.fields.len() > 1 {
                         reporter.error(
                             &field.virtpath,
@@ -1960,8 +1961,6 @@ fn quote_init_method(
                     }
                     None
                 } else {
-                    let doc_content =
-                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
                     Some(format!(
                         "{}:\n    {}",
                         field.name,
