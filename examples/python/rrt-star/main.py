@@ -259,7 +259,7 @@ def main() -> None:
     parser.add_argument("--max-step-size", type=float, default=0.1)
     parser.add_argument("--iterations", type=int, help="How many iterations it should do")
     args = parser.parse_args()
-    rr.script_setup(args, "")
+    rr.script_setup(args, "rerun_example_rrt_star")
 
     max_step_size = args.max_step_size
     neighborhood_size = max_step_size * 1.5
