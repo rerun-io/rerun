@@ -18,7 +18,7 @@ pub use sender::Sender;
 
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum SmartChannelSource {
     /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).

@@ -179,6 +179,13 @@ impl SizeBytes for ClusterCellCache {
     }
 }
 
+impl SizeBytes for DataStore {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.timeless_size_bytes() + self.temporal_size_bytes() // approximate
+    }
+}
+
 impl DataStore {
     /// Returns the number of timeless index rows stored across this entire store, i.e. the sum of
     /// the number of rows across all of its timeless indexed tables.

@@ -255,6 +255,7 @@ fn container_children(
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
+        Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
         Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
@@ -297,6 +298,12 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::DataSource(data_source) => {
+            let title = data_source.to_string();
+            let icon = None; // TODO(#5645): an icon for data sources
+            item_title_ui(ctx.re_ui, ui, &title, icon, &title);
+        }
+
         Item::StoreId(store_id) => {
             let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
@@ -793,9 +800,12 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {
-            false
-        }
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => false,
+
         Item::SpaceView(_) | Item::DataResult(_, _) => true,
     }
 }
@@ -816,7 +826,11 @@ fn blueprint_ui(
             blueprint_ui_for_data_result(ui, ctx, viewport, space_view_id, instance_path);
         }
 
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {}
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => {}
     }
 }
 

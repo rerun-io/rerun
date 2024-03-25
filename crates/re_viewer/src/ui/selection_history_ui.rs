@@ -181,6 +181,7 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &ItemCollection
 
 fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
     match item {
+        Item::DataSource(data_source) => data_source.to_string(),
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(space_view_id) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
