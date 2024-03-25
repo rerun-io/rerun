@@ -31,66 +31,62 @@ pub struct ExampleInfo<'a> {
 
 impl<'a> ExampleInfo<'a> {
     /// Parses e.g.  `// \example example_name title="Example Title" image="https://www.example.com/img.png"`
-    pub fn parse(tag_content: &'a impl AsRef<str>) -> Self {
-        fn mono(tag_content: &str) -> ExampleInfo<'_> {
-            fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
-                let mut prev_end = 0;
-                loop {
-                    if prev_end + tag.len() + "=\"\"".len() >= args.len() {
-                        return None;
-                    }
-                    let key_start = prev_end + args[prev_end..].find(tag)?;
-                    let key_end = key_start + tag.len();
-                    if !args[key_end..].starts_with("=\"") {
-                        prev_end = key_end;
-                        continue;
-                    };
-                    let value_start = key_end + "=\"".len();
-                    let Some(mut value_end) = args[value_start..].find('"') else {
-                        prev_end = value_start;
-                        continue;
-                    };
-                    value_end += value_start;
-                    return Some(&args[value_start..value_end]);
+    pub fn parse(tag_content: &'a str) -> Self {
+        fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
+            let mut prev_end = 0;
+            loop {
+                if prev_end + tag.len() + "=\"\"".len() >= args.len() {
+                    return None;
                 }
-            }
-
-            let tag_content = tag_content.trim();
-            let (name, args) = tag_content
-                .split_once(' ')
-                .map_or((tag_content, None), |(a, b)| (a, Some(b)));
-
-            let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
-
-            if let Some(args) = args {
-                let args = args.trim();
-
-                exclude_from_api_docs = args.contains("!api");
-                let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
-                    args_without_api_prefix.trim()
-                } else {
-                    args
+                let key_start = prev_end + args[prev_end..].find(tag)?;
+                let key_end = key_start + tag.len();
+                if !args[key_end..].starts_with("=\"") {
+                    prev_end = key_end;
+                    continue;
                 };
-
-                if args.starts_with('"') {
-                    // \example example_name "Example Title"
-                    title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
-                } else {
-                    // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
-                    title = find_keyed("title", args);
-                    image = find_keyed("image", args).map(ImageUrl::parse);
-                }
-            }
-
-            ExampleInfo {
-                name,
-                title,
-                image,
-                exclude_from_api_docs,
+                let value_start = key_end + "=\"".len();
+                let Some(mut value_end) = args[value_start..].find('"') else {
+                    prev_end = value_start;
+                    continue;
+                };
+                value_end += value_start;
+                return Some(&args[value_start..value_end]);
             }
         }
 
-        mono(tag_content.as_ref())
+        let tag_content = tag_content.trim();
+        let (name, args) = tag_content
+            .split_once(' ')
+            .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+
+        let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
+
+        if let Some(args) = args {
+            let args = args.trim();
+
+            exclude_from_api_docs = args.contains("!api");
+            let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
+                args_without_api_prefix.trim()
+            } else {
+                args
+            };
+
+            if args.starts_with('"') {
+                // \example example_name "Example Title"
+                title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
+            } else {
+                // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png"
+                title = find_keyed("title", args);
+                image = find_keyed("image", args).map(ImageUrl::parse);
+            }
+        }
+
+        ExampleInfo {
+            name,
+            title,
+            image,
+            exclude_from_api_docs,
+        }
     }
 }
 
@@ -285,46 +281,41 @@ pub fn collect_snippets_for_api_docs<'a>(
     extension: &str,
     required: bool,
 ) -> anyhow::Result<Vec<Example<'a>>> {
-    let mut out = Vec::new();
+    let base_path = crate::rerun_workspace_path().join("docs/snippets/all");
 
-    if let Some(examples) = docs.tagged_docs.get("example") {
-        let base_path = crate::rerun_workspace_path().join("docs/snippets/all");
+    let examples: Vec<&'a str> = docs.doc_lines_tagged("example");
 
-        for base @ ExampleInfo {
-            name,
-            exclude_from_api_docs,
-            ..
-        } in examples.iter().map(ExampleInfo::parse)
-        {
-            if exclude_from_api_docs {
-                continue;
-            }
+    let mut out: Vec<Example<'a>> = Vec::new();
 
-            let path = base_path.join(format!("{name}.{extension}"));
-            let content = match std::fs::read_to_string(&path) {
-                Ok(content) => content,
-                Err(_) if !required => continue,
-                Err(err) => {
-                    return Err(err).with_context(|| format!("couldn't open snippet {path:?}"))
-                }
-            };
-            let mut content = content
-                .split('\n')
-                .map(String::from)
-                .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
-                .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
-                .collect_vec();
-
-            // trim trailing blank lines
-            while content.last().is_some_and(is_blank) {
-                content.pop();
-            }
-
-            out.push(Example {
-                base,
-                lines: content,
-            });
+    for example in &examples {
+        let base: ExampleInfo<'a> = ExampleInfo::parse(example);
+        let name = &base.name;
+        if base.exclude_from_api_docs {
+            continue;
         }
+
+        let path = base_path.join(format!("{name}.{extension}"));
+        let content = match std::fs::read_to_string(&path) {
+            Ok(content) => content,
+            Err(_) if !required => continue,
+            Err(err) => return Err(err).with_context(|| format!("couldn't open snippet {path:?}")),
+        };
+        let mut content = content
+            .split('\n')
+            .map(String::from)
+            .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
+            .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
+            .collect_vec();
+
+        // trim trailing blank lines
+        while content.last().is_some_and(is_blank) {
+            content.pop();
+        }
+
+        out.push(Example {
+            base,
+            lines: content,
+        });
     }
 
     Ok(out)

@@ -14,7 +14,7 @@ pub struct Docs {
     /// i.e. the `COMMENT` from `/// COMMENT\n`
     ///
     /// See also [`Docs::tagged_docs`].
-    pub doc: Vec<String>,
+    doc: Vec<String>,
 
     /// Tagged documentation for the object.
     ///
@@ -29,10 +29,10 @@ pub struct Docs {
     /// ```
     ///
     /// See also [`Docs::doc`].
-    pub tagged_docs: BTreeMap<String, Vec<String>>,
+    tagged_docs: BTreeMap<String, Vec<String>>,
 
     /// Contents of all the files included using `\include:<path>`.
-    pub included_files: BTreeMap<Utf8PathBuf, String>,
+    included_files: BTreeMap<Utf8PathBuf, String>,
 }
 
 impl Docs {
@@ -147,10 +147,21 @@ impl Docs {
         }
     }
 
+    /// Get all doc lines that start with the given tag.
+    ///
+    /// For instance, pass `"example"` to get all lines that start with `"\example"`.
+    pub fn doc_lines_tagged(&self, tag: &str) -> Vec<&str> {
+        if let Some(lines) = self.tagged_docs.get(tag) {
+            lines.iter().map(|s| s.as_str()).collect()
+        } else {
+            Vec::new()
+        }
+    }
+
     /// Get all doc lines that are untagged, or match any of the given tags.
     ///
     /// For instance, pass `["py"]` to get all lines that are untagged or starta with `"\python"`.
-    pub fn doc_lines_for(&self, tags: &[&str]) -> Vec<String> {
+    pub fn doc_lines_for_untagged_and(&self, tags: &[&str]) -> Vec<String> {
         let mut lines = self.doc.clone();
 
         for tag in tags {
