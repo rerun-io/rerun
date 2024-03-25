@@ -21,17 +21,17 @@ import yfinance as yf
 ################################################################################
 
 
-def auto_blueprint() -> rrb.ViewportLike:
+def auto_blueprint() -> rrb.BlueprintLike:
     """A blueprint enabling auto space views, which matches the application default."""
-    return rrb.Viewport(auto_space_views=True, auto_layout=True)
+    return rrb.Blueprint(auto_space_views=True, auto_layout=True)
 
 
-def one_stock(symbol: str) -> rrb.ViewportLike:
+def one_stock(symbol: str) -> rrb.ContainerLike:
     """Create a blueprint showing a single stock."""
     return rrb.TimeSeriesView(name=f"{symbol}", origin=f"/stocks/{symbol}")
 
 
-def one_stock_with_info(symbol: str) -> rrb.ViewportLike:
+def one_stock_with_info(symbol: str) -> rrb.ContainerLike:
     """Create a blueprint showing a single stock with its info arranged vertically."""
     return rrb.Vertical(
         rrb.TextDocumentView(name=f"{symbol}", origin=f"/stocks/{symbol}/info"),
@@ -40,7 +40,7 @@ def one_stock_with_info(symbol: str) -> rrb.ViewportLike:
     )
 
 
-def compare_two(symbol1: str, symbol2: str, day: Any) -> rrb.ViewportLike:
+def compare_two(symbol1: str, symbol2: str, day: Any) -> rrb.ContainerLike:
     """Create a blueprint comparing 2 stocks for a single day."""
     return rrb.TimeSeriesView(
         name=f"{symbol1} vs {symbol2} ({day})",
@@ -51,7 +51,7 @@ def compare_two(symbol1: str, symbol2: str, day: Any) -> rrb.ViewportLike:
     )
 
 
-def one_stock_no_peaks(symbol: str) -> rrb.ViewportLike:
+def one_stock_no_peaks(symbol: str) -> rrb.ContainerLike:
     """
     Create a blueprint showing a single stock without annotated peaks.
 
@@ -67,7 +67,7 @@ def one_stock_no_peaks(symbol: str) -> rrb.ViewportLike:
     )
 
 
-def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ViewportLike:
+def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ContainerLike:
     """Create a grid of stocks and their time series over all days."""
     return rrb.Vertical(
         contents=[
@@ -81,7 +81,7 @@ def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ViewportLike:
     )
 
 
-def hide_panels(viewport: rrb.ViewportLike) -> rrb.BlueprintLike:
+def hide_panels(viewport: rrb.ContainerLike) -> rrb.BlueprintLike:
     """Wrap a viewport in a blueprint that hides the time and selection panels."""
     return rrb.Blueprint(
         viewport,
@@ -145,25 +145,26 @@ def main() -> None:
     symbols = ["AAPL", "AMZN", "GOOGL", "META", "MSFT"]
     dates = list(filter(lambda x: x.weekday() < 5, [current_date - dt.timedelta(days=i) for i in range(7, 0, -1)]))
 
-    blueprint: rrb.BlueprintLike
-
     if args.blueprint == "auto":
         blueprint = auto_blueprint()
-    elif args.blueprint == "one-stock":
-        blueprint = one_stock("AAPL")
-    elif args.blueprint == "one-stock-with-info":
-        blueprint = one_stock_with_info("AMZN")
-    elif args.blueprint == "one-stock-no-peaks":
-        blueprint = one_stock_no_peaks("GOOGL")
-    elif args.blueprint == "compare-two":
-        blueprint = compare_two("META", "MSFT", dates[-1])
-    elif args.blueprint == "grid":
-        blueprint = stock_grid(symbols, dates)
     else:
-        raise ValueError(f"Unknown blueprint: {args.blueprint}")
+        if args.blueprint == "one-stock":
+            viewport = one_stock("AAPL")
+        elif args.blueprint == "one-stock-with-info":
+            viewport = one_stock_with_info("AMZN")
+        elif args.blueprint == "one-stock-no-peaks":
+            viewport = one_stock_no_peaks("GOOGL")
+        elif args.blueprint == "compare-two":
+            viewport = compare_two("META", "MSFT", dates[-1])
+        elif args.blueprint == "grid":
+            viewport = stock_grid(symbols, dates)
+        else:
+            raise ValueError(f"Unknown blueprint: {args.blueprint}")
 
-    if not args.show_panels:
-        blueprint = hide_panels(blueprint)
+        if not args.show_panels:
+            blueprint = hide_panels(viewport)
+        else:
+            blueprint = viewport
 
     rr.init("rerun_example_blueprint_stocks", spawn=True, blueprint=blueprint)
 
