@@ -276,7 +276,7 @@ impl Caches {
         re_tracing::profile_function!();
 
         let results = self.latest_at(store, query, entity_path, [C::name()]);
-        let result = results.get::<C>()?;
+        let result = results.get(C::name())?;
 
         let index @ (data_time, row_id) = *result.index();
 
