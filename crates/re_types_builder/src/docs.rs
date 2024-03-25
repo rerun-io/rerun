@@ -30,9 +30,6 @@ pub struct Docs {
     ///
     /// See also [`Docs::doc`].
     tagged_docs: BTreeMap<String, Vec<String>>,
-
-    /// Contents of all the files included using `\include:<path>`.
-    included_files: BTreeMap<Utf8PathBuf, String>,
 }
 
 impl Docs {
@@ -40,6 +37,7 @@ impl Docs {
         filepath: &Utf8Path,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
+        // Contents of all the files included using `\include:<path>`.
         let mut included_files = BTreeMap::default();
 
         let include_file = |included_files: &mut BTreeMap<_, _>, raw_path: &str| {
@@ -140,11 +138,7 @@ impl Docs {
             tagged_docs
         };
 
-        Self {
-            doc,
-            tagged_docs,
-            included_files,
-        }
+        Self { doc, tagged_docs }
     }
 
     /// Get all doc lines that start with the given tag.
