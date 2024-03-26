@@ -1,4 +1,3 @@
-use egui::vec2;
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
@@ -366,10 +365,13 @@ impl ExampleSection {
                                 let width = thumbnail.width as f32;
                                 let height = thumbnail.height as f32;
                                 ui.vertical(|ui| {
-                                    let size =
-                                        egui::vec2(column_width, height * column_width / width);
-
-                                    example_thumbnail(ui, &example.desc, size);
+                                    example_thumbnail(
+                                        ui,
+                                        &example.desc,
+                                        column_width,
+                                        width,
+                                        height,
+                                    );
                                 });
                             }
 
@@ -433,31 +435,43 @@ impl ExampleSection {
     }
 }
 
-fn example_thumbnail(ui: &mut Ui, example: &ExampleDesc, thumbnail_size: egui::Vec2) {
+fn example_thumbnail(
+    ui: &mut Ui,
+    example: &ExampleDesc,
+    column_width: f32,
+    width: f32,
+    height: f32,
+) {
+    // the thumbnail rect is determined by the column width and a fixed aspect ratio
+    let thumbnail_rect = egui::Rect::from_min_size(
+        ui.cursor().left_top(),
+        egui::vec2(column_width, column_width / CARD_THUMBNAIL_ASPECT_RATIO),
+    );
+    let thumbnail_width = thumbnail_rect.width();
+    let thumbnail_height = thumbnail_rect.height();
+
+    // compute image UV coordinates implementing a "cropping" scale to fit thumbnail rect
+    let display_aspect_ratio = thumbnail_width / thumbnail_height;
+    let image_aspect_ratio = width / height;
+    let uv_rect = if image_aspect_ratio > display_aspect_ratio {
+        let a = (width / height * thumbnail_height - thumbnail_width) / 2.0 / width;
+        egui::Rect::from_min_max(egui::Pos2::new(a, 0.0), egui::Pos2::new(1.0 - a, 1.0))
+    } else {
+        let a = (height / width * thumbnail_width - thumbnail_height) / 2.0 / height;
+        egui::Rect::from_min_max(egui::Pos2::new(0.0, a), egui::Pos2::new(1.0, 1.0 - a))
+    };
+
     let rounding = egui::Rounding {
         nw: THUMBNAIL_RADIUS,
         ne: THUMBNAIL_RADIUS,
         sw: 0.0,
         se: 0.0,
     };
-
-    let clip_width = thumbnail_size.x;
-    let clip_height = thumbnail_size.x / CARD_THUMBNAIL_ASPECT_RATIO;
-
-    let clip_top_left = ui.cursor().left_top();
-    let bottom_right = clip_top_left + vec2(clip_width, clip_height);
-    let clip_rect = egui::Rect::from_min_max(clip_top_left, bottom_right);
-
-    let thumbnail_rect = egui::Rect::from_min_max(clip_top_left, clip_top_left + thumbnail_size);
-
-    // manually clip the rect and paint the image
-    let orig_clip_rect = ui.clip_rect();
-    ui.set_clip_rect(orig_clip_rect.intersect(clip_rect));
     egui::Image::new(&example.thumbnail.url)
+        .uv(uv_rect)
         .rounding(rounding)
         .paint_at(ui, thumbnail_rect);
-    ui.advance_cursor_after_rect(clip_rect);
-    ui.set_clip_rect(orig_clip_rect);
+    ui.advance_cursor_after_rect(thumbnail_rect);
 }
 
 fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
