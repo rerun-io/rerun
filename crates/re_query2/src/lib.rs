@@ -1,9 +1,11 @@
 //! Provide query-centric access to the [`re_data_store`].
 
-pub mod clamped_zip;
 mod latest_at;
 mod promise;
 mod visible_history;
+
+pub mod clamped_zip;
+pub mod range_zip;
 
 pub use self::clamped_zip::*;
 pub use self::latest_at::{latest_at, LatestAtComponentResults, LatestAtResults};
