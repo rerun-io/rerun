@@ -2,6 +2,7 @@
 
 mod latest_at;
 mod promise;
+mod range;
 mod visible_history;
 
 pub mod clamped_zip;
@@ -10,6 +11,8 @@ pub mod range_zip;
 pub use self::clamped_zip::*;
 pub use self::latest_at::{latest_at, LatestAtComponentResults, LatestAtResults};
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
+pub use self::range::{range, RangeComponentResults, RangeResults};
+pub use self::range_zip::*;
 pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 
 // ---
