@@ -64,7 +64,7 @@ Try out the following to interact with the viewer:
  * Hover and select individual points to see more information.
 
 This is just a taste of some of what you can do with the viewer. We will cover other functionality in much
-more detail later in the [Viewer Walkthrough](viewer-walkthrough.md)
+more detail later in the [Viewer Walkthrough](visualize/viewer-walkthrough.md)
 
 ## Logging your own data
 After exploring a built-in example, let's create some data ourselves. We will start with an
@@ -139,8 +139,8 @@ rr.log(
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](viewer-walkthrough.md) or our
-more advanced guide for [Logging Data in Python](../getting-started/data-in/streaming/python.md) where we will explore the core concepts that make
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../visualize/viewer-walkthrough.md) or our
+more advanced guide for [Logging Data in Python](../data-in/streaming/python.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.

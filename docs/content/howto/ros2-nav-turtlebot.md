@@ -31,7 +31,7 @@ All of the code for this guide can be found on GitHub in
 
 Other relevant tutorials:
  - [Python SDK Tutorial](../getting-started/getting-started/data-in/streaming/python.md)
- - [Viewer Walkthrough](../getting-started/viewer-walkthrough.md)
+ - [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
 
 ### ROS 2 & navigation
 You will need to have installed [ROS 2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)

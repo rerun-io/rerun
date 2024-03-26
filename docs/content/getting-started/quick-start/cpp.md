@@ -122,14 +122,14 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](viewer-walkthrough.md) or our
-more advanced guide for [Logging Data in C++](../getting-started/data-in/streaming/cpp.md) where we will explore the core concepts that make
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../visualize/viewer-walkthrough.md) or our
+more advanced guide for [Logging Data in C++](../data-in/streaming/cpp.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.
 There's also a stand-alone example that shows [interop with Eigen and OpenCV](https://github.com/rerun-io/cpp-example-opencv-eigen).
 
 To learn more about how to work with your own types, check the [Custom Collection Adapter](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/custom_collection_adapter) example on how to zero-copy adapt to Rerun types
-and the [Use custom data](../howto/extend/custom-data.md) page for completely custom types.
+and the [Use custom data](../../howto/extend/custom-data.md) page for completely custom types.
 
 To learn more about how to configure the C++ SDK's CMake file, check [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2cmake__setup__in__detail.html).
