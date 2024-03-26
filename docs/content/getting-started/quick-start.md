@@ -11,6 +11,6 @@ Dive right into using the Rerun SDK with your favorite language!
 
 If you're instead looking for a step by step guide on how to use the SDK, have a look at the **SDK tutorial**:
 
-* [C++](./tutorial/cpp.md)
-* [Python](./tutorial/python.md)
-* [Rust](./tutorial/rust.md)
+* [C++](./getting-started/data-in/streaming/cpp.md)
+* [Python](./getting-started/data-in/streaming/python.md)
+* [Rust](./getting-started/data-in/streaming/rust.md)
