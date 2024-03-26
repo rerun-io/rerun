@@ -368,7 +368,7 @@ fn experimental_feature_ui(
     #[cfg(not(target_arch = "wasm32"))]
     re_ui
         .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
-        .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.");
+        .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 
     if re_ui
         .checkbox(

@@ -11,7 +11,7 @@ pub fn blueprint_panel_ui(
         ctx.re_ui.panel_title_bar_with_buttons(
             ui,
             "Blueprint",
-            Some("The Blueprint is where you can configure the Rerun Viewer"),
+            Some("The blueprint is where you can configure the Rerun Viewer"),
             |ui| {
                 viewport.add_new_spaceview_button_ui(ctx, ui);
                 reset_blueprint_button_ui(ctx, ui);
@@ -28,7 +28,7 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     if ctx
         .re_ui
         .small_icon_button(ui, &re_ui::icons::RESET)
-        .on_hover_text("Re-populate Viewport with automatically chosen Space Views")
+        .on_hover_text("Re-populate viewport with automatically chosen space views")
         .clicked()
     {
         ctx.command_sender

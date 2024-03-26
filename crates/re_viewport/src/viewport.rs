@@ -35,7 +35,7 @@ pub struct PerSpaceViewState {
 /// is not saved.
 #[derive(Default)]
 pub struct ViewportState {
-    /// State for the "Add Entity" modal.
+    /// State for the "Add entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
 
     /// State for the "Add space view or container" modal.
@@ -865,7 +865,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 /// A tab button for a tab in the viewport.
 ///
 /// The tab can contain any `egui_tiles::Tile`,
-/// which is either a Pane with a Space View, or a Container,
+/// which is either a Pane with a Space View, or a container,
 /// e.g. a grid of tiles.
 struct TabWidget {
     galley: std::sync::Arc<egui::Galley>,
@@ -960,7 +960,7 @@ impl TabWidget {
                     re_log::warn_once!("Container for tile ID {tile_id:?} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown Container").into(),
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown container").into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,

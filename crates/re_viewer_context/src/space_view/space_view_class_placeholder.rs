@@ -11,11 +11,11 @@ pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Unknown Space View Class".into()
+        "Unknown space view class".into()
     }
 
     fn display_name(&self) -> &'static str {
-        "Unknown Space View Class"
+        "Unknown space view class"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -23,7 +23,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "The Space View Class was not recognized.\nThis happens if either the Blueprint specifies an invalid Space View Class or this version of the Viewer does not know about this type.".into()
+        "The space view class was not recognized.\nThis happens if either the blueprint specifies an invalid space view class or this version of the viewer does not know about this type.".into()
     }
 
     fn on_register(

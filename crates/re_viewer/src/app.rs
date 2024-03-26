@@ -192,7 +192,7 @@ impl App {
             state.app_options(),
         ) {
             re_log::error!(
-                "Failed to populate Space View type registry with built-in Space Views: {}",
+                "Failed to populate space view type registry with built-in space views: {}",
                 err
             );
         }

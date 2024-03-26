@@ -57,7 +57,7 @@ pub enum SpaceViewSystemExecutionError {
     #[error(transparent)]
     GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
 
-    #[error("Failed to downcast Space View's to the {0}.")]
+    #[error("Failed to downcast space view's to the {0}.")]
     StateCastError(&'static str),
 }
 
