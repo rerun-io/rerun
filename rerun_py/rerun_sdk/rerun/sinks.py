@@ -262,6 +262,40 @@ def serve(
     )
 
 
+def send_blueprint(
+    blueprint: BlueprintLike,
+    *,
+    make_active: bool = False,
+    make_default: bool = True,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Create a blueprint from a `BlueprintLike` and send it to the `RecordingStream`.
+
+    Parameters
+    ----------
+    blueprint:
+        A blueprint object to send to the viewer.
+    make_active:
+        Make this blueprint the active blueprint for the application.
+    make_default:
+        Make this blueprint the default blueprint for the application.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    recording = RecordingStream.to_native(recording)
+
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError("No application id found. You must call rerun.init before sending a blueprint.")
+    blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
+    bindings.send_blueprint(blueprint_storage, make_active, make_default, recording=recording)
+
+
 # TODO(#4019): application-level handshake
 def _check_for_existing_viewer(port: int) -> bool:
     try:

@@ -93,6 +93,7 @@ __all__ = [
     "set_time_nanos",
     "set_time_seconds",
     "set_time_sequence",
+    "send_blueprint",
     "spawn",
 ]
 
@@ -174,7 +175,7 @@ from .recording_stream import (
     set_thread_local_data_recording,
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
-from .sinks import connect, disconnect, memory_recording, save, serve, spawn, stdout
+from .sinks import connect, disconnect, memory_recording, save, send_blueprint, serve, spawn, stdout
 from .time import (
     disable_timeline,
     reset_time,
@@ -222,7 +223,7 @@ def _init_recording_stream() -> None:
     from rerun.recording_stream import _patch as recording_stream_patch
 
     recording_stream_patch(
-        [connect, save, stdout, disconnect, memory_recording, serve, spawn]
+        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint]
         + [
             set_time_sequence,
             set_time_seconds,

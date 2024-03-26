@@ -1554,7 +1554,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, send it first.
         if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint(blueprint, ready_opts, &sink);
+            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1669,7 +1669,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, store it first.
         if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint(blueprint, ready_opts, &sink);
+            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1719,7 +1719,7 @@ impl RecordingStream {
 
         // If a blueprint was provided, write it first.
         if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint(blueprint, ready_opts, &sink);
+            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1745,8 +1745,8 @@ impl RecordingStream {
         }
     }
 
-    /// Send the blueprint to the sink, and then activate it.
-    pub fn send_blueprint(
+    /// Send the blueprint directly to the sink associated with this stream, and then activate it.
+    pub fn send_blueprint_to_sink(
         blueprint: Vec<LogMsg>,
         ready_opts: BlueprintReadyOpts,
         sink: &dyn crate::sink::LogSink,
@@ -1764,6 +1764,24 @@ impl RecordingStream {
             // We don't want to activate half-loaded blueprints, because that can be confusing,
             // and can also lead to problems with space-view heuristics.
             sink.send(LogMsg::BlueprintReady(store_id, ready_opts));
+        }
+    }
+
+    /// Send a blueprint through this recording stream
+    pub fn send_blueprint(&self, blueprint: Vec<LogMsg>, ready_opts: BlueprintReadyOpts) {
+        let mut store_id = None;
+        for msg in blueprint {
+            if store_id.is_none() {
+                store_id = Some(msg.store_id().clone());
+            }
+            self.record_msg(msg);
+        }
+        if let Some(store_id) = store_id {
+            // Let the viewer know that the blueprint has been fully received,
+            // and that it can now be activated.
+            // We don't want to activate half-loaded blueprints, because that can be confusing,
+            // and can also lead to problems with space-view heuristics.
+            self.record_msg(LogMsg::BlueprintReady(store_id, ready_opts));
         }
     }
 }

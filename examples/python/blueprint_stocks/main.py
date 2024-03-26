@@ -166,7 +166,8 @@ def main() -> None:
         else:
             blueprint = viewport
 
-    rr.init("rerun_example_blueprint_stocks", spawn=True, blueprint=blueprint)
+    rr.init("rerun_example_blueprint_stocks", spawn=True)
+    rr.send_blueprint(blueprint, make_active=True)
 
     # In a future blueprint release, this can move into the blueprint as well
     for symbol in symbols:

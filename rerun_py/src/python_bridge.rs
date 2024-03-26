@@ -180,6 +180,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
+    m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -733,7 +734,7 @@ fn serve(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(blueprint) = blueprint {
-            RecordingStream::send_blueprint(blueprint.inner.take(), ready_opts, &*sink);
+            RecordingStream::send_blueprint_to_sink(blueprint.inner.take(), ready_opts, &*sink);
         }
 
         recording.set_sink(sink);
@@ -941,6 +942,27 @@ fn log_file(
     py.allow_threads(flush_garbage_queue);
 
     Ok(())
+}
+
+/// Send a blueprint to the given recording stream.
+#[pyfunction]
+#[pyo3(signature = (blueprint, make_active = false, make_default = true, recording = None))]
+fn send_blueprint(
+    blueprint: &PyMemorySinkStorage,
+    make_active: bool,
+    make_default: bool,
+    recording: Option<&PyRecordingStream>,
+) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+
+    let ready_opts = BlueprintReadyOpts {
+        make_active,
+        make_default,
+    };
+
+    recording.send_blueprint(blueprint.inner.take(), ready_opts);
 }
 
 // --- Misc ---
