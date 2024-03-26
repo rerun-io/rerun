@@ -73,6 +73,11 @@ name = "clamped_zip"
 required-features = ["codegen"]
 
 
+[[bin]]
+name = "range_zip"
+required-features = ["codegen"]
+
+
 [[bench]]
 name = "latest_at"
 harness = false
