@@ -164,6 +164,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
@@ -622,6 +623,44 @@ fn save(
 
         Ok(())
     })
+}
+
+#[pyfunction]
+#[pyo3(signature = (path, blueprint_stream))]
+/// Special binding for directly savings a blueprint stream to a file.
+fn save_blueprint(
+    path: &str,
+    blueprint_stream: &PyRecordingStream,
+    py: Python<'_>,
+) -> PyResult<()> {
+    let ready_opts = BlueprintReadyOpts {
+        make_active: true,
+        make_default: true,
+    };
+
+    if let Some(recording_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+        // The call to save, needs to flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            // Flush all the pending blueprint messages before we include the Ready message
+            blueprint_stream.flush_blocking();
+
+            blueprint_stream.record_msg(re_log_types::LogMsg::BlueprintReady(
+                recording_id,
+                ready_opts,
+            ));
+
+            let res = blueprint_stream
+                .save_opts(path, None)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+            flush_garbage_queue();
+            res
+        })
+    } else {
+        Err(PyRuntimeError::new_err(
+            "Blueprint stream has no store info".to_owned(),
+        ))
+    }
 }
 
 #[pyfunction]
