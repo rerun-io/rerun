@@ -274,7 +274,7 @@ impl EntityDb {
                 self.add_data_table(table)?;
             }
 
-            LogMsg::ActivateStore(_) => {
+            LogMsg::BlueprintReady(_, _) => {
                 // Not for us to handle
             }
         }
@@ -540,14 +540,29 @@ impl EntityDb {
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
         });
 
-        // Signal that the store is done loading.
+        // Signal that the store is ready.
         // Important for blueprints.
-        let activate_store_msg = LogMsg::ActivateStore(self.store_id().clone());
+        let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
+            // TODO(jleibs): Maybe make_active or make_default should be configurable.
+            // We generally use `to_messages` to export a blueprint via "save". In that
+            // case, we want to make the blueprint active and default when it's reloaded.
+            let ready_msg = LogMsg::BlueprintReady(
+                self.store_id().clone(),
+                re_log_types::BlueprintReadyOpts {
+                    make_active: true,
+                    make_default: true,
+                },
+            );
+
+            itertools::Either::Left(std::iter::once(Ok(ready_msg)))
+        } else {
+            itertools::Either::Right(std::iter::empty())
+        };
 
         let messages: Result<Vec<_>, _> = set_store_info_msg
             .into_iter()
             .chain(data_messages)
-            .chain(std::iter::once(Ok(activate_store_msg)))
+            .chain(blueprint_ready)
             .collect();
 
         messages

@@ -205,6 +205,27 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
+/// Options for configuring viewer behavior when a blueprint is ready.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct BlueprintReadyOpts {
+    /// Make this the active blueprint for the `app_id`.
+    pub make_active: bool,
+
+    /// Make this the default blueprint for the `app_id`.
+    pub make_default: bool,
+}
+
+impl std::fmt::Display for BlueprintReadyOpts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "BlueprintReadyOpts {{ make_active: {}, make_default: {} }}",
+            self.make_active, self.make_default
+        )
+    }
+}
+
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
@@ -224,14 +245,14 @@ pub enum LogMsg {
     /// This is so that the viewer can wait with activating the blueprint until it is
     /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
     /// and also lead to problems with space-view heuristics.
-    ActivateStore(StoreId),
+    BlueprintReady(StoreId, BlueprintReadyOpts),
 }
 
 impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
-            Self::ArrowMsg(store_id, _) | Self::ActivateStore(store_id) => store_id,
+            Self::ArrowMsg(store_id, _) | Self::BlueprintReady(store_id, _) => store_id,
         }
     }
 
@@ -240,8 +261,8 @@ impl LogMsg {
             LogMsg::SetStoreInfo(store_info) => {
                 store_info.info.store_id = new_store_id;
             }
-            LogMsg::ArrowMsg(msg_store_id, _) | LogMsg::ActivateStore(msg_store_id) => {
-                *msg_store_id = new_store_id;
+            LogMsg::ArrowMsg(store_id, _) | LogMsg::BlueprintReady(store_id, _) => {
+                *store_id = new_store_id;
             }
         }
     }

@@ -12,7 +12,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::{EntityPathPart, StoreKind};
+use re_log_types::{BlueprintReadyOpts, EntityPathPart, StoreKind};
 use rerun::{
     sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
     StoreId,
@@ -544,11 +544,20 @@ fn connect(
 
     let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
 
+    let ready_opts = BlueprintReadyOpts {
+        make_active: false,
+        make_default: true,
+    };
+
     // The call to connect may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         if let Some(recording) = get_data_recording(recording) {
-            recording.connect_opts(addr, flush_timeout, blueprint.map(|b| b.inner.take()));
+            recording.connect_opts(
+                addr,
+                flush_timeout,
+                blueprint.map(|b| (b.inner.take(), ready_opts)),
+            );
         };
         flush_garbage_queue();
     });
@@ -568,11 +577,16 @@ fn save(
         return Ok(());
     };
 
+    let ready_opts = BlueprintReadyOpts {
+        make_active: false,
+        make_default: true,
+    };
+
     // The call to save may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .save_opts(path, blueprint.map(|b| b.inner.take()))
+            .save_opts(path, blueprint.map(|b| (b.inner.take(), ready_opts)))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -590,11 +604,16 @@ fn stdout(
         return Ok(());
     };
 
+    let ready_opts = BlueprintReadyOpts {
+        make_active: false,
+        make_default: true,
+    };
+
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .stdout_opts(blueprint.map(|b| b.inner.take()))
+            .stdout_opts(blueprint.map(|b| (b.inner.take(), ready_opts)))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -694,6 +713,11 @@ fn serve(
             return Ok(());
         };
 
+        let ready_opts = BlueprintReadyOpts {
+            make_active: false,
+            make_default: true,
+        };
+
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
 
@@ -709,7 +733,7 @@ fn serve(
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(blueprint) = blueprint {
-            RecordingStream::send_blueprint(blueprint.inner.take(), &*sink);
+            RecordingStream::send_blueprint(blueprint.inner.take(), ready_opts, &*sink);
         }
 
         recording.set_sink(sink);

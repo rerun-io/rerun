@@ -559,8 +559,8 @@ impl PrintCommand {
                     }
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    println!("ActivateStore({store_id})");
+                LogMsg::BlueprintReady(store_id, ready_opts) => {
+                    println!("BlueprintReady({store_id}, {ready_opts})");
                 }
             }
         }

@@ -9,10 +9,10 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
-    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, BlueprintReadyOpts, DataCell, DataCellError, DataRow,
+    DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg,
+    RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType,
+    Timeline, TimelineName,
 };
 use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
@@ -1543,7 +1543,7 @@ impl RecordingStream {
         &self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
-        blueprint: Option<Vec<LogMsg>>,
+        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
     ) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
@@ -1553,8 +1553,8 @@ impl RecordingStream {
         let sink = crate::log_sink::TcpSink::new(addr, flush_timeout);
 
         // If a blueprint was provided, send it first.
-        if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+        if let Some((blueprint, ready_opts)) = blueprint {
+            Self::send_blueprint(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1658,7 +1658,7 @@ impl RecordingStream {
     pub fn save_opts(
         &self,
         path: impl Into<std::path::PathBuf>,
-        blueprint: Option<Vec<LogMsg>>,
+        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
     ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
@@ -1668,8 +1668,8 @@ impl RecordingStream {
         let sink = crate::sink::FileSink::new(path)?;
 
         // If a blueprint was provided, store it first.
-        if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+        if let Some((blueprint, ready_opts)) = blueprint {
+            Self::send_blueprint(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1702,7 +1702,7 @@ impl RecordingStream {
     /// Blueprints are currently an experimental part of the Rust SDK.
     pub fn stdout_opts(
         &self,
-        blueprint: Option<Vec<LogMsg>>,
+        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
     ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
@@ -1718,8 +1718,8 @@ impl RecordingStream {
         let sink = crate::sink::FileSink::stdout()?;
 
         // If a blueprint was provided, write it first.
-        if let Some(blueprint) = blueprint {
-            Self::send_blueprint(blueprint, &sink);
+        if let Some((blueprint, ready_opts)) = blueprint {
+            Self::send_blueprint(blueprint, ready_opts, &sink);
         }
 
         self.set_sink(Box::new(sink));
@@ -1746,7 +1746,11 @@ impl RecordingStream {
     }
 
     /// Send the blueprint to the sink, and then activate it.
-    pub fn send_blueprint(blueprint: Vec<LogMsg>, sink: &dyn crate::sink::LogSink) {
+    pub fn send_blueprint(
+        blueprint: Vec<LogMsg>,
+        ready_opts: BlueprintReadyOpts,
+        sink: &dyn crate::sink::LogSink,
+    ) {
         let mut store_id = None;
         for msg in blueprint {
             if store_id.is_none() {
@@ -1759,7 +1763,7 @@ impl RecordingStream {
             // and that it can now be activated.
             // We don't want to activate half-loaded blueprints, because that can be confusing,
             // and can also lead to problems with space-view heuristics.
-            sink.send(LogMsg::ActivateStore(store_id));
+            sink.send(LogMsg::BlueprintReady(store_id, ready_opts));
         }
     }
 }

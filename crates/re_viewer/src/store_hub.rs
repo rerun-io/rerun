@@ -242,7 +242,7 @@ impl StoreHub {
     ///
     /// We never activate a blueprint directly. Instead, we clone it and activate the clone.
     //TODO(jleibs): In the future this can probably be handled with snapshots instead.
-    fn make_blueprint_active_for_app_id(
+    pub fn make_blueprint_active_for_app_id(
         &mut self,
         blueprint_id: &StoreId,
         app_id: &ApplicationId,
