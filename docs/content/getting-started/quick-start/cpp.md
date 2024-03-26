@@ -4,7 +4,7 @@ order: 1
 ---
 
 ## Setup
-Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
+Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md#installing-the-viewer).
 
 ## Learning by example
 If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
