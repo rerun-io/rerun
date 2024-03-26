@@ -1,5 +1,5 @@
 ---
-title: C++ SDK Tutorial
+title: C++
 order: 5
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: C++ Quick Start
+title: C++
 order: 1
 ---
 

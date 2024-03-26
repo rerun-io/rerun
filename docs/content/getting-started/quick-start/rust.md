@@ -1,5 +1,5 @@
 ---
-title: Rust Quick Start
+title: Rust
 order: 3
 ---
 

@@ -1,5 +1,5 @@
 ---
-title: Python SDK Tutorial
+title: Python
 order: 6
 ---
 

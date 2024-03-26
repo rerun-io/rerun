@@ -1,5 +1,5 @@
 ---
-title: Python Quick Start
+title: Python
 order: 2
 ---
 

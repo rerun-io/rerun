@@ -1,5 +1,5 @@
 ---
-title: Rust SDK Tutorial
+title: Rust
 order: 7
 ---
 
