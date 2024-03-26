@@ -31,6 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 ///
+/// Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
+/// Using these formats can save a lot of bandwidth and memory.
+/// See [`crate::components::TensorData`] for more.
+///
 /// ## Example
 ///
 /// ### `image_simple`:

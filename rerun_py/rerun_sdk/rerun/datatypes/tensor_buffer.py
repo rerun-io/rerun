@@ -88,7 +88,7 @@ class TensorBuffer(TensorBufferExt):
         First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
     * YUY2 (npt.NDArray[np.uint8]):
-        YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
         The order of the channels is Y0, U0, Y1, V0.
     """
@@ -141,7 +141,7 @@ class TensorBuffer(TensorBufferExt):
         First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
     * "YUY2":
-        YUY2, also known as YUYV is a YUV 4:2:2 chrome downsampled format with 8 bits per channel.
+        YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
         The order of the channels is Y0, U0, Y1, V0.
     """

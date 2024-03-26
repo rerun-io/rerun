@@ -44,6 +44,7 @@ bitflags::bitflags! {
 /// Within the tree of all subspaces, every entity is contained in exactly one subspace.
 /// The subtree at (and including) the `origin` minus the
 /// subtrees of all child spaces are considered to be contained in a subspace.
+#[derive(Debug)]
 pub struct SubSpace {
     /// The transform root of this subspace.
     ///
@@ -166,7 +167,7 @@ impl StoreSubscriber for SpatialTopologyStoreSubscriber {
     }
 }
 
-/// Spatial toopological information about a store.
+/// Spatial topological information about a store.
 ///
 /// Describes how 2D & 3D spaces are connected/disconnected.
 ///
