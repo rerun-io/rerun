@@ -747,7 +747,7 @@ fn serve(
 
     #[cfg(not(feature = "web_viewer"))]
     {
-        _ = blueprint;
+        _ = default_blueprint;
         _ = recording;
         _ = web_port;
         _ = ws_port;
