@@ -90,6 +90,11 @@ impl crate::DataUi for EntityDb {
             }
         }
 
+        if ctx.store_context.is_default_blueprint(self.store_id()) {
+            ui.add_space(8.0);
+            ui.label("This is the default blueprint");
+        }
+
         if verbosity == UiVerbosity::Full {
             sibling_stores_ui(ctx, ui, self);
         }

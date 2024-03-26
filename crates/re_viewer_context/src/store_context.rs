@@ -16,10 +16,17 @@ pub struct StoreContext<'a> {
 
     /// All the loaded recordings and blueprints.
     pub bundle: &'a StoreBundle,
+
+    /// The current default blueprint
+    pub default_blueprint: Option<&'a StoreId>,
 }
 
 impl StoreContext<'_> {
     pub fn is_active(&self, store_id: &StoreId) -> bool {
         self.recording.store_id() == store_id || self.blueprint.store_id() == store_id
+    }
+
+    pub fn is_default_blueprint(&self, store_id: &StoreId) -> bool {
+        self.default_blueprint == Some(store_id)
     }
 }

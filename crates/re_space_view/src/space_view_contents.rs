@@ -645,6 +645,7 @@ mod tests {
             blueprint: &blueprint,
             recording: &recording,
             bundle: &Default::default(),
+            default_blueprint: None,
         };
 
         struct Scenario {

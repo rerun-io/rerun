@@ -133,6 +133,7 @@ impl StoreHub {
             .and_then(|id| self.store_bundle.get(id));
 
         Some(StoreContext {
+            default_blueprint: self.default_blueprint_by_app_id.get(&app_id),
             app_id,
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
@@ -148,21 +149,12 @@ impl StoreHub {
         self.was_recording_active
     }
 
-    /// Activate a store by its [`StoreId`].
-    ///
-    /// If this is a recording, switch to it.
-    /// If this is a blueprint, switch to the `AppId` of the blueprint,
-    /// and make this blueprint the active blueprint for that `AppId`.
-    pub fn activate_store(&mut self, store_id: StoreId) {
+    /// Activate a recording by its [`StoreId`].
+    pub fn activate_recording(&mut self, store_id: StoreId) {
         match store_id.kind {
             StoreKind::Recording => self.set_active_recording_id(store_id),
             StoreKind::Blueprint => {
-                if let Some(store) = self.store_bundle.get(&store_id) {
-                    if let Some(app_id) = store.app_id().cloned() {
-                        self.set_default_blueprint_for_app_id(&store_id, &app_id);
-                        self.set_active_app_id(app_id.clone());
-                    }
-                }
+                re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
             }
         }
     }
@@ -273,7 +265,10 @@ impl StoreHub {
 
         blueprint.store().sort_indices_if_needed();
 
-        let new_blueprint = EntityDb::from_info_and_rows(new_info, blueprint.store().to_rows()?)?;
+        let mut new_blueprint =
+            EntityDb::from_info_and_rows(new_info, blueprint.store().to_rows()?)?;
+        // Also copy the data source
+        new_blueprint.data_source = blueprint.data_source.clone();
 
         // Insert it into the store bundle and save it as active
         self.store_bundle.insert(new_blueprint);
