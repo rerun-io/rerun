@@ -81,7 +81,7 @@ thread_local! {
 pub fn cleanup_if_forked_child() {
     if let Some(global_recording) = RecordingStream::global(StoreKind::Recording) {
         if global_recording.is_forked_child() {
-            re_log::debug!("Fork detected. Forgetting global Recording");
+            re_log::debug!("Fork detected. Forgetting global recording");
             RecordingStream::forget_global(StoreKind::Recording);
         }
     }

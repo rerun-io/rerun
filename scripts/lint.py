@@ -64,10 +64,13 @@ def check_string(s: str) -> str | None:
         "Container",
         "Entity",
         "EntityPath",
+        "Epoch",
         "Instance",
         "Path",
+        "Recording",
         "Result",
         "Space",
+        "Store",
         "View",
         "Viewport",
     ]

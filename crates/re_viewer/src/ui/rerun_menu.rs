@@ -330,7 +330,7 @@ fn options_menu_ui(
                 ui,
                 &mut app_options.time_zone,
                 TimeZone::UnixEpoch,
-                "Unix Epoch",
+                "Unix epoch",
             )
             .on_hover_text("Display timestamps in seconds since unix epoch");
     });

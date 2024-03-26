@@ -106,8 +106,8 @@ impl UICommand {
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
             Self::CloseCurrentRecording => (
-                "Close current Recording",
-                "Close the current Recording (unsaved data will be lost)",
+                "Close current recording",
+                "Close the current recording (unsaved data will be lost)",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
