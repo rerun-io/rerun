@@ -1099,23 +1099,15 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 
     // Show some statistics about the query, print a warning text if something seems off.
-    let mut num_visualizable = 0;
-    let mut num_nodes = 0;
-    ctx.lookup_query_result(space_view_id)
-        .tree
-        .visit(&mut |node| {
-            num_nodes += !node.data_result.tree_prefix_only as usize;
-            num_visualizable += !node.data_result.visualizers.is_empty() as usize;
-            true
-        });
-    if num_nodes == 0 {
+    let query = ctx.lookup_query_result(space_view_id);
+    if query.num_matching_entities == 0 {
         ui.label(ctx.re_ui.warning_text("Does not match any entity!"));
-    } else if num_nodes == 1 {
+    } else if query.num_matching_entities == 1 {
         ui.label("Matches 1 entity.");
     } else {
-        ui.label(format!("Matches {num_nodes} entities."));
+        ui.label(format!("Matches {} entities.", query.num_matching_entities));
     }
-    if num_nodes != 0 && num_visualizable == 0 {
+    if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
         ui.label(ctx.re_ui.warning_text(
             format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),

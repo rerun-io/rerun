@@ -223,14 +223,22 @@ impl DataQuery for SpaceViewContents {
         let executor =
             QueryExpressionEvaluator::new(self, visualizable_entities_for_visualizer_systems);
 
+        let mut num_matching_entities = 0;
+        let mut num_visualized_entities = 0;
         let root_handle = {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
-            executor
-                .add_entity_tree_to_data_results_recursive(ctx.recording.tree(), &mut data_results)
+            executor.add_entity_tree_to_data_results_recursive(
+                ctx.recording.tree(),
+                &mut data_results,
+                &mut num_matching_entities,
+                &mut num_visualized_entities,
+            )
         };
 
         DataQueryResult {
             tree: DataResultTree::new(data_results, root_handle),
+            num_matching_entities,
+            num_visualized_entities,
         }
     }
 }
@@ -262,6 +270,8 @@ impl<'a> QueryExpressionEvaluator<'a> {
         &self,
         tree: &EntityTree,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
+        num_matching_entities: &mut usize,
+        num_visualized_entities: &mut usize,
     ) -> Option<DataResultHandle> {
         // Early-out optimization
         if !self
@@ -275,27 +285,34 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
-        let tree_prefix_only = !self.entity_path_filter.is_included(entity_path);
+        let matches_filter = self.entity_path_filter.is_included(entity_path);
+        *num_matching_entities += matches_filter as usize;
 
         // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
         // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
         // is called before the property-overrider has a chance to update this list.
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
         // on the space view.
-        let visualizers: SmallVec<[_; 4]> = if tree_prefix_only {
-            Default::default()
-        } else {
+        let visualizers: SmallVec<[_; 4]> = if matches_filter {
             self.visualizable_entities_for_visualizer_systems
                 .iter()
                 .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
                 .collect()
+        } else {
+            Default::default()
         };
+        *num_visualized_entities += !visualizers.is_empty() as usize;
 
         let children: SmallVec<[_; 4]> = tree
             .children
             .values()
             .filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive(subtree, data_results)
+                self.add_entity_tree_to_data_results_recursive(
+                    subtree,
+                    data_results,
+                    num_matching_entities,
+                    num_visualized_entities,
+                )
             })
             .collect();
 
@@ -308,7 +325,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     visualizers,
-                    tree_prefix_only,
+                    tree_prefix_only: !matches_filter,
                     property_overrides: None,
                 },
                 children,
