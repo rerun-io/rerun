@@ -284,7 +284,7 @@ fn space_view_button(
             is_selected,
             contents_name_style(&space_view_name),
         )
-        .on_hover_text("Space View");
+        .on_hover_text("Space view");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
@@ -382,13 +382,13 @@ fn what_is_selected_ui(
 
                 let hover_text = if let Some(display_name) = space_view.display_name.as_ref() {
                     format!(
-                        "Space View {:?} of type {}",
+                        "Space view {:?} of type {}",
                         display_name,
                         space_view_class.display_name()
                     )
                 } else {
                     format!(
-                        "Unnamed Space View of type {}",
+                        "Unnamed space view of type {}",
                         space_view_class.display_name()
                     )
                 };
@@ -447,7 +447,7 @@ fn what_is_selected_ui(
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
                     &format!(
-                        "{typ} '{instance_path}' as shown in Space View {:?}",
+                        "{typ} '{instance_path}' as shown in space view {:?}",
                         space_view.display_name
                     ),
                 );
@@ -568,8 +568,8 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Space origin").on_hover_text(
-                    "The origin Entity for this Space View. For spatial Space Views, the Space \
-                    View's origin is the same as this Entity's origin and all transforms are \
+                    "The origin entity for this space view. For spatial space views, the space \
+                    View's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
                 );
 
@@ -580,7 +580,7 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Type")
-                    .on_hover_text("The type of this Space View");
+                    .on_hover_text("The type of this space view");
                 ui.label(
                     space_view
                         .class(ctx.space_view_class_registry)
@@ -856,9 +856,9 @@ fn blueprint_ui_for_space_view(
     }
 
     if ui
-        .button("Clone Space View")
+        .button("Clone space view")
         .on_hover_text(
-            "Create an exact duplicate of this Space View including all Blueprint settings",
+            "Create an exact duplicate of this space view including all blueprint settings",
         )
         .clicked()
     {

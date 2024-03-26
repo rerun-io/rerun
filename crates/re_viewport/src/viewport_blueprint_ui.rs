@@ -383,7 +383,7 @@ impl Viewport<'_, '_> {
         container_visible: bool,
     ) {
         let Some(space_view) = self.blueprint.space_views.get(space_view_id) else {
-            re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+            re_log::warn_once!("Bug: asked to show a ui for a space view that doesn't exist");
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -418,7 +418,7 @@ impl Viewport<'_, '_> {
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
+                let response = remove_button_ui(re_ui, ui, "Remove space view from the viewport");
                 if response.clicked() {
                     self.blueprint.mark_user_interaction(ctx);
                     self.blueprint
@@ -481,7 +481,7 @@ impl Viewport<'_, '_> {
                 },
             );
 
-        response = response.on_hover_text("Space View");
+        response = response.on_hover_text("Space view");
 
         if response.clicked() {
             self.blueprint.focus_tab(space_view.id);
@@ -597,7 +597,7 @@ impl Viewport<'_, '_> {
                 let response = remove_button_ui(
                     re_ui,
                     ui,
-                    "Remove Group and all its children from the Space View",
+                    "Remove group and all its children from the space view",
                 );
                 if response.clicked() {
                     space_view.contents.add_entity_exclusion(
@@ -673,7 +673,7 @@ impl Viewport<'_, '_> {
         if ctx
             .re_ui
             .small_icon_button(ui, &re_ui::icons::ADD)
-            .on_hover_text("Add a new Space View or Container")
+            .on_hover_text("Add a new space view or container")
             .clicked()
         {
             // If a single container is selected, we use it as target. Otherwise, we target the

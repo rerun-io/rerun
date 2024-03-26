@@ -38,7 +38,7 @@ pub struct ViewportState {
     /// State for the "Add Entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
 
-    /// State for the "Add Space View or Container" modal.
+    /// State for the "Add space view or container" modal.
     add_space_view_container_modal: AddSpaceViewOrContainerModal,
 
     space_view_states: HashMap<SpaceViewId, PerSpaceViewState>,
@@ -768,7 +768,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 .ctx
                 .re_ui
                 .small_icon_button(ui, &re_ui::icons::MAXIMIZE)
-                .on_hover_text("Maximize Space View")
+                .on_hover_text("Maximize space view")
                 .clicked()
             {
                 *self.maximized = Some(space_view_id);
@@ -909,10 +909,10 @@ impl TabWidget {
                         item: Some(Item::SpaceView(*space_view_id)),
                     }
                 } else {
-                    re_log::warn_once!("Space View {space_view_id} not found");
+                    re_log::warn_once!("Space view {space_view_id} not found");
 
                     TabDesc {
-                        label: tab_viewer.ctx.re_ui.error_text("Unknown Space View").into(),
+                        label: tab_viewer.ctx.re_ui.error_text("Unknown space view").into(),
                         icon: &re_ui::icons::SPACE_VIEW_GENERIC,
                         user_named: false,
                         item: None,
