@@ -77,8 +77,8 @@ def check_string(s: str) -> str | None:
 
     if m := re.search(r"[^.] ([A-Z]\w+)", s):
         word = m.group(1)
-        if word in bad_titles or True:
-            return "Do not use title casing ({word}). See https://github.com/rerun-io/rerun/blob/main/DESIGN.md"
+        if word in bad_titles:
+            return f"Do not use title casing ({word}). See https://github.com/rerun-io/rerun/blob/main/DESIGN.md"
 
     return None
 
