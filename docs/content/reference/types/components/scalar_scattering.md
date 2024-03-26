@@ -14,6 +14,3 @@ If true, a scalar will be shown as individual point in a scatter plot.
  * 🦀 [Rust API docs for `ScalarScattering`](https://docs.rs/rerun/latest/rerun/components/struct.ScalarScattering.html)
 
 
-## Used by
-
-* [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

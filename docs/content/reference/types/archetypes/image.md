@@ -12,6 +12,9 @@ The shape of the `TensorData` must be mappable to:
 Leading and trailing unit-dimensions are ignored, so that
 `1x640x480x3x1` is treated as a `640x480x3` RGB image.
 
+Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
+Using these formats can save a lot of bandwidth and memory.
+
 ## Components
 
 **Required**: [`TensorData`](../components/tensor_data.md)
@@ -29,13 +32,11 @@ Leading and trailing unit-dimensions are ignored, so that
 
 snippet: image_simple
 
-<center>
-<picture>
+<picture data-inline-viewer="snippets/image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
-  <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
+  <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
 </picture>
-</center>
 

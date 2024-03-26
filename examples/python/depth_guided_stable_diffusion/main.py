@@ -17,6 +17,7 @@ if platform.system() == "Darwin":
 
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import torch
 from huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image
@@ -102,7 +103,7 @@ usually at the expense of lower image quality.
     parser.add_argument(
         "--num-inference-steps",
         type=int,
-        default=10,
+        default=20,
         help="""
 The number of denoising steps. More denoising steps usually lead to a higher quality image at the
 expense of slower inference. This parameter will be modulated by `strength`.
@@ -112,7 +113,64 @@ expense of slower inference. This parameter will be modulated by `strength`.
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_depth_guided_stable_diffusion")
+    rr.script_setup(
+        args,
+        "rerun_example_depth_guided_stable_diffusion",
+        # This example is very complex, making it too hard for the Viewer to infer a good layout.
+        # Therefore, we specify everything explicitly:
+        # We set up three columns using a `Horizontal` layout, one each for
+        # * inputs
+        # * depth & initializations
+        # * diffusion outputs
+        blueprint=rrb.Blueprint(
+            rrb.Horizontal(
+                rrb.Vertical(
+                    rrb.Tabs(
+                        rrb.Spatial2DView(name="Image original", origin="image/original"),
+                        rrb.TensorView(name="Image preprocessed", origin="input_image/preprocessed"),
+                        name="Image Inputs",
+                    ),
+                    rrb.Vertical(
+                        rrb.TextLogView(name="Prompt", contents=["prompt/text", "prompt/text_negative"]),
+                        rrb.Tabs(
+                            rrb.TensorView(name="Text embeddings", origin="prompt/text_embeddings"),
+                            rrb.TensorView(name="Unconditional embeddings", origin="prompt/uncond_embeddings"),
+                        ),
+                        rrb.BarChartView(name="Prompt ids", origin="prompt/text_input"),
+                        name="Prompt Inputs",
+                    ),
+                    name="Inputs",
+                ),
+                rrb.Vertical(
+                    rrb.Tabs(
+                        rrb.Spatial2DView(name="Depth estimated", origin="depth/estimated"),
+                        rrb.Spatial2DView(name="Depth interpolated", origin="depth/interpolated"),
+                        rrb.Spatial2DView(name="Depth normalized", origin="depth/normalized"),
+                        rrb.TensorView(name="Depth input pre-processed", origin="depth/input_preprocessed"),
+                        active_tab="Depth interpolated",
+                        name="Depth",
+                    ),
+                    rrb.Tabs(
+                        rrb.TensorView(name="Encoded input", origin="encoded_input_image"),
+                        rrb.TensorView(name="Decoded init latents", origin="decoded_init_latents"),
+                        name="Initialization",
+                    ),
+                    name="Depth & Initialization",
+                ),
+                rrb.Vertical(
+                    rrb.Spatial2DView(name="Image diffused", origin="image/diffused"),
+                    rrb.Horizontal(
+                        rrb.TensorView(name="Latent Model Input", origin="diffusion/latent_model_input"),
+                        rrb.TensorView(name="Diffusion latents", origin="diffusion/latents"),
+                        # rrb.TensorView(name="Noise Prediction", origin="diffusion/noise_pred"),
+                    ),
+                    name="Output & Iteration",
+                ),
+            ),
+            rrb.SelectionPanel(expanded=False),
+            rrb.TimePanel(expanded=False),
+        ),
+    )
 
     image_path = args.image_path  # type: str
     if not image_path:

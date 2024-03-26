@@ -30,18 +30,16 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.TextDocumentView(origin="readme"),
-            rrb.Vertical(
-                rrb.Spatial3DView(origin="/boxes3d"),
-                rrb.Spatial2DView(origin="/boxes2d"),
-                rrb.TextLogView(origin="/text_logs"),
-                rrb.BarChartView(origin="/bars"),
-                rrb.TensorView(origin="/tensor"),
-            ),
-            column_shares=[2, 1],
-        )
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Vertical(
+            rrb.Spatial3DView(origin="/boxes3d"),
+            rrb.Spatial2DView(origin="/boxes2d"),
+            rrb.TextLogView(origin="/text_logs"),
+            rrb.BarChartView(origin="/bars"),
+            rrb.TensorView(origin="/tensor"),
+        ),
+        column_shares=[2, 1],
     )
 
 
@@ -56,7 +54,7 @@ def log_some_space_views() -> None:
 
     for i in range(10):
         rr.set_time_sequence("frame_nr", i)
-        rr.log("timeseries", rr.TimeSeriesScalar(random.randint(0, 100)))
+        rr.log("timeseries", rr.Scalar(random.randint(0, 100)))
 
 
 def run(args: Namespace) -> None:

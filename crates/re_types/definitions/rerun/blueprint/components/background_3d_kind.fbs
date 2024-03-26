@@ -8,7 +8,7 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.components;
 
 
-/// The type of the background in 3D Space Views.
+/// The type of the background in 3D space views.
 enum Background3DKind: byte (
     "attr.rerun.scope": "blueprint",
     "attr.docs.unreleased"

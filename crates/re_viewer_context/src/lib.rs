@@ -10,6 +10,7 @@ mod caches;
 mod collapsed_id;
 mod command_sender;
 mod component_ui_registry;
+mod contents;
 mod item;
 mod query_context;
 mod selection_history;
@@ -37,12 +38,13 @@ pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
+pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
-    ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectedSpaceContext,
-    Selection, SelectionHighlight,
+    ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
+    ItemSpaceContext, SelectionHighlight,
 };
 pub use space_view::{
     DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
@@ -66,6 +68,7 @@ pub use viewer_context::{RecordingConfig, ViewerContext};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
+
 #[cfg(not(target_arch = "wasm32"))]
 pub use clipboard::Clipboard;
 

@@ -8,8 +8,10 @@ use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 
 use super::{Item, SelectionHistory};
 
+/// Context information that a space view might attach to an item from [`ItemCollection`] and useful
+/// for how a selection might be displayed and interacted with.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-pub enum SelectedSpaceContext {
+pub enum ItemSpaceContext {
     /// Hovering/Selecting in a 2D space.
     TwoD {
         space_2d: EntityPath,
@@ -79,41 +81,41 @@ impl InteractionHighlight {
     }
 }
 
-/// An ordered collection of [`Item`] and optional associated selected space context objects.
+/// An ordered collection of [`Item`] and optional associated space context objects.
 ///
 /// Used to store what is currently selected and/or hovered.
 #[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
-pub struct Selection(IndexMap<Item, Option<SelectedSpaceContext>>);
+pub struct ItemCollection(IndexMap<Item, Option<ItemSpaceContext>>);
 
-impl From<Item> for Selection {
+impl From<Item> for ItemCollection {
     #[inline]
     fn from(val: Item) -> Self {
-        Selection([(val, None)].into())
+        ItemCollection([(val, None)].into())
     }
 }
 
-impl<T> From<T> for Selection
+impl<T> From<T> for ItemCollection
 where
-    T: Iterator<Item = (Item, Option<SelectedSpaceContext>)>,
+    T: Iterator<Item = (Item, Option<ItemSpaceContext>)>,
 {
     #[inline]
     fn from(value: T) -> Self {
-        Selection(value.collect())
+        ItemCollection(value.collect())
     }
 }
 
-impl Selection {
+impl ItemCollection {
     /// For each item in this selection, if it refers to the first element of an instance with a
     /// single element, resolve it to a splatted entity path.
     pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
-        Selection(
+        ItemCollection(
             self.0
                 .into_iter()
                 .map(|(item, space_ctx)| {
                     (
                         resolve_mono_instance_path_item(
                             &ctx.current_query(),
-                            ctx.entity_db.store(),
+                            ctx.recording_store(),
                             &item,
                         ),
                         space_ctx,
@@ -141,7 +143,7 @@ impl Selection {
         self.0.keys()
     }
 
-    pub fn iter_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
+    pub fn iter_space_context(&self) -> impl Iterator<Item = &ItemSpaceContext> {
         self.0
             .iter()
             .filter_map(|(_, space_context)| space_context.as_ref())
@@ -166,7 +168,7 @@ impl Selection {
     }
 
     /// Retains elements that fulfill a certain condition.
-    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<SelectedSpaceContext>) -> bool) {
+    pub fn retain(&mut self, f: impl FnMut(&Item, &mut Option<ItemSpaceContext>) -> bool) {
         self.0.retain(f);
     }
 
@@ -181,20 +183,17 @@ impl Selection {
     }
 
     /// Returns an iterator over the items and their selected space context.
-    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<SelectedSpaceContext>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Item, &Option<ItemSpaceContext>)> {
         self.0.iter()
     }
 
     /// Returns a mutable iterator over the items and their selected space context.
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<SelectedSpaceContext>)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Item, &mut Option<ItemSpaceContext>)> {
         self.0.iter_mut()
     }
 
     /// Extend the selection with more items.
-    pub fn extend(
-        &mut self,
-        other: impl IntoIterator<Item = (Item, Option<SelectedSpaceContext>)>,
-    ) {
+    pub fn extend(&mut self, other: impl IntoIterator<Item = (Item, Option<ItemSpaceContext>)>) {
         self.0.extend(other);
     }
 }
@@ -211,35 +210,46 @@ pub struct ApplicationSelectionState {
     pub history: Mutex<SelectionHistory>,
 
     /// Selection of the previous frame. Read from this.
-    selection_previous_frame: Selection,
+    selection_previous_frame: ItemCollection,
 
     /// Selection of the current frame. Write to this.
     #[serde(skip)]
-    selection_this_frame: Mutex<Selection>,
+    selection_this_frame: Mutex<ItemCollection>,
 
     /// What objects are hovered? Read from this.
     #[serde(skip)]
-    hovered_previous_frame: Selection,
+    hovered_previous_frame: ItemCollection,
 
     /// What objects are hovered? Write to this.
     #[serde(skip)]
-    hovered_this_frame: Mutex<Selection>,
+    hovered_this_frame: Mutex<ItemCollection>,
 }
 
 impl ApplicationSelectionState {
     /// Called at the start of each frame
-    pub fn on_frame_start(&mut self, item_retain_condition: impl Fn(&Item) -> bool) {
+    pub fn on_frame_start(
+        &mut self,
+        item_retain_condition: impl Fn(&Item) -> bool,
+        fallback_selection: Item,
+    ) {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
 
+        // Purge history of invalid items.
         let history = self.history.get_mut();
         history.retain(&item_retain_condition);
+
+        // Purge selection of invalid items.
+        let selection_this_frame = self.selection_this_frame.get_mut();
+        selection_this_frame.retain(|item, _| item_retain_condition(item));
+        if selection_this_frame.is_empty() {
+            *selection_this_frame = ItemCollection::from(fallback_selection);
+        }
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
         self.hovered_previous_frame = std::mem::take(self.hovered_this_frame.get_mut());
 
         // Selection in contrast, is sticky!
-        let selection_this_frame = self.selection_this_frame.get_mut();
         if selection_this_frame != &self.selection_previous_frame {
             history.update_selection(selection_this_frame);
             self.selection_previous_frame = selection_this_frame.clone();
@@ -261,39 +271,39 @@ impl ApplicationSelectionState {
     }
 
     /// Clears the current selection out.
-    pub fn clear_current(&self) {
-        self.set_selection(Selection::default());
+    pub fn clear_selection(&self) {
+        self.set_selection(ItemCollection::default());
     }
 
     /// Sets several objects to be selected, updating history as needed.
     ///
     /// Clears the selected space context if none was specified.
-    pub fn set_selection(&self, items: impl Into<Selection>) {
+    pub fn set_selection(&self, items: impl Into<ItemCollection>) {
         *self.selection_this_frame.lock() = items.into();
     }
 
     /// Returns the current selection.
-    pub fn current(&self) -> &Selection {
+    pub fn selected_items(&self) -> &ItemCollection {
         &self.selection_previous_frame
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &Selection {
+    pub fn hovered_items(&self) -> &ItemCollection {
         &self.hovered_previous_frame
     }
 
-    /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered(&self, hovered: impl Into<Selection>) {
+    /// Set the hovered objects. Will be in [`Self::hovered_items`] on the next frame.
+    pub fn set_hovered(&self, hovered: impl Into<ItemCollection>) {
         *self.hovered_this_frame.lock() = hovered.into();
     }
 
     /// Select passed objects unless already selected in which case they get unselected.
     /// If however an object is already selected but now gets passed a *different* selected space context, it stays selected after all
     /// but with an updated selected space context!
-    pub fn toggle_selection(&self, toggle_items: Selection) {
+    pub fn toggle_selection(&self, toggle_items: ItemCollection) {
         re_tracing::profile_function!();
 
-        let mut toggle_items_set: HashMap<Item, Option<SelectedSpaceContext>> = toggle_items
+        let mut toggle_items_set: HashMap<Item, Option<ItemSpaceContext>> = toggle_items
             .iter()
             .map(|(item, ctx)| (item.clone(), ctx.clone()))
             .collect();
@@ -335,11 +345,11 @@ impl ApplicationSelectionState {
         *self.selection_this_frame.lock() = new_selection;
     }
 
-    pub fn selected_space_context(&self) -> impl Iterator<Item = &SelectedSpaceContext> {
+    pub fn selection_space_contexts(&self) -> impl Iterator<Item = &ItemSpaceContext> {
         self.selection_previous_frame.iter_space_context()
     }
 
-    pub fn hovered_space_context(&self) -> Option<&SelectedSpaceContext> {
+    pub fn hovered_space_context(&self) -> Option<&ItemSpaceContext> {
         self.hovered_previous_frame.iter_space_context().next()
     }
 
@@ -348,10 +358,16 @@ impl ApplicationSelectionState {
             .hovered_previous_frame
             .iter_items()
             .any(|current| match current {
-                Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => current == test,
+                Item::DataSource(_)
+                | Item::StoreId(_)
+                | Item::SpaceView(_)
+                | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
-                    Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => false,
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
+                    | Item::SpaceView(_)
+                    | Item::Container(_) => false,
 
                     Item::ComponentPath(test_component_path) => {
                         test_component_path == component_path
@@ -367,10 +383,12 @@ impl ApplicationSelectionState {
                 },
 
                 Item::InstancePath(current_instance_path) => match test {
-                    Item::StoreId(_)
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
                     | Item::Container(_) => false,
+
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path
@@ -382,10 +400,12 @@ impl ApplicationSelectionState {
                 },
 
                 Item::DataResult(_current_space_view_id, current_instance_path) => match test {
-                    Item::StoreId(_)
+                    Item::DataSource(_)
+                    | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
                     | Item::Container(_) => false,
+
                     Item::InstancePath(test_instance_path)
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path

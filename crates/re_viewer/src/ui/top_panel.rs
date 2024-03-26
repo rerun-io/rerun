@@ -100,6 +100,31 @@ fn top_bar_ui(
             connection_status_ui(ui, app.msg_receive_set());
         }
 
+        if let Some(wgpu) = frame.wgpu_render_state() {
+            let info = wgpu.adapter.get_info();
+            if info.device_type == wgpu::DeviceType::Cpu {
+                // TODO(#4304): replace with a panel showing recent log messages
+                ui.hyperlink_to(
+                    egui::RichText::new("⚠ Software rasterizer ⚠")
+                        .small()
+                        .color(ui.visuals().warn_fg_color),
+                    "https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues",
+                )
+                .on_hover_ui(|ui| {
+                    ui.label("Software rasterizer detected - expect poor performance.");
+                    ui.label(
+                        "Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.",
+                    );
+                    ui.label("Click for troubleshooting.");
+                    ui.add_space(8.0);
+                    ui.label(format!(
+                        "wgpu adapter {}",
+                        re_renderer::adapter_info_summary(&info)
+                    ));
+                });
+            }
+        }
+
         // Warn if in debug build
         if cfg!(debug_assertions) && !app.is_screenshotting() {
             ui.vertical_centered(|ui| {
@@ -408,7 +433,7 @@ fn e2e_latency_ui(
     store_context: Option<&StoreContext<'_>>,
 ) -> Option<egui::Response> {
     let store_context = store_context?;
-    let recording = store_context.recording?;
+    let recording = store_context.recording;
     let e2e_latency_sec = recording.ingestion_stats().current_e2e_latency_sec()?;
 
     if e2e_latency_sec > 60.0 {

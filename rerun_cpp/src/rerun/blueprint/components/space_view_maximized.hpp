@@ -12,8 +12,6 @@
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether a space view is maximized.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewMaximized {
         rerun::datatypes::Uuid space_view_id;
 

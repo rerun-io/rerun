@@ -347,6 +347,7 @@ def main() -> None:
                     origin=primary_camera_entity,
                     contents=["$origin/depth", "/world/annotations/**"],
                 ),
+                name="2D",
             ),
             rrb.TextDocumentView(name="Readme"),
         ),

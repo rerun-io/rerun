@@ -17,7 +17,7 @@ use re_space_view::{
 };
 use re_types::{components::ViewCoordinates, view_coordinates::SignedAxis3};
 use re_viewer_context::{
-    gpu_bridge, Item, SelectedSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
     ViewQuery, ViewerContext,
 };
 
@@ -445,8 +445,7 @@ pub fn view_3d(
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     let scene_view_coordinates = ctx
-        .entity_db
-        .store()
+        .recording_store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
         .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
@@ -553,7 +552,7 @@ pub fn view_3d(
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
         let focused_entity = match focused_item {
-            Item::StoreId(_) | Item::Container(_) => None,
+            Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => None,
 
             Item::SpaceView(space_view_id) => {
                 if space_view_id == &query.space_view_id {
@@ -615,7 +614,7 @@ pub fn view_3d(
             .ok();
     }
 
-    for selected_context in ctx.selection_state().selected_space_context() {
+    for selected_context in ctx.selection_state().selection_space_contexts() {
         show_projections_from_2d_space(
             &mut line_builder,
             space_cameras,
@@ -839,11 +838,11 @@ fn show_projections_from_2d_space(
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     space_cameras: &[SpaceCamera3D],
     state: &SpatialSpaceViewState,
-    space_context: &SelectedSpaceContext,
+    space_context: &ItemSpaceContext,
     color: egui::Color32,
 ) {
     match space_context {
-        SelectedSpaceContext::TwoD { space_2d, pos } => {
+        ItemSpaceContext::TwoD { space_2d, pos } => {
             if let Some(cam) = space_cameras.iter().find(|cam| &cam.ent_path == space_2d) {
                 if let Some(pinhole) = cam.pinhole.as_ref() {
                     // Render a thick line to the actual z value if any and a weaker one as an extension
@@ -879,7 +878,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        SelectedSpaceContext::ThreeD {
+        ItemSpaceContext::ThreeD {
             pos: Some(pos),
             tracked_entity: Some(tracked_entity),
             ..
@@ -906,7 +905,7 @@ fn show_projections_from_2d_space(
                 }
             }
         }
-        SelectedSpaceContext::ThreeD { .. } => {}
+        ItemSpaceContext::ThreeD { .. } => {}
     }
 }
 

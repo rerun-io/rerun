@@ -22,12 +22,10 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.Tabs(*[rrb.TextDocumentView(origin="readme") for _ in range(100)]),
-            rrb.Vertical(rrb.Spatial3DView(origin="/", name="SV1"), rrb.Spatial3DView(origin="/", name="SV2")),
-            column_shares=[1, 2],
-        )
+    return rrb.Horizontal(
+        rrb.Tabs(*[rrb.TextDocumentView(origin="readme") for _ in range(100)]),
+        rrb.Vertical(rrb.Spatial3DView(origin="/", name="SV1"), rrb.Spatial3DView(origin="/", name="SV2")),
+        column_shares=[1, 2],
     )
 
 

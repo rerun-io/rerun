@@ -1,5 +1,6 @@
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use anyhow::Context as _;
 use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::ops::ControlFlow;
@@ -90,7 +91,9 @@ impl WebHandle {
             return;
         };
         let rx = url_to_receiver(url, app.re_ui.egui_ctx.clone());
-        app.add_receiver(rx);
+        if let Some(rx) = rx.ok_or_log_error() {
+            app.add_receiver(rx);
+        }
     }
 
     #[wasm_bindgen]
@@ -142,11 +145,15 @@ fn create_app(
     }
 
     if let Some(url) = url {
-        app.add_receiver(url_to_receiver(url, egui_ctx));
+        if let Some(receiver) = url_to_receiver(url, egui_ctx).ok_or_log_error() {
+            app.add_receiver(receiver);
+        }
     } else {
         // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
         for url in query_map.get("url").into_iter().flatten() {
-            app.add_receiver(url_to_receiver(url, egui_ctx.clone()));
+            if let Some(receiver) = url_to_receiver(url, egui_ctx.clone()).ok_or_log_error() {
+                app.add_receiver(receiver);
+            }
         }
     }
 
@@ -156,19 +163,19 @@ fn create_app(
 fn url_to_receiver(
     url: &str,
     egui_ctx: egui::Context,
-) -> re_smart_channel::Receiver<re_log_types::LogMsg> {
+) -> anyhow::Result<re_smart_channel::Receiver<re_log_types::LogMsg>> {
     let ui_waker = Box::new(move || {
         // Spend a few more milliseconds decoding incoming messages,
         // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
         egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
     });
     match categorize_uri(url) {
-        EndpointCategory::HttpRrd(url) => {
+        EndpointCategory::HttpRrd(url) => Ok(
             re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
                 url,
                 Some(ui_waker),
-            )
-        }
+            ),
+        ),
         EndpointCategory::WebEventListener => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(
@@ -200,10 +207,10 @@ fn url_to_receiver(
                     }
                 }
             }));
-            rx
+            Ok(rx)
         }
         EndpointCategory::WebSocket(url) => re_data_source::connect_to_ws_url(&url, Some(ui_waker))
-            .unwrap_or_else(|err| panic!("Failed to connect to WebSocket server at {url}: {err}")),
+            .with_context(|| format!("Failed to connect to WebSocket server at {url}.")),
     }
 }
 

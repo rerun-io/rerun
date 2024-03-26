@@ -184,7 +184,7 @@ impl ReUi {
     /// Height of the title row in the blueprint view and selection view,
     /// as well as the tab bar height in the viewport view.
     pub fn title_bar_height() -> f32 {
-        28.0 // from figma 2022-02-03
+        24.0 // https://github.com/rerun-io/rerun/issues/5589
     }
 
     pub fn list_item_height() -> f32 {

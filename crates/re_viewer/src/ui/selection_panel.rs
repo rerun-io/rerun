@@ -17,11 +17,12 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataQueryResult, HoverHighlight, Item,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{
-    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style, Contents,
+    contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
     SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 
@@ -145,7 +146,7 @@ impl SelectionPanel {
                         let (query, store) = if let Some(entity_path) = item.entity_path() {
                             guess_query_and_store_for_selected_entity(ctx, entity_path)
                         } else {
-                            (ctx.current_query(), ctx.entity_db.store())
+                            (ctx.current_query(), ctx.recording_store())
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
@@ -226,8 +227,8 @@ fn container_children(
             ListItem::new(ctx.re_ui, "empty — use the + button to add content")
                 .weak(true)
                 .italics(true)
-                .active(false)
-                .show(ui);
+                .interactive(false)
+                .show_flat(ui);
         }
     };
 
@@ -254,6 +255,7 @@ fn container_children(
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
+        Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
         Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
@@ -280,7 +282,7 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
-            space_view_name_style(&space_view_name),
+            contents_name_style(&space_view_name),
         )
         .on_hover_text("Space View");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
@@ -296,10 +298,16 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::DataSource(data_source) => {
+            let title = data_source.to_string();
+            let icon = None; // TODO(#5645): an icon for data sources
+            item_title_ui(ctx.re_ui, ui, &title, icon, &title);
+        }
+
         Item::StoreId(store_id) => {
             let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
-            let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
+            let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
                 if let Some(info) = entity_db.store_info() {
                     let time = info
                         .started
@@ -319,15 +327,26 @@ fn what_is_selected_ui(
 
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    &format!("{:?}", container_blueprint.container_kind),
-                    Some(re_viewport::icon_for_container_kind(
+                let hover_text =
+                    if let Some(display_name) = container_blueprint.display_name.as_ref() {
+                        format!(
+                            "{:?} Container {display_name:?}",
+                            container_blueprint.container_kind,
+                        )
+                    } else {
+                        format!("Unnamed {:?} Container", container_blueprint.container_kind,)
+                    };
+
+                let container_name = container_blueprint.display_name_or_default();
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
+                    .with_icon(re_viewport::icon_for_container_kind(
                         &container_blueprint.container_kind,
-                    )),
-                    &format!("{:?} container", container_blueprint.container_kind),
-                );
+                    ))
+                    .with_height(ReUi::title_bar_height())
+                    .selected(true)
+                    .show_flat(ui)
+                    .on_hover_text(hover_text);
             }
         }
 
@@ -376,11 +395,11 @@ fn what_is_selected_ui(
 
                 let space_view_name = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
-                    .show(ui)
+                    .show_flat(ui)
                     .on_hover_text(hover_text);
             }
         }
@@ -485,7 +504,7 @@ fn item_title_ui(
         list_item = list_item.with_icon(icon);
     }
 
-    list_item.show(ui).on_hover_text(hover)
+    list_item.show_flat(ui).on_hover_text(hover)
 }
 
 /// Display a list of all the space views an entity appears in.
@@ -586,6 +605,15 @@ fn container_top_level_properties(
     egui::Grid::new("container_top_level_properties")
         .num_columns(2)
         .show(ui, |ui| {
+            let mut name = container.display_name.clone().unwrap_or_default();
+            ui.label("Name").on_hover_text(
+                "The name of the Container used for display purposes. This can be any text string.",
+            );
+            ui.text_edit_singleline(&mut name);
+            container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+
+            ui.end_row();
+
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
@@ -701,7 +729,7 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
@@ -722,10 +750,12 @@ fn show_list_item_for_container_child(
                 return false;
             };
 
+            let container_name = container.display_name_or_default();
+
             (
                 Item::Container(*container_id),
-                ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
-                    .label_style(re_ui::LabelStyle::Unnamed)
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
@@ -749,7 +779,7 @@ fn show_list_item_for_container_child(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item.show(ui);
+    let response = list_item.show_flat(ui);
 
     context_menu_ui_for_item(
         ctx,
@@ -770,9 +800,12 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {
-            false
-        }
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => false,
+
         Item::SpaceView(_) | Item::DataResult(_, _) => true,
     }
 }
@@ -793,7 +826,11 @@ fn blueprint_ui(
             blueprint_ui_for_data_result(ui, ctx, viewport, space_view_id, instance_path);
         }
 
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {}
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => {}
     }
 }
 

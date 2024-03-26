@@ -192,7 +192,7 @@ fn space_view_space_origin_widget_editing_ui(
                     .syntax_highlighted(ui.style()),
             )
             .force_hovered(*selected_suggestion == Some(idx))
-            .show(ui);
+            .show_flat(ui);
 
             if response.hovered() {
                 *selected_suggestion = None;
@@ -212,8 +212,8 @@ fn space_view_space_origin_widget_editing_ui(
             )
             .weak(true)
             .italics(true)
-            .active(false)
-            .show(ui);
+            .interactive(false)
+            .show_flat(ui);
         }
     };
 

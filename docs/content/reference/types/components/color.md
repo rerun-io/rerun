@@ -32,4 +32,3 @@ byte is `R` and the least significant byte is `A`.
 * [`SeriesLine`](../archetypes/series_line.md)
 * [`SeriesPoint`](../archetypes/series_point.md)
 * [`TextLog`](../archetypes/text_log.md)
-* [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

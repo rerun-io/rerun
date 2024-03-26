@@ -2,8 +2,8 @@
 title = "Single Image 3D Reconstruction using MCC, SAM, and ZoeDepth"
 source = "https://github.com/rerun-io/MCC"
 tags = ["2D", "3D", "segmentation", "point-cloud", "sam", "Paper Walkthrough"]
-thumbnail = "https://static.rerun.io/mcc/d244be2806b5abcc0e905a2c262b491b73914658/480w.png"
-thumbnail_dimensions = [480, 274]
+thumbnail = "https://static.rerun.io/single-image-3D-reconstruction/c54498053d53148cfa43901f39a084c549df2b72/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 

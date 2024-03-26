@@ -12,15 +12,15 @@ use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, SpaceViewSpawnHeuristics,
-    ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier, SpaceViewId,
+    SpaceViewSpawnHeuristics, ViewerContext,
 };
 
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
     },
-    container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
+    container::ContainerBlueprint,
     viewport::TreeAction,
     VIEWPORT_PATH,
 };
@@ -256,10 +256,22 @@ impl ViewportBlueprint {
     /// If `false`, the item is referring to data that is not present in this blueprint.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
-            Item::StoreId(_) | Item::ComponentPath(_) | Item::InstancePath(_) => true,
-            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
-                self.space_view(space_view_id).is_some()
+            Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::ComponentPath(_)
+            | Item::InstancePath(_) => true,
+
+            Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
+
+            Item::DataResult(space_view_id, instance_path) => {
+                self.space_view(space_view_id).map_or(false, |space_view| {
+                    space_view
+                        .contents
+                        .entity_path_filter
+                        .is_included(&instance_path.entity_path)
+                })
             }
+
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }

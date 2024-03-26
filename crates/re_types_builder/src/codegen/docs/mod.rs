@@ -9,8 +9,6 @@ use crate::{
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
 
-use super::common::get_documentation;
-
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
     ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
@@ -143,19 +141,16 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
-    let top_level_docs = get_documentation(&object.docs, &[]);
+    let top_level_docs = object.docs.untagged();
 
     if top_level_docs.is_empty() {
         reporter.error(&object.virtpath, &object.fqname, "Undocumented object");
     }
 
-    let examples = object
-        .docs
-        .tagged_docs
-        .get("example")
+    let examples = &object.docs.doc_lines_tagged("example");
+    let examples = examples
         .iter()
-        .flat_map(|v| v.iter())
-        .map(ExampleInfo::parse)
+        .map(|line| ExampleInfo::parse(line))
         .collect::<Vec<_>>();
 
     let mut page = String::new();
@@ -457,7 +452,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "snippet: {name}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack() {
+            for line in image_url.image_stack().snippet_id(name).finish() {
                 putln!(o, "{line}");
             }
         }

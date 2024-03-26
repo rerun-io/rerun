@@ -714,7 +714,7 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 }
 
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["rs", "rust"]);
+    let mut lines = docs.doc_lines_for_untagged_and("rs");
 
     let examples = collect_snippets_for_api_docs(docs, "rs", true)
         .map_err(|err| reporter.error(virtpath, fqname, err))
@@ -757,7 +757,8 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
             lines.push("```".into());
 
             if let Some(image) = &image {
-                lines.extend(image.image_stack().into_iter());
+                // Don't let the images take up too much space on the page.
+                lines.extend(image.image_stack().center().width(640).finish());
             }
             if examples.peek().is_some() {
                 // blank line between examples

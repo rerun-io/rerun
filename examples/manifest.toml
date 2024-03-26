@@ -52,7 +52,6 @@ TODO
 examples = [
   "detect_and_track_objects",
   "face_tracking",
-  "human_pose_tracking",
   "gesture_detection",
   "segment_anything_model",
   "tapir",

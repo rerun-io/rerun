@@ -2,8 +2,8 @@
 title = "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives"
 source = "https://github.com/rerun-io/differentiable-blocksworld"
 tags = ["3D", "mesh", "pinhole-camera", "Paper Walkthrough"]
-thumbnail = "https://static.rerun.io/dbw/1da9e778d5fc9875a28a1fd74b61654c287e950d/480w.png"
-thumbnail_dimensions = [480, 311]
+thumbnail = "https://static.rerun.io/differentiable-blocks/42f3a5481162a0e75f1c52ef1a12d4fedb35389e/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 

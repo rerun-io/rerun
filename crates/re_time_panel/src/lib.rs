@@ -554,7 +554,7 @@ impl TimePanel {
         let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
         let store = match self.source {
-            TimePanelSource::Recording => ctx.entity_db.store(),
+            TimePanelSource::Recording => ctx.recording_store(),
             TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
         };
 
@@ -607,7 +607,7 @@ impl TimePanel {
             .width_allocation_mode(WidthAllocationMode::Compact)
             .selected(is_selected)
             .force_hovered(is_item_hovered)
-            .show_collapsing(
+            .show_hierarchical_with_content(
                 ui,
                 CollapseScope::StreamsTree.entity(tree.path.clone()),
                 default_open,
@@ -756,7 +756,7 @@ impl TimePanel {
                             == HoverHighlight::Hovered,
                     )
                     .with_icon(&re_ui::icons::COMPONENT)
-                    .show(ui);
+                    .show_hierarchical(ui);
 
                 ui.set_clip_rect(clip_rect_save);
 
@@ -808,7 +808,7 @@ impl TimePanel {
                     highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
                     let store = match self.source {
-                        TimePanelSource::Recording => ctx.entity_db.store(),
+                        TimePanelSource::Recording => ctx.recording_store(),
                         TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
                     };
 

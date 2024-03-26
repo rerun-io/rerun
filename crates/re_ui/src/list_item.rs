@@ -1,5 +1,5 @@
 use crate::{Icon, LabelStyle, ReUi};
-use egui::epaint::text::TextWrapping;
+use egui::{epaint::text::TextWrapping, WidgetText};
 use egui::{Align, Align2, Response, Shape, Ui};
 use std::default::Default;
 
@@ -11,7 +11,7 @@ struct ListItemResponse {
     collapse_response: Option<Response>,
 }
 
-/// Responses returned by [`ListItem::show_collapsing`].
+/// Responses returned by [`ListItem::show_hierarchical_with_content`].
 pub struct ShowCollapsingResponse<R> {
     /// Response from the item itself.
     pub item_response: Response,
@@ -111,7 +111,7 @@ pub enum WidthAllocationMode {
 pub struct ListItem<'a> {
     text: egui::WidgetText,
     re_ui: &'a ReUi,
-    active: bool,
+    interactive: bool,
     selected: bool,
     draggable: bool,
     drag_target: bool,
@@ -133,7 +133,7 @@ impl<'a> ListItem<'a> {
         Self {
             text: text.into(),
             re_ui,
-            active: true,
+            interactive: true,
             selected: false,
             draggable: false,
             drag_target: false,
@@ -150,10 +150,12 @@ impl<'a> ListItem<'a> {
         }
     }
 
-    /// Set the active state the item.
+    /// Can the user click and interact with it?
+    ///
+    /// Set to `false` for items that only show info, but shouldn't be interactive.
     #[inline]
-    pub fn active(mut self, active: bool) -> Self {
-        self.active = active;
+    pub fn interactive(mut self, interactive: bool) -> Self {
+        self.interactive = interactive;
         self
     }
 
@@ -226,8 +228,8 @@ impl<'a> ListItem<'a> {
     /// Override the hovered state even if the item is not actually hovered.
     ///
     /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
-    /// the [`egui::Response`] returned by [`Self::show`] and ]`Self::show_collapsing`] will still
-    /// reflect the actual hover state.
+    /// the [`egui::Response`] returned by [`Self::show_flat`], [`Self::show_hierarchical`], and
+    /// [`Self::show_hierarchical_with_content`] will still reflect the actual hover state.
     #[inline]
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
@@ -272,6 +274,8 @@ impl<'a> ListItem<'a> {
 
     /// Provide a closure to display on-hover buttons on the right of the item.
     ///
+    /// Buttons also show when the item is selected, in order to support clicking them on touch screens.
+    ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
@@ -286,14 +290,29 @@ impl<'a> ListItem<'a> {
         self
     }
 
-    /// Draw the item.
-    pub fn show(self, ui: &mut Ui) -> Response {
+    /// Draw the item as part of a flat list.
+    pub fn show_flat(self, ui: &mut Ui) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| self.ui(ui, None)).inner.response
     }
 
-    /// Draw the item as a collapsing header.
-    pub fn show_collapsing<R>(
+    /// Draw the item as a leaf node from a hierarchical list.
+    pub fn show_hierarchical(self, ui: &mut Ui) -> Response {
+        // Note: the purpose of the scope is to minimise interferences on subsequent items' id
+        ui.scope(|ui| {
+            ui.horizontal(|ui| {
+                ui.add_space(ReUi::small_icon_size().x + ReUi::text_to_icon_padding());
+                ui.vertical(|ui| self.ui(ui, None))
+            })
+        })
+        .inner
+        .inner
+        .inner
+        .response
+    }
+
+    /// Draw the item as a non-leaf node from a hierarchical list.
+    pub fn show_hierarchical_with_content<R>(
         mut self,
         ui: &mut Ui,
         id: impl Into<egui::Id>,
@@ -337,42 +356,59 @@ impl<'a> ListItem<'a> {
         }
     }
 
-    fn ui(mut self, ui: &mut Ui, id: Option<egui::Id>) -> ListItemResponse {
-        let collapse_extra = if self.collapse_openness.is_some() {
+    fn ui(self, ui: &mut Ui, id: Option<egui::Id>) -> ListItemResponse {
+        let Self {
+            mut text,
+            re_ui,
+            interactive,
+            selected,
+            draggable,
+            drag_target,
+            subdued,
+            weak,
+            mut italics,
+            label_style,
+            force_hovered,
+            collapse_openness,
+            height,
+            width_allocation_mode,
+            icon_fn,
+            buttons_fn,
+        } = self;
+
+        let collapse_extra = if collapse_openness.is_some() {
             ReUi::collapsing_triangle_area().x + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
-        let icon_extra = if self.icon_fn.is_some() {
+        let icon_extra = if icon_fn.is_some() {
             ReUi::small_icon_size().x + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
 
-        match self.label_style {
+        match label_style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
-                self.italics = true;
+                italics = true;
             }
         }
 
-        if self.italics {
-            self.text = self.text.italics();
+        if italics {
+            text = text.italics();
         }
 
         /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
         /// buttons).
         fn icons_and_label_width(
             ui: &egui::Ui,
-            item: &ListItem<'_>,
+            text: &WidgetText,
             collapse_extra: f32,
             icon_extra: f32,
         ) -> f32 {
-            let layout_job = item.text.clone().into_layout_job(
-                ui.style(),
-                egui::FontSelection::Default,
-                Align::LEFT,
-            );
+            let layout_job =
+                text.clone()
+                    .into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
             let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
 
             let text_width = galley.size().x;
@@ -382,22 +418,23 @@ impl<'a> ListItem<'a> {
             (collapse_extra + icon_extra + text_width).ceil()
         }
 
-        let desired_width = match self.width_allocation_mode {
+        let desired_width = match width_allocation_mode {
             WidthAllocationMode::Available => ui.available_width(),
             WidthAllocationMode::Compact => {
-                icons_and_label_width(ui, &self, collapse_extra, icon_extra)
+                icons_and_label_width(ui, &text, collapse_extra, icon_extra)
             }
         };
 
-        let desired_size = egui::vec2(desired_width, self.height);
-        let (rect, mut response) = ui.allocate_at_least(
-            desired_size,
-            if self.draggable {
-                egui::Sense::click_and_drag()
-            } else {
-                egui::Sense::click()
-            },
-        );
+        let desired_size = egui::vec2(desired_width, height);
+
+        let sense = if !interactive {
+            egui::Sense::hover()
+        } else if draggable {
+            egui::Sense::click_and_drag()
+        } else {
+            egui::Sense::click()
+        };
+        let (rect, mut response) = ui.allocate_at_least(desired_size, sense);
 
         // compute the full-span background rect
         let mut bg_rect = rect;
@@ -406,14 +443,14 @@ impl<'a> ListItem<'a> {
 
         // we want to be able to select/hover the item across its full span, so we sense that and
         // update the response accordingly.
-        let full_span_response = ui.interact(bg_rect, response.id, egui::Sense::click());
+        let full_span_response = ui.interact(bg_rect, response.id, sense);
         response.clicked = full_span_response.clicked;
         response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
 
         // override_hover should not affect the returned response
         let mut style_response = response.clone();
-        if self.force_hovered {
+        if force_hovered {
             style_response.contains_pointer = true;
             style_response.hovered = true;
         }
@@ -421,24 +458,19 @@ impl<'a> ListItem<'a> {
         let mut collapse_response = None;
 
         if ui.is_rect_visible(bg_rect) {
-            let mut visuals = if self.active {
-                ui.style()
-                    .interact_selectable(&style_response, self.selected)
-            } else {
-                ui.visuals().widgets.inactive
-            };
+            let mut visuals = ui.style().interact_selectable(&style_response, selected);
 
             // TODO(ab): use design tokens instead
-            if self.weak {
+            if weak {
                 visuals.fg_stroke.color = ui.visuals().weak_text_color();
-            } else if self.subdued {
+            } else if subdued {
                 visuals.fg_stroke.color = visuals.fg_stroke.color.gamma_multiply(0.5);
             }
 
             let background_frame = ui.painter().add(egui::Shape::Noop);
 
             // Draw collapsing triangle
-            if let Some(openness) = self.collapse_openness {
+            if let Some(openness) = collapse_openness {
                 let triangle_pos = ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x,
                     rect.center().y - 0.5 * ReUi::collapsing_triangle_area().y,
@@ -455,28 +487,27 @@ impl<'a> ListItem<'a> {
             }
 
             // Draw icon
-            if let Some(icon_fn) = self.icon_fn {
+            if let Some(icon_fn) = icon_fn {
                 let icon_pos = ui.painter().round_pos_to_pixels(egui::pos2(
                     rect.min.x + collapse_extra,
                     rect.center().y - 0.5 * ReUi::small_icon_size().y,
                 ));
                 let icon_rect = egui::Rect::from_min_size(icon_pos, ReUi::small_icon_size());
-                icon_fn(self.re_ui, ui, icon_rect, visuals);
+                icon_fn(re_ui, ui, icon_rect, visuals);
             }
 
-            // Handle buttons
-            // Note: We should be able to just use `response.hovered()` here, which only returns `true` if no drag is in
-            // progress. Due to the response merging we do above, this breaks though. This is why we do an explicit
-            // rectangle and drag payload check.
-            //TODO(ab): refactor responses to address that.
-            let should_show_buttons = self.active
-                && ui.rect_contains_pointer(rect)
-                && !egui::DragAndDrop::has_any_payload(ui.ctx());
+            // We can't use `.hovered()` or the buttons disappear just as the user clicks,
+            // so we use `contains_pointer` instead. That also means we need to check
+            // that we aren't dragging anything.
+            let should_show_buttons = interactive
+                && full_span_response.contains_pointer()
+                && !egui::DragAndDrop::has_any_payload(ui.ctx())
+                || selected; // by showing the buttons when selected, we allow users to find them on touch screens
             let button_response = if should_show_buttons {
-                if let Some(buttons) = self.buttons_fn {
+                if let Some(buttons) = buttons_fn {
                     let mut ui =
                         ui.child_ui(rect, egui::Layout::right_to_left(egui::Align::Center));
-                    Some(buttons(self.re_ui, &mut ui))
+                    Some(buttons(re_ui, &mut ui))
                 } else {
                     None
                 }
@@ -491,16 +522,15 @@ impl<'a> ListItem<'a> {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 
-            match self.label_style {
+            match label_style {
                 LabelStyle::Normal => {}
                 LabelStyle::Unnamed => {
-                    self.text = self.text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
+                    text = text.color(visuals.fg_stroke.color.gamma_multiply(0.5));
                 }
             }
 
             let mut layout_job =
-                self.text
-                    .into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+                text.into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
             layout_job.wrap = TextWrapping::truncate_at_width(text_rect.width());
 
             let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
@@ -509,7 +539,7 @@ impl<'a> ListItem<'a> {
             response.widget_info(|| {
                 egui::WidgetInfo::selected(
                     egui::WidgetType::SelectableLabel,
-                    self.selected,
+                    selected,
                     galley.text(),
                 )
             });
@@ -521,7 +551,7 @@ impl<'a> ListItem<'a> {
             ui.painter().galley(text_pos, galley, visuals.text_color());
 
             // Draw background on interaction.
-            if self.drag_target {
+            if drag_target {
                 ui.painter().set(
                     background_frame,
                     Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
@@ -529,7 +559,7 @@ impl<'a> ListItem<'a> {
             } else {
                 let bg_fill = if button_response.map_or(false, |r| r.hovered()) {
                     Some(visuals.bg_fill)
-                } else if self.selected
+                } else if selected
                     || style_response.hovered()
                     || style_response.highlighted()
                     || style_response.has_focus()

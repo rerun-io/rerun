@@ -6,22 +6,22 @@ use smallvec::SmallVec;
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_log_types::EntityPathRule;
-use re_space_view::{SpaceViewBlueprint, SpaceViewName};
+use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
-use re_viewer_context::{CollapseScope, DataResultTree};
+use re_viewer_context::{CollapseScope, Contents, ContentsName, DataResultTree};
 use re_viewer_context::{
     ContainerId, DataQueryResult, DataResultNode, HoverHighlight, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::context_menu::context_menu_ui_for_item;
-use crate::{container::Contents, SelectionUpdateBehavior, Viewport};
+use crate::{SelectionUpdateBehavior, Viewport};
 
 /// The style to use for displaying this space view name in the UI.
-pub fn space_view_name_style(name: &SpaceViewName) -> re_ui::LabelStyle {
+pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
     match name {
-        SpaceViewName::Named(_) => re_ui::LabelStyle::Normal,
-        SpaceViewName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
+        ContentsName::Named(_) => re_ui::LabelStyle::Normal,
+        ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
     }
 }
 
@@ -76,7 +76,7 @@ impl Viewport<'_, '_> {
 
                     // clear selection upon clicking on empty space
                     if empty_space_response.clicked() {
-                        ctx.selection_state().clear_current();
+                        ctx.selection_state().clear_selection();
                     }
 
                     // handle drag and drop interaction on empty space
@@ -88,7 +88,7 @@ impl Viewport<'_, '_> {
             });
     }
 
-    /// Expend all required items and compute which item we should scroll to.
+    /// Expand all required items and compute which item we should scroll to.
     fn handle_focused_item(
         &self,
         ctx: &ViewerContext<'_>,
@@ -144,7 +144,7 @@ impl Viewport<'_, '_> {
                 )),
             ),
 
-            Item::StoreId(_) => None,
+            Item::DataSource(_) | Item::StoreId(_) => None,
         }
     }
 
@@ -263,19 +263,18 @@ impl Viewport<'_, '_> {
         };
 
         let item = Item::Container(container_id);
+        let container_name = container_blueprint.display_name_or_default();
 
-        let item_response = ListItem::new(
-            ctx.re_ui,
-            format!("Viewport ({:?})", container_blueprint.container_kind),
-        )
-        .selected(ctx.selection().contains_item(&item))
-        .draggable(false)
-        .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
-        .label_style(re_ui::LabelStyle::Unnamed)
-        .with_icon(crate::icon_for_container_kind(
-            &container_blueprint.container_kind,
-        ))
-        .show(ui);
+        let item_response =
+            ListItem::new(ctx.re_ui, format!("Viewport ({})", container_name.as_ref()))
+                .selected(ctx.selection().contains_item(&item))
+                .draggable(false)
+                .drop_target_style(self.state.is_candidate_drop_parent_container(&container_id))
+                .label_style(contents_name_style(&container_name))
+                .with_icon(crate::icon_for_container_kind(
+                    &container_blueprint.container_kind,
+                ))
+                .show_flat(ui);
 
         for child in &container_blueprint.contents {
             self.contents_ui(ctx, ui, child, true);
@@ -318,42 +317,41 @@ impl Viewport<'_, '_> {
 
         let default_open = true;
 
+        let container_name = container_blueprint.display_name_or_default();
+
         let re_ui::list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
-        } = ListItem::new(
-            ctx.re_ui,
-            format!("{:?}", container_blueprint.container_kind),
-        )
-        .subdued(!container_visible)
-        .selected(ctx.selection().contains_item(&item))
-        .draggable(true)
-        .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
-        .label_style(re_ui::LabelStyle::Unnamed)
-        .with_icon(crate::icon_for_container_kind(
-            &container_blueprint.container_kind,
-        ))
-        .with_buttons(|re_ui, ui| {
-            let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
+        } = ListItem::new(ctx.re_ui, container_name.as_ref())
+            .subdued(!container_visible)
+            .selected(ctx.selection().contains_item(&item))
+            .draggable(true)
+            .drop_target_style(self.state.is_candidate_drop_parent_container(container_id))
+            .label_style(contents_name_style(&container_name))
+            .with_icon(crate::icon_for_container_kind(
+                &container_blueprint.container_kind,
+            ))
+            .with_buttons(|re_ui, ui| {
+                let vis_response = visibility_button_ui(re_ui, ui, parent_visible, &mut visible);
 
-            let remove_response = remove_button_ui(re_ui, ui, "Remove container");
-            if remove_response.clicked() {
-                self.blueprint.mark_user_interaction(ctx);
-                self.blueprint.remove_contents(content);
-            }
-
-            remove_response | vis_response
-        })
-        .show_collapsing(
-            ui,
-            CollapseScope::BlueprintTree.container(*container_id),
-            default_open,
-            |_, ui| {
-                for child in &container_blueprint.contents {
-                    self.contents_ui(ctx, ui, child, container_visible);
+                let remove_response = remove_button_ui(re_ui, ui, "Remove container");
+                if remove_response.clicked() {
+                    self.blueprint.mark_user_interaction(ctx);
+                    self.blueprint.remove_contents(content);
                 }
-            },
-        );
+
+                remove_response | vis_response
+            })
+            .show_hierarchical_with_content(
+                ui,
+                CollapseScope::BlueprintTree.container(*container_id),
+                default_open,
+                |_, ui| {
+                    for child in &container_blueprint.contents {
+                        self.contents_ui(ctx, ui, child, container_visible);
+                    }
+                },
+            );
 
         context_menu_ui_for_item(
             ctx,
@@ -411,7 +409,7 @@ impl Viewport<'_, '_> {
             item_response: mut response,
             body_response,
         } = ListItem::new(ctx.re_ui, space_view_name.as_ref())
-            .label_style(space_view_name_style(&space_view_name))
+            .label_style(contents_name_style(&space_view_name))
             .with_icon(space_view.class(ctx.space_view_class_registry).icon())
             .selected(ctx.selection().contains_item(&item))
             .draggable(true)
@@ -429,7 +427,7 @@ impl Viewport<'_, '_> {
 
                 response | vis_response
             })
-            .show_collapsing(
+            .show_hierarchical_with_content(
                 ui,
                 CollapseScope::BlueprintTree.space_view(*space_view_id),
                 default_open,
@@ -523,7 +521,7 @@ impl Viewport<'_, '_> {
         space_view_visible: bool,
         projection_mode: bool,
     ) {
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         let entity_path = node_or_path.path();
 
@@ -532,7 +530,7 @@ impl Viewport<'_, '_> {
                 .subdued(true)
                 .italics(true)
                 .with_icon(&re_ui::icons::LINK)
-                .show(ui)
+                .show_hierarchical(ui)
                 .on_hover_text(
                     "This subtree corresponds to the Space View's origin, and is displayed above \
                     the 'Projections' section. Click to select it.",
@@ -564,15 +562,13 @@ impl Viewport<'_, '_> {
                 .last()
                 .map_or("unknown".to_owned(), |e| e.ui_string())
         };
-        let item_label = if ctx.entity_db.is_known_entity(entity_path) {
+        let item_label = if ctx.recording().is_known_entity(entity_path) {
             egui::RichText::new(item_label)
         } else {
             ctx.re_ui.warning_text(item_label)
         };
 
-        let subdued = !space_view_visible
-            || !visible
-            || data_result_node.map_or(true, |n| n.data_result.visualizers.is_empty());
+        let subdued = !space_view_visible || !visible;
 
         let list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)
@@ -621,7 +617,7 @@ impl Viewport<'_, '_> {
                 && Self::default_open_for_data_result(node);
 
             list_item
-                .show_collapsing(
+                .show_hierarchical_with_content(
                     ui,
                     CollapseScope::BlueprintTree.data_result(space_view.id, entity_path.clone()),
                     default_open,
@@ -654,7 +650,7 @@ impl Viewport<'_, '_> {
                 )
                 .item_response
         } else {
-            list_item.show(ui)
+            list_item.show_hierarchical(ui)
         };
 
         let response = response.on_hover_ui(|ui| {

@@ -2,11 +2,12 @@
 
 use itertools::Itertools;
 
-use crate::container::blueprint_id_to_tile_id;
 use crate::{icon_for_container_kind, ViewportBlueprint};
 use re_space_view::SpaceViewBlueprint;
 use re_ui::ReUi;
-use re_viewer_context::{ContainerId, RecommendedSpaceView, ViewerContext};
+use re_viewer_context::{
+    blueprint_id_to_tile_id, ContainerId, RecommendedSpaceView, ViewerContext,
+};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {

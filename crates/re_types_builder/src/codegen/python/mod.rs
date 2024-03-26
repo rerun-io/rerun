@@ -1132,7 +1132,10 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
         lines.extend(example_lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
-            lines.extend(image.image_stack());
+            lines.extend(
+                // Don't let the images take up too much space on the page.
+                image.image_stack().center().width(640).finish(),
+            );
         }
         if examples.peek().is_some() {
             // blank line between examples
@@ -1154,7 +1157,7 @@ fn quote_obj_docs(obj: &Object) -> String {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
+    let mut lines = docs.doc_lines_for_untagged_and("py");
 
     let examples = collect_snippets_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
@@ -1205,7 +1208,7 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = field.docs.doc_lines_for_untagged_and("py");
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -1247,7 +1250,7 @@ fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
     let mut lines = vec!["Possible values:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = crate::codegen::get_documentation(&field.docs, &["py", "python"]);
+        let mut content = field.docs.doc_lines_for_untagged_and("py");
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -1947,7 +1950,8 @@ fn quote_init_method(
         obj.fields
             .iter()
             .filter_map(|field| {
-                if field.docs.doc.is_empty() {
+                let doc_content = field.docs.doc_lines_for_untagged_and("py");
+                if doc_content.is_empty() {
                     if !field.is_testing() && obj.fields.len() > 1 {
                         reporter.error(
                             &field.virtpath,
@@ -1957,8 +1961,6 @@ fn quote_init_method(
                     }
                     None
                 } else {
-                    let doc_content =
-                        crate::codegen::get_documentation(&field.docs, &["py", "python"]);
                     Some(format!(
                         "{}:\n    {}",
                         field.name,

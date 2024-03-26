@@ -2,8 +2,8 @@
 title = "SimpleRecon: 3D Reconstruction Without 3D Convolutions"
 source = "https://github.com/rerun-io/simplerecon"
 tags = ["3D", "depth", "time-series", "pinhole-camera", "mesh", "Paper Walkthrough"]
-thumbnail = "https://static.rerun.io/simplerecon/e309760134e44ba5ca1a547cb310d47a19257e5b/480w.png"
-thumbnail_dimensions = [480, 271]
+thumbnail = "https://static.rerun.io/simplecon/e0f234159cc0f934e6d4a26886b751579f5191f0/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 

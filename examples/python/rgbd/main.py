@@ -19,6 +19,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 from tqdm import tqdm
 
 DEPTH_IMAGE_SCALING: Final = 1e4
@@ -160,7 +161,21 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_rgbd")
+    rr.script_setup(
+        args,
+        "rerun_example_rgbd",
+        blueprint=rrb.Horizontal(
+            rrb.Spatial3DView(name="3D", origin="world"),
+            rrb.Vertical(
+                # Put the origin for both 2D spaces where the pinhole is logged. Doing so allows them to understand how they're connected to the 3D space.
+                # This enables interactions like clicking on a point in the 3D space to show the corresponding point in the 2D spaces and vice versa.
+                rrb.Spatial2DView(name="Depth & RGB", origin="world/camera/image"),
+                rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),
+                name="2D",
+            ),
+            column_shares=[2, 1],
+        ),
+    )
     recording_path = ensure_recording_downloaded(args.recording)
 
     log_nyud_data(

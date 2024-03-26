@@ -9,7 +9,7 @@ use re_space_view::ScreenshotMode;
 use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
-    HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
+    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
     UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
@@ -17,7 +17,7 @@ use re_viewer_context::{
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
-    contexts::{AnnotationSceneContext, NonInteractiveEntities},
+    contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType, PickingResult},
     view_kind::SpatialSpaceViewKind,
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
@@ -454,7 +454,6 @@ pub fn picking(
         ctx.app_options.show_picking_debug_overlay,
     );
 
-    let non_interactive = view_ctx.get::<NonInteractiveEntities>()?;
     let annotations = view_ctx.get::<AnnotationSceneContext>()?;
     let images = visualizers.get::<ImageVisualizer>()?;
 
@@ -473,7 +472,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.entity_db) else {
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.recording()) else {
             continue;
         };
 
@@ -482,14 +481,16 @@ pub fn picking(
             instance_path.instance_key = InstanceKey::SPLAT;
         }
 
-        if non_interactive
-            .0
-            .contains(&instance_path.entity_path.hash())
-        {
+        let interactive = ctx
+            .lookup_query_result(query.space_view_id)
+            .tree
+            .lookup_result_by_path(&instance_path.entity_path)
+            .map_or(false, |result| result.accumulated_properties().interactive);
+        if !interactive {
             continue;
         }
 
-        let store = ctx.entity_db.store();
+        let store = ctx.recording_store();
 
         // Special hover ui for images.
         let is_depth_cloud = images
@@ -613,7 +614,7 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.first_mut() {
         *context = Some(match spatial_kind {
-            SpatialSpaceViewKind::TwoD => SelectedSpaceContext::TwoD {
+            SpatialSpaceViewKind::TwoD => ItemSpaceContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_space2d
@@ -621,7 +622,7 @@ pub fn picking(
             },
             SpatialSpaceViewKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
-                SelectedSpaceContext::ThreeD {
+                ItemSpaceContext::ThreeD {
                     space_3d: query.space_origin.clone(),
                     pos: hovered_point,
                     tracked_entity: state.state_3d.tracked_entity.clone(),
@@ -674,7 +675,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         );
     } else {
         // Show it all, like we do for any other thing we hover
@@ -683,7 +684,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         );
     }
 

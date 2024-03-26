@@ -1,10 +1,8 @@
 use ahash::{HashMap, HashMapExt};
-use itertools::Itertools;
 
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
-use re_entity_db::EntityDb;
-use re_log_encoding::decoder::VersionPolicy;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
@@ -18,11 +16,11 @@ use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 /// to store both blueprints and recordings.
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
-/// id` ([`StoreId`]) are currently selected in the viewer. These can be configured
-/// using [`StoreHub::set_recording_id`] and [`StoreHub::set_app_id`] respectively.
+/// id` ([`StoreId`]) are currently active in the viewer. These can be configured
+/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app_id`] respectively.
 pub struct StoreHub {
-    selected_rec_id: Option<StoreId>,
-    selected_application_id: Option<ApplicationId>,
+    active_rec_id: Option<StoreId>,
+    active_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
@@ -73,8 +71,8 @@ impl StoreHub {
         crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
 
         Self {
-            selected_rec_id: None,
-            selected_application_id: None,
+            active_rec_id: None,
+            active_application_id: None,
             blueprint_by_app_id,
             store_bundle,
 
@@ -84,13 +82,27 @@ impl StoreHub {
         }
     }
 
+    /// All the loaded recordings and blueprints.
+    #[inline]
+    pub fn store_bundle(&self) -> &StoreBundle {
+        &self.store_bundle
+    }
+
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
     ///
     /// All of the returned references to blueprints and recordings will have a
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
+        static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
+            once_cell::sync::Lazy::new(|| {
+                EntityDb::new(re_log_types::StoreId::from_string(
+                    StoreKind::Recording,
+                    "<EMPTY>".to_owned(),
+                ))
+            });
+
         // If we have an app-id, then use it to look up the blueprint.
-        let app_id = self.selected_application_id.clone()?;
+        let app_id = self.active_application_id.clone()?;
 
         let blueprint_id = self
             .blueprint_by_app_id
@@ -99,18 +111,18 @@ impl StoreHub {
 
         // Get or create the blueprint:
         self.store_bundle.blueprint_entry(blueprint_id);
-        let blueprint = self.store_bundle.blueprint(blueprint_id)?;
+        let blueprint = self.store_bundle.get(blueprint_id)?;
 
         let recording = self
-            .selected_rec_id
+            .active_rec_id
             .as_ref()
-            .and_then(|id| self.store_bundle.recording(id));
+            .and_then(|id| self.store_bundle.get(id));
 
         Some(StoreContext {
             app_id,
             blueprint,
-            recording,
-            all_recordings: self.store_bundle.recordings().collect_vec(),
+            recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
+            bundle: &self.store_bundle,
         })
     }
 
@@ -121,38 +133,72 @@ impl StoreHub {
         self.was_recording_active
     }
 
-    /// Change the selected/visible recording id.
-    /// This will also change the application-id to match the newly selected recording.
-    pub fn set_recording_id(&mut self, recording_id: StoreId) {
+    /// Activate a store by its [`StoreId`].
+    ///
+    /// If this is a recording, switch to it.
+    /// If this is a blueprint, switch to the `AppId` of the blueprint,
+    /// and make this blueprint the active blueprint for that `AppId`.
+    pub fn activate_store(&mut self, store_id: StoreId) {
+        match store_id.kind {
+            StoreKind::Recording => self.set_active_recording_id(store_id),
+            StoreKind::Blueprint => {
+                if let Some(store) = self.store_bundle.get(&store_id) {
+                    if let Some(app_id) = store.app_id().cloned() {
+                        self.set_blueprint_for_app_id(store_id.clone(), app_id.clone());
+                        self.set_active_app_id(app_id.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Directly access the [`EntityDb`] for the active recording.
+    pub fn active_recording_id(&self) -> Option<&StoreId> {
+        self.active_rec_id.as_ref()
+    }
+
+    /// Directly access the [`EntityDb`] for the active recording.
+    pub fn active_recording(&self) -> Option<&EntityDb> {
+        self.active_rec_id
+            .as_ref()
+            .and_then(|id| self.store_bundle.get(id))
+    }
+
+    /// Change the active/visible recording id.
+    ///
+    /// This will also change the application-id to match the newly active recording.
+    pub fn set_active_recording_id(&mut self, recording_id: StoreId) {
+        debug_assert_eq!(recording_id.kind, StoreKind::Recording);
+
         // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
             .store_bundle
-            .recording(&recording_id)
+            .get(&recording_id)
             .as_ref()
             .and_then(|recording| recording.app_id())
         {
-            self.set_app_id(app_id.clone());
+            self.set_active_app_id(app_id.clone());
         }
 
-        self.selected_rec_id = Some(recording_id);
+        self.active_rec_id = Some(recording_id);
         self.was_recording_active = true;
     }
 
-    pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
-        if self.selected_rec_id.as_ref() == Some(recording_id) {
-            if let Some(new_selection) = self.store_bundle.find_closest_recording(recording_id) {
-                self.set_recording_id(new_selection.clone());
+    pub fn remove(&mut self, store_id: &StoreId) {
+        if self.active_rec_id.as_ref() == Some(store_id) {
+            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
+                self.set_active_recording_id(new_selection.clone());
             } else {
-                self.selected_application_id = None;
-                self.selected_rec_id = None;
+                self.active_application_id = None;
+                self.active_rec_id = None;
             }
         }
 
-        self.store_bundle.remove(recording_id);
+        self.store_bundle.remove(store_id);
     }
 
-    /// Change the selected [`ApplicationId`]
-    pub fn set_app_id(&mut self, app_id: ApplicationId) {
+    /// Change the active [`ApplicationId`]
+    pub fn set_active_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
         // TODO(#2579): implement web-storage for blueprints as well
@@ -163,11 +209,11 @@ impl StoreHub {
             }
         }
 
-        self.selected_application_id = Some(app_id);
+        self.active_application_id = Some(app_id);
     }
 
-    pub fn selected_application_id(&self) -> Option<&ApplicationId> {
-        self.selected_application_id.as_ref()
+    pub fn active_application_id(&self) -> Option<&ApplicationId> {
+        self.active_application_id.as_ref()
     }
 
     /// Change which blueprint is active for a given [`ApplicationId`]
@@ -184,9 +230,9 @@ impl StoreHub {
             .any(|id| id == blueprint_id)
     }
 
-    /// Clear the current blueprint
-    pub fn clear_current_blueprint(&mut self) {
-        if let Some(app_id) = &self.selected_application_id {
+    /// Clear the currently active blueprint
+    pub fn clear_active_blueprint(&mut self) {
+        if let Some(app_id) = &self.active_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
                 self.store_bundle.remove(&blueprint_id);
@@ -203,15 +249,15 @@ impl StoreHub {
 
     /// Insert a new recording or blueprint into the [`StoreHub`].
     ///
-    /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
+    /// Note that the recording is not automatically made active. Use [`StoreHub::set_active_recording_id`]
     /// if needed.
     pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert_entity_db(entity_db);
+        self.store_bundle.insert(entity_db);
     }
 
     /// Mutable access to a [`EntityDb`] by id
     pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
-        self.store_bundle.entity_db_entry(store_id)
+        self.store_bundle.entry(store_id)
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
@@ -230,9 +276,9 @@ impl StoreHub {
             return;
         };
 
-        let entity_dbs = &mut self.store_bundle.entity_dbs;
+        let store_bundle = &mut self.store_bundle;
 
-        let Some(entity_db) = entity_dbs.get_mut(&store_id) else {
+        let Some(entity_db) = store_bundle.get_mut(&store_id) else {
             if cfg!(debug_assertions) {
                 unreachable!();
             }
@@ -247,7 +293,7 @@ impl StoreHub {
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
-            self.remove_recording_id(&store_id);
+            self.remove(&store_id);
             return;
         }
 
@@ -259,8 +305,9 @@ impl StoreHub {
         //
         // If the user needs the memory for something else, they will get it back as soon as they
         // log new things anyhow.
-        if store_size_before == store_size_after && entity_dbs.len() > 1 {
-            self.remove_recording_id(&store_id);
+        let num_recordings = store_bundle.recordings().count();
+        if store_size_before == store_size_after && num_recordings > 1 {
+            self.remove(&store_id);
         }
 
         // Either we've reached our target goal or we couldn't fetch memory stats, in which case
@@ -272,32 +319,10 @@ impl StoreHub {
         // we can get an accurate reading of the current memory used and decide if we should go on.
     }
 
-    /// Directly access the [`EntityDb`] for the selected recording
-    pub fn current_recording(&self) -> Option<&EntityDb> {
-        self.selected_rec_id
-            .as_ref()
-            .and_then(|id| self.store_bundle.recording(id))
-    }
-
-    /// Check whether the [`StoreHub`] contains the referenced store (recording or blueprint).
-    pub fn contains_store(&self, id: &StoreId) -> bool {
-        self.store_bundle.contains_store(id)
-    }
-
-    pub fn entity_dbs_from_channel_source<'a>(
-        &'a self,
-        source: &'a re_smart_channel::SmartChannelSource,
-    ) -> impl Iterator<Item = &EntityDb> + 'a {
-        self.store_bundle
-            .entity_dbs
-            .values()
-            .filter(move |db| db.data_source.as_ref() == Some(source))
-    }
-
     /// Remove any recordings with a network source pointing at this `uri`.
     #[cfg(target_arch = "wasm32")]
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.store_bundle.entity_dbs.retain(|_, db| {
+        self.store_bundle.retain(|db| {
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;
@@ -320,7 +345,7 @@ impl StoreHub {
         re_tracing::profile_function!();
         if app_options.blueprint_gc {
             for blueprint_id in self.blueprint_by_app_id.values() {
-                if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
+                if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                     // TODO(jleibs): Decide a better tuning for this. Would like to save a
                     // reasonable amount of history, or incremental snapshots.
                     blueprint.gc_everything_but_the_latest_row();
@@ -342,33 +367,40 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
 
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
-                if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    if app_options.blueprint_gc {
-                        blueprint.gc_everything_but_the_latest_row();
-                    }
+            let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
+                re_log::debug!("Failed to find blueprint {blueprint_id}.");
+                continue;
+            };
+            if self.blueprint_last_save.get(blueprint_id) == Some(&blueprint.generation()) {
+                continue; // no change since last save
+            }
 
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let blueprint_path = default_blueprint_path(app_id)?;
-                        re_log::debug_once!("Saving blueprint for {app_id} to {blueprint_path:?}");
+            if app_options.blueprint_gc {
+                blueprint.gc_everything_but_the_latest_row();
+            }
 
-                        let messages = blueprint.to_messages(None)?;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let blueprint_path = default_blueprint_path(app_id)?;
 
-                        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                        // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+                let messages = blueprint.to_messages(None)?;
 
-                        self.blueprint_last_save
-                            .insert(blueprint_id.clone(), blueprint.generation());
-                    }
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        _ = app_id;
-                    }
-                }
+                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+                // be small & fast to save, but maybe not once we start adding big pieces of user data?
+                crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+                re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+                self.blueprint_last_save
+                    .insert(blueprint_id.clone(), blueprint.generation());
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            {
+                _ = app_id;
             }
         }
+
         Ok(())
     }
 
@@ -407,7 +439,7 @@ impl StoreHub {
                             .insert(app_id.clone(), store.store_id().clone());
                         self.blueprint_last_save
                             .insert(store.store_id().clone(), store.generation());
-                        self.store_bundle.insert_blueprint(store);
+                        self.store_bundle.insert(store);
                     } else {
                         anyhow::bail!(
                             "Found unexpected store while loading blueprint: {:?}",
@@ -420,19 +452,19 @@ impl StoreHub {
         Ok(())
     }
 
-    /// Populate a [`StoreHubStats`] based on the selected app.
+    /// Populate a [`StoreHubStats`] based on the active app.
     //
     // TODO(jleibs): We probably want stats for all recordings, not just
-    // the currently selected recording.
+    // the active recording.
     pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
         re_tracing::profile_function!();
 
         // If we have an app-id, then use it to look up the blueprint.
         let blueprint = self
-            .selected_application_id
+            .active_application_id
             .as_ref()
             .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_bundle.blueprint(blueprint_id));
+            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
         let blueprint_stats = blueprint
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
@@ -443,9 +475,9 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording = self
-            .selected_rec_id
+            .active_rec_id
             .as_ref()
-            .and_then(|rec_id| self.store_bundle.recording(rec_id));
+            .and_then(|rec_id| self.store_bundle.get(rec_id));
 
         let recording_stats = recording
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
@@ -466,211 +498,5 @@ impl StoreHub {
             recording_cached_stats,
             recording_config,
         }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum StoreLoadError {
-    #[error(transparent)]
-    Decode(#[from] re_log_encoding::decoder::DecodeError),
-
-    #[error(transparent)]
-    DataStore(#[from] re_entity_db::Error),
-}
-
-/// Stores many [`EntityDb`]s of recordings and blueprints.
-#[derive(Default)]
-pub struct StoreBundle {
-    // TODO(emilk): two separate maps per [`StoreKind`].
-    entity_dbs: ahash::HashMap<StoreId, EntityDb>,
-}
-
-impl StoreBundle {
-    /// Decode an rrd stream.
-    /// It can theoretically contain multiple recordings, and blueprints.
-    pub fn from_rrd(
-        version_policy: VersionPolicy,
-        read: impl std::io::Read,
-    ) -> Result<Self, StoreLoadError> {
-        re_tracing::profile_function!();
-
-        let decoder = re_log_encoding::decoder::Decoder::new(version_policy, read)?;
-
-        let mut slf = Self::default();
-
-        for msg in decoder {
-            let msg = msg?;
-            slf.entity_db_entry(msg.store_id()).add(&msg)?;
-        }
-        Ok(slf)
-    }
-
-    /// Returns either a recording or blueprint [`EntityDb`].
-    /// One is created if it doesn't already exist.
-    pub fn entity_db_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        self.entity_dbs.entry(id.clone()).or_insert_with(|| {
-            re_log::debug!("Creating new store: {id}");
-            EntityDb::new(id.clone())
-        })
-    }
-
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
-    pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
-        self.entity_dbs.values()
-    }
-
-    /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
-    pub fn entity_dbs_mut(&mut self) -> impl Iterator<Item = &mut EntityDb> {
-        self.entity_dbs.values_mut()
-    }
-
-    pub fn append(&mut self, mut other: Self) {
-        for (id, entity_db) in other.entity_dbs.drain() {
-            self.entity_dbs.insert(id, entity_db);
-        }
-    }
-
-    pub fn remove(&mut self, id: &StoreId) {
-        self.entity_dbs.remove(id);
-    }
-
-    /// Returns the closest "neighbor" recording to the given id.
-    ///
-    /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
-    /// previous one otherwise. This is used to update the selected recording when the current one
-    /// is deleted.
-    pub fn find_closest_recording(&self, id: &StoreId) -> Option<&StoreId> {
-        let mut recs = self.recordings().collect_vec();
-        recs.sort_by_key(|entity_db| entity_db.sort_key());
-
-        let cur_pos = recs.iter().position(|rec| rec.store_id() == id);
-
-        if let Some(cur_pos) = cur_pos {
-            if recs.len() > cur_pos + 1 {
-                Some(recs[cur_pos + 1].store_id())
-            } else if cur_pos > 0 {
-                Some(recs[cur_pos - 1].store_id())
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
-    /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
-    pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
-        let mut entity_dbs = self
-            .entity_dbs
-            .values()
-            .filter(|db| db.store_kind() == StoreKind::Recording)
-            .collect_vec();
-
-        entity_dbs.sort_by_key(|db| db.last_modified_at());
-
-        entity_dbs.first().map(|db| db.store_id())
-    }
-
-    // --
-
-    pub fn contains_store(&self, id: &StoreId) -> bool {
-        self.entity_dbs.contains_key(id)
-    }
-
-    pub fn recording(&self, id: &StoreId) -> Option<&EntityDb> {
-        debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.entity_dbs.get(id)
-    }
-
-    pub fn recording_mut(&mut self, id: &StoreId) -> Option<&mut EntityDb> {
-        debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.entity_dbs.get_mut(id)
-    }
-
-    /// Creates one if it doesn't exist.
-    pub fn recording_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        debug_assert_eq!(id.kind, StoreKind::Recording);
-        self.entity_dbs
-            .entry(id.clone())
-            .or_insert_with(|| EntityDb::new(id.clone()))
-    }
-
-    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
-        self.entity_dbs
-            .insert(entity_db.store_id().clone(), entity_db);
-    }
-
-    pub fn insert_blueprint(&mut self, entity_db: EntityDb) {
-        debug_assert_eq!(entity_db.store_kind(), StoreKind::Blueprint);
-        self.entity_dbs
-            .insert(entity_db.store_id().clone(), entity_db);
-    }
-
-    pub fn recordings(&self) -> impl Iterator<Item = &EntityDb> {
-        self.entity_dbs
-            .values()
-            .filter(|log| log.store_kind() == StoreKind::Recording)
-    }
-
-    pub fn blueprints(&self) -> impl Iterator<Item = &EntityDb> {
-        self.entity_dbs
-            .values()
-            .filter(|log| log.store_kind() == StoreKind::Blueprint)
-    }
-
-    // --
-
-    pub fn contains_blueprint(&self, id: &StoreId) -> bool {
-        debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.entity_dbs.contains_key(id)
-    }
-
-    pub fn blueprint(&self, id: &StoreId) -> Option<&EntityDb> {
-        debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.entity_dbs.get(id)
-    }
-
-    pub fn blueprint_mut(&mut self, id: &StoreId) -> Option<&mut EntityDb> {
-        debug_assert_eq!(id.kind, StoreKind::Blueprint);
-        self.entity_dbs.get_mut(id)
-    }
-
-    /// Creates one if it doesn't exist.
-    pub fn blueprint_entry(&mut self, id: &StoreId) -> &mut EntityDb {
-        debug_assert_eq!(id.kind, StoreKind::Blueprint);
-
-        self.entity_dbs.entry(id.clone()).or_insert_with(|| {
-            // TODO(jleibs): If the blueprint doesn't exist this probably means we are
-            // initializing a new default-blueprint for the application in question.
-            // Make sure it's marked as a blueprint.
-
-            let mut blueprint_db = EntityDb::new(id.clone());
-
-            re_log::debug!("Creating a new blueprint {id}");
-
-            blueprint_db.set_store_info(re_log_types::SetStoreInfo {
-                row_id: re_log_types::RowId::new(),
-                info: re_log_types::StoreInfo {
-                    application_id: id.as_str().into(),
-                    store_id: id.clone(),
-                    is_official_example: false,
-                    started: re_log_types::Time::now(),
-                    store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
-                    store_kind: StoreKind::Blueprint,
-                },
-            });
-
-            blueprint_db
-        })
-    }
-
-    // --
-
-    pub fn purge_empty(&mut self) {
-        self.entity_dbs.retain(|_, entity_db| !entity_db.is_empty());
-    }
-
-    pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
-        self.entity_dbs.drain().map(|(_, store)| store)
     }
 }

@@ -156,10 +156,10 @@ def lint_line(
 
     if not is_in_docstring:
         if m := re.search(
-            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("(\w+)',
+            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("(\w*)',
             line,
         ) or re.search(
-            r'(rr.script_setup)\(args, "(\w+)',
+            r'(rr.script_setup)\(args, "(\w*)',
             line,
         ):
             app_id = m.group(2)
@@ -229,6 +229,7 @@ def test_lint_line() -> None:
         "template <typename... Args>",
         'protoc_prebuilt::init("22.0")',
         'rr.init("rerun_example_app")',
+        'rr.script_setup(args, "rerun_example_app")',
         """
         #[inline]
         fn foo(mut self) -> Self {
@@ -310,6 +311,7 @@ def test_lint_line() -> None:
         'RecordingStream("missing_prefix")',
         'rr.init("missing_prefix")',
         'rr.script_setup(args, "missing_prefix")',
+        'rr.script_setup(args, "")',
         "I accidentally wrote the same same word twice",
         "fn foo(mut self) -> Self {",
         "fn deref(&self) -> Self::Target {",

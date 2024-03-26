@@ -21,10 +21,16 @@ class SpaceView:
     Base class for all space view types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [Spatial3D][] for 3D space views
-    - [Spatial2D][] for 2D space views
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
+    - [rerun.blueprint.BarChartView][]
+    - [rerun.blueprint.Spatial2DView][]
+    - [rerun.blueprint.Spatial3DView][]
+    - [rerun.blueprint.TensorView][]
+    - [rerun.blueprint.TextDocumentView][]
+    - [rerun.blueprint.TextLogView][]
+    - [rerun.blueprint.TimeSeriesView][]
+
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.SpaceViewBlueprint][].
     """
 
     def __init__(
@@ -49,8 +55,8 @@ class SpaceView:
             The `EntityPath` to use as the origin of this space view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the space view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
 
         """
         self.id = uuid.uuid4()
@@ -68,15 +74,15 @@ class SpaceView:
         """
         return f"space_view/{self.id}"
 
-    def to_viewport(self) -> Viewport:
-        """Convert this space view to a viewport."""
+    def to_container(self) -> Container:
+        """Convert this space view to a container."""
         from .containers import Grid
 
-        return Viewport(Grid(self))
+        return Grid(self)
 
     def to_blueprint(self) -> Blueprint:
         """Convert this space view to a full blueprint."""
-        return Blueprint(self.to_viewport())
+        return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -109,30 +115,36 @@ class Container:
     Base class for all container types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [Horizontal][] for horizontal containers
-    - [Vertical][] for vertical containers
-    - [Grid][] for grid containers
-    - [Tabs][] for tab containers
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
+    - [rerun.blueprint.Horizontal][]
+    - [rerun.blueprint.Vertical][]
+    - [rerun.blueprint.Grid][]
+    - [rerun.blueprint.Tabs][]
+
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.ContainerBlueprint][].
     """
 
     def __init__(
         self,
-        *contents: Container | SpaceView,
+        *args: Container | SpaceView,
+        contents: Optional[Iterable[Container | SpaceView]] = None,
         kind: ContainerKindLike,
         column_shares: Optional[ColumnShareArrayLike] = None,
         row_shares: Optional[RowShareArrayLike] = None,
         grid_columns: Optional[int] = None,
         active_tab: Optional[int | str] = None,
+        name: Utf8Like | None,
     ):
         """
         Construct a new container.
 
         Parameters
         ----------
-        *contents:
-            All positional arguments are the contents of the container, which may be either other containers or space views.
+        *args:
+            All positional arguments are forwarded to the `contents` parameter for convenience.
+        contents:
+            The contents of the container. Each item in the iterable must be a `SpaceView` or a `Container`.
+            This can only be used if no positional arguments are provided.
         kind
             The kind of the container. This must correspond to a known container kind.
             Prefer to use one of the subclasses of `Container` which will populate this for you.
@@ -148,15 +160,26 @@ class Container:
             The number of columns in the grid. This is only applicable to `Grid` containers.
         active_tab
             The active tab in the container. This is only applicable to `Tabs` containers.
+        name
+            The name of the container
 
         """
+
+        if args and contents is not None:
+            raise ValueError("Cannot provide both positional and keyword arguments for contents")
+
+        if contents is not None:
+            self.contents = contents
+        else:
+            self.contents = args
+
         self.id = uuid.uuid4()
         self.kind = kind
-        self.contents = contents
         self.column_shares = column_shares
         self.row_shares = row_shares
         self.grid_columns = grid_columns
         self.active_tab = active_tab
+        self.name = name
 
     def blueprint_path(self) -> str:
         """
@@ -167,13 +190,13 @@ class Container:
         """
         return f"container/{self.id}"
 
-    def to_viewport(self) -> Viewport:
-        """Convert this container to a viewport."""
-        return Viewport(self)
+    def to_container(self) -> Container:
+        """Convert this space view to a container."""
+        return self
 
     def to_blueprint(self) -> Blueprint:
         """Convert this container to a full blueprint."""
-        return Blueprint(self.to_viewport())
+        return Blueprint(self)
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
@@ -195,6 +218,7 @@ class Container:
             visible=True,
             grid_columns=self.grid_columns,
             active_tab=active_tab_path,
+            display_name=self.name,
         )
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
@@ -206,77 +230,17 @@ class Container:
         return itertools.chain.from_iterable(sub._iter_space_views() for sub in self.contents)
 
 
-class Viewport:
-    """
-    The top-level description of the Viewport.
-
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.ViewportBlueprint][].
-    """
-
-    def __init__(
-        self, root_container: Container, *, auto_layout: bool | None = None, auto_space_views: bool | None = None
-    ):
-        """
-        Construct a new viewport.
-
-        Parameters
-        ----------
-        root_container:
-            The container that sits at the top of the viewport hierarchy. The only content visible
-            in this viewport must be contained within this container.
-        auto_layout:
-            Whether to automatically layout the viewport. If `True`, the container layout will be
-            reset whenever a new space view is added to the viewport. Defaults to `False`.
-        auto_space_views:
-            Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store. Defaults to `False`.
-
-        """
-        self.root_container = root_container
-        self.auto_layout = auto_layout
-        self.auto_space_views = auto_space_views
-
-    def blueprint_path(self) -> str:
-        """
-        The blueprint path where this space view will be logged.
-
-        Note that although this is an `EntityPath`, is scoped to the blueprint tree and
-        not a part of the regular data hierarchy.
-        """
-        return "viewport"
-
-    def to_viewport(self) -> Viewport:
-        """Conform with the `ViewportLike` interface."""
-        return self
-
-    def to_blueprint(self) -> Blueprint:
-        """Convert this viewport to a full blueprint."""
-        return Blueprint(self)
-
-    def _log_to_stream(self, stream: RecordingStream) -> None:
-        """Internal method to convert to an archetype and log to the stream."""
-        self.root_container._log_to_stream(stream)
-
-        arch = ViewportBlueprint(
-            space_views=list(self.root_container._iter_space_views()),
-            root_container=self.root_container.id.bytes,
-            auto_layout=self.auto_layout,
-            auto_space_views=self.auto_space_views,
-        )
-
-        stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
-
-
 class Panel:
     """
     Base class for the panel types.
 
     Consider using one of the subclasses instead of this class directly:
-    - [BlueprintPanel][]
-    - [SelectionPanel][]
-    - [TimePanel][]
 
-    This is an ergonomic helper on top of [rerun.blueprint.archetypes.PanelBlueprint][].
+    - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
+    - [SelectionPanel][rerun.blueprint.SelectionPanel]
+    - [TimePanel][rerun.blueprint.TimePanel]
+
+    These are ergonomic helpers on top of [rerun.blueprint.archetypes.PanelBlueprint][].
     """
 
     def __init__(self, *, blueprint_path: str, expanded: bool | None = None):
@@ -360,15 +324,15 @@ class TimePanel(Panel):
         super().__init__(blueprint_path="time_panel", expanded=expanded)
 
 
-ViewportLike = Union[Viewport, Container, SpaceView]
+ContainerLike = Union[Container, SpaceView]
 """
-A type that can be converted to a viewport.
+A type that can be converted to a container.
 
-These types all implement a `to_viewport()` method that wraps them in the necessary
+These types all implement a `to_container()` method that wraps them in the necessary
 helper classes.
 """
 
-BlueprintPart = Union[ViewportLike, BlueprintPanel, SelectionPanel, TimePanel]
+BlueprintPart = Union[ContainerLike, BlueprintPanel, SelectionPanel, TimePanel]
 """
 The types that make up a blueprint.
 """
@@ -380,30 +344,44 @@ class Blueprint:
     def __init__(
         self,
         *parts: BlueprintPart,
+        auto_layout: bool | None = None,
+        auto_space_views: bool | None = None,
     ):
         """
         Construct a new blueprint from the given parts.
 
-        Each [BlueprintPart][] can be one of the following:
-        - [Viewport][]
-        - [BlueprintPanel][]
-        - [SelectionPanel][]
-        - [TimePanel][]
+        Each [BlueprintPart][rerun.blueprint.BlueprintPart] can be one of the following:
+
+        - [ContainerLike][rerun.blueprint.ContainerLike]
+        - [BlueprintPanel][rerun.blueprint.BlueprintPanel]
+        - [SelectionPanel][rerun.blueprint.SelectionPanel]
+        - [TimePanel][rerun.blueprint.TimePanel]
 
         It is an error to provide more than one of any type of part.
+
+        Blueprints only have a single top-level "root" container that defines the viewport. Any
+        other content should be nested under this container (or a nested sub-container).
 
         Parameters
         ----------
         *parts:
             The parts of the blueprint.
+        auto_layout:
+            Whether to automatically layout the viewport. If `True`, the container layout will be
+            reset whenever a new space view is added to the viewport. Defaults to `False`.
+        auto_space_views:
+            Whether to automatically add space views to the viewport. If `True`, the viewport will
+            automatically add space views based on content in the data store. Defaults to `False`.
 
         """
 
         for part in parts:
-            if isinstance(part, (Viewport, Container, SpaceView)):
-                if hasattr(self, "viewport"):
-                    raise ValueError("Only one viewport can be provided")
-                self.viewport = part.to_viewport()
+            if isinstance(part, (Container, SpaceView)):
+                if hasattr(self, "root_container"):
+                    raise ValueError(
+                        "Only one ContainerLike can be provided to serve as the root container for the viewport"
+                    )
+                self.root_container = part.to_container()
             elif isinstance(part, BlueprintPanel):
                 if hasattr(self, "blueprint_panel"):
                     raise ValueError("Only one blueprint panel can be provided")
@@ -419,13 +397,33 @@ class Blueprint:
             else:
                 raise ValueError(f"Unknown part type: {part}")
 
+        self.auto_layout = auto_layout
+        self.auto_space_views = auto_space_views
+
     def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
         return self
 
     def _log_to_stream(self, stream: RecordingStream) -> None:
         """Internal method to convert to an archetype and log to the stream."""
-        self.viewport._log_to_stream(stream)
+        if hasattr(self, "root_container"):
+            self.root_container._log_to_stream(stream)
+
+            root_container_id = self.root_container.id.bytes
+            space_views = list(self.root_container._iter_space_views())
+        else:
+            root_container_id = None
+            space_views = []
+
+        viewport_arch = ViewportBlueprint(
+            space_views=space_views,
+            root_container=root_container_id,
+            auto_layout=self.auto_layout,
+            auto_space_views=self.auto_space_views,
+        )
+
+        stream.log("viewport", viewport_arch)  # type: ignore[attr-defined]
+
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
         if hasattr(self, "selection_panel"):
@@ -434,8 +432,7 @@ class Blueprint:
             self.time_panel._log_to_stream(stream)
 
 
-BlueprintLike = Union[Blueprint, Viewport, Container, SpaceView]
-
+BlueprintLike = Union[Blueprint, SpaceView, Container]
 """
 A type that can be converted to a blueprint.
 
@@ -450,9 +447,15 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     # Convert the BlueprintLike to a full blueprint
     blueprint = blueprint.to_blueprint()
 
+    # We only use this stream object directly, so don't need to make it
+    # default or thread default. Making it the thread-default will also
+    # lead to an unnecessary warning on mac/win.
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
             application_id=application_id,
+            make_default=False,
+            make_thread_default=False,
+            default_enabled=True,
         )
     )
 

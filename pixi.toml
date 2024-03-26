@@ -46,11 +46,15 @@ rerun-release = "cargo run --package rerun-cli --no-default-features --features 
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-web = """
-     rustup target add wasm32-unknown-unknown
-  && cargo run -p re_build_web_viewer -- --debug
-  && cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer
-"""
+rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer", depends_on = [
+  "rerun-build-web",
+] }
+
+# Compile the web-viewer wasm, does not include the cli.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --debug"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -58,11 +62,16 @@ rerun-web = """
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-release-web = """
-     rustup target add wasm32-unknown-unknown
-  && cargo run -p re_build_web_viewer -- --release
-  && cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer
-"""
+rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features --features web_viewer --release -- --web-viewer", depends_on = [
+  "rerun-build-web-release",
+] }
+
+# Compile the web-viewer wasm in release mode, doe not include the cli.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --release"
+
 
 build-examples = "cargo run -q --locked -p re_build_examples --"
 

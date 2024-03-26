@@ -20,11 +20,13 @@ pub enum SystemCommand {
     /// Reset the `Blueprint` to the default state
     ResetBlueprint,
 
-    /// Change the active recording-id in the `StoreHub`
-    SetRecordingId(StoreId),
+    /// If this is a recording, switch to it.
+    /// If this is a blueprint, switch to the `AppId` of the blueprint,
+    /// and make this blueprint the active blueprint for that `AppId`.
+    ActivateStore(StoreId),
 
-    /// Close a recording
-    CloseRecordingId(StoreId),
+    /// Close a recording or blueprint (free its memory).
+    CloseStore(StoreId),
 
     /// Update the blueprint with additional data
     ///
@@ -40,8 +42,14 @@ pub enum SystemCommand {
     /// Enable or disable the experimental dataframe space views.
     EnableExperimentalDataframeSpaceView(bool),
 
-    /// Set the selection in the recording config of the given recording.
-    SetSelection(StoreId, crate::Item),
+    /// Set the item selection.
+    SetSelection {
+        /// If set, use the recording config of this recording.
+        /// Else, use the currently active recording.
+        recording_id: Option<StoreId>,
+
+        item: crate::Item,
+    },
 
     /// Sets the focus to the given item.
     ///

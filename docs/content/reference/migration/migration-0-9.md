@@ -195,9 +195,7 @@ Notes:
  - `identifiers` has become `instance_keys`.
 
 ### log_scalar
-Replace with [TimeSeriesScalar](../types/archetypes/time_series_scalar.md)
-
-Python docs: [TimeSeriesScalar](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.TimeSeriesScalar)
+Replace with `TimeSeriesScalar`
 
 ### log_segmentation_image
 Replace with [SegmentationImage](../types/archetypes/segmentation_image.md)

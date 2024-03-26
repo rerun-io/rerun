@@ -102,16 +102,16 @@ def script_setup(
 
     # NOTE: mypy thinks these methods don't exist because they're monkey-patched.
     if args.stdout:
-        rec.stdout()  # type: ignore[attr-defined]
+        rec.stdout(blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.serve:
-        rec.serve()  # type: ignore[attr-defined]
+        rec.serve(blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.connect:
         # Send logging data to separate `rerun` process.
         # You can omit the argument to connect to the default address,
         # which is `127.0.0.1:9876`.
         rec.connect(args.addr, blueprint=blueprint)  # type: ignore[attr-defined]
     elif args.save is not None:
-        rec.save(args.save)  # type: ignore[attr-defined]
+        rec.save(args.save, blueprint=blueprint)  # type: ignore[attr-defined]
     elif not args.headless:
         rec.spawn(blueprint=blueprint)  # type: ignore[attr-defined]
 

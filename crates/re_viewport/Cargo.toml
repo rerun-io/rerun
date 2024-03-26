@@ -28,6 +28,7 @@ re_renderer = { workspace = true, default-features = false, features = [
   "import-obj",
   "serde",
 ] }
+re_smart_channel.workspace = true
 re_space_view.workspace = true
 re_space_view_time_series.workspace = true
 re_tracing.workspace = true

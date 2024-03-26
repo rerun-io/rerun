@@ -16,8 +16,6 @@ namespace arrow {
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether or not space views should be created automatically.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct AutoSpaceViews {
         bool auto_space_views;
 

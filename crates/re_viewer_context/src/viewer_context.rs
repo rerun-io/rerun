@@ -6,7 +6,7 @@ use re_entity_db::entity_db::EntityDb;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
-    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, PerVisualizer, Selection,
+    Caches, CommandSender, ComponentUiRegistry, IndicatedEntities, ItemCollection, PerVisualizer,
     SpaceViewClassRegistry, SpaceViewId, StoreContext, SystemCommandSender as _, TimeControl,
 };
 
@@ -25,10 +25,6 @@ pub struct ViewerContext<'a> {
 
     /// Registry of all known classes of space views.
     pub space_view_class_registry: &'a SpaceViewClassRegistry,
-
-    /// The current recording.
-    /// TODO(jleibs): This can go away
-    pub entity_db: &'a EntityDb,
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
@@ -73,14 +69,32 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
+    /// The active recording.
+    #[inline]
+    pub fn recording(&self) -> &EntityDb {
+        self.store_context.recording
+    }
+
+    /// The data store of the active recording.
+    #[inline]
+    pub fn recording_store(&self) -> &re_data_store::DataStore {
+        self.store_context.recording.store()
+    }
+
+    /// The `StoreId` of the active recording.
+    #[inline]
+    pub fn recording_id(&self) -> &re_log_types::StoreId {
+        self.store_context.recording.store_id()
+    }
+
     /// Returns the current selection.
-    pub fn selection(&self) -> &Selection {
-        self.rec_cfg.selection_state.current()
+    pub fn selection(&self) -> &ItemCollection {
+        self.rec_cfg.selection_state.selected_items()
     }
 
     /// Returns the currently hovered objects.
-    pub fn hovered(&self) -> &Selection {
-        self.rec_cfg.selection_state.hovered()
+    pub fn hovered(&self) -> &ItemCollection {
+        self.rec_cfg.selection_state.hovered_items()
     }
 
     pub fn selection_state(&self) -> &ApplicationSelectionState {
@@ -96,7 +110,7 @@ impl<'a> ViewerContext<'a> {
     pub fn select_hovered_on_click(
         &self,
         response: &egui::Response,
-        selection: impl Into<Selection>,
+        selection: impl Into<ItemCollection>,
     ) {
         re_tracing::profile_function!();
 
