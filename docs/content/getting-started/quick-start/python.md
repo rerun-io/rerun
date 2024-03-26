@@ -49,7 +49,7 @@ data usage policy. Rerun collects anonymous usage data to help improve the proje
 would like.*
 
 ### If you're having problems
- * Checkout out our [troubleshooting guide](troubleshooting.md).
+ * Checkout out our [troubleshooting guide](../troubleshooting.md).
  * [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
  * Or [join the Discord server](https://discord.gg/PXtCgFBSmH).
 
@@ -90,7 +90,7 @@ rr.log(
 )
 ```
 
-When you run this script you will again be greeted with the [Rerun Viewer](../reference/viewer/overview.md), this time
+When you run this script you will again be greeted with the Rerun Viewer, this time
 only showing a simple line of red points.
 
 <picture>

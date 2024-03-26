@@ -30,7 +30,7 @@ All of the code for this guide can be found on GitHub in
 ## Prerequisites
 
 Other relevant tutorials:
- - [Python SDK Tutorial](../getting-started/getting-started/data-in/streaming/python.md)
+ - [Python SDK Tutorial](../getting-started/data-in/streaming/python.md)
  - [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
 
 ### ROS 2 & navigation

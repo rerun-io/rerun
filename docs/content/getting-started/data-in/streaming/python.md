@@ -34,7 +34,7 @@ rr.init("rerun_example_dna_abacus")
 
 Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../concepts/apps-and-recordings.md).
+Check out the reference to learn more about how Rerun deals with [applications and recordings](../../../concepts/apps-and-recordings.md).
 
 ## Starting the Viewer
 
@@ -95,7 +95,7 @@ rr.log("dna/structure/right", rr.Points3D(points2, colors=colors2, radii=0.08))
 ```
 
 Run your script once again and you should now see this scene in the viewer.
-Note that if the viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../concepts/apps-and-recordings.md).
+Note that if the viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](../../../concepts/apps-and-recordings.md).
 
 <picture>
   <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">
@@ -126,7 +126,7 @@ and radii. Archetypes are just one high-level, convenient way of building such c
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
 
-For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
+For more information on how the rerun data model works, refer to our section on [Entities and Components](../../../concepts/entity-component.md).
 
 Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun.utilities.data.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
@@ -135,13 +135,13 @@ Rerun takes care of mapping those arrays to actual Rerun components depending on
 
 Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
 
-These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
-[Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
+These are [*entity paths*](../../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
+[Entity paths typically form a hierarchy](../../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 ### Batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Batches of data](../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Batches of data](../../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this *splatting*.
 
 ---
@@ -190,7 +190,7 @@ there is nothing new here: it's all about building out `numpy` arrays and feedin
 
 ### Introducing Time
 
-Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../concepts/timelines.md).
+Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../../concepts/timelines.md).
 
 Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
