@@ -286,7 +286,7 @@ def serve(
 def send_blueprint(
     blueprint: BlueprintLike,
     *,
-    make_active: bool = False,
+    make_active: bool = True,
     make_default: bool = True,
     recording: RecordingStream | None = None,
 ) -> None:
