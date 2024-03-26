@@ -1,5 +1,5 @@
 ---
-title: Installing the Rerun Viewer
+title: Installing the Viewer
 order: 1
 ---
 
@@ -21,7 +21,7 @@ You'll be welcomed by an overview page that allows you to jump into some example
 If you're facing any difficulties, don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) or [join the Discord server](https://discord.gg/PXtCgFBSmH).
 
 The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](../howto/open-any-file.md) without needing to modify the Rerun codebase itself.
-
+  1
 To start getting your own data logged & visualized in the viewer check one of the respective getting started guides:
 * [Python](./quick-start/python.md)
 * [C++](./quick-start/cpp.md)
