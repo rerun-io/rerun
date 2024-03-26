@@ -529,11 +529,11 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), blueprint = None, recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
@@ -557,7 +557,7 @@ fn connect(
             recording.connect_opts(
                 addr,
                 flush_timeout,
-                blueprint.map(|b| (b.inner.take(), ready_opts)),
+                default_blueprint.map(|b| (b.inner.take(), ready_opts)),
             );
         };
         flush_garbage_queue();
@@ -567,10 +567,10 @@ fn connect(
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, blueprint = None, recording = None))]
+#[pyo3(signature = (path, default_blueprint = None, recording = None))]
 fn save(
     path: &str,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
@@ -587,7 +587,10 @@ fn save(
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .save_opts(path, blueprint.map(|b| (b.inner.take(), ready_opts)))
+            .save_opts(
+                path,
+                default_blueprint.map(|b| (b.inner.take(), ready_opts)),
+            )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -595,9 +598,9 @@ fn save(
 }
 
 #[pyfunction]
-#[pyo3(signature = (blueprint = None, recording = None))]
+#[pyo3(signature = (default_blueprint = None, recording = None))]
 fn stdout(
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
@@ -614,7 +617,7 @@ fn stdout(
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
         let res = recording
-            .stdout_opts(blueprint.map(|b| (b.inner.take(), ready_opts)))
+            .stdout_opts(default_blueprint.map(|b| (b.inner.take(), ready_opts)))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()));
         flush_garbage_queue();
         res
@@ -699,24 +702,19 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, blueprint = None, recording = None))]
+#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
     server_memory_limit: String,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         let Some(recording) = get_data_recording(recording) else {
             return Ok(());
-        };
-
-        let ready_opts = BlueprintReadyOpts {
-            make_active: false,
-            make_default: true,
         };
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
@@ -733,7 +731,12 @@ fn serve(
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-        if let Some(blueprint) = blueprint {
+        if let Some(blueprint) = default_blueprint {
+            let ready_opts = BlueprintReadyOpts {
+                make_active: false,
+                make_default: true,
+            };
+
             RecordingStream::send_blueprint_to_sink(blueprint.inner.take(), ready_opts, &*sink);
         }
 

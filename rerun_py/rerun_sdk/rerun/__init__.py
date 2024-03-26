@@ -248,7 +248,7 @@ def init(
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
-    blueprint: BlueprintLike | None = None,
+    default_blueprint: BlueprintLike | None = None,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -316,8 +316,11 @@ def init(
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
-    blueprint
-        A blueprint to use for this application. If not provided, a new one will be created.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, this blueprint won't become active until the user
+        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
 
@@ -348,7 +351,7 @@ def init(
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn(blueprint=blueprint)
+        _spawn(default_blueprint=default_blueprint)
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
