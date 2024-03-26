@@ -108,7 +108,7 @@ Run your program with `cargo run` and you should now see this scene in the viewe
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../../visualize/viewer-walkthrough.md) and [viewer reference](../../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
@@ -333,7 +333,7 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a viewer in a new process and connect to it over TCP.
+If the Rerun Viewer is [installed](../../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a viewer in a new process and connect to it over TCP.
 If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust

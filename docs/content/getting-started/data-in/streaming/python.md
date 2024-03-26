@@ -17,7 +17,7 @@ At any time, you can checkout the complete code listing for this tutorial [here]
 
 ## Prerequisites
 
-We assume you have working Python and `rerun-sdk` installations. If not, check out the [setup page](./quick-start/python.md).
+We assume you have working Python and `rerun-sdk` installations. If not, check out the [setup page](../../quick-start/python.md).
 
 ## Initializing the SDK
 
@@ -38,7 +38,7 @@ Check out the reference to learn more about how Rerun deals with [applications a
 
 ## Starting the Viewer
 
-Next up, we want to spawn the [Rerun Viewer](../reference/viewer/overview.md) itself.
+Next up, we want to spawn the [Rerun Viewer](../../../reference/viewer/overview.md) itself.
 
 To do this, you can add the line:
 ```python
@@ -192,7 +192,7 @@ there is nothing new here: it's all about building out `numpy` arrays and feedin
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../../concepts/timelines.md).
 
-Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
+Even so, if you look at your [Timeline View](../../../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/480w.png">
@@ -321,4 +321,4 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../../reference/types.md) section for more simple examples of how to use the main datatypes.

@@ -64,7 +64,7 @@ Try out the following to interact with the viewer:
  * Hover and select individual points to see more information.
 
 This is just a taste of some of what you can do with the viewer. We will cover other functionality in much
-more detail later in the [Viewer Walkthrough](visualize/viewer-walkthrough.md)
+more detail later in the [Viewer Walkthrough](../visualize/viewer-walkthrough.md)
 
 ## Logging your own data
 After exploring a built-in example, let's create some data ourselves. We will start with an
