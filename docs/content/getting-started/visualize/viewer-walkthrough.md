@@ -1,5 +1,5 @@
 ---
-title: Viewer Walkthrough
+title: Viewer walkthrough
 order: 0
 ---
 

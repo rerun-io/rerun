@@ -1,5 +1,5 @@
 ---
-title: Get Data into Rerun
+title: Get data into Rerun
 order: 2
 ---
 

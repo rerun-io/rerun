@@ -1,5 +1,5 @@
 ---
-title: Configure from Code
+title: Configure from code
 order: 1
 ---
 

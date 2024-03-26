@@ -1,5 +1,5 @@
 ---
-title: Opening Files
+title: Opening files
 order: 1
 ---
 

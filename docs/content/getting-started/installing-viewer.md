@@ -1,5 +1,5 @@
 ---
-title: Installing the Viewer
+title: Installing Rerun
 order: 1
 ---
 
