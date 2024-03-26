@@ -540,12 +540,13 @@ impl EntityDb {
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
         });
 
-        // Signal that the store is ready.
-        // Important for blueprints.
+        // If this is a blueprint, make sure to include the `BlueprintReady` message.
+        // We generally use `to_messages` to export a blueprint via "save". In that
+        // case, we want to make the blueprint active and default when it's reloaded.
+        // TODO(jleibs): Coupling this with the stored file instead of injecting seems
+        // architecturallyt weird. Would be great if we didn't need this in `.rbl` files
+        // at all.
         let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
-            // TODO(jleibs): Maybe make_active or make_default should be configurable.
-            // We generally use `to_messages` to export a blueprint via "save". In that
-            // case, we want to make the blueprint active and default when it's reloaded.
             let ready_msg = LogMsg::BlueprintReady(
                 self.store_id().clone(),
                 re_log_types::BlueprintReadyOpts {
