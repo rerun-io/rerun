@@ -1,4 +1,5 @@
 #:schema ./schema.json
+
 # Examples listed in this manifest will appear on our website.
 # This has no effect whatsoever on whether they appear in the app itself.
 #
@@ -9,24 +10,24 @@
 order = 1
 title = "Spatial computing and XR"
 prelude = """
-TODO
+Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
 """
 examples = [
-  "arkit_scenes",
-  "objectron",
-  "vrs",
   "arflow",
-  "widebaseline",
+  "arkit_scenes",
+  "limap",
+  "objectron",
   "simplerecon",
   "slahmr",
-  "limap",
+  "vrs",
+  "widebaseline",
 ]
 
 [categories.robotics]
 order = 2
 title = "Robotics"
 prelude = """
-TODO
+Robitics examples.
 """
 examples = ["nuscenes", "ros_node", "rrt-star"]
 
@@ -34,7 +35,7 @@ examples = ["nuscenes", "ros_node", "rrt-star"]
 order = 3
 title = "Generative computer vision"
 prelude = """
-TODO
+Examples related to generative AI
 """
 examples = [
   "controlnet",
@@ -47,36 +48,36 @@ examples = [
 order = 4
 title = "Video and image understanding"
 prelude = """
-TODO
+Examples showing off Reruns 2D capabilities.
 """
 examples = [
   "detect_and_track_objects",
   "face_tracking",
   "gesture_detection",
+  "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
-  "live_camera_edge_detection",
 ]
 
 [categories.3d-reconstruction]
 order = 4
 title = "3D reconstruction and modelling"
 prelude = """
-TODO
+SLAM, 3D reconstruction, and other 3D modelling examples.
 """
 examples = [
-  "signed_distance_fields",
-  "structure_from_motion",
   "differentiable_blocks_world",
   "open_photogrammetry_format",
   "raw_mesh",
+  "signed_distance_fields",
+  "structure_from_motion",
 ]
 
 [categories.other-ai]
 order = 2
 title = "Other AI"
 prelude = """
-TODO
+Misc AI examples.
 """
 examples = ["llm_embedding_ner"]
 
@@ -84,15 +85,15 @@ examples = ["llm_embedding_ner"]
 order = 2
 title = "Sensor output"
 prelude = """
-TODO
+Depth camera, lidar, etc.
 """
-examples = ["rgbd", "lidar", "live_depth_sensor", "nv12"]
+examples = ["lidar", "live_depth_sensor", "nv12", "rgbd"]
 
 [categories.integrations]
 order = 2
 title = "Integrations"
 prelude = """
-TODO
+Integration with 3rd party tools, formats, and libraries.
 """
 examples = ["vrs", "ros_node", "eigen_opencv", "dicom_mri"]
 
@@ -100,14 +101,14 @@ examples = ["vrs", "ros_node", "eigen_opencv", "dicom_mri"]
 order = 2
 title = "Feature showcase"
 prelude = """
-TODO
+Showcase specific features of Rerun.
 """
 examples = [
-  "minimal",
   "clock",
-  "multithreading",
+  "log_file",
+  "minimal",
   "multiprocessing",
+  "multithreading",
   "plots",
   "raw_mesh",
-  "log_file",
 ]
