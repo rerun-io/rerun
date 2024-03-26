@@ -411,7 +411,7 @@ fn recommended_space_views_with_image_splits(
             }
         }
     } else {
-        // Otherwise use
+        // Otherwise we can use the space as it is.
         recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }
