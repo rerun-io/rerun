@@ -457,8 +457,8 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
 
 fn background_color_text(kind: Background3DKind) -> &'static str {
     match kind {
-        Background3DKind::GradientDark => "Dark Gradient",
-        Background3DKind::GradientBright => "Bright Gradient",
-        Background3DKind::SolidColor => "Solid Color",
+        Background3DKind::GradientDark => "Dark gradient",
+        Background3DKind::GradientBright => "Bright gradient",
+        Background3DKind::SolidColor => "Solid color",
     }
 }
