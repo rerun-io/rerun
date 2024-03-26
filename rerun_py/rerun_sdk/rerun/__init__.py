@@ -319,7 +319,7 @@ def init(
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """

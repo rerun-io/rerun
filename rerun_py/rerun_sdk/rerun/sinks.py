@@ -38,7 +38,7 @@ def connect(
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -89,7 +89,7 @@ def save(
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -136,7 +136,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -243,7 +243,7 @@ def serve(
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -366,7 +366,7 @@ def spawn(
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
         already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button.  If you want to replace the active blueprint
+        clicks the "reset blueprint" button. If you want to replace the active blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
