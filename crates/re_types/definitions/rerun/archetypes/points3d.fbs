@@ -26,8 +26,8 @@ table Points3D (
 
   /// Optional colors for the points.
   ///
-  /// \python The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-  /// \python As either 0-1 floats or 0-255 integers, with separate alpha.
+  /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+  /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---
