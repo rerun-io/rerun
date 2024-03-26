@@ -1,6 +1,6 @@
 ---
 title: Get data into Rerun
-order: 2
+order: 3
 ---
 
 All about how to get your data shown in Rerun.

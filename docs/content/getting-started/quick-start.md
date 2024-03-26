@@ -1,6 +1,6 @@
 ---
 title: Quick start
-order: 0
+order: 1
 ---
 
 Dive right into using the Rerun SDK with your favorite programming language!
