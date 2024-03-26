@@ -299,7 +299,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_mp_gesture_recognition",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Spatial2DView(name="Input & Hand", contents=["media/**", "hand2d/**"]),
             rrb.Vertical(
                 rrb.Tabs(

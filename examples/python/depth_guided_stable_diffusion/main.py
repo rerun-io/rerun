@@ -122,7 +122,7 @@ expense of slower inference. This parameter will be modulated by `strength`.
         # * inputs
         # * depth & initializations
         # * diffusion outputs
-        blueprint=rrb.Blueprint(
+        default_blueprint=rrb.Blueprint(
             rrb.Horizontal(
                 rrb.Vertical(
                     rrb.Tabs(

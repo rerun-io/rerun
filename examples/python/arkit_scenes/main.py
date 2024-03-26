@@ -353,7 +353,7 @@ def main() -> None:
         ),
     )
 
-    rr.script_setup(args, "rerun_example_arkit_scenes", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_arkit_scenes", default_blueprint=blueprint)
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 

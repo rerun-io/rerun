@@ -217,7 +217,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_human_pose_tracking",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Vertical(
                 rrb.Spatial2DView(origin="video", name="Result"),
                 rrb.Spatial3DView(origin="person", name="3D pose"),

@@ -198,7 +198,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_signed_distance_fields",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Vertical(
                 rrb.Horizontal(
                     rrb.Spatial3DView(name="Input Mesh", origin="/world/mesh"),

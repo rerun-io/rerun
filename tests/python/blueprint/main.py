@@ -40,7 +40,7 @@ if __name__ == "__main__":
     rr.init(
         "rerun_example_blueprint_test",
         spawn=True,
-        blueprint=blueprint,
+        default_blueprint=blueprint,
     )
 
     rng = default_rng(12345)

@@ -164,7 +164,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_rgbd",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Spatial3DView(name="3D", origin="world"),
             rrb.Vertical(
                 # Put the origin for both 2D spaces where the pinhole is logged. Doing so allows them to understand how they're connected to the 3D space.
