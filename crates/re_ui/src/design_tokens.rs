@@ -173,6 +173,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
     egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
+    egui_style.spacing.menu_spacing = 1.0;
 
     // avoid some visual glitches with the default non-zero value
     egui_style.visuals.clip_rect_margin = 0.0;
