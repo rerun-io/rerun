@@ -11,7 +11,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-pr-summary
+  group: ${{ inputs.CONCURRENCY }}-pr-update-body
   cancel-in-progress: true
 
 jobs:
