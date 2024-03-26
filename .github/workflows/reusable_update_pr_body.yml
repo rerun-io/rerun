@@ -39,7 +39,7 @@ jobs:
       - name: Install deps
         shell: bash
         run: |
-          python3 -m pip install -r ./scripts/ci/requirements.txt
+          python3 -m pip install PyGithub==1.59.0 Jinja2==3.1.2
 
       - name: Update PR description
         shell: bash
