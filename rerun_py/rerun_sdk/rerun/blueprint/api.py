@@ -456,7 +456,7 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_file.set_time_sequence("blueprint", 0)
+        blueprint_file.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
         self._log_to_stream(blueprint_file)
 
         bindings.save_blueprint(path, blueprint_file.to_native())
