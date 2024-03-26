@@ -155,8 +155,15 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
-    egui_style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
-    egui_style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+    // From figma
+    let shadow = egui::epaint::Shadow {
+        offset: egui::vec2(0.0, 15.0),
+        blur: 50.0,
+        spread: 0.0,
+        color: egui::Color32::from_black_alpha(128),
+    };
+    egui_style.visuals.popup_shadow = shadow;
+    egui_style.visuals.window_shadow = shadow;
 
     egui_style.visuals.window_fill = floating_color; // tooltips and menus
     egui_style.visuals.window_stroke = egui::Stroke::NONE;
