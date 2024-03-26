@@ -115,11 +115,6 @@ impl ReUi {
     }
 
     #[inline]
-    pub fn welcome_screen_h3() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h3".into())
-    }
-
-    #[inline]
     pub fn welcome_screen_example_title() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-example-title".into())
     }
@@ -127,6 +122,11 @@ impl ReUi {
     #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-body".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_tag() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-tag".into())
     }
 
     pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
