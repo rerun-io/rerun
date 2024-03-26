@@ -25,6 +25,7 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
+    ClearAndGenerateBlueprint,
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
@@ -120,6 +121,12 @@ impl UICommand {
                 "Reset Viewer",
                 "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
+
+            Self::ClearAndGenerateBlueprint => (
+                "Clear and generate new blueprint",
+                "Clear the current blueprint and generate a new one based on heuristics."
+            ),
+
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => (
@@ -262,6 +269,8 @@ impl UICommand {
             Self::Quit => Some(cmd(Key::Q)),
 
             Self::ResetViewer => Some(ctrl_shift(Key::R)),
+            Self::ClearAndGenerateBlueprint => None,
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),

@@ -296,6 +296,13 @@ impl StoreHub {
         }
     }
 
+    /// Clear the current default blueprint
+    pub fn clear_default_blueprint(&mut self) {
+        if let Some(app_id) = &self.active_application_id {
+            self.default_blueprint_by_app_id.remove(app_id);
+        }
+    }
+
     /// Forgets all blueprints
     pub fn clear_all_blueprints(&mut self) {
         for (_app_id, blueprint_id) in self

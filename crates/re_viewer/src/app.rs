@@ -372,10 +372,17 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ClearAndGenerateBlueprint => {
+                re_log::debug!("Clear and generate new blueprint");
+                // By clearing the default blueprint and the active blueprint
+                // it will be re-generated based on the default auto behavior.
+                store_hub.clear_default_blueprint();
+                store_hub.clear_active_blueprint();
+            }
             SystemCommand::ResetBlueprint => {
-                // By clearing the blueprint it will be re-populated with the defaults
+                // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
-                re_log::debug!("Reset blueprint");
+                re_log::debug!("Reset blueprint to default");
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
@@ -517,6 +524,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearAndGenerateBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearAndGenerateBlueprint);
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
