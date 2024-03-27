@@ -19,8 +19,8 @@ Visualize the [BERT-based named entity recognition (NER)](https://huggingface.co
 [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 
 # Background
-It works by splitting text into tokens, feeding the token sequence into a large language model (BERT) to retrieve embeddings per token. 
-The embeddings are then classified into four types of entities: location (LOC), organizations (ORG), person (PER) and Miscellaneous (MISC).
+This example splits text into tokens, feeds the token sequence into a large language model (BERT), which outputs an embedding per token. 
+The embeddings are then classified into four types of entities: location (LOC), organizations (ORG), person (PER) and Miscellaneous (MISC). The embeddings are projected to a 3D space using UMAP[https://umap-learn.readthedocs.io/en/latest/], and visualized together with all other data in Rerun.
 
 # Logging and Visualizing with Rerun
 The visualizations in this example were created with the following Rerun code:
