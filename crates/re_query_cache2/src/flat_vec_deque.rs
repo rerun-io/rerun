@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, ops::Range};
+use std::{collections::VecDeque, ops::Range, sync::Arc};
 
 use itertools::Itertools as _;
 
@@ -15,6 +15,8 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
+
+    fn into_arc_any(self: Arc<Self>) -> Arc<dyn std::any::Any + Send + Sync>;
 
     /// Dynamically dispatches to [`FlatVecDeque::num_entries`].
     ///
@@ -53,7 +55,7 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     fn dyn_total_size_bytes(&self) -> u64;
 }
 
-impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
+impl<T: Send + Sync + SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -66,6 +68,11 @@ impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
 
     #[inline]
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+
+    #[inline]
+    fn into_arc_any(self: Arc<Self>) -> Arc<dyn std::any::Any + Send + Sync> {
         self
     }
 

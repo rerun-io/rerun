@@ -7,7 +7,7 @@ use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
 use re_log_types::{EntityPath, StoreId, Timeline};
 use re_types_core::ComponentName;
 
-use crate::LatestAtCache;
+use crate::{LatestAtCache, RangeCache};
 
 // ---
 
@@ -55,7 +55,10 @@ pub struct Caches {
     pub(crate) store_id: StoreId,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    pub(crate) per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+    pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+
+    // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
+    pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
 impl Caches {
@@ -63,7 +66,8 @@ impl Caches {
     pub fn new(store: &DataStore) -> Self {
         Self {
             store_id: store.id().clone(),
-            per_cache_key: Default::default(),
+            latest_at_per_cache_key: Default::default(),
+            range_per_cache_key: Default::default(),
         }
     }
 }
@@ -139,7 +143,7 @@ impl StoreSubscriber for Caches {
             }
         }
 
-        let caches = self.per_cache_key.write();
+        let caches = self.latest_at_per_cache_key.write();
         // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
         // our current macro-architecture, we want to prevent queries from concurrently
         // running while we're updating the invalidation flags.
