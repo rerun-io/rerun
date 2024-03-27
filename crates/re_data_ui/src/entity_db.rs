@@ -147,8 +147,8 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
             ui.strong("Blueprints in this data source");
         }
         ui.indent("blueprints", |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
             for entity_db in other_blueprints {
-                ui.spacing_mut().item_spacing.y = 0.0;
                 entity_db_button_ui(ctx, ui, entity_db, true);
             }
         });
