@@ -492,6 +492,12 @@ fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
     .show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.add(egui::Label::new(title).truncate(true));
+
+            if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
+                });
+            }
         });
     });
 }
