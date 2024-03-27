@@ -53,11 +53,9 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             )
             .clicked()
         {
-            ui.ctx().output_mut(|o| {
-                o.open_url = Some(egui::output::OpenUrl {
-                    url: DOCS_URL.to_owned(),
-                    new_tab: true,
-                });
+            ui.ctx().open_url(egui::output::OpenUrl {
+                url: DOCS_URL.to_owned(),
+                new_tab: true,
             });
         }
 

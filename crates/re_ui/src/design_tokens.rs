@@ -98,7 +98,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     );
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_tag(), egui::FontId::proportional(9.5));
+        .insert(ReUi::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");

@@ -66,14 +66,9 @@ impl ExampleDescLayout {
         }
     }
 
-    /// Saves the top left corner of the hover/click area for this example.
-    fn set_top_left(&mut self, pos: egui::Pos2) {
-        self.rect.min = pos;
-    }
-
-    /// Saves the bottom right corner of the hover/click area for this example.
-    fn set_bottom_right(&mut self, pos: egui::Pos2) {
-        self.rect.max = pos;
+    /// Saves the rectangle of the hover/click area for this example.
+    fn set_rect(&mut self, rect: egui::Rect) {
+        self.rect = rect;
     }
 
     fn clicked(&self, ui: &egui::Ui, id: egui::Id) -> bool {
@@ -308,8 +303,7 @@ impl ExampleSection {
         let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
             - grid_spacing.x)
             .floor()
-            .at_most(MAX_COLUMN_WIDTH)
-            .at_least(MIN_COLUMN_WIDTH);
+            .clamp(MIN_COLUMN_WIDTH, MAX_COLUMN_WIDTH);
 
         ui.horizontal(|ui| {
             // this space is added on the left so that the grid is centered
@@ -341,41 +335,25 @@ impl ExampleSection {
                             for example in &mut *example_layouts {
                                 // this is the beginning of the first cell for this example, we can
                                 // fully compute its rect now
-                                example.set_top_left(ui.cursor().min);
-                                example.set_bottom_right(
-                                    ui.cursor().min
-                                        + egui::vec2(
-                                            column_width,
-                                            column_width / CARD_THUMBNAIL_ASPECT_RATIO
-                                                + CARD_DESCRIPTION_HEIGHT,
-                                        ),
-                                );
-
-                                let hovered = example.hovered(ui, self.id);
+                                example.set_rect(egui::Rect::from_min_size(
+                                    ui.cursor().min,
+                                    egui::vec2(
+                                        column_width,
+                                        column_width / CARD_THUMBNAIL_ASPECT_RATIO
+                                            + CARD_DESCRIPTION_HEIGHT,
+                                    ),
+                                ));
 
                                 // paint background
                                 ui.painter().rect_filled(
                                     example.rect,
                                     THUMBNAIL_RADIUS,
                                     //TODO(ab): as per figma, use design tokens instead
-                                    egui::Color32::WHITE.gamma_multiply(if hovered {
-                                        0.07
-                                    } else {
-                                        0.04
-                                    }),
+                                    egui::Color32::WHITE.gamma_multiply(0.04),
                                 );
 
-                                let thumbnail = &example.desc.thumbnail;
-                                let width = thumbnail.width as f32;
-                                let height = thumbnail.height as f32;
                                 ui.vertical(|ui| {
-                                    example_thumbnail(
-                                        ui,
-                                        &example.desc,
-                                        column_width,
-                                        width,
-                                        height,
-                                    );
+                                    example_thumbnail(ui, &example.desc, column_width);
                                 });
                             }
 
@@ -414,6 +392,15 @@ impl ExampleSection {
                                     // Manual spacing between rows.
                                     ui.add_space(ROW_VSPACE);
                                 });
+
+                                if example.hovered(ui, self.id) {
+                                    ui.painter().rect_filled(
+                                        example.rect,
+                                        THUMBNAIL_RADIUS,
+                                        //TODO(ab): use design tokens
+                                        egui::Color32::from_additive_luminance(25),
+                                    );
+                                }
                             }
 
                             ui.end_row();
@@ -439,13 +426,11 @@ impl ExampleSection {
     }
 }
 
-fn example_thumbnail(
-    ui: &mut Ui,
-    example: &ExampleDesc,
-    column_width: f32,
-    width: f32,
-    height: f32,
-) {
+fn example_thumbnail(ui: &mut Ui, example: &ExampleDesc, column_width: f32) {
+    // dimensions of the source image to use as thumbnail
+    let image_width = example.thumbnail.width as f32;
+    let image_height = example.thumbnail.height as f32;
+
     // the thumbnail rect is determined by the column width and a fixed aspect ratio
     let thumbnail_rect = egui::Rect::from_min_size(
         ui.cursor().left_top(),
@@ -456,12 +441,14 @@ fn example_thumbnail(
 
     // compute image UV coordinates implementing a "cropping" scale to fit thumbnail rect
     let display_aspect_ratio = thumbnail_width / thumbnail_height;
-    let image_aspect_ratio = width / height;
+    let image_aspect_ratio = image_width / image_height;
     let uv_rect = if image_aspect_ratio > display_aspect_ratio {
-        let a = (width / height * thumbnail_height - thumbnail_width) / 2.0 / width;
+        let a =
+            (image_width / image_height * thumbnail_height - thumbnail_width) / 2.0 / image_width;
         egui::Rect::from_min_max(egui::Pos2::new(a, 0.0), egui::Pos2::new(1.0 - a, 1.0))
     } else {
-        let a = (height / width * thumbnail_width - thumbnail_height) / 2.0 / height;
+        let a =
+            (image_height / image_width * thumbnail_width - thumbnail_height) / 2.0 / image_height;
         egui::Rect::from_min_max(egui::Pos2::new(0.0, a), egui::Pos2::new(1.0, 1.0 - a))
     };
 
@@ -552,11 +539,9 @@ fn example_source(ui: &mut Ui, example: &ExampleDesc) {
             .clicked()
         {
             if let Some(source_url) = source_url {
-                ui.ctx().output_mut(|o| {
-                    o.open_url = Some(egui::output::OpenUrl {
-                        url: source_url.to_owned(),
-                        new_tab: true,
-                    });
+                ui.ctx().open_url(egui::output::OpenUrl {
+                    url: source_url.to_owned(),
+                    new_tab: true,
                 });
             }
         }

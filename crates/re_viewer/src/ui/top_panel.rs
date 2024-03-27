@@ -292,11 +292,9 @@ fn website_link_ui(ui: &mut egui::Ui) {
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(url);
     if response.clicked() {
-        ui.ctx().output_mut(|o| {
-            o.open_url = Some(egui::output::OpenUrl {
-                url: url.to_owned(),
-                new_tab: true,
-            });
+        ui.ctx().open_url(egui::output::OpenUrl {
+            url: url.to_owned(),
+            new_tab: true,
         });
     }
 }
