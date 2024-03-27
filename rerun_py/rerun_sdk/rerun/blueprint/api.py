@@ -431,6 +431,36 @@ class Blueprint:
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
 
+    def save(self, application_id: str, path: str | None = None) -> None:
+        """
+        Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
+
+        Parameters
+        ----------
+        application_id:
+            The application ID to use for this blueprint. This must match the application ID used
+            when initiating rerun for any data logging you wish to associate with this blueprint.
+        path
+            The path to save the blueprint to. Defaults to `<application_id>.rbl`.
+
+        """
+
+        if path is None:
+            path = f"{application_id}.rbl"
+
+        blueprint_file = RecordingStream(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            )
+        )
+        blueprint_file.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        self._log_to_stream(blueprint_file)
+
+        bindings.save_blueprint(path, blueprint_file.to_native())
+
 
 BlueprintLike = Union[Blueprint, SpaceView, Container]
 """
