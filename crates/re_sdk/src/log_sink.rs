@@ -150,6 +150,11 @@ impl LogSink for MemorySink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    #[inline]
+    fn drain_backlog(&self) -> Vec<LogMsg> {
+        self.0.take()
+    }
 }
 
 impl fmt::Debug for MemorySink {
