@@ -162,7 +162,7 @@ from .datatypes import (
 )
 from .error_utils import set_strict_mode
 from .logging_handler import LoggingHandler
-from .recording import MemoryRecording
+from .memory import MemoryRecording, memory_recording
 from .recording_stream import (
     RecordingStream,
     get_application_id,
@@ -175,7 +175,7 @@ from .recording_stream import (
     set_thread_local_data_recording,
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
-from .sinks import connect, disconnect, memory_recording, save, send_blueprint, serve, spawn, stdout
+from .sinks import connect, disconnect, save, send_blueprint, serve, spawn, stdout
 from .time import (
     disable_timeline,
     reset_time,

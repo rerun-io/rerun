@@ -9,9 +9,36 @@ from typing import Any
 
 from rerun import bindings
 
+from .recording_stream import RecordingStream
+
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
 DEFAULT_TIMEOUT = 2000
+
+
+def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
+    """
+    Streams all log-data to a memory buffer.
+
+    This can be used to display the RRD to alternative formats such as html.
+    See: [rerun.MemoryRecording.as_html][].
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    MemoryRecording
+        A memory recording object that can be used to read the data.
+
+    """
+
+    recording = RecordingStream.to_native(recording)
+    return MemoryRecording(bindings.memory_recording(recording=recording))
 
 
 class MemoryRecording:
