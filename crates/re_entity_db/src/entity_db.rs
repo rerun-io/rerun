@@ -564,7 +564,7 @@ impl EntityDb {
         messages
     }
 
-    /// Make a clone of a [`StoreDb`] with a different [`StoreId`].
+    /// Make a clone of this [`EntityDb`] with a different [`StoreId`].
     pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
         self.store().sort_indices_if_needed();
 

@@ -37,7 +37,7 @@ pub trait LogSink: Send + Sync + 'static {
 
     /// Send a blueprint directly to the log-sink.
     ///
-    /// This mirrors the behavior of [`RecordingStream::send_blueprint`].
+    /// This mirrors the behavior of [`crate::RecordingStream::send_blueprint`].
     fn send_blueprint(&self, blueprint: Vec<LogMsg>, activation_cmd: BlueprintActivationCommand) {
         let mut blueprint_id = None;
         for msg in blueprint {
