@@ -330,7 +330,7 @@ fn options_menu_ui(
                 ui,
                 &mut app_options.time_zone,
                 TimeZone::UnixEpoch,
-                "Unix Epoch",
+                "Unix epoch",
             )
             .on_hover_text("Display timestamps in seconds since unix epoch");
     });
@@ -367,14 +367,14 @@ fn experimental_feature_ui(
 ) {
     #[cfg(not(target_arch = "wasm32"))]
     re_ui
-        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space View screenshots")
-        .on_hover_text("Allow taking screenshots of 2D and 3D Space Views via their context menu. Does not contain labels.");
+        .checkbox(ui, &mut app_options.experimental_space_view_screenshots, "Space view screenshots")
+        .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
 
     if re_ui
         .checkbox(
             ui,
             &mut app_options.experimental_dataframe_space_view,
-            "Dataframe Space View",
+            "Dataframe space view",
         )
         .on_hover_text("Enable the experimental dataframe space view.")
         .clicked()

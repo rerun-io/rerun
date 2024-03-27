@@ -268,7 +268,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
             &mut blueprint_panel_expanded,
         )
         .on_hover_text(format!(
-            "Toggle Blueprint View{}",
+            "Toggle blueprint view{}",
             UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
         ))
         .clicked()

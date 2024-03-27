@@ -123,19 +123,19 @@ impl Item {
             },
             Item::InstancePath(instance_path) => {
                 if instance_path.instance_key.is_specific() {
-                    "Entity Instance"
+                    "Entity instance"
                 } else {
                     "Entity"
                 }
             }
-            Item::ComponentPath(_) => "Entity Component",
-            Item::SpaceView(_) => "Space View",
+            Item::ComponentPath(_) => "Entity component",
+            Item::SpaceView(_) => "Space view",
             Item::Container(_) => "Container",
             Item::DataResult(_, instance_path) => {
                 if instance_path.instance_key.is_specific() {
-                    "Data Result Instance"
+                    "Data result instance"
                 } else {
-                    "Data Result Entity"
+                    "Data result entity"
                 }
             }
         }

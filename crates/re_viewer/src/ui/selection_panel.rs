@@ -33,7 +33,7 @@ use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_ti
 
 // ---
 
-/// The "Selection View" sidebar.
+/// The "Selection view" sidebar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SelectionPanel {
@@ -284,7 +284,7 @@ fn space_view_button(
             is_selected,
             contents_name_style(&space_view_name),
         )
-        .on_hover_text("Space View");
+        .on_hover_text("Space view");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
@@ -330,11 +330,11 @@ fn what_is_selected_ui(
                 let hover_text =
                     if let Some(display_name) = container_blueprint.display_name.as_ref() {
                         format!(
-                            "{:?} Container {display_name:?}",
+                            "{:?} container {display_name:?}",
                             container_blueprint.container_kind,
                         )
                     } else {
-                        format!("Unnamed {:?} Container", container_blueprint.container_kind,)
+                        format!("Unnamed {:?} container", container_blueprint.container_kind,)
                     };
 
                 let container_name = container_blueprint.display_name_or_default();
@@ -382,13 +382,13 @@ fn what_is_selected_ui(
 
                 let hover_text = if let Some(display_name) = space_view.display_name.as_ref() {
                     format!(
-                        "Space View {:?} of type {}",
+                        "Space view {:?} of type {}",
                         display_name,
                         space_view_class.display_name()
                     )
                 } else {
                     format!(
-                        "Unnamed Space View of type {}",
+                        "Unnamed space view of type {}",
                         space_view_class.display_name()
                     )
                 };
@@ -447,7 +447,7 @@ fn what_is_selected_ui(
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
                     &format!(
-                        "{typ} '{instance_path}' as shown in Space View {:?}",
+                        "{typ} '{instance_path}' as shown in space view {:?}",
                         space_view.display_name
                     ),
                 );
@@ -520,7 +520,7 @@ fn list_existing_data_blueprints(
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
 
     if space_views_with_path.is_empty() {
-        ui.weak("(Not shown in any Space View)");
+        ui.weak("(Not shown in any space view)");
     } else {
         for space_view_id in &space_views_with_path {
             if let Some(space_view) = blueprint.space_view(space_view_id) {
@@ -545,7 +545,7 @@ fn list_existing_data_blueprints(
 /// Display the top-level properties of a space view.
 ///
 /// This includes the name, space origin entity, and space view type. These properties are singled
-/// out as needing to be edited in most case when creating a new Space View, which is why they are
+/// out as needing to be edited in most case when creating a new space view, which is why they are
 /// shown at the very top.
 fn space_view_top_level_properties(
     ui: &mut egui::Ui,
@@ -559,7 +559,7 @@ fn space_view_top_level_properties(
             .show(ui, |ui| {
                 let mut name = space_view.display_name.clone().unwrap_or_default();
                 ui.label("Name").on_hover_text(
-                    "The name of the Space View used for display purposes. This can be any text \
+                    "The name of the space view used for display purposes. This can be any text \
                     string.",
                 );
                 ui.text_edit_singleline(&mut name);
@@ -568,8 +568,8 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Space origin").on_hover_text(
-                    "The origin Entity for this Space View. For spatial Space Views, the Space \
-                    View's origin is the same as this Entity's origin and all transforms are \
+                    "The origin entity for this space view. For spatial space views, the space \
+                    View's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
                 );
 
@@ -580,7 +580,7 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Type")
-                    .on_hover_text("The type of this Space View");
+                    .on_hover_text("The type of this space view");
                 ui.label(
                     space_view
                         .class(ctx.space_view_class_registry)
@@ -607,7 +607,7 @@ fn container_top_level_properties(
         .show(ui, |ui| {
             let mut name = container.display_name.clone().unwrap_or_default();
             ui.label("Name").on_hover_text(
-                "The name of the Container used for display purposes. This can be any text string.",
+                "The name of the container used for display purposes. This can be any text string.",
             );
             ui.text_edit_singleline(&mut name);
             container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
@@ -734,7 +734,7 @@ fn show_list_item_for_container_child(
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove this Space View");
+                            .on_hover_text("Remove this space view");
 
                         if response.clicked() {
                             remove_contents = true;
@@ -760,7 +760,7 @@ fn show_list_item_for_container_child(
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove this Container");
+                            .on_hover_text("Remove this container");
 
                         if response.clicked() {
                             remove_contents = true;
@@ -856,9 +856,9 @@ fn blueprint_ui_for_space_view(
     }
 
     if ui
-        .button("Clone Space View")
+        .button("Clone space view")
         .on_hover_text(
-            "Create an exact duplicate of this Space View including all Blueprint settings",
+            "Create an exact duplicate of this space view including all blueprint settings",
         )
         .clicked()
     {
@@ -911,7 +911,7 @@ fn blueprint_ui_for_space_view(
             &mut props,
         ) {
             re_log::error!(
-                "Error in Space View selection UI (class: {}, display name: {}): {err}",
+                "Error in space view selection UI (class: {}, display name: {}): {err}",
                 space_view.class_identifier(),
                 space_view_class.display_name(),
             );

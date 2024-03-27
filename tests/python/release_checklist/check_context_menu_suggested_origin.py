@@ -14,7 +14,7 @@ README = """
 
 Repeat these steps for each of the following entities and space view class:
 - right-click the entity (either in the blueprint or streams tree)
-- select "Add to new Space View" and create the space view of the listed class
+- select "Add to new space view" and create the space view of the listed class
 - check that the created space view has the expected origin
 - delete the space view
 

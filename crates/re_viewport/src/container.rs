@@ -60,9 +60,9 @@ impl ContainerBlueprint {
             .map_err(|err| {
                 if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
                     if cfg!(debug_assertions) {
-                        re_log::error!("Failed to load Container blueprint: {err}.");
+                        re_log::error!("Failed to load container blueprint: {err}.");
                     } else {
-                        re_log::debug!("Failed to load Container blueprint: {err}.");
+                        re_log::debug!("Failed to load container blueprint: {err}.");
                     }
                 }
             })
@@ -165,7 +165,7 @@ impl ContainerBlueprint {
 
         if let Some(row) =
             DataRow::from_archetype(RowId::new(), timepoint.clone(), id.as_entity_path(), &arch)
-                .warn_on_err_once("Failed to create Container blueprint.")
+                .warn_on_err_once("Failed to create container blueprint.")
         {
             deltas.push(row);
 

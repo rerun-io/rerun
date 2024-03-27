@@ -125,7 +125,7 @@ fn action_list(
                     ],
                 }),
                 Box::new(SubMenu {
-                    label: "Add Space View".to_owned(),
+                    label: "Add space view".to_owned(),
                     actions: ctx
                         .space_view_class_registry
                         .iter_registry()
