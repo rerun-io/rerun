@@ -378,7 +378,7 @@ impl SpaceViewBlueprint {
                 .ui(ctx, ui, view_state, &props, query, system_output)
                 .unwrap_or_else(|err| {
                     re_log::error!(
-                        "Error in Space View UI (class: {}, display name: {}): {err}",
+                        "Error in space view UI (class: {}, display name: {}): {err}",
                         self.class_identifier,
                         class.display_name(),
                     );

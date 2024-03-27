@@ -1554,8 +1554,9 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 
 [[package]]
 name = "ecolor"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c416b34b29e8f6b2492b5c80319cf9792d339550f0d75a54b53ed070045bbdeb"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1563,8 +1564,9 @@ dependencies = [
 
 [[package]]
 name = "eframe"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86811b20df847cfa73637020ee78de780407110f49785df2dea6741146ea5aac"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1598,8 +1600,9 @@ dependencies = [
 
 [[package]]
 name = "egui"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8e20541e5d3da08cf817eb5c8a2bc4024f21aad7acf98de201442d6d76e0ecc"
 dependencies = [
  "accesskit",
  "ahash",
@@ -1614,8 +1617,9 @@ dependencies = [
 
 [[package]]
 name = "egui-wgpu"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25d1c9a6f17f48a75148e7a3db7cc0221b7261db577281267301f83d79d0834a"
 dependencies = [
  "bytemuck",
  "document-features",
@@ -1632,8 +1636,9 @@ dependencies = [
 
 [[package]]
 name = "egui-winit"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff4fc01bc3617dba9280475e9ab2382015e298f401d2318c2a1d78c419b6dffe"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1650,19 +1655,20 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.12.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f491836e627bc98e00dd86c061d6b1be5e331c157f41dd8a8d512196f1b89aa"
+checksum = "e30fc4d40a8ef399a8debfbdae0462ca45912d81b9e81b24373337669e961201"
 dependencies = [
  "egui",
  "egui_extras",
- "pulldown-cmark",
+ "pulldown-cmark 0.10.0",
 ]
 
 [[package]]
 name = "egui_extras"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f097daa92d09cc4561f817e2f9733c55af3b157cf437ee3a401cdf038e75fcdc"
 dependencies = [
  "egui",
  "ehttp",
@@ -1676,8 +1682,9 @@ dependencies = [
 
 [[package]]
 name = "egui_glow"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "743380a1c0f1dbb7bfe29663ce62b10785adda51105c9bb4e544e2f9955b4958"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1693,16 +1700,18 @@ dependencies = [
 
 [[package]]
 name = "egui_plot"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df8385c285c2157bb94ae572e48d137587bac31207707ad86b7f8d09612b9657"
 dependencies = [
  "egui",
 ]
 
 [[package]]
 name = "egui_tiles"
-version = "0.7.2"
-source = "git+https://github.com/rerun-io/egui_tiles?rev=5245a28df8a3a5befd0c55085de4f7044a6d831e#5245a28df8a3a5befd0c55085de4f7044a6d831e"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e2c0ff99daddcbdc54b141dbb7be3b014463da48a03ebc801bf63e500b23d75"
 dependencies = [
  "ahash",
  "egui",
@@ -1735,8 +1744,9 @@ checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
 name = "emath"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87799f56edee11422267e1764dd0bf3fe1734888e8d2d0924a67b85f4998fbe"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1836,8 +1846,9 @@ dependencies = [
 
 [[package]]
 name = "epaint"
-version = "0.26.2"
-source = "git+https://github.com/emilk/egui.git?rev=8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc#8a10f81ca01b2ba4e0bd6e08d02fdd2063f1ddcc"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "392eccd6d6b13fadccc268f4f61d9363775ec5711ffdece2a79006d676920bcf"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -2895,9 +2906,9 @@ checksum = "f7012b1bbb0719e1097c47611d3898568c546d597c2e74d66f6087edd5233ff4"
 
 [[package]]
 name = "libmimalloc-sys"
-version = "0.1.33"
+version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4ac0e912c8ef1b735e92369695618dc5b1819f5a7bf3f167301a3ba1cea515e"
+checksum = "3979b5c37ece694f1f5e51e7ecc871fdb0f517ed04ee45f88d15d6d553cb9664"
 dependencies = [
  "cc",
  "libc",
@@ -3085,9 +3096,9 @@ dependencies = [
 
 [[package]]
 name = "mimalloc"
-version = "0.1.37"
+version = "0.1.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e2894987a3459f3ffb755608bd82188f8ed00d0ae077f1edea29c068d639d98"
+checksum = "fa01922b5ea280a911e323e4d2fd24b7fe5cc4042e0d2cda3c40775cdc4bdc9c"
 dependencies = [
  "libmimalloc-sys",
 ]
@@ -3956,6 +3967,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77a1a2f1f0a7ecff9c31abbe177637be0e97a0aef46cf8738ece09327985d998"
 dependencies = [
  "bitflags 1.3.2",
+ "memchr",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dce76ce678ffc8e5675b22aa1405de0b7037e2fdf8913fea40d1926c6fe1e6e7"
+dependencies = [
+ "bitflags 2.4.1",
  "memchr",
  "unicase",
 ]
@@ -5964,7 +5986,7 @@ dependencies = [
  "cargo_metadata 0.14.2",
  "error-chain",
  "glob",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.3",
  "tempfile",
  "walkdir",
 ]

@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Disconnected Space
+/// ### Disconnected space
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn()?;

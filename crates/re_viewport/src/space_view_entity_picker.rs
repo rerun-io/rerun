@@ -201,9 +201,9 @@ fn add_entities_line_ui(
                 }
 
                 if is_explicitly_excluded {
-                    response.on_hover_text("Stop excluding this EntityPath.");
+                    response.on_hover_text("Stop excluding this entity path.");
                 } else if is_explicitly_included {
-                    response.on_hover_text("Stop including this EntityPath.");
+                    response.on_hover_text("Stop including this entity path.");
                 }
             } else if is_included {
                 // Remove-button
@@ -218,7 +218,7 @@ fn add_entities_line_ui(
                 }
 
                 response.on_hover_text(
-                    "Exclude this Entity and all its descendants from the Space View",
+                    "Exclude this entity and all its descendants from the space view",
                 );
             } else {
                 // Add-button:
@@ -239,11 +239,11 @@ fn add_entities_line_ui(
                     if enabled {
                         if add_info.can_add.is_compatible_and_missing() {
                             response.on_hover_text(
-                                "Include this Entity and all its descendants in the Space View",
+                                "Include this entity and all its descendants in the space view",
                             );
                         } else {
                             response
-                                .on_hover_text("Add descendants of this Entity to the Space View");
+                                .on_hover_text("Add descendants of this entity to the space view");
                         }
                     } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
                         response.on_disabled_hover_text(reason);
@@ -339,7 +339,7 @@ fn create_entity_add_info(
                 // TODO(#4826): This shouldn't necessarily prevent us from adding it.
                 CanAddToSpaceView::No {
                     reason: format!(
-                        "Entity can't be displayed by any of the available visualizers in this class of Space View ({}).",
+                        "Entity can't be displayed by any of the available visualizers in this class of space view ({}).",
                         space_view.class_identifier()
                     ),
                 }

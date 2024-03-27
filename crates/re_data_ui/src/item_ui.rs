@@ -520,7 +520,7 @@ pub fn instance_hover_card_ui(
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {
-        "Entity Instance"
+        "Entity instance"
     };
     ui.strong(subtype_string);
     ui.label(instance_path.syntax_highlighted(ui.style()));

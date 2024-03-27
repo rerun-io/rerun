@@ -16,7 +16,7 @@ from .common_arrays import none_empty_or_value
 
 def test_space_view_blueprint() -> None:
     class_identifier_arrays = ["3D", SpaceViewClass("3D")]
-    display_name_arrays = ["3D View", Name("3D View"), None]
+    display_name_arrays = ["3D view", Name("3D view"), None]
     space_origin_arrays = ["/robot/arm", None, SpaceViewOrigin("/robot/arm")]
     visible_arrays = [False, Visible(False), None]
 
@@ -54,6 +54,6 @@ def test_space_view_blueprint() -> None:
 
         # Equality checks on some of these are a bit silly, but at least they test out that the serialization code runs without problems.
         assert arch.class_identifier == SpaceViewClassBatch("3D")
-        assert arch.display_name == NameBatch._optional(none_empty_or_value(display_name, "3D View"))
+        assert arch.display_name == NameBatch._optional(none_empty_or_value(display_name, "3D view"))
         assert arch.space_origin == SpaceViewOriginBatch._optional(none_empty_or_value(space_origin, "/robot/arm"))
         assert arch.visible == VisibleBatch._optional(none_empty_or_value(visible, False))

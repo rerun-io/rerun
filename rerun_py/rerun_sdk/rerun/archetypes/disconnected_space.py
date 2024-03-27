@@ -26,7 +26,7 @@ class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
 
     Example
     -------
-    ### Disconnected Space:
+    ### Disconnected space:
     ```python
     import rerun as rr
 

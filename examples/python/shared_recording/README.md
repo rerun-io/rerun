@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Shared Recording"
+title = "Shared recording"
 -->
 
 

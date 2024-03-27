@@ -11,7 +11,7 @@ pub fn blueprint_panel_ui(
         ctx.re_ui.panel_title_bar_with_buttons(
             ui,
             "Blueprint",
-            Some("The Blueprint is where you can configure the Rerun Viewer"),
+            Some("The blueprint is where you can configure the Rerun Viewer"),
             |ui| {
                 viewport.add_new_spaceview_button_ui(ctx, ui);
                 reset_blueprint_button_ui(ctx, ui);

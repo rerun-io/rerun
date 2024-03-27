@@ -150,7 +150,7 @@ impl SpaceViewClass for TensorSpaceView {
     }
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Select the Space View to configure which dimensions are shown.".into()
+        "Select the space view to configure which dimensions are shown.".into()
     }
 
     fn on_register(

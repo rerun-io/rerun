@@ -578,15 +578,15 @@ impl MemoryPanel {
                 plot_ui.line(to_line(resident).name("Resident").width(1.5));
                 plot_ui.line(to_line(counted).name("Counted").width(1.5));
                 plot_ui.line(to_line(counted_gpu).name("Counted GPU").width(1.5));
-                plot_ui.line(to_line(counted_store).name("Counted Store").width(1.5));
+                plot_ui.line(to_line(counted_store).name("Counted store").width(1.5));
                 plot_ui.line(
                     to_line(counted_primary_caches)
-                        .name("Counted Primary Caches")
+                        .name("Counted primary caches")
                         .width(1.5),
                 );
                 plot_ui.line(
                     to_line(counted_blueprint)
-                        .name("Counted Blueprint")
+                        .name("Counted blueprint")
                         .width(1.5),
                 );
             });

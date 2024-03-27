@@ -127,7 +127,7 @@ impl StoreSubscriber for ComponentsPerRecording {
         println!("---------------");
 
         for (recording, per_component) in &self.counters {
-            println!("  Recording '{recording}':");
+            println!("  Recording '{recording}':"); // NOLINT
             for (component, counter) in per_component {
                 println!("    {component}: {counter} occurrences");
             }

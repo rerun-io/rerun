@@ -31,7 +31,7 @@ impl AddSpaceViewOrContainerModal {
             ctx.re_ui,
             egui_ctx,
             || {
-                re_ui::modal::Modal::new("Add Space View or Container")
+                re_ui::modal::Modal::new("Add space view or container")
                     .min_width(500.0)
                     .full_span_content(true)
             },
@@ -118,7 +118,7 @@ fn modal_ui(
         let title = space_view
             .class(ctx.space_view_class_registry)
             .display_name();
-        let subtitle = format!("Create a new Space View to display {title} content.");
+        let subtitle = format!("Create a new space view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
             viewport.add_space_views(std::iter::once(space_view), ctx, target_container, None);
