@@ -40,20 +40,22 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        {
+        if !recordings.is_empty() {
             ui.add_space(8.0);
             ui.strong("Recordings in this data source");
             ui.indent("recordings", |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in recordings {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
             });
         }
 
-        {
+        if !blueprints.is_empty() {
             ui.add_space(8.0);
             ui.strong("Blueprints in this data source");
             ui.indent("blueprints", |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in blueprints {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
