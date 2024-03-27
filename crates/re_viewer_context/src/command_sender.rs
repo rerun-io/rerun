@@ -20,10 +20,11 @@ pub enum SystemCommand {
     /// Reset the `Blueprint` to the default state
     ResetBlueprint,
 
+    /// Clear the blueprint and generate a new one
+    ClearAndGenerateBlueprint,
+
     /// If this is a recording, switch to it.
-    /// If this is a blueprint, switch to the `AppId` of the blueprint,
-    /// and make this blueprint the active blueprint for that `AppId`.
-    ActivateStore(StoreId),
+    ActivateRecording(StoreId),
 
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),

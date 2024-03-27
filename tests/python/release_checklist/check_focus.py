@@ -42,7 +42,7 @@ def log_some_space_views() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), blueprint=blueprint())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_some_space_views()

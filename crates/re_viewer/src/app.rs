@@ -336,8 +336,8 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
-            SystemCommand::ActivateStore(store_id) => {
-                store_hub.activate_store(store_id);
+            SystemCommand::ActivateRecording(store_id) => {
+                store_hub.activate_recording(store_id);
             }
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
@@ -372,10 +372,17 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ClearAndGenerateBlueprint => {
+                re_log::debug!("Clear and generate new blueprint");
+                // By clearing the default blueprint and the active blueprint
+                // it will be re-generated based on the default auto behavior.
+                store_hub.clear_default_blueprint();
+                store_hub.clear_active_blueprint();
+            }
             SystemCommand::ResetBlueprint => {
-                // By clearing the blueprint it will be re-populated with the defaults
+                // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
-                re_log::debug!("Reset blueprint");
+                re_log::debug!("Reset blueprint to default");
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
@@ -517,6 +524,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearAndGenerateBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearAndGenerateBlueprint);
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
@@ -967,25 +978,35 @@ impl App {
                     // Andled by EntityDb::add
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_active_recording_id(store_id.clone());
-                        }
-                        StoreKind::Blueprint => {
-                            if let Some(info) = entity_db.store_info() {
-                                re_log::debug!(
-                                    "Activating blueprint that was loaded from {channel_source}"
-                                );
-                                let app_id = info.application_id.clone();
-                                store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
-                            } else {
-                                re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
+                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
+                    StoreKind::Recording => {
+                        re_log::debug!(
+                            "Unexpected `BlueprintActivationCommand` message for {store_id}"
+                        );
+                    }
+                    StoreKind::Blueprint => {
+                        if let Some(info) = entity_db.store_info() {
+                            re_log::debug!(
+                                "Activating blueprint that was loaded from {channel_source}"
+                            );
+                            let app_id = info.application_id.clone();
+                            if cmd.make_default {
+                                store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
                             }
+                            if cmd.make_active {
+                                store_hub
+                                    .make_blueprint_active_for_app_id(store_id, &app_id)
+                                    .unwrap_or_else(|err| {
+                                        re_log::warn!("Failed to make blueprint active: {err}");
+                                    });
+                            }
+                        } else {
+                            re_log::warn!(
+                                "Got ActivateStore message without first receiving a SetStoreInfo"
+                            );
                         }
                     }
-                }
+                },
             }
 
             // Do analytics after ingesting the new message,
