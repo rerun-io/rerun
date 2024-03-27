@@ -4,7 +4,7 @@
 
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::SyntaxHighlighting;
+use re_ui::{icons, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -139,20 +139,20 @@ pub fn instance_path_icon(
     timeline: &re_data_store::Timeline,
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
+) -> &'static icons::Icon {
     if instance_path.is_splat() {
         // It is an entity path
         if store
             .all_components(timeline, &instance_path.entity_path)
             .is_some()
         {
-            &re_ui::icons::ENTITY
+            &icons::ENTITY
         } else {
-            &re_ui::icons::ENTITY_EMPTY
+            &icons::ENTITY_EMPTY
         }
     } else {
         // An instance path
-        &re_ui::icons::ENTITY
+        &icons::ENTITY
     }
 }
 
@@ -184,7 +184,7 @@ pub fn guess_query_and_store_for_selected_entity<'a>(
 pub fn guess_instance_path_icon(
     ctx: &ViewerContext<'_>,
     instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
+) -> &'static icons::Icon {
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
     instance_path_icon(&query.timeline, store, instance_path)
 }
@@ -401,7 +401,7 @@ pub fn component_path_button_to(
     let item = Item::ComponentPath(component_path.clone());
     let response = ctx.re_ui.selectable_label_with_icon(
         ui,
-        &re_ui::icons::COMPONENT,
+        &icons::COMPONENT,
         text,
         ctx.selection().contains_item(&item),
         re_ui::LabelStyle::Normal,
@@ -558,11 +558,12 @@ pub fn data_source_button_ui(
 ) -> egui::Response {
     let item = Item::DataSource(data_source.clone());
 
-    // TODO(#5645): an icon for data sources
-
-    let response = ui.selectable_label(
-        ctx.selection().contains_item(&item),
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &icons::DATA_SOURCE,
         data_source.to_string(),
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
     );
 
     let response = response.on_hover_ui(|ui| {
@@ -612,40 +613,42 @@ pub fn entity_db_button_ui(
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
 
-    let mut list_item = ctx
-        .re_ui
-        .list_item(title)
-        .selected(ctx.selection().contains_item(&item))
-        .with_icon_fn(|_re_ui, ui, rect, visuals| {
-            // Color icon based on whether this is the active recording or not:
-            let color = if ctx.store_context.is_active(&store_id) {
-                visuals.fg_stroke.color
-            } else {
-                ui.visuals().widgets.noninteractive.fg_stroke.color
-            };
-            re_ui::icons::STORE
-                .as_image()
-                .tint(color)
-                .paint_at(ui, rect);
-        })
-        .with_buttons(|re_ui, ui| {
-            // Close-button:
-            let resp = re_ui
-                .small_icon_button(ui, &re_ui::icons::REMOVE)
-                .on_hover_text(match store_id.kind {
-                    re_log_types::StoreKind::Recording => {
-                        "Close this recording (unsaved data will be lost)"
-                    }
-                    re_log_types::StoreKind::Blueprint => {
-                        "Close this blueprint (unsaved data will be lost)"
-                    }
-                });
-            if resp.clicked() {
-                ctx.command_sender
-                    .send_system(SystemCommand::CloseStore(store_id.clone()));
-            }
-            resp
-        });
+    let icon = match entity_db.store_kind() {
+        re_log_types::StoreKind::Recording => &icons::RECORDING,
+        re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+    };
+
+    let mut list_item =
+        ctx.re_ui
+            .list_item(title)
+            .selected(ctx.selection().contains_item(&item))
+            .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                // Color icon based on whether this is the active recording or not:
+                let color = if ctx.store_context.is_active(&store_id) {
+                    visuals.fg_stroke.color
+                } else {
+                    ui.visuals().widgets.noninteractive.fg_stroke.color
+                };
+                icon.as_image().tint(color).paint_at(ui, rect);
+            })
+            .with_buttons(|re_ui, ui| {
+                // Close-button:
+                let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
+                    match store_id.kind {
+                        re_log_types::StoreKind::Recording => {
+                            "Close this recording (unsaved data will be lost)"
+                        }
+                        re_log_types::StoreKind::Blueprint => {
+                            "Close this blueprint (unsaved data will be lost)"
+                        }
+                    },
+                );
+                if resp.clicked() {
+                    ctx.command_sender
+                        .send_system(SystemCommand::CloseStore(store_id.clone()));
+                }
+                resp
+            });
 
     if ctx.hovered().contains_item(&item) {
         list_item = list_item.force_hovered(true);

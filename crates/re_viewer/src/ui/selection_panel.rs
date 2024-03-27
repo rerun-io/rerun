@@ -14,7 +14,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::list_item::ListItem;
+use re_ui::{icons, list_item::ListItem};
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
@@ -300,8 +300,7 @@ fn what_is_selected_ui(
     match item {
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            let icon = None; // TODO(#5645): an icon for data sources
-            item_title_ui(ctx.re_ui, ui, &title, icon, &title);
+            item_title_ui(ctx.re_ui, ui, &title, Some(&icons::DATA_SOURCE), &title);
         }
 
         Item::StoreId(store_id) => {
@@ -322,7 +321,12 @@ fn what_is_selected_ui(
                 id_str.clone()
             };
 
-            item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
+            let icon = match store_id.kind {
+                re_log_types::StoreKind::Recording => &icons::RECORDING,
+                re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+            };
+
+            item_title_ui(ctx.re_ui, ui, &title, Some(icon), &id_str);
         }
 
         Item::Container(container_id) => {
