@@ -555,6 +555,11 @@ fn connect(
         return Ok(());
     };
 
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
@@ -594,6 +599,11 @@ fn save(
         return Ok(());
     };
 
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `save()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
     // The call to save may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
@@ -624,6 +634,11 @@ fn stdout(
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
+
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `stdout()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
 
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
@@ -742,6 +757,11 @@ fn serve(
         let Some(recording) = get_data_recording(recording) else {
             return Ok(());
         };
+
+        if rerun::forced_sink_path().is_some() {
+            re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+            return Ok(());
+        }
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;

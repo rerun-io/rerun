@@ -37,7 +37,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file creation (and thus clearing) and pending file writes.
-fn forced_sink_path() -> Option<String> {
+pub fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
 }
 
