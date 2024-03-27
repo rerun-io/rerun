@@ -633,11 +633,6 @@ fn save_blueprint(
     blueprint_stream: &PyRecordingStream,
     py: Python<'_>,
 ) -> PyResult<()> {
-    let ready_opts = BlueprintReadyOpts {
-        make_active: true,
-        make_default: true,
-    };
-
     if let Some(recording_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
@@ -645,13 +640,12 @@ fn save_blueprint(
             // Flush all the pending blueprint messages before we include the Ready message
             blueprint_stream.flush_blocking();
 
-            blueprint_stream.record_msg(re_log_types::LogMsg::BlueprintReady(
-                recording_id,
-                ready_opts,
-            ));
+            let activation_cmd = BlueprintActivationCommand::make_active(recording_id.clone());
+
+            blueprint_stream.record_msg(activation_cmd.into());
 
             let res = blueprint_stream
-                .save_opts(path, None)
+                .save_opts(path)
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()));
             flush_garbage_queue();
             res
