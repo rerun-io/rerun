@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import itertools
 import uuid
-from typing import Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
-from ..recording import MemoryRecording
-from ..recording_stream import RecordingStream
+from ..memory import MemoryRecording, memory_recording
+from ..recording_stream import RecordingStream, get_application_id
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKindLike
@@ -430,6 +430,27 @@ class Blueprint:
             self.selection_panel._log_to_stream(stream)
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
+
+    def as_html(self, data_stream: RecordingStream | None = None) -> Any:
+        application_id = get_application_id(recording=data_stream)
+
+        # TODO(jleibs): Too many hoops. Some refactoring here would simplify this a lot
+        final_stream = RecordingStream(
+            bindings.new_recording(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            )
+        )
+        final_stream.send_blueprint(self)  # type: ignore[attr-defined]
+        data_memory = memory_recording(recording=data_stream)
+
+        final_memory = final_stream.memory_recording()  # type: ignore[attr-defined]
+        return final_memory.as_html(other=data_memory)
+
+    def _repr_html_(self) -> Any:
+        return self.as_html()
 
 
 BlueprintLike = Union[Blueprint, SpaceView, Container]
