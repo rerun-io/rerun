@@ -193,7 +193,7 @@ rmp-serde = "1"
 ron = "0.8.0"
 rust-format = "0.3"
 seq-macro = "0.3"
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
 serde_test = "1"
