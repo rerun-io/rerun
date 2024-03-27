@@ -544,17 +544,13 @@ impl EntityDb {
         // We generally use `to_messages` to export a blueprint via "save". In that
         // case, we want to make the blueprint active and default when it's reloaded.
         // TODO(jleibs): Coupling this with the stored file instead of injecting seems
-        // architecturallyt weird. Would be great if we didn't need this in `.rbl` files
+        // architecturally weird. Would be great if we didn't need this in `.rbl` files
         // at all.
         let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
-            let activate_cmd = re_log_types::BlueprintActivationCommand {
-                blueprint_id: self.store_id().clone(),
-                make_active: true,
-                make_default: true,
-            }
-            .into();
+            let activate_cmd =
+                re_log_types::BlueprintActivationCommand::make_active(self.store_id().clone());
 
-            itertools::Either::Left(std::iter::once(Ok(activate_cmd)))
+            itertools::Either::Left(std::iter::once(Ok(activate_cmd.into())))
         } else {
             itertools::Either::Right(std::iter::empty())
         };
