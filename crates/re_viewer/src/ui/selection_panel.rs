@@ -1110,7 +1110,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
         ui.label(ctx.re_ui.warning_text(
-            format!("This space view is not able to visualize any of the matched entities using the current root \"{origin}\"."),
+            format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
         ));
     }
 
