@@ -1,7 +1,8 @@
+use std::path::PathBuf;
+
 use re_build_tools::Environment;
 
 use crate::{Channel, Example};
-use std::path::PathBuf;
 
 /// Collect examples in the repository and produce a manifest file.
 ///
@@ -36,12 +37,14 @@ impl Manifest {
             }
         };
 
+        let base_source_url = get_base_source_url(build_env)?;
+
         let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
         let manifest = self
             .channel
             .examples(workspace_root)?
             .into_iter()
-            .map(|example| ManifestEntry::new(example, &base_url))
+            .map(|example| ManifestEntry::new(example, &base_url, &base_source_url))
             .collect::<Vec<_>>();
 
         if manifest.is_empty() {
@@ -62,10 +65,11 @@ struct ManifestEntry {
     tags: Vec<String>,
     rrd_url: String,
     thumbnail: Thumbnail,
+    source_url: String,
 }
 
 impl ManifestEntry {
-    fn new(example: Example, base_url: &str) -> Self {
+    fn new(example: Example, base_url: &str, base_source_url: &str) -> Self {
         let name = example.name;
         Self {
             title: example.title,
@@ -77,6 +81,11 @@ impl ManifestEntry {
                 width: example.thumbnail_dimensions[0],
                 height: example.thumbnail_dimensions[1],
             },
+            source_url: format!(
+                "{base_source_url}/examples/{}/{name}/{}",
+                example.language.examples_dir().to_string_lossy(),
+                example.language.entrypoint_path().to_string_lossy()
+            ),
             name,
         }
     }
@@ -122,6 +131,17 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
     let sha = re_build_tools::git_commit_short_hash()?;
     Ok(format!("https://app.rerun.io/commit/{sha}"))
+}
+
+fn get_base_source_url(build_env: Environment) -> anyhow::Result<String> {
+    if build_env == Environment::DeveloperInWorkspace {
+        // There is a high chance the current commit isn't pushed to the remote, so we use main
+        // instead.
+        Ok("https://github.com/rerun-io/rerun/blob/main".to_owned())
+    } else {
+        let commit = re_build_tools::git_commit_short_hash()?;
+        Ok(format!("https://github.com/rerun-io/rerun/tree/{commit}"))
+    }
 }
 
 fn parse_release_version(branch: &str) -> Option<&str> {

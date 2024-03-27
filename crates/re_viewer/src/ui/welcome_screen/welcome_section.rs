@@ -21,7 +21,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             .wrap(true),
         );
 
-        ui.add_space(29.0);
+        ui.add_space(18.0);
 
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
