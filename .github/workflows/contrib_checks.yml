@@ -202,7 +202,7 @@ jobs:
         with:
           command: run
           # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release
+          args: --locked -p re_build_web_viewer -- --release -g
 
   toml-lints:
     name: Lint TOML files
