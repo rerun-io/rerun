@@ -35,7 +35,7 @@ impl WelcomeScreen {
                     inner_margin: egui::Margin {
                         left: 40.0,
                         right: 40.0,
-                        top: 32.0,
+                        top: 50.0,
                         bottom: 8.0,
                     },
                     ..Default::default()
