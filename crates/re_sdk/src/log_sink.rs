@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-use re_log_types::LogMsg;
+use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static {
@@ -34,6 +34,35 @@ pub trait LogSink: Send + Sync + 'static {
     /// flush it for any reason (e.g. a broken TCP connection for a [`TcpSink`]).
     #[inline]
     fn drop_if_disconnected(&self) {}
+
+    /// Send a blueprint directly to the log-sink.
+    ///
+    /// This mirrors the behavior of [`RecordingStream::send_blueprint`].
+    fn send_blueprint(&self, blueprint: Vec<LogMsg>, activation_cmd: BlueprintActivationCommand) {
+        let mut blueprint_id = None;
+        for msg in blueprint {
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
+            }
+            self.send(msg);
+        }
+
+        if let Some(blueprint_id) = blueprint_id {
+            if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                self.send(activation_cmd.into());
+            } else {
+                re_log::warn!(
+                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    blueprint_id,
+                    activation_cmd.blueprint_id
+                );
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -205,6 +234,14 @@ impl MemorySinkStorage {
         }
 
         Ok(buffer.into_inner())
+    }
+
+    #[inline]
+    /// Get the [`StoreId`] from the associated `RecordingStream` if it exists.
+    pub fn store_id(&self) -> Option<StoreId> {
+        self.rec
+            .as_ref()
+            .and_then(|rec| rec.store_info().map(|info| info.store_id.clone()))
     }
 }
 // ----------------------------------------------------------------------------

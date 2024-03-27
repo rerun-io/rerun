@@ -253,24 +253,13 @@ impl StoreHub {
             "Cloning {blueprint_id} as {new_id} the active blueprint for {app_id} to {blueprint_id}"
         );
 
-        // Create the cloned blueprint
         let blueprint = self
             .store_bundle
             .get(blueprint_id)
             .context("missing blueprint")?;
-        let info = blueprint.store_info().context("missing info")?;
 
-        let mut new_info = info.clone();
-        new_info.store_id = new_id.clone();
+        let new_blueprint = blueprint.clone_with_new_id(new_id.clone())?;
 
-        blueprint.store().sort_indices_if_needed();
-
-        let mut new_blueprint =
-            EntityDb::from_info_and_rows(new_info, blueprint.store().to_rows()?)?;
-        // Also copy the data source
-        new_blueprint.data_source = blueprint.data_source.clone();
-
-        // Insert it into the store bundle and save it as active
         self.store_bundle.insert(new_blueprint);
 
         self.active_blueprint_by_app_id

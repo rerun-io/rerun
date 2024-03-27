@@ -89,8 +89,8 @@ def script_setup(
         Any random UUIDv4 will work, or copy the recording id for the parent process.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """

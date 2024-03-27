@@ -274,7 +274,7 @@ impl EntityDb {
                 self.add_data_table(table)?;
             }
 
-            LogMsg::BlueprintReady(_, _) => {
+            LogMsg::BlueprintActivationCommand(_) => {
                 // Not for us to handle
             }
         }
@@ -540,22 +540,21 @@ impl EntityDb {
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
         });
 
-        // If this is a blueprint, make sure to include the `BlueprintReady` message.
+        // If this is a blueprint, make sure to include the `BlueprintActivationCommand` message.
         // We generally use `to_messages` to export a blueprint via "save". In that
         // case, we want to make the blueprint active and default when it's reloaded.
         // TODO(jleibs): Coupling this with the stored file instead of injecting seems
         // architecturallyt weird. Would be great if we didn't need this in `.rbl` files
         // at all.
         let blueprint_ready = if self.store_kind() == StoreKind::Blueprint {
-            let ready_msg = LogMsg::BlueprintReady(
-                self.store_id().clone(),
-                re_log_types::BlueprintReadyOpts {
-                    make_active: true,
-                    make_default: true,
-                },
-            );
+            let activate_cmd = re_log_types::BlueprintActivationCommand {
+                blueprint_id: self.store_id().clone(),
+                make_active: true,
+                make_default: true,
+            }
+            .into();
 
-            itertools::Either::Left(std::iter::once(Ok(ready_msg)))
+            itertools::Either::Left(std::iter::once(Ok(activate_cmd)))
         } else {
             itertools::Either::Right(std::iter::empty())
         };
@@ -567,6 +566,31 @@ impl EntityDb {
             .collect();
 
         messages
+    }
+
+    /// Make a clone of a [`StoreDb`] with a different [`StoreId`].
+    pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+        self.store().sort_indices_if_needed();
+
+        let mut new_db = EntityDb::new(new_id.clone());
+
+        if let Some(store_info) = self.store_info() {
+            let mut new_info = store_info.clone();
+            new_info.store_id = new_id;
+
+            new_db.set_store_info(SetStoreInfo {
+                row_id: RowId::new(),
+                info: new_info,
+            });
+        }
+
+        new_db.data_source = self.data_source.clone();
+
+        for row in self.store().to_rows()? {
+            new_db.add_data_row(row)?;
+        }
+
+        Ok(new_db)
     }
 }
 

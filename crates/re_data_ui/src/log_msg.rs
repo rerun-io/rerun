@@ -1,4 +1,6 @@
-use re_log_types::{ArrowMsg, DataTable, LogMsg, SetStoreInfo, StoreInfo};
+use re_log_types::{
+    ArrowMsg, BlueprintActivationCommand, DataTable, LogMsg, SetStoreInfo, StoreInfo,
+};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -16,8 +18,14 @@ impl DataUi for LogMsg {
         match self {
             LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, store),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, store),
-            LogMsg::BlueprintReady(store_id, ready_opts) => {
-                ui.label(format!("BlueprintReady({store_id}, {ready_opts})"));
+            LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                blueprint_id,
+                make_active,
+                make_default,
+            }) => {
+                ui.label(format!(
+                    "BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})"
+                ));
             }
         }
     }

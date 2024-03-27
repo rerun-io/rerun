@@ -668,7 +668,13 @@ pub fn entity_db_button_ui(
     }
 
     if response.clicked() {
-        // Open the recording
+        // When we click on a recording, we directly activate it. This is safe to do because
+        // it's non-destructive and recordings are immutable. Switching back is easy.
+        // We don't do the same thing for blueprints as swapping them can be much more disruptive.
+        // It is much less obvious how to undo a blueprint switch and what happened to your original
+        // blueprint.
+        // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
+        // for the blueprint.
         if store_id.kind == re_log_types::StoreKind::Recording {
             ctx.command_sender
                 .send_system(SystemCommand::ActivateRecording(store_id.clone()));

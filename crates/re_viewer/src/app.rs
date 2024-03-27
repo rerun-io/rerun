@@ -978,9 +978,11 @@ impl App {
                     // Andled by EntityDb::add
                 }
 
-                LogMsg::BlueprintReady(store_id, ready_opts) => match store_id.kind {
+                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
                     StoreKind::Recording => {
-                        re_log::debug!("Unexpected `BlueprintReady` message for {store_id}");
+                        re_log::debug!(
+                            "Unexpected `BlueprintActivationCommand` message for {store_id}"
+                        );
                     }
                     StoreKind::Blueprint => {
                         if let Some(info) = entity_db.store_info() {
@@ -988,10 +990,10 @@ impl App {
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
                             let app_id = info.application_id.clone();
-                            if ready_opts.make_default {
+                            if cmd.make_default {
                                 store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
                             }
-                            if ready_opts.make_active {
+                            if cmd.make_active {
                                 store_hub
                                     .make_blueprint_active_for_app_id(store_id, &app_id)
                                     .unwrap_or_else(|err| {

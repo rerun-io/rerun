@@ -9,10 +9,10 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, BlueprintReadyOpts, DataCell, DataCellError, DataRow,
-    DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg,
-    RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType,
-    Timeline, TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, DataCell, DataCellError,
+    DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
+    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
@@ -1522,11 +1522,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self) {
-        self.connect_opts(
-            crate::default_server_addr(),
-            crate::default_flush_timeout(),
-            None,
-        );
+        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
@@ -1543,7 +1539,6 @@ impl RecordingStream {
         &self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
-        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
     ) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
@@ -1551,11 +1546,6 @@ impl RecordingStream {
         }
 
         let sink = crate::log_sink::TcpSink::new(addr, flush_timeout);
-
-        // If a blueprint was provided, send it first.
-        if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
-        }
 
         self.set_sink(Box::new(sink));
     }
@@ -1610,7 +1600,7 @@ impl RecordingStream {
 
         spawn(opts)?;
 
-        self.connect_opts(opts.connect_addr(), flush_timeout, None);
+        self.connect_opts(opts.connect_addr(), flush_timeout);
 
         Ok(())
     }
@@ -1623,16 +1613,17 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::default();
-        let buffer = sink.buffer();
+        let mut storage = sink.buffer();
 
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new memory sink since _RERUN_FORCE_SINK is set");
-            return buffer;
+            return storage;
         }
 
         self.set_sink(Box::new(sink));
+        storage.rec = Some(self.clone());
 
-        buffer
+        storage
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
@@ -1644,7 +1635,7 @@ impl RecordingStream {
         &self,
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
-        self.save_opts(path, None)
+        self.save_opts(path)
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
@@ -1658,7 +1649,6 @@ impl RecordingStream {
     pub fn save_opts(
         &self,
         path: impl Into<std::path::PathBuf>,
-        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
     ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
@@ -1666,11 +1656,6 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::new(path)?;
-
-        // If a blueprint was provided, store it first.
-        if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
-        }
 
         self.set_sink(Box::new(sink));
 
@@ -1686,7 +1671,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
-        self.stdout_opts(None)
+        self.stdout_opts()
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
@@ -1700,10 +1685,7 @@ impl RecordingStream {
     ///
     /// If a blueprint was provided, it will be stored first in the file.
     /// Blueprints are currently an experimental part of the Rust SDK.
-    pub fn stdout_opts(
-        &self,
-        blueprint: Option<(Vec<LogMsg>, BlueprintReadyOpts)>,
-    ) -> Result<(), crate::sink::FileSinkError> {
+    pub fn stdout_opts(&self) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
             return Ok(());
@@ -1716,11 +1698,6 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::stdout()?;
-
-        // If a blueprint was provided, write it first.
-        if let Some((blueprint, ready_opts)) = blueprint {
-            Self::send_blueprint_to_sink(blueprint, ready_opts, &sink);
-        }
 
         self.set_sink(Box::new(sink));
 
@@ -1745,43 +1722,34 @@ impl RecordingStream {
         }
     }
 
-    /// Send the blueprint directly to the sink associated with this stream, and then activate it.
-    pub fn send_blueprint_to_sink(
-        blueprint: Vec<LogMsg>,
-        ready_opts: BlueprintReadyOpts,
-        sink: &dyn crate::sink::LogSink,
-    ) {
-        let mut store_id = None;
-        for msg in blueprint {
-            if store_id.is_none() {
-                store_id = Some(msg.store_id().clone());
-            }
-            sink.send(msg);
-        }
-        if let Some(store_id) = store_id {
-            // Let the viewer know that the blueprint has been fully received,
-            // and that it can now be activated.
-            // We don't want to activate half-loaded blueprints, because that can be confusing,
-            // and can also lead to problems with space-view heuristics.
-            sink.send(LogMsg::BlueprintReady(store_id, ready_opts));
-        }
-    }
-
     /// Send a blueprint through this recording stream
-    pub fn send_blueprint(&self, blueprint: Vec<LogMsg>, ready_opts: BlueprintReadyOpts) {
-        let mut store_id = None;
+    pub fn send_blueprint(
+        &self,
+        blueprint: Vec<LogMsg>,
+        activation_cmd: BlueprintActivationCommand,
+    ) {
+        let mut blueprint_id = None;
         for msg in blueprint {
-            if store_id.is_none() {
-                store_id = Some(msg.store_id().clone());
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
             }
             self.record_msg(msg);
         }
-        if let Some(store_id) = store_id {
-            // Let the viewer know that the blueprint has been fully received,
-            // and that it can now be activated.
-            // We don't want to activate half-loaded blueprints, because that can be confusing,
-            // and can also lead to problems with space-view heuristics.
-            self.record_msg(LogMsg::BlueprintReady(store_id, ready_opts));
+
+        if let Some(blueprint_id) = blueprint_id {
+            if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                self.record_msg(activation_cmd.into());
+            } else {
+                re_log::warn!(
+                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    blueprint_id,
+                    activation_cmd.blueprint_id
+                );
+            }
         }
     }
 }

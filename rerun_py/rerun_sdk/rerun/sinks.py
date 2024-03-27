@@ -37,8 +37,8 @@ def connect(
         and can cause a call to `flush` to block indefinitely.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -88,8 +88,8 @@ def save(
         The path to save the data to.
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -135,8 +135,8 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
     ----------
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -242,8 +242,8 @@ def serve(
         The port to serve the WebSocket server on (defaults to 9877)
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -298,20 +298,28 @@ def send_blueprint(
     blueprint:
         A blueprint object to send to the viewer.
     make_active:
-        Make this blueprint the active blueprint for the application.
+        Immediately make this the active blueprint for the associated `app_id`.
+        Note that setting this to `false` does not mean the blueprint may not still end
+        up becoming active. In particular, if `make_default` is true and there is no other
+        currently active blueprint.
     make_default:
-        Make this blueprint the default blueprint for the application.
+        Make this the default blueprint for the `app_id`.
+        The default blueprint will be used as the template when the user resets the
+        blueprint for the app. It will also become the active blueprint if no other
+        blueprint is currently active.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    recording = RecordingStream.to_native(recording)
-
     application_id = get_application_id(recording=recording)
+
     if application_id is None:
         raise ValueError("No application id found. You must call rerun.init before sending a blueprint.")
+
+    recording = RecordingStream.to_native(recording)
+
     blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
 
     bindings.send_blueprint(blueprint_storage, make_active, make_default, recording=recording)
@@ -365,8 +373,8 @@ def spawn(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     default_blueprint
         Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, this blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to replace the active blueprint
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """

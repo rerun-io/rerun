@@ -3,6 +3,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
 use std::collections::HashMap;
+use std::io::IsTerminal as _;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -12,7 +13,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::{BlueprintReadyOpts, EntityPathPart, StoreKind};
+use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use rerun::{
     sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
     StoreId,
@@ -528,6 +529,19 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
     get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
 }
 
+/// Helper for forwarding the blueprint memory-sink representation to a given sink
+fn send_mem_sink_as_default_blueprint(
+    sink: &dyn rerun::sink::LogSink,
+    default_blueprint: &PyMemorySinkStorage,
+) {
+    if let Some(id) = default_blueprint.inner.store_id() {
+        let activate_cmd = BlueprintActivationCommand::make_default(id);
+        sink.send_blueprint(default_blueprint.inner.take(), activate_cmd);
+    } else {
+        re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
+    }
+}
+
 #[pyfunction]
 #[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect(
@@ -537,6 +551,10 @@ fn connect(
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
@@ -545,21 +563,19 @@ fn connect(
 
     let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
 
-    let ready_opts = BlueprintReadyOpts {
-        make_active: false,
-        make_default: true,
-    };
-
     // The call to connect may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        if let Some(recording) = get_data_recording(recording) {
-            recording.connect_opts(
-                addr,
-                flush_timeout,
-                default_blueprint.map(|b| (b.inner.take(), ready_opts)),
-            );
-        };
+        // We create the sink manually so we can send the default blueprint
+        // first before the rest of the current recording stream.
+        let sink = rerun::sink::TcpSink::new(addr, flush_timeout);
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
         flush_garbage_queue();
     });
 
@@ -578,22 +594,23 @@ fn save(
         return Ok(());
     };
 
-    let ready_opts = BlueprintReadyOpts {
-        make_active: false,
-        make_default: true,
-    };
-
     // The call to save may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        let res = recording
-            .save_opts(
-                path,
-                default_blueprint.map(|b| (b.inner.take(), ready_opts)),
-            )
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        // We create the sink manually so we can send the default blueprint
+        // first before the rest of the current recording stream.
+        let sink = rerun::sink::FileSink::new(path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
         flush_garbage_queue();
-        res
+
+        Ok(())
     })
 }
 
@@ -608,19 +625,28 @@ fn stdout(
         return Ok(());
     };
 
-    let ready_opts = BlueprintReadyOpts {
-        make_active: false,
-        make_default: true,
-    };
-
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        let res = recording
-            .stdout_opts(default_blueprint.map(|b| (b.inner.take(), ready_opts)))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        let sink: Box<dyn rerun::sink::LogSink> = if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
+            Box::new(rerun::sink::BufferedSink::new())
+        } else {
+            Box::new(
+                rerun::sink::FileSink::stdout()
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            )
+        };
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
+        }
+
         flush_garbage_queue();
-        res
+
+        recording.set_sink(sink);
+
+        Ok(())
     })
 }
 
@@ -731,13 +757,8 @@ fn serve(
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-        if let Some(blueprint) = default_blueprint {
-            let ready_opts = BlueprintReadyOpts {
-                make_active: false,
-                make_default: true,
-            };
-
-            RecordingStream::send_blueprint_to_sink(blueprint.inner.take(), ready_opts, &*sink);
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
         }
 
         recording.set_sink(sink);
@@ -960,12 +981,17 @@ fn send_blueprint(
         return;
     };
 
-    let ready_opts = BlueprintReadyOpts {
-        make_active,
-        make_default,
-    };
+    if let Some(blueprint_id) = blueprint.inner.store_id() {
+        let activation_cmd = BlueprintActivationCommand {
+            blueprint_id,
+            make_active,
+            make_default,
+        };
 
-    recording.send_blueprint(blueprint.inner.take(), ready_opts);
+        recording.send_blueprint(blueprint.inner.take(), activation_cmd);
+    } else {
+        re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
+    }
 }
 
 // --- Misc ---

@@ -26,9 +26,9 @@ pub fn blueprint_panel_ui(
 
 fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let hover_text = if ctx.store_context.default_blueprint.is_some() {
-        "Reset to the default Blueprint for this app"
+        "Reset to the default blueprint for this app"
     } else {
-        "Re-populate Viewport with automatically chosen Space Views"
+        "Re-populate viewport with automatically chosen space views"
     };
 
     if ctx

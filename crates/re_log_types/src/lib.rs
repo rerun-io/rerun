@@ -205,24 +205,55 @@ impl std::fmt::Display for ApplicationId {
 
 // ----------------------------------------------------------------------------
 
-/// Options for configuring viewer behavior when a blueprint is ready.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
+/// Command used for activating a blueprint once it has been fully transmitted.
+///
+/// This command serves two purposes:
+/// - It is important that a blueprint is never activated before it has been fully
+///   transmitted. Displaying, or allowing a user to modify, a half-transmitted
+///   blueprint can cause confusion and bad interactions with the space view heuristics.
+/// - Additionally, this command allows fine-tuning the activation behavior itself
+///   by specifying whether the blueprint should be immediately activated, or only
+///   become the default for future activations.
+#[derive(Clone, Debug, PartialEq, Eq)] // `PartialEq` used for tests in another crate
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct BlueprintReadyOpts {
-    /// Make this the active blueprint for the `app_id`.
+pub struct BlueprintActivationCommand {
+    /// The blueprint this command refers to.
+    pub blueprint_id: StoreId,
+
+    /// Immediately make this the active blueprint for the associated `app_id`.
+    ///
+    /// Note that setting this to `false` does not mean the blueprint may not still end
+    /// up becoming active. In particular, if `make_default` is true and there is no other
+    /// currently active blueprint.
     pub make_active: bool,
 
     /// Make this the default blueprint for the `app_id`.
+    ///
+    /// The default blueprint will be used as the template when the user resets the
+    /// blueprint for the app. It will also become the active blueprint if no other
+    /// blueprint is currently active.
     pub make_default: bool,
 }
 
-impl std::fmt::Display for BlueprintReadyOpts {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "BlueprintReadyOpts {{ make_active: {}, make_default: {} }}",
-            self.make_active, self.make_default
-        )
+impl BlueprintActivationCommand {
+    /// Make `blueprint_id` the default blueprint for its associated `app_id`.
+    pub fn make_default(blueprint_id: StoreId) -> Self {
+        Self {
+            blueprint_id,
+            make_active: false,
+            make_default: true,
+        }
+    }
+
+    /// Immediately make `blueprint_id` the active blueprint for its associated `app_id`.
+    ///
+    /// This also sets `make_default` to true.
+    pub fn make_active(blueprint_id: StoreId) -> Self {
+        Self {
+            blueprint_id,
+            make_active: true,
+            make_default: true,
+        }
     }
 }
 
@@ -245,14 +276,15 @@ pub enum LogMsg {
     /// This is so that the viewer can wait with activating the blueprint until it is
     /// fully transmitted. Showing a half-transmitted blueprint can cause confusion,
     /// and also lead to problems with space-view heuristics.
-    BlueprintReady(StoreId, BlueprintReadyOpts),
+    BlueprintActivationCommand(BlueprintActivationCommand),
 }
 
 impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
-            Self::ArrowMsg(store_id, _) | Self::BlueprintReady(store_id, _) => store_id,
+            Self::ArrowMsg(store_id, _) => store_id,
+            Self::BlueprintActivationCommand(cmd) => &cmd.blueprint_id,
         }
     }
 
@@ -261,14 +293,22 @@ impl LogMsg {
             LogMsg::SetStoreInfo(store_info) => {
                 store_info.info.store_id = new_store_id;
             }
-            LogMsg::ArrowMsg(store_id, _) | LogMsg::BlueprintReady(store_id, _) => {
+            LogMsg::ArrowMsg(store_id, _) => {
                 *store_id = new_store_id;
+            }
+            LogMsg::BlueprintActivationCommand(cmd) => {
+                cmd.blueprint_id = new_store_id;
             }
         }
     }
 }
 
 impl_into_enum!(SetStoreInfo, LogMsg, SetStoreInfo);
+impl_into_enum!(
+    BlueprintActivationCommand,
+    LogMsg,
+    BlueprintActivationCommand
+);
 
 // ----------------------------------------------------------------------------
 
