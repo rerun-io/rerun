@@ -819,11 +819,11 @@ fn blueprint_ui(
 ) {
     match item {
         Item::SpaceView(space_view_id) => {
-            blueprint_ui_for_space_view(ui, ctx, viewport, space_view_id);
+            blueprint_ui_for_space_view(ui, ctx, viewport, *space_view_id);
         }
 
         Item::DataResult(space_view_id, instance_path) => {
-            blueprint_ui_for_data_result(ui, ctx, viewport, space_view_id, instance_path);
+            blueprint_ui_for_data_result(ui, ctx, viewport, *space_view_id, instance_path);
         }
 
         Item::DataSource(_)
@@ -838,14 +838,16 @@ fn blueprint_ui_for_space_view(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
 ) {
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         if let Some(new_entity_path_filter) = entity_path_filter_ui(
             ui,
+            ctx,
             viewport,
             space_view_id,
             &space_view.contents.entity_path_filter,
+            &space_view.space_origin,
         ) {
             space_view
                 .contents
@@ -862,7 +864,8 @@ fn blueprint_ui_for_space_view(
         )
         .clicked()
     {
-        if let Some(new_space_view_id) = viewport.blueprint.duplicate_space_view(space_view_id, ctx)
+        if let Some(new_space_view_id) =
+            viewport.blueprint.duplicate_space_view(&space_view_id, ctx)
         {
             ctx.selection_state()
                 .set_selection(Item::SpaceView(new_space_view_id));
@@ -874,7 +877,7 @@ fn blueprint_ui_for_space_view(
     ReUi::full_span_separator(ui);
     ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         let class_identifier = *space_view.class_identifier();
 
         let space_view_state = viewport.state.space_view_state_mut(
@@ -925,10 +928,10 @@ fn blueprint_ui_for_data_result(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
     viewport: &Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
     instance_path: &InstancePath,
 ) {
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         if instance_path.instance_key.is_splat() {
             // splat - the whole entity
             let space_view_class = *space_view.class_identifier();
@@ -948,7 +951,7 @@ fn blueprint_ui_for_data_result(
                 entity_props_ui(
                     ctx,
                     ui,
-                    ctx.lookup_query_result(*space_view_id),
+                    ctx.lookup_query_result(space_view_id),
                     &space_view_class,
                     entity_path,
                     &mut props,
@@ -962,9 +965,11 @@ fn blueprint_ui_for_data_result(
 /// Returns a new filter when the editing is done, and there has been a change.
 fn entity_path_filter_ui(
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
     filter: &EntityPathFilter,
+    origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
         let markdown = r#"
@@ -1077,7 +1082,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     .on_hover_text("Modify the entity query using the editor")
                     .clicked()
                 {
-                    viewport.show_add_remove_entities_modal(*space_view_id);
+                    viewport.show_add_remove_entities_modal(space_view_id);
                 }
             },
         );
@@ -1091,6 +1096,22 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     } else {
         // Reconstruct it from the filter next frame
         ui.data_mut(|data| data.remove::<String>(filter_text_id));
+    }
+
+    // Show some statistics about the query, print a warning text if something seems off.
+    let query = ctx.lookup_query_result(space_view_id);
+    if query.num_matching_entities == 0 {
+        ui.label(ctx.re_ui.warning_text("Does not match any entity"));
+    } else if query.num_matching_entities == 1 {
+        ui.label("Matches 1 entity");
+    } else {
+        ui.label(format!("Matches {} entities", query.num_matching_entities));
+    }
+    if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
+        // TODO(andreas): Talk about this root bit only if it's a spatial view.
+        ui.label(ctx.re_ui.warning_text(
+            format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+        ));
     }
 
     // Apply the edit.
