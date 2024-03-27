@@ -3,7 +3,7 @@ title: Get data into Rerun
 order: 3
 ---
 
-This section talks about how to get data out of your application into the Rerun.
+This section talks about how to get data out of your application into Rerun.
 
 * Streaming data from your code
     * [C++](./data-in/streaming/cpp.md)
