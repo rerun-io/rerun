@@ -32,7 +32,7 @@ import rerun as rr
 rr.init("rerun_example_dna_abacus")
 ```
 
-Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) will make it so the [Rerun Viewer](../../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../../../concepts/apps-and-recordings.md).
 
@@ -108,7 +108,7 @@ Note that if the viewer was still running, Rerun will simply connect to this exi
 
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../../visualize/viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
