@@ -1101,11 +1101,11 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     // Show some statistics about the query, print a warning text if something seems off.
     let query = ctx.lookup_query_result(space_view_id);
     if query.num_matching_entities == 0 {
-        ui.label(ctx.re_ui.warning_text("Does not match any entity!"));
+        ui.label(ctx.re_ui.warning_text("Does not match any entity"));
     } else if query.num_matching_entities == 1 {
-        ui.label("Matches 1 entity.");
+        ui.label("Matches 1 entity");
     } else {
-        ui.label(format!("Matches {} entities.", query.num_matching_entities));
+        ui.label(format!("Matches {} entities", query.num_matching_entities));
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
