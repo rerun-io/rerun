@@ -7,6 +7,7 @@ from typing import Any, Iterable, Optional, Union
 import rerun_bindings as bindings
 
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
+from ..html import as_html
 from ..memory import MemoryRecording, memory_recording
 from ..recording_stream import RecordingStream, get_application_id
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
@@ -108,6 +109,10 @@ class SpaceView:
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
         return [self.id.bytes]
+
+    def _repr_html_(self) -> Any:
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
 
 
 class Container:
@@ -228,6 +233,10 @@ class Container:
         # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
         # the entity-path lookup instead.
         return itertools.chain.from_iterable(sub._iter_space_views() for sub in self.contents)
+
+    def _repr_html_(self) -> Any:
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
 
 
 class Panel:
@@ -431,26 +440,9 @@ class Blueprint:
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
 
-    def as_html(self, data_stream: RecordingStream | None = None) -> Any:
-        application_id = get_application_id(recording=data_stream)
-
-        # TODO(jleibs): Too many hoops. Some refactoring here would simplify this a lot
-        final_stream = RecordingStream(
-            bindings.new_recording(
-                application_id=application_id,
-                make_default=False,
-                make_thread_default=False,
-                default_enabled=True,
-            )
-        )
-        final_stream.send_blueprint(self)  # type: ignore[attr-defined]
-        data_memory = memory_recording(recording=data_stream)
-
-        final_memory = final_stream.memory_recording()  # type: ignore[attr-defined]
-        return final_memory.as_html(other=data_memory)
-
     def _repr_html_(self) -> Any:
-        return self.as_html()
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
 
 
 BlueprintLike = Union[Blueprint, SpaceView, Container]
