@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import base64
 import logging
-import random
 import string
+import uuid
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ def as_html(
         app_url = bindings.get_app_url()
 
     # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
-    presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
+    presentation_id = "_" + uuid.uuid4().hex
 
     application_id = get_application_id(recording)
 
