@@ -133,6 +133,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
             ui.strong("Recordings in this data source");
         }
         ui.indent("recordings", |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
             for entity_db in other_recordings {
                 entity_db_button_ui(ctx, ui, entity_db, true);
             }
@@ -147,6 +148,7 @@ fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &Ent
         }
         ui.indent("blueprints", |ui| {
             for entity_db in other_blueprints {
+                ui.spacing_mut().item_spacing.y = 0.0;
                 entity_db_button_ui(ctx, ui, entity_db, true);
             }
         });
