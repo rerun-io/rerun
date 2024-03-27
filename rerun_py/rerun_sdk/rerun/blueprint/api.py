@@ -355,6 +355,7 @@ class Blueprint:
         *parts: BlueprintPart,
         auto_layout: bool | None = None,
         auto_space_views: bool | None = None,
+        collapse_panels: bool = False,
     ):
         """
         Construct a new blueprint from the given parts.
@@ -378,11 +379,19 @@ class Blueprint:
         auto_layout:
             Whether to automatically layout the viewport. If `True`, the container layout will be
             reset whenever a new space view is added to the viewport. Defaults to `False`.
+            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+            If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         auto_space_views:
             Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store. Defaults to `False`.
+            automatically add space views based on content in the data store.
+            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+            If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
+        collapse_panels:
+            Whether to collapse the panels in the viewer. Defaults to `False`.
 
         """
+
+        self.collapse_panels = collapse_panels
 
         for part in parts:
             if isinstance(part, (Container, SpaceView)):
@@ -406,8 +415,15 @@ class Blueprint:
             else:
                 raise ValueError(f"Unknown part type: {part}")
 
-        self.auto_layout = auto_layout
         self.auto_space_views = auto_space_views
+        self.auto_layout = auto_layout
+
+        # If there's no `root_container`, switch `auto_layout`` and `auto_space_views`` defaults to `True`.
+        if not hasattr(self, "root_container"):
+            if self.auto_space_views is None:
+                self.auto_space_views = True
+            if self.auto_layout is None:
+                self.auto_layout = True
 
     def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
@@ -435,10 +451,18 @@ class Blueprint:
 
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            BlueprintPanel(expanded=False)._log_to_stream(stream)
+
         if hasattr(self, "selection_panel"):
             self.selection_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            SelectionPanel(expanded=False)._log_to_stream(stream)
+
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            TimePanel(expanded=False)._log_to_stream(stream)
 
     def _repr_html_(self) -> Any:
         """IPython interface to conversion to html."""
