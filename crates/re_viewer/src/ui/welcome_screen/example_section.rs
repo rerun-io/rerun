@@ -29,7 +29,7 @@ struct ExampleDesc {
 }
 
 // TODO(ab): use design tokens
-const MIN_COLUMN_WIDTH: f32 = 250.0;
+pub(super) const MIN_COLUMN_WIDTH: f32 = 250.0;
 const MAX_COLUMN_WIDTH: f32 = 337.0;
 const MAX_COLUMN_COUNT: usize = 3;
 const COLUMN_HSPACE: f32 = 20.0;
@@ -275,6 +275,7 @@ impl ExampleSection {
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         command_sender: &re_viewer_context::CommandSender,
+        header_ui: &impl Fn(&mut Ui),
     ) {
         let examples = self
             .examples
@@ -307,14 +308,8 @@ impl ExampleSection {
         let column_width = ((ui.available_width() + grid_spacing.x) / column_count as f32
             - grid_spacing.x)
             .floor()
-            .at_most(MAX_COLUMN_WIDTH);
-
-        ui.add(egui::Label::new(
-            egui::RichText::new("View example recordings")
-                .strong()
-                .line_height(Some(32.0))
-                .text_style(re_ui::ReUi::welcome_screen_h2()),
-        ));
+            .at_most(MAX_COLUMN_WIDTH)
+            .at_least(MIN_COLUMN_WIDTH);
 
         ui.horizontal(|ui| {
             // this space is added on the left so that the grid is centered
@@ -326,6 +321,15 @@ impl ExampleSection {
             ui.add_space(centering_hspace);
 
             ui.vertical(|ui| {
+                header_ui(ui);
+
+                ui.add(egui::Label::new(
+                    egui::RichText::new("View example recordings")
+                        .strong()
+                        .line_height(Some(32.0))
+                        .text_style(re_ui::ReUi::welcome_screen_h2()),
+                ));
+
                 ui.add_space(TITLE_TO_GRID_VSPACE);
 
                 egui::Grid::new("example_section_grid")

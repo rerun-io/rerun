@@ -1,7 +1,7 @@
 mod example_section;
 mod welcome_section;
 
-use example_section::ExampleSection;
+use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use welcome_section::welcome_section_ui;
 
 #[derive(Default)]
@@ -25,7 +25,9 @@ impl WelcomeScreen {
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
-        egui::ScrollArea::vertical()
+        let horizontal_scroll = ui.available_width() < 40.0 * 2.0 + MIN_COLUMN_WIDTH;
+
+        egui::ScrollArea::new([horizontal_scroll, true])
             .id_source("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -39,9 +41,10 @@ impl WelcomeScreen {
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    welcome_section_ui(ui);
-                    ui.add_space(83.0);
-                    self.example_page.ui(ui, re_ui, command_sender);
+                    //welcome_section_ui(ui);
+
+                    self.example_page
+                        .ui(ui, re_ui, command_sender, &welcome_section_ui);
                 });
             });
     }
