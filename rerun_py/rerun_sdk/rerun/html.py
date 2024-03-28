@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import base64
 import logging
-import string
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -12,12 +11,9 @@ if TYPE_CHECKING:
 
 from rerun import bindings
 
+from .html_shared import DEFAULT_HEIGHT, DEFAULT_TIMEOUT, DEFAULT_WIDTH, render_html_template
 from .memory import memory_recording
 from .recording_stream import RecordingStream, get_application_id
-
-DEFAULT_WIDTH = 950
-DEFAULT_HEIGHT = 712
-DEFAULT_TIMEOUT = 2000
 
 
 def as_html(
@@ -80,44 +76,14 @@ def as_html(
 
     base64_data = base64.b64encode(output_memory.storage.concat_as_bytes(data_memory.storage)).decode("utf-8")
 
-    html_template = f"""
-    <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
-    <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
-    <p>Consider using <code>rr.start_web_viewer_server()</code></p></div>
-    <script>
-        {presentation_id}_timeout = setTimeout(() => {{
-            document.getElementById("{presentation_id}_error").style.display = 'block';
-        }}, {timeout_ms});
-
-        window.addEventListener("message", function(rrd) {{
-            return async function {presentation_id}_onIframeReady(event) {{
-                var iframe = document.getElementById("{presentation_id}_iframe");
-                if (event.source === iframe.contentWindow) {{
-                    clearTimeout({presentation_id}_timeout);
-                    document.getElementById("{presentation_id}_error").style.display = 'none';
-                    iframe.style.display = 'inline';
-                    window.removeEventListener("message", {presentation_id}_onIframeReady);
-                    iframe.contentWindow.postMessage((await rrd), "*");
-                }}
-            }}
-        }}(async function() {{
-            await new Promise(r => setTimeout(r, 0));
-            var div = document.getElementById("{presentation_id}_rrd");
-            var base64Data = div.dataset.rrd;
-            var intermediate = atob(base64Data);
-            var buff = new Uint8Array(intermediate.length);
-            for (var i = 0; i < intermediate.length; i++) {{
-                buff[i] = intermediate.charCodeAt(i);
-            }}
-            return buff;
-        }}()));
-    </script>
-    <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
-        src="{app_url}?url=web_event://&persist=0&notebook=1"
-        frameborder="0" style="display: none;" allowfullscreen=""></iframe>
-    """
-
-    return html_template
+    return render_html_template(
+        presentation_id=presentation_id,
+        base64_data=base64_data,
+        app_url=app_url,
+        timeout_ms=timeout_ms,
+        width=width,
+        height=height,
+    )
 
 
 def show(
