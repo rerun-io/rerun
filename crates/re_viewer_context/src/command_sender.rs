@@ -14,7 +14,7 @@ pub enum SystemCommand {
     ResetViewer,
 
     /// Reset the `Blueprint` to the default state
-    ResetBlueprint,
+    ClearActiveBlueprint,
 
     /// Clear the blueprint and generate a new one
     ClearAndGenerateBlueprint,

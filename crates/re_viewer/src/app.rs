@@ -373,7 +373,7 @@ impl App {
                 store_hub.clear_default_blueprint();
                 store_hub.clear_active_blueprint();
             }
-            SystemCommand::ResetBlueprint => {
+            SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");

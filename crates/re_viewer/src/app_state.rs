@@ -149,7 +149,7 @@ impl AppState {
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.

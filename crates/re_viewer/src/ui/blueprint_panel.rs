@@ -43,6 +43,6 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         .clicked()
     {
         ctx.command_sender
-            .send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
     }
 }
