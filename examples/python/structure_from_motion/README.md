@@ -17,14 +17,106 @@ build_args = ["--dataset=colmap_fiat", "--resize=800x600"]
   <img src="https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/full.png" alt="Structure From Motion example screenshot">
 </picture>
 
-An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.
+Visualize a sparse reconstruction by [COLMAP](https://colmap.github.io/index.html) including camera frames, camera poses, and point clouds over time.
 
-[COLMAP](https://colmap.github.io/index.html) is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface.
+[//]: # (An example using Rerun to log and visualize the output of COLMAP's sparse reconstruction.)
 
-In this example a short video clip has been processed offline by the COLMAP pipeline, and we use Rerun to visualize the individual camera frames, estimated camera poses, and resulting point clouds over time.
+# Background
 
+COLMAP is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface. 
+In this example, a short video clip has been processed offline using the COLMAP pipeline. 
+The processed data was then visualized using Rerun, which allowed for the visualization of individual camera frames, estimation of camera poses, and creation of point clouds over time. 
+By using COLMAP in combination with Rerun, a highly-detailed reconstruction of the scene depicted in the video was generated.
 
+# Used Rerun Types
+
+[`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+
+# Logging and Visualizing with Rerun
+
+The visualizations in this example were created with the following Rerun code:
+
+## Timelines
+
+All data logged using Rerun in the following sections is connected to a specific frame. 
+Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with the [`timeline`](https://www.rerun.io/docs/concepts/timelines) frame.
+
+ ```python
+rr.set_time_sequence("frame", frame_idx)
+ ```
+
+## Images
+The images are logged through the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) to the `camera/image` entity.
+
+```python
+rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
+```
+
+## Cameras
+The images stem from pinhole cameras located in the 3D world. To visualize the images in 3D, the pinhole projection has
+to be logged and the camera pose (this is often referred to as the intrinsics and extrinsics of the camera,
+respectively).
+
+The [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) is logged to the `camera/image` entity and defines the intrinsics of the camera. 
+This defines how to go from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
+[`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the `camera` entity.
+
+```python
+rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), from_parent=True))
+```
+
+```python
+rr.log(
+    "camera/image",
+    rr.Pinhole(
+        resolution=[camera.width, camera.height],
+        focal_length=camera.params[:2],
+        principal_point=camera.params[2:],
+    ),
+)
+```
+
+## Reprojection Error
+For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype containing the average reprojection error of the keypoints is logged to the
+`plot/avg_reproj_err` entity.
+
+```python
+rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
+```
+
+## 2D Points
+The 2D image points that are used to triangulate the 3D points are visualized by logging as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d)
+to the `camera/image/keypoints` entity. Note that these keypoints are a child of the
+`camera/image` entity, since the points should show in the image plane.
+
+```python
+rr.log("camera/image/keypoints", rr.Points2D(visible_xys, colors=[34, 138, 167]))
+```
+
+## 3D Points
+The colored 3D points were added to the visualization by logging the [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `points` entity.
+```python
+rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
+```
+
+# Run the Code
+To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
+```bash
+# Setup 
+pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+cd rerun
+git checkout latest  # Check out the commit matching the latest SDK release
+```
+Install the necessary libraries specified in the requirements file:
 ```bash
 pip install -r examples/python/structure_from_motion/requirements.txt
-python examples/python/structure_from_motion/main.py
+```
+To experiment with the provided example, simply execute the main Python script:
+```bash
+python examples/python/structure_from_motion/main.py # run the example
+```
+If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
+```bash
+python examples/python/structure_from_motion/main.py --help 
 ```
