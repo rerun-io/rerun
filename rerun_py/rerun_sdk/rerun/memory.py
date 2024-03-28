@@ -3,15 +3,14 @@ from __future__ import annotations
 
 import base64
 import logging
-import uuid
 from typing import Any
 
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun import bindings
 
-from .recording_stream import RecordingStream
 from .html_shared import DEFAULT_HEIGHT, DEFAULT_TIMEOUT, DEFAULT_WIDTH, render_html_template
+from .recording_stream import RecordingStream
 
 
 def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
