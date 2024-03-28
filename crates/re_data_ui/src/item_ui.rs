@@ -599,7 +599,7 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let time = entity_db
+    let creation_time = entity_db
         .store_info()
         .and_then(|info| {
             info.started
@@ -608,7 +608,7 @@ pub fn entity_db_button_ui(
         .unwrap_or("<unknown time>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{time} - {size}");
+    let title = format!("{app_id_prefix}{creation_time} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());

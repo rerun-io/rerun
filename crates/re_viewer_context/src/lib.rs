@@ -17,6 +17,7 @@ mod selection_history;
 mod selection_state;
 mod space_view;
 mod store_context;
+pub mod store_hub;
 mod tensor;
 mod time_control;
 mod typed_entity_collections;
@@ -58,6 +59,7 @@ pub use space_view::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 pub use store_context::StoreContext;
+pub use store_hub::StoreHub;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use typed_entity_collections::{

@@ -11,6 +11,7 @@ To get a feeling of what you can do with Rerun
 Rerun is an SDK and engine for visualizing and interacting with multimodal data streams.
 
 Rerun is
+- Free to use
 - Simple to integrate and get started with
 - Usable from Python, Rust, and C++
 - Powerful, flexible, and extensible

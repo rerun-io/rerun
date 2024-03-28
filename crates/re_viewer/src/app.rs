@@ -5,17 +5,14 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
+    SystemCommandSender,
 };
 
-use crate::{
-    app_blueprint::AppBlueprint,
-    background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats},
-    AppState,
-};
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks, AppState};
 
 // ----------------------------------------------------------------------------
 
@@ -234,7 +231,10 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new()),
+            store_hub: Some(StoreHub::new(
+                blueprint_loader(),
+                &crate::app_blueprint::setup_welcome_screen_blueprint,
+            )),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -337,7 +337,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateRecording(store_id) => {
-                store_hub.activate_recording(store_id);
+                store_hub.set_activate_recording(store_id);
             }
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
@@ -365,12 +365,6 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadStoreDb(entity_db) => {
-                let store_id = entity_db.store_id().clone();
-                store_hub.insert_entity_db(entity_db);
-                store_hub.set_active_recording_id(store_id);
-            }
-
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::ClearAndGenerateBlueprint => {
                 re_log::debug!("Clear and generate new blueprint");
@@ -379,7 +373,7 @@ impl App {
                 store_hub.clear_default_blueprint();
                 store_hub.clear_active_blueprint();
             }
-            SystemCommand::ResetBlueprint => {
+            SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
@@ -991,11 +985,11 @@ impl App {
                             );
                             let app_id = info.application_id.clone();
                             if cmd.make_default {
-                                store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
+                                store_hub.set_default_blueprint_for_app(&app_id, store_id);
                             }
                             if cmd.make_active {
                                 store_hub
-                                    .make_blueprint_active_for_app_id(store_id, &app_id)
+                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
@@ -1148,7 +1142,7 @@ impl App {
     /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
-        if store_hub.active_recording().is_some() || store_hub.active_application_id().is_some() {
+        if store_hub.active_recording().is_some() || store_hub.active_app().is_some() {
             return false;
         }
 
@@ -1193,6 +1187,68 @@ impl App {
         }
 
         false
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn blueprint_loader() -> BlueprintPersistence {
+    // TODO(#2579): implement persistence for web
+    BlueprintPersistence {
+        loader: None,
+        saver: None,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn blueprint_loader() -> BlueprintPersistence {
+    use re_entity_db::StoreBundle;
+    use re_log_types::ApplicationId;
+
+    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+        if !blueprint_path.exists() {
+            return Ok(None);
+        }
+
+        re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+        let with_notifications = false;
+
+        if let Some(bundle) =
+            crate::loading::load_blueprint_file(&blueprint_path, with_notifications)
+        {
+            for store in bundle.entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint
+                    && !crate::blueprint::is_valid_blueprint(store)
+                {
+                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    return Ok(None);
+                }
+            }
+            Ok(Some(bundle))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+
+        let messages = blueprint.to_messages(None)?;
+
+        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+        Ok(())
+    }
+
+    BlueprintPersistence {
+        loader: Some(Box::new(load_blueprint_from_disk)),
+        saver: Some(Box::new(save_blueprint_to_disk)),
     }
 }
 
@@ -1313,7 +1369,7 @@ impl eframe::App for App {
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
         if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_active_app_id(StoreHub::welcome_screen_app_id());
+            store_hub.set_active_app(StoreHub::welcome_screen_app_id());
         }
 
         let store_context = store_hub.read_context();

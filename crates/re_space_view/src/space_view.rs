@@ -554,7 +554,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
-                default_blueprint: None,
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -598,7 +598,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
-                default_blueprint: None,
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -648,7 +648,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
-                default_blueprint: None,
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -921,7 +921,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
-                default_blueprint: None,
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
             let mut query_result = space_view
                 .contents

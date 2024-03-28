@@ -349,11 +349,14 @@ impl ReUi {
 
     #[allow(clippy::unused_self)]
     pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+        ui.add(self.small_icon_button_widget(ui, icon))
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn small_icon_button_widget(&self, ui: &egui::Ui, icon: &Icon) -> egui::ImageButton<'_> {
         // TODO(emilk): change color and size on hover
-        ui.add(
-            egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
-                .tint(ui.visuals().widgets.inactive.fg_stroke.color),
-        )
+        egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
+            .tint(ui.visuals().widgets.inactive.fg_stroke.color)
     }
 
     #[allow(clippy::unused_self)]

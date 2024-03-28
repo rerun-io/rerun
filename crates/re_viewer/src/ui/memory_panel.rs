@@ -5,8 +5,9 @@ use re_format::{format_bytes, format_number};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
+use re_viewer_context::store_hub::StoreHubStats;
 
-use crate::{env_vars::RERUN_TRACK_ALLOCATIONS, store_hub::StoreHubStats};
+use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 
 // ----------------------------------------------------------------------------
 

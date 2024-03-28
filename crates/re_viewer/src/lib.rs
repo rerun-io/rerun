@@ -12,7 +12,6 @@ pub mod env_vars;
 mod loading;
 mod saving;
 mod screenshotter;
-mod store_hub;
 mod ui;
 mod viewer_analytics;
 
