@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Point-E and Shap-E"
 source = "https://github.com/rerun-io/point-shap-e"
-tags = ["3D", "diffusion", "point", "mesh"]
+tags = ["3D", "diffusion", "point", "mesh", "Paper Walkthrough"]
 thumbnail = "https://static.rerun.io/point-e/5b5beb36dce77d2dac7123b197b825421afcaec0/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

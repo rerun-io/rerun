@@ -6,104 +6,109 @@
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.real-data]
+[categories.spatial-computing]
 order = 1
-title = "Examples with Real Data"
+title = "Spatial computing and XR"
 prelude = """
-The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
-They all require additional data to be downloaded, so an internet connection is needed at least once.
-Each example downloads it's own data, so no additional steps are needed.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-
-You can try these examples live at <https://app.rerun.io/>.
+Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
 """
 examples = [
+  "arflow",
   "arkit_scenes",
+  "limap",
+  "objectron",
+  "simplerecon",
+  "slahmr",
+  "vrs",
+  "widebaseline",
+]
+
+[categories.robotics]
+order = 2
+title = "Robotics"
+prelude = """
+Robitics examples.
+"""
+examples = ["nuscenes", "ros_node", "rrt-star"]
+
+[categories.generative-vision]
+order = 3
+title = "Generative computer vision"
+prelude = """
+Examples related to generative AI
+"""
+examples = [
   "controlnet",
   "depth_guided_stable_diffusion",
-  "detect_and_track_objects",
-  "dicom_mri",
-  "face_tracking",
-  "gesture_detection",
-  "human_pose_tracking",
-  "lidar",
-  "live_camera_edge_detection",
-  "live_depth_sensor",
-  "llm_embedding_ner",
-  "nuscenes",
-  "objectron",
-  "open_photogrammetry_format",
-  "raw_mesh",
-  "rgbd",
-  "ros_node",
-  "rrt-star",
-  "segment_anything_model",
-  "signed_distance_fields",
-  "structure_from_motion",
-  "vrs",
+  "mcc",
+  "shape_pointe",
 ]
 
-[categories.artificial-data]
-order = 2
-title = "Examples with Artificial Data"
+[categories.video-image]
+order = 4
+title = "Video and image understanding"
 prelude = """
-The following examples serve to illustrate various uses of the Rerun logging SDK.
-They should not require any additional data downloads, and should run offline.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
+Examples showing off Reruns 2D capabilities.
 """
 examples = [
-  "minimal",
-  "clock",
-  "eigen_opencv",
-  "multithreading",
-  "multiprocessing",
-  "plots",
+  "detect_and_track_objects",
+  "face_tracking",
+  "gesture_detection",
+  "live_camera_edge_detection",
+  "segment_anything_model",
+  "tapir",
 ]
 
-[categories.paper-visualizations]
-order = 3
-title = "Paper Visualizations"
+[categories.3d-reconstruction]
+order = 4
+title = "3D reconstruction and modelling"
 prelude = """
-The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
-from the official open-source implementations adding Rerun as the visualizer.
-Check out the respective READMEs for installation instructions.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
+SLAM, 3D reconstruction, and other 3D modelling examples.
 """
 examples = [
   "differentiable_blocks_world",
-  "limap",
-  "mcc",
-  "shape_pointe",
-  "simplerecon",
-  "slahmr",
-  "tapir",
-  "widebaseline",
-  "arflow",
+  "open_photogrammetry_format",
+  "raw_mesh",
+  "signed_distance_fields",
+  "structure_from_motion",
 ]
 
-[categories.setup]
-order = 4
-title = "Setup"
+[categories.other-ai]
+order = 2
+title = "Other AI"
 prelude = """
-### Examples with Real / Artificial Data
-To run these examples, make sure you have the Rerun repository checked out
-and the latest SDK installed.
-
-```bash
-pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-cd rerun
-git checkout latest  # Check out the commit matching the latest SDK release
-```
-> Note: Make sure your SDK version matches the examples.
-For example, if your SDK version is `0.3.1`, check out the matching tag
-in the Rerun repository by running `git checkout v0.3.1`.
-
-### Paper Visualizations
-To reproduce the paper visualizations check out the README of the respective
-Rerun forks.
+Misc AI examples.
 """
-examples = []
+examples = ["llm_embedding_ner"]
+
+[categories.sensor-output]
+order = 2
+title = "Sensor output"
+prelude = """
+Depth camera, lidar, etc.
+"""
+examples = ["lidar", "live_depth_sensor", "nv12", "rgbd"]
+
+[categories.integrations]
+order = 2
+title = "Integrations"
+prelude = """
+Integration with 3rd party tools, formats, and libraries.
+"""
+examples = ["vrs", "ros_node", "eigen_opencv", "dicom_mri"]
+
+[categories.feature-showcase]
+order = 2
+title = "Feature showcase"
+prelude = """
+Showcase specific features of Rerun.
+"""
+examples = [
+  "clock",
+  "log_file",
+  "minimal",
+  "multiprocessing",
+  "multithreading",
+  "plots",
+  "raw_mesh",
+]
