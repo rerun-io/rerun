@@ -3,15 +3,15 @@ title: Blueprint APIs
 order: 2
 ---
 
-As of Rerun 0.15, the state of the [Blueprint](../../concepts/blueprint.md) can be directly manipulated using
-"Blueprint APIs" in the SDK.
+As of Rerun 0.15, the state of the [blueprint](../../concepts/blueprint.md) can be directly manipulated using the
+Rerun SDK.
 
-In the initial 0.15 Release, the APIs are still somewhat limited and only available in the Python SDK.
-Future releases will add support for the full scope of Blueprint. See issues: [#5519](https://github.com/rerun-io/rerun/issues/5519), [#5520](https://github.com/rerun-io/rerun/issues/5520), [#5521](https://github.com/rerun-io/rerun/issues/5521).
+In the initial 0.15 release, the APIs are still somewhat limited and only available in the Python SDK.
+Future releases will add support for the full scope of blueprint. See issues: [#5519](https://github.com/rerun-io/rerun/issues/5519), [#5520](https://github.com/rerun-io/rerun/issues/5520), [#5521](https://github.com/rerun-io/rerun/issues/5521).
 
-## Blueprint API Overview
+## Blueprint API overview
 
-All blueprint APIs are in the `rerun.blueprint` namespace. In our python examples, we typically import this using the `rrb` alias:
+All blueprint APIs are in the [`rerun.blueprint`](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/?speculative-link) namespace. In our python examples, we typically import this using the `rrb` alias:
 
 ```python
 import rerun.blueprint as rrb
@@ -46,19 +46,20 @@ my_blueprint = rrb.Blueprint(
 )
 ```
 
-## Sending the Blueprint to the Viewer
+## Sending the blueprint to the viewer
 
-To use a blueprint, simply pass it to either `init` or `connect`:
+To provide a blueprint, simply pass it to either `init` or `connect` using the `default_blueprint`
+parameter.
 
-If you use `init` with the `spawn=True` option, you should pass the blueprint as an argument:
+Using `init` with `spawn=True`:
 
 ```python
 my_blueprint = rrb.Blueprint(...)
 
-rr.init("rerun_example_my_blueprint", spawn=True, blueprint=my_blueprint)
+rr.init("rerun_example_my_blueprint", spawn=True, default_blueprint=my_blueprint)
 ```
 
-Or if you use `connect` separate from `init`, you should pass blueprint when you call `connect`:
+Or if you use `connect` separate from `init`:
 
 ```python
 my_blueprint = rrb.Blueprint(...)
@@ -67,23 +68,59 @@ rr.init("rerun_example_my_blueprint")
 
 ...
 
-rr.connect(blueprint=my_blueprint)
+rr.connect(default_blueprint=my_blueprint)
+```
+
+## Activating the default blueprint
+
+Once you have sent a blueprint to the viewer, it will not necessarily be activated immediately. The standard behavior
+is to only update the "default blueprint" in the viewer. This minimizes the chance that you accidentally overwrite
+blueprint edits you may have made locally.
+
+If you want to start using the new blueprint, after sending it, you will need to click the reset button in the
+blueprint panel. This resets the blueprint to the current default:
+
+TODO(#5636): reset_blueprint
+
+## Always activating the blueprint
+
+If you want to always activate the blueprint as soon as it is received, you can instead use the `send_blueprint`
+API. This API has two flags `make_active` and `make_default`, both of which default to `True`.
+
+If `make_active` is set, the blueprint will be activated immediately. Exercise care in using this API, as it can be
+surprising for users to have their blueprint changed without warning.
+
+```python
+my_blueprint = rrb.Blueprint(...)
+
+rr.init("rerun_example_my_blueprint", spawn=True)
+
+rr.send_blueprint(my_blueprint, make_active=True)
+
 ```
 
 ## Customizing Space Views
 
-If you create a space view with no arguments, by default it will try to include all compatible entities
-in the entire tree.
+Any of the space views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
+`TextDocumentView`, `TextLogView`, or `TimeSeriesView`) can be instantiated with no arguments.
+By default these views try to include all compatible entities.
 
-There are 3 parameters you may want to specify for a space view: `name`, `origin`, and `contents`.
+For example, the following blueprint creates a single 3D view that includes all the 3D content
+in the tree:
+
+```python
+rrb.Blueprint(
+    rrb.Spatial3DView()
+)
+```
+
+Beyond, instantiating the space views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
 
 `name` is simply the name of the view used as a label in the viewer.
 
 However, both `origin` and `contents` play an important role in determining what data is included in the view.
 
 ### `origin`
-
-TODO(jleibs): this explanation probably belongs somewhere else?
 
 The `origin` of a space-view is a generalized "frame of reference" for the view. We think of showing all data
 in the space view as relative to the `origin`.
@@ -101,7 +138,7 @@ TODO(jleibs): Re-review spaces-and-transforms for correctness
 For example:
 
 ```python
-my_blueprint = rrb.Blueprint(
+rrb.Blueprint(
     rrb.Horizontal(
         rrb.Spatial3DView(origin="/world"),
         rrb.Spatial2DView(origin="/world/robot/camera"),
@@ -124,7 +161,7 @@ Additionally, these expressions can reference `$origin` to refer to the origin o
 For example:
 
 ```python
-my_blueprint = rrb.Blueprint(
+rrb.Blueprint(
     rrb.Horizontal(
         rrb.Spatial3DView(
             origin="/world",
@@ -142,5 +179,87 @@ my_blueprint = rrb.Blueprint(
         ),
     )
 )
+```
 
+## Implicit conversion
+
+For convenience all of the blueprint APIs take a `BlueprintLike` rather than requiring a `Blueprint` object.
+Both `SpaceView`s and `Containers` are considered `BlueprintLike`. Similarly, the `Blueprint` object can
+take a `SpaceView` or `Container` as an argument.
+
+All of the following are equivalent:
+
+```python
+rr.send_blueprint(rrb.Spatial3DView())
+```
+
+```python
+rr.send_blueprint(
+    rrb.Grid(
+        Spatial3DView(),
+    )
+)
+```
+
+```python
+rr.send_blueprint(
+    rrb.Blueprint(
+        Spatial3DView(),
+    ),
+)
+
+```
+
+```python
+rr.send_blueprint(
+    rrb.Blueprint(
+        rrb.Grid(
+            Spatial3DView(),
+        )
+    ),
+)
+```
+
+## Customizing the top-level blueprint
+
+The top-level `Blueprint` object can also be customized.
+
+### Controlling the panel state
+
+The `Blueprint` controls the default panel-state of the 3 panels: the `BlueprintPanel`, the `SelectionPanel`, and the `TimePanel`. These can be controlled by passing them as additional arguments to the `Blueprint` constructor.
+
+```python
+rrb.Blueprint(
+    rrb.TimePanel(expanded=False)
+)
+```
+
+As an convenience, you can also use the blueprint argument: `collapse_panels=True` as a short-hand for:
+
+```python
+rrb.Blueprint(
+    rrb.TimePanel(expanded=False),
+    rrb.SelectionPanel(expanded=False),
+    rrb.BlueprintPanel(expanded=False),
+)
+```
+
+### Controlling the auto behaviors
+
+The blueprint has two additional parameters that influence the behavior of the viewer:
+
+-   `auto_space_views` controls whether the viewer will automatically create space views for entities that are not explicitly included in the blueprint.
+-   `auto_layout` controls whether the viewer should automatically layout the containers when introducing new space-views.
+
+If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
+you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
+matches the default behavior of the viewer if no blueprint is proviced).
+
+If you truly want to create an empty blueprint, you must set both values to `False`:
+
+```python
+rrb.Blueprint(
+    auto_space_views=False,
+    auto_layout=False
+),
 ```
