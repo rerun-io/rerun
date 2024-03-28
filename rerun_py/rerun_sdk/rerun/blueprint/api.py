@@ -7,9 +7,9 @@ from typing import Any, Iterable, Optional, Union
 import rerun_bindings as bindings
 
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
-from ..html import as_html
-from ..memory import MemoryRecording, memory_recording
-from ..recording_stream import RecordingStream, get_application_id
+from ..memory import MemoryRecording
+from ..notebook import as_html
+from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKindLike

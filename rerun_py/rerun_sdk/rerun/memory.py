@@ -54,7 +54,7 @@ class MemoryRecording:
         """
         return self.storage.num_msgs()  # type: ignore[no-any-return]
 
-    @deprecated("Please use rerun.show_html() instead.")
+    @deprecated("Please use rerun.notebook_show() instead.")
     def as_html(
         self,
         *,
@@ -99,7 +99,7 @@ class MemoryRecording:
 
         return """
 <div style="background-color: #ffcccb; color: #8b0000; padding: 10px; border: 1px solid #8b0000; border-radius: 5px; margin: 20px;">
-  Direct rendering of MemoryRecording has been deprecated. Please prefer rr.show_html().
+  Direct rendering of MemoryRecording has been deprecated. Please prefer rerun.notebook_show().
 </div>
 """ + render_html_template(
             presentation_id=presentation_id,
@@ -110,7 +110,7 @@ class MemoryRecording:
             height=height,
         )
 
-    @deprecated("Please use rerun.show_html() instead.")
+    @deprecated("Please use rerun.notebook_show() instead.")
     def show(
         self,
         *,

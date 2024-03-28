@@ -86,7 +86,7 @@ def as_html(
     )
 
 
-def show(
+def notebook_show(
     *,
     width: int = DEFAULT_WIDTH,
     height: int = DEFAULT_HEIGHT,
@@ -96,7 +96,7 @@ def show(
     recording: RecordingStream | None = None,
 ) -> Any:
     """
-    Output the Rerun viewer using IPython [IPython.core.display.HTML][].
+    Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 
     Parameters
     ----------

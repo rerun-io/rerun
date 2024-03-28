@@ -82,6 +82,7 @@ __all__ = [
     "log_file_from_path",
     "memory_recording",
     "new_entity_path",
+    "notebook_show",
     "reset_time",
     "save",
     "script_add_args",
@@ -94,7 +95,6 @@ __all__ = [
     "set_time_seconds",
     "set_time_sequence",
     "send_blueprint",
-    "show",
     "spawn",
 ]
 
@@ -162,9 +162,9 @@ from .datatypes import (
     TranslationRotationScale3D,
 )
 from .error_utils import set_strict_mode
-from .html import show
 from .logging_handler import LoggingHandler
 from .memory import MemoryRecording, memory_recording
+from .notebook import notebook_show
 from .recording_stream import (
     RecordingStream,
     get_application_id,
