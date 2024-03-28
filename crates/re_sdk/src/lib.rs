@@ -26,7 +26,8 @@ mod spawn;
 pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
-    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
+    RecordingStreamResult,
 };
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};

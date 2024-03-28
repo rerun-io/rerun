@@ -169,7 +169,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_llm_embedding_ner",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Vertical(
                 rrb.TextDocumentView(origin="/text", name="Original Text"),
                 rrb.TextDocumentView(origin="/tokenized_text", name="Tokenized Text"),

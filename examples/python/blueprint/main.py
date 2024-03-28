@@ -36,7 +36,7 @@ def main() -> None:
             auto_space_views=args.auto_space_views,
         )
 
-    rr.init("rerun_example_blueprint", spawn=True, blueprint=blueprint)
+    rr.init("rerun_example_blueprint", spawn=True, default_blueprint=blueprint)
 
     img = np.zeros([128, 128, 3], dtype="uint8")
     for i in range(8):

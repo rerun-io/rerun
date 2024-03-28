@@ -269,7 +269,7 @@ def main() -> None:
         row_shares=[3, 2],
     )
 
-    rr.script_setup(args, "rerun_example_nuscenes", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_nuscenes", default_blueprint=blueprint)
 
     log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)
 

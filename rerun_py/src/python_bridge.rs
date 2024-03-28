@@ -3,6 +3,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pufunction] macro
 
 use std::collections::HashMap;
+use std::io::IsTerminal as _;
 use std::path::PathBuf;
 
 use itertools::Itertools;
@@ -12,7 +13,7 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_log_types::{EntityPathPart, StoreKind};
+use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use rerun::{
     sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
     StoreId,
@@ -163,6 +164,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
+    m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(serve, m)?)?;
@@ -180,6 +182,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
+    m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -527,15 +530,37 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
     get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
 }
 
+/// Helper for forwarding the blueprint memory-sink representation to a given sink
+fn send_mem_sink_as_default_blueprint(
+    sink: &dyn rerun::sink::LogSink,
+    default_blueprint: &PyMemorySinkStorage,
+) {
+    if let Some(id) = default_blueprint.inner.store_id() {
+        let activate_cmd = BlueprintActivationCommand::make_default(id);
+        sink.send_blueprint(default_blueprint.inner.take(), activate_cmd);
+    } else {
+        re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
+    }
+}
+
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), blueprint = None, recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(());
+    };
+
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
@@ -547,9 +572,16 @@ fn connect(
     // The call to connect may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        if let Some(recording) = get_data_recording(recording) {
-            recording.connect_opts(addr, flush_timeout, blueprint.map(|b| b.inner.take()));
-        };
+        // We create the sink manually so we can send the default blueprint
+        // first before the rest of the current recording stream.
+        let sink = rerun::sink::TcpSink::new(addr, flush_timeout);
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
         flush_garbage_queue();
     });
 
@@ -557,32 +589,78 @@ fn connect(
 }
 
 #[pyfunction]
-#[pyo3(signature = (path, blueprint = None, recording = None))]
+#[pyo3(signature = (path, default_blueprint = None, recording = None))]
 fn save(
     path: &str,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
+
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `save()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
 
     // The call to save may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        let res = recording
-            .save_opts(path, blueprint.map(|b| b.inner.take()))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        // We create the sink manually so we can send the default blueprint
+        // first before the rest of the current recording stream.
+        let sink = rerun::sink::FileSink::new(path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(&sink, default_blueprint);
+        }
+
+        recording.set_sink(Box::new(sink));
+
         flush_garbage_queue();
-        res
+
+        Ok(())
     })
 }
 
 #[pyfunction]
-#[pyo3(signature = (blueprint = None, recording = None))]
+#[pyo3(signature = (path, blueprint_stream))]
+/// Special binding for directly savings a blueprint stream to a file.
+fn save_blueprint(
+    path: &str,
+    blueprint_stream: &PyRecordingStream,
+    py: Python<'_>,
+) -> PyResult<()> {
+    if let Some(recording_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+        // The call to save, needs to flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            // Flush all the pending blueprint messages before we include the Ready message
+            blueprint_stream.flush_blocking();
+
+            let activation_cmd = BlueprintActivationCommand::make_active(recording_id.clone());
+
+            blueprint_stream.record_msg(activation_cmd.into());
+
+            let res = blueprint_stream
+                .save_opts(path)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+            flush_garbage_queue();
+            res
+        })
+    } else {
+        Err(PyRuntimeError::new_err(
+            "Blueprint stream has no store info".to_owned(),
+        ))
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature = (default_blueprint = None, recording = None))]
 fn stdout(
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     py: Python<'_>,
 ) -> PyResult<()> {
@@ -590,14 +668,33 @@ fn stdout(
         return Ok(());
     };
 
+    if rerun::forced_sink_path().is_some() {
+        re_log::debug!("Ignored call to `stdout()` since _RERUN_TEST_FORCE_SAVE is set");
+        return Ok(());
+    }
+
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        let res = recording
-            .stdout_opts(blueprint.map(|b| b.inner.take()))
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()));
+        let sink: Box<dyn rerun::sink::LogSink> = if std::io::stdout().is_terminal() {
+            re_log::debug!("Ignored call to stdout() because stdout is a terminal");
+            Box::new(rerun::sink::BufferedSink::new())
+        } else {
+            Box::new(
+                rerun::sink::FileSink::stdout()
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            )
+        };
+
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
+        }
+
         flush_garbage_queue();
-        res
+
+        recording.set_sink(sink);
+
+        Ok(())
     })
 }
 
@@ -679,13 +776,13 @@ fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, blueprint = None, recording = None))]
+#[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
 fn serve(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
     server_memory_limit: String,
-    blueprint: Option<&PyMemorySinkStorage>,
+    default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
@@ -693,6 +790,11 @@ fn serve(
         let Some(recording) = get_data_recording(recording) else {
             return Ok(());
         };
+
+        if rerun::forced_sink_path().is_some() {
+            re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
+            return Ok(());
+        }
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
@@ -708,8 +810,8 @@ fn serve(
         )
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-        if let Some(blueprint) = blueprint {
-            RecordingStream::send_blueprint(blueprint.inner.take(), &*sink);
+        if let Some(default_blueprint) = default_blueprint {
+            send_mem_sink_as_default_blueprint(sink.as_ref(), default_blueprint);
         }
 
         recording.set_sink(sink);
@@ -719,7 +821,7 @@ fn serve(
 
     #[cfg(not(feature = "web_viewer"))]
     {
-        _ = blueprint;
+        _ = default_blueprint;
         _ = recording;
         _ = web_port;
         _ = ws_port;
@@ -917,6 +1019,32 @@ fn log_file(
     py.allow_threads(flush_garbage_queue);
 
     Ok(())
+}
+
+/// Send a blueprint to the given recording stream.
+#[pyfunction]
+#[pyo3(signature = (blueprint, make_active = false, make_default = true, recording = None))]
+fn send_blueprint(
+    blueprint: &PyMemorySinkStorage,
+    make_active: bool,
+    make_default: bool,
+    recording: Option<&PyRecordingStream>,
+) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+
+    if let Some(blueprint_id) = blueprint.inner.store_id() {
+        let activation_cmd = BlueprintActivationCommand {
+            blueprint_id,
+            make_active,
+            make_default,
+        };
+
+        recording.send_blueprint(blueprint.inner.take(), activation_cmd);
+    } else {
+        re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
+    }
 }
 
 // --- Misc ---

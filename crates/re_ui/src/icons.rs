@@ -150,17 +150,4 @@ pub const DATA_SOURCE: Icon = Icon::new(
 pub const RECORDING: Icon = Icon::new("recording", include_bytes!("../data/icons/recording.png"));
 pub const BLUEPRINT: Icon = Icon::new("blueprint", include_bytes!("../data/icons/blueprint.png"));
 
-pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
-    "welcome_screen_configure",
-    include_bytes!("../data/images/configure-card.png"),
-);
-
-pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
-    "welcome_screen_live_data",
-    include_bytes!("../data/images/live-data-card.png"),
-);
-
-pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
-    "welcome_screen_recorded_data",
-    include_bytes!("../data/images/recorded-data-card.png"),
-);
+pub const GITHUB: Icon = Icon::new("github", include_bytes!("../data/icons/github.png"));

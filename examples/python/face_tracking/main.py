@@ -435,7 +435,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_mp_face_detection",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Spatial3DView(origin="reconstruction"),
             rrb.Vertical(
                 rrb.Spatial2DView(origin="video"),

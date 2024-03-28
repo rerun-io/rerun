@@ -93,6 +93,7 @@ __all__ = [
     "set_time_nanos",
     "set_time_seconds",
     "set_time_sequence",
+    "send_blueprint",
     "spawn",
 ]
 
@@ -174,7 +175,7 @@ from .recording_stream import (
     set_thread_local_data_recording,
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
-from .sinks import connect, disconnect, memory_recording, save, serve, spawn, stdout
+from .sinks import connect, disconnect, memory_recording, save, send_blueprint, serve, spawn, stdout
 from .time import (
     disable_timeline,
     reset_time,
@@ -222,7 +223,7 @@ def _init_recording_stream() -> None:
     from rerun.recording_stream import _patch as recording_stream_patch
 
     recording_stream_patch(
-        [connect, save, stdout, disconnect, memory_recording, serve, spawn]
+        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint]
         + [
             set_time_sequence,
             set_time_seconds,
@@ -247,7 +248,7 @@ def init(
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
-    blueprint: BlueprintLike | None = None,
+    default_blueprint: BlueprintLike | None = None,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -315,8 +316,11 @@ def init(
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
-    blueprint
-        A blueprint to use for this application. If not provided, a new one will be created.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
 
@@ -347,7 +351,7 @@ def init(
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn(blueprint=blueprint)
+        _spawn(default_blueprint=default_blueprint)
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
