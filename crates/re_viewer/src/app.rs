@@ -365,12 +365,6 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadStoreDb(entity_db) => {
-                let store_id = entity_db.store_id().clone();
-                store_hub.insert_entity_db(entity_db);
-                store_hub.set_active_recording_id(store_id);
-            }
-
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::ClearAndGenerateBlueprint => {
                 re_log::debug!("Clear and generate new blueprint");
