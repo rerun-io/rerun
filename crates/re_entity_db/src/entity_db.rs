@@ -83,6 +83,8 @@ fn insert_row_with_retries(
 /// NOTE: all mutation is to be done via public functions!
 pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
+    ///
+    /// Clones keep the sama data source, but can be distinguished with [`Self::cloned_from()`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
