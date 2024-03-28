@@ -69,7 +69,10 @@ impl StoreHub {
     /// The [`StoreHub`] will contain a single empty blueprint associated with the app ID returned
     /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
     /// screen.
-    pub fn new(persistence: BlueprintPersistence) -> Self {
+    pub fn new(
+        persistence: BlueprintPersistence,
+        setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
+    ) -> Self {
         re_tracing::profile_function!();
         let mut blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
@@ -84,7 +87,7 @@ impl StoreHub {
         );
 
         let welcome_screen_blueprint = store_bundle.blueprint_entry(&welcome_screen_store_id);
-        crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
+        (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
         Self {
             persistence,

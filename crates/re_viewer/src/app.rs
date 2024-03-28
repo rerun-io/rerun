@@ -234,7 +234,10 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new(blueprint_loader())),
+            store_hub: Some(StoreHub::new(
+                blueprint_loader(),
+                &crate::app_blueprint::setup_welcome_screen_blueprint,
+            )),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
