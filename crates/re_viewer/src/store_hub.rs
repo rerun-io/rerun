@@ -29,6 +29,21 @@ pub struct StoreHub {
 
     // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
+
+    persistence: BlueprintPersistence,
+}
+
+/// Load a blueprint from persisted storage, e.g. disk.
+/// Returns `Ok(None)` if no blueprint is found.
+pub type BlueprintLoader = dyn Fn(&ApplicationId) -> anyhow::Result<Option<StoreBundle>>;
+
+/// Save a blueprint to persisted storage, e.g. disk.
+pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()>;
+
+/// How to save and load blueprints
+pub struct BlueprintPersistence {
+    pub loader: Option<Box<BlueprintLoader>>,
+    pub saver: Option<Box<BlueprintSaver>>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -80,6 +95,18 @@ impl StoreHub {
             was_recording_active: false,
 
             blueprint_last_save: Default::default(),
+
+            // TODO(#2579): implement persistence for web
+            #[cfg(target_arch = "wasm32")]
+            persistence: BlueprintPersistence {
+                loader: None,
+                saver: None,
+            },
+            #[cfg(not(target_arch = "wasm32"))]
+            persistence: BlueprintPersistence {
+                loader: Some(Box::new(load_blueprint_from_disk)),
+                saver: Some(Box::new(save_blueprint_to_disk)),
+            },
         }
     }
 
@@ -436,7 +463,8 @@ impl StoreHub {
                 blueprint.gc_everything_but_the_latest_row();
             }
 
-            if try_save_blueprint(app_id, blueprint)? {
+            if let Some(saver) = &self.persistence.saver {
+                (saver)(app_id, blueprint)?;
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
             }
@@ -456,7 +484,11 @@ impl StoreHub {
     fn try_to_load_persisted_blueprint(&mut self, app_id: &ApplicationId) -> anyhow::Result<()> {
         re_tracing::profile_function!();
 
-        if let Some(mut bundle) = try_load_blueprint(app_id)? {
+        let Some(loader) = &self.persistence.loader else {
+            return Ok(());
+        };
+
+        if let Some(mut bundle) = (loader)(app_id)? {
             for store in bundle.drain_entity_dbs() {
                 if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id) {
                     if !crate::blueprint::is_valid_blueprint(&store) {
@@ -535,50 +567,33 @@ impl StoreHub {
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", allow(clippy::unnecessary_wraps))]
-fn try_load_blueprint(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            // TODO(#2579): implement persistence for web
-            _ = app_id;
-            Ok(None)
-        } else {
-            let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
-            if !blueprint_path.exists() {
-                return Ok(None);
-            }
-
-            re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
-
-            let with_notifications = false;
-            Ok(crate::loading::load_blueprint_file(
-                &blueprint_path,
-                with_notifications,
-            ))
-        }
+#[cfg(not(target_arch = "wasm32"))]
+fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+    let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+    if !blueprint_path.exists() {
+        return Ok(None);
     }
+
+    re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+    let with_notifications = false;
+    Ok(crate::loading::load_blueprint_file(
+        &blueprint_path,
+        with_notifications,
+    ))
 }
 
-/// Returns `false` if persistence is not supported.
-#[cfg_attr(target_arch = "wasm32", allow(clippy::unnecessary_wraps))]
-fn try_save_blueprint(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<bool> {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "wasm32")] {
-            // TODO(#2579): implement persistence for web
-            _ = (app_id, blueprint);
-            Ok(false)
-        } else {
-            let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+#[cfg(not(target_arch = "wasm32"))]
+fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+    let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
-            let messages = blueprint.to_messages(None)?;
+    let messages = blueprint.to_messages(None)?;
 
-            // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-            // be small & fast to save, but maybe not once we start adding big pieces of user data?
-            crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+    // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+    // be small & fast to save, but maybe not once we start adding big pieces of user data?
+    crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
 
-            re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+    re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
 
-            Ok(true)
-        }
-    }
+    Ok(())
 }
