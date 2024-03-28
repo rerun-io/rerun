@@ -87,28 +87,46 @@ impl crate::DataUi for EntityDb {
             }
         });
 
-        if ctx.store_context.is_active(self.store_id()) {
-            ui.add_space(8.0);
-            match self.store_kind() {
-                StoreKind::Recording => {
+        let hub = ctx.store_context.hub;
+
+        match self.store_kind() {
+            StoreKind::Recording => {
+                if Some(self.store_id()) == hub.active_recording_id() {
+                    ui.add_space(8.0);
                     ui.label("This is the active recording");
                 }
-                StoreKind::Blueprint => {
-                    ui.label("This is the active blueprint");
+            }
+            StoreKind::Blueprint => {
+                let active_app_id = &ctx.store_context.app_id;
+                let is_active_app_id = self.app_id() == Some(active_app_id);
+
+                if is_active_app_id {
+                    let is_default =
+                        hub.default_blueprint_for_app(active_app_id) == Some(self.store_id());
+                    let is_active =
+                        hub.active_blueprint_for_app(active_app_id) == Some(self.store_id());
+
+                    match (is_default, is_active) {
+                        (false, false) => {}
+                        (true, false) => {
+                            ui.add_space(8.0);
+                            ui.label("This is the default blueprint for the current application, but the active one is different.");
+                        }
+                        (false, true) => {
+                            ui.add_space(8.0);
+                            ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
+                        }
+                        (true, true) => {
+                            ui.add_space(8.0);
+                            ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
+                        }
+                    }
+                } else {
+                    ui.add_space(8.0);
+                    ui.label("This blueprint is not for the active application");
                 }
             }
         }
-
-        let is_default_blueprint = ctx
-            .store_context
-            .hub
-            .default_blueprint_for_app(&ctx.store_context.app_id)
-            == Some(self.store_id());
-        if is_default_blueprint {
-            ui.add_space(8.0);
-            ui.label("This is the default blueprint")
-               .on_hover_text("When you reset the blueprint for the app, this blueprint will be used as the template.");
-        };
 
         if verbosity == UiVerbosity::Full {
             sibling_stores_ui(ctx, ui, self);
