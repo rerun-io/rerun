@@ -337,7 +337,7 @@ impl App {
     ) {
         match cmd {
             SystemCommand::ActivateRecording(store_id) => {
-                store_hub.activate_recording(store_id);
+                store_hub.set_activate_recording(store_id);
             }
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
@@ -985,11 +985,11 @@ impl App {
                             );
                             let app_id = info.application_id.clone();
                             if cmd.make_default {
-                                store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
+                                store_hub.set_default_blueprint_for_app(&app_id, store_id);
                             }
                             if cmd.make_active {
                                 store_hub
-                                    .make_blueprint_active_for_app_id(store_id, &app_id)
+                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
@@ -1142,7 +1142,7 @@ impl App {
     /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
-        if store_hub.active_recording().is_some() || store_hub.active_application_id().is_some() {
+        if store_hub.active_recording().is_some() || store_hub.active_app().is_some() {
             return false;
         }
 
@@ -1369,7 +1369,7 @@ impl eframe::App for App {
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
         if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_active_app_id(StoreHub::welcome_screen_app_id());
+            store_hub.set_active_app(StoreHub::welcome_screen_app_id());
         }
 
         let store_context = store_hub.read_context();

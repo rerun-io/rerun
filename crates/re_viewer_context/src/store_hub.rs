@@ -117,6 +117,9 @@ impl StoreHub {
         }
     }
 
+    // ---------------------
+    // Accessors
+
     /// All the loaded recordings and blueprints.
     #[inline]
     pub fn store_bundle(&self) -> &StoreBundle {
@@ -142,7 +145,7 @@ impl StoreHub {
         // If there's no active blueprint for this app, try to make the current default one active.
         if !self.active_blueprint_by_app_id.contains_key(&app_id) {
             if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
-                self.make_blueprint_active_for_app_id(&blueprint_id, &app_id)
+                self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
                     .unwrap_or_else(|err| {
                         re_log::warn!("Failed to make blueprint active: {err}");
                     });
@@ -174,22 +177,65 @@ impl StoreHub {
         })
     }
 
+    /// Mutable access to a [`EntityDb`] by id
+    pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
+        self.store_bundle.entry(store_id)
+    }
+
+    // ---------------------
+    // Add and remove stores
+
+    /// Insert a new recording or blueprint into the [`StoreHub`].
+    ///
+    /// Note that the recording is not automatically made active. Use [`StoreHub::set_active_recording_id`]
+    /// if needed.
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
+        self.store_bundle.insert(entity_db);
+    }
+
+    pub fn remove(&mut self, store_id: &StoreId) {
+        if self.active_rec_id.as_ref() == Some(store_id) {
+            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
+                self.set_active_recording_id(new_selection.clone());
+            } else {
+                self.active_application_id = None;
+                self.active_rec_id = None;
+            }
+        }
+
+        self.store_bundle.remove(store_id);
+    }
+
+    // ---------------------
+    // Active app
+
+    /// Change the active [`ApplicationId`]
+    pub fn set_active_app(&mut self, app_id: ApplicationId) {
+        // If we don't know of a blueprint for this `ApplicationId` yet,
+        // try to load one from the persisted store
+        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
+            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
+                re_log::warn!("Failed to load persisted blueprint: {err}");
+            }
+        }
+
+        self.active_application_id = Some(app_id);
+    }
+
+    #[inline]
+    pub fn active_app(&self) -> Option<&ApplicationId> {
+        self.active_application_id.as_ref()
+    }
+
+    // ---------------------
+    // Active recording
+
     /// Keeps track if a recording was ever activated.
     ///
     /// This is useful for the heuristic controlling the welcome screen.
     #[inline]
     pub fn was_recording_active(&self) -> bool {
         self.was_recording_active
-    }
-
-    /// Activate a recording by its [`StoreId`].
-    pub fn activate_recording(&mut self, store_id: StoreId) {
-        match store_id.kind {
-            StoreKind::Recording => self.set_active_recording_id(store_id),
-            StoreKind::Blueprint => {
-                re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
-            }
-        }
     }
 
     /// Directly access the [`EntityDb`] for the active recording.
@@ -219,64 +265,64 @@ impl StoreHub {
             .as_ref()
             .and_then(|recording| recording.app_id())
         {
-            self.set_active_app_id(app_id.clone());
+            self.set_active_app(app_id.clone());
         }
 
         self.active_rec_id = Some(recording_id);
         self.was_recording_active = true;
     }
 
-    pub fn remove(&mut self, store_id: &StoreId) {
-        if self.active_rec_id.as_ref() == Some(store_id) {
-            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
-                self.set_active_recording_id(new_selection.clone());
-            } else {
-                self.active_application_id = None;
-                self.active_rec_id = None;
+    /// Activate a recording by its [`StoreId`].
+    pub fn set_activate_recording(&mut self, store_id: StoreId) {
+        match store_id.kind {
+            StoreKind::Recording => self.set_active_recording_id(store_id),
+            StoreKind::Blueprint => {
+                re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
             }
         }
-
-        self.store_bundle.remove(store_id);
     }
 
-    /// Change the active [`ApplicationId`]
-    pub fn set_active_app_id(&mut self, app_id: ApplicationId) {
-        // If we don't know of a blueprint for this `ApplicationId` yet,
-        // try to load one from the persisted store
-        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
-            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
-                re_log::warn!("Failed to load persisted blueprint: {err}");
-            }
-        }
+    // ---------------------
+    // Default blueprint
 
-        self.active_application_id = Some(app_id);
-    }
-
-    #[inline]
-    pub fn active_application_id(&self) -> Option<&ApplicationId> {
-        self.active_application_id.as_ref()
+    pub fn default_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
+        self.default_blueprint_by_app_id.get(app_id)
     }
 
     /// Change which blueprint is the default for a given [`ApplicationId`]
     #[inline]
-    pub fn set_default_blueprint_for_app_id(
+    pub fn set_default_blueprint_for_app(
         &mut self,
-        blueprint_id: &StoreId,
         app_id: &ApplicationId,
+        blueprint_id: &StoreId,
     ) {
         re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
         self.default_blueprint_by_app_id
             .insert(app_id.clone(), blueprint_id.clone());
     }
 
+    /// Clear the current default blueprint
+    pub fn clear_default_blueprint(&mut self) {
+        if let Some(app_id) = &self.active_application_id {
+            self.default_blueprint_by_app_id.remove(app_id);
+        }
+    }
+
+    // ---------------------
+    // Active blueprint
+
+    pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
+        self.active_blueprint_by_app_id.get(app_id)
+    }
+
     /// Make blueprint active for a given [`ApplicationId`]
     ///
     /// We never activate a blueprint directly. Instead, we clone it and activate the clone.
     //TODO(jleibs): In the future this can probably be handled with snapshots instead.
-    pub fn make_blueprint_active_for_app_id(
+    pub fn set_cloned_blueprint_active_for_app(
         &mut self,
-        blueprint_id: &StoreId,
         app_id: &ApplicationId,
+        blueprint_id: &StoreId,
     ) -> anyhow::Result<()> {
         let new_id = StoreId::random(StoreKind::Blueprint);
 
@@ -316,12 +362,8 @@ impl StoreHub {
         }
     }
 
-    /// Clear the current default blueprint
-    pub fn clear_default_blueprint(&mut self) {
-        if let Some(app_id) = &self.active_application_id {
-            self.default_blueprint_by_app_id.remove(app_id);
-        }
-    }
+    // ---------------------
+    // Misc operations
 
     /// Forgets all blueprints
     pub fn clear_all_blueprints(&mut self) {
@@ -332,19 +374,6 @@ impl StoreHub {
         {
             self.store_bundle.remove(&blueprint_id);
         }
-    }
-
-    /// Insert a new recording or blueprint into the [`StoreHub`].
-    ///
-    /// Note that the recording is not automatically made active. Use [`StoreHub::set_active_recording_id`]
-    /// if needed.
-    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert(entity_db);
-    }
-
-    /// Mutable access to a [`EntityDb`] by id
-    pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
-        self.store_bundle.entry(store_id)
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
