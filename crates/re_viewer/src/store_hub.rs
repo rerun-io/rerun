@@ -1,15 +1,13 @@
 use ahash::{HashMap, HashMapExt};
 
 use anyhow::Context as _;
+
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 use re_viewer_context::{AppOptions, StoreContext};
-
-#[cfg(not(target_arch = "wasm32"))]
-use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -422,6 +420,7 @@ impl StoreHub {
         app_options: &AppOptions,
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
+
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
@@ -441,7 +440,7 @@ impl StoreHub {
 
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let blueprint_path = default_blueprint_path(app_id)?;
+                let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
                 let messages = blueprint.to_messages(None)?;
 
@@ -473,9 +472,10 @@ impl StoreHub {
         &mut self,
         app_id: &ApplicationId,
     ) -> anyhow::Result<()> {
-        use crate::blueprint::is_valid_blueprint;
-
         re_tracing::profile_function!();
+        use crate::blueprint::is_valid_blueprint;
+        use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
+
         let blueprint_path = default_blueprint_path(app_id)?;
         if blueprint_path.exists() {
             re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
