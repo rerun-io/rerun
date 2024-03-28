@@ -5,17 +5,14 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
+    SystemCommandSender,
 };
 
-use crate::{
-    app_blueprint::AppBlueprint,
-    background_tasks::BackgroundTasks,
-    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppState,
-};
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks, AppState};
 
 // ----------------------------------------------------------------------------
 
@@ -1222,10 +1219,22 @@ fn blueprint_loader() -> BlueprintPersistence {
         re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
 
         let with_notifications = false;
-        Ok(crate::loading::load_blueprint_file(
-            &blueprint_path,
-            with_notifications,
-        ))
+
+        if let Some(bundle) =
+            crate::loading::load_blueprint_file(&blueprint_path, with_notifications)
+        {
+            for store in bundle.entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint
+                    && !crate::blueprint::is_valid_blueprint(store)
+                {
+                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    return Ok(None);
+                }
+            }
+            Ok(Some(bundle))
+        } else {
+            Ok(None)
+        }
     }
 
     #[cfg(not(target_arch = "wasm32"))]

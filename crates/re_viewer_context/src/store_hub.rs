@@ -7,7 +7,8 @@ use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
-use re_viewer_context::{AppOptions, StoreContext};
+
+use crate::{AppOptions, StoreContext};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -485,10 +486,6 @@ impl StoreHub {
         if let Some(mut bundle) = (loader)(app_id)? {
             for store in bundle.drain_entity_dbs() {
                 if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id) {
-                    if !crate::blueprint::is_valid_blueprint(&store) {
-                        re_log::warn_once!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
-                        continue;
-                    }
                     // We found the blueprint we were looking for; make it active.
                     // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                     re_log::debug!(
