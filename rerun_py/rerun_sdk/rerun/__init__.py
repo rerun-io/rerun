@@ -225,7 +225,7 @@ def _init_recording_stream() -> None:
     from rerun.recording_stream import _patch as recording_stream_patch
 
     recording_stream_patch(
-        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint]
+        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint, notebook_show]
         + [
             set_time_sequence,
             set_time_seconds,
@@ -358,8 +358,8 @@ def init(
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 def new_recording(
-    *,
     application_id: str,
+    *,
     recording_id: str | UUID | None = None,
     make_default: bool = False,
     make_thread_default: bool = False,
@@ -574,14 +574,5 @@ def start_web_viewer_server(port: int = 0) -> None:
         Port to serve assets on. Defaults to 0 (random port).
 
     """
-
-    if not bindings.is_enabled():
-        import logging
-
-        logging.warning(
-            "Rerun is disabled - start_web_viewer_server() call ignored. You must call rerun.init before starting the"
-            + " web viewer server."
-        )
-        return
 
     bindings.start_web_viewer_server(port)
