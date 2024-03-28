@@ -1,3 +1,4 @@
+-r air_traffic_data/requirements.txt
 -r arkit_scenes/requirements.txt
 -r blueprint/requirements.txt
 -r blueprint_stocks/requirements.txt
