@@ -16,9 +16,10 @@ The entry point to the documentation is [`/content/index.md`](./content/index.md
 
 ## Special syntax
 
-### Title and Navigation Order
-The display titles navigation order of documentation sections are managed by the Metadata at the top of the Markdown
-file:
+### Frontmatter
+
+YAML frontmatter at the top of the Markdown file is used for metadata:
+
 ```
 ---
 title: Examples
@@ -26,6 +27,14 @@ order: 6
 ---
 ```
 
+The available attributes are:
+| name     | type    | required | description                                   |
+| -------- | ------- | -------- | --------------------------------------------- |
+| title    | string  | yes      | title displayes in the navigation             |
+| order    | number  | yes      | used to sort navigation items                 |
+| redirect | string  | no       | redirect to the given url                     |
+| hidden   | boolean | no       | don't show the item in navigation             |
+| expand   | boolean | no       | expand the sub-items in navigation by default |
 
 ### Snippets
 
