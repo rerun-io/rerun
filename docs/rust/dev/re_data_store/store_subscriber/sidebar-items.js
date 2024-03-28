@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["SUBSCRIBERS"],"struct":["StoreSubscriberHandle"],"trait":["StoreSubscriber"],"type":["SharedStoreSubscriber"]};

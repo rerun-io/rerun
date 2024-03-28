@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["paint_cursor","paint_text_selection"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["register_ui_components"],"mod":["archetypes","components","data_ui"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DataResultNodeOrPath"],"fn":["contents_name_style","remove_button_ui","visibility_button_ui"]};

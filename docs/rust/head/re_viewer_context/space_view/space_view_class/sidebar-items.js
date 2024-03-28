@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SpaceViewClassLayoutPriority"],"struct":["SpaceViewClassIdentifier"],"trait":["SpaceViewClass","SpaceViewState","SpaceViewStateExt","VisualizableFilterContext"]};

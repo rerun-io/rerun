@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["to_pool_error"],"struct":["StaticResourcePool","StaticResourcePoolMemMoveAccessor","StaticResourcePoolReadLockAccessor","StoredResource"],"trait":["StaticResourcePoolAccessor"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["ingest","parse_docs_frontmatter"],"struct":["DocsFrontmatter"]};

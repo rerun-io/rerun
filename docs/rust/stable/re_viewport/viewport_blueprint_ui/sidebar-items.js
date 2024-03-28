@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["remove_button_ui","space_view_name_style","visibility_button_ui"]};

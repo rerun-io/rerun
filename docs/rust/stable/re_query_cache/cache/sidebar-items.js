@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["AnyQuery"],"macro":["impl_insert"],"struct":["CacheBucket","CacheKey","Caches","CachesPerArchetype"]};

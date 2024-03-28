@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["determine_visualizable_entities"]};

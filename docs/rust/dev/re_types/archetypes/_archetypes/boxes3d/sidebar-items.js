@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["ALL_COMPONENTS","OPTIONAL_COMPONENTS","RECOMMENDED_COMPONENTS","REQUIRED_COMPONENTS"],"struct":["Boxes3D"],"type":["Boxes3DIndicator"]};

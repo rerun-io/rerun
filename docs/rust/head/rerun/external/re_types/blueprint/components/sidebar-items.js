@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Background3DKind","Corner2D"],"struct":["ActiveTab","ColumnShare","IncludedContent","LockRangeDuringZoom","PanelExpanded","QueryExpression","RowShare","SpaceViewClass","SpaceViewOrigin","ViewerRecommendationHash","Visible","VisibleTimeRange"]};

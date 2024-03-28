@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["add_new_override","add_new_visualizer","override_ui","override_visualizer_ui"]};

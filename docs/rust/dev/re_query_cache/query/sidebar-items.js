@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["iter_or_repeat_opt"],"macro":["impl_query_archetype","impl_query_archetype_with_history"]};

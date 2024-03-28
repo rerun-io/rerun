@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["example_section","welcome_section"],"struct":["WelcomeScreen"]};

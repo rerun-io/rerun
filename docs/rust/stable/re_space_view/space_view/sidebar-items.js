@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SpaceViewName"],"struct":["SpaceViewBlueprint"]};

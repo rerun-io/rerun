@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["entity_path","float32","uint32","utf8","utf8_ext"],"struct":["EntityPath","Float32","UInt32","Utf8"]};

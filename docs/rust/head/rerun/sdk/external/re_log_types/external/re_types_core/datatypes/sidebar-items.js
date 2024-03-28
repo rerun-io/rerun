@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["EntityPath","Float32","TimeInt","UInt32","UInt64","Utf8"]};

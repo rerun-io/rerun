@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OrthographicCameraMode","Projection","ViewBuilderError"],"struct":["AutoSizeConfig","TargetConfiguration","ViewBuilder"],"type":["SharedViewBuilder"]};

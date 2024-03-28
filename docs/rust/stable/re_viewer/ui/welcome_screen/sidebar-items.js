@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["WelcomeScreenPage"],"fn":["large_text_button","set_large_button_style","url_large_text_button"],"mod":["example_page","welcome_page"],"struct":["WelcomeScreen","WelcomeScreenResponse"]};

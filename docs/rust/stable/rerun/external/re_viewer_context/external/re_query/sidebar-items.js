@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["QueryError","VisibleHistoryBoundary"],"fn":["__populate_example_store","get_component_with_instances","query_archetype","query_archetype_with_history","range_archetype","range_component_set"],"struct":["ArchetypeView","ComponentNotFoundError","ComponentWithInstances","ExtraQueryHistory","VisibleHistory"],"type":["Result"]};

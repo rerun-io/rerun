@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["VisibleTimeRangeBoundaryKind"],"mod":["visible_time_range","visible_time_range_boundary","visible_time_range_boundary_ext","visible_time_range_boundary_kind","visible_time_range_ext"],"struct":["VisibleTimeRange","VisibleTimeRangeBoundary"]};

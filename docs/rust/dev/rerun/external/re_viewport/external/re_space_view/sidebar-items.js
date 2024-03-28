@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ScreenshotMode","SpaceViewName"],"fn":["determine_visualizable_entities","diff_component_filter","suggest_space_view_for_each_entity"],"mod":["blueprint","controls"],"struct":["DataQueryBlueprint","EntityOverrideContext","SpaceViewBlueprint"],"trait":["DataQuery","PropertyResolver"]};

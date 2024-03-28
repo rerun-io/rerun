@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["GpuTextureHandle","GpuTextureInternal","GpuTexturePool","TextureDesc"],"type":["GpuTexture"]};

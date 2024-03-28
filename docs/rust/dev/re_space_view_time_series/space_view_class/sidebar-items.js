@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_LEGEND_CORNER"],"fn":["axis_ui","entity_path_for_space_view_sub_archetype","format_time","legend_ui","ns_grid_spacer","query_space_view_sub_archetype","round_ns_to_start_of_day"],"struct":["TimeSeriesSpaceView","TimeSeriesSpaceViewState"]};

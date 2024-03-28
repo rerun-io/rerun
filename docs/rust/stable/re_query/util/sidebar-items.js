@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["VisibleHistoryBoundary"],"fn":["query_archetype_with_history"],"struct":["ExtraQueryHistory","VisibleHistory"]};

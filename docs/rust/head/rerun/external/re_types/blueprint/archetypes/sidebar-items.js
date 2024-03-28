@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Background3D","PlotLegend","ScalarAxis","SpaceViewBlueprint","SpaceViewContents"]};

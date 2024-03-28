@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["panel_view","panel_view_ext"],"struct":["PanelView"]};

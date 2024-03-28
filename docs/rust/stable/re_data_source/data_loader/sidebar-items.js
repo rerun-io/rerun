@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DataLoaderError","LoadedData"],"fn":["iter_loaders","register_custom_data_loader"],"mod":["loader_archetype","loader_directory","loader_external","loader_rrd"],"static":["BUILTIN_LOADERS","CUSTOM_LOADERS"],"trait":["DataLoader"]};

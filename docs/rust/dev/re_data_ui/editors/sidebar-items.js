@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_color","default_marker_shape","default_marker_size","default_name","default_radius","default_scatter","default_stroke_width","default_text","edit_color_ui","edit_marker_shape_ui","edit_marker_size_ui","edit_name_ui","edit_radius_ui","edit_scatter_ui","edit_stroke_width_ui","edit_text_ui","paint_marker","register_editor","register_editors"]};

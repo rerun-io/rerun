@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["_components"],"struct":["ActiveTab","AutoLayout","AutoSpaceViews","ColumnShares","ContainerKind","Corner2D","EntitiesDeterminedByUser","GridColumns","IncludedContents","IncludedQueries","IncludedSpaceViews","LockRangeDuringZoom","RootContainer","RowShares","SpaceViewClass","SpaceViewMaximized","SpaceViewOrigin","ViewportLayout","Visible"]};

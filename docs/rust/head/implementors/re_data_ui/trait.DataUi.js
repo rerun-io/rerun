@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"re_data_ui":[],
+"re_viewport":[["impl <a class=\"trait\" href=\"re_data_ui/trait.DataUi.html\" title=\"trait re_data_ui::DataUi\">DataUi</a> for <a class=\"struct\" href=\"re_viewport/blueprint/components/_components/space_view_maximized/struct.SpaceViewMaximized.html\" title=\"struct re_viewport::blueprint::components::_components::space_view_maximized::SpaceViewMaximized\">SpaceViewMaximized</a>"],["impl <a class=\"trait\" href=\"re_data_ui/trait.DataUi.html\" title=\"trait re_data_ui::DataUi\">DataUi</a> for <a class=\"struct\" href=\"re_viewport/blueprint/components/_components/included_space_view/struct.IncludedSpaceView.html\" title=\"struct re_viewport::blueprint::components::_components::included_space_view::IncludedSpaceView\">IncludedSpaceView</a>"]],
+"rerun":[]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["DEFAULT_PROPS"],"struct":["DataResult","OverridePath","PropertyOverrides","ViewQuery"],"type":["PerSystemDataResults","SmallVisualizerSet"]};

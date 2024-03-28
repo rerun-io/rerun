@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["plot_legend","scalar_axis","space_view_blueprint"],"struct":["PlotLegend","ScalarAxis","SpaceViewBlueprint"]};

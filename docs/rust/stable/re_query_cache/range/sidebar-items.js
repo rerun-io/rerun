@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["impl_query_archetype_range"],"struct":["RangeCache"]};

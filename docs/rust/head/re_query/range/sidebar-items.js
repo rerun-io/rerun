@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["range_archetype","range_component_set"]};

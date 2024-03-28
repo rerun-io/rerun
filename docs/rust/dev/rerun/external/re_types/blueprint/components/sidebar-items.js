@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["ActiveTab","ColumnShares","Corner2D","EntitiesDeterminedByUser","IncludedContents","IncludedQueries","LockRangeDuringZoom","RowShares","SpaceViewClass","SpaceViewOrigin","Visible"]};

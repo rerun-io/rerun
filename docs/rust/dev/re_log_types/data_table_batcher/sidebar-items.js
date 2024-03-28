@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Command","DataTableBatcherError"],"fn":["batching_thread"],"struct":["BatcherHooks","DataTableBatcher","DataTableBatcherConfig","DataTableBatcherInner"],"type":["DataTableBatcherResult"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["background_color_text","background_ui"],"struct":["SpatialSpaceView3D","VisualizableFilterContext3D"]};
