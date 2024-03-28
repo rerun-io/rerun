@@ -99,7 +99,12 @@ impl crate::DataUi for EntityDb {
             }
         }
 
-        if ctx.store_context.is_default_blueprint(self.store_id()) {
+        let is_default_blueprint = ctx
+            .store_context
+            .hub
+            .default_blueprint_for_app(&ctx.store_context.app_id)
+            == Some(self.store_id());
+        if is_default_blueprint {
             ui.add_space(8.0);
             ui.label("This is the default blueprint")
                .on_hover_text("When you reset the blueprint for the app, this blueprint will be used as the template.");

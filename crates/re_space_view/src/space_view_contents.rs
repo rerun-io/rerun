@@ -663,7 +663,6 @@ mod tests {
             recording: &recording,
             bundle: &Default::default(),
             hub: &StoreHub::test_hub(),
-            default_blueprint: None,
         };
 
         struct Scenario {

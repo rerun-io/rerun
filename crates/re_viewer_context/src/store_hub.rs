@@ -168,7 +168,6 @@ impl StoreHub {
             .and_then(|id| self.store_bundle.get(id));
 
         Some(StoreContext {
-            default_blueprint: self.default_blueprint_by_app_id.get(&app_id),
             app_id,
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
