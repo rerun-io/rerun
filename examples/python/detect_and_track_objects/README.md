@@ -131,7 +131,7 @@ The annotation context is resolved by seeking up the entity hierarchy.
 Rerun integrates with the [Python logging module](https://docs.python.org/3/library/logging.html). 
 Through the [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration) text at different importance level can be logged. After an initial setup that is described on the
 [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration), statements
-such as `logging.info("...")`, `logging.debug("...")`, etc. will show up in the Rerun viewer. 
+such as `logging.info("…")`, `logging.debug("…")`, etc. will show up in the Rerun viewer. 
 
 ```python
 def setup_logging() -> None:
