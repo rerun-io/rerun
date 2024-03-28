@@ -91,6 +91,11 @@ pub struct EntityDb {
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
 
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    latest_row_id: Option<RowId>,
+
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
@@ -126,6 +131,7 @@ impl EntityDb {
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
+            latest_row_id: None,
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
@@ -220,14 +226,25 @@ impl EntityDb {
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
+    #[inline]
     pub fn generation(&self) -> re_data_store::StoreGeneration {
         self.data_store.generation()
     }
 
+    #[inline]
     pub fn last_modified_at(&self) -> web_time::Instant {
         self.last_modified_at
     }
 
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    #[inline]
+    pub fn latest_row_id(&self) -> Option<RowId> {
+        self.latest_row_id
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
@@ -302,6 +319,13 @@ impl EntityDb {
         re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
 
         self.register_entity_path(&row.entity_path);
+
+        if self
+            .latest_row_id
+            .map_or(true, |latest| latest < row.row_id)
+        {
+            self.latest_row_id = Some(row.row_id);
+        }
 
         // ## RowId duplication
         //
@@ -489,6 +513,7 @@ impl EntityDb {
             data_source: _,
             set_store_info: _,
             last_modified_at: _,
+            latest_row_id: _,
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
