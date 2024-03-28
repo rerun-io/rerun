@@ -88,6 +88,16 @@ pub struct EntityDb {
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
 
+    /// If this entity db is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only use entity db cloning for blueprints:
+    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    cloned_from: Option<StoreId>,
+
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
 
@@ -130,6 +140,7 @@ impl EntityDb {
         Self {
             data_source: None,
             set_store_info: None,
+            cloned_from: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
@@ -194,12 +205,27 @@ impl EntityDb {
         &self.data_store
     }
 
+    #[inline]
     pub fn store_kind(&self) -> StoreKind {
         self.store_id().kind
     }
 
+    #[inline]
     pub fn store_id(&self) -> &StoreId {
         self.data_store.id()
+    }
+
+    /// If this entity db is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only use entity db cloning for blueprints:
+    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    #[inline]
+    pub fn cloned_from(&self) -> Option<&StoreId> {
+        self.cloned_from.as_ref()
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -512,6 +538,7 @@ impl EntityDb {
         let Self {
             data_source: _,
             set_store_info: _,
+            cloned_from: _,
             last_modified_at: _,
             latest_row_id: _,
             entity_path_from_hash: _,
@@ -589,11 +616,18 @@ impl EntityDb {
         messages
     }
 
-    /// Make a clone of this [`EntityDb`] with a different [`StoreId`].
+    /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
     pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+        re_tracing::profile_function!();
+
         self.store().sort_indices_if_needed();
 
         let mut new_db = EntityDb::new(new_id.clone());
+
+        new_db.cloned_from = Some(self.store_id().clone());
+        new_db.data_source = self.data_source.clone();
+        new_db.last_modified_at = self.last_modified_at;
+        new_db.latest_row_id = self.latest_row_id;
 
         if let Some(store_info) = self.store_info() {
             let mut new_info = store_info.clone();
@@ -604,8 +638,6 @@ impl EntityDb {
                 info: new_info,
             });
         }
-
-        new_db.data_source = self.data_source.clone();
 
         for row in self.store().to_rows()? {
             new_db.add_data_row(row)?;
