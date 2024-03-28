@@ -18,12 +18,17 @@ build_args = ["--seconds=5"]
 
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
-## Used Rerun Types
+# Used Rerun Types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
 
-# Logging and Visualizing with Rerun
+# Background
+This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving. 
+The scenes in this dataset encompass data collected from a comprehensive suite of sensors on autonomous vehicles. 
+These include 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors. 
+Consequently, the dataset provides information about the vehicle's pose, the images captured, the recorded sensor data and the results of object detection at any given moment.
 
-The nuScenes dataset includes data from a full suite of sensors on autonomous vehicles: 6 cameras, 1 LIDAR, 5 RADAR, GPS, and IMU.
+
+# Logging and Visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -54,6 +59,16 @@ rr.log(
             timeless=True,
         )
 ```
+
+## Timelines
+
+All data logged using Rerun in the following sections is initially connected to a specific time.
+Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/concepts/timelines).
+
+```python
+rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
+```
+
 
 ## Vehicle Pose
 

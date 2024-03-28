@@ -16,11 +16,18 @@ build_args = ["--frames=150"]
   <img src="https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/full.png" alt="Objectron example screenshot">
 </picture>
 
+[//]: # (Visualize the [Google Research Objectron]&#40;https://github.com/google-research-datasets/Objectron&#41; dataset, which contains camera poses, sparse point-clouds and characterization of the planar surfaces in the surrounding environment.)
 
-Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset, which contains camera poses, sparse point-clouds and characterization of the planar surfaces in the surrounding environment.
+Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset including camera poses, sparse point-clouds and surfaces characterization.
 
-## Used Rerun Types
+# Used Rerun Types
  [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>, [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
+
+# Background
+
+This example visualizes the Objectron database, a rich collection of object-centric video clips accompanied by AR session metadata. 
+With high-resolution images, object pose, camera pose, point-cloud, and surface plane information available for each sample, the visualization offers a comprehensive view of the object from various angles. 
+Additionally, the dataset provides manually annotated 3D bounding boxes, enabling precise object localization and orientation.
 
 # Logging and Visualizing with Rerun
 

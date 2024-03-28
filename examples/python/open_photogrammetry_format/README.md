@@ -19,9 +19,14 @@ build_args = ["--jpeg-quality=50"]
 
 Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
-## Used Rerun Types
+# Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
+# Background
+
+This example loads an Open Photogrammetry Format (OPF) project and displays the cameras and point cloud data. 
+OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data. 
+It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction. 
 
 # Logging and Visualizing with Rerun
 
