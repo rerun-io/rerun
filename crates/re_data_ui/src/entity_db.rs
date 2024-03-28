@@ -3,7 +3,7 @@ use re_log_types::StoreKind;
 use re_types::SizeBytes;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use crate::item_ui::{data_source_button_ui, entity_db_button_ui};
+use crate::item_ui::data_source_button_ui;
 
 impl crate::DataUi for EntityDb {
     fn data_ui(
@@ -17,6 +17,7 @@ impl crate::DataUi for EntityDb {
         let re_ui = &ctx.re_ui;
 
         if verbosity == UiVerbosity::Small {
+            // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
             let mut string = self.store_id().to_string();
             if let Some(data_source) = &self.data_source {
                 string += &format!(", {data_source}");
@@ -127,68 +128,5 @@ impl crate::DataUi for EntityDb {
                 }
             }
         }
-
-        if verbosity == UiVerbosity::Full {
-            sibling_stores_ui(ctx, ui, self);
-        }
-    }
-}
-
-/// Show the other stores in the same data source.
-fn sibling_stores_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, entity_db: &EntityDb) {
-    let Some(data_source) = &entity_db.data_source else {
-        return;
-    };
-
-    // Find other stores from the same data source
-    // (e.g. find the blueprint in this .rrd file, if any).
-    let mut other_recordings = vec![];
-    let mut other_blueprints = vec![];
-
-    for other in ctx
-        .store_context
-        .bundle
-        .entity_dbs_from_channel_source(data_source)
-    {
-        if other.store_id() == entity_db.store_id() {
-            continue;
-        }
-        match other.store_kind() {
-            StoreKind::Recording => {
-                other_recordings.push(other);
-            }
-            StoreKind::Blueprint => {
-                other_blueprints.push(other);
-            }
-        }
-    }
-
-    if !other_recordings.is_empty() {
-        ui.add_space(8.0);
-        if entity_db.store_kind() == StoreKind::Recording {
-            ui.strong("Other recordings in this data source");
-        } else {
-            ui.strong("Recordings in this data source");
-        }
-        ui.indent("recordings", |ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-            for entity_db in other_recordings {
-                entity_db_button_ui(ctx, ui, entity_db, true);
-            }
-        });
-    }
-    if !other_blueprints.is_empty() {
-        ui.add_space(8.0);
-        if entity_db.store_kind() == StoreKind::Blueprint {
-            ui.strong("Other blueprints in this data source");
-        } else {
-            ui.strong("Blueprints in this data source");
-        }
-        ui.indent("blueprints", |ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-            for entity_db in other_blueprints {
-                entity_db_button_ui(ctx, ui, entity_db, true);
-            }
-        });
     }
 }
