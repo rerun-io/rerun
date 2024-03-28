@@ -55,9 +55,6 @@ def as_html(
     if app_url is None:
         app_url = bindings.get_app_url()
 
-    # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
-    presentation_id = "_" + uuid.uuid4().hex
-
     application_id = get_application_id(recording)
 
     output_stream = RecordingStream(
@@ -77,7 +74,6 @@ def as_html(
     base64_data = base64.b64encode(output_memory.storage.concat_as_bytes(data_memory.storage)).decode("utf-8")
 
     return render_html_template(
-        presentation_id=presentation_id,
         base64_data=base64_data,
         app_url=app_url,
         timeout_ms=timeout_ms,

@@ -1,11 +1,16 @@
+from __future__ import annotations
+
+import uuid
+
 DEFAULT_WIDTH = 950
 DEFAULT_HEIGHT = 712
 DEFAULT_TIMEOUT = 2000
 
 
-def render_html_template(
-    presentation_id: str, base64_data: str, app_url: str, timeout_ms: int, width: int, height: int
-) -> str:
+def render_html_template(base64_data: str, app_url: str, timeout_ms: int, width: int, height: int) -> str:
+    # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
+    presentation_id = "_" + uuid.uuid4().hex
+
     return f"""<div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
 <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
 <p>Consider using <code>rr.start_web_viewer_server()</code></p></div>

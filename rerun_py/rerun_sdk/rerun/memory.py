@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import base64
 import logging
-import random
-import string
+import uuid
 from typing import Any
 
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
@@ -90,9 +89,6 @@ class MemoryRecording:
         if app_url is None:
             app_url = bindings.get_app_url()
 
-        # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
-        presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
-
         if other:
             other = other.storage
         base64_data = base64.b64encode(self.storage.concat_as_bytes(other)).decode("utf-8")
@@ -102,7 +98,6 @@ class MemoryRecording:
   Direct rendering of MemoryRecording has been deprecated. Please prefer rerun.notebook_show().
 </div>
 """ + render_html_template(
-            presentation_id=presentation_id,
             base64_data=base64_data,
             app_url=app_url,
             timeout_ms=timeout_ms,
