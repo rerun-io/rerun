@@ -62,12 +62,12 @@ jobs:
             linux-arm64)
               runner="buildjet-8vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.12.0'}"
+              container="'rerunio/ci_docker:0.12.0'"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.12.0'}"
+              container="'rerunio/ci_docker:0.12.0'"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
@@ -98,7 +98,11 @@ jobs:
     needs: [set-config]
 
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
-    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+    container:
+      image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+      credentials:
+        username: ${{ secrets.DOCKER_HUB_USER }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
     steps:
       - name: Show context
