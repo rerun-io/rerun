@@ -13,7 +13,7 @@ use re_viewer_context::{
 use crate::{
     app_blueprint::AppBlueprint,
     background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats},
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppState,
 };
 
@@ -234,7 +234,7 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new()),
+            store_hub: Some(StoreHub::new(blueprint_loader())),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -1193,6 +1193,56 @@ impl App {
         }
 
         false
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn blueprint_loader() -> BlueprintPersistence {
+    // TODO(#2579): implement persistence for web
+    BlueprintPersistence {
+        loader: None,
+        saver: None,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn blueprint_loader() -> BlueprintPersistence {
+    use re_entity_db::StoreBundle;
+    use re_log_types::ApplicationId;
+
+    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+        if !blueprint_path.exists() {
+            return Ok(None);
+        }
+
+        re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+        let with_notifications = false;
+        Ok(crate::loading::load_blueprint_file(
+            &blueprint_path,
+            with_notifications,
+        ))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+
+        let messages = blueprint.to_messages(None)?;
+
+        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+        Ok(())
+    }
+
+    BlueprintPersistence {
+        loader: Some(Box::new(load_blueprint_from_disk)),
+        saver: Some(Box::new(save_blueprint_to_disk)),
     }
 }
 

@@ -18,6 +18,9 @@ use re_viewer_context::{AppOptions, StoreContext};
 /// id` ([`StoreId`]) are currently active in the viewer. These can be configured
 /// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app_id`] respectively.
 pub struct StoreHub {
+    /// How we load and save blueprints.
+    persistence: BlueprintPersistence,
+
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
     default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
@@ -29,8 +32,6 @@ pub struct StoreHub {
 
     // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
-
-    persistence: BlueprintPersistence,
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -68,7 +69,7 @@ impl StoreHub {
     /// The [`StoreHub`] will contain a single empty blueprint associated with the app ID returned
     /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
     /// screen.
-    pub fn new() -> Self {
+    pub fn new(persistence: BlueprintPersistence) -> Self {
         re_tracing::profile_function!();
         let mut blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
@@ -86,6 +87,8 @@ impl StoreHub {
         crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
 
         Self {
+            persistence,
+
             active_rec_id: None,
             active_application_id: None,
             default_blueprint_by_app_id: Default::default(),
@@ -95,18 +98,6 @@ impl StoreHub {
             was_recording_active: false,
 
             blueprint_last_save: Default::default(),
-
-            // TODO(#2579): implement persistence for web
-            #[cfg(target_arch = "wasm32")]
-            persistence: BlueprintPersistence {
-                loader: None,
-                saver: None,
-            },
-            #[cfg(not(target_arch = "wasm32"))]
-            persistence: BlueprintPersistence {
-                loader: Some(Box::new(load_blueprint_from_disk)),
-                saver: Some(Box::new(save_blueprint_to_disk)),
-            },
         }
     }
 
@@ -565,35 +556,4 @@ impl StoreHub {
             recording_config,
         }
     }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
-    let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
-    if !blueprint_path.exists() {
-        return Ok(None);
-    }
-
-    re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
-
-    let with_notifications = false;
-    Ok(crate::loading::load_blueprint_file(
-        &blueprint_path,
-        with_notifications,
-    ))
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
-    let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
-
-    let messages = blueprint.to_messages(None)?;
-
-    // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-    // be small & fast to save, but maybe not once we start adding big pieces of user data?
-    crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
-
-    re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
-
-    Ok(())
 }
