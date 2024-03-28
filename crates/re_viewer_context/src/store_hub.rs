@@ -454,7 +454,6 @@ impl StoreHub {
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
-    #[cfg(target_arch = "wasm32")]
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
         self.store_bundle.retain(|db| {
             let Some(data_source) = &db.data_source else {
@@ -522,11 +521,6 @@ impl StoreHub {
                 (saver)(app_id, blueprint)?;
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            {
-                _ = app_id;
             }
         }
 
