@@ -208,8 +208,6 @@ impl StoreHub {
     pub fn set_active_app_id(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
-        // TODO(#2579): implement web-storage for blueprints as well
-        #[cfg(not(target_arch = "wasm32"))]
         if !self.active_blueprint_by_app_id.contains_key(&app_id) {
             if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
                 re_log::warn!("Failed to load persisted blueprint: {err}");
@@ -466,49 +464,36 @@ impl StoreHub {
     /// Try to load the persisted blueprint for the given `ApplicationId`.
     /// Note: If no blueprint exists at the expected path, the result is still considered `Ok`.
     /// It is only an `Error` if a blueprint exists but fails to load.
-    // TODO(#2579): implement persistence for web
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn try_to_load_persisted_blueprint(
-        &mut self,
-        app_id: &ApplicationId,
-    ) -> anyhow::Result<()> {
+    fn try_to_load_persisted_blueprint(&mut self, app_id: &ApplicationId) -> anyhow::Result<()> {
         re_tracing::profile_function!();
-        use crate::blueprint::is_valid_blueprint;
-        use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 
-        let blueprint_path = default_blueprint_path(app_id)?;
-        if blueprint_path.exists() {
-            re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
-
-            let with_notifications = false;
-            if let Some(mut bundle) = load_blueprint_file(&blueprint_path, with_notifications) {
-                for store in bundle.drain_entity_dbs() {
-                    if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
-                    {
-                        if !is_valid_blueprint(&store) {
-                            re_log::warn_once!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
-                            continue;
-                        }
-                        // We found the blueprint we were looking for; make it active.
-                        // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
-                        re_log::debug!(
-                            "Switching blueprint for {app_id} to {} loaded from {blueprint_path:?}",
-                            store.store_id(),
-                        );
-                        self.active_blueprint_by_app_id
-                            .insert(app_id.clone(), store.store_id().clone());
-                        self.blueprint_last_save
-                            .insert(store.store_id().clone(), store.generation());
-                        self.store_bundle.insert(store);
-                    } else {
-                        anyhow::bail!(
-                            "Found unexpected store while loading blueprint: {:?}",
-                            store.store_id()
-                        );
+        if let Some(mut bundle) = try_load_blueprint(app_id)? {
+            for store in bundle.drain_entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id) {
+                    if !crate::blueprint::is_valid_blueprint(&store) {
+                        re_log::warn_once!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
+                        continue;
                     }
+                    // We found the blueprint we were looking for; make it active.
+                    // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
+                    re_log::debug!(
+                        "Activating new blueprint {} for {app_id}; loaded from disk",
+                        store.store_id(),
+                    );
+                    self.active_blueprint_by_app_id
+                        .insert(app_id.clone(), store.store_id().clone());
+                    self.blueprint_last_save
+                        .insert(store.store_id().clone(), store.generation());
+                    self.store_bundle.insert(store);
+                } else {
+                    anyhow::bail!(
+                        "Found unexpected store while loading blueprint: {:?}",
+                        store.store_id()
+                    );
                 }
             }
         }
+
         Ok(())
     }
 
@@ -557,6 +542,30 @@ impl StoreHub {
             recording_stats,
             recording_cached_stats,
             recording_config,
+        }
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", allow(clippy::unnecessary_wraps))]
+fn try_load_blueprint(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            // TODO(#2579): implement persistence for web
+            _ = app_id;
+            Ok(None)
+        } else {
+            let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+            if !blueprint_path.exists() {
+                return Ok(None);
+            }
+
+            re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+            let with_notifications = false;
+            Ok(crate::loading::load_blueprint_file(
+                &blueprint_path,
+                with_notifications,
+            ))
         }
     }
 }
