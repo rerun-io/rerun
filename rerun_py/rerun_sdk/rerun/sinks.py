@@ -7,7 +7,6 @@ import socket
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording import MemoryRecording
 from rerun.recording_stream import RecordingStream, get_application_id
 
 # --- Sinks ---
@@ -184,31 +183,6 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
     recording = RecordingStream.to_native(recording)
     bindings.disconnect(recording=recording)
-
-
-def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
-    """
-    Streams all log-data to a memory buffer.
-
-    This can be used to display the RRD to alternative formats such as html.
-    See: [rerun.MemoryRecording.as_html][].
-
-    Parameters
-    ----------
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    Returns
-    -------
-    MemoryRecording
-        A memory recording object that can be used to read the data.
-
-    """
-
-    recording = RecordingStream.to_native(recording)
-    return MemoryRecording(bindings.memory_recording(recording=recording))
 
 
 def serve(
