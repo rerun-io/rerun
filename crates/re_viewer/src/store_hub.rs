@@ -436,18 +436,7 @@ impl StoreHub {
                 blueprint.gc_everything_but_the_latest_row();
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
-
-                let messages = blueprint.to_messages(None)?;
-
-                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
-
-                re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
-
+            if try_save_blueprint(app_id, blueprint)? {
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
             }
@@ -566,6 +555,30 @@ fn try_load_blueprint(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBund
                 &blueprint_path,
                 with_notifications,
             ))
+        }
+    }
+}
+
+/// Returns `false` if persistence is not supported.
+#[cfg_attr(target_arch = "wasm32", allow(clippy::unnecessary_wraps))]
+fn try_save_blueprint(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<bool> {
+    cfg_if::cfg_if! {
+        if #[cfg(target_arch = "wasm32")] {
+            // TODO(#2579): implement persistence for web
+            _ = (app_id, blueprint);
+            Ok(false)
+        } else {
+            let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+
+            let messages = blueprint.to_messages(None)?;
+
+            // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+            // be small & fast to save, but maybe not once we start adding big pieces of user data?
+            crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+            re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+            Ok(true)
         }
     }
 }
