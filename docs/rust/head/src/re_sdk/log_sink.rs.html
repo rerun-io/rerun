@@ -283,10 +283,19 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">use </span>parking_lot::RwLock;
+<span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 <span class="doccomment">/// Where the SDK sends its log messages.
@@ -435,34 +444,44 @@
 
     <span class="attr">#[inline]
     </span><span class="kw">fn </span>flush_blocking(<span class="kw-2">&amp;</span><span class="self">self</span>) {}
+
+    <span class="attr">#[inline]
+    </span><span class="kw">fn </span>drain_backlog(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;LogMsg&gt; {
+        <span class="self">self</span>.<span class="number">0</span>.take()
+    }
 }
 
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>MemorySink {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(
-            f,
-            <span class="string">&quot;MemorySink {{ {} messages }}&quot;</span>,
-            <span class="self">self</span>.buffer().read().len()
-        )
+        <span class="macro">write!</span>(f, <span class="string">&quot;MemorySink {{ {} messages }}&quot;</span>, <span class="self">self</span>.buffer().num_msgs())
     }
+}
+
+<span class="attr">#[derive(Default)]
+</span><span class="kw">struct </span>MemorySinkStorageInner {
+    msgs: Vec&lt;LogMsg&gt;,
+    has_been_used: bool,
 }
 
 <span class="doccomment">/// The storage used by [`MemorySink`].
 </span><span class="attr">#[derive(Default, Clone)]
 </span><span class="kw">pub struct </span>MemorySinkStorage {
-    msgs: Arc&lt;RwLock&lt;Vec&lt;LogMsg&gt;&gt;&gt;,
+    inner: Arc&lt;Mutex&lt;MemorySinkStorageInner&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) rec: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::RecordingStream&gt;,
 }
 
 <span class="kw">impl </span>Drop <span class="kw">for </span>MemorySinkStorage {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">for </span>msg <span class="kw">in </span><span class="self">self</span>.msgs.read().iter() {
-            <span class="comment">// Sinks intentionally end up with pending SetStoreInfo messages
-            // these are fine to drop safely. Anything else should produce a
-            // warning.
-            </span><span class="kw">if </span>!<span class="macro">matches!</span>(msg, LogMsg::SetStoreInfo(<span class="kw">_</span>)) {
-                <span class="macro">re_log::warn!</span>(<span class="string">&quot;Dropping data in MemorySink&quot;</span>);
-                <span class="kw">return</span>;
+        <span class="kw">let </span>inner = <span class="self">self</span>.inner.lock();
+        <span class="kw">if </span>!inner.has_been_used {
+            <span class="kw">for </span>msg <span class="kw">in </span><span class="kw-2">&amp;</span>inner.msgs {
+                <span class="comment">// Sinks intentionally end up with pending SetStoreInfo messages
+                // these are fine to drop safely. Anything else should produce a
+                // warning.
+                </span><span class="kw">if </span>!<span class="macro">matches!</span>(msg, LogMsg::SetStoreInfo(<span class="kw">_</span>)) {
+                    <span class="macro">re_log::warn!</span>(<span class="string">&quot;Dropping data in MemorySink&quot;</span>);
+                    <span class="kw">return</span>;
+                }
             }
         }
     }
@@ -471,20 +490,16 @@
 <span class="kw">impl </span>MemorySinkStorage {
     <span class="doccomment">/// Write access to the inner array of [`LogMsg`].
     </span><span class="attr">#[inline]
-    </span><span class="kw">fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; parking_lot::RwLockWriteGuard&lt;<span class="lifetime">&#39;_</span>, Vec&lt;LogMsg&gt;&gt; {
-        <span class="self">self</span>.msgs.write()
-    }
-
-    <span class="doccomment">/// Read access to the inner array of [`LogMsg`].
-    </span><span class="attr">#[inline]
-    </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; parking_lot::RwLockReadGuard&lt;<span class="lifetime">&#39;_</span>, Vec&lt;LogMsg&gt;&gt; {
-        <span class="self">self</span>.msgs.read()
+    </span><span class="kw">fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; parking_lot::MappedMutexGuard&lt;<span class="lifetime">&#39;_</span>, Vec&lt;LogMsg&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.inner.lock();
+        inner.has_been_used = <span class="bool-val">false</span>;
+        parking_lot::MutexGuard::map(inner, |inner| <span class="kw-2">&amp;mut </span>inner.msgs)
     }
 
     <span class="doccomment">/// How many messages are currently written to this memory sink
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>num_msgs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.read().len()
+        <span class="self">self</span>.inner.lock().msgs.len()
     }
 
     <span class="doccomment">/// Consumes and returns the inner array of [`LogMsg`].
@@ -497,7 +512,7 @@
             // in this flush; it&#39;s just a matter of making the table batcher tick early.
             </span>rec.flush_blocking();
         }
-        std::mem::take(<span class="kw-2">&amp;mut *</span><span class="self">self</span>.msgs.write())
+        std::mem::take(<span class="kw-2">&amp;mut </span>(<span class="self">self</span>.write()))
     }
 
     <span class="doccomment">/// Convert the stored messages into an in-memory Rerun log file.
@@ -512,7 +527,10 @@
             <span class="kw">let </span><span class="kw-2">mut </span>encoder =
                 re_log_encoding::encoder::Encoder::new(encoding_options, <span class="kw-2">&amp;mut </span>buffer)<span class="question-mark">?</span>;
             <span class="kw">for </span>sink <span class="kw">in </span>sinks {
-                <span class="kw">for </span>message <span class="kw">in </span>sink.read().iter() {
+                <span class="kw">let </span><span class="kw-2">mut </span>inner = sink.inner.lock();
+                inner.has_been_used = <span class="bool-val">true</span>;
+
+                <span class="kw">for </span>message <span class="kw">in </span><span class="kw-2">&amp;</span>inner.msgs {
                     encoder.append(message)<span class="question-mark">?</span>;
                 }
             }

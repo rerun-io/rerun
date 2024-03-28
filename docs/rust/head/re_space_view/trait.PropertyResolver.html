@@ -2,16 +2,16 @@
     // Required method
     fn <a href="#tymethod.update_overrides" class="fn">update_overrides</a>(
         &amp;self,
-        ctx: &amp;<a class="struct" href="../re_viewer_context/store_context/struct.StoreContext.html" title="struct re_viewer_context::store_context::StoreContext">StoreContext</a>&lt;'_&gt;,
+        ctx: &amp;StoreContext&lt;'_&gt;,
         query: &amp;<a class="struct" href="../re_data_store/store_read/struct.LatestAtQuery.html" title="struct re_data_store::store_read::LatestAtQuery">LatestAtQuery</a>,
-        query_result: &amp;mut <a class="struct" href="../re_viewer_context/query_context/struct.DataQueryResult.html" title="struct re_viewer_context::query_context::DataQueryResult">DataQueryResult</a>
+        query_result: &amp;mut DataQueryResult
     );
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Trait for resolving properties needed by most implementations of <a href="data_query/trait.DataQuery.html" title="trait re_space_view::data_query::DataQuery"><code>DataQuery</code></a></p>
 <p>The <code>SpaceViewBlueprint</code> is the only thing that likely implements this today
 but we use a trait here so we don’t have to pick up a full dependency on <code>re_viewport</code>.</p>
 </div></details><h2 id="required-methods" class="small-section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><section id="tymethod.update_overrides" class="method"><a class="src rightside" href="../src/re_space_view/data_query.rs.html#23-28">source</a><h4 class="code-header">fn <a href="#tymethod.update_overrides" class="fn">update_overrides</a>(
     &amp;self,
-    ctx: &amp;<a class="struct" href="../re_viewer_context/store_context/struct.StoreContext.html" title="struct re_viewer_context::store_context::StoreContext">StoreContext</a>&lt;'_&gt;,
+    ctx: &amp;StoreContext&lt;'_&gt;,
     query: &amp;<a class="struct" href="../re_data_store/store_read/struct.LatestAtQuery.html" title="struct re_data_store::store_read::LatestAtQuery">LatestAtQuery</a>,
-    query_result: &amp;mut <a class="struct" href="../re_viewer_context/query_context/struct.DataQueryResult.html" title="struct re_viewer_context::query_context::DataQueryResult">DataQueryResult</a>
+    query_result: &amp;mut DataQueryResult
 )</h4></section></div><h2 id="implementors" class="small-section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><section id="impl-PropertyResolver-for-DataQueryPropertyResolver%3C'a%3E" class="impl"><a class="src rightside" href="../src/re_space_view/space_view_contents.rs.html#585-608">source</a><a href="#impl-PropertyResolver-for-DataQueryPropertyResolver%3C'a%3E" class="anchor">§</a><h3 class="code-header">impl&lt;'a&gt; <a class="trait" href="data_query/trait.PropertyResolver.html" title="trait re_space_view::data_query::PropertyResolver">PropertyResolver</a> for <a class="struct" href="space_view_contents/struct.DataQueryPropertyResolver.html" title="struct re_space_view::space_view_contents::DataQueryPropertyResolver">DataQueryPropertyResolver</a>&lt;'a&gt;</h3></section></div><script src="../implementors/re_space_view/data_query/trait.PropertyResolver.js" async></script></section></div></main></body></html>
