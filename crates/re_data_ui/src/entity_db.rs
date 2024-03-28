@@ -111,7 +111,23 @@ impl crate::DataUi for EntityDb {
                         (false, false) => {}
                         (true, false) => {
                             ui.add_space(8.0);
-                            ui.label("This is the default blueprint for the current application, but the active one is different.");
+                            ui.label("This is the default blueprint for the current application.");
+
+                            if let Some(active_blueprint) = hub
+                                .active_blueprint_for_app(active_app_id)
+                                .and_then(|id| hub.store_bundle().get(id))
+                            {
+                                if active_blueprint.cloned_from() == Some(self.store_id()) {
+                                    // The active blueprint is a clone of the selected blueprint.
+                                    if self.latest_row_id() == active_blueprint.latest_row_id() {
+                                        ui.label(
+                                            "The active blueprint is a clone of this blueprint.",
+                                        );
+                                    } else {
+                                        ui.label("The active blueprint is a modified clone of this blueprint.");
+                                    }
+                                }
+                            }
                         }
                         (false, true) => {
                             ui.add_space(8.0);

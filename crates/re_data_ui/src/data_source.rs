@@ -18,7 +18,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             return;
         }
 
-        // TODO(emilk): show if we're still connected to this data source
+        // TODO(emilk): show whether we're still connected to this data source
 
         // Find all stores from this data source
         // (e.g. find the recordings and blueprint in this .rrd file).

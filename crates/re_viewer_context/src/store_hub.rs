@@ -323,6 +323,12 @@ impl StoreHub {
     // ---------------------
     // Active blueprint
 
+    /// What is the active blueprint for the active application?
+    pub fn active_blueprint(&self) -> Option<&StoreId> {
+        self.active_app()
+            .and_then(|app_id| self.active_blueprint_for_app(app_id))
+    }
+
     pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
         self.active_blueprint_by_app_id.get(app_id)
     }
