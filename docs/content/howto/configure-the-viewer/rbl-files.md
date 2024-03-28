@@ -8,7 +8,7 @@ you can do so by saving your blueprint to an `.rbl` file.
 
 ## Saving a blueprint
 
-To save your blueprint, go to the file-menu and choose "Save Blueprint…"
+To save your blueprint, go to the file-menu and choose "Save blueprint…"
 TODO(#5636): save
 
 ## Loading a blueprint
