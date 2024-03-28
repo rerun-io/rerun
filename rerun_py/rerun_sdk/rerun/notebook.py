@@ -52,10 +52,14 @@ def as_html(
 
     """
 
+    application_id = get_application_id(recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before using the notebook APIs, or provide a recording."
+        )
+
     if app_url is None:
         app_url = bindings.get_app_url()
-
-    application_id = get_application_id(recording)
 
     output_stream = RecordingStream(
         bindings.new_recording(
