@@ -554,6 +554,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
                 default_blueprint: None,
             };
 
@@ -598,6 +599,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
                 default_blueprint: None,
             };
 
@@ -648,6 +650,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
                 default_blueprint: None,
             };
 
@@ -921,6 +924,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
                 default_blueprint: None,
             };
             let mut query_result = space_view

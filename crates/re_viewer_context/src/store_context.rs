@@ -1,6 +1,8 @@
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId};
 
+use crate::StoreHub;
+
 /// The current Blueprint and Recording being displayed by the viewer
 pub struct StoreContext<'a> {
     /// The `app_id` of the current recording
@@ -15,7 +17,12 @@ pub struct StoreContext<'a> {
     pub recording: &'a EntityDb,
 
     /// All the loaded recordings and blueprints.
+    ///
+    /// This is the same bundle as is in [`Self::hub`], but extracted for ease-of-access.
     pub bundle: &'a StoreBundle,
+
+    /// The store hub, which keeps track of all the default and active blueprints, among other things.
+    pub hub: &'a StoreHub,
 
     /// The current default blueprint
     pub default_blueprint: Option<&'a StoreId>,

@@ -37,10 +37,11 @@ pub struct StoreHub {
 
 /// Load a blueprint from persisted storage, e.g. disk.
 /// Returns `Ok(None)` if no blueprint is found.
-pub type BlueprintLoader = dyn Fn(&ApplicationId) -> anyhow::Result<Option<StoreBundle>>;
+pub type BlueprintLoader =
+    dyn Fn(&ApplicationId) -> anyhow::Result<Option<StoreBundle>> + Send + Sync;
 
 /// Save a blueprint to persisted storage, e.g. disk.
-pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()>;
+pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()> + Send + Sync;
 
 /// How to save and load blueprints
 pub struct BlueprintPersistence {
@@ -63,6 +64,17 @@ impl StoreHub {
     /// App ID used as a marker to display the welcome screen.
     pub fn welcome_screen_app_id() -> ApplicationId {
         "<welcome screen>".into()
+    }
+
+    /// Used only for tests
+    pub fn test_hub() -> Self {
+        Self::new(
+            BlueprintPersistence {
+                loader: None,
+                saver: None,
+            },
+            &|_| {},
+        )
     }
 
     /// Create a new [`StoreHub`].
@@ -158,6 +170,7 @@ impl StoreHub {
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
             bundle: &self.store_bundle,
+            hub: self,
         })
     }
 

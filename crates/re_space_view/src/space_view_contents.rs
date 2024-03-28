@@ -611,7 +611,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{StoreContext, VisualizableEntities};
+    use re_viewer_context::{StoreContext, StoreHub, VisualizableEntities};
 
     use super::*;
 
@@ -662,6 +662,7 @@ mod tests {
             blueprint: &blueprint,
             recording: &recording,
             bundle: &Default::default(),
+            hub: &StoreHub::test_hub(),
             default_blueprint: None,
         };
 
