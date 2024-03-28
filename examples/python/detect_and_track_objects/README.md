@@ -142,7 +142,7 @@ def setup_logging() -> None:
     logger.addHandler(rerun_handler)
 
 def main() -> None:
-    # .... existing code ....
+    # … existing code …
     setup_logging() # setup logging
     track_objects(video_path, max_frame_count=args.max_frame) # start tracking
 ```
