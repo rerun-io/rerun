@@ -1,5 +1,4 @@
 use re_entity_db::InstancePath;
-use re_log_types::EntityPathRule;
 use re_viewer_context::{ContainerId, Contents, Item, SpaceViewId};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
@@ -48,9 +47,9 @@ impl ContextMenuAction for RemoveAction {
         instance_path: &InstancePath,
     ) {
         if let Some(space_view) = ctx.viewport_blueprint.space_view(space_view_id) {
-            space_view.contents.add_entity_exclusion(
+            space_view.contents.remove_subtree_and_matching_rules(
                 ctx.viewer_context,
-                EntityPathRule::including_subtree(instance_path.entity_path.clone()),
+                instance_path.entity_path.clone(),
             );
         }
     }

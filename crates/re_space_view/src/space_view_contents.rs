@@ -184,6 +184,18 @@ impl SpaceViewContents {
         }
     }
 
+    /// Remove a subtree and any existing rules that it would match.
+    ///
+    /// Because most-specific matches win, if we only add a subtree exclusion
+    /// it can still be overridden by existing inclusions. This method ensures
+    /// that not only do we add a subtree exclusion, but clear out any existing
+    /// inclusions or (now redundant) exclusions that would match the subtree.
+    pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.remove_subtree_and_matching_rules(path);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+    }
+
     pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
         let mut new_entity_path_filter = self.entity_path_filter.clone();

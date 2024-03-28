@@ -5,7 +5,6 @@ use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
-use re_log_types::EntityPathRule;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
@@ -600,10 +599,9 @@ impl Viewport<'_, '_> {
                     "Remove group and all its children from the space view",
                 );
                 if response.clicked() {
-                    space_view.contents.add_entity_exclusion(
-                        ctx,
-                        EntityPathRule::including_subtree(entity_path.clone()),
-                    );
+                    space_view
+                        .contents
+                        .remove_subtree_and_matching_rules(ctx, entity_path.clone());
                 }
 
                 response | vis_response
