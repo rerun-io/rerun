@@ -103,9 +103,9 @@ impl crate::DataUi for EntityDb {
 
                 if is_active_app_id {
                     let is_default =
-                        hub.default_blueprint_for_app(active_app_id) == Some(self.store_id());
+                        hub.default_blueprint_id_for_app(active_app_id) == Some(self.store_id());
                     let is_active =
-                        hub.active_blueprint_for_app(active_app_id) == Some(self.store_id());
+                        hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
 
                     match (is_default, is_active) {
                         (false, false) => {}
@@ -114,7 +114,7 @@ impl crate::DataUi for EntityDb {
                             ui.label("This is the default blueprint for the current application.");
 
                             if let Some(active_blueprint) = hub
-                                .active_blueprint_for_app(active_app_id)
+                                .active_blueprint_id_for_app(active_app_id)
                                 .and_then(|id| hub.store_bundle().get(id))
                             {
                                 if active_blueprint.cloned_from() == Some(self.store_id()) {
