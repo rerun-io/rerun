@@ -419,7 +419,7 @@ class Blueprint:
         self.auto_layout = auto_layout
 
         if len(contents) == 0:
-            # If there's no content, switch `auto_layout`` and `auto_space_views`` defaults to `True`.
+            # If there's no content, switch `auto_layout` and `auto_space_views` defaults to `True`.
             if self.auto_space_views is None:
                 self.auto_space_views = True
             if self.auto_layout is None:
