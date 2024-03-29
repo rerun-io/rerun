@@ -616,11 +616,14 @@ impl EntityDb {
 
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;
+
         // We do NOT clone the `data_source`, because the reason we clone an entity db
         // is so that we can modify it, and then it would be wrong to say its from the same source.
         // Specifically: if we load a blueprint from an `.rdd`, then modify it heavily and save it,
         // it would be wrong to claim that this was the blueprint from that `.rrd`,
         // and it would confuse the user.
+        // TODO(emilk): maybe we should use a special `Cloned` data source,
+        // wrapping either the original source, the original StoreId, or both.
 
         if let Some(store_info) = self.store_info() {
             let mut new_info = store_info.clone();
