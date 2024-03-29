@@ -201,7 +201,7 @@ impl SpaceViewContents {
     /// This is a direct modification of the filter and will not do any simplification
     /// related to overlapping or conflicting rules.
     ///
-    /// If you are trying to remove an entire subtree, prefer using [`remove_subtree_and_matching_rules`].
+    /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
     pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
