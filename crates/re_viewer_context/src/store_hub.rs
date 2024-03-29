@@ -26,7 +26,7 @@ use crate::{AppOptions, StoreContext};
 ///
 /// Either on of these can be `None`.
 ///
-/// The active blueprint is what the user would se and edit, if they were to select that app id.
+/// The active blueprint is what the user would see and edit, if they were to select that app id.
 /// If there is no active blueprint, the default will be cloned and made active.
 ///
 /// The default blueprint is usually the blueprint set by the SDK.
