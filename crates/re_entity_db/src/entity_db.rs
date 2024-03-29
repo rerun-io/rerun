@@ -222,7 +222,7 @@ impl EntityDb {
     /// A cloned store always gets a new unique ID.
     ///
     /// We currently only use entity db cloning for blueprints:
-    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// when we activate a _default_ blueprint that was received on the wire (e.g. from a recording),
     /// we clone it and make the clone the _active_ blueprint.
     /// This means all active blueprints are clones.
     #[inline]
