@@ -195,7 +195,7 @@ Replace these lines with the following:
 This blueprint uses the `origin` parameter to scope the view to just a portion of the entity tree.
 
 If you run the script again, you should see a single chart for the AAPL data:
-picture>
+<picture>
 <img src="https://static.rerun.io/blueprint_tutorial_one_stock/bda8f536306f9d9eb1b2aafe8bd8aceb746c2e0c/full.png" alt="">
 
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock/bda8f536306f9d9eb1b2aafe8bd8aceb746c2e0c/480w.png">
