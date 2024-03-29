@@ -211,7 +211,7 @@ fn add_entities_line_ui(
                 let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
 
                 if response.clicked() {
-                    space_view.contents.add_entity_exclusion(
+                    space_view.contents.raw_add_entity_exclusion(
                         ctx,
                         EntityPathRule::including_subtree(entity_tree.path.clone()),
                     );
@@ -230,7 +230,7 @@ fn add_entities_line_ui(
                     let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
 
                     if response.clicked() {
-                        space_view.contents.add_entity_inclusion(
+                        space_view.contents.raw_add_entity_inclusion(
                             ctx,
                             EntityPathRule::including_subtree(entity_tree.path.clone()),
                         );
