@@ -17,7 +17,7 @@ use crate::{AppOptions, StoreContext};
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently active in the viewer. These can be configured
-/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app_id`] respectively.
+/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app`] respectively.
 ///
 /// ## Blueprints
 /// For each [`ApplicationId`], the [`StoreHub`] also keeps track of two blueprints:
