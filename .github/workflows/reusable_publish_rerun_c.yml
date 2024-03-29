@@ -16,12 +16,21 @@ on:
         required: true
 
 jobs:
-  linux:
+  linux-arm64:
+    name: "Linux-Arm64"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
+    with:
+      CONCURRENCY: push-linux-${{ github.ref_name }}
+      PLATFORM: linux-arm64
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  linux-x64:
     name: "Linux-x64"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
       CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
+      PLATFORM: linux-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
