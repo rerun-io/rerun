@@ -579,6 +579,18 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
+pub fn store_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    store_id: &re_log_types::StoreId,
+) {
+    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        entity_db_button_ui(ctx, ui, entity_db, true);
+    } else {
+        ui.label(store_id.to_string());
+    }
+}
+
 /// Show button for a store (recording or blueprint).
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.

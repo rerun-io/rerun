@@ -90,16 +90,6 @@ pub struct EntityDb {
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
 
-    /// If this entity db is the result of a clone, which store was it cloned from?
-    ///
-    /// A cloned store always gets a new unique ID.
-    ///
-    /// We currently only use entity db cloning for blueprints:
-    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
-    /// we clone it and make the clone the _active_ blueprint.
-    /// This means all active blueprints are clones.
-    cloned_from: Option<StoreId>,
-
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
 
@@ -142,7 +132,6 @@ impl EntityDb {
         Self {
             data_source: None,
             set_store_info: None,
-            cloned_from: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
             entity_path_from_hash: Default::default(),
@@ -227,7 +216,7 @@ impl EntityDb {
     /// This means all active blueprints are clones.
     #[inline]
     pub fn cloned_from(&self) -> Option<&StoreId> {
-        self.cloned_from.as_ref()
+        self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -540,7 +529,6 @@ impl EntityDb {
         let Self {
             data_source: _,
             set_store_info: _,
-            cloned_from: _,
             last_modified_at: _,
             latest_row_id: _,
             entity_path_from_hash: _,
@@ -626,7 +614,6 @@ impl EntityDb {
 
         let mut new_db = EntityDb::new(new_id.clone());
 
-        new_db.cloned_from = Some(self.store_id().clone());
         new_db.last_modified_at = self.last_modified_at;
         new_db.latest_row_id = self.latest_row_id;
         // We do NOT clone the `data_source`, because the reason we clone an entity db
@@ -638,6 +625,7 @@ impl EntityDb {
         if let Some(store_info) = self.store_info() {
             let mut new_info = store_info.clone();
             new_info.store_id = new_id;
+            new_info.cloned_from = Some(self.store_id().clone());
 
             new_db.set_store_info(SetStoreInfo {
                 row_id: RowId::new(),

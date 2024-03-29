@@ -40,11 +40,18 @@ impl crate::DataUi for EntityDb {
                 let re_log_types::StoreInfo {
                     application_id,
                     store_id: _,
+                    cloned_from,
                     is_official_example: _,
                     started,
                     store_source,
                     store_kind,
                 } = store_info;
+
+                if let Some(cloned_from) =  cloned_from {
+                    re_ui.grid_left_hand_label(ui, "Clone of");
+                    crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
+                    ui.end_row();
+                }
 
                 re_ui.grid_left_hand_label(ui, "Application ID");
                 ui.label(application_id.to_string());

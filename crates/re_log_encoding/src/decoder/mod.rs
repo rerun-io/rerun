@@ -232,6 +232,7 @@ fn test_encode_decode() {
         info: StoreInfo {
             application_id: ApplicationId("test".to_owned()),
             store_id: StoreId::random(StoreKind::Recording),
+            cloned_from: None,
             is_official_example: true,
             started: Time::now(),
             store_source: StoreSource::RustSdk {
