@@ -847,19 +847,23 @@ impl App {
 
                 self.egui_debug_panel_ui(ui);
 
-                if let Some(store_view) = store_context {
-                    let entity_db = store_view.recording;
+                // TODO(andreas): store the re_renderer somewhere else.
+                let egui_renderer = {
+                    let render_state = frame.wgpu_render_state().unwrap();
+                    &mut render_state.renderer.write()
+                };
 
-                    // TODO(andreas): store the re_renderer somewhere else.
-                    let egui_renderer = {
-                        let render_state = frame.wgpu_render_state().unwrap();
-                        &mut render_state.renderer.write()
-                    };
-                    if let Some(render_ctx) = egui_renderer
-                        .callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
-                    {
-                        render_ctx.begin_frame();
+                if let Some(render_ctx) = egui_renderer
+                    .callback_resources
+                    .get_mut::<re_renderer::RenderContext>()
+                {
+                    // TODO(#5283): There's no great reason to do this if we have no store-view and
+                    // subsequently won't actually be rendering anything. However, doing this here
+                    // avoids a hang on linux. Consider moving this back inside the below `if let`.
+                    // once the upstream issues that fix the hang properly have been resolved.
+                    render_ctx.begin_frame();
+                    if let Some(store_view) = store_context {
+                        let entity_db = store_view.recording;
 
                         self.state.show(
                             app_blueprint,
@@ -873,15 +877,8 @@ impl App {
                             &self.rx,
                             &self.command_sender,
                         );
-
-                        render_ctx.before_submit();
                     }
-                } else {
-                    // There's nothing to show.
-                    // We get here when
-                    // A) there is nothing loaded
-                    // B) we decided not to show the welcome screen, presumably because data is expected at any time now.
-                    // The user can see the connection status in the top bar.
+                    render_ctx.before_submit();
                 }
             });
     }
