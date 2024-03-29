@@ -579,6 +579,18 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
+pub fn store_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    store_id: &re_log_types::StoreId,
+) {
+    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        entity_db_button_ui(ctx, ui, entity_db, true);
+    } else {
+        ui.label(store_id.to_string());
+    }
+}
+
 /// Show button for a store (recording or blueprint).
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
@@ -599,7 +611,7 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let time = entity_db
+    let creation_time = entity_db
         .store_info()
         .and_then(|info| {
             info.started
@@ -608,7 +620,7 @@ pub fn entity_db_button_ui(
         .unwrap_or("<unknown time>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{time} - {size}");
+    let title = format!("{app_id_prefix}{creation_time} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());

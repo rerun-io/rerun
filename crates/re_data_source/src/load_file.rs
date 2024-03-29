@@ -119,6 +119,7 @@ pub(crate) fn prepare_store_info(
             info: re_log_types::StoreInfo {
                 application_id: app_id.clone(),
                 store_id: store_id.clone(),
+                cloned_from: None,
                 is_official_example: false,
                 started: re_log_types::Time::now(),
                 store_source,

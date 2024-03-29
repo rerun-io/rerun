@@ -330,6 +330,16 @@ pub struct StoreInfo {
     /// Should be unique for each recording.
     pub store_id: StoreId,
 
+    /// If this store is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only clone stores for blueprints:
+    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    pub cloned_from: Option<StoreId>,
+
     /// True if the recording is one of the official Rerun examples.
     pub is_official_example: bool,
 

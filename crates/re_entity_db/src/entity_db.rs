@@ -83,6 +83,8 @@ fn insert_row_with_retries(
 /// NOTE: all mutation is to be done via public functions!
 pub struct EntityDb {
     /// Set by whomever created this [`EntityDb`].
+    ///
+    /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
@@ -90,6 +92,11 @@ pub struct EntityDb {
 
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
+
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    latest_row_id: Option<RowId>,
 
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
@@ -126,6 +133,7 @@ impl EntityDb {
             data_source: None,
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
+            latest_row_id: None,
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
@@ -188,12 +196,27 @@ impl EntityDb {
         &self.data_store
     }
 
+    #[inline]
     pub fn store_kind(&self) -> StoreKind {
         self.store_id().kind
     }
 
+    #[inline]
     pub fn store_id(&self) -> &StoreId {
         self.data_store.id()
+    }
+
+    /// If this entity db is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only use entity db cloning for blueprints:
+    /// when we activate a _default_ blueprint that was received on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    #[inline]
+    pub fn cloned_from(&self) -> Option<&StoreId> {
+        self.store_info().and_then(|info| info.cloned_from.as_ref())
     }
 
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
@@ -220,14 +243,25 @@ impl EntityDb {
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
+    #[inline]
     pub fn generation(&self) -> re_data_store::StoreGeneration {
         self.data_store.generation()
     }
 
+    #[inline]
     pub fn last_modified_at(&self) -> web_time::Instant {
         self.last_modified_at
     }
 
+    /// The highest `RowId` in the store,
+    /// which corresponds to the last edit time.
+    /// Ignores deletions.
+    #[inline]
+    pub fn latest_row_id(&self) -> Option<RowId> {
+        self.latest_row_id
+    }
+
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
@@ -302,6 +336,13 @@ impl EntityDb {
         re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
 
         self.register_entity_path(&row.entity_path);
+
+        if self
+            .latest_row_id
+            .map_or(true, |latest| latest < row.row_id)
+        {
+            self.latest_row_id = Some(row.row_id);
+        }
 
         // ## RowId duplication
         //
@@ -489,6 +530,7 @@ impl EntityDb {
             data_source: _,
             set_store_info: _,
             last_modified_at: _,
+            latest_row_id: _,
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
@@ -564,23 +606,35 @@ impl EntityDb {
         messages
     }
 
-    /// Make a clone of this [`EntityDb`] with a different [`StoreId`].
+    /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
     pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
+        re_tracing::profile_function!();
+
         self.store().sort_indices_if_needed();
 
         let mut new_db = EntityDb::new(new_id.clone());
 
+        new_db.last_modified_at = self.last_modified_at;
+        new_db.latest_row_id = self.latest_row_id;
+
+        // We do NOT clone the `data_source`, because the reason we clone an entity db
+        // is so that we can modify it, and then it would be wrong to say its from the same source.
+        // Specifically: if we load a blueprint from an `.rdd`, then modify it heavily and save it,
+        // it would be wrong to claim that this was the blueprint from that `.rrd`,
+        // and it would confuse the user.
+        // TODO(emilk): maybe we should use a special `Cloned` data source,
+        // wrapping either the original source, the original StoreId, or both.
+
         if let Some(store_info) = self.store_info() {
             let mut new_info = store_info.clone();
             new_info.store_id = new_id;
+            new_info.cloned_from = Some(self.store_id().clone());
 
             new_db.set_store_info(SetStoreInfo {
                 row_id: RowId::new(),
                 info: new_info,
             });
         }
-
-        new_db.data_source = self.data_source.clone();
 
         for row in self.store().to_rows()? {
             new_db.add_data_row(row)?;

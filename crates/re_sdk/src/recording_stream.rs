@@ -552,6 +552,7 @@ impl RecordingStreamBuilder {
         let store_info = StoreInfo {
             application_id,
             store_id,
+            cloned_from: None,
             is_official_example,
             started: Time::now(),
             store_source,
