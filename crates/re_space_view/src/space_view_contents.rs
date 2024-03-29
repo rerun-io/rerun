@@ -196,15 +196,23 @@ impl SpaceViewContents {
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Directly add an exclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    ///
+    /// If you are trying to remove an entire subtree, prefer using [`remove_subtree_and_matching_rules`].
+    pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Directly add an inclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Include, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
