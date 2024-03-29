@@ -77,9 +77,9 @@ class SpaceView:
 
     def to_container(self) -> Container:
         """Convert this space view to a container."""
-        from .containers import Grid
+        from .containers import Tabs
 
-        return Grid(self)
+        return Tabs(self)
 
     def to_blueprint(self) -> Blueprint:
         """Convert this space view to a full blueprint."""
@@ -367,10 +367,11 @@ class Blueprint:
         - [SelectionPanel][rerun.blueprint.SelectionPanel]
         - [TimePanel][rerun.blueprint.TimePanel]
 
-        It is an error to provide more than one of any type of part.
+        It is an error to provide more than one of instance of any of the panel types.
 
-        Blueprints only have a single top-level "root" container that defines the viewport. Any
-        other content should be nested under this container (or a nested sub-container).
+        Blueprints only have a single top-level "root" container that defines the viewport.
+        If you provide multiple `ContainerLike` instances, they will be combined under a single
+        root `Tab` container.
 
         Parameters
         ----------
@@ -390,16 +391,15 @@ class Blueprint:
             Whether to collapse the panels in the viewer. Defaults to `False`.
 
         """
+        from .containers import Tabs
 
         self.collapse_panels = collapse_panels
 
+        contents: list[ContainerLike] = []
+
         for part in parts:
             if isinstance(part, (Container, SpaceView)):
-                if hasattr(self, "root_container"):
-                    raise ValueError(
-                        "Only one ContainerLike can be provided to serve as the root container for the viewport"
-                    )
-                self.root_container = part.to_container()
+                contents.append(part)
             elif isinstance(part, BlueprintPanel):
                 if hasattr(self, "blueprint_panel"):
                     raise ValueError("Only one blueprint panel can be provided")
@@ -418,12 +418,16 @@ class Blueprint:
         self.auto_space_views = auto_space_views
         self.auto_layout = auto_layout
 
-        # If there's no `root_container`, switch `auto_layout`` and `auto_space_views`` defaults to `True`.
-        if not hasattr(self, "root_container"):
+        if len(contents) == 0:
+            # If there's no content, switch `auto_layout` and `auto_space_views` defaults to `True`.
             if self.auto_space_views is None:
                 self.auto_space_views = True
             if self.auto_layout is None:
                 self.auto_layout = True
+        elif len(contents) == 1:
+            self.root_container = contents[0].to_container()
+        else:
+            self.root_container = Tabs(contents=contents)
 
     def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
