@@ -45,7 +45,7 @@ TODO(#5636): drag_1
 Drag and drop containers or views directly in the viewport
 TODO(#5636): drag_2
 
-### Change the size of Contaainers or Views
+### Change the size of Containers or Views
 
 Click and drag the edge of a view or container to resize it
 TODO(#5636): resize

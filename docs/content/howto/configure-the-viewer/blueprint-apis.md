@@ -253,7 +253,7 @@ The blueprint has two additional parameters that influence the behavior of the v
 
 If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
-matches the default behavior of the viewer if no blueprint is proviced).
+matches the default behavior of the viewer if no blueprint is provided).
 
 If you truly want to create an empty blueprint, you must set both values to `False`:
 

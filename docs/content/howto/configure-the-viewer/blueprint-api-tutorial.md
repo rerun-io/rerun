@@ -1,5 +1,5 @@
 ---
-title: Bluepritn API Tutorial
+title: Blueprint API Tutorial
 order: 4
 ---
 
