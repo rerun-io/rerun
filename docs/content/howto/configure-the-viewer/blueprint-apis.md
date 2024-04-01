@@ -3,7 +3,7 @@ title: Blueprint APIs
 order: 2
 ---
 
-As of Rerun 0.15, the state of the [blueprint](../../concepts/blueprint.md) can be directly manipulated using the
+As of Rerun 0.15, the state of the [blueprint](../../reference/viewer/blueprint.md) can be directly manipulated using the
 Rerun SDK.
 
 In the initial 0.15 release, the APIs are still somewhat limited and only available in the Python SDK.
