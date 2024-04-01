@@ -149,7 +149,7 @@ rrb.Blueprint(
 ### `contents`
 
 If you need to further modify the contents of a space view, you can use the `contents` parameter. This parameter is
-a list of [entity query expressions](../../concepts/entity-queries.md) that are either included or excluded from the
+a list of [entity query expressions](../../reference/) that are either included or excluded from the
 view.
 
 Each entity expressions starts with "+" for inclusion or "-" for an exclusion. The expressions can either be specific entity paths, or may end in a wildcard `/**` to include all entities under a specific subtree.

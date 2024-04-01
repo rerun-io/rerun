@@ -7,7 +7,7 @@ Although the Rerun Viewer tries to do a reasonable job of using heuristics to au
 an appropriate layout given the data that you provide, there will always be situations where the heuristic
 results don't match the needs of a particular use-case.
 
-Fortunately, almost all aspects of the viewer can be configured via the [Blueprint](../concepts/blueprint.md).
+Fortunately, almost all aspects of the viewer can be configured via the [Blueprint](../reference/viewer/blueprint.md).
 
 The viewer Blueprint completely determines:
 

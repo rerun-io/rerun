@@ -66,7 +66,7 @@ Select the view and click "edit" to bring up the entity editor
 TODO(#5636): add_data_1
 
 Select the view and directly edit the entity query
-See [Entity Queries](../../concepts/entity-queries.md) for more information on how to write queries.
+See [Entity Queries](../../reference/entity-queries.md) for more information on how to write queries.
 
 TODO(#5636): add_data_2
 
