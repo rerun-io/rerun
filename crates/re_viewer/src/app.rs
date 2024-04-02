@@ -348,7 +348,7 @@ impl App {
                 store_hub.clear_recordings();
 
                 // Stop receiving into the old recordings.
-                // This is most important then going back to the example screen by using the "Back"
+                // This is most important when going back to the example screen by using the "Back"
                 // button in the browser, and there is still a connection downloading an .rrd.
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
