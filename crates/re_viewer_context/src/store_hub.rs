@@ -100,14 +100,14 @@ impl StoreHub {
         setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
     ) -> Self {
         re_tracing::profile_function!();
-        let mut blueprint_by_app_id = HashMap::new();
+        let mut active_blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
 
         let welcome_screen_store_id = StoreId::from_string(
             StoreKind::Blueprint,
             Self::welcome_screen_app_id().to_string(),
         );
-        blueprint_by_app_id.insert(
+        active_blueprint_by_app_id.insert(
             Self::welcome_screen_app_id(),
             welcome_screen_store_id.clone(),
         );
@@ -121,7 +121,7 @@ impl StoreHub {
             active_rec_id: None,
             active_application_id: None,
             default_blueprint_by_app_id: Default::default(),
-            active_blueprint_by_app_id: blueprint_by_app_id,
+            active_blueprint_by_app_id,
             store_bundle,
 
             was_recording_active: false,
@@ -211,6 +211,14 @@ impl StoreHub {
         }
 
         self.store_bundle.remove(store_id);
+    }
+
+    /// Remove all open recordings, and go to the welcome page.
+    pub fn clear_recordings(&mut self) {
+        self.store_bundle
+            .retain(|db| db.store_kind() != StoreKind::Recording);
+        self.active_rec_id = None;
+        self.active_application_id = Some(Self::welcome_screen_app_id());
     }
 
     // ---------------------

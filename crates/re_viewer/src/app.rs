@@ -339,8 +339,33 @@ impl App {
             SystemCommand::ActivateRecording(store_id) => {
                 store_hub.set_activate_recording(store_id);
             }
+
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
+            }
+
+            SystemCommand::CloseAllRecordings => {
+                store_hub.clear_recordings();
+
+                // Stop receiving into the old recordings.
+                // This is most important when going back to the example screen by using the "Back"
+                // button in the browser, and there is still a connection downloading an .rrd.
+                // That's the case of `SmartChannelSource::RrdHttpStream`.
+                // TODO(emilk): exactly what things get kept and what gets cleared?
+                self.rx.retain(|r| match r.source() {
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+
+                    SmartChannelSource::WsClient { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::Stdin => true,
+                });
+            }
+
+            SystemCommand::AddReceiver(rx) => {
+                re_log::debug!("Received AddReceiver");
+                self.add_receiver(rx);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -486,6 +511,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::CloseStore(cur_rec.clone()));
                 }
+            }
+            UICommand::CloseAllRecordings => {
+                self.command_sender
+                    .send_system(SystemCommand::CloseAllRecordings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
