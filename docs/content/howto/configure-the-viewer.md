@@ -20,6 +20,6 @@ There are a few different ways to work with Blueprints:
 
 -   [Blueprints can be modified directly through the UI](./configure-the-viewer/blueprint-ui.md)
 -   [Blueprint files (.rbl) can be saved and loaded from disk](./configure-the-viewer/rbl-files.md)
--   [Blueprints can be generated direct from code](./configure-the-viewer/blueprint-apis.md)
+-   [Blueprints can be generated directly from code](./configure-the-viewer/blueprint-apis.md)
 
 For a hands on example, you can also follow the [Blueprint API Tutorial](./configure-the-viewer/blueprint-api-tutorial.md).
