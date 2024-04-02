@@ -12,7 +12,7 @@ impl ViewCoordinates {
         Self([x as u8, y as u8, z as u8])
     }
 
-    /// Choses a coordinate system based on just an up-axis.
+    /// Chooses a coordinate system based on just an up-axis.
     pub fn from_up_and_handedness(up: SignedAxis3, handedness: Handedness) -> Self {
         use ViewDir::{Back, Down, Forward, Right, Up};
         match handedness {
