@@ -9,9 +9,20 @@ pub use time::next_grid_tick_magnitude_ns;
 
 // --- Numbers ---
 
-/// Pretty format a number by using thousands separators for readability.
-pub fn format_number(number: usize) -> String {
-    let number = number.to_string();
+/// Pretty format an unsigned integer by using thousands separators for readability.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `usize::from_str` function.
+pub fn format_uint<Uint>(number: Uint) -> String
+where
+    Uint: Copy + num_traits::Unsigned + std::fmt::Display,
+{
+    add_thousands_separators(&number.to_string())
+}
+
+/// Add thousands separators to a number, every three steps,
+/// counting from the last character.
+fn add_thousands_separators(number: &str) -> String {
     let mut chars = number.chars().rev().peekable();
 
     let mut result = vec![];
@@ -34,11 +45,11 @@ pub fn format_number(number: usize) -> String {
 
 #[test]
 fn test_format_number() {
-    assert_eq!(format_number(42), "42");
-    assert_eq!(format_number(999), "999");
-    assert_eq!(format_number(1_000), "1 000");
-    assert_eq!(format_number(123_456), "123 456");
-    assert_eq!(format_number(1_234_567), "1 234 567");
+    assert_eq!(format_uint(42_u32), "42");
+    assert_eq!(format_uint(999_u32), "999");
+    assert_eq!(format_uint(1_000_u32), "1 000");
+    assert_eq!(format_uint(123_456_u32), "123 456");
+    assert_eq!(format_uint(1_234_567_u32), "1 234 567");
 }
 
 /// Format a number with a decent number of decimals.

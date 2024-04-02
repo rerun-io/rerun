@@ -4403,6 +4403,7 @@ name = "re_format"
 version = "0.15.0-alpha.5"
 dependencies = [
  "comfy-table",
+ "num-traits",
  "re_arrow2",
  "re_tuid",
  "re_types_core",

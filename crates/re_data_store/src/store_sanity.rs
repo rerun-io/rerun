@@ -122,8 +122,8 @@ impl IndexedTable {
             if num_rows != num_rows_uncached {
                 return Err(SanityError::RowsOutOfSync {
                     origin: std::any::type_name::<Self>(),
-                    expected: re_format::format_number(num_rows_uncached as _),
-                    got: re_format::format_number(num_rows as _),
+                    expected: re_format::format_uint(num_rows_uncached),
+                    got: re_format::format_uint(num_rows),
                 });
             }
         }
