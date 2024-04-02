@@ -728,9 +728,12 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let location = eframe::web::web_location();
-        let mut href = location.origin;
-        if location.host == "app.rerun.io" {
+        let mut location = web_sys::window().unwrap().location();
+        let origin = location.origin().unwrap();
+        let host = location.host().unwrap();
+        let pathname = location.pathname().unwrap();
+
+        let href = if host == "app.rerun.io" {
             // links to `app.rerun.io` can be made into permanent links:
             let path = if self.build_info.is_final() {
                 // final release, use version tag
@@ -739,15 +742,28 @@ impl App {
                 // not a final release, use commit hash
                 format!("commit/{}", self.build_info.short_git_hash())
             };
-            href = format!("{href}/{path}");
-        }
+            format!("https://app.rerun.io/{path}")
+        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
+            let path = if self.build_info().is_final() {
+                // final release, use version tag
+                format!("v/{}", self.build_info.version)
+            } else {
+                // not a final release, use commit hash
+                format!("c/{}", self.build_info.short_git_hash())
+            };
+            format!("https://rerun.io/viewer")
+        } else {
+            format!("{origin}{pathname}")
+        };
+
         let direct_link = match store_context
             .map(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
-            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}?url={url}"),
             _ => href,
         };
+
         self.re_ui
             .egui_ctx
             .output_mut(|o| o.copied_text = direct_link.clone());
