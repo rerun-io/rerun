@@ -8,7 +8,7 @@ use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
 use re_viewer_context::CommandSender;
 
-use crate::web_tools::{translate_query_into_commands, url_to_receiver};
+use crate::web_tools::{string_from_js_value, translate_query_into_commands, url_to_receiver};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -166,7 +166,12 @@ fn install_popstate_listener(egui_ctx: egui::Context, command_sender: CommandSen
     }) as Box<dyn FnMut(_)>);
     window
         .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
-        .map_err(|err| format!("Failed to add popstate event listener: {err:?}"))
+        .map_err(|err| {
+            format!(
+                "Failed to add popstate event listener: {}",
+                string_from_js_value(err)
+            )
+        })
         .ok_or_log_error()?;
     closure.forget();
     Some(())

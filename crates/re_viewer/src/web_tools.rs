@@ -8,6 +8,12 @@ use re_viewer_context::CommandSender;
 
 /// Web-specific tools used by various parts of the application.
 
+/// Useful in error handlers
+#[allow(clippy::needless_pass_by_value)]
+pub fn string_from_js_value(s: wasm_bindgen::JsValue) -> String {
+    s.as_string().unwrap_or(format!("{s:#?}"))
+}
+
 pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), wasm_bindgen::JsValue> {
     let Some(window) = web_sys::window() else {
         return Err("Failed to get window".into());
@@ -52,11 +58,16 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
 
         let history = web_sys::window()?
             .history()
-            .map_err(|err| format!("Failed to get History API: {err:?}"))
+            .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
             .ok_or_log_error()?;
         history
             .push_state_with_url(&JsValue::NULL, "", Some(new_relative_url))
-            .map_err(|err| format!("Failed to push history state: {err:?}"))
+            .map_err(|err| {
+                format!(
+                    "Failed to push history state: {}",
+                    string_from_js_value(err)
+                )
+            })
             .ok_or_log_error()?;
     }
     Some(())
