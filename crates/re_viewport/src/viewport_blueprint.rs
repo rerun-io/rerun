@@ -74,7 +74,6 @@ impl ViewportBlueprint {
         re_tracing::profile_function!();
 
         let crate::blueprint::archetypes::ViewportBlueprint {
-            space_views: _,
             root_container,
             maximized,
             auto_layout,
@@ -426,14 +425,6 @@ impl ViewportBlueprint {
                     position_in_parent,
                 ));
             }
-
-            let components = self
-                .space_views
-                .keys()
-                .chain(new_ids.iter())
-                .map(|id| IncludedSpaceView((*id).into()))
-                .collect::<Vec<_>>();
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
         }
 
         new_ids
