@@ -1068,7 +1068,7 @@ fn get_app_url() -> String {
 
     let build_info = re_build_info::build_info!();
     if let Some(short_git_hash) = build_info.git_hash.get(..7) {
-        format!("https://rerun.io/viewer/c/{short_git_hash}")
+        format!("https://rerun.io/viewer/commit/{short_git_hash}")
     } else {
         re_log::warn_once!(
             "No valid git hash found in build info. Defaulting to rerun.io/viewer for app url."
