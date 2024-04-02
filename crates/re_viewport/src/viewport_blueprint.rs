@@ -74,7 +74,7 @@ impl ViewportBlueprint {
         re_tracing::profile_function!();
 
         let crate::blueprint::archetypes::ViewportBlueprint {
-            space_views,
+            space_views: _,
             root_container,
             maximized,
             auto_layout,
@@ -98,13 +98,19 @@ impl ViewportBlueprint {
             }
         };
 
-        let space_view_ids: Vec<SpaceViewId> = space_views
-            .unwrap_or(vec![])
-            .iter()
-            .map(|id| id.0.into())
-            .collect();
+        let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
+            .tree()
+            .children
+            .get(SpaceViewId::registry_part())
+            .map(|tree| {
+                tree.children
+                    .values()
+                    .map(|subtree| SpaceViewId::from_entity_path(&subtree.path))
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
+        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
                 SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
@@ -393,13 +399,6 @@ impl ViewportBlueprint {
     ///
     /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
     /// if needed.
-    ///
-    /// NOTE: Calling this more than once per frame will result in lost data.
-    /// Each call to `add_space_views` emits an updated list of [`IncludedSpaceView`]s
-    /// Built by taking the list of [`IncludedSpaceView`]s from the current frame
-    /// and adding the new space views to it. Since this the edit is not applied until
-    /// the end of frame the second call will see a stale version of the data.
-    // TODO(jleibs): Better safety check here.
     pub fn add_space_views(
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
