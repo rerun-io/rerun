@@ -49,7 +49,9 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         if !recordings.is_empty() {
             ui.add_space(8.0);
             ui.strong("Recordings from this data source");
+            let max_rect = ui.max_rect();
             ui.indent("recordings", |ui| {
+                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in recordings {
                     entity_db_button_ui(ctx, ui, entity_db, true);
@@ -60,7 +62,9 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         if !blueprints.is_empty() {
             ui.add_space(8.0);
             ui.strong("Blueprints from this data source");
+            let max_rect = ui.max_rect();
             ui.indent("blueprints", |ui| {
+                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in blueprints {
                     entity_db_button_ui(ctx, ui, entity_db, true);
