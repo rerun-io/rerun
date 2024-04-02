@@ -22,10 +22,13 @@ This example requires a connected realsense depth sensor.
 # Used Rerun Types
 [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image)
 
+# Background
+The Intel RealSense depth sensor can stream live depth and color data. To visualize this data output, we utilized Rerun.
+
 # Logging and Visualizing with Rerun
 
 The RealSense sensor captures data in both RGB and depth formats, which are logged using the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) and [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) archetypes, respectively.
-Additionally, to provide a 3D view, the visualization includes a perspective camera using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
+Additionally, to provide a 3D view, the visualization includes a pinhole camera using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
 
 The visualization in this example were created with the following Rerun code.
 
@@ -37,7 +40,7 @@ rr.log("realsense", rr.ViewCoordinates.RDF, timeless=True) # Visualize the data 
 
 ## Image
 
-First, the perspective camera is set using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes. Then, the images captured by the RealSense sensor are logged as an [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) object, and they're associated with the time they were taken.
+First, the pinhole camera is set using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes. Then, the images captured by the RealSense sensor are logged as an [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) object, and they're associated with the time they were taken.
 
 
 

@@ -1,6 +1,7 @@
 <!--[metadata]
 title = "Face Tracking"
 tags = ["2D", "3D", "camera", "face-tracking", "live", "mediapipe", "time-series"]
+description = "Use the MediaPipe Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream."
 thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f32fa1145c23b/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
@@ -20,6 +21,14 @@ Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landm
 
 # Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) 
+
+# Background
+The face and face landmark detection technology aims to give the ability of the devices to interpret face movements and facial expressions as commands or inputs. 
+At the core of this technology, a pre-trained machine-learning model analyses the visual input, locates face and identifies face landmarks and blendshape scores (coefficients representing facial expression). 
+Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are among the fields where this technology shows significant promise for applications.
+
+In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Face and Face Landmark Detection solutions were utilized to detect human face, detect face landmarks and identify facial expressions.
+Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
 # Logging and Visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.

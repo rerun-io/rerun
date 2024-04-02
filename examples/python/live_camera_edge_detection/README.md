@@ -17,12 +17,15 @@ thumbnail_dimensions = [480, 480]
 
 Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) results from a live camera stream.
 
-## Used Rerun Types
+# Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image)
 
+# Background
+In this example, the results of the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) algorithm are visualized. 
+Canny Edge Detection is a popular edge detection algorithm, and can efficiently extract important structural information from visual objects while notably reducing the computational load. 
+The process in this example involves converting the input image to RGB, then to grayscale, and finally applying the Canny Edge Detector for precise edge detection.
 
 # Logging and Visualizing with Rerun
-In this example, an input image undergoes a series of processing steps: conversion to RGB, conversion to grayscale, and application of the Canny Edge Detector for edge detection.
 
 The visualization in this example were created with the following Rerun code:
 ## RGB Image

@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Detect and Track Objects"
 tags = ["2D", "huggingface", "object-detection", "object-tracking", "opencv"]
-description = "Visualize object detection and segmentation using the Huggingface `transformers` library."
+description = "Visualize object detection and segmentation using the Huggingface `transformers` library and CSRT from OpenCV."
 thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
@@ -21,6 +21,10 @@ Visualize object detection and segmentation using the [Huggingface's Transformer
 
 # Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
+
+# Background
+In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames. 
+Additionally, the example showcases basic object detection and segmentation on a video using the Huggingface transformers library.
 
 
 # Logging and Visualizing with Rerun

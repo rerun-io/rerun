@@ -18,8 +18,11 @@ channel = "main"
 
 Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
-## Used Rerun Types
+# Used Rerun Types
 [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+
+# Background
+Digital Imaging and Communications in Medicine (DICOM) serves as a technical standard for the digital storage and transmission of medical images. In this instance, an MRI scan is visualized using Rerun.
 
 # Logging and Visualizing with Rerun
 

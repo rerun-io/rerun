@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Hand Tracking and Gesture Recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
-description = "Use the MediaPipe Gesture Detection solution to track hand and recognize gestures in image/video."
+description = "Use the MediaPipe Hand Landmark and Gesture Detection solution to track hand and recognize gestures in images, video, and camera stream.."
 thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
@@ -15,11 +15,20 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1200w.png">
 </picture>
 
-Use the [MediaPipe](https://google.github.io/mediapipe/) Gesture and landmark detection solutions to
+Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
 track hands and recognize gestures in images, video, and camera stream.
 
 # Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+
+# Background
+The hand tracking and gesture recognition technology aims to give the ability of the devices to interpret hand movements and gestures as commands or inputs. 
+At the core of this technology, a pre-trained machine-learning model analyses the visual input and identifies hand landmarks and hand gestures. 
+The real applications of such technology vary, as hand movements and gestures can be used to control smart devices. 
+Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are a few of the fields where the potential applications of this technology appear most promising.
+
+In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Gesture and Hand Landmark Detection solutions were utilized to detect and track hand landmarks and recognize gestures.
+Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
 # Logging and Visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
@@ -135,30 +144,4 @@ python examples/python/gesture_detection/main.py # run the example
 If you wish to customize it for various videos, adjust the maximum frames, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
 $ python examples/python/gesture_detection/main.py --help
-usage: main.py [-h] [--demo-image] [--demo-video] [--image IMAGE]
-               [--video VIDEO] [--camera CAMERA] [--max-frame MAX_FRAME]
-               [--headless] [--connect] [--serve] [--addr ADDR] [--save SAVE]
-               [-o]
-
-Uses the MediaPipe Gesture Recognition to track a hand and recognize gestures
-in image or video.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --demo-image          Run on a demo image automatically downloaded
-  --demo-video          Run on a demo image automatically downloaded.
-  --image IMAGE         Run on the provided image
-  --video VIDEO         Run on the provided video file.
-  --camera CAMERA       Run from the camera stream (parameter is the camera
-                        ID, usually 0; or maybe 1 on mac)
-  --max-frame MAX_FRAME
-                        Stop after processing this many frames. If not
-                        specified, will run until interrupted.
-  --headless            Don\'t show GUI
-  --connect             Connect to an external viewer
-  --serve               Serve a web viewer (WARNING: experimental feature)
-  --addr ADDR           Connect to this ip:port
-  --save SAVE           Save data to a .rrd file at this path
-  -o, --stdout          Log data to standard output, to be piped into a Rerun
-                        Viewer
 ```
