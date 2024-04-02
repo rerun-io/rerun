@@ -68,7 +68,7 @@ class TensorDataExt:
         self: TensorData
             The TensorData object to construct.
         shape: Sequence[TensorDimensionLike] | None
-            The shape of the tensor. If None, and an array is proviced, the shape will be inferred
+            The shape of the tensor. If None, and an array is provided, the shape will be inferred
             from the shape of the array.
         buffer: TensorBufferLike | None
             The buffer of the tensor. If None, and an array is provided, the buffer will be generated
