@@ -733,25 +733,19 @@ impl App {
         let host = location.host().unwrap();
         let pathname = location.pathname().unwrap();
 
+        let hosted_viewer_path = if self.build_info.is_final() {
+            // final release, use version tag
+            format!("version/{}", self.build_info.version)
+        } else {
+            // not a final release, use commit hash
+            format!("commit/{}", self.build_info.short_git_hash())
+        };
+
+        // links to `app.rerun.io` can be made into permanent links:
         let href = if host == "app.rerun.io" {
-            // links to `app.rerun.io` can be made into permanent links:
-            let path = if self.build_info.is_final() {
-                // final release, use version tag
-                format!("version/{}", self.build_info.version)
-            } else {
-                // not a final release, use commit hash
-                format!("commit/{}", self.build_info.short_git_hash())
-            };
-            format!("https://app.rerun.io/{path}")
+            format!("https://app.rerun.io/{hosted_viewer_path}")
         } else if host == "rerun.io" && pathname.starts_with("/viewer") {
-            let path = if self.build_info().is_final() {
-                // final release, use version tag
-                format!("v/{}", self.build_info.version)
-            } else {
-                // not a final release, use commit hash
-                format!("c/{}", self.build_info.short_git_hash())
-            };
-            format!("https://rerun.io/viewer")
+            format!("https://rerun.io/viewer/{hosted_viewer_path}")
         } else {
             format!("{origin}{pathname}")
         };
