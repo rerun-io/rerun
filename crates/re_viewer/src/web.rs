@@ -156,7 +156,7 @@ fn create_app(
     app
 }
 
-/// Listen for `popstate` even, which comes when the user hits the back/forward buttons.
+/// Listen for `popstate` event, which comes when the user hits the back/forward buttons.
 ///
 /// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
 fn install_popstate_listener(egui_ctx: egui::Context, command_sender: CommandSender) -> Option<()> {
