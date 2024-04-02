@@ -213,7 +213,7 @@ impl StoreHub {
         self.store_bundle.remove(store_id);
     }
 
-    /// Remove all open recordings, and got to the welcome page.
+    /// Remove all open recordings, and go to the welcome page.
     pub fn clear_recordings(&mut self) {
         self.store_bundle
             .retain(|db| db.store_kind() != StoreKind::Recording);
