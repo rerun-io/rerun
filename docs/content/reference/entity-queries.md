@@ -12,7 +12,7 @@ include or exclude entire subtrees.
 
 ## Query expression syntax
 
-An entity query is made up of a set of "query expression." Each query expression
+An entity query is made up of a set of "query expressions." Each query expression
 is either an "inclusion," which starts with an optional `+` or an "exclusion,"
 which always starts with a `-`.
 

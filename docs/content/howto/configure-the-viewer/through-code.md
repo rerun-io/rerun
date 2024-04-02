@@ -1,5 +1,5 @@
 ---
-title: Blueprint APIs
+title: Control the viewer through code
 order: 2
 ---
 
@@ -73,12 +73,21 @@ rr.connect(default_blueprint=my_blueprint)
 
 ## Activating the default blueprint
 
-Once you have sent a blueprint to the viewer, it will not necessarily be activated immediately. The standard behavior
-is to only update the "default blueprint" in the viewer. This minimizes the chance that you accidentally overwrite
-blueprint edits you may have made locally.
+Just like the viewer can store many different recordings internally, it can also
+store many different blueprints. For each `application_id` in the viewer, are two
+particularly important blueprints: the "default blueprint" and the "active blueprint".
 
-If you want to start using the new blueprint, after sending it, you will need to click the reset button in the
-blueprint panel. This resets the blueprint to the current default:
+When a recording is selected, the active blueprint for the corresponding
+`application_id` will completely determine what is displayed by the viewer.
+
+When you send a blueprint to the viewer, it will not necessarily be
+activated immediately. The standard behavior is to only update the "default
+blueprint" in the viewer. This minimizes the chance that you accidentally
+overwrite blueprint edits you may have made locally.
+
+If you want to start using the new blueprint, after sending it, you will need to
+click the reset button in the blueprint panel. This resets the active blueprint to the
+current default:
 
 TODO(#5636): reset_blueprint
 
@@ -106,7 +115,7 @@ Any of the space views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `Tenso
 By default these views try to include all compatible entities.
 
 For example, the following blueprint creates a single 3D view that includes all the 3D content
-in the tree:
+you have logged to the entity tree:
 
 ```python
 rrb.Blueprint(
@@ -167,7 +176,6 @@ rrb.Blueprint(
             origin="/world",
             contents=[
                 "+ $origin/robot/**",
-                "- $origin/map/**",
             ],
         ),
         rrb.Spatial2DView(
@@ -254,6 +262,23 @@ The blueprint has two additional parameters that influence the behavior of the v
 If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
 matches the default behavior of the viewer if no blueprint is provided).
+
+This means that:
+
+```python
+rrb.Blueprint()
+```
+
+and
+
+```python
+rrb.Blueprint(
+    auto_space_views=True,
+    auto_layout=True
+)
+```
+
+are both equivalent to the viewer's default behavior.
 
 If you truly want to create an empty blueprint, you must set both values to `False`:
 

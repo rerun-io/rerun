@@ -1,5 +1,5 @@
 ---
-title: Blueprint UI
+title: Interactively setup up viewer
 order: 1
 ---
 
@@ -12,7 +12,7 @@ TODO(#5636): Screenshot of the viewer, with the blueprint and selection panels h
 The left panel of the viewer is the "Blueprint Panel" this shows a visual tree view representing
 the contents of the current blueprint.
 
-The right panel of the viewer is the "Selection Panel" this panels allows you to configure
+The right panel of the viewer is the "Selection Panel" this panel allows you to configure
 specific blueprint properties of the currently selected element.
 
 After editing the viewer you may want to [save or share the blueprint](./rbl-files.md).
