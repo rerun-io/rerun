@@ -425,7 +425,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &ctx.selection_state);
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;
