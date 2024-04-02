@@ -728,7 +728,7 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let mut location = web_sys::window().unwrap().location();
+        let location = web_sys::window().unwrap().location();
         let origin = location.origin().unwrap();
         let host = location.host().unwrap();
         let pathname = location.pathname().unwrap();
