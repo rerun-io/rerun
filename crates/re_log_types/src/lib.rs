@@ -131,6 +131,11 @@ impl StoreId {
     }
 
     #[inline]
+    pub fn empty_recording() -> Self {
+        Self::from_string(StoreKind::Recording, "<EMPTY>".to_owned())
+    }
+
+    #[inline]
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
@@ -149,6 +154,10 @@ impl StoreId {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.id.as_str()
+    }
+
+    pub fn is_empty_recording(&self) -> bool {
+        self.kind == StoreKind::Recording && self.id.as_str() == "<EMPTY>"
     }
 }
 

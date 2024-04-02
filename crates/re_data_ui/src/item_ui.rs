@@ -695,22 +695,7 @@ pub fn entity_db_button_ui(
                 .send_system(SystemCommand::ActivateRecording(store_id.clone()));
         }
 
-        // …and select the store in the selection panel.
-        // Note that we must do it in this order, since the selection state is stored in the recording.
-        // That's also why we use a command to set the selection.
-        match store_id.kind {
-            re_log_types::StoreKind::Recording => {
-                ctx.command_sender.send_system(SystemCommand::SetSelection {
-                    recording_id: Some(store_id),
-                    item,
-                });
-            }
-            re_log_types::StoreKind::Blueprint => {
-                ctx.command_sender.send_system(SystemCommand::SetSelection {
-                    recording_id: None,
-                    item,
-                });
-            }
-        }
+        ctx.command_sender
+            .send_system(SystemCommand::SetSelection(item));
     }
 }

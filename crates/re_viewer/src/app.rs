@@ -422,18 +422,8 @@ impl App {
                 }
             }
 
-            SystemCommand::SetSelection { recording_id, item } => {
-                let recording_id =
-                    recording_id.or_else(|| store_hub.active_recording_id().cloned());
-                if let Some(recording_id) = recording_id {
-                    if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
-                        rec_cfg.selection_state.set_selection(item);
-                    } else {
-                        re_log::debug!(
-                            "Failed to select item {item:?}: failed to find recording {recording_id}"
-                        );
-                    }
-                }
+            SystemCommand::SetSelection(item) => {
+                self.state.selection_state.set_selection(item);
             }
 
             SystemCommand::SetFocus(item) => {
@@ -576,22 +566,10 @@ impl App {
             }
 
             UICommand::SelectionPrevious => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_previous();
-                }
+                self.state.selection_state.select_previous();
             }
             UICommand::SelectionNext => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_next();
-                }
+                self.state.selection_state.select_next();
             }
             UICommand::ToggleCommandPalette => {
                 self.cmd_palette.toggle();

@@ -40,13 +40,7 @@ pub enum SystemCommand {
     EnableExperimentalDataframeSpaceView(bool),
 
     /// Set the item selection.
-    SetSelection {
-        /// If set, use the recording config of this recording.
-        /// Else, use the currently active recording.
-        recording_id: Option<StoreId>,
-
-        item: crate::Item,
-    },
+    SetSelection(crate::Item),
 
     /// Sets the focus to the given item.
     ///

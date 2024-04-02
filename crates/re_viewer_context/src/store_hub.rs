@@ -145,12 +145,7 @@ impl StoreHub {
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
-            once_cell::sync::Lazy::new(|| {
-                EntityDb::new(re_log_types::StoreId::from_string(
-                    StoreKind::Recording,
-                    "<EMPTY>".to_owned(),
-                ))
-            });
+            once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
 
         // If we have an app-id, then use it to look up the blueprint.
         let app_id = self.active_application_id.clone()?;
