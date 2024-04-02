@@ -47,7 +47,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
         app_blob = viewer_bucket.blob(f"commit/{commit_short}/index.html")
         if app_blob.exists():
             print(f"Found web assets commit: {commit_short}")
-            found["hosted_app"] = f"https://app.rerun.io/commit/{commit_short}"
+            found["hosted_app"] = f"https://rerun.io/viewer/commit/{commit_short}"
 
         # Check if there are rerun_c libraries
         rerun_libraries_blobs = [

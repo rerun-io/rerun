@@ -7,6 +7,7 @@ extend-exclude = [
   ".typos.toml",
   "crates/re_ui/data/design_tokens.json",
   "crates/re_ui/src/design_tokens.rs",
+  "docs/cspell.json",
   "examples/assets",
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]
@@ -109,6 +110,7 @@ saviour = "savior"
 savour = "savor"
 sceptical = "skeptical"
 sceptre = "scepter"
+FUL = "FUL"                       # forward-up-left coordinate system
 sepulchre = "sepulcher"
 serialisation = "serialization"
 serialise = "serialize"
@@ -127,8 +129,10 @@ tonne = "ton"
 travelogue = "travelog"
 tumour = "tumor"
 valour = "valor"
+opf = "opf"                       #  Open Photogrammetry Format (OPF) file
 vaporise = "vaporize"
 vigour = "vigor"
+ws = "ws"                         # web-sockets, as in "ws://…"
 
 # null-terminated is the name of the wikipedia article!
 # https://en.wikipedia.org/wiki/Null-terminated_string
@@ -137,9 +141,17 @@ zeroterminated = "null-terminated"
 zero-terminated = "null-terminated"
 
 [default]
-# Work around for typos inside of hashes. These show up inside of ipynb.
-# e.g. "f4e1caf9" -> `caf` should be `calf`
-# Specifically limit ourselves to exactly 8 chars in a quoted string, or
-# 16 character hashses following a leading underscore.
-# Just don't spell "defaced" wrong.
-extend-ignore-re = ["\"[a-f0-9]{8}\"", "_[a-f0-9]{16}"]
+extend-ignore-re = [
+  # Work around for typos inside of hashes. These show up inside of ipynb.
+  # e.g. "f4e1caf9" -> `caf` should be `calf`
+  # Specifically limit ourselves to exactly 8 chars in a quoted string, or
+  # 16 character hashses following a leading underscore.
+  # Just don't spell "defaced" wrong.
+  "\"[a-f0-9]{8}\"",
+  "_[a-f0-9]{16}",
+
+
+  "np.arange",        # numpy spells "arrange" wrong
+  "phc_[a-zA-Z0-9]*", # Posthog public key
+  "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
+]

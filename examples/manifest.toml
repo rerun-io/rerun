@@ -16,7 +16,7 @@ Each example downloads it's own data, so no additional steps are needed.
 For the simplest possible examples showing how to use each api,
 check out [Types](/docs/reference/types).
 
-You can try these examples live at <https://app.rerun.io/>.
+You can try these examples live at [rerun.io/viewer](/viewer).
 """
 examples = [
   "arkit_scenes",

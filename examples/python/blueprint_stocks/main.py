@@ -201,6 +201,8 @@ def main() -> None:
             close_time = dt.datetime.combine(day, dt.time(16, 00))
 
             hist = stock.history(start=open_time, end=close_time, interval="5m")
+            if len(hist.index) == 0:
+                continue
 
             hist.index = hist.index - et_timezone.localize(open_time)
             peak = hist.High.idxmax()
