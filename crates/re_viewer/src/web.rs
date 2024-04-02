@@ -6,8 +6,9 @@ use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
 use re_memory::AccountingAllocator;
+use re_viewer_context::CommandSender;
 
-use crate::web_tools::url_to_receiver;
+use crate::web_tools::{translate_query_into_commands, url_to_receiver};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -147,15 +148,28 @@ fn create_app(
             app.add_receiver(receiver);
         }
     } else {
-        // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
-        for url in query_map.get("url").into_iter().flatten() {
-            if let Some(receiver) = url_to_receiver(cc.egui_ctx.clone(), url).ok_or_log_error() {
-                app.add_receiver(receiver);
-            }
-        }
+        translate_query_into_commands(&cc.egui_ctx, &app.command_sender);
     }
 
+    install_popstate_listener(cc.egui_ctx.clone(), app.command_sender.clone());
+
     app
+}
+
+/// Listen for `popstate` even, which comes when the user hits the back/forward buttons.
+///
+/// <https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event>
+fn install_popstate_listener(egui_ctx: egui::Context, command_sender: CommandSender) -> Option<()> {
+    let window = web_sys::window()?;
+    let closure = Closure::wrap(Box::new(move |_: web_sys::Event| {
+        translate_query_into_commands(&egui_ctx, &command_sender);
+    }) as Box<dyn FnMut(_)>);
+    window
+        .add_event_listener_with_callback("popstate", closure.as_ref().unchecked_ref())
+        .map_err(|err| format!("Failed to add popstate event listener: {err:?}"))
+        .ok_or_log_error()?;
+    closure.forget();
+    Some(())
 }
 
 /// Used to set the "email" property in the analytics config,
