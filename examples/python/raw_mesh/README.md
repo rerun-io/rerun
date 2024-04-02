@@ -17,8 +17,13 @@ channel = "release"
 
 Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
 
-## Used Rerun Types
+# Used Rerun Types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d)
+
+# Background
+Raw 3D mesh data refers to the basic geometric representation of a three-dimensional object, typically composed of interconnected triangles. 
+These triangles collectively form the surface of the object, defining its shape and structure in a digital environment. 
+Rerun was employed to visualize and manage this raw mesh data, along with its associated simple material properties and transform hierarchy.
 
 
 # Logging and Visualizing with Rerun
