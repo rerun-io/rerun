@@ -83,7 +83,7 @@ impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
-                write!(f, "DropAtLeast({:.3}%)", re_format::format_f64(*p * 100.0))
+                write!(f, "DropAtLeast({:.3}%)", *p * 100.0)
             }
             GarbageCollectionTarget::Everything => write!(f, "Everything"),
         }
