@@ -24,9 +24,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The top-level description of the Viewport.
 #[derive(Clone, Debug, Default)]
 pub struct ViewportBlueprint {
-    /// All of the space-views that belong to the viewport.
-    pub space_views: Option<Vec<crate::blueprint::components::IncludedSpaceView>>,
-
     /// The layout of the space-views
     pub root_container: Option<crate::blueprint::components::RootContainer>,
 
@@ -59,8 +56,7 @@ pub struct ViewportBlueprint {
 impl ::re_types_core::SizeBytes for ViewportBlueprint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.space_views.heap_size_bytes()
-            + self.root_container.heap_size_bytes()
+        self.root_container.heap_size_bytes()
             + self.maximized.heap_size_bytes()
             + self.auto_layout.heap_size_bytes()
             + self.auto_space_views.heap_size_bytes()
@@ -69,8 +65,7 @@ impl ::re_types_core::SizeBytes for ViewportBlueprint {
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<Vec<crate::blueprint::components::IncludedSpaceView>>>::is_pod()
-            && <Option<crate::blueprint::components::RootContainer>>::is_pod()
+        <Option<crate::blueprint::components::RootContainer>>::is_pod()
             && <Option<crate::blueprint::components::SpaceViewMaximized>>::is_pod()
             && <Option<crate::blueprint::components::AutoLayout>>::is_pod()
             && <Option<crate::blueprint::components::AutoSpaceViews>>::is_pod()
@@ -84,12 +79,11 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewportBlueprintIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
-            "rerun.blueprint.components.IncludedSpaceView".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
             "rerun.blueprint.components.ViewerRecommendationHash".into(),
@@ -97,13 +91,12 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.ViewportBlueprintIndicator".into(),
             "rerun.blueprint.components.AutoLayout".into(),
             "rerun.blueprint.components.AutoSpaceViews".into(),
-            "rerun.blueprint.components.IncludedSpaceView".into(),
             "rerun.blueprint.components.RootContainer".into(),
             "rerun.blueprint.components.SpaceViewMaximized".into(),
             "rerun.blueprint.components.ViewerRecommendationHash".into(),
@@ -112,7 +105,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl ViewportBlueprint {
-    pub const NUM_COMPONENTS: usize = 8usize;
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`ViewportBlueprint`] [`::re_types_core::Archetype`]
@@ -162,20 +155,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let space_views = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.IncludedSpaceView")
-        {
-            Some({
-                <crate::blueprint::components::IncludedSpaceView>::from_arrow_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.blueprint.archetypes.ViewportBlueprint#space_views")?
-            })
-        } else {
-            None
-        };
         let root_container =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RootContainer") {
                 <crate::blueprint::components::RootContainer>::from_arrow_opt(&**array)
@@ -236,7 +215,6 @@ impl ::re_types_core::Archetype for ViewportBlueprint {
             None
         };
         Ok(Self {
-            space_views,
             root_container,
             maximized,
             auto_layout,
@@ -252,9 +230,6 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.space_views
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.root_container
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
@@ -285,24 +260,12 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
 impl ViewportBlueprint {
     pub fn new() -> Self {
         Self {
-            space_views: None,
             root_container: None,
             maximized: None,
             auto_layout: None,
             auto_space_views: None,
             past_viewer_recommendations: None,
         }
-    }
-
-    #[inline]
-    pub fn with_space_views(
-        mut self,
-        space_views: impl IntoIterator<
-            Item = impl Into<crate::blueprint::components::IncludedSpaceView>,
-        >,
-    ) -> Self {
-        self.space_views = Some(space_views.into_iter().map(Into::into).collect());
-        self
     }
 
     #[inline]
