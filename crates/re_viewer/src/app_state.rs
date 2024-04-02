@@ -165,12 +165,17 @@ impl AppState {
         }
 
         selection_state.on_frame_start(
-            |item| viewport.is_item_valid(item),
+            |item| {
+                if let re_viewer_context::Item::StoreId(store_id) = item {
+                    if store_id.is_empty_recording() {
+                        return false;
+                    }
+                }
+
+                viewport.is_item_valid(item)
+            },
             re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
         );
-
-        let rec_cfg =
-            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
             selection_state.clear_selection();
@@ -210,6 +215,9 @@ impl AppState {
                 })
                 .collect::<_>()
         };
+
+        let rec_cfg =
+            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
 
         let ctx = ViewerContext {
             app_options,
