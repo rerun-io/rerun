@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import uuid
 from typing import Any, Iterable, Optional, Union
 
