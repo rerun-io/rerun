@@ -400,7 +400,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
-                    time.value as i64 + time_offset,
+                    (time.value as i64).saturating_add(time_offset),
                     time_zone_for_timestamps,
                 )
             })
@@ -408,7 +408,7 @@ It can greatly improve performance (and readability) in such situations as it pr
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
-                    (value.x as i64 + time_offset).into(),
+                    ((value.x as i64).saturating_add(time_offset)).into(),
                     time_zone_for_timestamps,
                 );
 
@@ -803,7 +803,12 @@ fn ns_grid_spacer(
 
     let mut small_spacing_ns = 1;
     while width_ns / (next_grid_tick_magnitude_ns(small_spacing_ns) as f64) > max_medium_lines {
-        small_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
+        let next_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
+        if small_spacing_ns < next_ns {
+            small_spacing_ns = next_ns;
+        } else {
+            break; // we've reached the max
+        }
     }
     let medium_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
     let big_spacing_ns = next_grid_tick_magnitude_ns(medium_spacing_ns);
@@ -828,7 +833,11 @@ fn ns_grid_spacer(
             step_size: step_size as f64,
         });
 
-        current_ns += small_spacing_ns;
+        if let Some(new_ns) = current_ns.checked_add(small_spacing_ns) {
+            current_ns = new_ns;
+        } else {
+            break;
+        };
     }
 
     marks
