@@ -259,6 +259,9 @@ impl ViewportBlueprint {
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
+    ///
+    /// TODO(#5742): note that `Item::DataResult` with entity path set to the space origin or some
+    /// of its descendent are always considered valid.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
             Item::DataSource(_)
@@ -270,10 +273,16 @@ impl ViewportBlueprint {
 
             Item::DataResult(space_view_id, instance_path) => {
                 self.space_view(space_view_id).map_or(false, |space_view| {
-                    space_view
-                        .contents
-                        .entity_path_filter
-                        .is_included(&instance_path.entity_path)
+                    let entity_path = &instance_path.entity_path;
+
+                    // TODO(#5742): including any path that is—or descend from—the space origin is
+                    // necessary because such items may actually be displayed in the blueprint tree.
+                    entity_path == &space_view.space_origin
+                        || entity_path.is_descendant_of(&space_view.space_origin)
+                        || space_view
+                            .contents
+                            .entity_path_filter
+                            .is_included(&instance_path.entity_path)
                 })
             }
 
