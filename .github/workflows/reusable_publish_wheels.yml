@@ -165,7 +165,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          python3 -m pip install packaging==23.1 google-cloud-storage==2.9.0 maturin==1.4.0
+          python3 -m pip install packaging==23.1 google-cloud-storage==2.9.0 maturin==1.5.1
 
       - name: Publish to PyPI
         shell: bash

@@ -16,38 +16,47 @@ on:
         required: true
 
 jobs:
-  linux:
+  linux-arm64:
+    name: "Linux-arm64"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: publish-rerun-cli-linux-arm64-${{ github.ref_name }}
+      PLATFORM: linux-arm64
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  linux-x64:
     name: "Linux-x64"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
+      CONCURRENCY: publish-rerun-cli-linux-x64-${{ github.ref_name }}
+      PLATFORM: linux-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  macos-intel:
+  macos-x64:
     name: "Mac-Intel"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
+      CONCURRENCY: publish-rerun-cli-macos-x64-${{ github.ref_name }}
+      PLATFORM: macos-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  macos-arm:
+  macos-arm64:
     name: "Mac-Arm"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
+      CONCURRENCY: publish-rerun-cli-macos-arm64-${{ github.ref_name }}
+      PLATFORM: macos-arm64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  windows:
+  windows-x64:
     name: "Windows-x64"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
+      CONCURRENCY: publish-rerun-cli-windows-x64-${{ github.ref_name }}
+      PLATFORM: windows-x64
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit

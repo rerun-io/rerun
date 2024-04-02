@@ -68,7 +68,7 @@ snippet: my-example
 ### Screenshot links
 
 If a screenshot shows an example or snippet which is runnable and built on CI, then you can turn the screenshot
-to a link to `app.rerun.io` pointing at the example using the `data-inline-viewer` attribute.
+to a link to `rerun.io/viewer` pointing at the example using the `data-inline-viewer` attribute.
 
 Add the attribute to any `<picture>` element like so:
 
