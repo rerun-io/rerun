@@ -1,4 +1,6 @@
 //! Miscellaneous tools to format and parse numbers, durations, etc.
+//!
+//! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
 #[cfg(feature = "arrow")]
 pub mod arrow;
@@ -9,9 +11,38 @@ pub use time::next_grid_tick_magnitude_ns;
 
 // --- Numbers ---
 
-/// Pretty format a number by using thousands separators for readability.
-pub fn format_number(number: usize) -> String {
-    let number = number.to_string();
+/// The minus character: <https://www.compart.com/en/unicode/U+2212>
+///
+/// Looks slightly different from the normal hyphen `-`.
+const MINUS: char = '−';
+
+/// Pretty format an unsigned integer by using thousands separators for readability.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `usize::from_str` function.
+pub fn format_uint<Uint>(number: Uint) -> String
+where
+    Uint: Copy + num_traits::Unsigned + std::fmt::Display,
+{
+    add_thousands_separators(&number.to_string())
+}
+
+/// Pretty format a signed number by using thousands separators for readability.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `usize::from_str` function.
+pub fn format_i64(number: i64) -> String {
+    if number < 0 {
+        // TODO(rust-num/num-traits#315): generalize this to all signed integers once https://github.com/rust-num/num-traits/issues/315 lands
+        format!("{MINUS}{}", format_uint(number.unsigned_abs()))
+    } else {
+        add_thousands_separators(&number.to_string())
+    }
+}
+
+/// Add thousands separators to a number, every three steps,
+/// counting from the last character.
+fn add_thousands_separators(number: &str) -> String {
     let mut chars = number.chars().rev().peekable();
 
     let mut result = vec![];
@@ -33,43 +64,126 @@ pub fn format_number(number: usize) -> String {
 }
 
 #[test]
-fn test_format_number() {
-    assert_eq!(format_number(42), "42");
-    assert_eq!(format_number(999), "999");
-    assert_eq!(format_number(1_000), "1 000");
-    assert_eq!(format_number(123_456), "123 456");
-    assert_eq!(format_number(1_234_567), "1 234 567");
+fn test_format_uint() {
+    assert_eq!(format_uint(42_u32), "42");
+    assert_eq!(format_uint(999_u32), "999");
+    assert_eq!(format_uint(1_000_u32), "1 000");
+    assert_eq!(format_uint(123_456_u32), "123 456");
+    assert_eq!(format_uint(1_234_567_u32), "1 234 567");
 }
 
-/// Format a number with a decent number of decimals.
-pub fn format_f64(value: f64) -> String {
-    let is_integer = value.round() == value;
-    if is_integer {
-        return format!("{value:.0}");
+/// Options for how to format a floating point number, e.g. an [`f64`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FloatFormatOptions {
+    /// Number of decimals to show after the decimal point.
+    ///
+    /// If not specified, a number will be picked automatically.
+    pub num_decimals: Option<usize>,
+
+    pub strip_trailing_zeros: bool,
+}
+
+impl Default for FloatFormatOptions {
+    fn default() -> Self {
+        Self {
+            num_decimals: None,
+            strip_trailing_zeros: true,
+        }
+    }
+}
+
+impl FloatFormatOptions {
+    #[inline]
+    pub fn with_decimals(mut self, num_decimals: usize) -> Self {
+        self.num_decimals = Some(num_decimals);
+        self
     }
 
-    let magnitude = value.abs().log10();
-    let num_decimals = (3.5 - magnitude).round().max(1.0) as usize;
-    format!("{value:.num_decimals$}")
+    /// The returned value is for human eyes only, and can not be parsed
+    /// by the normal `f64::from_str` function.
+    pub fn format_f64(&self, value: f64) -> String {
+        let Self {
+            num_decimals,
+            strip_trailing_zeros,
+        } = *self;
+
+        if value.is_nan() {
+            "NaN".to_owned()
+        } else if value < 0.0 {
+            format!("{MINUS}{}", self.format_f64(-value))
+        } else if value == f64::INFINITY {
+            "∞".to_owned()
+        } else if value.round() == value {
+            // perfect integer
+            format_i64(value.round() as i64)
+        } else {
+            let num_decimals = num_decimals.unwrap_or_else(|| {
+                let magnitude = value.abs().log10();
+                (3.5 - magnitude).round().max(1.0) as usize
+            });
+            let mut formatted = format!("{value:.num_decimals$}");
+
+            if strip_trailing_zeros {
+                while formatted.ends_with('0') {
+                    formatted.pop();
+                }
+                if formatted.ends_with('.') {
+                    formatted.pop();
+                }
+            }
+
+            if let Some(dot) = formatted.find('.') {
+                let integer_part = &formatted[..dot];
+                let fractional_part = &formatted[dot + 1..];
+                let integer_part = add_thousands_separators(integer_part);
+                // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
+                let fractional_part = reverse(&add_thousands_separators(&reverse(fractional_part)));
+                format!("{integer_part}.{fractional_part}")
+            } else {
+                add_thousands_separators(&formatted) // it's an integer
+            }
+        }
+    }
 }
 
 /// Format a number with a decent number of decimals.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `f64::from_str` function.
+pub fn format_f64(value: f64) -> String {
+    FloatFormatOptions::default().format_f64(value)
+}
+
+fn reverse(s: &str) -> String {
+    s.chars().rev().collect()
+}
+
+/// Format a number with a decent number of decimals.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `f64::from_str` function.
 pub fn format_f32(value: f32) -> String {
     format_f64(value as f64)
 }
 
 #[test]
 fn test_format_float() {
+    assert_eq!(format_f64(f64::NAN), "NaN");
+    assert_eq!(format_f64(f64::INFINITY), "∞");
+    assert_eq!(format_f64(f64::NEG_INFINITY), "−∞");
+    assert_eq!(format_f64(0.0), "0");
     assert_eq!(format_f64(42.0), "42");
-    assert_eq!(format_f64(123_456_789.0), "123456789");
-    assert_eq!(format_f64(123_456_789.123_45), "123456789.1");
-    assert_eq!(format_f64(0.0000123456789), "0.00001235");
-    assert_eq!(format_f64(0.123456789), "0.1235");
+    assert_eq!(format_f64(-42.0), "−42");
+    assert_eq!(format_f64(-4.20), "−4.2");
+    assert_eq!(format_f64(123_456_789.0), "123 456 789");
+    assert_eq!(format_f64(123_456_789.123_45), "123 456 789.1");
+    assert_eq!(format_f64(0.0000123456789), "0.000 012 35");
+    assert_eq!(format_f64(0.123456789), "0.123 5");
     assert_eq!(format_f64(1.23456789), "1.235");
     assert_eq!(format_f64(12.3456789), "12.35");
     assert_eq!(format_f64(123.456789), "123.5");
-    assert_eq!(format_f64(1234.56789), "1234.6");
-    assert_eq!(format_f64(12345.6789), "12345.7");
+    assert_eq!(format_f64(1234.56789), "1 234.6");
+    assert_eq!(format_f64(12345.6789), "12 345.7");
     assert_eq!(format_f64(78.4321), "78.43");
 }
 
@@ -83,14 +197,12 @@ fn test_format_float() {
 /// assert_eq!(approximate_large_number(123_456_789 as _), "123M");
 /// ```
 ///
-/// Prefer to use [`format_number`], which outputs an exact string,
+/// Prefer to use [`format_uint`], which outputs an exact string,
 /// while still being readable thanks to half-width spaces used as thousands-separators.
 pub fn approximate_large_number(number: f64) -> String {
     if number < 0.0 {
-        return format!("-{}", approximate_large_number(-number));
-    }
-
-    if number < 1000.0 {
+        format!("{MINUS}{}", approximate_large_number(-number))
+    } else if number < 1000.0 {
         format!("{number:.0}")
     } else if number < 1_000_000.0 {
         let decimals = (number < 10_000.0) as usize;
@@ -140,10 +252,8 @@ fn test_format_large_number() {
 /// ```
 pub fn format_bytes(number_of_bytes: f64) -> String {
     if number_of_bytes < 0.0 {
-        return format!("-{}", format_bytes(-number_of_bytes));
-    }
-
-    if number_of_bytes < 10.0_f64.exp2() {
+        format!("{MINUS}{}", format_bytes(-number_of_bytes))
+    } else if number_of_bytes < 10.0_f64.exp2() {
         format!("{number_of_bytes:.0} B")
     } else if number_of_bytes < 20.0_f64.exp2() {
         let decimals = (10.0 * number_of_bytes < 20.0_f64.exp2()) as usize;
@@ -194,7 +304,9 @@ fn test_format_bytes() {
 
 pub fn parse_bytes_base10(bytes: &str) -> Option<i64> {
     // Note: intentionally case sensitive so that we don't parse `Mb` (Megabit) as `MB` (Megabyte).
-    if let Some(kb) = bytes.strip_suffix("kB") {
+    if let Some(rest) = bytes.strip_prefix(MINUS) {
+        Some(-parse_bytes_base10(rest)?)
+    } else if let Some(kb) = bytes.strip_suffix("kB") {
         Some(kb.parse::<i64>().ok()? * 1_000)
     } else if let Some(mb) = bytes.strip_suffix("MB") {
         Some(mb.parse::<i64>().ok()? * 1_000_000)
@@ -225,6 +337,8 @@ fn test_parse_bytes_base10() {
         ("123B", 123),
         ("12kB", 12_000),
         ("123MB", 123_000_000),
+        ("-10B", -10), // hyphen-minus
+        ("−10B", -10), // proper minus
     ];
     for (value, expected) in test_cases {
         assert_eq!(Some(expected), parse_bytes_base10(value));
@@ -233,7 +347,9 @@ fn test_parse_bytes_base10() {
 
 pub fn parse_bytes_base2(bytes: &str) -> Option<i64> {
     // Note: intentionally case sensitive so that we don't parse `Mib` (Mebibit) as `MiB` (Mebibyte).
-    if let Some(kb) = bytes.strip_suffix("KiB") {
+    if let Some(rest) = bytes.strip_prefix(MINUS) {
+        Some(-parse_bytes_base2(rest)?)
+    } else if let Some(kb) = bytes.strip_suffix("KiB") {
         Some(kb.parse::<i64>().ok()? * 1024)
     } else if let Some(mb) = bytes.strip_suffix("MiB") {
         Some(mb.parse::<i64>().ok()? * 1024 * 1024)
@@ -265,6 +381,8 @@ fn test_parse_bytes_base2() {
         ("123B", 123),
         ("12KiB", 12 * 1024),
         ("123MiB", 123 * 1024 * 1024),
+        ("-10B", -10), // hyphen-minus
+        ("−10B", -10), // proper minus
     ];
     for (value, expected) in test_cases {
         assert_eq!(Some(expected), parse_bytes_base2(value));

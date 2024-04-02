@@ -94,10 +94,7 @@ impl DataUi for EntityComponentWithInstances {
                 ui.label(ctx.re_ui.error_text("Error: missing instance key"));
             }
         } else if one_line {
-            ui.label(format!(
-                "{} values",
-                re_format::format_number(num_instances)
-            ));
+            ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
             table_for_verbosity(verbosity, ui)
                 .resizable(false)
@@ -148,7 +145,7 @@ impl DataUi for EntityComponentWithInstances {
             if num_instances > displayed_row {
                 ui.label(format!(
                     "…and {} more.",
-                    re_format::format_number(num_instances - displayed_row)
+                    re_format::format_uint(num_instances - displayed_row)
                 ));
             }
         }
