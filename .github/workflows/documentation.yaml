@@ -38,6 +38,7 @@ jobs:
           # * skip changelog PR links (so many)
           # * skip speculative links
           # * Stackoverflow links are no longer accessible from CI.
+          # * Tuxfamily.org links are down intermittently.
           # * Nyud links are down every now and then.
           # * TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
           # * TODO(#4556): remove the `static.rerun.io` and `github.com` skips
