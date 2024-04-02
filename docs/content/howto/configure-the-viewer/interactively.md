@@ -15,7 +15,7 @@ the contents of the current blueprint.
 The right panel of the viewer is the "Selection Panel" this panel allows you to configure
 specific blueprint properties of the currently selected element.
 
-After editing the viewer you may want to [save or share the blueprint](./rbl-files.md).
+After editing the viewer you may want to [save or share the blueprint](./save-and-load.md).
 
 ## Configuring Layout and Contents
 
