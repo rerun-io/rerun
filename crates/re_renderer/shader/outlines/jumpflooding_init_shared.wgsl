@@ -2,7 +2,7 @@
 #import <../screen_triangle_vertex.wgsl>
 
 fn compute_pixel_coords(center_coord: vec2i, unnormalized_edge_pos_a_and_b: vec4f, num_edges_a_and_b: vec2f) -> vec4f {
-    // Normalize edges ans get range from [0, 1] to [-0.5, 0.5].
+    // Normalize edges and get range from [0, 1] to [-0.5, 0.5].
     let edge_pos_a_and_b = unnormalized_edge_pos_a_and_b / num_edges_a_and_b.xxyy - vec4f(0.5);
 
     // We're outputting pixel coordinates (0-res) instead of texture coordinates (0-1).

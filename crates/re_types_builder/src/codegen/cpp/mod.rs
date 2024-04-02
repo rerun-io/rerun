@@ -274,7 +274,7 @@ fn generate_object_files(
 ///
 /// Additionally, picks up all includes files that aren't including the header itself.
 ///
-/// Returns what to inject, and what to repalce `HEADER_EXTENSION_TOKEN` with at the end.
+/// Returns what to inject, and what to replace `HEADER_EXTENSION_TOKEN` with at the end.
 fn hpp_type_extensions(
     folder_path: &Utf8Path,
     filename_stem: &str,
