@@ -137,12 +137,13 @@ class Uploader:
                 f"Aspect ratio is {aspect_ratio:.2f} but should be between {ASPECT_RATIO_RANGE[0]} and "
                 f"{ASPECT_RATIO_RANGE[1]}."
             )
-            if (
-                input(
-                    "The image aspect ratio is outside the range recommended for example screenshots. Continue? [y/N] "
-                ).lower()
-                != "y"
-            ):
+            # do not pass prompt to input as this goes to stdout
+            print(
+                "The image aspect ratio is outside the range recommended for example screenshots. Continue? [y/N] ",
+                end="",
+                file=sys.stderr,
+            )
+            if input().lower() != "y":
                 sys.exit(1)
 
     def upload_file(self, path: Path) -> str:
