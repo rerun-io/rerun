@@ -4,6 +4,7 @@ tags = ["depth-guided", "stable-diffusion", "huggingface", "3D", "tensor", "text
 description = "Leverage Depth Guided Stable Diffusion to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images."
 thumbnail = "https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png"
 thumbnail_dimensions = [480, 253]
+-->
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png">
