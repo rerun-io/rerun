@@ -1007,6 +1007,7 @@ impl App {
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
+                                store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
                             }
                         } else {
                             re_log::warn!(
