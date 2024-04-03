@@ -327,6 +327,9 @@ impl ExampleSection {
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
+                        // Disable text selection so that hovering the example card only hovers the card
+                        ui.style_mut().interaction.selectable_labels = false;
+
                         for row_of_examples in examples.chunks_mut(column_count) {
                             let mut row_example_responses: Vec<egui::Response> = vec![];
 
