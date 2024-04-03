@@ -1,6 +1,6 @@
 ---
 title: Opening files
-order: 1
+order: 4
 ---
 
 The Rerun Viewer and SDK have built-in support for opening many kinds of files, and can be extended to support any other file type without needing to modify the Rerun codebase itself.

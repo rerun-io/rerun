@@ -1,6 +1,6 @@
 ---
 title: Stream from Rust
-order: 7
+order: 3
 ---
 
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.

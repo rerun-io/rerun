@@ -1,6 +1,6 @@
 ---
 title: Stream from C++
-order: 5
+order: 1
 ---
 
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.
