@@ -1,6 +1,6 @@
 ---
-title: Blueprint API Tutorial
-order: 4
+title: Configure the viewer through code
+order: 3
 ---
 
 This tutorial will walk you through using the Blueprint APIs to better control the

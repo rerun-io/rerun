@@ -1,119 +1,85 @@
 ---
 title: Configure the viewer interactively
-order: 4
+order: 1
 ---
 
-This guide builds on top of the previous tutorial:
-[Navigating the viewer](../navigating-the-viewer.md). Please follow that tutorial first if you haven't already.
+The Rerun Viewer is configurable directly through the UI itself.
 
-This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
-be comfortable with the following topics:
+## Viewer overview
 
--   [Configuring views](#configuring-views)
--   [Creating new views](#creating-new-views)
+TODO(#5636): Screenshot of the viewer, with the blueprint and selection panels highlighted.
 
-## Configuring views
+The left panel of the viewer is the "Blueprint Panel" this shows a visual tree view representing
+the contents of the current blueprint.
 
-Views in Rerun are configured by [Blueprints](../../reference/viewer/blueprint.md). We will now use blueprints to adjust
-both an individual entity as well as the contents of a space view itself.
+The right panel of the viewer is the "Selection Panel" this panel allows you to configure
+specific blueprint properties of the currently selected element.
 
-### Adjusting entity properties
+After editing the viewer you may want to [save or share the blueprint](./save-and-load.md).
 
-First, click to select the entity named `points` in the `/ (Spatial)` view in the Blueprint panel. Now, look and the
-selection panel -- in addition to the information about the data associated with that entity, you will see a "Blueprint"
-section.
+## Configuring Layout and Contents
 
-Try toggling "visible" on and off and you will see that the points disappear and reappear. Next, click the control
-labeled "visible history" and drag it to the right to increase the value. As you drag farther you will see more points
-show up in the view. This is making historical points, from farther back in time visible within the time point of this
-view. Because the points are logged in stationary 3D space, aggregating them here gives us a more complete view of the
-car. Leave the visible history with a value of 50.
+### Show or hide parts of the blueprint
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough8_history/9c6a01f4dd2059641d92d121f8f2772203c56cfa/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough8_history/9c6a01f4dd2059641d92d121f8f2772203c56cfa/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough8_history/9c6a01f4dd2059641d92d121f8f2772203c56cfa/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough8_history/9c6a01f4dd2059641d92d121f8f2772203c56cfa/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough8_history/9c6a01f4dd2059641d92d121f8f2772203c56cfa/full.png" alt="viewer walkthrough adjusting visible history screenshot">
-</picture>
+Click the "eye" icon next to the container, view, or entity in the blueprint panel.
+TODO(#5636): show_hide
 
-### Modifying the contents of a space view
+### Add new Containers or Views
 
-Now select the `/ (Spatial)` view itself. We will start by giving this space view a different name. At the very
-top of the selection panel you will see a text box labeled "Space view:". Go ahead and change the name to
-`Reconstruction`. The name will also update in the blueprint panel on the left.
+Clicking the "+" at the top of the blueprint panel.
+TODO(#5636): add_1
 
-Like with the entity selection, you will see a Blueprint section within the Selection panel. This time, click on the
-button labeled "Add/Remove Entities". This pop-up shows all of the entities that were logged as part of this session.
-You can click on the "+" or "-" buttons to add or remove entities from this view. Go ahead and remove the entity called
-"keypoints," and then add them back again. Unlike hiding an entity, you will notice that as you remove entities they
-completely disappear from the blueprint panel on the left. Entities that are incompatible with the selected view will be
-grayed out. For example, you cannot add a scalar to a spatial scene.
+Selecting a Container and clicking the "+" in the selection panel.
+TODO(#5636): add_2
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough9_add_remove/e22b231be49391998d6e6ef005b2dad0a85d2adf/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough9_add_remove/e22b231be49391998d6e6ef005b2dad0a85d2adf/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough9_add_remove/e22b231be49391998d6e6ef005b2dad0a85d2adf/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough9_add_remove/e22b231be49391998d6e6ef005b2dad0a85d2adf/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough9_add_remove/e22b231be49391998d6e6ef005b2dad0a85d2adf/full.png" alt="viewer walkthrough modifying contents of a space view screenshot">
-</picture>
+### Remove a View or Container
 
-## Creating new views
+Click the "-" button next to the container or view in the blueprint panel.
+TODO(#5636): remove
 
-New views & view containers (grid, vertical, etc.) can be created using the "+" button at the top of the Blueprint panel or
-from the selection panel when selecting a container.
+### Re-arrange existing Containers or Views
 
-After creating a view you usually want to proceed to editing its origin and query (which entities are shown) in the selection panel.
+Drag and drop the container or view in the blueprint panel.
+TODO(#5636): drag_1
 
-Your view layout might be feeling a little cluttered now. You can quickly hide views you're
-not using from the blueprint panel by hovering over the view and then clicking the icon that looks like an eye. Go ahead
-and hide the `image` and `avg_reproj_err` views, and collapse the expanded timeline panel using the button in the upper
-right corner. Note that even with the timeline collapsed you still have access to timeline controls, including a slider.
+Drag and drop containers or views directly in the viewport
+TODO(#5636): drag_2
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough11_toggle_vis/28d2720b63fbb2f3d3def0f37962f1ace3674085/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough11_toggle_vis/28d2720b63fbb2f3d3def0f37962f1ace3674085/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough11_toggle_vis/28d2720b63fbb2f3d3def0f37962f1ace3674085/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough11_toggle_vis/28d2720b63fbb2f3d3def0f37962f1ace3674085/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough11_toggle_vis/28d2720b63fbb2f3d3def0f37962f1ace3674085/full.png" alt="viewer walkthrough toggle visibility screenshot">
-</picture>
+### Change the size of Containers or Views
 
-### Reusing what you've learned
+Click and drag the edge of a view or container to resize it
+TODO(#5636): resize
 
-Finally, use what we covered in the previous section to change the contents of this view. Select the new `camera` view,
-then choose "Add/remove entities." Remove the 2D "keypoints" and add in the 3D "points." Note that these points do not
-have visible history turned on -- that's because the blueprint is part of the view and not part of the entity.
-Select the points within this view by clicking on them in the blueprint or the view itself, and then give them visible
-history as well. When you are done, your view should look like this:
+### Rename a View or Container
 
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough12_cameraview/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough12_cameraview/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough12_cameraview/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough12_cameraview/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough12_cameraview/3813b97238a2e3a8f5503ac3a408a8c9d0f5dadb/full.png" alt="viewer walkthrough camera view screenshot">
-</picture>
+Select the Container or View and enter a name at the top of the selection panel
+TODO(#5636): rename
 
-Now move the slider back and forth and see what happens. Even though they are both views of the same camera and point
-entities, they behave quite differently. On the top the camera moves relative to the car, while on the bottom the car
-moves relative to the camera. This is because the new views have _different_ space roots, and Rerun uses the transform
-system to transform or project all data into the space root for the given view.
+### Change the type of a Container
 
-## Conclusion
+Select the Container and choose a new type from the dropdown in the selection panel
+TODO(#5636): change_type
 
-That brings us to the end of this walkthrough. To recap, you have learned how to:
+### Add a new Data to a View
 
--   Configure entity blueprint properties.
--   Add and remove entities from views.
--   Create and configure new views.
--   And some basics of how transforms work.
+Select the view and click "edit" to bring up the entity editor
+TODO(#5636): add_data_1
 
-Again, if you ran into any issues following this guide, please don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
+Select the view and directly edit the entity query
+See [Entity Queries](../../reference/entity-queries.md) for more information on how to write queries.
 
-### Up next
+TODO(#5636): add_data_2
 
-To get started with writing a program to logging data with the Rerun SDK see the [getting started guides](../quick-start).
+### Remove Data from a View
 
-To see and explore other data, you can check out the [examples](/examples).
+Click the "-" next to the entity in the blueprint panel
+TODO(#5636): remove_data_1
 
-For deeper context on the ideas covered here, consult the [Concept overview](../../concepts.md).
+### Change the origin of a View
+
+Select the view, then click the "Space Origin" field and type or select a new origin
+TODO(#5636): change_origin
+
+## Overriding Properties
+
+TODO(jleibs): do we include this now or wait for generalized component overrides?

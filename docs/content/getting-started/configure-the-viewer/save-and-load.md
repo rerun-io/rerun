@@ -1,6 +1,6 @@
 ---
 title: Save and load viewer configuration files
-order: 1
+order: 2
 ---
 
 If you have made changes to your blueprint and you would like to save or share these changes,
