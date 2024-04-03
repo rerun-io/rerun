@@ -28,7 +28,7 @@ The visualizations in this example were created with the Rerun SDK, demonstratin
 ## Prompt
 Visualizing the prompt and negative prompt
 ```python
-rr.log("prompt/text", rr.TextDocument(prompt))
+rr.log("prompt/text", rr.TextLog(prompt))
 rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
 ```
 
