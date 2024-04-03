@@ -4,7 +4,10 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{Item, StoreHub, SystemCommandSender, UiVerbosity, ViewerContext};
+use re_ui::icons;
+use re_viewer_context::{
+    Item, StoreHub, SystemCommand, SystemCommandSender, UiVerbosity, ViewerContext,
+};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -143,10 +146,7 @@ fn app_and_its_recordings_ui(
             } else {
                 ui.visuals().widgets.noninteractive.fg_stroke.color
             };
-            re_ui::icons::APPLICATION
-                .as_image()
-                .tint(color)
-                .paint_at(ui, rect);
+            icons::APPLICATION.as_image().tint(color).paint_at(ui, rect);
         });
 
     let item_response = if app_id == &StoreHub::welcome_screen_app_id() {
@@ -157,8 +157,20 @@ fn app_and_its_recordings_ui(
         );
         app_list_item.show_hierarchical(ui)
     } else {
+        // Normal application
         let id = ui.make_persistent_id(app_id);
         app_list_item
+            .with_buttons(|re_ui, ui| {
+                // Close-button:
+                let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
+                    "Close this application and all its recordings. This cannot be undone.",
+                );
+                if resp.clicked() {
+                    ctx.command_sender
+                        .send_system(SystemCommand::CloseApp(app_id.clone()));
+                }
+                resp
+            })
             .show_hierarchical_with_content(ui, id, true, |_, ui| {
                 // Show all the recordings for this application:
                 if entity_dbs.is_empty() {

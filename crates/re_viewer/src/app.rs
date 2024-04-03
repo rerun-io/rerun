@@ -340,6 +340,10 @@ impl App {
                 store_hub.set_active_app(app_id);
             }
 
+            SystemCommand::CloseApp(app_id) => {
+                store_hub.close_app(&app_id);
+            }
+
             SystemCommand::ActivateRecording(store_id) => {
                 store_hub.set_activate_recording(store_id);
             }

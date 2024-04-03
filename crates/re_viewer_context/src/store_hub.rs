@@ -252,6 +252,19 @@ impl StoreHub {
         }
     }
 
+    /// Close this application and all its recordings.
+    pub fn close_app(&mut self, app_id: &ApplicationId) {
+        self.store_bundle.retain(|db| db.app_id() != Some(app_id));
+
+        if self.active_application_id.as_ref() == Some(app_id) {
+            self.active_application_id = None;
+            self.active_rec_id = None;
+        }
+
+        self.default_blueprint_by_app_id.remove(app_id);
+        self.active_blueprint_by_app_id.remove(app_id);
+    }
+
     #[inline]
     pub fn active_app(&self) -> Option<&ApplicationId> {
         self.active_application_id.as_ref()
