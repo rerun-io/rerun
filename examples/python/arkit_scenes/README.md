@@ -31,7 +31,7 @@ contains color images, depth images, the reconstructed mesh, and labeled boundin
 The ARKitScenes dataset, captured using Apple's ARKit technology, encompasses a diverse array of indoor scenes, offering color and depth images, reconstructed 3D meshes, and labeled bounding boxes around objects like furniture. It's a valuable resource for researchers and developers in computer vision and augmented reality, enabling advancements in object recognition, depth estimation, and spatial understanding.
 
 ## Logging and Visualizing with Rerun
-This visualization through Rerun highlights the dataset's potential in developing immersive AR experiences and enhancing machine learning models for real-world applications while showcasing Reruns visualisation capabilities.
+This visualization through Rerun highlights the dataset's potential in developing immersive AR experiences and enhancing machine learning models for real-world applications while showcasing Reruns visualization capabilities.
 
 # Logging a moving RGB-D camera
 To log a moving RGB-D camera, we log four key components: the camera's intrinsics via a pinhole camera model, its pose or extrinsics, along with the color and depth images. The camera intrinsics, which define the camera's lens properties, and the pose, detailing its position and orientation, are logged to create a comprehensive 3D to 2D mapping. Both the RGB and depth images are then logged as child entities, capturing the visual and depth aspects of the scene, respectively. This approach ensures a detailed recording of the camera's viewpoint and the scene it captures, all stored compactly under the same entity path for simplicity.
