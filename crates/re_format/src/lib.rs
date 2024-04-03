@@ -75,6 +75,11 @@ fn test_format_uint() {
 /// Options for how to format a floating point number, e.g. an [`f64`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FloatFormatOptions {
+    /// Maximum digits of precision to use.
+    ///
+    /// This includes both the integer part and the fractional part.
+    pub precision: usize,
+
     /// Number of decimals to show after the decimal point.
     ///
     /// If not specified, a number will be picked automatically.
@@ -83,16 +88,32 @@ pub struct FloatFormatOptions {
     pub strip_trailing_zeros: bool,
 }
 
-impl Default for FloatFormatOptions {
-    fn default() -> Self {
-        Self {
-            num_decimals: None,
-            strip_trailing_zeros: true,
-        }
-    }
-}
-
 impl FloatFormatOptions {
+    /// Default options for formatting an [`f32`].
+    #[allow(non_upper_case_globals)]
+    pub const DEFAULT_f32: Self = Self {
+        precision: 7,
+        num_decimals: None,
+        strip_trailing_zeros: true,
+    };
+
+    /// Default options for formatting an [`f64`].
+    #[allow(non_upper_case_globals)]
+    pub const DEFAULT_f64: Self = Self {
+        precision: 15,
+        num_decimals: None,
+        strip_trailing_zeros: true,
+    };
+
+    /// Show at most this many digits of precision,
+    /// including both the integer part and the fractional part.
+    #[inline]
+    pub fn with_precision(mut self, precision: usize) -> Self {
+        self.precision = precision;
+        self
+    }
+
+    /// Show these many decimals after the decimal point.
     #[inline]
     pub fn with_decimals(mut self, num_decimals: usize) -> Self {
         self.num_decimals = Some(num_decimals);
@@ -101,8 +122,17 @@ impl FloatFormatOptions {
 
     /// The returned value is for human eyes only, and can not be parsed
     /// by the normal `f64::from_str` function.
-    pub fn format_f64(&self, value: f64) -> String {
+    pub fn format(&self, value: impl Into<f64>) -> String {
+        self.format_f64(value.into())
+    }
+
+    fn format_f64(&self, value: f64) -> String {
+        fn reverse(s: &str) -> String {
+            s.chars().rev().collect()
+        }
+
         let Self {
+            precision,
             num_decimals,
             strip_trailing_zeros,
         } = *self;
@@ -113,14 +143,27 @@ impl FloatFormatOptions {
             format!("{MINUS}{}", self.format_f64(-value))
         } else if value == f64::INFINITY {
             "∞".to_owned()
-        } else if value.round() == value {
-            // perfect integer
-            format_i64(value.round() as i64)
         } else {
-            let num_decimals = num_decimals.unwrap_or_else(|| {
-                let magnitude = value.abs().log10();
-                (3.5 - magnitude).round().max(1.0) as usize
-            });
+            let magnitude = value.log10();
+            let max_decimals = precision as f64 - magnitude.max(0.0);
+
+            dbg!(value, magnitude, max_decimals);
+
+            if max_decimals < 0.0 {
+                // A very large number (more digits than we have precision),
+                // so use scientific notation.
+                // TODO(emilk): nice formatting of scientific notation with thousands separators
+                return format!("{:.*e}", precision.saturating_sub(1), value);
+            }
+
+            let max_decimals = max_decimals as usize;
+
+            let num_decimals = if let Some(num_decimals) = num_decimals {
+                num_decimals.min(max_decimals)
+            } else {
+                max_decimals
+            };
+
             let mut formatted = format!("{value:.num_decimals$}");
 
             if strip_trailing_zeros {
@@ -135,6 +178,8 @@ impl FloatFormatOptions {
             if let Some(dot) = formatted.find('.') {
                 let integer_part = &formatted[..dot];
                 let fractional_part = &formatted[dot + 1..];
+                // let fractional_part = &fractional_part[..num_decimals.min(fractional_part.len())];
+
                 let integer_part = add_thousands_separators(integer_part);
                 // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
                 let fractional_part = reverse(&add_thousands_separators(&reverse(fractional_part)));
@@ -146,45 +191,78 @@ impl FloatFormatOptions {
     }
 }
 
-/// Format a number with a decent number of decimals.
+/// Format a number with about 15 decimals of precision.
 ///
 /// The returned value is for human eyes only, and can not be parsed
 /// by the normal `f64::from_str` function.
 pub fn format_f64(value: f64) -> String {
-    FloatFormatOptions::default().format_f64(value)
+    FloatFormatOptions::DEFAULT_f64.format(value)
 }
 
-fn reverse(s: &str) -> String {
-    s.chars().rev().collect()
-}
-
-/// Format a number with a decent number of decimals.
+/// Format a number with about 7 decimals of precision.
 ///
 /// The returned value is for human eyes only, and can not be parsed
 /// by the normal `f64::from_str` function.
 pub fn format_f32(value: f32) -> String {
-    format_f64(value as f64)
+    FloatFormatOptions::DEFAULT_f32.format(value)
 }
 
 #[test]
-fn test_format_float() {
-    assert_eq!(format_f64(f64::NAN), "NaN");
-    assert_eq!(format_f64(f64::INFINITY), "∞");
-    assert_eq!(format_f64(f64::NEG_INFINITY), "−∞");
-    assert_eq!(format_f64(0.0), "0");
-    assert_eq!(format_f64(42.0), "42");
-    assert_eq!(format_f64(-42.0), "−42");
-    assert_eq!(format_f64(-4.20), "−4.2");
-    assert_eq!(format_f64(123_456_789.0), "123 456 789");
-    assert_eq!(format_f64(123_456_789.123_45), "123 456 789.1");
-    assert_eq!(format_f64(0.0000123456789), "0.000 012 35");
-    assert_eq!(format_f64(0.123456789), "0.123 5");
-    assert_eq!(format_f64(1.23456789), "1.235");
-    assert_eq!(format_f64(12.3456789), "12.35");
-    assert_eq!(format_f64(123.456789), "123.5");
-    assert_eq!(format_f64(1234.56789), "1 234.6");
-    assert_eq!(format_f64(12345.6789), "12 345.7");
-    assert_eq!(format_f64(78.4321), "78.43");
+fn test_format_f32() {
+    let cases = [
+        (f32::NAN, "NaN"),
+        (f32::INFINITY, "∞"),
+        (f32::NEG_INFINITY, "−∞"),
+        (0.0, "0"),
+        (42.0, "42"),
+        (-42.0, "−42"),
+        (-4.20, "−4.2"),
+        (123_456.78, "123 456.8"),
+        (78.4321, "78.432 1"),
+        (-std::f32::consts::PI, "−3.141 593"),
+        (-std::f32::consts::PI * 1e6, "−3 141 593"),
+        (-std::f32::consts::PI * 1e20, "−3.141593e20"), // We should switch to scientific notation to now show dummy digits
+    ];
+    for (value, expected) in cases {
+        let got = format_f32(value);
+        assert!(
+            got == expected,
+            "Expected to format {value} as '{expected}', but but got '{got}'"
+        );
+    }
+}
+
+#[test]
+fn test_format_f64() {
+    let cases = [
+        (f64::NAN, "NaN"),
+        (f64::INFINITY, "∞"),
+        (f64::NEG_INFINITY, "−∞"),
+        (0.0, "0"),
+        (42.0, "42"),
+        (-42.0, "−42"),
+        (-4.20, "−4.2"),
+        (123_456_789.0, "123 456 789"),
+        (123_456_789.123_45, "123 456 789.123 45"),
+        (0.0000123456789, "0.000 012 345 678 9"),
+        (0.123456789, "0.123 456 789"),
+        (1.23456789, "1.234 567 89"),
+        (12.3456789, "12.345 678 9"),
+        (123.456789, "123.456 789"),
+        (1234.56789, "1 234.567 89"),
+        (12345.6789, "12 345.678 9"),
+        (78.4321, "78.432 1"),
+        (-std::f64::consts::PI, "−3.141 592 653 589 79"),
+        (-std::f64::consts::PI * 1e6, "−3 141 592.653 589 79"),
+        (-std::f64::consts::PI * 1e20, "−3.14159265358979e20"), // We should switch to scientific notation to now show dummy digits
+    ];
+    for (value, expected) in cases {
+        let got = format_f64(value);
+        assert!(
+            got == expected,
+            "Expected to format {value} as '{expected}', but but got '{got}'"
+        );
+    }
 }
 
 /// Pretty format a large number by using SI notation (base 10), e.g.
