@@ -15,6 +15,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr
+import rerun.blueprint as rrb
 import shapely
 from pyproj import CRS, Transformer
 from pyproj.aoi import AreaOfInterest
@@ -255,7 +256,8 @@ def main() -> None:
             with zipfile.ZipFile(zip_data) as zip_ref:
                 zip_ref.extractall(dataset_directory)
 
-    rr.script_setup(args, "rerun_example_air_traffic_data")
+    blueprint = rrb.Horizontal(rrb.Spatial3DView(origin="/"), rrb.TimeSeriesView(origin="/aircraft"))
+    rr.script_setup(args, "rerun_example_air_traffic_data", default_blueprint=blueprint)
 
     paths = get_paths_for_directory(dataset_directory)
     log_everything(paths)
