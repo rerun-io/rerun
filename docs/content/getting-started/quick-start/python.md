@@ -68,7 +68,7 @@ Try out the following to interact with the viewer:
 -   Hover and select individual points to see more information.
 
 This is just a taste of some of what you can do with the viewer. We will cover other functionality in much
-more detail later in the [Viewer Walkthrough](../visualize/viewer-walkthrough.md)
+more detail later in the [Viewer Walkthrough](../navigating-the-viewer.md)
 
 ## Logging your own data
 
@@ -143,7 +143,7 @@ rr.log(
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../visualize/viewer-walkthrough.md) or our
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../navigating-the-viewer.md) or our
 more advanced guide for [Logging Data in Python](../data-in/python.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 

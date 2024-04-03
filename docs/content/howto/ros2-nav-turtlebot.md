@@ -31,7 +31,7 @@ All of the code for this guide can be found on GitHub in
 Other relevant tutorials:
 
 -   [Python SDK Tutorial](../getting-started/data-in/python.md)
--   [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
+-   [Viewer Walkthrough](../getting-started/navigating-the-viewer.md)
 
 ### ROS 2 & navigation
 

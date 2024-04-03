@@ -71,7 +71,7 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../visualize/viewer-walkthrough.md) or our
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../navigating-the-viewer.md) or our
 more advanced guide for [Logging Data in Rust](../data-in/rust.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
