@@ -86,10 +86,8 @@ blueprint" in the viewer. This minimizes the chance that you accidentally
 overwrite blueprint edits you may have made locally.
 
 If you want to start using the new blueprint, after sending it, you will need to
-click the reset button in the blueprint panel. This resets the active blueprint to the
-current default:
-
-TODO(#5636): reset_blueprint
+click the reset button (<img src="https://static.rerun.io/b60eb3c4010e3ee46bbeeabf3da411fade2495b6_reset.png" alt="reset icon" height="24">) in the blueprint panel. This resets the active blueprint to the
+current default.
 
 ## Always activating the blueprint
 
@@ -123,7 +121,7 @@ rrb.Blueprint(
 )
 ```
 
-Beyond, instantiating the space views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
+Beyond instantiating the space views, there are 3 parameters you may want to specify: `name`, `origin`, and `contents`.
 
 `name` is simply the name of the view used as a label in the viewer.
 
@@ -142,7 +140,6 @@ in the blueprint tree, with all entities under the origin shown using relative p
 
 For Spatial views such as `Spatial2DView` and `Spatial3DView`, the `origin` plays an additional role with respect
 to data transforms. All data in the view will be transformed to the `origin` space before being displayed. See [Spaces and Transforms](../concepts/spaces-and-transforms.md) for more information.
-TODO(jleibs): Re-review spaces-and-transforms for correctness
 
 For example:
 

@@ -3,21 +3,23 @@ title: Spaces and Transforms
 order: 2
 ---
 
-## The Definition of Spaces
+## The definition of a space
 
-Every Entity in Rerun exists in some *space*. This is at the core of how Rerun organizes the visualizations of the data
-that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a *space view*, which is a view
-of a set of entities *as seen from a particular space.*
+Every entity in Rerun exists in some _space_. This is at the core of how Rerun organizes the visualizations of the data
+that you have logged. In the [Rerun Viewer](../reference/viewer.md) you view data by configuring a _space view_, which is a view
+of a set of entities _as seen from a particular origin._
 
-A space is, very loosely, a generalization of the idea of a "coordinate system" (sometimes known as a "coordinate frame") to arbitrary data. If a collection of
-entities are part of the same space, it means they can be rendered together in the same "coordinate system".
+The origin of a space is, very loosely, a generalization of the idea of a "coordinate system" (sometimes known as a "coordinate frame") to arbitrary data. If a collection of
+entities are part of the same space, it means they can be rendered together.
 
-For examples:
-- For 2D and 3D geometric primitives this means they share the same origin and coordinate system.
-- For scalar plots it means they share the same plot axes.
-- For text logs, it means they share the same conceptual stream.
+For example:
 
-As explained bellow, a space view *may* display data belonging to multiple spaces, but its coordinate system is defined
+-   For 2D and 3D geometric primitives this means they share the same coordinate system.
+-   For scalar plots it means they share the same plot axes.
+-   For text logs, it means they share the same conceptual stream.
+
+As explained below, a space view _may_ display data belonging to multiple spaces, but there must be a well-defined
+means of transforming the data from one space to another.
 by a specific space, and the other spaces must have well-defined transforms to that space to be displayed in the same view.
 
 Which entities belong to which spaces is a function of the transform system, which uses the following rules to define
@@ -26,9 +28,9 @@ the space connectivity:
 1. Every unique entity path defines a potentially unique space.
 1. Unless otherwise specified, every path is trivially connected to its parent by the identity transform.
 1. Logging a transform to a path defines the relationship between that path and its parent (replacing the identity
-    connection).
+   connection).
 1. Only paths which are connected by the identity transform are effectively considered to be part of the same
-    space. All others are considered to be disjoint.
+   space. All others are considered to be disjoint.
 
 Note that in the absence of transforms, all entity paths are fully connected by the identity transform, and therefore
 share the same space. However, as soon as you begin to log transforms, you can end up with additional spaces.
@@ -43,10 +45,10 @@ rr.log("world/robot", rr.Transforms3D(…))
 
 There are 4 parent/child entity relationships represented in this hierarchy.
 
-- `(root)` -> `world`
-- `world` -> `world/mapped_keypoints`
-- `world` -> `world/robot`
-- `world/robot` -> `world/robot/observed_features`
+-   `(root)` -> `world`
+-   `world` -> `world/mapped_keypoints`
+-   `world` -> `world/robot`
+-   `world/robot` -> `world/robot/observed_features`
 
 The call: `rr.log("world/robot", rr.Transforms3D(…))` only applies to the relationship: `world` -> `world/robot` because the
 logged transform (`world/robot`) describes the relationship between the entity and its _parent_ (`world`). All other
@@ -60,7 +62,6 @@ from `world/robot/observed_features` are not directly comparable. If you were to
 coordinate system the results would be meaningless. As noted above, Rerun can still display these entities in the same
 space view because it is able to automatically transform data between different spaces.
 
-
 ## Space Transformations
 
 In order to correctly display data from different spaces in the same view, Rerun uses the information from logged
@@ -71,15 +72,15 @@ of transformations to the component data when building the scene.
 Rerun transforms are currently limited to connections between _spatial_ views of 2D or 3D data. There are 3 types of
 transforms that can be logged:
 
-- Affine 3D transforms, which can define any combination of translation, rotation, and scale relationship between two paths (see
-  [`rr.Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D)).
-- Pinhole transforms define a 3D -> 2D camera projection (see
-  [`rr.Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole)).
-- A disconnected space specifies that the data cannot be transformed (see [`rr.DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.DisconnectedSpace)). In this case it will not be possible to combine the data into a single view, and you will need to create two separate views to explore the data.
+-   Affine 3D transforms, which can define any combination of translation, rotation, and scale relationship between two paths (see
+    [`rr.Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Transform3D)).
+-   Pinhole transforms define a 3D -> 2D camera projection (see
+    [`rr.Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole)).
+-   A disconnected space specifies that the data cannot be transformed (see [`rr.DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.DisconnectedSpace)). In this case it will not be possible to combine the data into a single view, and you will need to create two separate views to explore the data.
 
 In the future, Rerun will be adding support for additional types of transforms.
- - [#349: Log 2D -> 2D transformations in the transform hierarchy](https://github.com/rerun-io/rerun/issues/349)
 
+-   [#349: Log 2D -> 2D transformations in the transform hierarchy](https://github.com/rerun-io/rerun/issues/349)
 
 ## Examples
 
@@ -106,8 +107,8 @@ Rerun will from this understand how the `world` space and the two image spaces (
 
 Note that none of the names in the paths are special.
 
-
 ## View coordinates
+
 You can use [`rr.ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.ViewCoordinates) to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
 
 For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log("world", rr.ViewCoordinates(up="+Z"), timeless=True)`.
