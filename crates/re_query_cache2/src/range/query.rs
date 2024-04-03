@@ -167,7 +167,6 @@ impl RangeCache {
         let mut per_data_time = per_data_time.write();
 
         if let Some(query_front) = per_data_time.compute_front_query(query) {
-            eprintln!("front: {query_front:?}");
             for (data_time, row_id, mut cells) in
                 store.range(&query_front, entity_path, [component_name])
             {
@@ -189,7 +188,6 @@ impl RangeCache {
         }
 
         if let Some(query_back) = per_data_time.compute_back_query(query) {
-            eprintln!("back: {query_back:?}");
             for (data_time, row_id, mut cells) in
                 store.range(&query_back, entity_path, [component_name])
             {
