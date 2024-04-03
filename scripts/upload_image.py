@@ -32,6 +32,12 @@ Use the script:
 or the just command:
 
     just upload --help
+
+All info/debug output occurs on stderr. If stdout is not a tty (e.g. piping to `pbcopy`), the resulting HTML tag is also
+printed to stdout. For example, this upload the image from the clipboard and copies the resulting HTML tag back to the
+clipboard:
+
+    just upload --name some_name | pbcopy
 """
 
 from __future__ import annotations
@@ -288,7 +294,7 @@ class Uploader:
             else:
                 html_str += f'  <img src="https://static.rerun.io/{object_name}" alt="">\n'
 
-            logging.info(f"uploaded width={width or 'full'} ({index+1}/{len(image_stack)})")
+            logging.info(f"uploaded width={width or 'full'} ({index + 1}/{len(image_stack)})")
 
         html_str += "</picture>"
         return html_str
@@ -355,7 +361,7 @@ def run(args: argparse.Namespace) -> None:
                 raise RuntimeError("Path is required when uploading a single image")
 
             object_name = uploader.upload_file(args.path)
-            print(f"\nhttps://static.rerun.io/{object_name}")
+            html_str = f"https://static.rerun.io/{object_name}"
         else:
             if args.path is None:
                 if args.name is None:
@@ -364,9 +370,16 @@ def run(args: argparse.Namespace) -> None:
                     html_str = uploader.upload_stack_from_clipboard(args.name)
             else:
                 html_str = uploader.upload_stack_from_file(args.path, args.name)
-            print("\n" + html_str)
+
     except RuntimeError as e:
         print(f"Error: {e.args[0]}", file=sys.stderr)
+        return
+
+    print(f"\n{html_str}", file=sys.stderr)
+
+    if not sys.stdout.isatty():
+        # we might be piping to pbcopy or similar, so we print string again to stdout
+        print(html_str)
 
 
 DESCRIPTION = """Upload an image to static.rerun.io.
