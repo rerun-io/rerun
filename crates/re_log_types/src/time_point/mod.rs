@@ -139,7 +139,7 @@ impl TimeType {
         } else {
             match self {
                 Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
-                Self::Sequence => format!("#{}", re_format::format_i64(time_int.0)),
+                Self::Sequence => format!("#{}", re_format::format_int(time_int.0)),
             }
         }
     }

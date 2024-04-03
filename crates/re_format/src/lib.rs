@@ -7,6 +7,8 @@ pub mod arrow;
 
 mod time;
 
+use std::{cmp::PartialOrd, fmt::Display};
+
 pub use time::next_grid_tick_magnitude_ns;
 
 // --- Numbers ---
@@ -16,28 +18,83 @@ pub use time::next_grid_tick_magnitude_ns;
 /// Looks slightly different from the normal hyphen `-`.
 const MINUS: char = '−';
 
-/// Pretty format an unsigned integer by using thousands separators for readability.
-///
-/// The returned value is for human eyes only, and can not be parsed
-/// by the normal `usize::from_str` function.
-pub fn format_uint<Uint>(number: Uint) -> String
-where
-    Uint: Copy + num_traits::Unsigned + std::fmt::Display,
-{
-    add_thousands_separators(&number.to_string())
+// TODO(rust-num/num-traits#315): waiting for https://github.com/rust-num/num-traits/issues/315 to land
+pub trait UnsignedAbs {
+    /// An unsigned type which is large enough to hold the absolute value of `Self`.
+    type Unsigned;
+
+    /// Computes the absolute value of `self` without any wrapping or panicking.
+    fn unsigned_abs(self) -> Self::Unsigned;
+}
+
+impl UnsignedAbs for i8 {
+    type Unsigned = u8;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+}
+
+impl UnsignedAbs for i16 {
+    type Unsigned = u16;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+}
+
+impl UnsignedAbs for i32 {
+    type Unsigned = u32;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+}
+
+impl UnsignedAbs for i64 {
+    type Unsigned = u64;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+}
+
+impl UnsignedAbs for i128 {
+    type Unsigned = u128;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
+}
+
+impl UnsignedAbs for isize {
+    type Unsigned = usize;
+    fn unsigned_abs(self) -> Self::Unsigned {
+        self.unsigned_abs()
+    }
 }
 
 /// Pretty format a signed number by using thousands separators for readability.
 ///
 /// The returned value is for human eyes only, and can not be parsed
 /// by the normal `usize::from_str` function.
-pub fn format_i64(number: i64) -> String {
-    if number < 0 {
-        // TODO(rust-num/num-traits#315): generalize this to all signed integers once https://github.com/rust-num/num-traits/issues/315 lands
+pub fn format_int<Int>(number: Int) -> String
+where
+    Int: Display + PartialOrd + num_traits::Zero + UnsignedAbs,
+    Int::Unsigned: Display + num_traits::Unsigned,
+{
+    if number < Int::zero() {
         format!("{MINUS}{}", format_uint(number.unsigned_abs()))
     } else {
         add_thousands_separators(&number.to_string())
     }
+}
+
+/// Pretty format an unsigned integer by using thousands separators for readability.
+///
+/// The returned value is for human eyes only, and can not be parsed
+/// by the normal `usize::from_str` function.
+#[allow(clippy::needless_pass_by_value)]
+pub fn format_uint<Uint>(number: Uint) -> String
+where
+    Uint: Display + num_traits::Unsigned,
+{
+    add_thousands_separators(&number.to_string())
 }
 
 /// Add thousands separators to a number, every three steps,

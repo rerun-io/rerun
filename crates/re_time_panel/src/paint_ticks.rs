@@ -92,7 +92,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range,
                 next_power_of_10,
-                |seq| format!("#{}", re_format::format_i64(seq)),
+                |seq| format!("#{}", re_format::format_int(seq)),
             )
         }
     }
