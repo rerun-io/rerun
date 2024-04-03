@@ -396,10 +396,8 @@ impl ExampleSection {
 
                             ui.end_row();
 
-                            // Source code link
-                            for (example, response) in
-                                itertools::izip!(&*row_of_examples, row_example_responses)
-                            {
+                            // Source code link and file size
+                            for example in &*row_of_examples {
                                 ui.vertical(|ui| {
                                     // The previous row (tags) may take one or two lines, depending
                                     // on wrapping, so we use the bottom of the example card as
@@ -407,7 +405,7 @@ impl ExampleSection {
                                     example.move_cursor_to_bottom(ui);
                                     ui.add_space(-DESCRIPTION_INNER_MARGIN - 15.0);
 
-                                    example_source(ui, &example.desc);
+                                    example_bottom_row_ui(ui, example);
 
                                     // Ensure the egui cursor is moved according to this card's
                                     // geometry.
@@ -416,7 +414,12 @@ impl ExampleSection {
                                     // Manual spacing between rows.
                                     ui.add_space(ROW_VSPACE);
                                 });
+                            }
 
+                            // Hover effect
+                            for (example, response) in
+                                itertools::izip!(&*row_of_examples, row_example_responses)
+                            {
                                 if response.hovered() {
                                     // We do the hover effect here, last, so we can make the whole card,
                                     // including the image, brighter.
@@ -507,20 +510,7 @@ fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
         ..Default::default()
     }
     .show(ui, |ui| {
-        ui.horizontal(|ui| {
-            let selectable = false; // Unselectable; otherwise selection steals input from clicking the card.
-            ui.add(
-                egui::Label::new(title)
-                    .truncate(true)
-                    .selectable(selectable),
-            );
-
-            if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
-                });
-            }
-        });
+        ui.add(egui::Label::new(title).truncate(true));
     });
 }
 
@@ -557,29 +547,37 @@ fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
     });
 }
 
-fn example_source(ui: &mut Ui, example: &ExampleDesc) {
-    let source_url = example.source_url.as_deref();
+fn example_bottom_row_ui(ui: &mut Ui, example: &ExampleDescLayout) {
+    let source_url = example.desc.source_url.as_deref();
 
     egui::Frame {
         inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
         ..Default::default()
     }
     .show(ui, |ui| {
-        if ui
-            .add_enabled(
-                source_url.is_some(),
-                egui::Button::image_and_text(re_ui::icons::GITHUB.as_image(), "Source code"),
-            )
-            .on_hover_cursor(egui::CursorIcon::PointingHand)
-            .on_disabled_hover_text("Source code is not available for this example")
-            .clicked()
-        {
-            if let Some(source_url) = source_url {
-                ui.ctx().open_url(egui::output::OpenUrl {
-                    url: source_url.to_owned(),
-                    new_tab: true,
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(
+                    source_url.is_some(),
+                    egui::Button::image_and_text(re_ui::icons::GITHUB.as_image(), "Source code"),
+                )
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_disabled_hover_text("Source code is not available for this example")
+                .clicked()
+            {
+                if let Some(source_url) = source_url {
+                    ui.ctx().open_url(egui::output::OpenUrl {
+                        url: source_url.to_owned(),
+                        new_tab: true,
+                    });
+                }
+            }
+
+            if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
                 });
             }
-        }
+        });
     });
 }
