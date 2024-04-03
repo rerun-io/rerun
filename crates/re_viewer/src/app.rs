@@ -971,6 +971,11 @@ impl App {
                         StoreKind::Recording => {
                             re_log::debug!("Opening a new recording: {store_id}");
                             store_hub.set_active_recording_id(store_id.clone());
+
+                            // Also select the new recording:
+                            self.command_sender.send_system(SystemCommand::SetSelection(
+                                re_viewer_context::Item::StoreId(store_id.clone()),
+                            ));
                         }
                         StoreKind::Blueprint => {
                             // We wait with activating blueprints until they are fully loaded,
