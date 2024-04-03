@@ -607,6 +607,7 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
+/// This uses [`ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -622,6 +623,8 @@ pub fn store_id_button_ui(
 /// Show button for a store (recording or blueprint).
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
+///
+/// This uses [`ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -694,17 +697,15 @@ pub fn entity_db_button_ui(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item
-        .show_flat(ui) // never more than one level deep
-        .on_hover_ui(|ui| {
-            entity_db.data_ui(
-                ctx,
-                ui,
-                re_viewer_context::UiVerbosity::Reduced,
-                &ctx.current_query(),
-                entity_db.store(),
-            );
-        });
+    let response = list_item.show_hierarchical(ui).on_hover_ui(|ui| {
+        entity_db.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),
+            entity_db.store(),
+        );
+    });
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
