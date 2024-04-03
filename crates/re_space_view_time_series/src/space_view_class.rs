@@ -404,6 +404,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                     time_zone_for_timestamps,
                 )
             })
+            .y_axis_formatter(move |mark, _, _| format_y_axis(mark))
             .y_axis_width(3) // in digits
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
@@ -412,16 +413,14 @@ It can greatly improve performance (and readability) in such situations as it pr
                     time_zone_for_timestamps,
                 );
 
-                let is_integer = value.y.round() == value.y;
-                let decimals = if is_integer { 0 } else { 5 };
+                let y_value = re_format::format_f64(value.y);
 
                 if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
-                    format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
+                    format!("{timeline_name}: {label}\n{name}: {y_value}")
                 } else {
                     format!(
-                        "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
+                        "{timeline_name}: {label}\n{name}: {y_value}\n\
                         {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
-                        value.y,
                     )
                 }
             });
@@ -789,6 +788,15 @@ fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: Tim
             time_zone_for_timestamps,
         )
     }
+}
+
+fn format_y_axis(mark: egui_plot::GridMark) -> String {
+    // Example: If the step to the next tick is `0.01`, we should use 2 decimals of precision:
+    let num_decimals = -mark.step_size.log10().round() as usize;
+
+    re_format::FloatFormatOptions::DEFAULT_f64
+        .with_decimals(num_decimals)
+        .format(mark.value)
 }
 
 fn ns_grid_spacer(
