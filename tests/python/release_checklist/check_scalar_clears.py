@@ -36,7 +36,6 @@ def log_plots() -> None:
         if t > 30 and t < 90:
             rr.log("plots", rr.Clear(recursive=True))
         else:
-            rr.log("plots/legacy", rr.TimeSeriesScalar(sin_of_t))
             rr.log("plots/line", rr.Scalar(sin_of_t))
             rr.log("plots/point", rr.Scalar(sin_of_t))
 

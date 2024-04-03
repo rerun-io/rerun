@@ -2,13 +2,13 @@
 title = "ARKit Scenes"
 tags = ["2D", "3D", "depth", "mesh", "object-detection", "pinhole-camera"]
 description = "This example visualizes the ARKitScenes dataset using Rerun. The dataset contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture."
-thumbnail = "https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png"
-thumbnail_dimensions = [480, 243]
+thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
 
-<picture data-inline-viewer="arkit_scenes">>
+<picture data-inline-viewer="examples/arkit_scenes">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/1024w.png">

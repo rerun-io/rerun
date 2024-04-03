@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Disconnected Space
+    /// ### Disconnected space
     /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
     ///
     /// ```cpp

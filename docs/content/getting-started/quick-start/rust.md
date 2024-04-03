@@ -1,12 +1,12 @@
 ---
-title: Rust Quick Start
+title: Rust
 order: 3
 ---
 
 ## Setup
 The Rerun SDK for Rust requires a working installation of Rust 1.74+.
 
-After you have [installed the viewer](installing-viewer.md) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](../installing-viewer.md#installing-the-viewer) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand new Rust project:
 ```bash
@@ -65,8 +65,8 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](viewer-walkthrough.md) or our
-more advanced guide for [Logging Data in Rust](logging-rust.md) where we will explore the core concepts that make
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../visualize/viewer-walkthrough.md) or our
+more advanced guide for [Logging Data in Rust](../data-in/streaming/rust.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.

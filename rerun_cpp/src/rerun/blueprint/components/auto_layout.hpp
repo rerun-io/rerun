@@ -16,8 +16,6 @@ namespace arrow {
 
 namespace rerun::blueprint::components {
     /// **Component**: Whether the viewport layout is determined automatically.
-    ///
-    /// Unstable. Used for the ongoing blueprint experimentations.
     struct AutoLayout {
         bool auto_layout;
 

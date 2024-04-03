@@ -88,9 +88,7 @@ impl Docstrings {
         }
 
         // if `path` is an alias, get the qualified path
-        let Some(path) = self.aliases.get(path) else {
-            return None;
-        };
+        let path = self.aliases.get(path)?;
 
         self.docstrings.get(path)
     }

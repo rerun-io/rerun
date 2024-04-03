@@ -2,8 +2,8 @@
 title = "Eigen and OpenCV C++ Integration"
 source = "https://github.com/rerun-io/cpp-example-opencv-eigen"
 tags = ["2D", "3D", "C++", "Eigen", "OpenCV"]
-thumbnail = "https://static.rerun.io/cpp-example-opencv-eigen/2fc6355fd87fbb4d07cda384ee8805edb68b5e01/480w.png"
-thumbnail_dimensions = [480, 267]
+thumbnail = "https://static.rerun.io/eigen-and-opencv-c-integration/5d271725bb9215b55f53767c9dc0db980c73dade/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 This is a minimal CMake project that shows how to use Rerun in your code in conjunction with [Eigen](https://eigen.tuxfamily.org/) and [OpenCV](https://opencv.org/).

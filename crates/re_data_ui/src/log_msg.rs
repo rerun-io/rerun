@@ -1,4 +1,6 @@
-use re_log_types::{ArrowMsg, DataTable, LogMsg, SetStoreInfo, StoreInfo};
+use re_log_types::{
+    ArrowMsg, BlueprintActivationCommand, DataTable, LogMsg, SetStoreInfo, StoreInfo,
+};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -16,8 +18,14 @@ impl DataUi for LogMsg {
         match self {
             LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, store),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, store),
-            LogMsg::ActivateStore(store_id) => {
-                ui.label(format!("ActivateStore({store_id})"));
+            LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                blueprint_id,
+                make_active,
+                make_default,
+            }) => {
+                ui.label(format!(
+                    "BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})"
+                ));
             }
         }
     }
@@ -26,45 +34,55 @@ impl DataUi for LogMsg {
 impl DataUi for SetStoreInfo {
     fn data_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
         _store: &re_data_store::DataStore,
     ) {
-        ui.code("SetStoreInfo");
         let SetStoreInfo { row_id: _, info } = self;
         let StoreInfo {
             application_id,
             store_id,
+            cloned_from,
             started,
             store_source,
             is_official_example,
             store_kind,
         } = info;
 
+        let re_ui = &ctx.re_ui;
+
+        ui.code("SetStoreInfo");
+
         egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-            ui.monospace("application_id:");
+            re_ui.grid_left_hand_label(ui, "application_id:");
             ui.label(application_id.to_string());
             ui.end_row();
 
-            ui.monospace("store_id:");
+            re_ui.grid_left_hand_label(ui, "store_id:");
             ui.label(format!("{store_id:?}"));
             ui.end_row();
 
-            ui.monospace("started:");
-            ui.label(started.format(_ctx.app_options.time_zone));
+            re_ui.grid_left_hand_label(ui, "cloned_from");
+            if let Some(cloned_from) = cloned_from {
+                crate::item_ui::store_id_button_ui(ctx, ui, cloned_from);
+            }
             ui.end_row();
 
-            ui.monospace("store_source:");
+            re_ui.grid_left_hand_label(ui, "started:");
+            ui.label(started.format(ctx.app_options.time_zone));
+            ui.end_row();
+
+            re_ui.grid_left_hand_label(ui, "store_source:");
             ui.label(format!("{store_source}"));
             ui.end_row();
 
-            ui.monospace("is_official_example:");
+            re_ui.grid_left_hand_label(ui, "is_official_example:");
             ui.label(format!("{is_official_example}"));
             ui.end_row();
 
-            ui.monospace("store_kind:");
+            re_ui.grid_left_hand_label(ui, "store_kind:");
             ui.label(format!("{store_kind}"));
             ui.end_row();
         });

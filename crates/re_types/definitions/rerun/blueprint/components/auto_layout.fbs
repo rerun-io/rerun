@@ -10,8 +10,6 @@ namespace rerun.blueprint.components;
 // ---
 
 /// Whether the viewport layout is determined automatically.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 struct AutoLayout (
   "attr.arrow.transparent",
   "attr.rerun.scope": "blueprint",

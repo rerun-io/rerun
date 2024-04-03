@@ -19,7 +19,6 @@ use re_viewer_context::{
     ViewerContext, VisualizableEntities,
 };
 
-use crate::legacy_visualizer_system::LegacyTimeSeriesSystem;
 use crate::line_visualizer_system::SeriesLineSystem;
 use crate::point_visualizer_system::SeriesPointSystem;
 use crate::PlotSeriesKind;
@@ -121,7 +120,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<LegacyTimeSeriesSystem>()?;
         system_registry.register_visualizer::<SeriesLineSystem>()?;
         system_registry.register_visualizer::<SeriesPointSystem>()?;
         Ok(())
@@ -190,7 +188,6 @@ It can greatly improve performance (and readability) in such situations as it pr
         let mut indicated_entities = IndicatedEntities::default();
 
         for indicated in [
-            LegacyTimeSeriesSystem::identifier(),
             SeriesLineSystem::identifier(),
             SeriesPointSystem::identifier(),
         ]
@@ -216,7 +213,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
         // TODO(#4926): This seems to be unnecessarily complicated.
-        let subtree_of_root_entity = &ctx.entity_db.tree().children;
+        let subtree_of_root_entity = &ctx.recording().tree().children;
         if indicated_entities.contains(&EntityPath::root())
             || subtree_of_root_entity
                 .iter()
@@ -341,13 +338,10 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         let timeline_name = timeline.name().to_string();
 
-        let legacy_time_series = system_output.view_systems.get::<LegacyTimeSeriesSystem>()?;
         let line_series = system_output.view_systems.get::<SeriesLineSystem>()?;
         let point_series = system_output.view_systems.get::<SeriesPointSystem>()?;
 
-        let all_plot_series: Vec<_> = legacy_time_series
-            .all_series
-            .iter()
+        let all_plot_series: Vec<_> = std::iter::empty()
             .chain(line_series.all_series.iter())
             .chain(point_series.all_series.iter())
             .collect();
@@ -406,27 +400,27 @@ It can greatly improve performance (and readability) in such situations as it pr
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
-                    time.value as i64 + time_offset,
+                    (time.value as i64).saturating_add(time_offset),
                     time_zone_for_timestamps,
                 )
             })
+            .y_axis_formatter(move |mark, _, _| format_y_axis(mark))
+            .y_axis_width(3) // in digits
             .label_formatter(move |name, value| {
                 let name = if name.is_empty() { "y" } else { name };
                 let label = time_type.format(
-                    (value.x as i64 + time_offset).into(),
+                    ((value.x as i64).saturating_add(time_offset)).into(),
                     time_zone_for_timestamps,
                 );
 
-                let is_integer = value.y.round() == value.y;
-                let decimals = if is_integer { 0 } else { 5 };
+                let y_value = re_format::format_f64(value.y);
 
                 if aggregator == TimeSeriesAggregator::Off || aggregation_factor <= 1.0 {
-                    format!("{timeline_name}: {label}\n{name}: {:.decimals$}", value.y)
+                    format!("{timeline_name}: {label}\n{name}: {y_value}")
                 } else {
                     format!(
-                        "{timeline_name}: {label}\n{name}: {:.decimals$}\n\
+                        "{timeline_name}: {label}\n{name}: {y_value}\n\
                         {aggregator} aggregation over approx. {aggregation_factor:.1} time points",
-                        value.y,
                     )
                 }
             });
@@ -796,6 +790,15 @@ fn format_time(time_type: TimeType, time_int: i64, time_zone_for_timestamps: Tim
     }
 }
 
+fn format_y_axis(mark: egui_plot::GridMark) -> String {
+    // Example: If the step to the next tick is `0.01`, we should use 2 decimals of precision:
+    let num_decimals = -mark.step_size.log10().round() as usize;
+
+    re_format::FloatFormatOptions::DEFAULT_f64
+        .with_decimals(num_decimals)
+        .format(mark.value)
+}
+
 fn ns_grid_spacer(
     canvas_size: egui::Vec2,
     input: &egui_plot::GridInput,
@@ -808,7 +811,12 @@ fn ns_grid_spacer(
 
     let mut small_spacing_ns = 1;
     while width_ns / (next_grid_tick_magnitude_ns(small_spacing_ns) as f64) > max_medium_lines {
-        small_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
+        let next_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
+        if small_spacing_ns < next_ns {
+            small_spacing_ns = next_ns;
+        } else {
+            break; // we've reached the max
+        }
     }
     let medium_spacing_ns = next_grid_tick_magnitude_ns(small_spacing_ns);
     let big_spacing_ns = next_grid_tick_magnitude_ns(medium_spacing_ns);
@@ -833,7 +841,11 @@ fn ns_grid_spacer(
             step_size: step_size as f64,
         });
 
-        current_ns += small_spacing_ns;
+        if let Some(new_ns) = current_ns.checked_add(small_spacing_ns) {
+            current_ns = new_ns;
+        } else {
+            break;
+        };
     }
 
     marks

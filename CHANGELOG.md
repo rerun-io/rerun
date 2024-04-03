@@ -208,9 +208,9 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
   - Only show the LegacyVisualizer if a user logs with TimeSeriesScalar archetype [#5023](https://github.com/rerun-io/rerun/pull/5023)
   - Fix lagging time cursor when panning a time series plot [#4972](https://github.com/rerun-io/rerun/pull/4972)
 - New Space View and Container creation workflow:
-  - Use the "Add Space View/Container" modal for the `+` button of the blueprint tree [#5012](https://github.com/rerun-io/rerun/pull/5012)
+  - Use the "Add space view/container" modal for the `+` button of the blueprint tree [#5012](https://github.com/rerun-io/rerun/pull/5012)
   - Add support for removing container children from the selection panel [#4930](https://github.com/rerun-io/rerun/pull/4930)
-  - Add support for full span highlighting to modal and use it in the "Add Space View or Container" modal [#4822](https://github.com/rerun-io/rerun/pull/4822)
+  - Add support for full span highlighting to modal and use it in the "Add space view or container" modal [#4822](https://github.com/rerun-io/rerun/pull/4822)
   - Remove the "+" icon from the "Add SV/Container" modal and close on click [#4927](https://github.com/rerun-io/rerun/pull/4927)
   - New empty space view defaults to uncollapsed in blueprint tree [#4982](https://github.com/rerun-io/rerun/pull/4982)
   - Do not allow adding Horizontal/Vertical containers inside of containers with the same type [#5091](https://github.com/rerun-io/rerun/pull/5091)

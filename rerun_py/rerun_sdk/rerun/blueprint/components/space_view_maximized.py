@@ -12,11 +12,7 @@ __all__ = ["SpaceViewMaximized", "SpaceViewMaximizedBatch", "SpaceViewMaximizedT
 
 
 class SpaceViewMaximized(datatypes.Uuid):
-    """
-    **Component**: Whether a space view is maximized.
-
-    Unstable. Used for the ongoing blueprint experimentations.
-    """
+    """**Component**: Whether a space view is maximized."""
 
     # You can define your own __init__ function as a member of SpaceViewMaximizedExt in space_view_maximized_ext.py
 

@@ -9,10 +9,10 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 use re_log_types::{
-    ApplicationId, ArrowChunkReleaseCallback, DataCell, DataCellError, DataRow, DataTable,
-    DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId,
-    StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
-    TimelineName,
+    ApplicationId, ArrowChunkReleaseCallback, BlueprintActivationCommand, DataCell, DataCellError,
+    DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
+    EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt,
+    TimePoint, TimeType, Timeline, TimelineName,
 };
 use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
@@ -37,7 +37,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file creation (and thus clearing) and pending file writes.
-fn forced_sink_path() -> Option<String> {
+pub fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
 }
 
@@ -552,6 +552,7 @@ impl RecordingStreamBuilder {
         let store_info = StoreInfo {
             application_id,
             store_id,
+            cloned_from: None,
             is_official_example,
             started: Time::now(),
             store_source,
@@ -1522,11 +1523,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self) {
-        self.connect_opts(
-            crate::default_server_addr(),
-            crate::default_flush_timeout(),
-            None,
-        );
+        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
@@ -1543,7 +1540,6 @@ impl RecordingStream {
         &self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
-        blueprint: Option<Vec<LogMsg>>,
     ) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
@@ -1551,24 +1547,6 @@ impl RecordingStream {
         }
 
         let sink = crate::log_sink::TcpSink::new(addr, flush_timeout);
-
-        // If a blueprint was provided, send it first.
-        if let Some(blueprint) = blueprint {
-            let mut store_id = None;
-            for msg in blueprint {
-                if store_id.is_none() {
-                    store_id = Some(msg.store_id().clone());
-                }
-                sink.send(msg);
-            }
-            if let Some(store_id) = store_id {
-                // Let the viewer know that the blueprint has been fully received,
-                // and that it can now be activated.
-                // We don't want to activate half-loaded blueprints, because that can be confusing,
-                // and can also lead to problems with space-view heuristics.
-                sink.send(LogMsg::ActivateStore(store_id));
-            }
-        }
 
         self.set_sink(Box::new(sink));
     }
@@ -1623,7 +1601,7 @@ impl RecordingStream {
 
         spawn(opts)?;
 
-        self.connect_opts(opts.connect_addr(), flush_timeout, None);
+        self.connect_opts(opts.connect_addr(), flush_timeout);
 
         Ok(())
     }
@@ -1636,16 +1614,17 @@ impl RecordingStream {
     /// See [`Self::set_sink`] for more information.
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::default();
-        let buffer = sink.buffer();
+        let mut storage = sink.buffer();
 
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new memory sink since _RERUN_FORCE_SINK is set");
-            return buffer;
+            return storage;
         }
 
         self.set_sink(Box::new(sink));
+        storage.rec = Some(self.clone());
 
-        buffer
+        storage
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
@@ -1657,12 +1636,28 @@ impl RecordingStream {
         &self,
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
+        self.save_opts(path)
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
+    pub fn save_opts(
+        &self,
+        path: impl Into<std::path::PathBuf>,
+    ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
             return Ok(());
         }
 
         let sink = crate::sink::FileSink::new(path)?;
+
         self.set_sink(Box::new(sink));
 
         Ok(())
@@ -1677,6 +1672,21 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn stdout(&self) -> Result<(), crate::sink::FileSinkError> {
+        self.stdout_opts()
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::FileSink`] pointed at stdout.
+    ///
+    /// If there isn't any listener at the other end of the pipe, the [`RecordingStream`] will
+    /// default back to `buffered` mode, in order not to break the user's terminal.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    ///
+    /// If a blueprint was provided, it will be stored first in the file.
+    /// Blueprints are currently an experimental part of the Rust SDK.
+    pub fn stdout_opts(&self) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
             return Ok(());
@@ -1689,6 +1699,7 @@ impl RecordingStream {
         }
 
         let sink = crate::sink::FileSink::stdout()?;
+
         self.set_sink(Box::new(sink));
 
         Ok(())
@@ -1709,6 +1720,37 @@ impl RecordingStream {
 
         if self.with(f).is_none() {
             re_log::warn_once!("Recording disabled - call to disconnect() ignored");
+        }
+    }
+
+    /// Send a blueprint through this recording stream
+    pub fn send_blueprint(
+        &self,
+        blueprint: Vec<LogMsg>,
+        activation_cmd: BlueprintActivationCommand,
+    ) {
+        let mut blueprint_id = None;
+        for msg in blueprint {
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
+            }
+            self.record_msg(msg);
+        }
+
+        if let Some(blueprint_id) = blueprint_id {
+            if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                self.record_msg(activation_cmd.into());
+            } else {
+                re_log::warn!(
+                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    blueprint_id,
+                    activation_cmd.blueprint_id
+                );
+            }
         }
     }
 }

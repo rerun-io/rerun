@@ -16,11 +16,11 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
-
 
 DESCRIPTION = """
 # Human Pose Tracking
@@ -214,7 +214,22 @@ def main() -> None:
     rr.script_add_args(parser)
 
     args = parser.parse_args()
-    rr.script_setup(args, "rerun_example_human_pose_tracking")
+    rr.script_setup(
+        args,
+        "rerun_example_human_pose_tracking",
+        default_blueprint=rrb.Horizontal(
+            rrb.Vertical(
+                rrb.Spatial2DView(origin="video", name="Result"),
+                rrb.Spatial3DView(origin="person", name="3D pose"),
+            ),
+            rrb.Vertical(
+                rrb.Spatial2DView(origin="video/rgb", name="Raw video"),
+                rrb.TextDocumentView(origin="description", name="Description"),
+                row_shares=[2, 3],
+            ),
+            column_shares=[3, 2],
+        ),
+    )
 
     video_path = args.video_path  # type: str
     if not video_path:

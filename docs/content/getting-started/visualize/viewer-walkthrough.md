@@ -1,6 +1,6 @@
 ---
-title: Viewer Walkthrough
-order: 4
+title: Viewer walkthrough
+order: 0
 ---
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
@@ -31,7 +31,7 @@ to take the images.
 ## Prerequisites
 Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
 you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
-experimentation and working with examples. You can either follow the [Python Quickstart](python.md) or simply run:
+experimentation and working with examples. You can either follow the [Python Quickstart](../quick-start/python.md) or simply run:
 
 ```bash
 pip install rerun-sdk
@@ -80,13 +80,13 @@ preview, but the remainder of this guide will walk you through how to configure 
 ## The viewer panels
 
 There are 4 main parts to this window:
-- In the middle of the screen is the [Viewport](../reference/viewer/viewport.md). This is where you see the rendered
+- In the middle of the screen is the [Viewport](../../reference/viewer/viewport.md). This is where you see the rendered
   space views for your session.
-- On the left is the [Blueprint](../reference/viewer/blueprint.md) panel. This is where the different space views can be
+- On the left is the [Blueprint](../../reference/viewer/blueprint.md) panel. This is where the different space views can be
   controlled.
-- On the right is the [Selection](../reference/viewer/selection.md) panel. This is where you see extra information
+- On the right is the [Selection](../../reference/viewer/selection.md) panel. This is where you see extra information
   and configuration information for things that you have selected.
-- On the bottom is the [Timeline](../reference/viewer/timeline.md) panel. This is where you can control the current
+- On the bottom is the [Timeline](../../reference/viewer/timeline.md) panel. This is where you can control the current
   point in time that is being viewed.
 
 Each of the 3 side panels has a corresponding button in the upper right corner. Try clicking each of these to hide and
@@ -119,18 +119,18 @@ Feel free to move the views around until you are happy with the layout.
 
 ## Exploring data
 The space views are where you can see the data that was actually logged. This scene has streams of data for 6 different
-primitives, also known as [entities](../concepts/entity-component.md):
-* [images](../reference/types/archetypes/image.md) that were captured from a camera.
-* [2D keypoints](../reference/types/archetypes/points2d.md) that were detected and tracked in those images.
-* a [pinhole](../reference/types/archetypes/pinhole.md) camera model that describes the relationship between 2D and 3D space.
-* [3D points](../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
-* A sequence of [transforms](../reference/types/archetypes/transform3d.md) describing the 3D location of the camera in space.
-* A [scalar](../reference/types/archetypes/time_series_scalar.md) error metric that was computed by the algorithm for each frame.
+primitives, also known as [entities](../../concepts/entity-component.md):
+* [images](../../reference/types/archetypes/image.md) that were captured from a camera.
+* [2D keypoints](../../reference/types/archetypes/points2d.md) that were detected and tracked in those images.
+* a [pinhole](../../reference/types/archetypes/pinhole.md) camera model that describes the relationship between 2D and 3D space.
+* [3D points](../../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
+* A sequence of [transforms](../../reference/types/archetypes/transform3d.md) describing the 3D location of the camera in space.
+* A [scalar](../../reference/types/archetypes/scalar.md) error metric that was computed by the algorithm for each frame.
 
 ### Hover and selection
 You can find out more about these entities by hovering over them in the different views. Hovering will bring up a
 context popup with additional information. You can also click on entities to select them and see more details in the
-[Selection panel](../reference/viewer/selection.md).
+[Selection panel](../../reference/viewer/selection.md).
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/480w.png">
@@ -149,7 +149,7 @@ Try each of the following:
 Note that the views are actually connected. As you hover over points in the `/ (Spatial)` view you will see information
 about the depth of the projection in the image view. Conversely as you hover over pixels in the `image` you will see the
 corresponding ray projected into the `/ (Spatial)` view. See the section on
-[Spaces and Transforms](../concepts/spaces-and-transforms.md) for more information on how this linking works.
+[Spaces and Transforms](../../concepts/spaces-and-transforms.md) for more information on how this linking works.
 
 ### Rotate, zoom, and pan
 Clicking and dragging the contents of any view will move it. You can rotate 3D views, or pan 2D views and plots. You can
@@ -221,10 +221,10 @@ to the "frame" timeline and double-click the timeline panel to reset it to the d
 One thing to notice is there is a gap in the timeline in the "frame" view. This dataset is actually missing a few
 frames, and the timeline view of frames makes this easy to spot. This highlights the importance of applying meaningful
 timestamps to your data as you log it. You also aren't limited to frame and log_time. Rerun lets you define your own
-timelines however you would like. You can read more about timelines [here](../concepts/timelines.md).
+timelines however you would like. You can read more about timelines [here](../../concepts/timelines.md).
 
 ## Configuring views
-Views in Rerun are configured by [Blueprints](../reference/viewer/blueprint.md). We will now use blueprints to adjust
+Views in Rerun are configured by [Blueprints](../../reference/viewer/blueprint.md). We will now use blueprints to adjust
 both an individual entity as well as the contents of a space view itself.
 
 ### Adjusting entity properties
@@ -314,7 +314,7 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 - Install the `rerun-sdk` pypi package.
 - Run the Rerun Viewer using the `rerun` command.
 - Open the examples integrated in the viewer.
-- Work with the [Blueprint](../reference/viewer/blueprint.md), [Selection](../reference/viewer/selection.md) and [Timeline](../reference/viewer/timeline.md) panels.
+- Work with the [Blueprint](../../reference/viewer/blueprint.md), [Selection](../../reference/viewer/selection.md) and [Timeline](../../reference/viewer/timeline.md) panels.
 - Rearrange space view layouts.
 - Explore data through hover and selection.
 - Change the time selection.
@@ -327,9 +327,8 @@ That brings us to the end of this walkthrough. To recap, you have learned how to
 Again, if you ran into any issues following this guide, please don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
 
 ### Up next
-To get started with writing a program to logging data with the Rerun SDK see the [Python](logging-python.md) or
-[Rust](logging-rust.md) getting started guides.
+To get started with writing a program to logging data with the Rerun SDK see the [getting started guides](../quick-start).
 
 To see and explore other data, you can check out the [examples](/examples).
 
-For deeper context on the ideas covered here, consult the [Concept overview](../concepts.md).
+For deeper context on the ideas covered here, consult the [Concept overview](../../concepts.md).

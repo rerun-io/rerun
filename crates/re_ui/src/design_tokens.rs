@@ -84,21 +84,21 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // TODO(ab): font sizes should come from design tokens
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(28.0));
+        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(41.0));
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(24.0));
-    egui_style
-        .text_styles
-        .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(15.0));
+        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(27.0));
     egui_style.text_styles.insert(
         ReUi::welcome_screen_example_title(),
-        egui::FontId::proportional(16.0),
+        egui::FontId::proportional(13.0),
     );
     egui_style.text_styles.insert(
         ReUi::welcome_screen_body(),
-        egui::FontId::proportional(13.0),
+        egui::FontId::proportional(15.0),
     );
+    egui_style
+        .text_styles
+        .insert(ReUi::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
@@ -155,8 +155,15 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
     egui_style.visuals.widgets.active.fg_stroke.color = strong; // strong text and active button text
 
-    egui_style.visuals.popup_shadow = egui::epaint::Shadow::NONE;
-    egui_style.visuals.window_shadow = egui::epaint::Shadow::NONE;
+    // From figma
+    let shadow = egui::epaint::Shadow {
+        offset: egui::vec2(0.0, 15.0),
+        blur: 50.0,
+        spread: 0.0,
+        color: egui::Color32::from_black_alpha(128),
+    };
+    egui_style.visuals.popup_shadow = shadow;
+    egui_style.visuals.window_shadow = shadow;
 
     egui_style.visuals.window_fill = floating_color; // tooltips and menus
     egui_style.visuals.window_stroke = egui::Stroke::NONE;
@@ -173,6 +180,7 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
 
     egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
     egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
+    egui_style.spacing.menu_spacing = 1.0;
 
     // avoid some visual glitches with the default non-zero value
     egui_style.visuals.clip_rect_margin = 0.0;

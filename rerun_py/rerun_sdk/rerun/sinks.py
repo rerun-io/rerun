@@ -7,7 +7,6 @@ import socket
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
-from rerun.recording import MemoryRecording
 from rerun.recording_stream import RecordingStream, get_application_id
 
 # --- Sinks ---
@@ -17,7 +16,7 @@ def connect(
     addr: str | None = None,
     *,
     flush_timeout_sec: float | None = 2.0,
-    blueprint: BlueprintLike | None = None,
+    default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -29,23 +28,29 @@ def connect(
 
     Parameters
     ----------
-    addr
+    addr:
         The ip:port to connect to
-    flush_timeout_sec: float
+    flush_timeout_sec:
         The minimum time the SDK will wait during a flush before potentially
         dropping data if progress is not being made. Passing `None` indicates no timeout,
         and can cause a call to `flush` to block indefinitely.
-    blueprint: Optional[BlueprintLike]
-        An optional blueprint to configure the UI.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    application_id = get_application_id(recording=recording)
-    recording = RecordingStream.to_native(recording)
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - connect() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -53,16 +58,24 @@ def connect(
 
     # If a blueprint is provided, we need to create a blueprint storage object
     blueprint_storage = None
-    if blueprint is not None:
-        blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id, blueprint=default_blueprint
+        ).storage
 
-    bindings.connect(addr=addr, flush_timeout_sec=flush_timeout_sec, blueprint=blueprint_storage, recording=recording)
+    recording = RecordingStream.to_native(recording)
+
+    bindings.connect(
+        addr=addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=blueprint_storage, recording=recording
+    )
 
 
 _connect = connect  # we need this because Python scoping is horrible
 
 
-def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> None:
+def save(
+    path: str | pathlib.Path, default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None
+) -> None:
     """
     Stream all log-data to a file.
 
@@ -70,8 +83,13 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
 
     Parameters
     ----------
-    path : str
+    path:
         The path to save the data to.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -83,11 +101,25 @@ def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> 
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id, blueprint=default_blueprint
+        ).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.save(path=str(path), recording=recording)
+
+    bindings.save(path=str(path), default_blueprint=blueprint_storage, recording=recording)
 
 
-def stdout(recording: RecordingStream | None = None) -> None:
+def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to stdout.
 
@@ -100,6 +132,11 @@ def stdout(recording: RecordingStream | None = None) -> None:
 
     Parameters
     ----------
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -111,8 +148,21 @@ def stdout(recording: RecordingStream | None = None) -> None:
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id, blueprint=default_blueprint
+        ).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.stdout(recording=recording)
+    bindings.stdout(default_blueprint=blueprint_storage, recording=recording)
 
 
 def disconnect(recording: RecordingStream | None = None) -> None:
@@ -135,36 +185,12 @@ def disconnect(recording: RecordingStream | None = None) -> None:
     bindings.disconnect(recording=recording)
 
 
-def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
-    """
-    Streams all log-data to a memory buffer.
-
-    This can be used to display the RRD to alternative formats such as html.
-    See: [rerun.MemoryRecording.as_html][].
-
-    Parameters
-    ----------
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    Returns
-    -------
-    MemoryRecording
-        A memory recording object that can be used to read the data.
-
-    """
-
-    recording = RecordingStream.to_native(recording)
-    return MemoryRecording(bindings.memory_recording(recording=recording))
-
-
 def serve(
     *,
     open_browser: bool = True,
     web_port: int | None = None,
     ws_port: int | None = None,
+    default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
     server_memory_limit: str = "25%",
 ) -> None:
@@ -182,12 +208,17 @@ def serve(
 
     Parameters
     ----------
-    open_browser
+    open_browser:
         Open the default browser to the viewer.
     web_port:
         The port to serve the web viewer on (defaults to 9090).
     ws_port:
         The port to serve the WebSocket server on (defaults to 9877)
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -198,8 +229,74 @@ def serve(
 
     """
 
+    if not bindings.is_enabled():
+        logging.warning("Rerun is disabled - serve() call ignored")
+        return
+
+    application_id = get_application_id(recording=recording)
+    if application_id is None:
+        raise ValueError(
+            "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
+        )
+
+    # If a blueprint is provided, we need to create a blueprint storage object
+    blueprint_storage = None
+    if default_blueprint is not None:
+        blueprint_storage = create_in_memory_blueprint(
+            application_id=application_id, blueprint=default_blueprint
+        ).storage
+
     recording = RecordingStream.to_native(recording)
-    bindings.serve(open_browser, web_port, ws_port, server_memory_limit=server_memory_limit, recording=recording)
+    bindings.serve(
+        open_browser,
+        web_port,
+        ws_port,
+        server_memory_limit=server_memory_limit,
+        default_blueprint=blueprint_storage,
+        recording=recording,
+    )
+
+
+def send_blueprint(
+    blueprint: BlueprintLike,
+    *,
+    make_active: bool = True,
+    make_default: bool = True,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Create a blueprint from a `BlueprintLike` and send it to the `RecordingStream`.
+
+    Parameters
+    ----------
+    blueprint:
+        A blueprint object to send to the viewer.
+    make_active:
+        Immediately make this the active blueprint for the associated `app_id`.
+        Note that setting this to `false` does not mean the blueprint may not still end
+        up becoming active. In particular, if `make_default` is true and there is no other
+        currently active blueprint.
+    make_default:
+        Make this the default blueprint for the `app_id`.
+        The default blueprint will be used as the template when the user resets the
+        blueprint for the app. It will also become the active blueprint if no other
+        blueprint is currently active.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+    application_id = get_application_id(recording=recording)
+
+    if application_id is None:
+        raise ValueError("No application id found. You must call rerun.init before sending a blueprint.")
+
+    recording = RecordingStream.to_native(recording)
+
+    blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
+
+    bindings.send_blueprint(blueprint_storage, make_active, make_default, recording=recording)
 
 
 # TODO(#4019): application-level handshake
@@ -223,7 +320,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
-    blueprint: BlueprintLike | None = None,
+    default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
     """
@@ -236,20 +333,23 @@ def spawn(
 
     Parameters
     ----------
-    port : int
+    port:
         The port to listen on.
-    connect
+    connect:
         also connect to the viewer and stream logging data to it.
-    memory_limit
+    memory_limit:
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
-    recording
+    recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-    blueprint: Optional[BlueprintLike]
-        An optional blueprint to configure the UI.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
 
@@ -308,4 +408,4 @@ def spawn(
             sleep(0.1)
 
     if connect:
-        _connect(f"127.0.0.1:{port}", recording=recording, blueprint=blueprint)
+        _connect(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)

@@ -36,7 +36,6 @@ mod tensor_ext;
 mod text_document;
 mod text_document_ext;
 mod text_log;
-mod time_series_scalar;
 mod transform3d;
 mod transform3d_ext;
 mod view_coordinates;
@@ -67,6 +66,3 @@ pub use self::text_document::TextDocument;
 pub use self::text_log::TextLog;
 pub use self::transform3d::Transform3D;
 pub use self::view_coordinates::ViewCoordinates;
-
-#[allow(deprecated)]
-pub use self::time_series_scalar::TimeSeriesScalar;

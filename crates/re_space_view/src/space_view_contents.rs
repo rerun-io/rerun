@@ -184,15 +184,35 @@ impl SpaceViewContents {
         }
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Remove a subtree and any existing rules that it would match.
+    ///
+    /// Because most-specific matches win, if we only add a subtree exclusion
+    /// it can still be overridden by existing inclusions. This method ensures
+    /// that not only do we add a subtree exclusion, but clear out any existing
+    /// inclusions or (now redundant) exclusions that would match the subtree.
+    pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.remove_subtree_and_matching_rules(path);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+    }
+
+    /// Directly add an exclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    ///
+    /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
+    pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Directly add an inclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Include, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
@@ -223,13 +243,22 @@ impl DataQuery for SpaceViewContents {
         let executor =
             QueryExpressionEvaluator::new(self, visualizable_entities_for_visualizer_systems);
 
-        let root_handle = ctx.recording.and_then(|store| {
+        let mut num_matching_entities = 0;
+        let mut num_visualized_entities = 0;
+        let root_handle = {
             re_tracing::profile_scope!("add_entity_tree_to_data_results_recursive");
-            executor.add_entity_tree_to_data_results_recursive(store.tree(), &mut data_results)
-        });
+            executor.add_entity_tree_to_data_results_recursive(
+                ctx.recording.tree(),
+                &mut data_results,
+                &mut num_matching_entities,
+                &mut num_visualized_entities,
+            )
+        };
 
         DataQueryResult {
             tree: DataResultTree::new(data_results, root_handle),
+            num_matching_entities,
+            num_visualized_entities,
         }
     }
 }
@@ -261,6 +290,8 @@ impl<'a> QueryExpressionEvaluator<'a> {
         &self,
         tree: &EntityTree,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
+        num_matching_entities: &mut usize,
+        num_visualized_entities: &mut usize,
     ) -> Option<DataResultHandle> {
         // Early-out optimization
         if !self
@@ -274,27 +305,34 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let entity_path = &tree.path;
 
-        let tree_prefix_only = !self.entity_path_filter.is_included(entity_path);
+        let matches_filter = self.entity_path_filter.is_included(entity_path);
+        *num_matching_entities += matches_filter as usize;
 
         // TODO(#5067): For now, we always start by setting visualizers to the full list of available visualizers.
         // This is currently important for evaluating auto-properties during the space-view `on_frame_start`, which
         // is called before the property-overrider has a chance to update this list.
         // This list will be updated below during `update_overrides_recursive` by calling `choose_default_visualizers`
         // on the space view.
-        let visualizers: SmallVec<[_; 4]> = if tree_prefix_only {
-            Default::default()
-        } else {
+        let visualizers: SmallVec<[_; 4]> = if matches_filter {
             self.visualizable_entities_for_visualizer_systems
                 .iter()
                 .filter_map(|(visualizer, ents)| ents.contains(entity_path).then_some(*visualizer))
                 .collect()
+        } else {
+            Default::default()
         };
+        *num_visualized_entities += !visualizers.is_empty() as usize;
 
         let children: SmallVec<[_; 4]> = tree
             .children
             .values()
             .filter_map(|subtree| {
-                self.add_entity_tree_to_data_results_recursive(subtree, data_results)
+                self.add_entity_tree_to_data_results_recursive(
+                    subtree,
+                    data_results,
+                    num_matching_entities,
+                    num_visualized_entities,
+                )
             })
             .collect();
 
@@ -307,7 +345,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     visualizers,
-                    tree_prefix_only,
+                    tree_prefix_only: !matches_filter,
                     property_overrides: None,
                 },
                 children,
@@ -593,7 +631,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{StoreContext, VisualizableEntities};
+    use re_viewer_context::{StoreContext, StoreHub, VisualizableEntities};
 
     use super::*;
 
@@ -642,8 +680,9 @@ mod tests {
         let ctx = StoreContext {
             app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
-            recording: Some(&recording),
-            all_recordings: vec![],
+            recording: &recording,
+            bundle: &Default::default(),
+            hub: &StoreHub::test_hub(),
         };
 
         struct Scenario {

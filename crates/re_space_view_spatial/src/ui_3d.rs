@@ -445,8 +445,7 @@ pub fn view_3d(
     let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasVisualizer>()?.space_cameras;
     let scene_view_coordinates = ctx
-        .entity_db
-        .store()
+        .recording_store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
         .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
@@ -553,7 +552,7 @@ pub fn view_3d(
     // Track focused entity if any.
     if let Some(focused_item) = ctx.focused_item {
         let focused_entity = match focused_item {
-            Item::StoreId(_) | Item::Container(_) => None,
+            Item::DataSource(_) | Item::StoreId(_) | Item::Container(_) => None,
 
             Item::SpaceView(space_view_id) => {
                 if space_view_id == &query.space_view_id {

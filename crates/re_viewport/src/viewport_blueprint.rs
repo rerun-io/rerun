@@ -12,15 +12,15 @@ use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_viewer_context::{
-    ContainerId, Item, SpaceViewClassIdentifier, SpaceViewId, SpaceViewSpawnHeuristics,
-    ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier, SpaceViewId,
+    SpaceViewSpawnHeuristics, ViewerContext,
 };
 
 use crate::{
     blueprint::components::{
         AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
     },
-    container::{blueprint_id_to_tile_id, ContainerBlueprint, Contents},
+    container::ContainerBlueprint,
     viewport::TreeAction,
     VIEWPORT_PATH,
 };
@@ -74,7 +74,6 @@ impl ViewportBlueprint {
         re_tracing::profile_function!();
 
         let crate::blueprint::archetypes::ViewportBlueprint {
-            space_views,
             root_container,
             maximized,
             auto_layout,
@@ -98,13 +97,19 @@ impl ViewportBlueprint {
             }
         };
 
-        let space_view_ids: Vec<SpaceViewId> = space_views
-            .unwrap_or(vec![])
-            .iter()
-            .map(|id| id.0.into())
-            .collect();
+        let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
+            .tree()
+            .children
+            .get(SpaceViewId::registry_part())
+            .map(|tree| {
+                tree.children
+                    .values()
+                    .map(|subtree| SpaceViewId::from_entity_path(&subtree.path))
+                    .collect()
+            })
+            .unwrap_or_default();
 
-        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = space_view_ids
+        let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
                 SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
@@ -254,12 +259,33 @@ impl ViewportBlueprint {
     }
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
+    ///
+    /// TODO(#5742): note that `Item::DataResult` with entity path set to the space origin or some
+    /// of its descendent are always considered valid.
     pub fn is_item_valid(&self, item: &Item) -> bool {
         match item {
-            Item::StoreId(_) | Item::ComponentPath(_) | Item::InstancePath(_) => true,
-            Item::SpaceView(space_view_id) | Item::DataResult(space_view_id, _) => {
-                self.space_view(space_view_id).is_some()
+            Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::ComponentPath(_)
+            | Item::InstancePath(_) => true,
+
+            Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
+
+            Item::DataResult(space_view_id, instance_path) => {
+                self.space_view(space_view_id).map_or(false, |space_view| {
+                    let entity_path = &instance_path.entity_path;
+
+                    // TODO(#5742): including any path that is—or descend from—the space origin is
+                    // necessary because such items may actually be displayed in the blueprint tree.
+                    entity_path == &space_view.space_origin
+                        || entity_path.is_descendant_of(&space_view.space_origin)
+                        || space_view
+                            .contents
+                            .entity_path_filter
+                            .is_included(&instance_path.entity_path)
+                })
             }
+
             Item::Container(container_id) => self.container(container_id).is_some(),
         }
     }
@@ -381,13 +407,6 @@ impl ViewportBlueprint {
     ///
     /// Note that this doesn't focus the corresponding tab. Use [`Self::focus_tab`] with the returned ID
     /// if needed.
-    ///
-    /// NOTE: Calling this more than once per frame will result in lost data.
-    /// Each call to `add_space_views` emits an updated list of [`IncludedSpaceView`]s
-    /// Built by taking the list of [`IncludedSpaceView`]s from the current frame
-    /// and adding the new space views to it. Since this the edit is not applied until
-    /// the end of frame the second call will see a stale version of the data.
-    // TODO(jleibs): Better safety check here.
     pub fn add_space_views(
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
@@ -415,14 +434,6 @@ impl ViewportBlueprint {
                     position_in_parent,
                 ));
             }
-
-            let components = self
-                .space_views
-                .keys()
-                .chain(new_ids.iter())
-                .map(|id| IncludedSpaceView((*id).into()))
-                .collect::<Vec<_>>();
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
         }
 
         new_ids

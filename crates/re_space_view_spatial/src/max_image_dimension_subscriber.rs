@@ -32,7 +32,7 @@ impl MaxImageDimensions {
 }
 
 #[derive(Default)]
-struct MaxImageDimensionSubscriber {
+pub struct MaxImageDimensionSubscriber {
     max_dimensions: HashMap<StoreId, MaxImageDimensions>,
 }
 

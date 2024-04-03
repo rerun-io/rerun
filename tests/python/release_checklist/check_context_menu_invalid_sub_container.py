@@ -23,20 +23,18 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.TextDocumentView(origin="readme"),
-            rrb.Grid(
-                rrb.Vertical(
-                    rrb.Spatial3DView(origin="/"),
-                ),
-                rrb.Horizontal(
-                    rrb.Spatial2DView(origin="/"),
-                ),
-                grid_columns=1,
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Grid(
+            rrb.Vertical(
+                rrb.Spatial3DView(origin="/"),
             ),
-            column_shares=[2, 1],
-        )
+            rrb.Horizontal(
+                rrb.Spatial2DView(origin="/"),
+            ),
+            grid_columns=1,
+        ),
+        column_shares=[2, 1],
     )
 
 
@@ -48,7 +46,7 @@ def log_some_space_views() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), blueprint=blueprint())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_some_space_views()

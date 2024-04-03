@@ -33,7 +33,7 @@ pub fn override_ui(
     // entity from the blueprint-inspector since it isn't "part" of a space-view to provide
     // the overrides.
     let query = ctx.current_query();
-    let store = ctx.entity_db.store();
+    let store = ctx.recording_store();
 
     let query_result = ctx.lookup_query_result(space_view.id);
     let Some(data_result) = query_result
@@ -313,7 +313,7 @@ pub fn override_visualizer_ui(
             instance_key: _,
         } = instance_path;
 
-        let entity_db = ctx.entity_db;
+        let recording = ctx.recording();
 
         let query_result = ctx.lookup_query_result(space_view.id);
         let Some(data_result) = query_result
@@ -336,7 +336,7 @@ pub fn override_visualizer_ui(
 
         add_new_visualizer(
             ctx,
-            entity_db,
+            recording,
             ui,
             space_view,
             &data_result,

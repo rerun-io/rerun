@@ -12,7 +12,6 @@ pub mod env_vars;
 mod loading;
 mod saving;
 mod screenshotter;
-mod store_hub;
 mod ui;
 mod viewer_analytics;
 
@@ -29,7 +28,6 @@ pub(crate) use {
 };
 
 pub use app::{App, StartupOptions};
-pub use store_hub::StoreBundle;
 
 pub mod external {
     pub use re_data_ui;

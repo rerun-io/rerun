@@ -8,12 +8,12 @@ use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyRes
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    SystemCommandSender as _, ViewerContext,
+    StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
+use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -43,6 +43,9 @@ pub struct AppState {
     #[serde(skip)]
     viewport_state: ViewportState,
 
+    /// Selection & hovering state.
+    pub selection_state: ApplicationSelectionState,
+
     /// Item that got focused on the last frame if any.
     ///
     /// The focused item is cleared every frame, but views may react with side-effects
@@ -63,6 +66,7 @@ impl Default for AppState {
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             welcome_screen: Default::default(),
             viewport_state: Default::default(),
+            selection_state: Default::default(),
             focused_item: Default::default(),
         }
     }
@@ -87,21 +91,14 @@ impl AppState {
         &self,
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
-        store_context
-            .as_ref()
-            .and_then(|ctx| ctx.recording)
-            .map(|rec| rec.store_id())
-            .and_then(|rec_id| {
-                self.recording_configs
-                    .get(rec_id)
-                    // is there an active loop selection?
-                    .and_then(|rec_cfg| {
-                        let time_ctrl = rec_cfg.time_ctrl.read();
-                        time_ctrl
-                            .loop_selection()
-                            .map(|q| (*time_ctrl.timeline(), q))
-                    })
-            })
+        let rec_id = store_context.as_ref()?.recording.store_id();
+        let rec_cfg = self.recording_configs.get(rec_id)?;
+
+        // is there an active loop selection?
+        let time_ctrl = rec_cfg.time_ctrl.read();
+        time_ctrl
+            .loop_selection()
+            .map(|q| (*time_ctrl.timeline(), q))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -110,7 +107,7 @@ impl AppState {
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
         render_ctx: &re_renderer::RenderContext,
-        entity_db: &EntityDb,
+        recording: &EntityDb,
         store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,
         component_ui_registry: &ComponentUiRegistry,
@@ -132,6 +129,7 @@ impl AppState {
             blueprint_panel,
             welcome_screen,
             viewport_state,
+            selection_state,
             focused_item,
         } = self;
 
@@ -156,7 +154,7 @@ impl AppState {
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.
@@ -166,21 +164,27 @@ impl AppState {
             return;
         }
 
-        recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db)
-            .selection_state
-            .on_frame_start(|item| viewport.is_item_valid(item));
+        selection_state.on_frame_start(
+            |item| {
+                if let re_viewer_context::Item::StoreId(store_id) = item {
+                    if store_id.is_empty_recording() {
+                        return false;
+                    }
+                }
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, entity_db.store_id().clone(), entity_db);
+                viewport.is_item_valid(item)
+            },
+            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+        );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            rec_cfg.selection_state.clear_selection();
+            selection_state.clear_selection();
         }
 
         let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(entity_db.store_id());
+            .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
-            space_view_class_registry.indicated_entities_per_visualizer(entity_db.store_id());
+            space_view_class_registry.indicated_entities_per_visualizer(recording.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {
@@ -195,7 +199,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -212,18 +216,21 @@ impl AppState {
                 .collect::<_>()
         };
 
+        let rec_cfg =
+            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+
         let ctx = ViewerContext {
             app_options,
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
@@ -246,7 +253,7 @@ impl AppState {
                     // In a store subscriber set this is fine, but on a per-frame basis it's wasteful.
                     let visualizable_entities = determine_visualizable_entities(
                         &applicable_entities_per_visualizer,
-                        entity_db,
+                        recording,
                         &space_view_class_registry
                             .new_visualizer_collection(*space_view.class_identifier()),
                         space_view.class(space_view_class_registry),
@@ -273,13 +280,13 @@ impl AppState {
             cache,
             space_view_class_registry,
             component_ui_registry,
-            entity_db,
             store_context,
             applicable_entities_per_visualizer: &applicable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
@@ -300,11 +307,12 @@ impl AppState {
         time_panel.show_panel(
             &ctx,
             &viewport_blueprint,
-            ctx.entity_db,
+            ctx.recording(),
             ctx.rec_cfg,
             ui,
             app_blueprint.time_panel_expanded,
         );
+
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -367,7 +375,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            welcome_screen.ui(ui, re_ui, rx, command_sender);
+                            welcome_screen.ui(ui, re_ui, command_sender);
                         } else {
                             viewport.viewport_ui(ui, &ctx);
                         }
@@ -383,14 +391,14 @@ impl AppState {
             let dt = ui.ctx().input(|i| i.stable_dt);
 
             // Are we still connected to the data source for the current store?
-            let more_data_is_coming = if let Some(store_source) = &entity_db.data_source {
+            let more_data_is_coming = if let Some(store_source) = &recording.data_source {
                 rx.sources().iter().any(|s| s.as_ref() == store_source)
             } else {
                 false
             };
 
             let recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                entity_db.times_per_timeline(),
+                recording.times_per_timeline(),
                 dt,
                 more_data_is_coming,
             );
@@ -417,7 +425,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;
@@ -431,7 +439,7 @@ impl AppState {
         re_tracing::profile_function!();
 
         self.recording_configs
-            .retain(|store_id, _| store_hub.contains_store(store_id));
+            .retain(|store_id, _| store_hub.store_bundle().contains(store_id));
     }
 
     /// Returns the blueprint query that should be used for generating the current

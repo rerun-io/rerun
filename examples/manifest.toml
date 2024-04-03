@@ -16,7 +16,7 @@ Each example downloads it's own data, so no additional steps are needed.
 For the simplest possible examples showing how to use each api,
 check out [Types](/docs/reference/types).
 
-You can try these examples live at <https://app.rerun.io/>.
+You can try these examples live at [rerun.io/viewer](/viewer).
 """
 examples = [
   "arkit_scenes",
@@ -25,8 +25,8 @@ examples = [
   "detect_and_track_objects",
   "dicom_mri",
   "face_tracking",
-  "human_pose_tracking",
   "gesture_detection",
+  "human_pose_tracking",
   "lidar",
   "live_camera_edge_detection",
   "live_depth_sensor",
@@ -37,6 +37,7 @@ examples = [
   "raw_mesh",
   "rgbd",
   "ros_node",
+  "rrt-star",
   "segment_anything_model",
   "signed_distance_fields",
   "structure_from_motion",

@@ -87,12 +87,12 @@ jobs:
 
   build-examples:
     name: "Build Examples"
-    needs: [build-wheel-linux]
+    needs: [build-wheel-linux-x64]
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       CHANNEL: main
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
 
   track-sizes:
@@ -359,7 +359,7 @@ jobs:
             Please report any issues you find.
 
             ## Example Hosted App
-            https://app.rerun.io/commit/${{ env.SHORT_SHA }}
+            https://rerun.io/viewer/commit/${{ env.SHORT_SHA }}
 
             ## Wheels can be installed with:
             ```

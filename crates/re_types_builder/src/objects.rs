@@ -3,15 +3,15 @@
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
 //! are much easier to inspect and manipulate / friendler to work with.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 
 use crate::{
-    root_as_schema, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject, FbsSchema,
-    FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
+    root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
+    FbsSchema, FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -253,150 +253,6 @@ impl ObjectKind {
     }
 }
 
-/// A high-level representation of a flatbuffers object's documentation.
-#[derive(Debug, Clone)]
-pub struct Docs {
-    /// General documentation for the object.
-    ///
-    /// Each entry in the vector is a line of comment,
-    /// excluding the leading space end trailing newline,
-    /// i.e. the `COMMENT` from `/// COMMENT\n`
-    ///
-    /// See also [`Docs::tagged_docs`].
-    pub doc: Vec<String>,
-
-    /// Tagged documentation for the object.
-    ///
-    /// Each entry in the vector is a line of comment,
-    /// excluding the leading space end trailing newline,
-    /// i.e. the `COMMENT` from `/// \py COMMENT\n`
-    ///
-    /// E.g. the following will be associated with the `py` tag:
-    /// ```flatbuffers
-    /// /// \py Something something about how this fields behave in python.
-    /// my_field: uint32,
-    /// ```
-    ///
-    /// See also [`Docs::doc`].
-    pub tagged_docs: BTreeMap<String, Vec<String>>,
-
-    /// Contents of all the files included using `\include:<path>`.
-    pub included_files: BTreeMap<Utf8PathBuf, String>,
-}
-
-impl Docs {
-    fn from_raw_docs(
-        filepath: &Utf8Path,
-        docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
-    ) -> Self {
-        let mut included_files = BTreeMap::default();
-
-        let include_file = |included_files: &mut BTreeMap<_, _>, raw_path: &str| {
-            let path: Utf8PathBuf = raw_path
-                .parse()
-                .with_context(|| format!("couldn't parse included path: {raw_path:?}"))
-                .unwrap();
-
-            let path = filepath.parent().unwrap().join(path);
-
-            included_files
-                .entry(path.clone())
-                .or_insert_with(|| {
-                    std::fs::read_to_string(&path)
-                        .with_context(|| {
-                            format!("couldn't parse read file at included path: {path:?}")
-                        })
-                        .unwrap()
-                })
-                .clone()
-        };
-
-        // language-agnostic docs
-        let doc = docs
-            .into_iter()
-            .flat_map(|doc| doc.into_iter())
-            // NOTE: discard tagged lines!
-            .filter(|line| !line.trim().starts_with('\\'))
-            .flat_map(|line| {
-                assert!(!line.ends_with('\n'));
-                assert!(!line.ends_with('\r'));
-
-                if let Some((_, path)) = line.split_once("\\include:") {
-                    include_file(&mut included_files, path)
-                        .lines()
-                        .map(|line| line.to_owned())
-                        .collect_vec()
-                } else if let Some(line) = line.strip_prefix(' ') {
-                    // Removed space between `///` and comment.
-                    vec![line.to_owned()]
-                } else {
-                    assert!(
-                        line.is_empty(),
-                        "{filepath}: Comments should start with a single space; found {line:?}"
-                    );
-                    vec![line.to_owned()]
-                }
-            })
-            .collect::<Vec<_>>();
-
-        // tagged docs, e.g. `\py this only applies to python!`
-        let tagged_docs = {
-            let tagged_lines = docs
-                .into_iter()
-                .flat_map(|doc| doc.into_iter())
-                // NOTE: discard _un_tagged lines!
-                .filter_map(|line| {
-                    let trimmed = line.trim();
-                    trimmed.starts_with('\\').then(|| {
-                        let tag = trimmed.split_whitespace().next().unwrap();
-                        let line = &trimmed[tag.len()..];
-                        let tag = tag[1..].to_owned();
-                        if let Some(line) = line.strip_prefix(' ') {
-                            // Removed space between tag and comment.
-                            (tag, line.to_owned())
-                        } else {
-                            assert!(line.is_empty());
-                            (tag, String::default())
-                        }
-                    })
-                })
-                .flat_map(|(tag, line)| {
-                    if let Some((_, path)) = line.split_once("\\include:") {
-                        include_file(&mut included_files, path)
-                            .lines()
-                            .map(|line| (tag.clone(), line.to_owned()))
-                            .collect_vec()
-                    } else {
-                        vec![(tag, line)]
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            let all_tags: HashSet<_> = tagged_lines.iter().map(|(tag, _)| tag).collect();
-            let mut tagged_docs = BTreeMap::new();
-
-            for cur_tag in all_tags {
-                tagged_docs.insert(
-                    cur_tag.clone(),
-                    tagged_lines
-                        .iter()
-                        .filter(|(tag, _)| cur_tag == tag)
-                        .map(|(_, line)| line.clone())
-                        .collect(),
-                );
-            }
-
-            tagged_docs
-        };
-
-        Self {
-            doc,
-            tagged_docs,
-            included_files,
-        }
-    }
-}
-
 /// A high-level representation of a flatbuffers object, which can be either a struct, a union or
 /// an enum.
 #[derive(Debug, Clone)]
@@ -471,7 +327,7 @@ impl Object {
             "Bad filepath: {filepath:?}"
         );
 
-        let docs = Docs::from_raw_docs(&filepath, obj.documentation());
+        let docs = Docs::from_raw_docs(obj.documentation());
         let attrs = Attributes::from_raw_attrs(obj.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -551,7 +407,7 @@ impl Object {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, enm.documentation());
+        let docs = Docs::from_raw_docs(enm.documentation());
         let attrs = Attributes::from_raw_attrs(enm.attributes());
         let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
 
@@ -791,7 +647,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, field.documentation());
+        let docs = Docs::from_raw_docs(field.documentation());
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
@@ -839,7 +695,7 @@ impl ObjectField {
             .unwrap();
         let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
 
-        let docs = Docs::from_raw_docs(&filepath, val.documentation());
+        let docs = Docs::from_raw_docs(val.documentation());
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
 

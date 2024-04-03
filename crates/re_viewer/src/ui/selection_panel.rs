@@ -14,14 +14,15 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_ui::list_item::ListItem;
+use re_ui::{icons, list_item::ListItem};
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, ContainerId, DataQueryResult, HoverHighlight, Item,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{
-    context_menu_ui_for_item, icon_for_container_kind, space_view_name_style, Contents,
+    contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
     SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 
@@ -32,7 +33,7 @@ use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_ti
 
 // ---
 
-/// The "Selection View" sidebar.
+/// The "Selection view" sidebar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SelectionPanel {
@@ -145,7 +146,7 @@ impl SelectionPanel {
                         let (query, store) = if let Some(entity_path) = item.entity_path() {
                             guess_query_and_store_for_selected_entity(ctx, entity_path)
                         } else {
-                            (ctx.current_query(), ctx.entity_db.store())
+                            (ctx.current_query(), ctx.recording_store())
                         };
                         data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
                     });
@@ -226,7 +227,7 @@ fn container_children(
             ListItem::new(ctx.re_ui, "empty — use the + button to add content")
                 .weak(true)
                 .italics(true)
-                .active(false)
+                .interactive(false)
                 .show_flat(ui);
         }
     };
@@ -254,6 +255,7 @@ fn container_children(
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
+        Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
         Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
@@ -280,9 +282,9 @@ fn space_view_button(
             space_view.class(ctx.space_view_class_registry).icon(),
             space_view_name.as_ref(),
             is_selected,
-            space_view_name_style(&space_view_name),
+            contents_name_style(&space_view_name),
         )
-        .on_hover_text("Space View");
+        .on_hover_text("Space view");
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
@@ -296,10 +298,15 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::DataSource(data_source) => {
+            let title = data_source.to_string();
+            item_title_ui(ctx.re_ui, ui, &title, Some(&icons::DATA_SOURCE), &title);
+        }
+
         Item::StoreId(store_id) => {
             let id_str = format!("{} ID: {}", store_id.kind, store_id);
 
-            let title = if let Some(entity_db) = ctx.store_context.recording(store_id) {
+            let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
                 if let Some(info) = entity_db.store_info() {
                     let time = info
                         .started
@@ -314,20 +321,36 @@ fn what_is_selected_ui(
                 id_str.clone()
             };
 
-            item_title_ui(ctx.re_ui, ui, &title, Some(&re_ui::icons::STORE), &id_str);
+            let icon = match store_id.kind {
+                re_log_types::StoreKind::Recording => &icons::RECORDING,
+                re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+            };
+
+            item_title_ui(ctx.re_ui, ui, &title, Some(icon), &id_str);
         }
 
         Item::Container(container_id) => {
             if let Some(container_blueprint) = viewport.container(container_id) {
-                item_title_ui(
-                    ctx.re_ui,
-                    ui,
-                    &format!("{:?}", container_blueprint.container_kind),
-                    Some(re_viewport::icon_for_container_kind(
+                let hover_text =
+                    if let Some(display_name) = container_blueprint.display_name.as_ref() {
+                        format!(
+                            "{:?} container {display_name:?}",
+                            container_blueprint.container_kind,
+                        )
+                    } else {
+                        format!("Unnamed {:?} container", container_blueprint.container_kind,)
+                    };
+
+                let container_name = container_blueprint.display_name_or_default();
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
+                    .with_icon(re_viewport::icon_for_container_kind(
                         &container_blueprint.container_kind,
-                    )),
-                    &format!("{:?} container", container_blueprint.container_kind),
-                );
+                    ))
+                    .with_height(ReUi::title_bar_height())
+                    .selected(true)
+                    .show_flat(ui)
+                    .on_hover_text(hover_text);
             }
         }
 
@@ -363,20 +386,20 @@ fn what_is_selected_ui(
 
                 let hover_text = if let Some(display_name) = space_view.display_name.as_ref() {
                     format!(
-                        "Space View {:?} of type {}",
+                        "Space view {:?} of type {}",
                         display_name,
                         space_view_class.display_name()
                     )
                 } else {
                     format!(
-                        "Unnamed Space View of type {}",
+                        "Unnamed space view of type {}",
                         space_view_class.display_name()
                     )
                 };
 
                 let space_view_name = space_view.display_name_or_default();
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_height(ReUi::title_bar_height())
                     .selected(true)
@@ -428,7 +451,7 @@ fn what_is_selected_ui(
                     name,
                     Some(guess_instance_path_icon(ctx, instance_path)),
                     &format!(
-                        "{typ} '{instance_path}' as shown in Space View {:?}",
+                        "{typ} '{instance_path}' as shown in space view {:?}",
                         space_view.display_name
                     ),
                 );
@@ -501,7 +524,7 @@ fn list_existing_data_blueprints(
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
 
     if space_views_with_path.is_empty() {
-        ui.weak("(Not shown in any Space View)");
+        ui.weak("(Not shown in any space view)");
     } else {
         for space_view_id in &space_views_with_path {
             if let Some(space_view) = blueprint.space_view(space_view_id) {
@@ -526,7 +549,7 @@ fn list_existing_data_blueprints(
 /// Display the top-level properties of a space view.
 ///
 /// This includes the name, space origin entity, and space view type. These properties are singled
-/// out as needing to be edited in most case when creating a new Space View, which is why they are
+/// out as needing to be edited in most case when creating a new space view, which is why they are
 /// shown at the very top.
 fn space_view_top_level_properties(
     ui: &mut egui::Ui,
@@ -540,7 +563,7 @@ fn space_view_top_level_properties(
             .show(ui, |ui| {
                 let mut name = space_view.display_name.clone().unwrap_or_default();
                 ui.label("Name").on_hover_text(
-                    "The name of the Space View used for display purposes. This can be any text \
+                    "The name of the space view used for display purposes. This can be any text \
                     string.",
                 );
                 ui.text_edit_singleline(&mut name);
@@ -549,8 +572,8 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Space origin").on_hover_text(
-                    "The origin Entity for this Space View. For spatial Space Views, the Space \
-                    View's origin is the same as this Entity's origin and all transforms are \
+                    "The origin entity for this space view. For spatial space views, the space \
+                    View's origin is the same as this entity's origin and all transforms are \
                     relative to it.",
                 );
 
@@ -561,7 +584,7 @@ fn space_view_top_level_properties(
                 ui.end_row();
 
                 ui.label("Type")
-                    .on_hover_text("The type of this Space View");
+                    .on_hover_text("The type of this space view");
                 ui.label(
                     space_view
                         .class(ctx.space_view_class_registry)
@@ -586,6 +609,15 @@ fn container_top_level_properties(
     egui::Grid::new("container_top_level_properties")
         .num_columns(2)
         .show(ui, |ui| {
+            let mut name = container.display_name.clone().unwrap_or_default();
+            ui.label("Name").on_hover_text(
+                "The name of the container used for display purposes. This can be any text string.",
+            );
+            ui.text_edit_singleline(&mut name);
+            container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
+
+            ui.end_row();
+
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
@@ -701,12 +733,12 @@ fn show_list_item_for_container_child(
             (
                 Item::SpaceView(*space_view_id),
                 ListItem::new(ctx.re_ui, space_view_name.as_ref())
-                    .label_style(space_view_name_style(&space_view_name))
+                    .label_style(contents_name_style(&space_view_name))
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove this Space View");
+                            .on_hover_text("Remove this space view");
 
                         if response.clicked() {
                             remove_contents = true;
@@ -722,15 +754,17 @@ fn show_list_item_for_container_child(
                 return false;
             };
 
+            let container_name = container.display_name_or_default();
+
             (
                 Item::Container(*container_id),
-                ListItem::new(ctx.re_ui, format!("{:?}", container.container_kind))
-                    .label_style(re_ui::LabelStyle::Unnamed)
+                ListItem::new(ctx.re_ui, container_name.as_ref())
+                    .label_style(contents_name_style(&container_name))
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
                             .small_icon_button(ui, &re_ui::icons::REMOVE)
-                            .on_hover_text("Remove this Container");
+                            .on_hover_text("Remove this container");
 
                         if response.clicked() {
                             remove_contents = true;
@@ -770,9 +804,12 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {
-            false
-        }
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => false,
+
         Item::SpaceView(_) | Item::DataResult(_, _) => true,
     }
 }
@@ -786,14 +823,18 @@ fn blueprint_ui(
 ) {
     match item {
         Item::SpaceView(space_view_id) => {
-            blueprint_ui_for_space_view(ui, ctx, viewport, space_view_id);
+            blueprint_ui_for_space_view(ui, ctx, viewport, *space_view_id);
         }
 
         Item::DataResult(space_view_id, instance_path) => {
-            blueprint_ui_for_data_result(ui, ctx, viewport, space_view_id, instance_path);
+            blueprint_ui_for_data_result(ui, ctx, viewport, *space_view_id, instance_path);
         }
 
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::Container(_) | Item::InstancePath(_) => {}
+        Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => {}
     }
 }
 
@@ -801,14 +842,16 @@ fn blueprint_ui_for_space_view(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
 ) {
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         if let Some(new_entity_path_filter) = entity_path_filter_ui(
             ui,
+            ctx,
             viewport,
             space_view_id,
             &space_view.contents.entity_path_filter,
+            &space_view.space_origin,
         ) {
             space_view
                 .contents
@@ -819,13 +862,14 @@ fn blueprint_ui_for_space_view(
     }
 
     if ui
-        .button("Clone Space View")
+        .button("Clone space view")
         .on_hover_text(
-            "Create an exact duplicate of this Space View including all Blueprint settings",
+            "Create an exact duplicate of this space view including all blueprint settings",
         )
         .clicked()
     {
-        if let Some(new_space_view_id) = viewport.blueprint.duplicate_space_view(space_view_id, ctx)
+        if let Some(new_space_view_id) =
+            viewport.blueprint.duplicate_space_view(&space_view_id, ctx)
         {
             ctx.selection_state()
                 .set_selection(Item::SpaceView(new_space_view_id));
@@ -837,7 +881,7 @@ fn blueprint_ui_for_space_view(
     ReUi::full_span_separator(ui);
     ui.add_space(ui.spacing().item_spacing.y / 2.0);
 
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         let class_identifier = *space_view.class_identifier();
 
         let space_view_state = viewport.state.space_view_state_mut(
@@ -874,7 +918,7 @@ fn blueprint_ui_for_space_view(
             &mut props,
         ) {
             re_log::error!(
-                "Error in Space View selection UI (class: {}, display name: {}): {err}",
+                "Error in space view selection UI (class: {}, display name: {}): {err}",
                 space_view.class_identifier(),
                 space_view_class.display_name(),
             );
@@ -888,10 +932,10 @@ fn blueprint_ui_for_data_result(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
     viewport: &Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
     instance_path: &InstancePath,
 ) {
-    if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+    if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         if instance_path.instance_key.is_splat() {
             // splat - the whole entity
             let space_view_class = *space_view.class_identifier();
@@ -911,7 +955,7 @@ fn blueprint_ui_for_data_result(
                 entity_props_ui(
                     ctx,
                     ui,
-                    ctx.lookup_query_result(*space_view_id),
+                    ctx.lookup_query_result(space_view_id),
                     &space_view_class,
                     entity_path,
                     &mut props,
@@ -925,9 +969,11 @@ fn blueprint_ui_for_data_result(
 /// Returns a new filter when the editing is done, and there has been a change.
 fn entity_path_filter_ui(
     ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
-    space_view_id: &SpaceViewId,
+    space_view_id: SpaceViewId,
     filter: &EntityPathFilter,
+    origin: &EntityPath,
 ) -> Option<EntityPathFilter> {
     fn entity_path_filter_help_ui(ui: &mut egui::Ui) {
         let markdown = r#"
@@ -1040,7 +1086,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     .on_hover_text("Modify the entity query using the editor")
                     .clicked()
                 {
-                    viewport.show_add_remove_entities_modal(*space_view_id);
+                    viewport.show_add_remove_entities_modal(space_view_id);
                 }
             },
         );
@@ -1054,6 +1100,22 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     } else {
         // Reconstruct it from the filter next frame
         ui.data_mut(|data| data.remove::<String>(filter_text_id));
+    }
+
+    // Show some statistics about the query, print a warning text if something seems off.
+    let query = ctx.lookup_query_result(space_view_id);
+    if query.num_matching_entities == 0 {
+        ui.label(ctx.re_ui.warning_text("Does not match any entity"));
+    } else if query.num_matching_entities == 1 {
+        ui.label("Matches 1 entity");
+    } else {
+        ui.label(format!("Matches {} entities", query.num_matching_entities));
+    }
+    if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
+        // TODO(andreas): Talk about this root bit only if it's a spatial view.
+        ui.label(ctx.re_ui.warning_text(
+            format!("This space view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+        ));
     }
 
     // Apply the edit.
