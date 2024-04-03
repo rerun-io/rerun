@@ -339,8 +339,33 @@ impl App {
             SystemCommand::ActivateRecording(store_id) => {
                 store_hub.set_activate_recording(store_id);
             }
+
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
+            }
+
+            SystemCommand::CloseAllRecordings => {
+                store_hub.clear_recordings();
+
+                // Stop receiving into the old recordings.
+                // This is most important when going back to the example screen by using the "Back"
+                // button in the browser, and there is still a connection downloading an .rrd.
+                // That's the case of `SmartChannelSource::RrdHttpStream`.
+                // TODO(emilk): exactly what things get kept and what gets cleared?
+                self.rx.retain(|r| match r.source() {
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+
+                    SmartChannelSource::WsClient { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::Stdin => true,
+                });
+            }
+
+            SystemCommand::AddReceiver(rx) => {
+                re_log::debug!("Received AddReceiver");
+                self.add_receiver(rx);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -422,18 +447,8 @@ impl App {
                 }
             }
 
-            SystemCommand::SetSelection { recording_id, item } => {
-                let recording_id =
-                    recording_id.or_else(|| store_hub.active_recording_id().cloned());
-                if let Some(recording_id) = recording_id {
-                    if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
-                        rec_cfg.selection_state.set_selection(item);
-                    } else {
-                        re_log::debug!(
-                            "Failed to select item {item:?}: failed to find recording {recording_id}"
-                        );
-                    }
-                }
+            SystemCommand::SetSelection(item) => {
+                self.state.selection_state.set_selection(item);
             }
 
             SystemCommand::SetFocus(item) => {
@@ -496,6 +511,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::CloseStore(cur_rec.clone()));
                 }
+            }
+            UICommand::CloseAllRecordings => {
+                self.command_sender
+                    .send_system(SystemCommand::CloseAllRecordings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -576,22 +595,10 @@ impl App {
             }
 
             UICommand::SelectionPrevious => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_previous();
-                }
+                self.state.selection_state.select_previous();
             }
             UICommand::SelectionNext => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_next();
-                }
+                self.state.selection_state.select_next();
             }
             UICommand::ToggleCommandPalette => {
                 self.cmd_palette.toggle();

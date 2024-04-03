@@ -10,6 +10,8 @@ pub enum SystemCommand {
     /// Load some data.
     LoadDataSource(DataSource),
 
+    AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
+
     /// Reset the `Viewer` to the default state
     ResetViewer,
 
@@ -24,6 +26,9 @@ pub enum SystemCommand {
 
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),
+
+    /// Close all stores and show the welcome screen again.
+    CloseAllRecordings,
 
     /// Update the blueprint with additional data
     ///
@@ -40,13 +45,7 @@ pub enum SystemCommand {
     EnableExperimentalDataframeSpaceView(bool),
 
     /// Set the item selection.
-    SetSelection {
-        /// If set, use the recording config of this recording.
-        /// Else, use the currently active recording.
-        recording_id: Option<StoreId>,
-
-        item: crate::Item,
-    },
+    SetSelection(crate::Item),
 
     /// Sets the focus to the given item.
     ///
@@ -71,6 +70,7 @@ pub trait SystemCommandSender {
 // ----------------------------------------------------------------------------
 
 /// Sender that queues up the execution of commands.
+#[derive(Clone)]
 pub struct CommandSender {
     system_sender: std::sync::mpsc::Sender<SystemCommand>,
     ui_sender: std::sync::mpsc::Sender<UICommand>,
