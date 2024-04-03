@@ -18,7 +18,7 @@ channel = "nightly"
 Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stablediffusion?tab=readme-ov-file#depth-conditional-stable-diffusion) to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images.
 
 ## Used Rerun Types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document),[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
 
 ## Background
 Depth Guided Stable Diffusion enriches the image generation process by incorporating depth information, providing a unique way to control the spatial composition of generated images. This approach allows for more nuanced and layered creations, making it especially useful for scenes requiring a sense of three-dimensionality.
@@ -33,11 +33,15 @@ rr.log("prompt/text", rr.TextDocument(prompt))
 rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
 ```
 
+
+        rr.log("prompt/text", rr.TextDocument(prompt))
+        rr.log("prompt/text_negative", rr.TextDocument(negative_prompt))
+
 ## Text
 Visualizing the text input ids, the text attention mask and the unconditional input ids
 ```python
-rr.log("prompt/text_input/ids", rr.Tensor(text_input_ids))
-rr.log("prompt/text_input/attention_mask", rr.Tensor(text_inputs.attention_mask))
+rr.log("prompt/text_input/ids", rr.BarChart(text_input_ids))
+rr.log("prompt/text_input/attention_mask", rr.BarChart(text_inputs.attention_mask))
 rr.log("prompt/uncond_input/ids", rr.Tensor(uncond_input.input_ids))
 ```
 
