@@ -36,7 +36,7 @@ impl Caches {
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
             let cache = Arc::clone(
-                self.per_cache_key
+                self.latest_at_per_cache_key
                     .write()
                     .entry(key.clone())
                     .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
