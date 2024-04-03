@@ -8,7 +8,7 @@ channel = "main"
 -->
 
 
-<picture>
+<picture data-inline-viewer="arkit_scenes">>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/1024w.png">
@@ -23,7 +23,7 @@ contains color images, depth images, the reconstructed mesh, and labeled boundin
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image),
 [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d),
 [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d),
-[`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), 
+[`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d),
 [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 ## Background
