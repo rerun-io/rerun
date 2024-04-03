@@ -4,17 +4,11 @@ use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{Item, SystemCommandSender, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, StoreHub, SystemCommandSender, UiVerbosity, ViewerContext};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
-///
-/// Returns `true` if any recordings were shown.
-pub fn recordings_panel_ui(
-    ctx: &ViewerContext<'_>,
-    rx: &ReceiveSet<LogMsg>,
-    ui: &mut egui::Ui,
-) -> bool {
+pub fn recordings_panel_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
     ctx.re_ui.panel_content(ui, |re_ui, ui| {
         re_ui.panel_title_bar_with_buttons(
             ui,
@@ -34,32 +28,22 @@ pub fn recordings_panel_ui(
         .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui.panel_content(ui, |_re_ui, ui| {
-                let mut any_shown = false;
-                any_shown |= recording_list_ui(ctx, ui);
+                recording_list_ui(ctx, ui);
 
                 // Show currently loading things after.
                 // They will likely end up here as recordings soon.
-                any_shown |= loading_receivers_ui(ctx, rx, ui);
-
-                any_shown
-            })
-        })
-        .inner
+                loading_receivers_ui(ctx, rx, ui);
+            });
+        });
 }
 
-fn loading_receivers_ui(
-    ctx: &ViewerContext<'_>,
-    rx: &ReceiveSet<LogMsg>,
-    ui: &mut egui::Ui,
-) -> bool {
+fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
     let sources_with_stores: ahash::HashSet<SmartChannelSource> = ctx
         .store_context
         .bundle
         .recordings()
         .filter_map(|store| store.data_source.clone())
         .collect();
-
-    let mut any_shown = false;
 
     for source in rx.sources() {
         let string = match source.as_ref() {
@@ -82,7 +66,6 @@ fn loading_receivers_ui(
         // Note that usually there is a one-to-one mapping between a source and a recording,
         // but it is possible to send multiple recordings over the same channel.
         if !sources_with_stores.contains(&source) {
-            any_shown = true;
             let response = ctx
                 .re_ui
                 .list_item(string)
@@ -101,14 +84,10 @@ fn loading_receivers_ui(
             }
         }
     }
-
-    any_shown
 }
 
 /// Draw the recording list.
-///
-/// Returns `true` if any recordings were shown.
-fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
+fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let mut entity_dbs_map: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
     for entity_db in ctx.store_context.bundle.entity_dbs() {
@@ -123,35 +102,64 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
         }
     }
 
-    if entity_dbs_map.is_empty() {
-        return false;
-    }
-
-    for entity_dbs in entity_dbs_map.values_mut() {
-        entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+    if let Some(entity_dbs) = entity_dbs_map.remove(&StoreHub::welcome_screen_app_id()) {
+        // Always show welcome screen first:
+        debug_assert!(
+            entity_dbs.is_empty(),
+            "There shouldn't be any recording for the welcome screen, but there are!"
+        );
+        app_and_its_recordings_ui(
+            ctx,
+            ui,
+            &StoreHub::welcome_screen_app_id(),
+            Default::default(),
+        );
     }
 
     for (app_id, entity_dbs) in entity_dbs_map {
-        let app_item = Item::AppId(app_id.clone());
-        let selected = ctx.selection().contains_item(&app_item);
+        app_and_its_recordings_ui(ctx, ui, &app_id, entity_dbs);
+    }
+}
 
-        let app_button_response = ctx
-            .re_ui
-            .list_item(app_id.to_string())
-            .selected(selected)
-            .with_icon_fn(|_re_ui, ui, rect, visuals| {
-                // Color icon based on whether this is the active application or not:
-                let color = if ctx.store_context.app_id == app_id {
-                    visuals.fg_stroke.color
-                } else {
-                    ui.visuals().widgets.noninteractive.fg_stroke.color
-                };
-                re_ui::icons::APPLICATION
-                    .as_image()
-                    .tint(color)
-                    .paint_at(ui, rect);
-            })
-            .show_hierarchical_with_content(ui, ui.make_persistent_id(&app_id), true, |_, ui| {
+fn app_and_its_recordings_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    app_id: &ApplicationId,
+    mut entity_dbs: Vec<&EntityDb>,
+) {
+    entity_dbs.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+
+    let app_item = Item::AppId(app_id.clone());
+    let selected = ctx.selection().contains_item(&app_item);
+
+    let app_list_item = ctx
+        .re_ui
+        .list_item(app_id.to_string())
+        .selected(selected)
+        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+            // Color icon based on whether this is the active application or not:
+            let color = if &ctx.store_context.app_id == app_id {
+                visuals.fg_stroke.color
+            } else {
+                ui.visuals().widgets.noninteractive.fg_stroke.color
+            };
+            re_ui::icons::APPLICATION
+                .as_image()
+                .tint(color)
+                .paint_at(ui, rect);
+        });
+
+    let item_response = if app_id == &StoreHub::welcome_screen_app_id() {
+        // Special case: the welcome screen never has any recordings
+        debug_assert!(
+            entity_dbs.is_empty(),
+            "There shouldn't be any recording for the welcome screen, but there are!"
+        );
+        app_list_item.show_hierarchical(ui)
+    } else {
+        let id = ui.make_persistent_id(app_id);
+        app_list_item
+            .show_hierarchical_with_content(ui, id, true, |_, ui| {
                 // Show all the recordings for this application:
                 if entity_dbs.is_empty() {
                     ui.weak("(no recordings)").on_hover_ui(|ui| {
@@ -163,30 +171,29 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
                         entity_db_button_ui(ctx, ui, entity_db, include_app_id);
                     }
                 }
-            });
+            })
+            .item_response
+    };
 
-        let app_item_response = app_button_response.item_response.on_hover_ui(|ui| {
-            app_id.data_ui(
-                ctx,
-                ui,
-                UiVerbosity::Reduced,
-                &ctx.current_query(),  // unused
-                ctx.recording_store(), // unused
-            );
-        });
+    let item_response = item_response.on_hover_ui(|ui| {
+        app_id.data_ui(
+            ctx,
+            ui,
+            UiVerbosity::Reduced,
+            &ctx.current_query(),  // unused
+            ctx.recording_store(), // unused
+        );
+    });
 
-        ctx.select_hovered_on_click(&app_item_response, app_item);
+    ctx.select_hovered_on_click(&item_response, app_item);
 
-        if app_item_response.clicked() {
-            // Switch to this application:
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::ActivateApp(
-                    app_id.clone(),
-                ));
-        }
+    if item_response.clicked() {
+        // Switch to this application:
+        ctx.command_sender
+            .send_system(re_viewer_context::SystemCommand::ActivateApp(
+                app_id.clone(),
+            ));
     }
-
-    true
 }
 
 fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {

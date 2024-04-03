@@ -76,7 +76,7 @@ pub struct StoreHubStats {
 impl StoreHub {
     /// App ID used as a marker to display the welcome screen.
     pub fn welcome_screen_app_id() -> ApplicationId {
-        "<welcome screen>".into()
+        "Welcome screen".into()
     }
 
     /// Used only for tests
