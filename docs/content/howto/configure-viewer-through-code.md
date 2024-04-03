@@ -86,7 +86,7 @@ blueprint" in the viewer. This minimizes the chance that you accidentally
 overwrite blueprint edits you may have made locally.
 
 If you want to start using the new blueprint, after sending it, you will need to
-click the reset button (<img src="https://static.rerun.io/b60eb3c4010e3ee46bbeeabf3da411fade2495b6_reset.png" alt="reset icon" height="24">) in the blueprint panel. This resets the active blueprint to the
+click the reset button (<img src="https://static.rerun.io/b60eb3c4010e3ee46bbeeabf3da411fade2495b6_reset.png" alt="reset icon" style="display:inline; vertical-align: middle; height: 20px; margin: 0px"/>) in the blueprint panel. This resets the active blueprint to the
 current default.
 
 ## Always activating the blueprint
