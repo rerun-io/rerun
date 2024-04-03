@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 
 use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
 use re_entity_db::EntityDb;
-use re_log_types::{ApplicationId, LogMsg};
+use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::{Item, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, SystemCommandSender, UiVerbosity, ViewerContext};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -109,11 +109,18 @@ fn loading_receivers_ui(
 ///
 /// Returns `true` if any recordings were shown.
 fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
-    let mut entity_dbs_map: BTreeMap<Option<ApplicationId>, Vec<&EntityDb>> = BTreeMap::new();
+    let mut entity_dbs_map: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
-    for entity_db in ctx.store_context.bundle.recordings() {
-        let key = entity_db.app_id().cloned();
-        entity_dbs_map.entry(key).or_default().push(entity_db);
+    for entity_db in ctx.store_context.bundle.entity_dbs() {
+        // We want to show all open applications, even if they have no recordings
+        let Some(app_id) = entity_db.app_id().cloned() else {
+            continue; // this only happens if we haven't even started loading it, or if something is really wrong with it.
+        };
+        let recordings = entity_dbs_map.entry(app_id).or_default();
+
+        if entity_db.store_kind() == StoreKind::Recording {
+            recordings.push(entity_db);
+        }
     }
 
     if entity_dbs_map.is_empty() {
@@ -125,44 +132,57 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     }
 
     for (app_id, entity_dbs) in entity_dbs_map {
-        let app_id = app_id.as_ref();
-        let app_item: Option<Item> = app_id.map(|app_id| Item::AppId(app_id.clone()));
-
-        let selected = app_item
-            .as_ref()
-            .map_or(false, |item| ctx.selection().contains_item(item));
-
-        let app_name = app_id.map_or_else(|| "<unknown>".to_owned(), |app_id| app_id.to_string());
+        let app_item = Item::AppId(app_id.clone());
+        let selected = ctx.selection().contains_item(&app_item);
 
         let app_button_response = ctx
             .re_ui
-            .list_item(app_name)
+            .list_item(app_id.to_string())
             .selected(selected)
-            .with_icon(&re_ui::icons::APPLICATION)
-            .show_hierarchical_with_content(ui, ui.make_persistent_id(app_id), true, |_, ui| {
+            .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                // Color icon based on whether this is the active application or not:
+                let color = if ctx.store_context.app_id == app_id {
+                    visuals.fg_stroke.color
+                } else {
+                    ui.visuals().widgets.noninteractive.fg_stroke.color
+                };
+                re_ui::icons::APPLICATION
+                    .as_image()
+                    .tint(color)
+                    .paint_at(ui, rect);
+            })
+            .show_hierarchical_with_content(ui, ui.make_persistent_id(&app_id), true, |_, ui| {
                 // Show all the recordings for this application:
-                for entity_db in entity_dbs {
-                    let include_app_id = false; // we already show it in the parent
-                    entity_db_button_ui(ctx, ui, entity_db, include_app_id);
+                if entity_dbs.is_empty() {
+                    ui.weak("(no recordings)").on_hover_ui(|ui| {
+                        ui.label("No recordings loaded for this application");
+                    });
+                } else {
+                    for entity_db in entity_dbs {
+                        let include_app_id = false; // we already show it in the parent
+                        entity_db_button_ui(ctx, ui, entity_db, include_app_id);
+                    }
                 }
             });
 
         let app_item_response = app_button_response.item_response.on_hover_ui(|ui| {
-            if let Some(app_id) = app_id {
-                app_id.data_ui(
-                    ctx,
-                    ui,
-                    UiVerbosity::Reduced,
-                    &ctx.current_query(),  // unused
-                    ctx.recording_store(), // unused
-                );
-            } else {
-                ui.weak("Application ID unknown");
-            }
+            app_id.data_ui(
+                ctx,
+                ui,
+                UiVerbosity::Reduced,
+                &ctx.current_query(),  // unused
+                ctx.recording_store(), // unused
+            );
         });
 
-        if let Some(item) = app_item {
-            ctx.select_hovered_on_click(&app_item_response, item);
+        ctx.select_hovered_on_click(&app_item_response, app_item);
+
+        if app_item_response.clicked() {
+            // Switch to this application:
+            ctx.command_sender
+                .send_system(re_viewer_context::SystemCommand::ActivateApp(
+                    app_id.clone(),
+                ));
         }
     }
 

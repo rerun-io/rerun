@@ -336,6 +336,10 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
+            SystemCommand::ActivateApp(app_id) => {
+                store_hub.set_active_app(app_id);
+            }
+
             SystemCommand::ActivateRecording(store_id) => {
                 store_hub.set_activate_recording(store_id);
             }
@@ -988,7 +992,7 @@ impl App {
                 }
 
                 LogMsg::ArrowMsg(_, _) => {
-                    // Andled by EntityDb::add
+                    // Handled by `EntityDb::add`
                 }
 
                 LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {

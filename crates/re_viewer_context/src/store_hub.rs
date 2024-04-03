@@ -225,6 +225,7 @@ impl StoreHub {
     // Active app
 
     /// Change the active [`ApplicationId`]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
@@ -234,7 +235,21 @@ impl StoreHub {
             }
         }
 
-        self.active_application_id = Some(app_id);
+        if self.active_application_id.as_ref() == Some(&app_id) {
+            return;
+        }
+
+        self.active_application_id = Some(app_id.clone());
+        self.active_rec_id = None;
+
+        // Find any matching recording and activate it
+        for rec in self.store_bundle.recordings() {
+            if rec.app_id() == Some(&app_id) {
+                self.active_rec_id = Some(rec.store_id().clone());
+                self.was_recording_active = true;
+                return;
+            }
+        }
     }
 
     #[inline]
@@ -279,8 +294,9 @@ impl StoreHub {
             .get(&recording_id)
             .as_ref()
             .and_then(|recording| recording.app_id())
+            .cloned()
         {
-            self.set_active_app(app_id.clone());
+            self.set_active_app(app_id);
         }
 
         self.active_rec_id = Some(recording_id);
