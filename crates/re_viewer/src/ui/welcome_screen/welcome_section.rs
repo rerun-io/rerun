@@ -42,7 +42,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
 
         bullet_text(ui, "Log with the Rerun SDK in C++, Python, or Rust");
         bullet_text(ui, "Visualize and explore live or recorded data");
-        bullet_text(ui, "Customize in the UI or through code");
+        bullet_text(ui, "Customize using the UI or through code");
 
         ui.add_space(9.0);
         if ui
