@@ -30,12 +30,8 @@ The visualizations in this example were created with the Rerun SDK, demonstratin
 Visualizing the prompt and negative prompt
 ```python
 rr.log("prompt/text", rr.TextDocument(prompt))
-rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
+rr.log("prompt/text_negative", rr.TextDocument(negative_prompt))
 ```
-
-
-        rr.log("prompt/text", rr.TextDocument(prompt))
-        rr.log("prompt/text_negative", rr.TextDocument(negative_prompt))
 
 ## Text
 Visualizing the text input ids, the text attention mask and the unconditional input ids
