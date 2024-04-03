@@ -66,21 +66,6 @@ impl ExampleDescLayout {
         }
     }
 
-    /// Saves the rectangle of the hover/click area for this example.
-    fn set_rect(&mut self, rect: egui::Rect) {
-        self.rect = rect;
-    }
-
-    fn clicked(&self, ui: &egui::Ui, id: egui::Id) -> bool {
-        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::click())
-            .clicked()
-    }
-
-    fn hovered(&self, ui: &egui::Ui, id: egui::Id) -> bool {
-        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::hover())
-            .hovered()
-    }
-
     /// Move the egui cursor to the bottom of this example card.
     fn move_cursor_to_bottom(&self, ui: &mut Ui) {
         let vspace = (self.rect.max.y - ui.cursor().min.y).at_least(0.0);
@@ -342,18 +327,27 @@ impl ExampleSection {
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
-                        for example_layouts in examples.chunks_mut(column_count) {
-                            for example in &mut *example_layouts {
+                        for row_of_examples in examples.chunks_mut(column_count) {
+                            let mut row_example_responses: Vec<egui::Response> = vec![];
+
+                            // Background and thumbnail
+                            for example in &mut *row_of_examples {
                                 // this is the beginning of the first cell for this example, we can
                                 // fully compute its rect now
-                                example.set_rect(egui::Rect::from_min_size(
+                                example.rect = egui::Rect::from_min_size(
                                     ui.cursor().min,
                                     egui::vec2(
                                         column_width,
                                         column_width / CARD_THUMBNAIL_ASPECT_RATIO
                                             + CARD_DESCRIPTION_HEIGHT,
                                     ),
-                                ));
+                                );
+
+                                let response = ui.interact(
+                                    example.rect,
+                                    self.id.with(&example.desc.name),
+                                    egui::Sense::click(),
+                                );
 
                                 // paint background
                                 ui.painter().rect_filled(
@@ -363,6 +357,17 @@ impl ExampleSection {
                                     egui::Color32::WHITE.gamma_multiply(0.04),
                                 );
 
+                                if response.clicked() {
+                                    // TODO(#5177): This workaround is needed to avoid the click to "leak"
+                                    // through the UI, potentially causing some views (e.g. timeseries or time
+                                    // panel to quit auto-zoom mode.
+                                    ui.input_mut(|i| i.pointer = Default::default());
+
+                                    open_example_url(command_sender, &example.desc.rrd_url);
+                                }
+
+                                row_example_responses.push(response);
+
                                 ui.vertical(|ui| {
                                     example_thumbnail(ui, &example.desc, column_width);
                                 });
@@ -370,7 +375,8 @@ impl ExampleSection {
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
+                            // Title
+                            for example in &*row_of_examples {
                                 ui.vertical(|ui| {
                                     example_title(ui, example);
                                 });
@@ -378,7 +384,8 @@ impl ExampleSection {
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
+                            // Tags
+                            for example in &*row_of_examples {
                                 ui.vertical(|ui| {
                                     example_tags(ui, &example.desc);
                                 });
@@ -386,7 +393,10 @@ impl ExampleSection {
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
+                            // Source code link
+                            for (example, response) in
+                                itertools::izip!(&*row_of_examples, row_example_responses)
+                            {
                                 ui.vertical(|ui| {
                                     // The previous row (tags) may take one or two lines, depending
                                     // on wrapping, so we use the bottom of the example card as
@@ -404,7 +414,9 @@ impl ExampleSection {
                                     ui.add_space(ROW_VSPACE);
                                 });
 
-                                if example.hovered(ui, self.id) {
+                                if response.hovered() {
+                                    // We do the hover effect here, last, so we can make the whole card,
+                                    // including the image, brighter.
                                     ui.painter().rect_filled(
                                         example.rect,
                                         THUMBNAIL_RADIUS,
@@ -417,17 +429,6 @@ impl ExampleSection {
                             ui.end_row();
                         }
                     });
-
-                for example in examples {
-                    if example.clicked(ui, self.id) {
-                        // TODO(#5177): This workaround is needed to avoid the click to "leak"
-                        // through the UI, potentially causing some views (e.g. timeseries or time
-                        // panel to quit auto-zoom mode.
-                        ui.input_mut(|i| i.pointer = Default::default());
-
-                        open_example_url(command_sender, &example.desc.rrd_url);
-                    }
-                }
             });
         });
     }
@@ -504,7 +505,12 @@ fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
     }
     .show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.add(egui::Label::new(title).truncate(true));
+            let selectable = false; // Unselectable; otherwise selection steals input from clicking the card.
+            ui.add(
+                egui::Label::new(title)
+                    .truncate(true)
+                    .selectable(selectable),
+            );
 
             if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
