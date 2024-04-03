@@ -268,7 +268,7 @@ impl ExampleSection {
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        re_ui: &re_ui::ReUi,
+        _re_ui: &re_ui::ReUi,
         command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
     ) {
@@ -277,14 +277,25 @@ impl ExampleSection {
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
-            ui.spinner();
+            // Still waiting for example to load
+
+            header_ui(ui); // Always show the header
+
+            ui.separator();
+
+            ui.spinner(); // Placeholder for the examples
             return;
         };
 
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
-                ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
+                // Examples failed to load.
+
+                header_ui(ui); // Always show the header
+
+                re_log::warn_once!("Failed to load examples: {err}");
+
                 return;
             }
         };
