@@ -231,10 +231,11 @@ impl StoreHub {
         }
     }
 
-    /// Remove all open recordings, and go to the welcome page.
+    /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_recordings(&mut self) {
+        // Keep only the welcome screen:
         self.store_bundle
-            .retain(|db| db.store_kind() != StoreKind::Recording);
+            .retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
         self.active_rec_id = None;
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
