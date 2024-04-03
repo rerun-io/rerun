@@ -51,6 +51,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
                     .color(egui::Color32::from_hex("#60A0FF").expect("this color is valid"))
                     .text_style(re_ui::ReUi::welcome_screen_body()),
             )
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()
         {
             ui.ctx().open_url(egui::output::OpenUrl {
