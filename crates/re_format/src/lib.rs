@@ -29,6 +29,8 @@ pub trait UnsignedAbs {
 
 impl UnsignedAbs for i8 {
     type Unsigned = u8;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
@@ -36,6 +38,8 @@ impl UnsignedAbs for i8 {
 
 impl UnsignedAbs for i16 {
     type Unsigned = u16;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
@@ -43,6 +47,8 @@ impl UnsignedAbs for i16 {
 
 impl UnsignedAbs for i32 {
     type Unsigned = u32;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
@@ -50,6 +56,8 @@ impl UnsignedAbs for i32 {
 
 impl UnsignedAbs for i64 {
     type Unsigned = u64;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
@@ -57,6 +65,8 @@ impl UnsignedAbs for i64 {
 
 impl UnsignedAbs for i128 {
     type Unsigned = u128;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
@@ -64,6 +74,8 @@ impl UnsignedAbs for i128 {
 
 impl UnsignedAbs for isize {
     type Unsigned = usize;
+
+    #[inline]
     fn unsigned_abs(self) -> Self::Unsigned {
         self.unsigned_abs()
     }
