@@ -5053,6 +5053,7 @@ dependencies = [
  "ehttp",
  "image",
  "itertools 0.12.0",
+ "js-sys",
  "once_cell",
  "poll-promise",
  "re_analytics",

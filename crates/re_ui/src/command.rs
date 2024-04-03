@@ -18,6 +18,8 @@ pub enum UICommand {
     SaveRecordingSelection,
     SaveBlueprint,
     CloseCurrentRecording,
+    CloseAllRecordings,
+
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -110,6 +112,9 @@ impl UICommand {
                 "Close current recording",
                 "Close the current recording (unsaved data will be lost)",
             ),
+
+            Self::CloseAllRecordings => ("Close all recordings",
+                "Close all open current recording (unsaved data will be lost)",),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -258,6 +263,7 @@ impl UICommand {
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
+            Self::CloseAllRecordings => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),

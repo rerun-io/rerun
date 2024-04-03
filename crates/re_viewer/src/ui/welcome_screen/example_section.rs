@@ -2,7 +2,7 @@ use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_viewer_context::SystemCommandSender;
+use re_viewer_context::{CommandSender, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -269,7 +269,7 @@ impl ExampleSection {
         &mut self,
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
-        command_sender: &re_viewer_context::CommandSender,
+        command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
     ) {
         let examples = self
@@ -414,15 +414,30 @@ impl ExampleSection {
                         // panel to quit auto-zoom mode.
                         ui.input_mut(|i| i.pointer = Default::default());
 
-                        let data_source =
-                            re_data_source::DataSource::RrdHttpUrl(example.desc.rrd_url.clone());
-                        command_sender.send_system(
-                            re_viewer_context::SystemCommand::LoadDataSource(data_source),
-                        );
+                        open_example_url(command_sender, &example.desc.rrd_url);
                     }
                 }
             });
         });
+    }
+}
+
+fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
+    let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
+    command_sender.send_system(re_viewer_context::SystemCommand::LoadDataSource(
+        data_source,
+    ));
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        // Ensure that the user returns to the welcome page after navigating to an example.
+        use crate::web_tools;
+
+        // So we know where to return to
+        web_tools::push_history("?examples");
+
+        // Where we're going:
+        web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));
     }
 }
 
