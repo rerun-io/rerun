@@ -1,5 +1,5 @@
 ---
-title: Python
+title: Stream from Python
 order: 6
 ---
 
@@ -7,7 +7,7 @@ In this section we'll log and visualize our first non-trivial dataset, putting m
 
 In a few lines of code, we'll go from a blank sheet to something you don't see every day: an animated, interactive, DNA-shaped abacus:
 <video width="100%" autoplay loop muted controls>
-    <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
+<source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
 
 This guide aims to go wide instead of deep.
@@ -41,11 +41,13 @@ Check out the reference to learn more about how Rerun deals with [applications a
 Next up, we want to spawn the [Rerun Viewer](../../../reference/viewer/overview.md) itself.
 
 To do this, you can add the line:
+
 ```python
 rr.spawn()
 ```
 
 Now you can run your application just as you would any other python script:
+
 ```
 (venv) $ python dna_example.py
 ```
@@ -64,14 +66,17 @@ By default, the SDK will start a viewer in another process and automatically pip
 There are other means of sending data to a viewer as we'll see at the end of this section, but for now this default will work great as we experiment.
 
 ---
+
 The following sections will require importing a few different things to your script.
 We will do so incrementally, but if you just want to update your imports once and call it a day, feel free to add the following to the top of your script:
+
 ```python
 from math import tau
 import numpy as np
 from rerun.utilities import build_color_spiral
 from rerun.utilities import bounce_lerp
 ```
+
 ---
 
 ## Logging our first points
@@ -105,8 +110,6 @@ Note that if the viewer was still running, Rerun will simply connect to this exi
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/1200w.png">
 </picture>
 
-
-
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](../../visualize/viewer-walkthrough.md) and [viewer reference](../../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
@@ -121,7 +124,7 @@ of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
-Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual *components* like positions, colors,
+Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual _components_ like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
@@ -135,14 +138,14 @@ Rerun takes care of mapping those arrays to actual Rerun components depending on
 
 Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
 
-These are [*entity paths*](../../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
+These are [_entity paths_](../../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
 [Entity paths typically form a hierarchy](../../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 ### Batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
 [Batches of data](../../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
-You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this *splatting*.
+You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _splatting_.
 
 ---
 
@@ -152,6 +155,7 @@ Good news is: once you've digested all of the above, logging any other Entity wi
 ## Adding the missing pieces
 
 We can represent the scaffolding using a batch of 3D line strips:
+
 ```python
 rr.log(
     "dna/structure/scaffolding",
@@ -160,6 +164,7 @@ rr.log(
 ```
 
 Which only leaves the beads:
+
 ```python
 # new imports
 import numpy as np
@@ -185,7 +190,6 @@ there is nothing new here: it's all about building out `numpy` arrays and feedin
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/1200w.png">
 </picture>
 
-
 ## Animating the beads
 
 ### Introducing Time
@@ -202,13 +206,13 @@ Even so, if you look at your [Timeline View](../../../reference/viewer/timeline.
   <img src="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/full.png" alt="screenshot of the beads with the timeline">
 </picture>
 
-
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
 
 Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ the timeline(s). You will find a lot of flexibility in there.
 
 Let's add our custom timeline:
+
 ```python
 # new imports
 from rerun.utilities import bounce_lerp
@@ -239,13 +243,13 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/stable/common/lo
   <img src="https://static.rerun.io/logging_data7_wat/2a3b65f4a0e1e948184d85bab497e4bffdda0b7e/full.png" alt="screenshot of the surprising situation">
 </picture>
 
-
 Enter…
 
 ### Latest At semantics
 
-That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the *default* timeline (called `log_time`).
+That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the _default_ timeline (called `log_time`).
 To fix this, go back to the top of the file and add:
+
 ```python
 rr.spawn()
 rr.set_time_seconds("stable_time", 0)
@@ -258,7 +262,6 @@ rr.set_time_seconds("stable_time", 0)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1200w.png">
   <img src="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/full.png" alt="screenshot after using latest at">
 </picture>
-
 
 This fix actually introduces yet another very important concept in Rerun: "latest at" semantics.
 Notice how entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
@@ -274,6 +277,7 @@ Now it's just a matter of combining the two: we need to log the transform of the
 
 Either expand the previous loop to include logging transforms or
 simply add a second loop like this:
+
 ```python
 for i in range(400):
     time = i * 0.01
@@ -289,7 +293,6 @@ Voila!
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
-
 
 ## Other ways of logging & visualizing data
 
@@ -310,12 +313,13 @@ Checkout `rerun --help` for more options.
 Sometimes, sending the data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.
 
 Rerun has you covered:
-- Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save) to stream all logged data to disk.
-- View it with `rerun path/to/recording.rrd`
+
+-   Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save) to stream all logged data to disk.
+-   View it with `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
-⚠️  [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
+⚠️ [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
 
 ## Closing
 

@@ -26,25 +26,29 @@ All of the code for this guide can be found on GitHub in
   <img src="https://static.rerun.io/ros1_preview/e64387f9355056015a8e1de6cc0ec893851acc76/full.png" alt="Rerun 3D view of ROS 2 turtlebot3 navigation demo">
 </picture>
 
-
 ## Prerequisites
 
 Other relevant tutorials:
- - [Python SDK Tutorial](../getting-started/data-in/streaming/python.md)
- - [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
+
+-   [Python SDK Tutorial](../getting-started/data-in/python.md)
+-   [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
 
 ### ROS 2 & navigation
+
 You will need to have installed [ROS 2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
 and the [turtlebot3 navigation getting-started example](https://navigation.ros.org/getting_started/index.html).
 
 Installing ROS is outside the scope of this guide, but you will need the equivalent of the following packages:
+
 ```bash
 $ sudo apt install ros-humble-desktop gazebo ros-humble-navigation2 ros-humble-turtlebot3 ros-humble-turtlebot3-gazebo
 ```
+
 If you don't already have ROS installed, we recommend trying [RoboStack](https://robostack.github.io/) for setting up your installation.
 
 Before proceeding, you should follow the [navigation example](https://navigation.ros.org/getting_started/index.html)
 and confirm that you can successfully run:
+
 ```bash
 $ export TURTLEBOT3_MODEL=waffle
 $ export GAZEBO_MODEL_PATH=/opt/ros/humble/share/turtlebot3_gazebo/models
@@ -58,18 +62,21 @@ running in the background for the remainder of the guide.
 
 The code for this guide is in the `rerun` repository. If you do not already have rerun cloned,
 you should do so now:
+
 ```bash
 git clone git@github.com:rerun-io/rerun.git
 cd rerun
 ```
+
 The example code can be found in the folder: `examples/python/ros_node`.
 
 In addition to the ROS dependencies, the Rerun node makes use of some dependencies specified in
 [`requirements.txt`](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/requirements.txt).
 
 Rerun recommends using `venv` (or the equivalent) to create an environment for installing these
-dependencies. Note that *after* setting up your virtualenv you will need to activate your ROS2
+dependencies. Note that _after_ setting up your virtualenv you will need to activate your ROS2
 environment.
+
 ```bash
 $ python3 -m venv venv
 $ source venv/bin/active
@@ -80,6 +87,7 @@ $ source venv/bin/active
 ## Running the example
 
 With the previous dependencies installed, and gazebo running, you should now be able to launch the Rerun ROS example:
+
 ```bash
 (venv) $ python3 examples/python/ros_node/main.py
 ```
@@ -94,7 +102,6 @@ You should see a window similar to:
   <img src="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/full.png" alt="Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo">
 </picture>
 
-
 Use rviz to send a new navigation goal and confirm that rerun updates with new data as turtlebot drives around
 the environment.
 
@@ -102,18 +109,18 @@ the environment.
 
 If you are familiar with the turtlebot nav example and rviz, this view will likely be familiar:
 
- * `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
- * `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/types/archetypes/transform3d.md).
- * `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/types/archetypes/mesh3d.md).
- * `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/types/archetypes/line_strips3d.md). (This will eventually be a
-   native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
- * `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/types/archetypes/pinhole.md) transform.
- * `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/types/archetypes/image.md).
- * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/types/archetypes/points3d.md).
- * `map/points` contains a second copy of `PointCloud2` with a different transform.  (This is a workaround until Rerun
-   has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
- * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
- * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
+-   `map/box` is a placeholder for the map. (This will eventually be a map: [#1531](https://github.com/rerun-io/rerun/issues/1531).)
+-   `map/robot` is a transform representing the robot pose logged as a rigid [transform3d](../reference/types/archetypes/transform3d.md).
+-   `map/robot/urdf` contains the `URDF` logged as a [mesh](../reference/types/archetypes/mesh3d.md).
+-   `map/robot/scan` contains a `LaserScan` msg logged as a [linestrip3d](../reference/types/archetypes/line_strips3d.md). (This will eventually be a
+    native type: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
+-   `map/robot/camera` contains a `CameraInfo` msg logged as a [pinhole](../reference/types/archetypes/pinhole.md) transform.
+-   `map/robot/camera/img` contains an `Image` msg logged as an [image](../reference/types/archetypes/image.md).
+-   `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/types/archetypes/points3d.md).
+-   `map/points` contains a second copy of `PointCloud2` with a different transform. (This is a workaround until Rerun
+    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
+-   `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
+-   `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
 
 ## Code Explanation
 
@@ -129,29 +136,32 @@ models and using asynchronous TF lookups are outside the scope of this guide.
 
 ### Updating Time
 
-First of all, we want our messages to show up on the timeline based on their *stamped* time rather than the
+First of all, we want our messages to show up on the timeline based on their _stamped_ time rather than the
 time that they were received by the listener, or relayed to Rerun.
 
 To do this, we will use a Rerun timeline called `ros_time`.
 
 Each callback follows a common pattern of updating `ros_time` based on the stamped time of the message that was
 received.
+
 ```python
 def some_msg_callback(self, msg: Msg):
     time = Time.from_msg(msg.header.stamp)
     rr.set_time_nanos("ros_time", time.nanoseconds)
 ```
+
 This timestamp will apply to all subsequent log calls on in this callback (on this thread) until the time is updated
 again.
 
-
 ### TF to rr.Transform3D
+
 Next, we need to map the [ROS TF2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html) transforms to the
 corresponding [Rerun Transforms](../concepts/spaces-and-transforms.md#space-transformations).
 
 In Rerun, each path represents a coordinate frame, so we need to decide which TF frame each path will
 correspond to. In general, this is the frame_id of the sensor data that will be logged to that
 path. For consistency, we define this once in `__init__()`.
+
 ```python
 # Define a mapping for transforms
 self.path_to_frame = {
@@ -172,6 +182,7 @@ of this code to go away.
 
 For now, on each incoming log message, we want to use the mapping to update the transform
 at the timestamp in question:
+
 ```python
 def log_tf_as_transform3d(self, path: str, time: Time) -> None:
     """Helper to look up a transform with tf and log using `log_transform3d`."""
@@ -193,6 +204,7 @@ def log_tf_as_transform3d(self, path: str, time: Time) -> None:
 ```
 
 As an example of logging points in the map frame, we simply call:
+
 ```python
 rr.log("map/points", rr.Points3D(positions=pts, colors=colors))
 self.log_tf_as_transform3d("map/points", time)
@@ -203,9 +215,11 @@ be logged to the same point on the timeline as the data, using a timestamp looke
 matching timepoint.
 
 ### Odometry to rr.Scalar and rr.Transform3D
+
 When receiving odometry messages, we log the linear and angular velocities using `rr.Scalar`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
+
 ```python
 def odom_callback(self, odom: Odometry) -> None:
     """Update transforms when odom is updated."""
@@ -221,11 +235,13 @@ def odom_callback(self, odom: Odometry) -> None:
 ```
 
 ### CameraInfo to rr.Pinhole
+
 Not all Transforms are rigid as defined in TF. The other transform we want to log
 is the pinhole projection that is stored in the `CameraInfo` msg.
 
 Fortunately, the `image_geometry` package has a `PinholeCameraModel` that exposes
 the intrinsic matrix in the same structure used by Rerun `rr.Pinhole`:
+
 ```python
 def __init__(self) -> None:
     # …
@@ -248,8 +264,10 @@ def cam_info_callback(self, info: CameraInfo) -> None:
 ```
 
 ### Image to rr.Image
+
 ROS Images can also be mapped to Rerun very easily, using the `cv_bridge` package.
 The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.Image`:
+
 ```python
 def __init__(self) -> None:
     # …
@@ -265,6 +283,7 @@ def image_callback(self, img: Image) -> None:
 ```
 
 ### PointCloud2 to rr.Points3D
+
 The ROS [PointCloud2](https://github.com/ros2/common_interfaces/blob/humble/sensor_msgs/msg/PointCloud2.msg) message
 is stored as a binary blob that needs to be reinterpreted using the details about its fields. Each field is
 a named collection of offsets into the data buffer, and datatypes. The `sensor_msgs_py` package includes a `point_cloud2`
@@ -277,6 +296,7 @@ Color is extracted in a similar way, although the realsense gazebo driver does n
 the r,g,b channels, requiring us to patch the field values.
 
 After extracting the positions and colors as numpy arrays, the entire cloud can be logged as a batch with `rr.Points3D`
+
 ```python
 def points_callback(self, points: PointCloud2) -> None:
     """Log a `PointCloud2` with `log_points`."""
@@ -309,6 +329,7 @@ def points_callback(self, points: PointCloud2) -> None:
 ```
 
 ### LaserScan to rr.LineStrips3D
+
 Rerun does not yet have native support for a `LaserScan` style primitive so we need
 to do a bit of additional transformation logic (see: [#1534](https://github.com/rerun-io/rerun/issues/1534).)
 
@@ -323,6 +344,7 @@ We generate a second matching set of points for each ray projected out 0.3m from
 the origin and then interlace the two sets of points using numpy hstack and reshape.
 This results in a set of alternating points defining rays from the origin to each
 laser scan result, which is the format expected by `rr.LineStrips3D`:
+
 ```python
 def __init__(self) -> None:
     # …
@@ -347,6 +369,7 @@ def scan_callback(self, scan: LaserScan) -> None:
 ```
 
 ### URDF to rr.Mesh3D
+
 The URDF conversion is actually the most complex operation in this example. As such the functionality
 is split out into a separate [rerun/examples/python/ros_node/rerun_urdf.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/rerun_urdf.py)
 helper.
@@ -356,6 +379,7 @@ Loading the URDF from the `/robot_description` topic is relatively straightforwa
 The main complication is that the actual mesh resources in that URDF need to be located via `ament`.
 Fortunately, `yourdfpy` accepts a filename handler, which we shim together with
 ament `get_package_share_directory`.
+
 ```python
 def ament_locate_package(fname: str) -> str:
     """Helper to locate urdf resources via ament."""
@@ -381,6 +405,7 @@ camera link.
 
 Once we have correctly re-scaled the camera component, we can send the whole scene to rerun with
 `rerun_urdf.log_scene`.
+
 ```python
 def urdf_callback(self, urdf_msg: String) -> None:
     """Log a URDF using `log_scene` from `rerun_urdf`."""
@@ -404,6 +429,7 @@ the trimesh scene graph. For each node, it extracts the transform to the parent,
 which it logs via `rr.Transform3D` before then using `rr.Mesh3D` to send the vertices,
 indices, and normals from the trimesh geometry. This code is almost entirely
 URDF-independent and is a good candidate for a future Python API ([#1536](https://github.com/rerun-io/rerun/issues/1536).)
+
 ```python
 node_data = scene.graph.get(frame_to=node, frame_from=parent)
 
@@ -436,9 +462,11 @@ if node_data:
             timeless=timeless,
         )
 ```
+
 Color data is also extracted from the trimesh, but omitted here for brevity.
 
 ## In Summary
+
 Although there is a non-trivial amount of code, none of it is overly complicated. Each message callback
 operates independently of the others, processing an incoming message, adapting it to Rerun and then
 logging it again.
