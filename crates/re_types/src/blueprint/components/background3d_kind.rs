@@ -21,7 +21,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The type of the background in 3D Space Views.
+/// **Component**: The type of the background in 3D space views.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Background3DKind {
     /// Gradient depending on the direction of the view, dark theme.

@@ -18,7 +18,7 @@ pub use sender::Sender;
 
 /// Identifies in what context this smart channel was created, and who/what is holding its
 /// receiving end.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum SmartChannelSource {
     /// The channel was created in the context of loading a file from disk (could be
     /// `.rrd` files, or `.glb`, `.png`, …).
@@ -60,11 +60,11 @@ impl std::fmt::Display for SmartChannelSource {
         match self {
             Self::File(path) => path.display().fmt(f),
             Self::RrdHttpStream { url } => url.fmt(f),
-            Self::RrdWebEventListener => "Web Event Listener".fmt(f),
+            Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::Sdk => "SDK".fmt(f),
             Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
-            Self::TcpServer { port } => write!(f, "TCP Server, port {port}"),
-            Self::Stdin => "Standard Input".fmt(f),
+            Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
+            Self::Stdin => "Standard input".fmt(f),
         }
     }
 }

@@ -559,8 +559,12 @@ impl PrintCommand {
                     }
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    println!("ActivateStore({store_id})");
+                LogMsg::BlueprintActivationCommand(re_log_types::BlueprintActivationCommand {
+                    blueprint_id,
+                    make_active,
+                    make_default,
+                }) => {
+                    println!("BlueprintActivationCommand({blueprint_id}, make_active: {make_active}, make_default: {make_default})");
                 }
             }
         }

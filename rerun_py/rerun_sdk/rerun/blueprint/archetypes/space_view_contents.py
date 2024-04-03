@@ -34,6 +34,13 @@ class SpaceViewContents(Archetype):
     If there are multiple rules of the same specificity, the last one wins.
     If no rules match, the path is excluded.
 
+    Specifying a path without a `+` or `-` prefix is equivalent to `+`:
+    ```diff
+    /world/**           # add everything…
+    - /world/roads/**   # …but remove all roads…
+    /world/roads/main   # …but show main road
+    ```
+
     The `/**` suffix matches the whole subtree, i.e. self and any child, recursively
     (`/world/**` matches both `/world` and `/world/car/driver`).
     Other uses of `*` are not (yet) supported.
@@ -51,8 +58,6 @@ class SpaceViewContents(Archetype):
     The last rule matching `/world/car/hood` is `- /world/car/**`, so it is excluded.
     The last rule matching `/world` is `- /world`, so it is excluded.
     The last rule matching `/world/house` is `+ /world/**`, so it is included.
-
-    Unstable. Used for the ongoing blueprint experimentations.
     """
 
     def __init__(self: Any, query: datatypes.Utf8ArrayLike):

@@ -19,4 +19,3 @@ Used for time series plots.
 ## Used by
 
 * [`Scalar`](../archetypes/scalar.md)
-* [`TimeSeriesScalar`](../archetypes/time_series_scalar.md)

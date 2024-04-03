@@ -14,7 +14,7 @@ pub struct Screenshotter {
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
 pub struct ScreenshotterOutput {
-    /// If true, the screenshotter was told at startup to quit after its donw.
+    /// If true, the screenshotter was told at startup to quit after it's done.
     pub quit: bool,
 }
 

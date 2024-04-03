@@ -14,7 +14,7 @@ README = """
 
 Repeat these steps for each of the following entities and space view class:
 - right-click the entity (either in the blueprint or streams tree)
-- select "Add to new Space View" and create the space view of the listed class
+- select "Add to new space view" and create the space view of the listed class
 - check that the created space view has the expected origin
 - delete the space view
 
@@ -45,12 +45,10 @@ def log_readme() -> None:
 
 
 def blueprint() -> rrb.BlueprintLike:
-    return rrb.Viewport(
-        rrb.Horizontal(
-            rrb.TextDocumentView(origin="readme"),
-            rrb.Spatial3DView(origin="/", contents="", name="root entity"),
-            column_shares=[2, 1],
-        )
+    return rrb.Horizontal(
+        rrb.TextDocumentView(origin="readme"),
+        rrb.Spatial3DView(origin="/", contents="", name="root entity"),
+        column_shares=[2, 1],
     )
 
 
@@ -80,7 +78,7 @@ def log_some_space_views() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), blueprint=blueprint())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_some_space_views()

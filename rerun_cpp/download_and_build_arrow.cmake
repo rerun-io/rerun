@@ -73,7 +73,7 @@ function(download_and_build_arrow)
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
         GIT_SHALLOW ON
-        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practive very spammy.
+        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practice very spammy.
 
         # LOG_X ON means that the output of the command will
         # be logged to a file _instead_ of printed to the console.

@@ -16,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import tqdm
 from mediapipe.tasks.python import vision
 
@@ -29,58 +30,58 @@ SAMPLE_IMAGE_URL = "https://i.imgur.com/Vu2Nqwb.jpg"
 
 # uncomment blendshapes of interest
 BLENDSHAPES_CATEGORIES = {
-    # "_neutral",
-    # "browDownLeft",
-    # "browDownRight",
-    # "browInnerUp",
-    # "browOuterUpLeft",
-    # "browOuterUpRight",
-    # "cheekPuff",
-    # "cheekSquintLeft",
-    # "cheekSquintRight",
+    "_neutral",
+    "browDownLeft",
+    "browDownRight",
+    "browInnerUp",
+    "browOuterUpLeft",
+    "browOuterUpRight",
+    "cheekPuff",
+    "cheekSquintLeft",
+    "cheekSquintRight",
     "eyeBlinkLeft",
     "eyeBlinkRight",
-    # "eyeLookDownLeft",
-    # "eyeLookDownRight",
-    # "eyeLookInLeft",
-    # "eyeLookInRight",
-    # "eyeLookOutLeft",
-    # "eyeLookOutRight",
-    # "eyeLookUpLeft",
-    # "eyeLookUpRight",
+    "eyeLookDownLeft",
+    "eyeLookDownRight",
+    "eyeLookInLeft",
+    "eyeLookInRight",
+    "eyeLookOutLeft",
+    "eyeLookOutRight",
+    "eyeLookUpLeft",
+    "eyeLookUpRight",
     "eyeSquintLeft",
     "eyeSquintRight",
     "eyeWideLeft",
     "eyeWideRight",
-    # "jawForward",
-    # "jawLeft",
+    "jawForward",
+    "jawLeft",
     "jawOpen",
-    # "jawRight",
-    # "mouthClose",
-    # "mouthDimpleLeft",
-    # "mouthDimpleRight",
-    # "mouthFrownLeft",
-    # "mouthFrownRight",
-    # "mouthFunnel",
-    # "mouthLeft",
-    # "mouthLowerDownLeft",
-    # "mouthLowerDownRight",
-    # "mouthPressLeft",
-    # "mouthPressRight",
-    # "mouthPucker",
-    # "mouthRight",
-    # "mouthRollLower",
-    # "mouthRollUpper",
-    # "mouthShrugLower",
-    # "mouthShrugUpper",
+    "jawRight",
+    "mouthClose",
+    "mouthDimpleLeft",
+    "mouthDimpleRight",
+    "mouthFrownLeft",
+    "mouthFrownRight",
+    "mouthFunnel",
+    "mouthLeft",
+    "mouthLowerDownLeft",
+    "mouthLowerDownRight",
+    "mouthPressLeft",
+    "mouthPressRight",
+    "mouthPucker",
+    "mouthRight",
+    "mouthRollLower",
+    "mouthRollUpper",
+    "mouthShrugLower",
+    "mouthShrugUpper",
     "mouthSmileLeft",
     "mouthSmileRight",
-    # "mouthStretchLeft",
-    # "mouthStretchRight",
-    # "mouthUpperUpLeft",
-    # "mouthUpperUpRight",
-    # "noseSneerLeft",
-    # "noseSneerRight",
+    "mouthStretchLeft",
+    "mouthStretchRight",
+    "mouthUpperUpLeft",
+    "mouthUpperUpRight",
+    "noseSneerLeft",
+    "noseSneerRight",
 }
 
 
@@ -430,7 +431,28 @@ def main() -> None:
     args, unknown = parser.parse_known_args()
     for arg in unknown:
         logging.warning(f"unknown arg: {arg}")
-    rr.script_setup(args, "rerun_example_mp_face_detection")
+
+    rr.script_setup(
+        args,
+        "rerun_example_mp_face_detection",
+        default_blueprint=rrb.Horizontal(
+            rrb.Spatial3DView(origin="reconstruction"),
+            rrb.Vertical(
+                rrb.Spatial2DView(origin="video"),
+                rrb.TimeSeriesView(
+                    origin="blendshapes",
+                    # Enable only certain blend shapes by default. More can be added in the viewer ui
+                    contents=[
+                        "+ blendshapes/0/eyeBlinkLeft",
+                        "+ blendshapes/0/eyeBlinkRight",
+                        "+ blendshapes/0/jawOpen",
+                        "+ blendshapes/0/mouthSmileLeft",
+                        "+ blendshapes/0/mouthSmileRight",
+                    ],
+                ),
+            ),
+        ),
+    )
 
     if args.demo_image:
         if not SAMPLE_IMAGE_PATH.exists():

@@ -255,7 +255,7 @@ impl ViewTextFilters {
             row_log_levels,
         } = self;
 
-        for timeline in ctx.entity_db.timelines() {
+        for timeline in ctx.recording().timelines() {
             col_timelines.entry(*timeline).or_insert(true);
         }
 
@@ -268,7 +268,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some((time_point, _)) = ctx.entity_db.store().get_msg_metadata(&entry.row_id) {
+    if let Some((time_point, _)) = ctx.recording_store().get_msg_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
@@ -359,7 +359,7 @@ fn table_ui(
             body_clip_rect = Some(body.max_rect());
 
             let query = ctx.current_query();
-            let store = ctx.entity_db.store();
+            let store = ctx.recording_store();
 
             let row_heights = entries.iter().map(|te| calc_row_height(te));
             body.heterogeneous_rows(row_heights, |mut row| {

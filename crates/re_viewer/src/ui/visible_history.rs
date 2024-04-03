@@ -79,26 +79,26 @@ pub fn visual_time_range_ui(
             re_ui
                 .radio_value(ui, &mut has_individual_range, false, "Default")
                 .on_hover_text(if is_space_view {
-                    "Default visible time range settings for this kind of Space View"
+                    "Default visible time range settings for this kind of space view"
                 } else {
                     "Visible time range settings inherited from parent Entity or enclosing \
-                        Space View"
+                        space view"
                 });
             re_ui
                 .radio_value(ui, &mut has_individual_range, true, "Override")
                 .on_hover_text(if is_space_view {
-                    "Set visible time range settings for the contents of this Space View"
+                    "Set visible time range settings for the contents of this space view"
                 } else {
                     "Set visible time range settings for this entity"
                 });
         });
 
-        let timeline_spec = if let Some(times) = ctx.entity_db.time_histogram(time_ctrl.timeline())
-        {
-            TimelineSpec::from_time_histogram(times)
-        } else {
-            TimelineSpec::from_time_range(0..=0)
-        };
+        let timeline_spec =
+            if let Some(times) = ctx.recording().time_histogram(time_ctrl.timeline()) {
+                TimelineSpec::from_time_histogram(times)
+            } else {
+                TimelineSpec::from_time_range(0..=0)
+            };
 
         let current_time = time_ctrl
             .time_i64()
@@ -261,9 +261,9 @@ pub fn visual_time_range_ui(
     }
 
     let markdown = format!("# Visible time range\n
-This feature controls the time range used to display data in the Space View.
+This feature controls the time range used to display data in the space view.
 
-The settings are inherited from the parent Entity or enclosing Space View if not overridden.
+The settings are inherited from the parent Entity or enclosing space view if not overridden.
 
 Visible time range properties are stored separately for each _type_ of timelines. They may differ depending on \
 whether the current timeline is temporal or a sequence. The current settings apply to all _{}_ timelines.

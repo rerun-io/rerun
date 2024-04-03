@@ -14,6 +14,7 @@ mod component;
 mod component_path;
 mod component_ui_registry;
 mod data;
+mod data_source;
 mod editors;
 mod entity_db;
 mod entity_path;

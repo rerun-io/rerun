@@ -18,6 +18,8 @@ pub enum UICommand {
     SaveRecordingSelection,
     SaveBlueprint,
     CloseCurrentRecording,
+    CloseAllRecordings,
+
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -25,6 +27,7 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
+    ClearAndGenerateBlueprint,
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
@@ -106,9 +109,12 @@ impl UICommand {
             Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
 
             Self::CloseCurrentRecording => (
-                "Close current Recording",
-                "Close the current Recording (unsaved data will be lost)",
+                "Close current recording",
+                "Close the current recording (unsaved data will be lost)",
             ),
+
+            Self::CloseAllRecordings => ("Close all recordings",
+                "Close all open current recording (unsaved data will be lost)",),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -120,6 +126,12 @@ impl UICommand {
                 "Reset Viewer",
                 "Reset the Viewer to how it looked the first time you ran it, forgetting all stored blueprints and UI state",
             ),
+
+            Self::ClearAndGenerateBlueprint => (
+                "Clear and generate new blueprint",
+                "Clear the current blueprint and generate a new one based on heuristics."
+            ),
+
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => (
@@ -251,6 +263,7 @@ impl UICommand {
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
             Self::CloseCurrentRecording => None,
+            Self::CloseAllRecordings => None,
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),
@@ -262,6 +275,8 @@ impl UICommand {
             Self::Quit => Some(cmd(Key::Q)),
 
             Self::ResetViewer => Some(ctrl_shift(Key::R)),
+            Self::ClearAndGenerateBlueprint => None,
+
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => Some(ctrl_shift(Key::P)),
             Self::ToggleMemoryPanel => Some(ctrl_shift(Key::M)),
@@ -331,7 +346,7 @@ impl UICommand {
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<UICommand> {
         use strum::IntoEnumIterator as _;
 
-        let anything_has_focus = egui_ctx.memory(|mem| mem.focus().is_some());
+        let anything_has_focus = egui_ctx.memory(|mem| mem.focused().is_some());
         if anything_has_focus {
             return None; // e.g. we're typing in a TextField
         }

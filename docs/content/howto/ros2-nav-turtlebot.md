@@ -30,8 +30,8 @@ All of the code for this guide can be found on GitHub in
 ## Prerequisites
 
 Other relevant tutorials:
- - [Logging with Python](../getting-started/logging-python.md)
- - [Viewer Walkthrough](../getting-started/viewer-walkthrough.md)
+ - [Python SDK Tutorial](../getting-started/data-in/streaming/python.md)
+ - [Viewer Walkthrough](../getting-started/visualize/viewer-walkthrough.md)
 
 ### ROS 2 & navigation
 You will need to have installed [ROS 2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
@@ -112,8 +112,8 @@ If you are familiar with the turtlebot nav example and rviz, this view will like
  * `map/robot/camera/points` contains a `PointCloud2` msg logged as a [point3d](../reference/types/archetypes/points3d.md).
  * `map/points` contains a second copy of `PointCloud2` with a different transform.  (This is a workaround until Rerun
    has support for ROS-style fixed frames [#1522](https://github.com/rerun-io/rerun/issues/1522).)
- * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/time_series_scalar.md).
- * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/time_series_scalar.md).
+ * `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
+ * `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
 
 ## Code Explanation
 

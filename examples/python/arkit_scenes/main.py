@@ -347,12 +347,13 @@ def main() -> None:
                     origin=primary_camera_entity,
                     contents=["$origin/depth", "/world/annotations/**"],
                 ),
+                name="2D",
             ),
             rrb.TextDocumentView(name="Readme"),
         ),
     )
 
-    rr.script_setup(args, "rerun_example_arkit_scenes", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_arkit_scenes", default_blueprint=blueprint)
     recording_path = ensure_recording_available(args.video_id, args.include_highres)
     log_arkit(recording_path, args.include_highres)
 

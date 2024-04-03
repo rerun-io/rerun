@@ -2,12 +2,12 @@
 title = "Helix"
 tags = ["3D", "api-example"]
 description = "Simple example of logging point and line primitives to draw a 3D helix."
-thumbnail = "https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png"
-thumbnail_dimensions = [480, 285]
+thumbnail = "https://static.rerun.io/dna/40d9744af3f0e21d3b174054f0a935662a574ce0/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
-<picture data-inline-viewer="dna">
+<picture data-inline-viewer="examples/dna">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/helix/f4c375546fa9d24f7cd3a1a715ebf75b2978817a/1024w.png">

@@ -249,7 +249,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::SetStoreInfo(_) | LogMsg::ActivateStore(_) => true,
+            LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand { .. } => true,
 
             LogMsg::ArrowMsg(_, arrow_msg) => self.should_send_time_point(&arrow_msg.timepoint_max),
         }

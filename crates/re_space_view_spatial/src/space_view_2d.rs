@@ -63,8 +63,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        // Ensure spatial topology is registered.
+        // Ensure spatial topology & max image dimension is registered.
         crate::spatial_topology::SpatialTopologyStoreSubscriber::subscription_handle();
+        crate::max_image_dimension_subscriber::MaxImageDimensionSubscriber::subscription_handle();
 
         register_spatial_contexts(system_registry)?;
         register_2d_spatial_visualizers(system_registry)?;
@@ -177,16 +178,15 @@ impl SpaceViewClass for SpatialSpaceView2D {
             SpatialSpaceViewKind::TwoD,
         );
 
-        let image_dimensions =
-            MaxImageDimensions::access(ctx.entity_db.store_id(), |image_dimensions| {
-                image_dimensions.clone()
-            })
-            .unwrap_or_default();
+        let image_dimensions = MaxImageDimensions::access(ctx.recording_id(), |image_dimensions| {
+            image_dimensions.clone()
+        })
+        .unwrap_or_default();
 
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
             recommended_space_views: topo
                 .iter_subspaces()
                 .flat_map(|subspace| {
@@ -347,7 +347,7 @@ fn recommended_space_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.entity_db.tree();
+    let tree = ctx.recording().tree();
 
     let Some(subtree) = tree.subtree(recommended_root) else {
         if cfg!(debug_assertions) {
@@ -411,7 +411,7 @@ fn recommended_space_views_with_image_splits(
             }
         }
     } else {
-        // Otherwise we can use the space as it is
+        // Otherwise we can use the space as it is.
         recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }

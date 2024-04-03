@@ -1,5 +1,5 @@
 ---
-title: Logging Data in C++
+title: C++
 order: 5
 ---
 
@@ -34,7 +34,7 @@ build\Debug\example_dna.exe
 
 ## Prerequisites
 
-You should have already [installed the viewer](installing-viewer.md).
+You should have already [installed the viewer](../../installing-viewer.md).
 
 We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
 we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
@@ -99,9 +99,9 @@ int main() {
 }
 ```
 
-Among other things, a stable `ApplicationId` will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+Among other things, a stable `ApplicationId` will make it so the [Rerun Viewer](../../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
-Check out the reference to learn more about how Rerun deals with [applications and recordings](../concepts/apps-and-recordings.md).
+Check out the reference to learn more about how Rerun deals with [applications and recordings](../../../concepts/apps-and-recordings.md).
 
 ## Testing our app
 
@@ -160,7 +160,7 @@ and now you should now see this scene in the viewer:
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
+_Checkout the [Viewer Walkthrough](../../visualize/viewer-walkthrough.md) and [viewer reference](../../../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
 ## Under the hood
 
@@ -176,23 +176,23 @@ Under the hood, the Rerun C++ SDK logs individual *components* like positions, c
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
-For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
+For more information on how the rerun data model works, refer to our section on [Entities and Components](../../../concepts/entity-component.md).
 
 Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
-For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
+For more information on how to supply your own components see [Use custom data](../../../howto/extend/custom-data.md).
 
 ### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 
-These are [*entity paths*](../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
-[Entity paths typically form a hierarchy](../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
+These are [*entity paths*](../../../concepts/entity-component.md), which uniquely identify each entity in our scene. Every entity is made up of a path and one or more components.
+[Entity paths typically form a hierarchy](../../../concepts/entity-path.md) which plays an important role in how data is visualized and transformed (as we shall soon see).
 
 ### Batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
-[Batches of data](../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+[Batches of data](../../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
 You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this *splatting*.
 
 ---
@@ -258,9 +258,9 @@ Once again, although we are getting fancier and fancier with our iterator mappin
 
 ### Introducing Time
 
-Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../concepts/timelines.md).
+Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../../concepts/timelines.md).
 
-Even so, if you look at your [Timeline View](../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
+Even so, if you look at your [Timeline View](../../../reference/viewer/timeline.md) right now, you'll notice that Rerun has kept track of time on your behalf anyway by memorizing when each log call occurred.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data6_timeline/f22a3c92ae4f9f3a04901ec907a245e03e9dad68/480w.png">
@@ -390,4 +390,4 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
-As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main data types.
+As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../../../reference/types.md) section for more simple examples of how to use the main data types.

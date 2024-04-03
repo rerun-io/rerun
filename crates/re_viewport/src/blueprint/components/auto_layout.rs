@@ -22,8 +22,6 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether the viewport layout is determined automatically.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, Copy)]
 #[repr(transparent)]
 pub struct AutoLayout(pub bool);

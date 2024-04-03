@@ -2,13 +2,13 @@
 title = "nuScenes"
 tags = ["lidar", "3D", "2D", "object-detection", "pinhole-camera"]
 description = "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
-thumbnail = "https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png"
-thumbnail_dimensions = [480, 282]
+thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
+thumbnail_dimensions = [480, 480]
 channel = "release"
 build_args = ["--seconds=5"]
 -->
 
-<picture data-inline-viewer="nuscenes">
+<picture data-inline-viewer="examples/nuscenes">
   <img src="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/768w.png">

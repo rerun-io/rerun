@@ -33,8 +33,7 @@ impl EntityDataUi for re_types::components::TensorData {
         re_tracing::profile_function!();
 
         let tensor_data_row_id = ctx
-            .entity_db
-            .store()
+            .recording_store()
             .query_latest_component::<re_types::components::TensorData>(entity_path, query)
             .map_or(RowId::ZERO, |tensor| tensor.row_id);
 
@@ -87,8 +86,7 @@ pub fn tensor_ui(
     let meaning = image_meaning_for_entity(entity_path, query, store);
 
     let meter = if meaning == TensorDataMeaning::Depth {
-        ctx.entity_db
-            .store()
+        ctx.recording_store()
             .query_latest_component::<DepthMeter>(entity_path, query)
             .map(|meter| meter.value.0)
     } else {

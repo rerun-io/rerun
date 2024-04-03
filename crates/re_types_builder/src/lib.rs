@@ -139,6 +139,8 @@ mod format;
 #[allow(clippy::unimplemented)]
 mod objects;
 
+mod docs;
+
 pub mod report;
 
 /// In-memory generated files.
@@ -147,15 +149,18 @@ pub mod report;
 /// etc), and finally written to disk by the I/O pass.
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
-pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
-pub use self::codegen::{
-    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+pub use self::{
+    arrow_registry::{ArrowRegistry, LazyDatatype, LazyField},
+    codegen::{
+        CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+    },
+    docs::Docs,
+    format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter},
+    objects::{
+        Attributes, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
+    },
+    report::{Report, Reporter},
 };
-pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};
-pub use self::objects::{
-    Attributes, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Type,
-};
-pub use self::report::{Report, Reporter};
 
 // --- Attributes ---
 
