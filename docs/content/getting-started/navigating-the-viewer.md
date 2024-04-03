@@ -225,7 +225,7 @@ to the "frame" timeline and double-click the timeline panel to reset it to the d
 One thing to notice is there is a gap in the timeline in the "frame" view. This dataset is actually missing a few
 frames, and the timeline view of frames makes this easy to spot. This highlights the importance of applying meaningful
 timestamps to your data as you log it. You also aren't limited to frame and log_time. Rerun lets you define your own
-timelines however you would like. You can read more about timelines [here](../../concepts/timelines.md).
+timelines however you would like. You can read more about timelines [here](../concepts/timelines.md).
 
 ## Conclusion
 
@@ -252,4 +252,4 @@ To get started with writing a program to logging data with the Rerun SDK see the
 
 To see and explore other data, you can check out the [examples](/examples).
 
-For deeper context on the ideas covered here, consult the [Concept overview](../../concepts.md).
+For deeper context on the ideas covered here, consult the [Concept overview](../concepts.md).

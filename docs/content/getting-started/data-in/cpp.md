@@ -37,7 +37,7 @@ build\Debug\example_dna.exe
 
 ## Prerequisites
 
-You should have already [installed the viewer](../../installing-viewer.md).
+You should have already [installed the viewer](../installing-viewer.md).
 
 We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
 we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
