@@ -262,8 +262,18 @@ impl ViewportBlueprint {
     ///
     /// TODO(#5742): note that `Item::DataResult` with entity path set to the space origin or some
     /// of its descendent are always considered valid.
-    pub fn is_item_valid(&self, item: &Item) -> bool {
+    pub fn is_item_valid(
+        &self,
+        store_context: &re_viewer_context::StoreContext<'_>,
+        item: &Item,
+    ) -> bool {
         match item {
+            Item::AppId(app_id) => store_context
+                .hub
+                .store_bundle()
+                .entity_dbs()
+                .any(|db| db.app_id() == Some(app_id)),
+
             Item::DataSource(_)
             | Item::StoreId(_)
             | Item::ComponentPath(_)

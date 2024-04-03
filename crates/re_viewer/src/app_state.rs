@@ -172,7 +172,7 @@ impl AppState {
                     }
                 }
 
-                viewport.is_item_valid(item)
+                viewport.is_item_valid(store_context, item)
             },
             re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
         );

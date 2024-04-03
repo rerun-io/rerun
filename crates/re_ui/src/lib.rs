@@ -931,6 +931,8 @@ impl ReUi {
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
+    ///
+    /// You only need to use this if you expect the right side to have multi-line entries.
     #[allow(clippy::unused_self)]
     pub fn grid_left_hand_label(&self, ui: &mut egui::Ui, label: &str) -> egui::Response {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {

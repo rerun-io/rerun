@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
-use re_data_ui::item_ui::entity_db_button_ui;
-use re_log_types::LogMsg;
+use re_data_ui::{item_ui::entity_db_button_ui, DataUi};
+use re_entity_db::EntityDb;
+use re_log_types::{ApplicationId, LogMsg};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{Item, UiVerbosity, ViewerContext};
 
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
@@ -18,7 +19,9 @@ pub fn recordings_panel_ui(
         re_ui.panel_title_bar_with_buttons(
             ui,
             "Recordings",
-            Some("These are the Recordings currently loaded in the Viewer"),
+            Some(
+                "These are the Recordings currently loaded in the Viewer, organized by application",
+            ),
             |ui| {
                 add_button_ui(ctx, ui);
             },
@@ -106,11 +109,10 @@ fn loading_receivers_ui(
 ///
 /// Returns `true` if any recordings were shown.
 fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
-    let mut entity_dbs_map: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    let mut entity_dbs_map: BTreeMap<Option<ApplicationId>, Vec<&EntityDb>> = BTreeMap::new();
+
     for entity_db in ctx.store_context.bundle.recordings() {
-        let key = entity_db
-            .store_info()
-            .map_or("<unknown>", |info| info.application_id.as_str());
+        let key = entity_db.app_id().cloned();
         entity_dbs_map.entry(key).or_default().push(entity_db);
     }
 
@@ -123,25 +125,44 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     }
 
     for (app_id, entity_dbs) in entity_dbs_map {
-        if entity_dbs.len() == 1 {
-            let entity_db = entity_dbs[0];
-            let include_app_id = true;
-            entity_db_button_ui(ctx, ui, entity_db, include_app_id);
-        } else {
-            ctx.re_ui
-                .list_item(app_id)
-                .interactive(false)
-                .show_hierarchical_with_content(
+        let app_id = app_id.as_ref();
+        let app_item: Option<Item> = app_id.map(|app_id| Item::AppId(app_id.clone()));
+
+        let selected = app_item
+            .as_ref()
+            .map_or(false, |item| ctx.selection().contains_item(item));
+
+        let app_name = app_id.map_or_else(|| "<unknown>".to_owned(), |app_id| app_id.to_string());
+
+        let app_button_response = ctx
+            .re_ui
+            .list_item(app_name)
+            .selected(selected)
+            .with_icon(&re_ui::icons::APPLICATION)
+            .show_hierarchical_with_content(ui, ui.make_persistent_id(app_id), true, |_, ui| {
+                // Show all the recordings for this application:
+                for entity_db in entity_dbs {
+                    let include_app_id = false; // we already show it in the parent
+                    entity_db_button_ui(ctx, ui, entity_db, include_app_id);
+                }
+            });
+
+        let app_item_response = app_button_response.item_response.on_hover_ui(|ui| {
+            if let Some(app_id) = app_id {
+                app_id.data_ui(
+                    ctx,
                     ui,
-                    ui.make_persistent_id(app_id),
-                    true,
-                    |_, ui| {
-                        for entity_db in entity_dbs {
-                            let include_app_id = false; // we already show it in the parent
-                            entity_db_button_ui(ctx, ui, entity_db, include_app_id);
-                        }
-                    },
+                    UiVerbosity::Reduced,
+                    &ctx.current_query(),  // unused
+                    ctx.recording_store(), // unused
                 );
+            } else {
+                ui.weak("Application ID unknown");
+            }
+        });
+
+        if let Some(item) = app_item {
+            ctx.select_hovered_on_click(&app_item_response, item);
         }
     }
 
