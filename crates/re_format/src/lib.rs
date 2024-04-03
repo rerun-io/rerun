@@ -166,7 +166,7 @@ impl FloatFormatOptions {
 
             let mut formatted = format!("{value:.num_decimals$}");
 
-            if strip_trailing_zeros {
+            if strip_trailing_zeros && formatted.contains('.') {
                 while formatted.ends_with('0') {
                     formatted.pop();
                 }
@@ -215,6 +215,10 @@ fn test_format_f32() {
         (f32::NEG_INFINITY, "−∞"),
         (0.0, "0"),
         (42.0, "42"),
+        (10_000.0, "10 000"),
+        (1_000_000.0, "1 000 000"),
+        (10_000_000.0, "10 000 000"),
+        (11_000_000.0, "1.100000e7"),
         (-42.0, "−42"),
         (-4.20, "−4.2"),
         (123_456.78, "123 456.8"),
@@ -261,6 +265,22 @@ fn test_format_f64() {
         assert!(
             got == expected,
             "Expected to format {value} as '{expected}', but got '{got}'"
+        );
+    }
+}
+
+#[test]
+fn test_format_f64_custom() {
+    let cases = [(
+        FloatFormatOptions::DEFAULT_f64.with_decimals(2),
+        123.456789,
+        "123.46",
+    )];
+    for (options, value, expected) in cases {
+        let got = options.format(value);
+        assert!(
+            got == expected,
+            "Expected to format {value} as '{expected}', but got '{got}'. Options: {options:#?}"
         );
     }
 }
