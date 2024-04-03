@@ -18,7 +18,7 @@ channel = "nightly"
 Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stablediffusion?tab=readme-ov-file#depth-conditional-stable-diffusion) to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images.
 
 ## Used Rerun Types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document),[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document),[`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
 
 ## Background
 Depth Guided Stable Diffusion enriches the image generation process by incorporating depth information, providing a unique way to control the spatial composition of generated images. This approach allows for more nuanced and layered creations, making it especially useful for scenes requiring a sense of three-dimensionality.
@@ -30,7 +30,7 @@ The visualizations in this example were created with the Rerun SDK, demonstratin
 Visualizing the prompt and negative prompt
 ```python
 rr.log("prompt/text", rr.TextDocument(prompt))
-rr.log("prompt/text_negative", rr.TextDocument(negative_prompt))
+rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
 ```
 
 ## Text
