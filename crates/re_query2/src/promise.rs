@@ -14,6 +14,13 @@ impl std::fmt::Display for PromiseId {
     }
 }
 
+impl re_types_core::SizeBytes for PromiseId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
 impl PromiseId {
     /// Create a new unique [`PromiseId`] based on the current time.
     #[allow(clippy::new_without_default)]
@@ -38,6 +45,14 @@ pub struct Promise {
 }
 
 static_assertions::assert_eq_size!(Promise, Option<Promise>);
+
+impl re_types_core::SizeBytes for Promise {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self { id, source } = self;
+        id.heap_size_bytes() + source.heap_size_bytes()
+    }
+}
 
 impl Promise {
     #[inline]
