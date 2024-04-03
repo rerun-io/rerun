@@ -56,8 +56,8 @@ impl StoreBundle {
         }
     }
 
-    pub fn remove(&mut self, id: &StoreId) {
-        self.entity_dbs.remove(id);
+    pub fn remove(&mut self, id: &StoreId) -> Option<EntityDb> {
+        self.entity_dbs.remove(id)
     }
 
     // --

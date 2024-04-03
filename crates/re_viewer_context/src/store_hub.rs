@@ -201,6 +201,26 @@ impl StoreHub {
     }
 
     pub fn remove(&mut self, store_id: &StoreId) {
+        let removed_store = self.store_bundle.remove(store_id);
+
+        let Some(removed_store) = removed_store else {
+            return;
+        };
+
+        if removed_store.store_kind() == StoreKind::Recording {
+            if let Some(app_id) = removed_store.app_id().cloned() {
+                let any_other_recordings_for_this_app = self
+                    .store_bundle
+                    .recordings()
+                    .any(|rec| rec.app_id() == Some(&app_id));
+
+                if !any_other_recordings_for_this_app {
+                    re_log::trace!("Removed last recording of {app_id}. Closing app.");
+                    self.close_app(&app_id);
+                }
+            }
+        }
+
         if self.active_rec_id.as_ref() == Some(store_id) {
             if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
                 self.set_active_recording_id(new_selection.clone());
@@ -209,8 +229,6 @@ impl StoreHub {
                 self.active_rec_id = None;
             }
         }
-
-        self.store_bundle.remove(store_id);
     }
 
     /// Remove all open recordings, and go to the welcome page.
