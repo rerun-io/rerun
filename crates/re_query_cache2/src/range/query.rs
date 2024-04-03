@@ -221,13 +221,11 @@ impl RangeCache {
             pending_invalidation,
         } = self;
 
-        let Some(pending_invalidation) = pending_invalidation else {
+        let Some(pending_invalidation) = pending_invalidation.take() else {
             return;
         };
 
-        per_data_time
-            .write()
-            .truncate_at_time(*pending_invalidation);
+        per_data_time.write().truncate_at_time(pending_invalidation);
     }
 }
 
