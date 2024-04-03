@@ -149,8 +149,6 @@ impl FloatFormatOptions {
             let magnitude = value.log10();
             let max_decimals = precision as f64 - magnitude.max(0.0);
 
-            dbg!(value, magnitude, max_decimals);
-
             if max_decimals < 0.0 {
                 // A very large number (more digits than we have precision),
                 // so use scientific notation.
@@ -229,7 +227,7 @@ fn test_format_f32() {
         let got = format_f32(value);
         assert!(
             got == expected,
-            "Expected to format {value} as '{expected}', but but got '{got}'"
+            "Expected to format {value} as '{expected}', but got '{got}'"
         );
     }
 }
@@ -262,7 +260,7 @@ fn test_format_f64() {
         let got = format_f64(value);
         assert!(
             got == expected,
-            "Expected to format {value} as '{expected}', but but got '{got}'"
+            "Expected to format {value} as '{expected}', but got '{got}'"
         );
     }
 }
