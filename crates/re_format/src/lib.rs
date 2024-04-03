@@ -80,9 +80,9 @@ pub struct FloatFormatOptions {
     /// This includes both the integer part and the fractional part.
     pub precision: usize,
 
-    /// Number of decimals to show after the decimal point.
+    /// Max number of decimals to show after the decimal point.
     ///
-    /// If not specified, a number will be picked automatically.
+    /// If not specified, [`Self::precision`] is used instead.
     pub num_decimals: Option<usize>,
 
     pub strip_trailing_zeros: bool,
@@ -113,7 +113,9 @@ impl FloatFormatOptions {
         self
     }
 
-    /// Show these many decimals after the decimal point.
+    /// Max number of decimals to show after the decimal point.
+    ///
+    /// If not specified, [`Self::precision`] is used instead.
     #[inline]
     pub fn with_decimals(mut self, num_decimals: usize) -> Self {
         self.num_decimals = Some(num_decimals);
