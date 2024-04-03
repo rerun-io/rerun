@@ -20,4 +20,4 @@ There are a few different ways to work with Blueprints:
 
 -   [Blueprints can be modified interactively](./configure-the-viewer/interactively.md)
 -   [Blueprint files (.rbl) can be saved and loaded from disk](./configure-the-viewer/save-and-load.md)
--   [Blueprints can be controlled directly from code](./configure-the-viewer/through-code.md)
+-   [Blueprints can be controlled directly from code](./configure-the-viewer/through-code-tutorial.md)
