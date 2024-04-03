@@ -1,7 +1,7 @@
 use std::sync::atomic::AtomicBool;
 
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
-use re_format::{format_bytes, format_number};
+use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
 use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
@@ -243,7 +243,7 @@ impl MemoryPanel {
                     if num_rows == u64::MAX {
                         ui.label("+∞")
                     } else {
-                        ui.label(re_format::format_number(num_rows as _))
+                        ui.label(re_format::format_uint(num_rows))
                     }
                 };
 
@@ -283,7 +283,7 @@ impl MemoryPanel {
                         num_bytes,
                     } = row_stats;
 
-                    ui.label(re_format::format_number(num_rows as _));
+                    ui.label(re_format::format_uint(num_rows));
                     ui.label(re_format::format_bytes(num_bytes as _));
                 }
 
@@ -308,12 +308,12 @@ impl MemoryPanel {
                 ui.end_row();
 
                 ui.label("Temporal:");
-                ui.label(re_format::format_number(temporal_buckets as _));
+                ui.label(re_format::format_uint(temporal_buckets));
                 label_row_stats(ui, temporal);
                 ui.end_row();
 
                 ui.label("Total");
-                ui.label(re_format::format_number(temporal_buckets as _));
+                ui.label(re_format::format_uint(temporal_buckets));
                 label_row_stats(ui, total);
                 ui.end_row();
             });
@@ -439,8 +439,8 @@ impl MemoryPanel {
                                 } = stats;
 
                                 ui.label(component_name.to_string());
-                                ui.label(re_format::format_number(total_rows as _));
-                                ui.label(re_format::format_number(total_instances as _));
+                                ui.label(re_format::format_uint(total_rows));
+                                ui.label(re_format::format_uint(total_instances));
                                 ui.label(re_format::format_bytes(total_size_bytes as _));
                                 ui.end_row();
                             }
@@ -448,7 +448,7 @@ impl MemoryPanel {
                 });
             }
 
-            ui.label(re_format::format_number(*total_rows as _));
+            ui.label(re_format::format_uint(*total_rows));
             ui.label(re_format::format_bytes(*total_size_bytes as _));
         }
     }
@@ -461,23 +461,23 @@ impl MemoryPanel {
         ui.label(format!(
             "fully_tracked: {} in {} allocs",
             format_bytes(tracking_stats.fully_tracked.size as _),
-            format_number(tracking_stats.fully_tracked.count),
+            format_uint(tracking_stats.fully_tracked.count),
         ));
         ui.label(format!(
             "stochastically_tracked: {} in {} allocs",
             format_bytes(tracking_stats.stochastically_tracked.size as _),
-            format_number(tracking_stats.stochastically_tracked.count),
+            format_uint(tracking_stats.stochastically_tracked.count),
         ));
         ui.label(format!(
             "untracked: {} in {} allocs (all smaller than {})",
             format_bytes(tracking_stats.untracked.size as _),
-            format_number(tracking_stats.untracked.count),
+            format_uint(tracking_stats.untracked.count),
             format_bytes(tracking_stats.track_size_threshold as _),
         ));
         ui.label(format!(
             "overhead: {} in {} allocs",
             format_bytes(tracking_stats.overhead.size as _),
-            format_number(tracking_stats.overhead.count),
+            format_uint(tracking_stats.overhead.count),
         ))
         .on_hover_text("Used for the book-keeping of the allocation tracker");
 
@@ -496,7 +496,7 @@ impl MemoryPanel {
                                 "{}{} in {} allocs (≈{} / alloc){} - {}",
                                 if is_stochastic { "≈" } else { "" },
                                 format_bytes((callstack.extant.size * stochastic_rate) as _),
-                                format_number(callstack.extant.count * stochastic_rate),
+                                format_uint(callstack.extant.count * stochastic_rate),
                                 format_bytes(
                                     callstack.extant.size as f64 / callstack.extant.count as f64
                                 ),
