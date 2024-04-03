@@ -163,7 +163,6 @@ impl RangeCache {
             pending_invalidation: _,
         } = self;
 
-        // A plain old `write()` (as opposed to a `try_write()`) here _should_ be fine.
         let mut per_data_time = per_data_time.write();
 
         if let Some(query_front) = per_data_time.compute_front_query(query) {
