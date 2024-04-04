@@ -20,7 +20,6 @@ For example:
 
 As explained below, a space view _may_ display data belonging to multiple spaces, but there must be a well-defined
 means of transforming the data from one space to another.
-by a specific space, and the other spaces must have well-defined transforms to that space to be displayed in the same view.
 
 Which entities belong to which spaces is a function of the transform system, which uses the following rules to define
 the space connectivity:
