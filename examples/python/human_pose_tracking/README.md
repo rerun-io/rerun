@@ -23,11 +23,11 @@ Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediap
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image)
 
 # Background
-Human pose tracking is a task in computer vision that focuses on identifying key body locations, analyzing posture, and categorizing movements. 
-At the heart of this technology is a pre-trained machine-learning model to assess the visual input and recognize landmarks on the body in both image coordinates and 3D world coordinates. 
+Human pose tracking is a task in computer vision that focuses on identifying key body locations, analyzing posture, and categorizing movements.
+At the heart of this technology is a pre-trained machine-learning model to assess the visual input and recognize landmarks on the body in both image coordinates and 3D world coordinates.
 The use cases and applications of this technology include but are not limited to Human-Computer Interaction, Sports Analysis, Gaming, Virtual Reality, Augmented Reality, Health, etc.
 
-In this example, the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution was utilized to detect and track human pose landmarks and produces segmentation masks for humans. 
+In this example, the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution was utilized to detect and track human pose landmarks and produces segmentation masks for humans.
 Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
 
