@@ -1,3 +1,5 @@
+use itertools::Itertools as _;
+
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -34,6 +36,7 @@ impl crate::DataUi for ApplicationId {
             .bundle
             .recordings()
             .filter(|db| db.app_id() == Some(self))
+            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
             .collect();
 
         if !recordings.is_empty() {

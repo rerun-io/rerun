@@ -47,6 +47,9 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
+        recordings.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+        blueprints.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+
         ui.scope(|ui| {
             ui.set_clip_rect(ui.max_rect()); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
             ui.spacing_mut().item_spacing.y = 0.0;

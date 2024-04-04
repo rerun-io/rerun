@@ -1,6 +1,7 @@
 use ahash::{HashMap, HashMapExt};
 
 use anyhow::Context as _;
+use itertools::Itertools as _;
 
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
@@ -262,7 +263,11 @@ impl StoreHub {
         self.active_rec_id = None;
 
         // Find any matching recording and activate it
-        for rec in self.store_bundle.recordings() {
+        for rec in self
+            .store_bundle
+            .recordings()
+            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
+        {
             if rec.app_id() == Some(&app_id) {
                 self.active_rec_id = Some(rec.store_id().clone());
                 self.was_recording_active = true;
