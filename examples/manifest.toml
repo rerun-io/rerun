@@ -57,6 +57,7 @@ examples = [
   "mcc",
   "shape_pointe",
   "llm_embedding_ner",
+  "tfrecord_loader",
 ]
 
 [categories.video-image]
@@ -104,6 +105,7 @@ examples = [
   "ros_bridge",
   "urdf_loader",
   "vrs",
+  "tfrecord_loader",
   "eigen_opencv",
   "dicom_mri",
   "blueprint_stocks",
