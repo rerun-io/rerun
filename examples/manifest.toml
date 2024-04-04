@@ -112,3 +112,25 @@ examples = [
   "plots",
   "raw_mesh",
 ]
+
+# These are examples that we explicitely exclude from our website. You can check that all examples are either included
+# or explicitely excluded by running `python scripts/check_example_manifest_coverage.py`.
+[ignored]
+examples = [
+  "blueprint_stocks", # TODO
+  "custom_collection_adapter",
+  "custom_data_loader",
+  "custom_space_view",
+  "custom_store_subscriber",
+  "dna",
+  "extend_viewer_ui",
+  "external_data_loader",
+  "human_pose_tracking", # TODO
+  "incremental_logging",
+  "minimal_serve",
+  "notebook",
+  "shared_recording",
+  "spawn_viewer",
+  "stdio",
+  "template",
+]
