@@ -13,7 +13,7 @@ Rerun is an SDK and engine for visualizing and interacting with multimodal data 
 Rerun is
 - Free to use
 - Simple to integrate and get started with
-- Usable from C++, Python, and Rust
+- Usable from Python, C++, and Rust
 - Powerful, flexible, and extensible
 - Built in Rust to be cross platform and fast
 - Open source, dual licensed under MIT and Apache 2

@@ -801,7 +801,7 @@ fn code_for_enum(
         let arrow_type_index = 1 + i; // plus-one to leave room for zero == `_null_markers`
 
         // NOTE: we use PascalCase for the enum variants for consistency across:
-        // * all languages (C++, Python, Rust)
+        // * all languages (Python, C++, Rust)
         // * the arrow datatype
         // * the GUI
         let variant_name = variant.pascal_case_name();

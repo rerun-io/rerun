@@ -14,7 +14,7 @@
 
 # Build time aware visualizations of multimodal data
 
-Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
+Use the Rerun SDK (available for Python, C++, and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
 ```py
 import rerun as rr  # pip install rerun-sdk
