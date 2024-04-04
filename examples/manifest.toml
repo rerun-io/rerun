@@ -13,6 +13,7 @@ prelude = """
 Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
 """
 examples = [
+  # display order, most interesting first
   "arkit_scenes",
   "limap",
   "objectron",
@@ -30,6 +31,7 @@ prelude = """
 Examples related to robotics, autonomous systems, and interfacing with sensor hardware.
 """
 examples = [
+  # display order, most interesting first
   "ros_node",
   "nuscenes",
   "kiss-icp",
@@ -47,6 +49,7 @@ prelude = """
 Examples using generative AI methods like diffusion and LLMs.
 """
 examples = [
+  # display order, most interesting first
   "controlnet",
   "depth_guided_stable_diffusion",
   "mcc",
@@ -61,6 +64,7 @@ prelude = """
 Examples related to image and video processing, highlighting Rerun's 2D capabilities.
 """
 examples = [
+  # display order, most interesting first
   "detect_and_track_objects",
   "face_tracking",
   "human_pose_tracking",
@@ -77,6 +81,7 @@ prelude = """
 SLAM, photogrammetry and other 3D modelling examples.
 """
 examples = [
+  # display order, most interesting first
   "structure_from_motion",
   "open_photogrammetry_format",
   "kiss-icp",
@@ -92,12 +97,13 @@ prelude = """
 Integration with 3rd party tools, formats, libraries, and APIs.
 """
 examples = [
-    "ros_node",
-    "vrs",
-    "eigen_opencv",
-    "dicom_mri",
-    "blueprint_stocks",
-    "arflow",
+  # display order, most interesting first
+  "ros_node",
+  "vrs",
+  "eigen_opencv",
+  "dicom_mri",
+  "blueprint_stocks",
+  "arflow",
 ]
 
 [categories.feature-showcase]
@@ -107,6 +113,7 @@ prelude = """
 Showcase basic usage and specific features of Rerun.
 """
 examples = [
+  # display order, most interesting first
   "clock",
   "dna",
   "log_file",
