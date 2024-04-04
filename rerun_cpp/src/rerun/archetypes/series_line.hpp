@@ -28,7 +28,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Series Line
+    /// ### Line series
     /// ![image](https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png)
     ///
     /// ```cpp

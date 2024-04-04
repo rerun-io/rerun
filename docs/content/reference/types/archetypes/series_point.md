@@ -19,7 +19,7 @@ the `Scalar` archetype.
 
 ## Example
 
-### Series point
+### Point series
 
 snippet: series_point_style
 

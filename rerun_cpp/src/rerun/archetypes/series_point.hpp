@@ -29,7 +29,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Series Point
+    /// ### Point series
     /// ![image](https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png)
     ///
     /// ```cpp

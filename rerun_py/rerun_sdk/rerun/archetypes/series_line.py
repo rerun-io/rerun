@@ -29,7 +29,7 @@ class SeriesLine(Archetype):
 
     Example
     -------
-    ### Series Line:
+    ### Line series:
     ```python
     from math import cos, sin, tau
 
