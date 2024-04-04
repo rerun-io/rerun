@@ -19,7 +19,7 @@ title: "Arrows2D"
 
 ## Example
 
-### Simple batch of 2D Arrows
+### Simple batch of 2D arrows
 
 snippet: arrow2d_simple
 

@@ -10,7 +10,7 @@ This document describes the current release and versioning strategy. This strate
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 
-## Release Cadence
+## Release cadence
 New Rerun versions are released every four weeks. Sometimes we do out-of-schedule patch releases.
 
 

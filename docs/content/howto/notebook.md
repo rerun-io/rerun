@@ -13,7 +13,7 @@ Rerun has been tested with:
  - [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
  - [Google Colab](https://colab.research.google.com/)
 
-## Basic Concept
+## Basic concept
 
 Rather than logging to a file or a remote server, you can also configure the Rerun SDK to store data in a local
 [MemoryRecording](https://ref.rerun.io/docs/python/stable/common/other_classes_and_functions/#rerun.MemoryRecording).
@@ -92,7 +92,7 @@ it is not suited to large RRD files. The RRD file is embedded as a base64 encode
 result in a very large HTML file. This can cause problems in some browsers. If you want to share large datasets,
 we recommend using the `save()` API to create a separate file and hosting it as a separate standalone asset.
 
-## Future Work
+## Future work
 
 We are actively working on improving the notebook experience and welcome any feedback or suggestions.
 The ongoing roadmap is being tracked in [GitHub issue #1815](https://github.com/rerun-io/rerun/issues/1815).

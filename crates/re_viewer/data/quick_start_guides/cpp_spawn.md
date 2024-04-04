@@ -1,4 +1,4 @@
-# C++ Quick Start
+# C++ quick start
 
 ## Installing the Rerun viewer
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over TCP.

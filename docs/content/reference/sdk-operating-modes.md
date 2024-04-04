@@ -8,7 +8,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 In the [official examples](/examples), these different modes of operation are exposed via a standardized set of flags that we'll cover below.
 We will also demonstrate how you can achieve the same behavior in your own code.
 
-## Operating Modes
+## Operating modes
 
 The Rerun SDK provides 4 modes of operation: `spawn`, `connect`, `serve` & `save`.
 

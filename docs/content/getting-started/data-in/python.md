@@ -37,7 +37,7 @@ Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/apps-and-recordings.md).
 
-## Starting the Viewer
+## Starting the viewer
 
 Next up, we want to spawn the [Rerun Viewer](../../reference/viewer/overview.md) itself.
 
@@ -193,7 +193,7 @@ there is nothing new here: it's all about building out `numpy` arrays and feedin
 
 ## Animating the beads
 
-### Introducing Time
+### Introducing time
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/timelines.md).
 
@@ -246,7 +246,7 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/stable/common/lo
 
 Enter…
 
-### Latest At semantics
+### Latest at semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the _default_ timeline (called `log_time`).
 To fix this, go back to the top of the file and add:

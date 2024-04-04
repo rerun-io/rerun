@@ -97,9 +97,9 @@ Logging Details:
 
     - Logs the results of gesture detection as emoji
 
-# Logging Data
+# Logging data
 
-## Timelines for Video
+## Timelines for video
 
 You can utilize Rerun timelines' functions to associate data with one or more timelines. As a result, each frame of the
 video can be linked with its corresponding timestamp.
@@ -153,7 +153,7 @@ def run_from_video_capture(vid: int | str, max_frame_count: int | None) -> None:
     cv2.destroyAllWindows()
 ```
 
-## Hand Landmarks as 2D Points
+## Hand landmarks as 2D points
 
 ![gesture_recognition_2d_points](https://github.com/rerun-io/rerun/assets/49308613/7e5dd809-be06-4f62-93a8-4fc03e5dfa0e)
 
@@ -206,7 +206,7 @@ class GestureDetectorLogger:
             )
 ```
 
-## Hand Landmarks as 3D Points
+## Hand landmarks as 3D points
 
 ![gesture_recognition_3d_points](https://github.com/rerun-io/rerun/assets/49308613/b24bb0e5-57cc-43f0-948b-3480fe9073a2)
 
@@ -249,7 +249,7 @@ def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int | No
     # … existing code …
 ```
 
-## Gesture Detection Presentation
+## Gesture detection presentation
 
 ![Gesture Detection Presentation](https://github.com/rerun-io/rerun/assets/49308613/32cc44f4-28e5-4ed1-b283-f7351a087535)
 
@@ -313,7 +313,7 @@ class GestureDetectorLogger:
 
 ```
 
-# Gesture Detector Logger
+# Gesture detector logger
 
 ```python
 

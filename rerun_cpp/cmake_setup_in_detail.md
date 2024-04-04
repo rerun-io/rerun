@@ -1,4 +1,4 @@
-# CMake Setup in Detail
+# CMake setup in detail
 
 \tableofcontents
 

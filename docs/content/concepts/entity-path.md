@@ -3,7 +3,7 @@ title: The Entity Path Hierarchy
 order: 1
 ---
 
-## Entity Paths
+## Entity paths
 As mentioned in the [Entity Component](entity-component.md) overview, all entities within Rerun have a unique _entity path_.
 
 The first argument to the `log()` function is this path. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline.
@@ -49,7 +49,7 @@ So for instance, `world/3D/My\ Image.jpg/detection` is a valid path (note the es
 
 ⚠️ NOTE: even though entity paths are somewhat analogous to file paths, they are NOT the same. `..` does not mean "parent folder", and you are NOT intended to pass a file path as an entity path (especially not on Windows, which use `\` as a path separator).
 
-### Path Hierarchy Functions
+### Path hierarchy functions
 Path hierarchy plays an important role in a number of different functions within Rerun:
 
  * With the [Transform System](spaces-and-transforms.md) the `transform` component logged to any entity always describes
@@ -60,7 +60,7 @@ the relationship between that entity and its direct parent.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
    ([#1158](https://github.com/rerun-io/rerun/issues/1158)).
 
-### Reserved Paths
+### Reserved paths
 
 The path prefix `rerun/` is considered reserved for use by the Rerun SDK itself and should not be used for logging
 user data. This is where Rerun will log additional information such as warnings.

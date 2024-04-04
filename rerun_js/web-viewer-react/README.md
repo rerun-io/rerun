@@ -1,4 +1,4 @@
-# Rerun Web Viewer
+# Rerun web viewer
 
 Embed the Rerun web viewer within your React app.
 

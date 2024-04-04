@@ -61,7 +61,7 @@ from `world/robot/observed_features` are not directly comparable. If you were to
 coordinate system the results would be meaningless. As noted above, Rerun can still display these entities in the same
 space view because it is able to automatically transform data between different spaces.
 
-## Space Transformations
+## Space transformations
 
 In order to correctly display data from different spaces in the same view, Rerun uses the information from logged
 transforms. Since most transforms are invertible, Rerun can usually transform data from a parent space to a child space

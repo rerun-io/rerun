@@ -29,7 +29,7 @@ Here you find what is selected and for some objects in which context.
 This context not only gives you a convenient way to jump to related objects,
 but is also important for what the following sections are showing.
 
-### Data & Blueprint sections
+### Data & blueprint sections
 The data section always shows static, raw user logged data for the currently selected time.
 Some objects, e.g. Space Views, may not have a data section and expose only Blueprint options.
 
