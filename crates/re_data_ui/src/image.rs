@@ -155,22 +155,18 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                ui.vertical(|ui| {
-                    // Put in a vertical layout to allow wrap around.
-                    ui.label(format_tensor_shape_single_line(shape.as_slice()))
-                })
-                .inner
-                .on_hover_ui(|ui| {
-                    tensor_summary_ui(
-                        ctx.re_ui,
-                        ui,
-                        original_tensor,
-                        tensor,
-                        meaning,
-                        meter,
-                        &tensor_stats,
-                    );
-                });
+                ui.add(egui::Label::new(format_tensor_shape_single_line(&shape)).wrap(true))
+                    .on_hover_ui(|ui| {
+                        tensor_summary_ui(
+                            ctx.re_ui,
+                            ui,
+                            original_tensor,
+                            tensor,
+                            meaning,
+                            meter,
+                            &tensor_stats,
+                        );
+                    });
             });
         }
 
