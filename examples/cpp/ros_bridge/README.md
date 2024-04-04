@@ -6,7 +6,7 @@ thumbnail = "https://static.rerun.io/ros_bridge/121f72ebaea57a1b895196a5587fd1a4
 thumbnail_dimensions = [480, 480]
 -->
 
-# Background
+## Background
 
 This is an example that shows how to use Rerun's C++ API to log and visualize [ROS](https://www.ros.org/) messages.
 
@@ -21,7 +21,7 @@ It works by subscribing to all topics with supported types, converting the messa
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_bridge_screenshot/42bcbe797ff18079678b08a6ee0551fcdb7f054b/1200w.png">
 </picture>
 
-# Run the code
+## Run the code
 
 This is an external example, check the [repository](https://github.com/rerun-io/cpp-example-ros-bridge) for more information.
 
