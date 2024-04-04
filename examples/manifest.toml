@@ -36,6 +36,7 @@ examples = [
   "nuscenes",
   "ros_bridge",
   "kiss-icp",
+  "urdf_loader",
   "live_depth_sensor",
   "lidar",
   "rrt-star",
@@ -101,6 +102,7 @@ examples = [
   # display order, most interesting first
   "ros_node",
   "ros_bridge",
+  "urdf_loader",
   "vrs",
   "eigen_opencv",
   "dicom_mri",
