@@ -274,7 +274,7 @@ fn generate_object_files(
 ///
 /// Additionally, picks up all includes files that aren't including the header itself.
 ///
-/// Returns what to inject, and what to repalce `HEADER_EXTENSION_TOKEN` with at the end.
+/// Returns what to inject, and what to replace `HEADER_EXTENSION_TOKEN` with at the end.
 fn hpp_type_extensions(
     folder_path: &Utf8Path,
     filename_stem: &str,
@@ -2265,7 +2265,7 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
-    let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
+    let mut lines = docs.doc_lines_for_untagged_and("cpp");
 
     let required = true;
     let examples = collect_snippets_for_api_docs(docs, "cpp", required).unwrap_or_default();

@@ -20,7 +20,7 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 
 ## Example
 
-### Disconnected Space
+### Disconnected space
 
 snippet: disconnected_space
 

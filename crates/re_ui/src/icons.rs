@@ -143,19 +143,15 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
 pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
 pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
 
-pub const STORE: Icon = Icon::new("store", include_bytes!("../data/icons/store.png"));
-
-pub const WELCOME_SCREEN_CONFIGURE: Icon = Icon::new(
-    "welcome_screen_configure",
-    include_bytes!("../data/images/configure-card.png"),
+pub const APPLICATION: Icon = Icon::new(
+    "application",
+    include_bytes!("../data/icons/application.png"),
 );
-
-pub const WELCOME_SCREEN_LIVE_DATA: Icon = Icon::new(
-    "welcome_screen_live_data",
-    include_bytes!("../data/images/live-data-card.png"),
+pub const DATA_SOURCE: Icon = Icon::new(
+    "data_source",
+    include_bytes!("../data/icons/data_source.png"),
 );
+pub const RECORDING: Icon = Icon::new("recording", include_bytes!("../data/icons/recording.png"));
+pub const BLUEPRINT: Icon = Icon::new("blueprint", include_bytes!("../data/icons/blueprint.png"));
 
-pub const WELCOME_SCREEN_RECORDED_DATA: Icon = Icon::new(
-    "welcome_screen_recorded_data",
-    include_bytes!("../data/images/recorded-data-card.png"),
-);
+pub const GITHUB: Icon = Icon::new("github", include_bytes!("../data/icons/github.png"));

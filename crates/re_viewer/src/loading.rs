@@ -1,4 +1,4 @@
-use crate::{store_hub::StoreLoadError, StoreBundle};
+use re_entity_db::{StoreBundle, StoreLoadError};
 
 #[derive(thiserror::Error, Debug)]
 enum BlueprintLoadError {
@@ -16,7 +16,7 @@ enum BlueprintLoadError {
 pub fn load_blueprint_file(
     path: &std::path::Path,
     with_notifications: bool,
-) -> Option<crate::StoreBundle> {
+) -> Option<StoreBundle> {
     fn load_file_path_impl(path: &std::path::Path) -> Result<StoreBundle, BlueprintLoadError> {
         re_tracing::profile_function!();
 

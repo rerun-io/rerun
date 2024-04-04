@@ -6,103 +6,139 @@
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.real-data]
+[categories.spatial-computing]
 order = 1
-title = "Examples with Real Data"
+title = "Spatial computing and XR"
 prelude = """
-The following examples illustrate using the Rerun logging SDK with potential real-world (if toy) use cases.
-They all require additional data to be downloaded, so an internet connection is needed at least once.
-Each example downloads it's own data, so no additional steps are needed.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-
-You can try these examples live at <https://app.rerun.io/>.
+Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
 """
 examples = [
+  # display order, most interesting first
   "arkit_scenes",
-  "controlnet",
-  "depth_guided_stable_diffusion",
-  "detect_and_track_objects",
-  "dicom_mri",
-  "face_tracking",
-  "human_pose_tracking",
-  "gesture_detection",
-  "lidar",
-  "live_camera_edge_detection",
-  "live_depth_sensor",
-  "llm_embedding_ner",
-  "nuscenes",
-  "objectron",
-  "open_photogrammetry_format",
-  "raw_mesh",
-  "rgbd",
-  "ros_node",
-  "segment_anything_model",
-  "signed_distance_fields",
-  "structure_from_motion",
-  "vrs",
-]
-
-[categories.artificial-data]
-order = 2
-title = "Examples with Artificial Data"
-prelude = """
-The following examples serve to illustrate various uses of the Rerun logging SDK.
-They should not require any additional data downloads, and should run offline.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-"""
-examples = [
-  "minimal",
-  "clock",
-  "eigen_opencv",
-  "multithreading",
-  "multiprocessing",
-  "plots",
-]
-
-[categories.paper-visualizations]
-order = 3
-title = "Paper Visualizations"
-prelude = """
-The following examples use Rerun to create visual walkthroughs of papers. They are typically forks
-from the official open-source implementations adding Rerun as the visualizer.
-Check out the respective READMEs for installation instructions.
-For the simplest possible examples showing how to use each api,
-check out [Types](/docs/reference/types).
-"""
-examples = [
-  "differentiable_blocks_world",
   "limap",
-  "mcc",
-  "shape_pointe",
+  "objectron",
   "simplerecon",
   "slahmr",
-  "tapir",
+  "vrs",
   "widebaseline",
   "arflow",
 ]
 
-[categories.setup]
-order = 4
-title = "Setup"
+[categories.robotics]
+order = 2
+title = "Robotics"
 prelude = """
-### Examples with Real / Artificial Data
-To run these examples, make sure you have the Rerun repository checked out
-and the latest SDK installed.
-
-```bash
-pip install --upgrade rerun-sdk  # install the latest Rerun SDK
-git clone git@github.com:rerun-io/rerun.git  # Clone the repository
-cd rerun
-git checkout latest  # Check out the commit matching the latest SDK release
-```
-> Note: Make sure your SDK version matches the examples.
-For example, if your SDK version is `0.3.1`, check out the matching tag
-in the Rerun repository by running `git checkout v0.3.1`.
-
-### Paper Visualizations
-To reproduce the paper visualizations check out the README of the respective
-Rerun forks.
+Examples related to robotics, autonomous systems, and interfacing with sensor hardware.
 """
-examples = []
+examples = [
+  # display order, most interesting first
+  "ros_node",
+  "nuscenes",
+  "kiss-icp",
+  "live_depth_sensor",
+  "lidar",
+  "rrt-star",
+  "rgbd",
+  "nv12",
+]
+
+[categories.generative-vision]
+order = 3
+title = "Generative computer vision and LLMs"
+prelude = """
+Examples using generative AI methods like diffusion and LLMs.
+"""
+examples = [
+  # display order, most interesting first
+  "controlnet",
+  "depth_guided_stable_diffusion",
+  "mcc",
+  "shape_pointe",
+  "llm_embedding_ner",
+]
+
+[categories.video-image]
+order = 4
+title = "Image and video understanding"
+prelude = """
+Examples related to image and video processing, highlighting Rerun's 2D capabilities.
+"""
+examples = [
+  # display order, most interesting first
+  "detect_and_track_objects",
+  "face_tracking",
+  "human_pose_tracking",
+  "gesture_detection",
+  "live_camera_edge_detection",
+  "segment_anything_model",
+  "tapir",
+]
+
+[categories.3d-reconstruction] # NOLINT
+order = 5
+title = "3D reconstruction and modelling"
+prelude = """
+SLAM, photogrammetry and other 3D modelling examples.
+"""
+examples = [
+  # display order, most interesting first
+  "structure_from_motion",
+  "open_photogrammetry_format",
+  "kiss-icp",
+  "differentiable_blocks_world",
+  "signed_distance_fields",
+  "raw_mesh",
+]
+
+[categories.integrations]
+order = 6
+title = "Integrations"
+prelude = """
+Integration with 3rd party tools, formats, libraries, and APIs.
+"""
+examples = [
+  # display order, most interesting first
+  "ros_node",
+  "vrs",
+  "eigen_opencv",
+  "dicom_mri",
+  "blueprint_stocks",
+  "arflow",
+]
+
+[categories.feature-showcase]
+order = 7
+title = "Feature showcase"
+prelude = """
+Showcase basic usage and specific features of Rerun.
+"""
+examples = [
+  # display order, most interesting first
+  "clock",
+  "dna",
+  "log_file",
+  "minimal",
+  "multiprocessing",
+  "multithreading",
+  "plots",
+  "raw_mesh",
+]
+
+# These are examples that we explicitly exclude from our website. You can check that all examples are either included
+# or explicitly excluded by running `python scripts/check_example_manifest_coverage.py`.
+[ignored]
+examples = [
+  "custom_collection_adapter",
+  "custom_data_loader",
+  "custom_space_view",
+  "custom_store_subscriber",
+  "extend_viewer_ui",
+  "external_data_loader",
+  "incremental_logging",
+  "minimal_serve",
+  "notebook",
+  "shared_recording",
+  "spawn_viewer",
+  "stdio",
+  "template",
+]

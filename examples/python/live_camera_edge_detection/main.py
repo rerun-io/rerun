@@ -66,7 +66,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_live_camera_edge_detection",
-        blueprint=rrb.Vertical(
+        default_blueprint=rrb.Vertical(
             rrb.Horizontal(
                 rrb.Spatial2DView(origin="/image/rgb", name="Video"),
                 rrb.Spatial2DView(origin="/image/gray", name="Video (Grayscale)"),

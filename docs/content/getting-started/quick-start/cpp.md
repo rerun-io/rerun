@@ -1,12 +1,14 @@
 ---
-title: C++ Quick Start
+title: C++
 order: 1
 ---
 
 ## Setup
-Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
+
+Before adding Rerun to your application, start by [installing the viewer](../installing-viewer.md#installing-the-viewer).
 
 ## Learning by example
+
 If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
 
 ## Using Rerun with CMake
@@ -28,6 +30,7 @@ FetchContent_Declare(rerun_sdk URL
     https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 ```
+
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
 By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
@@ -67,6 +70,7 @@ target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 ## Logging some data
+
 Add the following code to your `main.cpp`
 (this example also lives in the `rerun` source tree [example](https://github.com/rerun-io/rerun/blob/latest/examples/cpp/minimal/main.cpp)):
 
@@ -94,6 +98,7 @@ int main() {
 ## Building and running
 
 You can configure cmake, build, and run your application like so:
+
 ```bash
 cmake -B build
 cmake --build build -j
@@ -111,25 +116,27 @@ Once everything finishes compiling, the application will spawn the rerun viewer 
 </picture>
 
 ## Using the viewer
+
 Try out the following to interact with the viewer:
- * Click and drag in the main view to rotate the cube.
- * Zoom in and out with the scroll wheel.
- * Mouse over the "?" icons to find out about more controls.
- * Click on the cube to select all of the points.
- * Hover and select individual points to see more information.
+
+-   Click and drag in the main view to rotate the cube.
+-   Zoom in and out with the scroll wheel.
+-   Mouse over the "?" icons to find out about more controls.
+-   Click on the cube to select all of the points.
+-   Hover and select individual points to see more information.
 
 If you're facing any difficulties, don't hesitate to [open an issue](https://github.com/rerun-io/rerun/issues/new/choose) or [join the Discord server](https://discord.gg/PXtCgFBSmH).
 
 ## What's next
 
-If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](viewer-walkthrough.md) or our
-more advanced guide for [Logging Data in C++](logging-cpp.md) where we will explore the core concepts that make
+If you're ready to move on to more advanced topics, check out the [Viewer Walkthrough](../navigating-the-viewer.md) or our
+more advanced guide for [Logging Data in C++](../data-in/cpp.md) where we will explore the core concepts that make
 Rerun tick and log our first non-trivial dataset.
 
-If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
+If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../../reference/types.md) section for more simple examples of how to use the main datatypes.
 There's also a stand-alone example that shows [interop with Eigen and OpenCV](https://github.com/rerun-io/cpp-example-opencv-eigen).
 
 To learn more about how to work with your own types, check the [Custom Collection Adapter](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/custom_collection_adapter) example on how to zero-copy adapt to Rerun types
-and the [Use custom data](../howto/extend/custom-data.md) page for completely custom types.
+and the [Use custom data](../../howto/extend/custom-data.md) page for completely custom types.
 
 To learn more about how to configure the C++ SDK's CMake file, check [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2cmake__setup__in__detail.html).

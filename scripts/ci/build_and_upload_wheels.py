@@ -72,7 +72,7 @@ def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str,
 
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
-        run("pixi run cargo run --locked -p re_build_web_viewer -- --release")
+        run("pixi run cargo run --locked -p re_build_web_viewer -- --release -g")
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
         maturin_feature_flags = "--no-default-features --features extension-module"

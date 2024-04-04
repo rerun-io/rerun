@@ -23,14 +23,13 @@ class BarChartView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
         """
-        super().__init__(class_identifier="Bar Chart", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="BarChart", origin=origin, contents=contents, name=name)
 
 
 class Spatial2DView(SpaceView):
@@ -52,9 +51,8 @@ class Spatial2DView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
@@ -81,9 +79,8 @@ class Spatial3DView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
@@ -110,9 +107,8 @@ class TensorView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
@@ -139,14 +135,13 @@ class TextDocumentView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
         """
-        super().__init__(class_identifier="Text Document", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="TextDocument", origin=origin, contents=contents, name=name)
 
 
 class TextLogView(SpaceView):
@@ -168,9 +163,8 @@ class TextLogView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
@@ -197,11 +191,10 @@ class TimeSeriesView(SpaceView):
             The `EntityPath` to use as the origin of this view. All other entities will be transformed
             to be displayed relative to this origin.
         contents
-            The contents of the view. Most commonly specified as a query expression. The individual
-            sub-expressions must either be newline separate, or provided as a list of strings.
-            See: [rerun.blueprint.components.QueryExpression][].
+            The contents of the space view specified as a query expression. This is either a single expression,
+            or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
         name
             The name of the view.
 
         """
-        super().__init__(class_identifier="Time Series", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="TimeSeries", origin=origin, contents=contents, name=name)

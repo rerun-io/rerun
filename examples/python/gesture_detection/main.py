@@ -98,7 +98,7 @@ class GestureDetectorLogger:
 
     @staticmethod
     def convert_landmarks_to_3d(hand_landmarks: list[list[NormalizedLandmark]]) -> list[tuple[float, float, float]]:
-        return [(lm.x, lm.y, lm.y) for hand_landmark in hand_landmarks for lm in hand_landmark]
+        return [(lm.x, lm.y, lm.z) for hand_landmark in hand_landmarks for lm in hand_landmark]
 
     def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
         # Recognize gestures in the image
@@ -299,7 +299,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_mp_gesture_recognition",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Spatial2DView(name="Input & Hand", contents=["media/**", "hand2d/**"]),
             rrb.Vertical(
                 rrb.Tabs(

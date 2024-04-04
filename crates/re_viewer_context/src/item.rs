@@ -6,8 +6,14 @@ use crate::{ContainerId, SpaceViewId};
 /// One "thing" in the UI.
 ///
 /// This is the granularity of what is selectable and hoverable.
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
+    /// Select a specific application, to see which recordings and blueprints are loaded for it.
+    AppId(re_log_types::ApplicationId),
+
+    /// A place where data comes from, e.g. the path to a .rrd or a TCP port.
+    DataSource(re_smart_channel::SmartChannelSource),
+
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),
 
@@ -30,9 +36,15 @@ pub enum Item {
 impl Item {
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Item::ComponentPath(component_path) => Some(&component_path.entity_path),
-            Item::SpaceView(_) | Item::Container(_) | Item::StoreId(_) => None,
-            Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
+            Self::AppId(_)
+            | Self::DataSource(_)
+            | Self::SpaceView(_)
+            | Self::Container(_)
+            | Self::StoreId(_) => None,
+
+            Self::ComponentPath(component_path) => Some(&component_path.entity_path),
+
+            Self::InstancePath(instance_path) | Self::DataResult(_, instance_path) => {
                 Some(&instance_path.entity_path)
             }
         }
@@ -93,6 +105,8 @@ impl std::str::FromStr for Item {
 impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Item::AppId(app_id) => app_id.fmt(f),
+            Item::DataSource(data_source) => data_source.fmt(f),
             Item::StoreId(store_id) => store_id.fmt(f),
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
@@ -108,25 +122,27 @@ impl std::fmt::Debug for Item {
 impl Item {
     pub fn kind(self: &Item) -> &'static str {
         match self {
+            Item::AppId(_) => "Application",
+            Item::DataSource(_) => "Data source",
             Item::StoreId(store_id) => match store_id.kind {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
             Item::InstancePath(instance_path) => {
                 if instance_path.instance_key.is_specific() {
-                    "Entity Instance"
+                    "Entity instance"
                 } else {
                     "Entity"
                 }
             }
-            Item::ComponentPath(_) => "Entity Component",
-            Item::SpaceView(_) => "Space View",
+            Item::ComponentPath(_) => "Entity component",
+            Item::SpaceView(_) => "Space view",
             Item::Container(_) => "Container",
             Item::DataResult(_, instance_path) => {
                 if instance_path.instance_key.is_specific() {
-                    "Data Result Instance"
+                    "Data result instance"
                 } else {
-                    "Data Result Entity"
+                    "Data result entity"
                 }
             }
         }
@@ -148,9 +164,12 @@ pub fn resolve_mono_instance_path_item(
             *space_view_id,
             resolve_mono_instance_path(query, store, instance_path),
         ),
-        Item::StoreId(_) | Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {
-            item.clone()
-        }
+        Item::AppId(_)
+        | Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::SpaceView(_)
+        | Item::Container(_) => item.clone(),
     }
 }
 

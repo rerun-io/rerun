@@ -253,7 +253,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let data_store = ctx.entity_db.store();
+        let data_store = ctx.recording_store();
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function

@@ -142,7 +142,7 @@ def main() -> None:
         rrb.TimePanel(expanded=False),
     )
 
-    rr.script_setup(args, "rerun_example_plot", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_plot", default_blueprint=blueprint)
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     log_bar_chart()

@@ -185,7 +185,7 @@ fn space_view_space_origin_widget_editing_ui(
     let suggestions_ui = |ui: &mut egui::Ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (idx, suggested_space_view) in filtered_space_view_suggestions.iter().enumerate() {
-            let response = re_ui::list_item::ListItem::new(
+            let response = re_ui::ListItem::new(
                 ctx.re_ui,
                 suggested_space_view
                     .space_origin
@@ -206,14 +206,11 @@ fn space_view_space_origin_widget_editing_ui(
 
         let excluded_count = space_view_suggestions.len() - filtered_space_view_suggestions.len();
         if excluded_count > 0 {
-            re_ui::list_item::ListItem::new(
-                ctx.re_ui,
-                format!("{excluded_count} hidden suggestions"),
-            )
-            .weak(true)
-            .italics(true)
-            .active(false)
-            .show_flat(ui);
+            re_ui::ListItem::new(ctx.re_ui, format!("{excluded_count} hidden suggestions"))
+                .weak(true)
+                .italics(true)
+                .interactive(false)
+                .show_flat(ui);
         }
     };
 

@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "Types & utilities for defining Space View classes and communicating with the Viewport."
+description = "Types & utilities for defining space view classes and communicating with the viewport."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true

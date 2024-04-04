@@ -69,11 +69,11 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
 
     fn identifier() -> SpaceViewClassIdentifier {
-        "Color Coordinates".into()
+        "ColorCoordinates".into()
     }
 
     fn display_name(&self) -> &'static str {
-        "Color Coordinates"
+        "Color coordinates"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -275,7 +275,7 @@ fn color_space_ui(
                 item_ui::instance_path_button(
                     ctx,
                     &ctx.current_query(),
-                    ctx.entity_db.store(),
+                    ctx.recording_store(),
                     ui,
                     Some(query.space_view_id),
                     &instance,
@@ -285,7 +285,7 @@ fn color_space_ui(
                     ui,
                     UiVerbosity::Reduced,
                     &ctx.current_query(),
-                    ctx.entity_db.store(),
+                    ctx.recording_store(),
                 );
             });
             ctx.select_hovered_on_click(&interact, Item::DataResult(query.space_view_id, instance));

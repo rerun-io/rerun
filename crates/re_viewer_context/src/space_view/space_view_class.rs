@@ -59,8 +59,7 @@ impl VisualizableFilterContext for () {
 pub trait SpaceViewClass: Send + Sync {
     /// Identifier string of this space view class.
     ///
-    /// This is similar to [`Self::identifier`] but it can be used without an actual instance of the
-    /// class.
+    /// By convention we use `PascalCase`.
     fn identifier() -> SpaceViewClassIdentifier
     where
         Self: Sized;

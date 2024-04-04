@@ -9,11 +9,13 @@ use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 mod annotation_context;
+mod app_id;
 mod blueprint_data;
 mod component;
 mod component_path;
 mod component_ui_registry;
 mod data;
+mod data_source;
 mod editors;
 mod entity_db;
 mod entity_path;

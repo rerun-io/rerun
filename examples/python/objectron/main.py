@@ -218,7 +218,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_objectron",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Spatial3DView(origin="/world", name="World"),
             rrb.Spatial2DView(origin="/world/camera", name="Camera", contents=["+ $origin/**", "+ /world/**"]),
         ),

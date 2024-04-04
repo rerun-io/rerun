@@ -82,6 +82,7 @@ __all__ = [
     "log_file_from_path",
     "memory_recording",
     "new_entity_path",
+    "notebook_show",
     "reset_time",
     "save",
     "script_add_args",
@@ -93,6 +94,7 @@ __all__ = [
     "set_time_nanos",
     "set_time_seconds",
     "set_time_sequence",
+    "send_blueprint",
     "spawn",
 ]
 
@@ -161,7 +163,8 @@ from .datatypes import (
 )
 from .error_utils import set_strict_mode
 from .logging_handler import LoggingHandler
-from .recording import MemoryRecording
+from .memory import MemoryRecording, memory_recording
+from .notebook import notebook_show
 from .recording_stream import (
     RecordingStream,
     get_application_id,
@@ -174,7 +177,7 @@ from .recording_stream import (
     set_thread_local_data_recording,
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
-from .sinks import connect, disconnect, memory_recording, save, serve, spawn, stdout
+from .sinks import connect, disconnect, save, send_blueprint, serve, spawn, stdout
 from .time import (
     disable_timeline,
     reset_time,
@@ -222,7 +225,7 @@ def _init_recording_stream() -> None:
     from rerun.recording_stream import _patch as recording_stream_patch
 
     recording_stream_patch(
-        [connect, save, stdout, disconnect, memory_recording, serve, spawn]
+        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint, notebook_show]
         + [
             set_time_sequence,
             set_time_seconds,
@@ -247,7 +250,7 @@ def init(
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool = False,
-    blueprint: BlueprintLike | None = None,
+    default_blueprint: BlueprintLike | None = None,
 ) -> None:
     """
     Initialize the Rerun SDK with a user-chosen application id (name).
@@ -315,8 +318,11 @@ def init(
     strict
         If `True`, an exceptions is raised on use error (wrong parameter types, etc.).
         If `False`, errors are logged as warnings instead.
-    blueprint
-        A blueprint to use for this application. If not provided, a new one will be created.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """
 
@@ -347,13 +353,13 @@ def init(
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn(blueprint=blueprint)
+        _spawn(default_blueprint=default_blueprint)
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
 def new_recording(
-    *,
     application_id: str,
+    *,
     recording_id: str | UUID | None = None,
     make_default: bool = False,
     make_thread_default: bool = False,
@@ -568,14 +574,5 @@ def start_web_viewer_server(port: int = 0) -> None:
         Port to serve assets on. Defaults to 0 (random port).
 
     """
-
-    if not bindings.is_enabled():
-        import logging
-
-        logging.warning(
-            "Rerun is disabled - start_web_viewer_server() call ignored. You must call rerun.init before starting the"
-            + " web viewer server."
-        )
-        return
 
     bindings.start_web_viewer_server(port)

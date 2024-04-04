@@ -14,35 +14,11 @@ use re_types::{
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    DataResult, OverridePath, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState, StoreContext,
-    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
+    ContentsName, DataResult, OverridePath, PerSystemEntities, PropertyOverrides,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
+    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
-
-// ----------------------------------------------------------------------------
-
-/// The name of a space view.
-///
-/// Space views are unnamed by default, but have a placeholder name to be used in the UI.
-#[derive(Clone, Debug)]
-pub enum SpaceViewName {
-    /// This space view has been given a name by the user.
-    Named(String),
-
-    /// This space view is unnamed and should be displayed with this placeholder name.
-    Placeholder(String),
-}
-
-impl AsRef<str> for SpaceViewName {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        match self {
-            SpaceViewName::Named(name) | SpaceViewName::Placeholder(name) => name,
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
 
 /// A view of a space.
 ///
@@ -96,7 +72,6 @@ impl SpaceViewBlueprint {
     }
 
     /// Placeholder name displayed in the UI if the user hasn't explicitly named the space view.
-    #[allow(clippy::unused_self)]
     pub fn missing_name_placeholder(&self) -> String {
         let entity_path = self
             .space_origin
@@ -125,12 +100,12 @@ impl SpaceViewBlueprint {
 
     /// Returns this space view's display name
     ///
-    /// When returning [`SpaceViewName::Placeholder`], the UI should display the resulting name using
+    /// When returning [`ContentsName::Placeholder`], the UI should display the resulting name using
     /// `re_ui::LabelStyle::Unnamed`.
-    pub fn display_name_or_default(&self) -> SpaceViewName {
+    pub fn display_name_or_default(&self) -> ContentsName {
         self.display_name.clone().map_or_else(
-            || SpaceViewName::Placeholder(self.missing_name_placeholder()),
-            SpaceViewName::Named,
+            || ContentsName::Placeholder(self.missing_name_placeholder()),
+            ContentsName::Named,
         )
     }
 
@@ -403,7 +378,7 @@ impl SpaceViewBlueprint {
                 .ui(ctx, ui, view_state, &props, query, system_output)
                 .unwrap_or_else(|err| {
                     re_log::error!(
-                        "Error in Space View UI (class: {}, display name: {}): {err}",
+                        "Error in space view UI (class: {}, display name: {}): {err}",
                         self.class_identifier,
                         class.display_name(),
                     );
@@ -577,8 +552,9 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
+                recording: &recording,
+                bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -620,8 +596,9 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
+                recording: &recording,
+                bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -669,8 +646,9 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
+                recording: &recording,
+                bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -941,8 +919,9 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
-                recording: Some(&recording),
-                all_recordings: vec![],
+                recording: &recording,
+                bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
             let mut query_result = space_view
                 .contents

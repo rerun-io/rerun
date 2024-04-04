@@ -21,4 +21,5 @@ re_tracing.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
+serde.workspace = true
 web-time.workspace = true

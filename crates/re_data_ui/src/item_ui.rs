@@ -3,8 +3,8 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
-use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
-use re_ui::SyntaxHighlighting;
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
+use re_ui::{icons, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -139,20 +139,20 @@ pub fn instance_path_icon(
     timeline: &re_data_store::Timeline,
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
+) -> &'static icons::Icon {
     if instance_path.is_splat() {
         // It is an entity path
         if store
             .all_components(timeline, &instance_path.entity_path)
             .is_some()
         {
-            &re_ui::icons::ENTITY
+            &icons::ENTITY
         } else {
-            &re_ui::icons::ENTITY_EMPTY
+            &icons::ENTITY_EMPTY
         }
     } else {
         // An instance path
-        &re_ui::icons::ENTITY
+        &icons::ENTITY
     }
 }
 
@@ -176,7 +176,7 @@ pub fn guess_query_and_store_for_selected_entity<'a>(
     } else {
         (
             ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.entity_db.store(),
+            ctx.recording_store(),
         )
     }
 }
@@ -184,7 +184,7 @@ pub fn guess_query_and_store_for_selected_entity<'a>(
 pub fn guess_instance_path_icon(
     ctx: &ViewerContext<'_>,
     instance_path: &InstancePath,
-) -> &'static re_ui::icons::Icon {
+) -> &'static icons::Icon {
     let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
     instance_path_icon(&query.timeline, store, instance_path)
 }
@@ -401,7 +401,7 @@ pub fn component_path_button_to(
     let item = Item::ComponentPath(component_path.clone());
     let response = ctx.re_ui.selectable_label_with_icon(
         ui,
-        &re_ui::icons::COMPONENT,
+        &icons::COMPONENT,
         text,
         ctx.selection().contains_item(&item),
         re_ui::LabelStyle::Normal,
@@ -512,7 +512,7 @@ pub fn instance_hover_card_ui(
     store: &re_data_store::DataStore,
     instance_path: &InstancePath,
 ) {
-    if !ctx.entity_db.is_known_entity(&instance_path.entity_path) {
+    if !ctx.recording().is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
         return;
     }
@@ -520,7 +520,7 @@ pub fn instance_hover_card_ui(
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {
-        "Entity Instance"
+        "Entity instance"
     };
     ui.strong(subtype_string);
     ui.label(instance_path.syntax_highlighted(ui.style()));
@@ -529,7 +529,7 @@ pub fn instance_hover_card_ui(
     // Then we can move the size view into `data_ui`.
 
     if instance_path.instance_key.is_splat() {
-        if let Some(subtree) = ctx.entity_db.tree().subtree(&instance_path.entity_path) {
+        if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline, subtree);
         }
     } else {
@@ -549,4 +549,182 @@ pub fn entity_hover_card_ui(
 ) {
     let instance_path = InstancePath::entity_splat(entity_path.clone());
     instance_hover_card_ui(ui, ctx, query, store, &instance_path);
+}
+
+pub fn app_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    app_id: &ApplicationId,
+) -> egui::Response {
+    let item = Item::AppId(app_id.clone());
+
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &icons::APPLICATION,
+        app_id.to_string(),
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
+
+    let response = response.on_hover_ui(|ui| {
+        app_id.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),  // unused
+            ctx.recording_store(), // unused
+        );
+    });
+
+    cursor_interact_with_selectable(ctx, response, item)
+}
+
+pub fn data_source_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    data_source: &re_smart_channel::SmartChannelSource,
+) -> egui::Response {
+    let item = Item::DataSource(data_source.clone());
+
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &icons::DATA_SOURCE,
+        data_source.to_string(),
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
+
+    let response = response.on_hover_ui(|ui| {
+        data_source.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),
+            ctx.recording_store(), // unused
+        );
+    });
+
+    cursor_interact_with_selectable(ctx, response, item)
+}
+
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+pub fn store_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    store_id: &re_log_types::StoreId,
+) {
+    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        entity_db_button_ui(ctx, ui, entity_db, true);
+    } else {
+        ui.label(store_id.to_string());
+    }
+}
+
+/// Show button for a store (recording or blueprint).
+///
+/// You can set `include_app_id` to hide the App Id, but usually you want to show it.
+///
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+pub fn entity_db_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_db: &re_entity_db::EntityDb,
+    include_app_id: bool,
+) {
+    use re_types_core::SizeBytes as _;
+    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+
+    let app_id_prefix = if include_app_id {
+        entity_db
+            .app_id()
+            .map_or(String::default(), |app_id| format!("{app_id} - "))
+    } else {
+        String::default()
+    };
+
+    let creation_time = entity_db
+        .store_info()
+        .and_then(|info| {
+            info.started
+                .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
+        })
+        .unwrap_or("<unknown time>".to_owned());
+
+    let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
+    let title = format!("{app_id_prefix}{creation_time} - {size}");
+
+    let store_id = entity_db.store_id().clone();
+    let item = re_viewer_context::Item::StoreId(store_id.clone());
+
+    let icon = match entity_db.store_kind() {
+        re_log_types::StoreKind::Recording => &icons::RECORDING,
+        re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
+    };
+
+    let mut list_item =
+        ctx.re_ui
+            .list_item(title)
+            .selected(ctx.selection().contains_item(&item))
+            .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                // Color icon based on whether this is the active recording or not:
+                let color = if ctx.store_context.is_active(&store_id) {
+                    visuals.fg_stroke.color
+                } else {
+                    ui.visuals().widgets.noninteractive.fg_stroke.color
+                };
+                icon.as_image().tint(color).paint_at(ui, rect);
+            })
+            .with_buttons(|re_ui, ui| {
+                // Close-button:
+                let resp = re_ui.small_icon_button(ui, &icons::REMOVE).on_hover_text(
+                    match store_id.kind {
+                        re_log_types::StoreKind::Recording => {
+                            "Close this recording (unsaved data will be lost)"
+                        }
+                        re_log_types::StoreKind::Blueprint => {
+                            "Close this blueprint (unsaved data will be lost)"
+                        }
+                    },
+                );
+                if resp.clicked() {
+                    ctx.command_sender
+                        .send_system(SystemCommand::CloseStore(store_id.clone()));
+                }
+                resp
+            });
+
+    if ctx.hovered().contains_item(&item) {
+        list_item = list_item.force_hovered(true);
+    }
+
+    let response = list_item.show_hierarchical(ui).on_hover_ui(|ui| {
+        entity_db.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),
+            entity_db.store(),
+        );
+    });
+
+    if response.hovered() {
+        ctx.selection_state().set_hovered(item.clone());
+    }
+
+    if response.clicked() {
+        // When we click on a recording, we directly activate it. This is safe to do because
+        // it's non-destructive and recordings are immutable. Switching back is easy.
+        // We don't do the same thing for blueprints as swapping them can be much more disruptive.
+        // It is much less obvious how to undo a blueprint switch and what happened to your original
+        // blueprint.
+        // TODO(jleibs): We should still have an `Activate this Blueprint` button in the selection panel
+        // for the blueprint.
+        if store_id.kind == re_log_types::StoreKind::Recording {
+            ctx.command_sender
+                .send_system(SystemCommand::ActivateRecording(store_id.clone()));
+        }
+
+        ctx.command_sender
+            .send_system(SystemCommand::SetSelection(item));
+    }
 }

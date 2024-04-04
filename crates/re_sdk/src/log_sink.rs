@@ -1,8 +1,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use parking_lot::RwLock;
-use re_log_types::LogMsg;
+use parking_lot::Mutex;
+use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static {
@@ -34,6 +34,35 @@ pub trait LogSink: Send + Sync + 'static {
     /// flush it for any reason (e.g. a broken TCP connection for a [`TcpSink`]).
     #[inline]
     fn drop_if_disconnected(&self) {}
+
+    /// Send a blueprint directly to the log-sink.
+    ///
+    /// This mirrors the behavior of [`crate::RecordingStream::send_blueprint`].
+    fn send_blueprint(&self, blueprint: Vec<LogMsg>, activation_cmd: BlueprintActivationCommand) {
+        let mut blueprint_id = None;
+        for msg in blueprint {
+            if blueprint_id.is_none() {
+                blueprint_id = Some(msg.store_id().clone());
+            }
+            self.send(msg);
+        }
+
+        if let Some(blueprint_id) = blueprint_id {
+            if blueprint_id == activation_cmd.blueprint_id {
+                // Let the viewer know that the blueprint has been fully received,
+                // and that it can now be activated.
+                // We don't want to activate half-loaded blueprints, because that can be confusing,
+                // and can also lead to problems with space-view heuristics.
+                self.send(activation_cmd.into());
+            } else {
+                re_log::warn!(
+                    "Blueprint ID mismatch when sending blueprint: {} != {}. Ignoring activation.",
+                    blueprint_id,
+                    activation_cmd.blueprint_id
+                );
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -121,34 +150,44 @@ impl LogSink for MemorySink {
 
     #[inline]
     fn flush_blocking(&self) {}
+
+    #[inline]
+    fn drain_backlog(&self) -> Vec<LogMsg> {
+        self.0.take()
+    }
 }
 
 impl fmt::Debug for MemorySink {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "MemorySink {{ {} messages }}",
-            self.buffer().read().len()
-        )
+        write!(f, "MemorySink {{ {} messages }}", self.buffer().num_msgs())
     }
+}
+
+#[derive(Default)]
+struct MemorySinkStorageInner {
+    msgs: Vec<LogMsg>,
+    has_been_used: bool,
 }
 
 /// The storage used by [`MemorySink`].
 #[derive(Default, Clone)]
 pub struct MemorySinkStorage {
-    msgs: Arc<RwLock<Vec<LogMsg>>>,
+    inner: Arc<Mutex<MemorySinkStorageInner>>,
     pub(crate) rec: Option<crate::RecordingStream>,
 }
 
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
-        for msg in self.msgs.read().iter() {
-            // Sinks intentionally end up with pending SetStoreInfo messages
-            // these are fine to drop safely. Anything else should produce a
-            // warning.
-            if !matches!(msg, LogMsg::SetStoreInfo(_)) {
-                re_log::warn!("Dropping data in MemorySink");
-                return;
+        let inner = self.inner.lock();
+        if !inner.has_been_used {
+            for msg in &inner.msgs {
+                // Sinks intentionally end up with pending SetStoreInfo messages
+                // these are fine to drop safely. Anything else should produce a
+                // warning.
+                if !matches!(msg, LogMsg::SetStoreInfo(_)) {
+                    re_log::warn!("Dropping data in MemorySink");
+                    return;
+                }
             }
         }
     }
@@ -157,20 +196,16 @@ impl Drop for MemorySinkStorage {
 impl MemorySinkStorage {
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
-    fn write(&self) -> parking_lot::RwLockWriteGuard<'_, Vec<LogMsg>> {
-        self.msgs.write()
-    }
-
-    /// Read access to the inner array of [`LogMsg`].
-    #[inline]
-    pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, Vec<LogMsg>> {
-        self.msgs.read()
+    fn write(&self) -> parking_lot::MappedMutexGuard<'_, Vec<LogMsg>> {
+        let mut inner = self.inner.lock();
+        inner.has_been_used = false;
+        parking_lot::MutexGuard::map(inner, |inner| &mut inner.msgs)
     }
 
     /// How many messages are currently written to this memory sink
     #[inline]
     pub fn num_msgs(&self) -> usize {
-        self.read().len()
+        self.inner.lock().msgs.len()
     }
 
     /// Consumes and returns the inner array of [`LogMsg`].
@@ -183,7 +218,7 @@ impl MemorySinkStorage {
             // in this flush; it's just a matter of making the table batcher tick early.
             rec.flush_blocking();
         }
-        std::mem::take(&mut *self.msgs.write())
+        std::mem::take(&mut (self.write()))
     }
 
     /// Convert the stored messages into an in-memory Rerun log file.
@@ -198,13 +233,24 @@ impl MemorySinkStorage {
             let mut encoder =
                 re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
             for sink in sinks {
-                for message in sink.read().iter() {
+                let mut inner = sink.inner.lock();
+                inner.has_been_used = true;
+
+                for message in &inner.msgs {
                     encoder.append(message)?;
                 }
             }
         }
 
         Ok(buffer.into_inner())
+    }
+
+    #[inline]
+    /// Get the [`StoreId`] from the associated `RecordingStream` if it exists.
+    pub fn store_id(&self) -> Option<StoreId> {
+        self.rec
+            .as_ref()
+            .and_then(|rec| rec.store_info().map(|info| info.store_id.clone()))
     }
 }
 // ----------------------------------------------------------------------------

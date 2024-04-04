@@ -18,11 +18,7 @@ __all__ = ["AutoLayout", "AutoLayoutArrayLike", "AutoLayoutBatch", "AutoLayoutLi
 
 @define(init=False)
 class AutoLayout(AutoLayoutExt):
-    """
-    **Component**: Whether the viewport layout is determined automatically.
-
-    Unstable. Used for the ongoing blueprint experimentations.
-    """
+    """**Component**: Whether the viewport layout is determined automatically."""
 
     def __init__(self: Any, auto_layout: AutoLayoutLike):
         """Create a new instance of the AutoLayout component."""

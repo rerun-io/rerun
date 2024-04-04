@@ -238,7 +238,7 @@ impl DataUi for MeshProperties {
             if let Some(indices) = self.indices.as_ref() {
                 ui.label(format!(
                     "{} triangles",
-                    re_format::format_number(indices.len() / 3)
+                    re_format::format_uint(indices.len() / 3)
                 ));
             } else {
                 ui.weak("(empty)");

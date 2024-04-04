@@ -201,7 +201,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
         // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
-        ctx.entity_db
+        ctx.recording()
             .tree()
             .visit_children_recursively(&mut |path, info| {
                 if info.components.contains_key(&ViewCoordinates::name()) {
@@ -212,7 +212,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.entity_db.store_id(), |topo| SpaceViewSpawnHeuristics {
+        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
             recommended_space_views: topo
                 .iter_subspaces()
                 .filter_map(|subspace| {
@@ -306,8 +306,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
 
         let scene_view_coordinates = ctx
-            .entity_db
-            .store()
+            .recording_store()
             .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
@@ -458,8 +457,8 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
 
 fn background_color_text(kind: Background3DKind) -> &'static str {
     match kind {
-        Background3DKind::GradientDark => "Dark Gradient",
-        Background3DKind::GradientBright => "Bright Gradient",
-        Background3DKind::SolidColor => "Solid Color",
+        Background3DKind::GradientDark => "Dark gradient",
+        Background3DKind::GradientBright => "Bright gradient",
+        Background3DKind::SolidColor => "Solid color",
     }
 }

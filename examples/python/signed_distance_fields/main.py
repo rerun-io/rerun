@@ -37,6 +37,7 @@ import mesh_to_sdf
 import numpy as np
 import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from trimesh import Trimesh
@@ -194,7 +195,20 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_signed_distance_fields")
+    rr.script_setup(
+        args,
+        "rerun_example_signed_distance_fields",
+        default_blueprint=rrb.Horizontal(
+            rrb.Vertical(
+                rrb.Horizontal(
+                    rrb.Spatial3DView(name="Input Mesh", origin="/world/mesh"),
+                    rrb.TensorView(name="SDF", origin="/tensor"),
+                ),
+                rrb.TextLogView(name="Execution Log"),
+            ),
+            rrb.Spatial3DView(name="Distance Field Samples", origin="/world/sdf"),
+        ),
+    )
 
     mesh_path = args.mesh_path
     if mesh_path is None:

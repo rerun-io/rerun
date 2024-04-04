@@ -34,27 +34,29 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
             .cloned()
             .collect();
 
-        ui.menu_button("Add to new Space View", |ui| {
-            let buttons_for_space_view_classes =
-                |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
-                    for (identifier, display_name) in space_view_classes
-                        .iter()
-                        .map(|identifier| {
-                            (
-                                identifier,
-                                space_view_class_registry
-                                    .get_class_or_log_error(identifier)
-                                    .display_name(),
-                            )
-                        })
-                        .sorted_by_key(|(_, display_name)| display_name.to_owned())
-                    {
-                        if ui.button(display_name).clicked() {
-                            create_space_view_for_selected_entities(ctx, *identifier);
-                            ui.close_menu();
-                        }
+        ui.menu_button("Add to new space view", |ui| {
+            let buttons_for_space_view_classes = |ui: &mut egui::Ui,
+                                                  space_view_classes: &IntSet<
+                SpaceViewClassIdentifier,
+            >| {
+                for (identifier, class) in space_view_classes
+                    .iter()
+                    .map(|identifier| {
+                        (
+                            identifier,
+                            space_view_class_registry.get_class_or_log_error(identifier),
+                        )
+                    })
+                    .sorted_by_key(|(_, class)| class.display_name().to_owned())
+                {
+                    let btn =
+                        egui::Button::image_and_text(class.icon().as_image(), class.display_name());
+                    if ui.add(btn).clicked() {
+                        create_space_view_for_selected_entities(ctx, *identifier);
+                        ui.close_menu();
                     }
-                };
+                }
+            };
 
             ui.label(egui::WidgetText::from("Recommended:").italics());
             if recommended_space_view_classes.is_empty() {
@@ -87,21 +89,21 @@ fn recommended_space_views_for_selection(
     let mut output: IntSet<SpaceViewClassIdentifier> = IntSet::default();
 
     let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
-    let entity_db = ctx.viewer_context.entity_db;
+    let recording = ctx.viewer_context.recording();
     let applicable_entities_per_visualizer =
-        space_view_class_registry.applicable_entities_for_visualizer_systems(entity_db.store_id());
+        space_view_class_registry.applicable_entities_for_visualizer_systems(recording.store_id());
 
     for entry in space_view_class_registry.iter_registry() {
         let Some(suggested_root) = entry
             .class
-            .recommended_root_for_entities(&entities_of_interest, entity_db)
+            .recommended_root_for_entities(&entities_of_interest, recording)
         else {
             continue;
         };
 
         let visualizable_entities = determine_visualizable_entities(
             &applicable_entities_per_visualizer,
-            entity_db,
+            recording,
             &space_view_class_registry.new_visualizer_collection(entry.identifier),
             &*entry.class,
             &suggested_root,
@@ -144,7 +146,7 @@ fn create_space_view_for_selected_entities(
         .viewer_context
         .space_view_class_registry
         .get_class_or_log_error(&identifier)
-        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.entity_db)
+        .recommended_root_for_entities(&entities_of_interest, ctx.viewer_context.recording())
         .unwrap_or_else(EntityPath::root);
 
     let mut filter = EntityPathFilter::default();

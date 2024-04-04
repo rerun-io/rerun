@@ -2,9 +2,9 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
-use re_viewer_context::{ContainerId, Item, ItemCollection, SpaceViewId, ViewerContext};
+use re_viewer_context::{ContainerId, Contents, Item, ItemCollection, SpaceViewId, ViewerContext};
 
-use crate::{ContainerBlueprint, Contents, ViewportBlueprint};
+use crate::{ContainerBlueprint, ViewportBlueprint};
 
 mod actions;
 mod sub_menu;
@@ -125,7 +125,7 @@ fn action_list(
                     ],
                 }),
                 Box::new(SubMenu {
-                    label: "Add Space View".to_owned(),
+                    label: "Add space view".to_owned(),
                     actions: ctx
                         .space_view_class_registry
                         .iter_registry()
@@ -301,6 +301,8 @@ trait ContextMenuAction {
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
         for (item, _) in ctx.selection.iter() {
             match item {
+                Item::AppId(app_id) => self.process_app_id(ctx, app_id),
+                Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
                     self.process_component_path(ctx, component_path);
@@ -313,6 +315,16 @@ trait ContextMenuAction {
                 Item::Container(container_id) => self.process_container(ctx, container_id),
             }
         }
+    }
+
+    fn process_app_id(&self, _ctx: &ContextMenuContext<'_>, _app_id: &re_log_types::ApplicationId) {
+    }
+
+    fn process_data_source(
+        &self,
+        _ctx: &ContextMenuContext<'_>,
+        _data_source: &re_smart_channel::SmartChannelSource,
+    ) {
     }
 
     /// Process a single recording.

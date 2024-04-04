@@ -32,7 +32,7 @@ pub(crate) use macros::autogen_warning; // Hack for declaring macros as `pub(cra
 // ---
 
 pub(crate) mod common;
-use self::common::{get_documentation, StringExt};
+use self::common::StringExt;
 
 mod cpp;
 mod docs;

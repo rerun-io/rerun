@@ -10,7 +10,7 @@
 #include <memory>
 
 namespace rerun::blueprint::components {
-    /// **Component**: The range of values that will be included in a Space View query.
+    /// **Component**: The range of values that will be included in a space view query.
     struct VisibleTimeRange {
         rerun::blueprint::datatypes::VisibleTimeRange value;
 
