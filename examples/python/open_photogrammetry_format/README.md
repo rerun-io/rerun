@@ -24,9 +24,9 @@ Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogramme
 
 # Background
 
-This example loads an Open Photogrammetry Format (OPF) project and displays the cameras and point cloud data. 
-OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data. 
-It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction. 
+This example loads an Open Photogrammetry Format (OPF) project and displays the cameras and point cloud data.
+OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data.
+It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction.
 
 # Logging and Visualizing with Rerun
 
@@ -46,7 +46,7 @@ Pinhole camera is utilized for achieving a 3D view and camera perspective throug
 
 ```python
 rr.log(
-    "world/cameras", 
+    "world/cameras",
     rr.Transform3D(translation=calib_camera.position, mat3x3=rot)
 )
 ```
@@ -83,7 +83,7 @@ rr.log("world/points", rr.Points3D(points.position, colors=points.color), timele
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -99,5 +99,5 @@ python examples/python/open_photogrammetry_format/main.py # run the example
 ```
 If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/open_photogrammetry_format/main.py --help 
+python examples/python/open_photogrammetry_format/main.py --help
 ```

@@ -22,9 +22,9 @@ Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, rad
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
 
 # Background
-This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving. 
-The scenes in this dataset encompass data collected from a comprehensive suite of sensors on autonomous vehicles. 
-These include 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors. 
+This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving.
+The scenes in this dataset encompass data collected from a comprehensive suite of sensors on autonomous vehicles.
+These include 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors.
 Consequently, the dataset provides information about the vehicle's pose, the images captured, the recorded sensor data and the results of object detection at any given moment.
 
 
@@ -113,7 +113,7 @@ rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotation
 # Run the Code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -129,5 +129,5 @@ python examples/python/nuscenes/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/nuscenes/main.py --help 
+python examples/python/nuscenes/main.py --help
 ```

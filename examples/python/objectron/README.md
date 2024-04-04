@@ -25,8 +25,8 @@ Visualize the [Google Research Objectron](https://github.com/google-research-dat
 
 # Background
 
-This example visualizes the Objectron database, a rich collection of object-centric video clips accompanied by AR session metadata. 
-With high-resolution images, object pose, camera pose, point-cloud, and surface plane information available for each sample, the visualization offers a comprehensive view of the object from various angles. 
+This example visualizes the Objectron database, a rich collection of object-centric video clips accompanied by AR session metadata.
+With high-resolution images, object pose, camera pose, point-cloud, and surface plane information available for each sample, the visualization offers a comprehensive view of the object from various angles.
 Additionally, the dataset provides manually annotated 3D bounding boxes, enabling precise object localization and orientation.
 
 # Logging and Visualizing with Rerun
@@ -97,7 +97,7 @@ rr.log(
 # Run the Code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -119,5 +119,5 @@ python examples/python/objectron/main.py --recording {bike,book,bottle,camera,ce
 
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/objectron/main.py --help 
+python examples/python/objectron/main.py --help
 ```

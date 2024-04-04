@@ -21,8 +21,8 @@ Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simpl
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d)
 
 # Background
-Raw 3D mesh data refers to the basic geometric representation of a three-dimensional object, typically composed of interconnected triangles. 
-These triangles collectively form the surface of the object, defining its shape and structure in a digital environment. 
+Raw 3D mesh data refers to the basic geometric representation of a three-dimensional object, typically composed of interconnected triangles.
+These triangles collectively form the surface of the object, defining its shape and structure in a digital environment.
 Rerun was employed to visualize and manage this raw mesh data, along with its associated simple material properties and transform hierarchy.
 
 
@@ -62,7 +62,7 @@ rr.log(
 # Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -82,5 +82,5 @@ python examples/python/objectron/main.py --scene {lantern,avocado,buggy,brain_st
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/raw_mesh/main.py --help 
+python examples/python/raw_mesh/main.py --help
 ```
