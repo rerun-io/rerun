@@ -6,7 +6,7 @@ order: 3
 This section talks about how to get data out of your application into Rerun.
 
 -   Streaming data from your code
-    -   [C++](./data-in/cpp.md)
     -   [Python](./data-in/python.md)
+    -   [C++](./data-in/cpp.md)
     -   [Rust](./data-in/rust.md)
 -   [Opening files](./data-in/open-any-file.md)
