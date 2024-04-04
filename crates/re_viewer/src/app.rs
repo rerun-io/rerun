@@ -1320,6 +1320,22 @@ impl eframe::App for App {
                 .add(egui_ctx.input(|i| i.time), seconds);
         }
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
+            let back_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
+            let fwd_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
+
+            if back_pressed {
+                crate::web_tools::go_back();
+            }
+            if fwd_pressed {
+                crate::web_tools::go_forward();
+            }
+        }
+
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
         let mut store_hub = self.store_hub.take().unwrap();
 
