@@ -533,7 +533,7 @@ fn check_for_clicked_hyperlinks(
 }
 
 pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
-    (0.35 * screen_width).min(280.0).round()
+    (0.35 * screen_width).min(200.0).round()
 }
 
 pub fn default_selection_panel_width(screen_width: f32) -> f32 {
