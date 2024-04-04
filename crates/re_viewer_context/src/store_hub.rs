@@ -45,8 +45,11 @@ pub struct StoreHub {
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
     was_recording_active: bool,
 
-    // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
+    /// The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
+
+    /// The [`StoreGeneration`] from when the [`EntityDb`] was last garbage collected
+    blueprint_last_gc: HashMap<StoreId, StoreGeneration>,
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -128,6 +131,7 @@ impl StoreHub {
             was_recording_active: false,
 
             blueprint_last_save: Default::default(),
+            blueprint_last_gc: Default::default(),
         }
     }
 
@@ -547,9 +551,16 @@ impl StoreHub {
                 .chain(self.default_blueprint_by_app_id.values())
             {
                 if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
+                    if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
+                        continue; // no change since last gc
+                    }
+
                     // TODO(jleibs): Decide a better tuning for this. Would like to save a
                     // reasonable amount of history, or incremental snapshots.
                     blueprint.gc_everything_but_the_latest_row();
+
+                    self.blueprint_last_gc
+                        .insert(blueprint_id.clone(), blueprint.generation());
                 }
             }
         }
@@ -579,6 +590,8 @@ impl StoreHub {
 
             if app_options.blueprint_gc {
                 blueprint.gc_everything_but_the_latest_row();
+                self.blueprint_last_gc
+                    .insert(blueprint_id.clone(), blueprint.generation());
             }
 
             if let Some(saver) = &self.persistence.saver {
