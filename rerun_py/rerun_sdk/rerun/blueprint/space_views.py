@@ -29,7 +29,7 @@ class BarChartView(SpaceView):
             The name of the view.
 
         """
-        super().__init__(class_identifier="Bar Chart", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="BarChart", origin=origin, contents=contents, name=name)
 
 
 class Spatial2DView(SpaceView):
@@ -141,7 +141,7 @@ class TextDocumentView(SpaceView):
             The name of the view.
 
         """
-        super().__init__(class_identifier="Text Document", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="TextDocument", origin=origin, contents=contents, name=name)
 
 
 class TextLogView(SpaceView):
@@ -197,4 +197,4 @@ class TimeSeriesView(SpaceView):
             The name of the view.
 
         """
-        super().__init__(class_identifier="Time Series", origin=origin, contents=contents, name=name)
+        super().__init__(class_identifier="TimeSeries", origin=origin, contents=contents, name=name)

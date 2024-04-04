@@ -32,6 +32,7 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 examples = [
   "ros_node",
   "nuscenes",
+  "kiss-icp",
   "live_depth_sensor",
   "lidar",
   "rrt-star",
@@ -78,6 +79,7 @@ SLAM, photogrammetry and other 3D modelling examples.
 examples = [
   "structure_from_motion",
   "open_photogrammetry_format",
+  "kiss-icp",
   "differentiable_blocks_world",
   "signed_distance_fields",
   "raw_mesh",

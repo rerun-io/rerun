@@ -1,6 +1,6 @@
 ---
 title: Configure the Viewer
-order: 10
+order: 5
 ---
 
 Although the Rerun Viewer tries to do a reasonable job of using heuristics to automatically determine
@@ -20,6 +20,4 @@ There are a few different ways to work with Blueprints:
 
 -   [Blueprints can be modified interactively](./configure-the-viewer/interactively.md)
 -   [Blueprint files (.rbl) can be saved and loaded from disk](./configure-the-viewer/save-and-load.md)
--   [Blueprints can be controlled directly from code](./configure-the-viewer/through-code.md)
-
-For a hands on example, you can also follow the [Blueprint API Tutorial](./configure-the-viewer/blueprint-api-tutorial.md).
+-   [Blueprints can be controlled directly from code](./configure-the-viewer/through-code-tutorial.md)

@@ -19,10 +19,85 @@ build_args = ["--jpeg-quality=50"]
 
 Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
+# Used Rerun Types
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
-```bash
-pip install -r examples/python/open_photogrammetry_format/requirements.txt
-python examples/python/open_photogrammetry_format/main.py
+# Background
+
+This example loads an Open Photogrammetry Format (OPF) project and displays the cameras and point cloud data.
+OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data.
+It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction.
+
+# Logging and Visualizing with Rerun
+
+The visualizations in this example were created with the following Rerun code:
+
+## Timelines
+
+ For each processed frame, all data sent to Rerun is associated with specific time using [`timelines`](https://www.rerun.io/docs/concepts/timelines).
+
+```python
+rr.set_time_sequence("image", i)
 ```
 
-Requires Python 3.10 or higher because of [`pyopf`](https://pypi.org/project/pyopf/).
+## Video
+
+Pinhole camera is utilized for achieving a 3D view and camera perspective through the use of the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
+
+```python
+rr.log(
+    "world/cameras",
+    rr.Transform3D(translation=calib_camera.position, mat3x3=rot)
+)
+```
+
+```python
+rr.log(
+    "world/cameras/image",
+    rr.Pinhole(
+        resolution=sensor.image_size_px,
+        focal_length=calib_sensor.internals.focal_length_px,
+        principal_point=calib_sensor.internals.principal_point_px,
+        camera_xyz=rr.ViewCoordinates.RUB,
+    ),
+)
+```
+The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the `world/cameras/image/rgb` entity.
+```python
+rr.log("world/cameras/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
+```
+
+## Point Clouds
+
+Point clouds from the project are logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `world/points` entity.
+
+```python
+rr.log("world/points", rr.Points3D(points.position, colors=points.color), timeless=True)
+```
+
+
+# Run the Code
+
+
+> This example requires Python 3.10 or higher because of [`pyopf`](https://pypi.org/project/pyopf/).
+
+To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
+```bash
+# Setup
+pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+cd rerun
+git checkout latest  # Check out the commit matching the latest SDK release
+```
+Install the necessary libraries specified in the requirements file:
+```bash
+pip install -r examples/python/open_photogrammetry_format/requirements.txt
+```
+To experiment with the provided example, simply execute the main Python script:
+```bash
+python examples/python/open_photogrammetry_format/main.py # run the example
+```
+If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
+```bash
+python examples/python/open_photogrammetry_format/main.py --help
+```

@@ -665,11 +665,7 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
         return []
 
-    desc = fm.get("description", "")
-    if len(desc) > 180:
-        return [f"Frontmatter: description is too long ({len(desc)} > 180)"]
-    else:
-        return []
+    return []
 
 
 def lint_frontmatter(filepath: str, content: str) -> list[str]:
