@@ -13,7 +13,7 @@ use re_types::blueprint::{
     components::VisibleTimeRange,
     datatypes::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind},
 };
-use re_viewer_context::{SpaceViewClassIdentifier, ViewerContext};
+use re_viewer_context::ViewerContext;
 
 pub fn time_range_boundary_to_visible_history_boundary(
     boundary: &VisibleTimeRangeBoundary,
@@ -101,14 +101,5 @@ pub fn query_visual_history(
             nanos: VisibleHistory::default(),
             sequences: VisibleHistory::default(),
         }
-    }
-}
-
-// TODO(#4194): this should come from delegation to the space-view-class
-pub fn default_time_range(class_identifier: SpaceViewClassIdentifier) -> VisibleTimeRange {
-    if class_identifier == "Time Series" {
-        VisibleTimeRange::EVERYTHING.clone()
-    } else {
-        VisibleTimeRange::EMPTY.clone()
     }
 }

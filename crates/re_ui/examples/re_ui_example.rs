@@ -1,4 +1,4 @@
-use re_ui::list_item::ListItem;
+use re_ui::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.

@@ -301,6 +301,7 @@ trait ContextMenuAction {
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
         for (item, _) in ctx.selection.iter() {
             match item {
+                Item::AppId(app_id) => self.process_app_id(ctx, app_id),
                 Item::DataSource(data_source) => self.process_data_source(ctx, data_source),
                 Item::StoreId(store_id) => self.process_store_id(ctx, store_id),
                 Item::ComponentPath(component_path) => {
@@ -314,6 +315,9 @@ trait ContextMenuAction {
                 Item::Container(container_id) => self.process_container(ctx, container_id),
             }
         }
+    }
+
+    fn process_app_id(&self, _ctx: &ContextMenuContext<'_>, _app_id: &re_log_types::ApplicationId) {
     }
 
     fn process_data_source(

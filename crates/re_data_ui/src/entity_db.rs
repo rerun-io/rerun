@@ -3,7 +3,7 @@ use re_log_types::StoreKind;
 use re_types::SizeBytes;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use crate::item_ui::data_source_button_ui;
+use crate::item_ui::{app_id_button_ui, data_source_button_ui};
 
 impl crate::DataUi for EntityDb {
     fn data_ui(
@@ -54,7 +54,7 @@ impl crate::DataUi for EntityDb {
                 }
 
                 re_ui.grid_left_hand_label(ui, "Application ID");
-                ui.label(application_id.to_string());
+                app_id_button_ui(ctx, ui, application_id);
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Source");
@@ -65,7 +65,7 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_kind.to_string());
                 ui.end_row();
 
-                re_ui.grid_left_hand_label(ui, "Recording started");
+                re_ui.grid_left_hand_label(ui, "Created");
                 ui.label(started.format(ctx.app_options.time_zone));
                 ui.end_row();
             }
@@ -73,7 +73,7 @@ impl crate::DataUi for EntityDb {
             if let Some(latest_row_id) = self.latest_row_id() {
                 if let Ok(nanos_since_epoch) = i64::try_from(latest_row_id.nanoseconds_since_epoch()) {
                     let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
-                    re_ui.grid_left_hand_label(ui, "Last modified at");
+                    re_ui.grid_left_hand_label(ui, "Modified");
                     ui.label(time.format(ctx.app_options.time_zone));
                     ui.end_row();
                 }

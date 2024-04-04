@@ -10,6 +10,9 @@ pub struct AppOptions {
     /// Show milliseconds, RAM usage, etc.
     pub show_metrics: bool,
 
+    /// Include the "Welcome screen" application in the recordings panel?
+    pub include_welcome_screen_button_in_recordings_panel: bool,
+
     /// Enable the experimental feature for space view screenshots.
     #[cfg(not(target_arch = "wasm32"))]
     pub experimental_space_view_screenshots: bool,
@@ -44,6 +47,8 @@ impl Default for AppOptions {
             warn_latency: 0.200,
 
             show_metrics: cfg!(debug_assertions),
+
+            include_welcome_screen_button_in_recordings_panel: true,
 
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,

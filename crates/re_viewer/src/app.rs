@@ -336,6 +336,14 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
+            SystemCommand::ActivateApp(app_id) => {
+                store_hub.set_active_app(app_id);
+            }
+
+            SystemCommand::CloseApp(app_id) => {
+                store_hub.close_app(&app_id);
+            }
+
             SystemCommand::ActivateRecording(store_id) => {
                 store_hub.set_activate_recording(store_id);
             }
@@ -361,6 +369,11 @@ impl App {
                     | SmartChannelSource::TcpServer { .. }
                     | SmartChannelSource::Stdin => true,
                 });
+            }
+
+            SystemCommand::ClearSourceAndItsStores(source) => {
+                self.rx.retain(|r| r.source() != &source);
+                store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
             }
 
             SystemCommand::AddReceiver(rx) => {
@@ -971,6 +984,11 @@ impl App {
                         StoreKind::Recording => {
                             re_log::debug!("Opening a new recording: {store_id}");
                             store_hub.set_active_recording_id(store_id.clone());
+
+                            // Also select the new recording:
+                            self.command_sender.send_system(SystemCommand::SetSelection(
+                                re_viewer_context::Item::StoreId(store_id.clone()),
+                            ));
                         }
                         StoreKind::Blueprint => {
                             // We wait with activating blueprints until they are fully loaded,
@@ -983,7 +1001,7 @@ impl App {
                 }
 
                 LogMsg::ArrowMsg(_, _) => {
-                    // Andled by EntityDb::add
+                    // Handled by `EntityDb::add`
                 }
 
                 LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
@@ -1007,6 +1025,7 @@ impl App {
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
+                                store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
                             }
                         } else {
                             re_log::warn!(

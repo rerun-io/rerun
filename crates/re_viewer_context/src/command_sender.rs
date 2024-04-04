@@ -7,8 +7,17 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Make this the active application.
+    ActivateApp(re_log_types::ApplicationId),
+
+    /// Close this app and all its recordings.
+    CloseApp(re_log_types::ApplicationId),
+
     /// Load some data.
     LoadDataSource(DataSource),
+
+    /// Clear everything that came from this source, and close the source.
+    ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
 
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 

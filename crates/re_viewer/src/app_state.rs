@@ -172,7 +172,7 @@ impl AppState {
                     }
                 }
 
-                viewport.is_item_valid(item)
+                viewport.is_item_valid(store_context, item)
             },
             re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
         );
@@ -336,7 +336,9 @@ impl AppState {
                         ..Default::default()
                     })
                     .min_width(120.0)
-                    .default_width((0.35 * ui.ctx().screen_rect().width()).min(200.0).round());
+                    .default_width(default_blueprint_panel_width(
+                        ui.ctx().screen_rect().width(),
+                    ));
 
                 let show_welcome =
                     store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
@@ -354,9 +356,11 @@ impl AppState {
                         // before drawing the blueprint panel.
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        let recording_shown = recordings_panel_ui(&ctx, rx, ui);
+                        let pre_cursor = ui.cursor();
+                        recordings_panel_ui(&ctx, rx, ui);
+                        let any_recording_shows = pre_cursor == ui.cursor();
 
-                        if recording_shown {
+                        if any_recording_shows {
                             ui.add_space(4.0);
                         }
 
@@ -528,4 +532,12 @@ fn check_for_clicked_hyperlinks(
             }
         }
     }
+}
+
+pub fn default_blueprint_panel_width(screen_width: f32) -> f32 {
+    (0.35 * screen_width).min(200.0).round()
+}
+
+pub fn default_selection_panel_width(screen_width: f32) -> f32 {
+    (0.45 * screen_width).min(300.0).round()
 }

@@ -56,8 +56,8 @@ impl StoreBundle {
         }
     }
 
-    pub fn remove(&mut self, id: &StoreId) {
-        self.entity_dbs.remove(id);
+    pub fn remove(&mut self, id: &StoreId) -> Option<EntityDb> {
+        self.entity_dbs.remove(id)
     }
 
     // --
@@ -134,16 +134,6 @@ impl StoreBundle {
             .filter(|log| log.store_kind() == StoreKind::Blueprint)
     }
 
-    /// All stores that came from the given source
-    pub fn entity_dbs_from_channel_source<'a>(
-        &'a self,
-        source: &'a re_smart_channel::SmartChannelSource,
-    ) -> impl Iterator<Item = &EntityDb> + 'a {
-        self.entity_dbs
-            .values()
-            .filter(move |db| db.data_source.as_ref() == Some(source))
-    }
-
     // --
 
     pub fn retain(&mut self, mut f: impl FnMut(&EntityDb) -> bool) {
@@ -154,6 +144,7 @@ impl StoreBundle {
         self.entity_dbs.retain(|_, entity_db| !entity_db.is_empty());
     }
 
+    /// In no particular order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
         self.entity_dbs.drain().map(|(_, store)| store)
     }

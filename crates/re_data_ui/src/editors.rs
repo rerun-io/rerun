@@ -270,7 +270,7 @@ fn edit_marker_shape_ui(
             );
 
             for marker in MarkerShape::ALL {
-                let list_item = re_ui::list_item::ListItem::new(ctx.re_ui, marker.to_string())
+                let list_item = re_ui::ListItem::new(ctx.re_ui, marker.to_string())
                     .with_icon_fn(|_re_ui, ui, rect, visuals| {
                         paint_marker(ui, marker.into(), rect, visuals.text_color());
                     })

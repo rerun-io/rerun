@@ -62,7 +62,8 @@ impl DataUi for ViewCoordinates {
     ) {
         match verbosity {
             UiVerbosity::Small => {
-                ui.label(format!("ViewCoordinates: {}", self.describe()));
+                ui.label(self.describe_short())
+                    .on_hover_text(self.describe());
             }
             UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 ui.label(self.describe());
