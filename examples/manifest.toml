@@ -91,7 +91,14 @@ title = "Integrations"
 prelude = """
 Integration with 3rd party tools, formats, libraries, and APIs.
 """
-examples = ["ros_node", "vrs", "eigen_opencv", "dicom_mri", "blueprint_stocks"]
+examples = [
+    "ros_node",
+    "vrs",
+    "eigen_opencv",
+    "dicom_mri",
+    "blueprint_stocks",
+    "arflow",
+]
 
 [categories.feature-showcase]
 order = 7
