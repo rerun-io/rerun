@@ -176,6 +176,10 @@ impl StoreHub {
             .as_ref()
             .and_then(|id| self.store_bundle.get(id));
 
+        if recording.is_none() {
+            self.active_rec_id = None;
+        }
+
         Some(StoreContext {
             app_id,
             blueprint,
@@ -230,6 +234,10 @@ impl StoreHub {
                 self.active_rec_id = None;
             }
         }
+    }
+
+    pub fn retain(&mut self, f: impl FnMut(&EntityDb) -> bool) {
+        self.store_bundle.retain(f);
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
