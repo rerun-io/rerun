@@ -365,6 +365,11 @@ impl StoreHub {
         self.default_blueprint_by_app_id.get(app_id)
     }
 
+    pub fn default_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
+        self.default_blueprint_id_for_app(app_id)
+            .and_then(|id| self.store_bundle.get(id))
+    }
+
     /// Change which blueprint is the default for a given [`ApplicationId`]
     #[inline]
     pub fn set_default_blueprint_for_app(
@@ -395,6 +400,11 @@ impl StoreHub {
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
         self.active_blueprint_by_app_id.get(app_id)
+    }
+
+    pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
+        self.active_blueprint_id_for_app(app_id)
+            .and_then(|id| self.store_bundle.get(id))
     }
 
     /// Make blueprint active for a given [`ApplicationId`]

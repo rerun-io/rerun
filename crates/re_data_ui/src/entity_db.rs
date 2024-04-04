@@ -120,9 +120,8 @@ impl crate::DataUi for EntityDb {
                             ui.add_space(8.0);
                             ui.label("This is the default blueprint for the current application.");
 
-                            if let Some(active_blueprint) = hub
-                                .active_blueprint_id_for_app(active_app_id)
-                                .and_then(|id| hub.store_bundle().get(id))
+                            if let Some(active_blueprint) =
+                                hub.active_blueprint_for_app(active_app_id)
                             {
                                 if active_blueprint.cloned_from() == Some(self.store_id()) {
                                     // The active blueprint is a clone of the selected blueprint.
