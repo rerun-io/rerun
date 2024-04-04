@@ -23,6 +23,10 @@ The solution here is mostly a toy example to show how ROS concepts can be mapped
 # Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)
 
+# Background
+The [Robot Operating System (ROS)](https://www.ros.org) helps build robot applications through software libraries and tools. 
+Although Rerun doesn't have native ROS support, you can easily create a basic ROS 2 Python node to subscribe to common ROS topics and log them to Rerun.
+In this example, Rerun visualizes simulation data, including robot pose, images, camera position, laser scans, point clouds, and velocities, as the [Turtlebot](http://wiki.ros.org/turtlebot3) navigates the environment.
 
 # Logging and Visualizing with Rerun
 
