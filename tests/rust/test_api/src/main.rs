@@ -478,9 +478,6 @@ enum Demo {
     #[value(name("rects"))]
     Rects,
 
-    #[value(name("2d_ordering"))]
-    TwoDOrdering,
-
     #[value(name("segmentation"))]
     Segmentation,
 
