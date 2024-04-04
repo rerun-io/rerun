@@ -581,9 +581,7 @@ impl ExampleDescLayout {
                 for tag in &self.desc.tags {
                     ui.add(
                         egui::Button::new(
-                            egui::RichText::new(tag)
-                                .text_style(re_ui::ReUi::welcome_screen_tag())
-                                .strong(),
+                            egui::RichText::new(tag).text_style(re_ui::ReUi::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
                         .rounding(6.0)
