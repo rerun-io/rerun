@@ -607,7 +607,7 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// This uses [`ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -624,7 +624,7 @@ pub fn store_id_button_ui(
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
 ///
-/// This uses [`ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
