@@ -3,7 +3,7 @@ use re_log_types::StoreKind;
 use re_types::SizeBytes;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use crate::item_ui::data_source_button_ui;
+use crate::item_ui::{app_id_button_ui, data_source_button_ui};
 
 impl crate::DataUi for EntityDb {
     fn data_ui(
@@ -54,7 +54,7 @@ impl crate::DataUi for EntityDb {
                 }
 
                 re_ui.grid_left_hand_label(ui, "Application ID");
-                ui.label(application_id.to_string());
+                app_id_button_ui(ctx, ui, application_id);
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Source");

@@ -20,11 +20,14 @@ impl ContextMenuAction for CollapseExpandAllAction {
             .any(|(item, _)| self.supports_item(ctx, item))
     }
 
+    /// Do we have a context menu for this item?
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         // TODO(ab): in an ideal world, we'd check the fully expended/collapsed state of the item to
         // avoid showing a command that wouldn't have an effect but that's lots of added complexity.
         match item {
-            Item::DataSource(_) | Item::StoreId(_) | Item::ComponentPath(_) => false,
+            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) | Item::ComponentPath(_) => {
+                false
+            }
 
             Item::SpaceView(_) | Item::Container(_) | Item::InstancePath(_) => true,
 

@@ -335,6 +335,12 @@ fn options_menu_ui(
             .on_hover_text("Display timestamps in seconds since unix epoch");
     });
 
+    re_ui.checkbox(
+        ui,
+        &mut app_options.include_welcome_screen_button_in_recordings_panel,
+        "Show 'Welcome screen' button",
+    );
+
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");

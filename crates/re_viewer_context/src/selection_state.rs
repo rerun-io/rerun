@@ -358,13 +358,15 @@ impl ApplicationSelectionState {
             .hovered_previous_frame
             .iter_items()
             .any(|current| match current {
-                Item::DataSource(_)
+                Item::AppId(_)
+                | Item::DataSource(_)
                 | Item::StoreId(_)
                 | Item::SpaceView(_)
                 | Item::Container(_) => current == test,
 
                 Item::ComponentPath(component_path) => match test {
-                    Item::DataSource(_)
+                    Item::AppId(_)
+                    | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::SpaceView(_)
                     | Item::Container(_) => false,
@@ -383,7 +385,8 @@ impl ApplicationSelectionState {
                 },
 
                 Item::InstancePath(current_instance_path) => match test {
-                    Item::DataSource(_)
+                    Item::AppId(_)
+                    | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
@@ -400,7 +403,8 @@ impl ApplicationSelectionState {
                 },
 
                 Item::DataResult(_current_space_view_id, current_instance_path) => match test {
-                    Item::DataSource(_)
+                    Item::AppId(_)
+                    | Item::DataSource(_)
                     | Item::StoreId(_)
                     | Item::ComponentPath(_)
                     | Item::SpaceView(_)
