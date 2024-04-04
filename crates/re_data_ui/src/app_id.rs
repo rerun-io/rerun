@@ -93,7 +93,7 @@ impl crate::DataUi for ApplicationId {
 
         if ui.add(egui::Button::image_and_text(
                 re_ui::icons::RESET.as_image(),
-                "Reset active and default blueprint",
+                "Reset to heuristic blueprint",
             )).on_hover_text("Clear both active and default blueprint, and auto-generate a new blueprint based on heuristics").clicked() {
                 ctx.command_sender
                     .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
