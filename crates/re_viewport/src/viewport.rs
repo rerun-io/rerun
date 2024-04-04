@@ -542,8 +542,12 @@ impl<'a, 'b> Viewport<'a, 'b> {
 
     /// If `false`, the item is referring to data that is not present in this blueprint.
     #[inline]
-    pub fn is_item_valid(&self, item: &Item) -> bool {
-        self.blueprint.is_item_valid(item)
+    pub fn is_item_valid(
+        &self,
+        store_context: &re_viewer_context::StoreContext<'_>,
+        item: &Item,
+    ) -> bool {
+        self.blueprint.is_item_valid(store_context, item)
     }
 }
 

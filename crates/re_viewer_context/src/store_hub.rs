@@ -1,6 +1,7 @@
 use ahash::{HashMap, HashMapExt};
 
 use anyhow::Context as _;
+use itertools::Itertools as _;
 
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
@@ -76,7 +77,7 @@ pub struct StoreHubStats {
 impl StoreHub {
     /// App ID used as a marker to display the welcome screen.
     pub fn welcome_screen_app_id() -> ApplicationId {
-        "<welcome screen>".into()
+        "Welcome screen".into()
     }
 
     /// Used only for tests
@@ -201,6 +202,26 @@ impl StoreHub {
     }
 
     pub fn remove(&mut self, store_id: &StoreId) {
+        let removed_store = self.store_bundle.remove(store_id);
+
+        let Some(removed_store) = removed_store else {
+            return;
+        };
+
+        if removed_store.store_kind() == StoreKind::Recording {
+            if let Some(app_id) = removed_store.app_id().cloned() {
+                let any_other_recordings_for_this_app = self
+                    .store_bundle
+                    .recordings()
+                    .any(|rec| rec.app_id() == Some(&app_id));
+
+                if !any_other_recordings_for_this_app {
+                    re_log::trace!("Removed last recording of {app_id}. Closing app.");
+                    self.close_app(&app_id);
+                }
+            }
+        }
+
         if self.active_rec_id.as_ref() == Some(store_id) {
             if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
                 self.set_active_recording_id(new_selection.clone());
@@ -209,14 +230,13 @@ impl StoreHub {
                 self.active_rec_id = None;
             }
         }
-
-        self.store_bundle.remove(store_id);
     }
 
-    /// Remove all open recordings, and go to the welcome page.
+    /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_recordings(&mut self) {
+        // Keep only the welcome screen:
         self.store_bundle
-            .retain(|db| db.store_kind() != StoreKind::Recording);
+            .retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
         self.active_rec_id = None;
         self.active_application_id = Some(Self::welcome_screen_app_id());
     }
@@ -225,6 +245,7 @@ impl StoreHub {
     // Active app
 
     /// Change the active [`ApplicationId`]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of a blueprint for this `ApplicationId` yet,
         // try to load one from the persisted store
@@ -234,7 +255,38 @@ impl StoreHub {
             }
         }
 
-        self.active_application_id = Some(app_id);
+        if self.active_application_id.as_ref() == Some(&app_id) {
+            return;
+        }
+
+        self.active_application_id = Some(app_id.clone());
+        self.active_rec_id = None;
+
+        // Find any matching recording and activate it
+        for rec in self
+            .store_bundle
+            .recordings()
+            .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
+        {
+            if rec.app_id() == Some(&app_id) {
+                self.active_rec_id = Some(rec.store_id().clone());
+                self.was_recording_active = true;
+                return;
+            }
+        }
+    }
+
+    /// Close this application and all its recordings.
+    pub fn close_app(&mut self, app_id: &ApplicationId) {
+        self.store_bundle.retain(|db| db.app_id() != Some(app_id));
+
+        if self.active_application_id.as_ref() == Some(app_id) {
+            self.active_application_id = None;
+            self.active_rec_id = None;
+        }
+
+        self.default_blueprint_by_app_id.remove(app_id);
+        self.active_blueprint_by_app_id.remove(app_id);
     }
 
     #[inline]
@@ -279,8 +331,9 @@ impl StoreHub {
             .get(&recording_id)
             .as_ref()
             .and_then(|recording| recording.app_id())
+            .cloned()
         {
-            self.set_active_app(app_id.clone());
+            self.set_active_app(app_id);
         }
 
         self.active_rec_id = Some(recording_id);

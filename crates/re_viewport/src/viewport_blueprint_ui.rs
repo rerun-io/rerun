@@ -95,6 +95,8 @@ impl Viewport<'_, '_> {
         focused_item: &Item,
     ) -> Option<Item> {
         match focused_item {
+            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => None,
+
             Item::Container(container_id) => {
                 self.expand_all_contents_until(ui.ctx(), &Contents::Container(*container_id));
                 Some(focused_item.clone())
@@ -142,8 +144,6 @@ impl Viewport<'_, '_> {
                     component_path.entity_path.clone(),
                 )),
             ),
-
-            Item::DataSource(_) | Item::StoreId(_) => None,
         }
     }
 

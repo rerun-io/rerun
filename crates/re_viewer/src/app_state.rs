@@ -172,7 +172,7 @@ impl AppState {
                     }
                 }
 
-                viewport.is_item_valid(item)
+                viewport.is_item_valid(store_context, item)
             },
             re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
         );
@@ -354,9 +354,11 @@ impl AppState {
                         // before drawing the blueprint panel.
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        let recording_shown = recordings_panel_ui(&ctx, rx, ui);
+                        let pre_cursor = ui.cursor();
+                        recordings_panel_ui(&ctx, rx, ui);
+                        let any_recording_shows = pre_cursor == ui.cursor();
 
-                        if recording_shown {
+                        if any_recording_shows {
                             ui.add_space(4.0);
                         }
 

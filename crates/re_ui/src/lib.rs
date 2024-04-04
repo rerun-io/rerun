@@ -13,13 +13,16 @@ pub mod list_item;
 pub mod modal;
 pub mod toasts;
 
-pub use command::{UICommand, UICommandSender};
-pub use command_palette::CommandPalette;
-pub use design_tokens::DesignTokens;
-pub use icons::Icon;
-pub use layout_job_builder::LayoutJobBuilder;
-pub use syntax_highlighting::SyntaxHighlighting;
-pub use toggle_switch::toggle_switch;
+pub use self::{
+    command::{UICommand, UICommandSender},
+    command_palette::CommandPalette,
+    design_tokens::DesignTokens,
+    icons::Icon,
+    layout_job_builder::LayoutJobBuilder,
+    list_item::ListItem,
+    syntax_highlighting::SyntaxHighlighting,
+    toggle_switch::toggle_switch,
+};
 
 // ---------------------------------------------------------------------------
 
@@ -62,10 +65,11 @@ pub enum LabelStyle {
 
 // ----------------------------------------------------------------------------
 
-use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
-use egui::epaint::util::FloatOrd;
-use egui::{pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2, Widget};
+use egui::{
+    epaint::util::FloatOrd, pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape,
+    Vec2, Widget,
+};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -538,7 +542,7 @@ impl ReUi {
     }
 
     /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
-    /// [`crate::list_item::ListItem`].
+    /// [`crate::ListItem`].
     pub fn list_item_popup<R>(
         ui: &egui::Ui,
         popup_id: egui::Id,
@@ -931,6 +935,8 @@ impl ReUi {
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
+    ///
+    /// You only need to use this if you expect the right side to have multi-line entries.
     #[allow(clippy::unused_self)]
     pub fn grid_left_hand_label(&self, ui: &mut egui::Ui, label: &str) -> egui::Response {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {

@@ -7,6 +7,12 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Make this the active application.
+    ActivateApp(re_log_types::ApplicationId),
+
+    /// Close this app and all its recordings.
+    CloseApp(re_log_types::ApplicationId),
+
     /// Load some data.
     LoadDataSource(DataSource),
 

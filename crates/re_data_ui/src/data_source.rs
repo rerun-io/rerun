@@ -28,7 +28,8 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         for other in ctx
             .store_context
             .bundle
-            .entity_dbs_from_channel_source(self)
+            .entity_dbs()
+            .filter(|db| db.data_source.as_ref() == Some(self))
         {
             let is_clone = other.cloned_from().is_some();
             if is_clone {
@@ -46,30 +47,28 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        if !recordings.is_empty() {
-            ui.add_space(8.0);
-            ui.strong("Recordings from this data source");
-            let max_rect = ui.max_rect();
-            ui.indent("recordings", |ui| {
-                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
-                ui.spacing_mut().item_spacing.y = 0.0;
+        recordings.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+        blueprints.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
+
+        ui.scope(|ui| {
+            ui.set_clip_rect(ui.max_rect()); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
+            ui.spacing_mut().item_spacing.y = 0.0;
+
+            if !recordings.is_empty() {
+                ui.add_space(8.0);
+                ui.strong("Recordings from this data source");
                 for entity_db in recordings {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
-            });
-        }
+            }
 
-        if !blueprints.is_empty() {
-            ui.add_space(8.0);
-            ui.strong("Blueprints from this data source");
-            let max_rect = ui.max_rect();
-            ui.indent("blueprints", |ui| {
-                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
-                ui.spacing_mut().item_spacing.y = 0.0;
+            if !blueprints.is_empty() {
+                ui.add_space(8.0);
+                ui.strong("Blueprints from this data source");
                 for entity_db in blueprints {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
-            });
-        }
+            }
+        });
     }
 }

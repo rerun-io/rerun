@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
-use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
@@ -551,6 +551,34 @@ pub fn entity_hover_card_ui(
     instance_hover_card_ui(ui, ctx, query, store, &instance_path);
 }
 
+pub fn app_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    app_id: &ApplicationId,
+) -> egui::Response {
+    let item = Item::AppId(app_id.clone());
+
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &icons::APPLICATION,
+        app_id.to_string(),
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
+
+    let response = response.on_hover_ui(|ui| {
+        app_id.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),  // unused
+            ctx.recording_store(), // unused
+        );
+    });
+
+    cursor_interact_with_selectable(ctx, response, item)
+}
+
 pub fn data_source_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -579,6 +607,7 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn store_id_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -594,6 +623,8 @@ pub fn store_id_button_ui(
 /// Show button for a store (recording or blueprint).
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
+///
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -666,17 +697,15 @@ pub fn entity_db_button_ui(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item
-        .show_flat(ui) // never more than one level deep
-        .on_hover_ui(|ui| {
-            entity_db.data_ui(
-                ctx,
-                ui,
-                re_viewer_context::UiVerbosity::Reduced,
-                &ctx.current_query(),
-                entity_db.store(),
-            );
-        });
+    let response = list_item.show_hierarchical(ui).on_hover_ui(|ui| {
+        entity_db.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),
+            entity_db.store(),
+        );
+    });
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
