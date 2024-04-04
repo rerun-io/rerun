@@ -106,17 +106,22 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     }
 
     if let Some(entity_dbs) = entity_dbs_map.remove(&StoreHub::welcome_screen_app_id()) {
-        // Always show welcome screen first:
-        debug_assert!(
-            entity_dbs.is_empty(),
-            "There shouldn't be any recording for the welcome screen, but there are!"
-        );
-        app_and_its_recordings_ui(
-            ctx,
-            ui,
-            &StoreHub::welcome_screen_app_id(),
-            Default::default(),
-        );
+        // Always show welcome screen first, if at all:
+        if ctx
+            .app_options
+            .include_welcome_screen_button_in_recordings_panel
+        {
+            debug_assert!(
+                entity_dbs.is_empty(),
+                "There shouldn't be any recording for the welcome screen, but there are!"
+            );
+            app_and_its_recordings_ui(
+                ctx,
+                ui,
+                &StoreHub::welcome_screen_app_id(),
+                Default::default(),
+            );
+        }
     }
 
     for (app_id, entity_dbs) in entity_dbs_map {
