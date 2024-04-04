@@ -69,7 +69,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
 
     fn identifier() -> SpaceViewClassIdentifier {
-        "Color Coordinates".into()
+        "ColorCoordinates".into()
     }
 
     fn display_name(&self) -> &'static str {
