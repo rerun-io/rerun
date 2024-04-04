@@ -371,6 +371,11 @@ impl App {
                 });
             }
 
+            SystemCommand::ClearSourceAndItsStores(source) => {
+                self.rx.retain(|r| r.source() != &source);
+                store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
+            }
+
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
                 self.add_receiver(rx);
