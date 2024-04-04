@@ -200,21 +200,6 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn colored_tensor<F: Fn(usize, usize) -> [u8; 3]>(
-    width: usize,
-    height: usize,
-    pos_to_color: F,
-) -> ndarray::Array3<u8> {
-    let pos_to_color = &pos_to_color; // lambda borrow workaround.
-    ndarray::Array3::from_shape_vec(
-        (height, width, 3),
-        (0..height)
-            .flat_map(|y| (0..width).flat_map(move |x| pos_to_color(x, y)))
-            .collect_vec(),
-    )
-    .unwrap()
-}
-
 fn test_segmentation(rec: &RecordingStream) -> anyhow::Result<()> {
     use rerun::{
         archetypes::{AnnotationContext, Points2D},
