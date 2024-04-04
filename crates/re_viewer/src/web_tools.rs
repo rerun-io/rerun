@@ -31,6 +31,28 @@ pub fn percent_encode(s: &str) -> String {
     format!("{}", js_sys::encode_uri_component(s))
 }
 
+pub fn go_back() -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+    history
+        .back()
+        .map_err(|err| format!("Failed to go back: {}", string_from_js_value(err)))
+        .ok_or_log_error()
+}
+
+pub fn go_forward() -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+    history
+        .forward()
+        .map_err(|err| format!("Failed to go forward: {}", string_from_js_value(err)))
+        .ok_or_log_error()
+}
+
 /// Push a relative url on the web `History`,
 /// so that the user can use the back button to navigate to it.
 ///
