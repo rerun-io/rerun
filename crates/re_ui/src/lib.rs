@@ -18,6 +18,7 @@ pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
+pub use list_item::ListItem;
 pub use syntax_highlighting::SyntaxHighlighting;
 pub use toggle_switch::toggle_switch;
 
