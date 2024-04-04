@@ -22,7 +22,7 @@ Visualise the results of the Generate Signed Distance Fields for arbitrary meshe
 
 # Background
 
-This example illustrates the visualization of the results obtained from generating Signed Distance Fields (SDFs) for arbitrary meshes using both traditional methods and the approach described in the DeepSDF paper. 
+This example illustrates the visualization of the results obtained from generating Signed Distance Fields (SDFs) for arbitrary meshes using both traditional methods and the approach described in the [DeepSDF paper](https://arxiv.org/abs/1901.05103). 
 DeepSDF introduces a learned continuous representation of shapes using SDFs, enabling high-quality shape representation, interpolation, and completion from partial and noisy 3D input data. 
 This novel approach offers improved performance and reduced model size compared to previous methods.
 The generated SDFs help with accurate 3D reconstruction and visualization.
@@ -71,7 +71,7 @@ rr.log("tensor", rr.Tensor(voxvol, dim_names=["width", "height", "depth"])) # Vi
 ```
 
 # Run the Code
-_Known issue_: On macOS, this example may present artefacts in the SDF and/or fail.
+> _Known issue_: On macOS, this example may present artefacts in the SDF and/or fail.
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
