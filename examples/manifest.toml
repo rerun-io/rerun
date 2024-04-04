@@ -35,6 +35,7 @@ examples = [
   "ros_node",
   "nuscenes",
   "kiss-icp",
+  "urdf_loader",
   "live_depth_sensor",
   "lidar",
   "rrt-star",
@@ -99,6 +100,7 @@ Integration with 3rd party tools, formats, libraries, and APIs.
 examples = [
   # display order, most interesting first
   "ros_node",
+  "urdf_loader",
   "vrs",
   "eigen_opencv",
   "dicom_mri",
