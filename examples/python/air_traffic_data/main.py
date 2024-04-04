@@ -191,9 +191,14 @@ def get_paths_for_directory(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.json"), key=natural_keys)
 
 
-def log_everything(paths: list[Path]) -> None:
+def log_everything(paths: list[Path], raw: bool) -> None:
     measurements = load_measurements(paths)
     utm_crs = find_best_utm_crs(measurements)
+
+    ignored_fields = [
+        "icao_id",  # already the entity's path
+        "timestamp",  # already the clock's value
+    ]
 
     proj = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
 
@@ -205,9 +210,19 @@ def log_everything(paths: list[Path]) -> None:
     rr.log("aircraft", rr.Transform3D(rr.TranslationRotationScale3D(scale=[1, 1, 10])), timeless=True)
 
     for measurement in tqdm(measurements, "Logging measurements"):
+        if measurement.icao_id is None:
+            continue
+
         rr.set_time_seconds("unix_time", measurement.timestamp)
 
-        metadata = rr.AnyValues(**dataclasses.asdict(measurement))
+        if raw:
+            metadata = dataclasses.asdict(measurement)
+        else:
+            metadata = dataclasses.asdict(
+                measurement,
+                dict_factory=lambda x: {k: v for (k, v) in x if k not in ignored_fields and v is not None},
+            )
+
         entity_path = f"aircraft/{measurement.icao_id}"
 
         if (
@@ -220,10 +235,10 @@ def log_everything(paths: list[Path]) -> None:
                 rr.Points3D(
                     [proj.transform(measurement.longitude, measurement.latitude, measurement.barometric_altitude)]
                 ),
-                metadata,
             )
-        else:
-            rr.log(entity_path, metadata)
+
+        if len(metadata) > 0:
+            rr.log(entity_path, rr.AnyValues(**metadata))
 
         if measurement.barometric_altitude is not None:
             rr.log(
@@ -239,6 +254,11 @@ def main() -> None:
         choices=INVOLI_DATASETS.keys(),
         default="10min",
         help="Which dataset to automatically download and visualize",
+    )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="If true, logs the raw data with all its issues (useful to stress edge cases in the viewer)",
     )
     parser.add_argument("--dir", type=Path, help="Use this directory of data instead of downloading a dataset")
     rr.script_add_args(parser)
@@ -260,7 +280,7 @@ def main() -> None:
     rr.script_setup(args, "rerun_example_air_traffic_data", default_blueprint=blueprint)
 
     paths = get_paths_for_directory(dataset_directory)
-    log_everything(paths)
+    log_everything(paths, args.raw)
 
 
 if __name__ == "__main__":
