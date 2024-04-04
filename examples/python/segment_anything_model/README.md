@@ -22,7 +22,7 @@ Visualize the output of [Meta AI's Segment Anything model](https://segment-anyth
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
 # Background
-This example showcases the impressive visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/). 
+This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/). 
 The visualization provided in this example demonstrates the precise and accurate segmentation capabilities of the model, effectively distinguishing each object from the background and creating a transparent mask around them. 
 
 # Logging and Visualizing with Rerun
