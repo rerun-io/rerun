@@ -26,6 +26,7 @@ Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/g
 
 The visualizations in this example were created with the following Rerun code:
 
+It logs 3D points, each associated with a specific color, forming a grid pattern using [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
  ```python
 import rerun as rr
 import numpy as np
