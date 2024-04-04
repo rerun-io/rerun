@@ -85,7 +85,7 @@ In the future, Rerun will offer a commercial product that builds on top of the c
 The Rerun open source project targets the needs of individual developers.
 The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
 
-## How to Cite Rerun
+## How to cite Rerun
 
 When using Rerun in your research, please cite it to acknowledge its contribution to your work. This can be done by
 including a reference to Rerun in the software or methods section of your paper.

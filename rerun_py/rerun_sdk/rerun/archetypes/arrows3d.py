@@ -21,7 +21,7 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     Example
     -------
-    ### Simple batch of 3D Arrows:
+    ### Simple batch of 3D arrows:
     ```python
     from math import tau
 

@@ -3,7 +3,7 @@ title: Blueprint
 order: 9
 ---
 
-## Blueprints and Recordings
+## Blueprints and recordings
 
 When you are working with the Rerun viewer, there are two separate pieces that
 combine to produce what you see: the "recording" and the "blueprint."

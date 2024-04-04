@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Hand Tracking and Gesture Recognition"
+title = "Hand tracking and gesture recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Hand Landmark and Gesture Detection solution to track hand and recognize gestures in images, video, and camera stream.."
 thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"
@@ -18,7 +18,7 @@ thumbnail_dimensions = [480, 480]
 Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
 track hands and recognize gestures in images, video, and camera stream.
 
-# Used Rerun Types
+# Used rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 # Background
@@ -30,7 +30,7 @@ Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are a few of
 In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Gesture and Hand Landmark Detection solutions were utilized to detect and track hand landmarks and recognize gestures.
 Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
 
 ## Timelines
@@ -51,7 +51,7 @@ rr.log(
 )
 ```
 
-## Hand Landmark Points
+## Hand landmark points
 Logging the hand landmarks involves specifying connections between the points, extracting pose landmark points and logging them to the Rerun SDK.
 The 2D points are visualized over the video and at a separate entity.
 Meanwhile, the 3D points allows the creation of a 3D model of the hand for a more comprehensive representation of the hand landmarks.
@@ -79,7 +79,6 @@ rr.log(
 rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, timeless=True)
 ```
 
-
 ### 2D Points
 
 ```python
@@ -98,7 +97,7 @@ for log_key in ["Media/Connections", "Hand/Connections"]:
     )
 ```
 
-### 3D Points
+### 3D points
 
 ```python
 rr.log(

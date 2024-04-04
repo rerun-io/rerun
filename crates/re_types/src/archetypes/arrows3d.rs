@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Simple batch of 3D Arrows
+/// ### Simple batch of 3D arrows
 /// ```ignore
 /// use std::f32::consts::TAU;
 ///

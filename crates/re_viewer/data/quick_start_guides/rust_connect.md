@@ -1,4 +1,4 @@
-# Rust Quick Start
+# Rust quick start
 
 ## Installing Rerun
 

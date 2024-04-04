@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Eigen and OpenCV C++ Integration"
+title = "Eigen and OpenCV C++ integration"
 source = "https://github.com/rerun-io/cpp-example-opencv-eigen"
 tags = ["2D", "3D", "C++", "Eigen", "OpenCV"]
 thumbnail = "https://static.rerun.io/eigen-and-opencv-c-integration/5d271725bb9215b55f53767c9dc0db980c73dade/480w.png"

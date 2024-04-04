@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Incremental Logging"
+title = "Incremental logging"
 tags = ["3D", "api-example"]
 description = "Showcases how to incrementally log data belonging to the same archetype."
 thumbnail = "https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/480w.png"

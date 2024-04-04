@@ -1,4 +1,4 @@
-# Rerun Rust Examples
+# Rerun Rust examples
 
 These are examples of how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/latest/crates/rerun) crate.
 

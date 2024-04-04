@@ -18,7 +18,7 @@ build_args = ["--seconds=5"]
 
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
-# Used Rerun Types
+# Used Rerun types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
 
 # Background
@@ -28,11 +28,11 @@ These include 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors.
 Consequently, the dataset provides information about the vehicle's pose, the images captured, the recorded sensor data and the results of object detection at any given moment.
 
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## Sensor Calibration
+## Sensor calibration
 
 First, pinhole cameras and sensor poses are initialized to offer a 3D view and camera perspective. This is achieved using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
 
@@ -70,7 +70,7 @@ rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
 ```
 
 
-## Vehicle Pose
+## Vehicle pose
 
 As the vehicle is moving, its pose needs to be updated. Consequently, the positions of pinhole cameras and sensors must also be adjusted using [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d).
 ```python
@@ -84,19 +84,19 @@ rr.log(
 )
 ```
 
-## LiDAR Data
+## LiDAR data
 LiDAR data is logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 ```
 
-## Camera Data
+## Camera data
 Camera data is logged as encoded images using [`ImageEncoded`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded).
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
 ```
 
-## Radar Data
+## Radar data
 Radar data is logged similar to LiDAR data, as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d).
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
@@ -110,7 +110,7 @@ rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotation
 ```
 
 
-# Run the Code
+# Run the code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

@@ -265,7 +265,7 @@ Once again, although we are getting fancier and fancier with our iterator mappin
 
 ## Animating the beads
 
-### Introducing Time
+### Introducing time
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/timelines.md).
 
@@ -322,7 +322,7 @@ You can add as many timelines and timestamps as you want when logging data.
 
 Enter…
 
-### Latest At semantics
+### Latest at semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the _default_ timeline (called `log_time`).
 To fix this, go back to the top of your main and initialize your timeline before logging the initial structure:

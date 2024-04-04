@@ -216,7 +216,7 @@ Once again, although we are getting fancier and fancier with our iterator mappin
 
 ## Animating the beads
 
-### Introducing Time
+### Introducing time
 
 Up until this point, we've completely set aside one of the core concepts of Rerun: [Time and Timelines](../../concepts/timelines.md).
 
@@ -274,7 +274,7 @@ You can add as many timelines and timestamps as you want when logging data.
 
 Enter…
 
-### Latest At semantics
+### Latest at semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the _default_ timeline (called `log_time`).
 To fix this, add this at the beginning of the main function:
@@ -341,7 +341,7 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ⚠️ [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
 
-### Spawning the Viewer from your process
+### Spawning the viewer from your process
 
 If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a viewer in a new process and connect to it over TCP.
 If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.

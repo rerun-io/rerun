@@ -30,7 +30,7 @@ Either way this includes both the SDK & the viewer and you're ready to go!
 
 Add the [Rerun crate](https://crates.io/crates/rerun) using `cargo add rerun`. You'll additionally need to install the Viewer, see [below](#installing-the-viewer).
 
-## Installing the Viewer
+## Installing the viewer
 
 The [Viewer](../reference/viewer/overview.md) can be installed independent of the library language you're using.
 Make sure that your library version matches the version of the Viewer you're using.
@@ -52,7 +52,7 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 The Rerun Viewer has built-in support for opening many kinds of files, and can be [extended to open any other file type](./data-in/open-any-file.md) without needing to modify the Rerun codebase itself.
 
-## Next Steps
+## Next steps
 
 To start getting your own data streamed to the viewer, check one of the respective getting started guides:
 

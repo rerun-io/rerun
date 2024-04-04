@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Human Pose Tracking"
+title = "Human pose tracking"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Pose solution to detect and track a human pose in video."
 thumbnail = "https://static.rerun.io/human-pose-tracking/5d62a38b48bed1467698d4dc95c1f9fba786d254/480w.png"
@@ -19,7 +19,7 @@ Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediap
 
 
 
-# Used Rerun Types
+# Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image)
 
 # Background
@@ -31,7 +31,7 @@ In this example, the [MediaPipe Pose Landmark Detection](https://developers.goog
 Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
 
 ## Timelines
@@ -53,7 +53,7 @@ rr.log(
 )
 ```
 
-## Segmentation Mask
+## Segmentation mask
 
 The segmentation result is logged through a combination of two archetypes. The segmentation
 image itself is logged as an
@@ -62,7 +62,7 @@ contains the id for each pixel. The color is determined by the
 [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
 logged with `timeless=True` as it should apply to the whole sequence.
 
-### Label Mapping
+### Label mapping
 
 ```python
 rr.log(
@@ -77,7 +77,7 @@ rr.log(
     )
 ```
 
-### Segmentation Image
+### Segmentation image
 
 ```python
 rr.log(
@@ -86,7 +86,7 @@ rr.log(
 )
 ```
 
-## Body Pose Points
+## Body pose points
 Logging the body pose landmarks involves specifying connections between the points, extracting pose landmark points and logging them to the Rerun SDK.
 The 2D points are visualized over the image/video for a better understanding and visualization of the body pose. The 3D points allows the creation of a 3D model of the body posture for a more comprehensive representation of the human pose.
 
@@ -99,7 +99,7 @@ Defining these connections automatically renders lines between them. Mediapipe p
 and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
 
-### Label Mapping and Keypoint Connections
+### Label mapping and keypoint connections
 
 ```python
 rr.log(
@@ -115,7 +115,7 @@ rr.log(
 )
 ```
 
-### 2D Points
+### 2D points
 
 ```python
 rr.log(
@@ -124,7 +124,7 @@ rr.log(
 )
 ```
 
-### 3D Points
+### 3D points
 
 ```python
 rr.log(
@@ -133,7 +133,7 @@ rr.log(
 )
 ```
 
-# Run the Code
+# Run the code
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash

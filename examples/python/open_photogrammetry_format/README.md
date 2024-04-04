@@ -19,7 +19,7 @@ build_args = ["--jpeg-quality=50"]
 
 Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
-# Used Rerun Types
+# Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
 # Background
@@ -28,7 +28,7 @@ This example loads an Open Photogrammetry Format (OPF) project and displays the 
 OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data.
 It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction.
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -67,7 +67,7 @@ The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/r
 rr.log("world/cameras/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
 ```
 
-## Point Clouds
+## Point clouds
 
 Point clouds from the project are logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `world/points` entity.
 
@@ -76,7 +76,7 @@ rr.log("world/points", rr.Points3D(points.position, colors=points.color), timele
 ```
 
 
-# Run the Code
+# Run the code
 
 
 > This example requires Python 3.10 or higher because of [`pyopf`](https://pypi.org/project/pyopf/).

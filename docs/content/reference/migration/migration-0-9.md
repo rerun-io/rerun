@@ -24,7 +24,7 @@ batch of size 1.
 
 For more information on the relationship between Archetypes, Components, and DataTypes, please see our guide to the [Rerun Data Model](../../concepts/entity-component.md).
 
-# Migrating Python Code
+# Migrating Python code
 
 All of the previous `log_*` functions have been marked as deprecated and will be removed in `0.10`. We have done our
 best to keep these functions working as thin wrappers on top of the new logging APIs, though there may be subtle
@@ -239,7 +239,7 @@ Notes:
 - Rather than providing `xyz` or `up` as strings, `rr.ViewCoordinates` exposes a large number of constants that can be logged directly. For example: `rr.ViewCoordinates.RDF` or `rr.ViewCoordinates.RIGHT_HAND_Z_DOWN)`
 
 
-# Migrating Rust Code
+# Migrating Rust code
 
 Rust already used a more type oriented interface, so the changes are not as drastic as to the Python API.
 
@@ -252,7 +252,7 @@ using its [`log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html
 
 The new `log` function logs time implicitly. `log_time` and `log_tick` are always included, as well as any custom timeline set using [`RecordingStream::set_timepoint`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_timepoint), or one of the shorthands [`RecordingStream::set_time_sequence`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_sequence)/[`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds)/[`RecordingStream::set_time_nanos`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_nanos)
 
-## Components -> Archetypes
+## Components -> archetypes
 
 The new log messages consume any type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait
 which is [implemented by](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html#implementors) all archetypes.
