@@ -11,7 +11,7 @@ import rerun.blueprint as rrb
 README = """
 # 2D Draw order
 
-This checks whether the draw order correctly determines the layering of 2d content.
+This checks whether the draw order correctly determines the layering of 2D content.
 
 ### Action
 You should see a single 2D space view with the following features:
