@@ -984,6 +984,13 @@ impl App {
                             self.command_sender.send_system(SystemCommand::SetSelection(
                                 re_viewer_context::Item::StoreId(store_id.clone()),
                             ));
+
+                            // If the viewer is in the background, tell the user that it has received something new.
+                            egui_ctx.send_viewport_cmd(
+                                egui::ViewportCommand::RequestUserAttention(
+                                    egui::UserAttentionType::Informational,
+                                ),
+                            );
                         }
                         StoreKind::Blueprint => {
                             // We wait with activating blueprints until they are fully loaded,
@@ -1021,6 +1028,13 @@ impl App {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
                                 store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
+
+                                // If the viewer is in the background, tell the user that it has received something new.
+                                egui_ctx.send_viewport_cmd(
+                                    egui::ViewportCommand::RequestUserAttention(
+                                        egui::UserAttentionType::Informational,
+                                    ),
+                                );
                             }
                         } else {
                             re_log::warn!(
