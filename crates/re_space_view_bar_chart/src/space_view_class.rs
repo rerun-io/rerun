@@ -19,7 +19,7 @@ impl SpaceViewClass for BarChartSpaceView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Bar Chart"
+        "Bar chart"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
