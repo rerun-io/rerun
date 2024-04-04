@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Face Tracking"
+title = "Face tracking"
 tags = ["2D", "3D", "camera", "face-tracking", "live", "mediapipe", "time-series"]
 thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f32fa1145c23b/480w.png"
 thumbnail_dimensions = [480, 480]

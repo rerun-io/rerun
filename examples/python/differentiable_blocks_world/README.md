@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Differentiable Blocks World: Qualitative 3D Decomposition by Rendering Primitives"
+title = "Differentiable blocks world: qualitative 3D decomposition by rendering primitives"
 source = "https://github.com/rerun-io/differentiable-blocksworld"
 tags = ["3D", "mesh", "pinhole-camera"]
 thumbnail = "https://static.rerun.io/differentiable-blocks/42f3a5481162a0e75f1c52ef1a12d4fedb35389e/480w.png"

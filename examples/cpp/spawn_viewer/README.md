@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Spawn Viewer"
+title = "Spawn viewer"
 tags = ["spawn"]
 -->
 

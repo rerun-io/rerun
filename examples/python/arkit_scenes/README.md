@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "ARKit Scenes"
+title = "ARKit scenes"
 tags = ["2D", "3D", "depth", "mesh", "object-detection", "pinhole-camera"]
 description = "This example visualizes the ARKitScenes dataset using Rerun. The dataset contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture."
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"

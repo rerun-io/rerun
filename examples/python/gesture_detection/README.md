@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Hand Tracking and Gesture Recognition"
+title = "Hand tracking and gesture recognition"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Gesture Detection solution to track hand and recognize gestures in image/video."
 thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"

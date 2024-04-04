@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Human Pose Tracking"
+title = "Human pose tracking"
 tags = ["mediapipe", "keypoint-detection", "2D", "3D"]
 description = "Use the MediaPipe Pose solution to detect and track a human pose in video."
 thumbnail = "https://static.rerun.io/human-pose-tracking/5d62a38b48bed1467698d4dc95c1f9fba786d254/480w.png"

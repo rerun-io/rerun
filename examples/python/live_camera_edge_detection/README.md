@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Live Camera Edge Detection"
+title = "Live camera edge detection"
 tags = ["2D", "canny", "live", "opencv"]
 thumbnail = "https://static.rerun.io/live-camera-edge-detection/f747bcf9ff3039c895f0bf0290e2dea0a72631ea/480w.png"
 thumbnail_dimensions = [480, 480]

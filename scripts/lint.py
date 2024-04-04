@@ -642,7 +642,7 @@ def fix_header_casing(s: str) -> str:
             continue
         if word.lower() in ("2d", "3d"):
             word = word.upper()
-        elif is_acronym_or_pascal_case(word) or any(c in ("-", "_", "(", ".") for c in word):
+        elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
             pass  # acroym, PascalCase, code, …
         elif i == 0:
             # First word:
@@ -670,6 +670,13 @@ def lint_markdown(lines_in: list[str]) -> tuple[list[str], list[str]]:
             if new_header != m.group(2):
                 errors.append(f"{line_nr}: Markdown headers should NOT be title cased. This should be '{new_header}'.")
                 line = m.group(1) + new_header + "\n"
+
+        # Check the casing on `title = "…"` frontmatter
+        if m := re.match(r'title\s*\=\s*"(.*)"', line):
+            new_title = fix_header_casing(m.group(1))
+            if new_title != m.group(1):
+                errors.append(f"{line_nr}: Titles should NOT be title cased. This should be '{new_title}'.")
+                line = f'title = "{new_title}"\n'
 
         lines_out.append(line)
 

@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Live Depth Sensor"
+title = "Live depth sensor"
 tags = ["2D", "3D", "live", "depth", "realsense"]
 thumbnail = "https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/480w.png"
 thumbnail_dimensions = [480, 360]

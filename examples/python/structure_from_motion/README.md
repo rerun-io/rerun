@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Structure from Motion"
+title = "Structure from motion"
 tags = ["2D", "3D", "colmap", "pinhole-camera", "time-series"]
 description = "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline."
 thumbnail = "https://static.rerun.io/structure-from-motion/af24e5e8961f46a9c10399dbc31b6611eea563b4/480w.png"
