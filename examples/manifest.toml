@@ -34,6 +34,7 @@ examples = [
   # display order, most interesting first
   "ros_node",
   "nuscenes",
+  "ros_bridge",
   "kiss-icp",
   "live_depth_sensor",
   "lidar",
@@ -99,6 +100,7 @@ Integration with 3rd party tools, formats, libraries, and APIs.
 examples = [
   # display order, most interesting first
   "ros_node",
+  "ros_bridge",
   "vrs",
   "eigen_opencv",
   "dicom_mri",
