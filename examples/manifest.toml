@@ -44,7 +44,7 @@ examples = [
 order = 3
 title = "Generative computer vision and LLMs"
 prelude = """
-Examples related to generative AI.
+Examples using generative AI methods like diffusion and LLMs.
 """
 examples = [
   "controlnet",
