@@ -41,8 +41,6 @@ impl WelcomeScreen {
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    //welcome_section_ui(ui);
-
                     self.example_page
                         .ui(ui, re_ui, command_sender, &welcome_section_ui);
                 });
