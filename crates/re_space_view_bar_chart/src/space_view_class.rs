@@ -15,7 +15,7 @@ pub struct BarChartSpaceView;
 
 impl SpaceViewClass for BarChartSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Bar Chart".into()
+        "BarChart".into()
     }
 
     fn display_name(&self) -> &'static str {
