@@ -11,9 +11,7 @@ import rerun.blueprint as rrb
 README = """
 # 2D Draw order
 
-This checks whether the heuristics do the right thing with mixed 2D and 3D data.
-
-Reset the blueprint to make sure you are viewing new heuristics and not a cached blueprint.
+This checks whether the draw order correctly determines the layering of 2d content.
 
 ### Action
 You should see a single 2D space view with the following features:
