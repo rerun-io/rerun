@@ -25,7 +25,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Simple batch of 2D Arrows
+    /// ### Simple batch of 2D arrows
     /// ![image](https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/full.png)
     ///
     /// ```cpp
