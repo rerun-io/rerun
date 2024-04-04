@@ -5,6 +5,7 @@ Runs custom linting on our code.
 
 Adding "NOLINT" to any line makes the linter ignore that line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -51,6 +52,36 @@ def is_valid_todo_part(part: str) -> bool:
         return True  # user-name
 
     return False
+
+
+def check_string(s: str) -> str | None:
+    """Check that the string has the correct casing."""
+    if len(s) == 0:
+        return None
+
+    bad_titles = [
+        "Blueprint",
+        "Class",
+        "Container",
+        "Entity",
+        "EntityPath",
+        "Epoch",
+        "Instance",
+        "Path",
+        "Recording",
+        "Result",
+        "Space",
+        "Store",
+        "View",
+        "Viewport",
+    ]
+
+    if m := re.search(r"[^.] ([A-Z]\w+)", s):
+        word = m.group(1)
+        if word in bad_titles:
+            return f"Do not use title casing ({word}). See https://github.com/rerun-io/rerun/blob/main/DESIGN.md"
+
+    return None
 
 
 def lint_line(
@@ -151,6 +182,10 @@ def lint_line(
     if explicit_quotes.search(line):
         return "Prefer using {:?} - it will also escape newlines etc"
 
+    if m := re.search(r'"([^"]*)"', line):
+        if err := check_string(m.group(1)):
+            return err
+
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
@@ -195,7 +230,7 @@ def test_lint_line() -> None:
         "hello world",
         "this is a 2D spaceview",
         "todo lowercase is fine",
-        'todo!("macro is ok with text")',
+        'todo!("Macro is ok with text")',
         "TODO_TOKEN",
         "TODO(bob):",
         "TODO(bob,alice):",
@@ -223,6 +258,7 @@ def test_lint_line() -> None:
         "instances_count",
         "let Some(foo) = bar else { return; };",
         "{foo:?}",
+        'ui.label("This is fine. Correct casing.")',
         "rec",
         "anyhow::Result<()>",
         "The theme is great",
@@ -300,6 +336,7 @@ def test_lint_line() -> None:
         r'println!("Problem: \"{}\"", string)',
         r'println!("Problem: \"{0}\"")',
         r'println!("Problem: \"{string}\"")',
+        'ui.label("This uses ugly title casing for Space View.")',
         "trailing whitespace ",
         "rr_stream",
         "rec_stream",
@@ -629,8 +666,8 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
         return []
 
     desc = fm.get("description", "")
-    if len(desc) > 130:
-        return [f"Frontmatter: description is too long ({len(desc)} > 130)"]
+    if len(desc) > 180:
+        return [f"Frontmatter: description is too long ({len(desc)} > 180)"]
     else:
         return []
 

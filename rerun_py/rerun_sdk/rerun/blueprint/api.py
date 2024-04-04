@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import itertools
 import uuid
-from typing import Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
-from ..recording import MemoryRecording
+from ..memory import MemoryRecording
+from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
@@ -76,9 +76,9 @@ class SpaceView:
 
     def to_container(self) -> Container:
         """Convert this space view to a container."""
-        from .containers import Grid
+        from .containers import Tabs
 
-        return Grid(self)
+        return Tabs(self)
 
     def to_blueprint(self) -> Blueprint:
         """Convert this space view to a full blueprint."""
@@ -103,11 +103,9 @@ class SpaceView:
 
         stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]
 
-    def _iter_space_views(self) -> Iterable[bytes]:
-        """Internal method to iterate over all of the space views in the blueprint."""
-        # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
-        # the entity-path lookup instead.
-        return [self.id.bytes]
+    def _repr_html_(self) -> Any:
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
 
 
 class Container:
@@ -223,11 +221,9 @@ class Container:
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-    def _iter_space_views(self) -> Iterable[bytes]:
-        """Internal method to iterate over all of the space views in the blueprint."""
-        # TODO(jleibs): This goes away when we get rid of `space_views` from the viewport and just use
-        # the entity-path lookup instead.
-        return itertools.chain.from_iterable(sub._iter_space_views() for sub in self.contents)
+    def _repr_html_(self) -> Any:
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
 
 
 class Panel:
@@ -346,6 +342,7 @@ class Blueprint:
         *parts: BlueprintPart,
         auto_layout: bool | None = None,
         auto_space_views: bool | None = None,
+        collapse_panels: bool = False,
     ):
         """
         Construct a new blueprint from the given parts.
@@ -357,10 +354,11 @@ class Blueprint:
         - [SelectionPanel][rerun.blueprint.SelectionPanel]
         - [TimePanel][rerun.blueprint.TimePanel]
 
-        It is an error to provide more than one of any type of part.
+        It is an error to provide more than one of instance of any of the panel types.
 
-        Blueprints only have a single top-level "root" container that defines the viewport. Any
-        other content should be nested under this container (or a nested sub-container).
+        Blueprints only have a single top-level "root" container that defines the viewport.
+        If you provide multiple `ContainerLike` instances, they will be combined under a single
+        root `Tab` container.
 
         Parameters
         ----------
@@ -369,19 +367,26 @@ class Blueprint:
         auto_layout:
             Whether to automatically layout the viewport. If `True`, the container layout will be
             reset whenever a new space view is added to the viewport. Defaults to `False`.
+            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+            If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
         auto_space_views:
             Whether to automatically add space views to the viewport. If `True`, the viewport will
-            automatically add space views based on content in the data store. Defaults to `False`.
+            automatically add space views based on content in the data store.
+            Defaults to `False` unless no Containers or SpaceViews are provided, in which case it defaults to `True`.
+            If you want to create a completely empty Blueprint, you must explicitly set this to `False`.
+        collapse_panels:
+            Whether to collapse the panels in the viewer. Defaults to `False`.
 
         """
+        from .containers import Tabs
+
+        self.collapse_panels = collapse_panels
+
+        contents: list[ContainerLike] = []
 
         for part in parts:
             if isinstance(part, (Container, SpaceView)):
-                if hasattr(self, "root_container"):
-                    raise ValueError(
-                        "Only one ContainerLike can be provided to serve as the root container for the viewport"
-                    )
-                self.root_container = part.to_container()
+                contents.append(part)
             elif isinstance(part, BlueprintPanel):
                 if hasattr(self, "blueprint_panel"):
                     raise ValueError("Only one blueprint panel can be provided")
@@ -397,8 +402,19 @@ class Blueprint:
             else:
                 raise ValueError(f"Unknown part type: {part}")
 
-        self.auto_layout = auto_layout
         self.auto_space_views = auto_space_views
+        self.auto_layout = auto_layout
+
+        if len(contents) == 0:
+            # If there's no content, switch `auto_layout` and `auto_space_views` defaults to `True`.
+            if self.auto_space_views is None:
+                self.auto_space_views = True
+            if self.auto_layout is None:
+                self.auto_layout = True
+        elif len(contents) == 1:
+            self.root_container = contents[0].to_container()
+        else:
+            self.root_container = Tabs(contents=contents)
 
     def to_blueprint(self) -> Blueprint:
         """Conform with the `BlueprintLike` interface."""
@@ -410,13 +426,10 @@ class Blueprint:
             self.root_container._log_to_stream(stream)
 
             root_container_id = self.root_container.id.bytes
-            space_views = list(self.root_container._iter_space_views())
         else:
             root_container_id = None
-            space_views = []
 
         viewport_arch = ViewportBlueprint(
-            space_views=space_views,
             root_container=root_container_id,
             auto_layout=self.auto_layout,
             auto_space_views=self.auto_space_views,
@@ -426,10 +439,52 @@ class Blueprint:
 
         if hasattr(self, "blueprint_panel"):
             self.blueprint_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            BlueprintPanel(expanded=False)._log_to_stream(stream)
+
         if hasattr(self, "selection_panel"):
             self.selection_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            SelectionPanel(expanded=False)._log_to_stream(stream)
+
         if hasattr(self, "time_panel"):
             self.time_panel._log_to_stream(stream)
+        elif self.collapse_panels:
+            TimePanel(expanded=False)._log_to_stream(stream)
+
+    def _repr_html_(self) -> Any:
+        """IPython interface to conversion to html."""
+        return as_html(blueprint=self)
+
+    def save(self, application_id: str, path: str | None = None) -> None:
+        """
+        Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
+
+        Parameters
+        ----------
+        application_id:
+            The application ID to use for this blueprint. This must match the application ID used
+            when initiating rerun for any data logging you wish to associate with this blueprint.
+        path
+            The path to save the blueprint to. Defaults to `<application_id>.rbl`.
+
+        """
+
+        if path is None:
+            path = f"{application_id}.rbl"
+
+        blueprint_file = RecordingStream(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            )
+        )
+        blueprint_file.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        self._log_to_stream(blueprint_file)
+
+        bindings.save_blueprint(path, blueprint_file.to_native())
 
 
 BlueprintLike = Union[Blueprint, SpaceView, Container]
@@ -453,6 +508,8 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
             application_id=application_id,
+            # Generate a new id every time so we don't append to overwrite previous blueprints.
+            blueprint_id=str(uuid.uuid4()),
             make_default=False,
             make_thread_default=False,
             default_enabled=True,

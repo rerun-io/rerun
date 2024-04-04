@@ -26,7 +26,8 @@ mod spawn;
 pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
-    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+    forced_sink_path, RecordingStream, RecordingStreamBuilder, RecordingStreamError,
+    RecordingStreamResult,
 };
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
@@ -174,6 +175,7 @@ pub fn new_store_info(
     re_log_types::StoreInfo {
         application_id: application_id.into(),
         store_id: StoreId::random(StoreKind::Recording),
+        cloned_from: None,
         is_official_example: called_from_official_rust_example(),
         started: re_log_types::Time::now(),
         store_source: re_log_types::StoreSource::RustSdk {

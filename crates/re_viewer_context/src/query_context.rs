@@ -17,6 +17,15 @@ slotmap::new_key_type! {
 pub struct DataQueryResult {
     /// The [`DataResultTree`] for the query
     pub tree: DataResultTree,
+
+    /// The number of entities that matched the query, including those that are not visualizable.
+    pub num_matching_entities: usize,
+
+    /// Of the matched queries, the number of entities that are visualizable by any given visualizer.
+    ///
+    /// This does *not* take into account the actual selection of visualizers
+    /// which may be an explicit none for any given entity.
+    pub num_visualized_entities: usize,
 }
 
 impl DataQueryResult {
@@ -38,6 +47,8 @@ impl Clone for DataQueryResult {
         re_tracing::profile_function!();
         Self {
             tree: self.tree.clone(),
+            num_matching_entities: self.num_matching_entities,
+            num_visualized_entities: self.num_visualized_entities,
         }
     }
 }

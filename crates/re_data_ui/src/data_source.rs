@@ -18,7 +18,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             return;
         }
 
-        // TODO(emilk): show if we're still connected to this data source
+        // TODO(emilk): show whether we're still connected to this data source
 
         // Find all stores from this data source
         // (e.g. find the recordings and blueprint in this .rrd file).
@@ -30,6 +30,12 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             .bundle
             .entity_dbs_from_channel_source(self)
         {
+            let is_clone = other.cloned_from().is_some();
+            if is_clone {
+                // Clones are not really from this data source (e.g. a cloned blueprint
+                continue;
+            }
+
             match other.store_kind() {
                 StoreKind::Recording => {
                     recordings.push(other);
@@ -40,20 +46,26 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
             }
         }
 
-        {
+        if !recordings.is_empty() {
             ui.add_space(8.0);
-            ui.strong("Recordings in this data source");
+            ui.strong("Recordings from this data source");
+            let max_rect = ui.max_rect();
             ui.indent("recordings", |ui| {
+                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
+                ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in recordings {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
             });
         }
 
-        {
+        if !blueprints.is_empty() {
             ui.add_space(8.0);
-            ui.strong("Blueprints in this data source");
+            ui.strong("Blueprints from this data source");
+            let max_rect = ui.max_rect();
             ui.indent("blueprints", |ui| {
+                ui.set_clip_rect(max_rect); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
+                ui.spacing_mut().item_spacing.y = 0.0;
                 for entity_db in blueprints {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }

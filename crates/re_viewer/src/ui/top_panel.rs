@@ -1,6 +1,6 @@
 use egui::NumExt as _;
 use itertools::Itertools;
-use re_format::format_number;
+use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::UICommand;
@@ -268,7 +268,7 @@ fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui:
             &mut blueprint_panel_expanded,
         )
         .on_hover_text(format!(
-            "Toggle Blueprint View{}",
+            "Toggle blueprint view{}",
             UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
         ))
         .clicked()
@@ -292,11 +292,9 @@ fn website_link_ui(ui: &mut egui::Ui) {
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(url);
     if response.clicked() {
-        ui.ctx().output_mut(|o| {
-            o.open_url = Some(egui::output::OpenUrl {
-                url: url.to_owned(),
-                new_tab: true,
-            });
+        ui.ctx().open_url(egui::output::OpenUrl {
+            url: url.to_owned(),
+            new_tab: true,
         });
     }
 }
@@ -363,10 +361,10 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
             "Rerun Viewer is using {} of RAM in {} separate allocations,\n\
             plus {} of GPU memory in {} textures and {} buffers.",
             bytes_used_text,
-            format_number(count.count),
+            format_uint(count.count),
             re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-            format_number(gpu_resource_stats.num_textures),
-            format_number(gpu_resource_stats.num_buffers),
+            format_uint(gpu_resource_stats.num_textures),
+            format_uint(gpu_resource_stats.num_buffers),
         ));
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);
@@ -376,8 +374,8 @@ fn memory_use_label_ui(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolS
                 plus {} of GPU memory in {} textures and {} buffers.",
                 bytes_used_text,
                 re_format::format_bytes(gpu_resource_stats.total_bytes() as _),
-                format_number(gpu_resource_stats.num_textures),
-                format_number(gpu_resource_stats.num_buffers),
+                format_uint(gpu_resource_stats.num_textures),
+                format_uint(gpu_resource_stats.num_buffers),
             ));
             ui.label(
                 "To get more accurate memory reportings, consider configuring your Rerun \n\
@@ -413,7 +411,7 @@ fn latency_ui(ui: &mut egui::Ui, app: &mut App, store_context: Option<&StoreCont
                 ui.label(format!(
                     "Queue latency: {}, length: {}",
                     latency_text(latency_sec),
-                    format_number(queue_len),
+                    format_uint(queue_len),
                 ));
 
                 ui.label(
@@ -476,7 +474,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
             let text = format!(
                 "Queue latency: {}, length: {}",
                 latency_text(latency_sec),
-                format_number(queue_len),
+                format_uint(queue_len),
             );
             let hover_text =
                     "When more data is arriving over network than the Rerun Viewer can ingest, a queue starts building up, leading to latency and increased RAM use.\n\
@@ -489,7 +487,7 @@ fn input_queue_latency_ui(ui: &mut egui::Ui, app: &mut App) {
                     .on_hover_text(hover_text);
             }
         } else {
-            ui.weak(format!("Queue: {}", format_number(queue_len)))
+            ui.weak(format!("Queue: {}", format_uint(queue_len)))
                 .on_hover_text("Number of messages in the inbound queue");
         }
     }

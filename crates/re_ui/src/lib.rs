@@ -115,11 +115,6 @@ impl ReUi {
     }
 
     #[inline]
-    pub fn welcome_screen_h3() -> egui::TextStyle {
-        egui::TextStyle::Name("welcome-screen-h3".into())
-    }
-
-    #[inline]
     pub fn welcome_screen_example_title() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-example-title".into())
     }
@@ -127,6 +122,11 @@ impl ReUi {
     #[inline]
     pub fn welcome_screen_body() -> egui::TextStyle {
         egui::TextStyle::Name("welcome-screen-body".into())
+    }
+
+    #[inline]
+    pub fn welcome_screen_tag() -> egui::TextStyle {
+        egui::TextStyle::Name("welcome-screen-tag".into())
     }
 
     pub fn welcome_screen_tab_bar_style(ui: &mut egui::Ui) {
@@ -349,11 +349,14 @@ impl ReUi {
 
     #[allow(clippy::unused_self)]
     pub fn small_icon_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
+        ui.add(self.small_icon_button_widget(ui, icon))
+    }
+
+    #[allow(clippy::unused_self)]
+    pub fn small_icon_button_widget(&self, ui: &egui::Ui, icon: &Icon) -> egui::ImageButton<'_> {
         // TODO(emilk): change color and size on hover
-        ui.add(
-            egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
-                .tint(ui.visuals().widgets.inactive.fg_stroke.color),
-        )
+        egui::ImageButton::new(icon.as_image().fit_to_exact_size(Self::small_icon_size()))
+            .tint(ui.visuals().widgets.inactive.fg_stroke.color)
     }
 
     #[allow(clippy::unused_self)]

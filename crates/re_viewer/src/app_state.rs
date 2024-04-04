@@ -8,12 +8,12 @@ use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyRes
 use re_viewer_context::{
     blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
     ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassRegistry, StoreContext,
-    SystemCommandSender as _, ViewerContext,
+    StoreHub, SystemCommandSender as _, ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint, ViewportState};
 
 use crate::ui::recordings_panel_ui;
-use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
+use crate::{app_blueprint::AppBlueprint, ui::blueprint_panel_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -43,6 +43,9 @@ pub struct AppState {
     #[serde(skip)]
     viewport_state: ViewportState,
 
+    /// Selection & hovering state.
+    pub selection_state: ApplicationSelectionState,
+
     /// Item that got focused on the last frame if any.
     ///
     /// The focused item is cleared every frame, but views may react with side-effects
@@ -63,6 +66,7 @@ impl Default for AppState {
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             welcome_screen: Default::default(),
             viewport_state: Default::default(),
+            selection_state: Default::default(),
             focused_item: Default::default(),
         }
     }
@@ -125,6 +129,7 @@ impl AppState {
             blueprint_panel,
             welcome_screen,
             viewport_state,
+            selection_state,
             focused_item,
         } = self;
 
@@ -149,7 +154,7 @@ impl AppState {
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            command_sender.send_system(re_viewer_context::SystemCommand::ResetBlueprint);
+            command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
             // The blueprint isn't valid so nothing past this is going to work properly.
             // we might as well return and it will get fixed on the next frame.
@@ -159,18 +164,21 @@ impl AppState {
             return;
         }
 
-        recording_config_entry(recording_configs, recording.store_id().clone(), recording)
-            .selection_state
-            .on_frame_start(
-                |item| viewport.is_item_valid(item),
-                re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
-            );
+        selection_state.on_frame_start(
+            |item| {
+                if let re_viewer_context::Item::StoreId(store_id) = item {
+                    if store_id.is_empty_recording() {
+                        return false;
+                    }
+                }
 
-        let rec_cfg =
-            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+                viewport.is_item_valid(item)
+            },
+            re_viewer_context::Item::StoreId(store_context.recording.store_id().clone()),
+        );
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            rec_cfg.selection_state.clear_selection();
+            selection_state.clear_selection();
         }
 
         let applicable_entities_per_visualizer = space_view_class_registry
@@ -208,6 +216,9 @@ impl AppState {
                 .collect::<_>()
         };
 
+        let rec_cfg =
+            recording_config_entry(recording_configs, recording.store_id().clone(), recording);
+
         let ctx = ViewerContext {
             app_options,
             cache,
@@ -219,6 +230,7 @@ impl AppState {
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
@@ -274,6 +286,7 @@ impl AppState {
             query_results: &query_results,
             rec_cfg,
             blueprint_cfg,
+            selection_state,
             blueprint_query: &blueprint_query,
             re_ui,
             render_ctx,
@@ -362,7 +375,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            welcome_screen.ui(ui, re_ui, rx, command_sender);
+                            welcome_screen.ui(ui, re_ui, command_sender);
                         } else {
                             viewport.viewport_ui(ui, &ctx);
                         }
@@ -412,7 +425,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, ctx.selection_state);
 
         // Reset the focused item.
         *focused_item = None;

@@ -5,17 +5,14 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
+    SystemCommandSender,
 };
 
-use crate::{
-    app_blueprint::AppBlueprint,
-    background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats},
-    AppState,
-};
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks, AppState};
 
 // ----------------------------------------------------------------------------
 
@@ -192,7 +189,7 @@ impl App {
             state.app_options(),
         ) {
             re_log::error!(
-                "Failed to populate Space View type registry with built-in Space Views: {}",
+                "Failed to populate space view type registry with built-in space views: {}",
                 err
             );
         }
@@ -234,7 +231,10 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new()),
+            store_hub: Some(StoreHub::new(
+                blueprint_loader(),
+                &crate::app_blueprint::setup_welcome_screen_blueprint,
+            )),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -336,11 +336,36 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
-            SystemCommand::ActivateStore(store_id) => {
-                store_hub.activate_store(store_id);
+            SystemCommand::ActivateRecording(store_id) => {
+                store_hub.set_activate_recording(store_id);
             }
+
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
+            }
+
+            SystemCommand::CloseAllRecordings => {
+                store_hub.clear_recordings();
+
+                // Stop receiving into the old recordings.
+                // This is most important when going back to the example screen by using the "Back"
+                // button in the browser, and there is still a connection downloading an .rrd.
+                // That's the case of `SmartChannelSource::RrdHttpStream`.
+                // TODO(emilk): exactly what things get kept and what gets cleared?
+                self.rx.retain(|r| match r.source() {
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+
+                    SmartChannelSource::WsClient { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::Stdin => true,
+                });
+            }
+
+            SystemCommand::AddReceiver(rx) => {
+                re_log::debug!("Received AddReceiver");
+                self.add_receiver(rx);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -365,17 +390,18 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadStoreDb(entity_db) => {
-                let store_id = entity_db.store_id().clone();
-                store_hub.insert_entity_db(entity_db);
-                store_hub.set_active_recording_id(store_id);
-            }
-
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
-            SystemCommand::ResetBlueprint => {
-                // By clearing the blueprint it will be re-populated with the defaults
+            SystemCommand::ClearAndGenerateBlueprint => {
+                re_log::debug!("Clear and generate new blueprint");
+                // By clearing the default blueprint and the active blueprint
+                // it will be re-generated based on the default auto behavior.
+                store_hub.clear_default_blueprint();
+                store_hub.clear_active_blueprint();
+            }
+            SystemCommand::ClearActiveBlueprint => {
+                // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
-                re_log::debug!("Reset blueprint");
+                re_log::debug!("Reset blueprint to default");
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
@@ -421,18 +447,8 @@ impl App {
                 }
             }
 
-            SystemCommand::SetSelection { recording_id, item } => {
-                let recording_id =
-                    recording_id.or_else(|| store_hub.active_recording_id().cloned());
-                if let Some(recording_id) = recording_id {
-                    if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
-                        rec_cfg.selection_state.set_selection(item);
-                    } else {
-                        re_log::debug!(
-                            "Failed to select item {item:?}: failed to find recording {recording_id}"
-                        );
-                    }
-                }
+            SystemCommand::SetSelection(item) => {
+                self.state.selection_state.set_selection(item);
             }
 
             SystemCommand::SetFocus(item) => {
@@ -496,6 +512,10 @@ impl App {
                         .send_system(SystemCommand::CloseStore(cur_rec.clone()));
                 }
             }
+            UICommand::CloseAllRecordings => {
+                self.command_sender
+                    .send_system(SystemCommand::CloseAllRecordings);
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => {
@@ -517,6 +537,10 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
+            UICommand::ClearAndGenerateBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearAndGenerateBlueprint);
+            }
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
@@ -571,22 +595,10 @@ impl App {
             }
 
             UICommand::SelectionPrevious => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_previous();
-                }
+                self.state.selection_state.select_previous();
             }
             UICommand::SelectionNext => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_next();
-                }
+                self.state.selection_state.select_next();
             }
             UICommand::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
@@ -723,26 +735,36 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let location = eframe::web::web_location();
-        let mut href = location.origin;
-        if location.host == "app.rerun.io" {
-            // links to `app.rerun.io` can be made into permanent links:
-            let path = if self.build_info.is_final() {
-                // final release, use version tag
-                format!("version/{}", self.build_info.version)
-            } else {
-                // not a final release, use commit hash
-                format!("commit/{}", self.build_info.short_git_hash())
-            };
-            href = format!("{href}/{path}");
-        }
+        let location = web_sys::window().unwrap().location();
+        let origin = location.origin().unwrap();
+        let host = location.host().unwrap();
+        let pathname = location.pathname().unwrap();
+
+        let hosted_viewer_path = if self.build_info.is_final() {
+            // final release, use version tag
+            format!("version/{}", self.build_info.version)
+        } else {
+            // not a final release, use commit hash
+            format!("commit/{}", self.build_info.short_git_hash())
+        };
+
+        // links to `app.rerun.io` can be made into permanent links:
+        let href = if host == "app.rerun.io" {
+            format!("https://app.rerun.io/{hosted_viewer_path}")
+        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
+            format!("https://rerun.io/viewer/{hosted_viewer_path}")
+        } else {
+            format!("{origin}{pathname}")
+        };
+
         let direct_link = match store_context
             .map(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
-            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}?url={url}"),
             _ => href,
         };
+
         self.re_ui
             .egui_ctx
             .output_mut(|o| o.copied_text = direct_link.clone());
@@ -842,19 +864,23 @@ impl App {
 
                 self.egui_debug_panel_ui(ui);
 
-                if let Some(store_view) = store_context {
-                    let entity_db = store_view.recording;
+                // TODO(andreas): store the re_renderer somewhere else.
+                let egui_renderer = {
+                    let render_state = frame.wgpu_render_state().unwrap();
+                    &mut render_state.renderer.write()
+                };
 
-                    // TODO(andreas): store the re_renderer somewhere else.
-                    let egui_renderer = {
-                        let render_state = frame.wgpu_render_state().unwrap();
-                        &mut render_state.renderer.write()
-                    };
-                    if let Some(render_ctx) = egui_renderer
-                        .callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
-                    {
-                        render_ctx.begin_frame();
+                if let Some(render_ctx) = egui_renderer
+                    .callback_resources
+                    .get_mut::<re_renderer::RenderContext>()
+                {
+                    // TODO(#5283): There's no great reason to do this if we have no store-view and
+                    // subsequently won't actually be rendering anything. However, doing this here
+                    // avoids a hang on linux. Consider moving this back inside the below `if let`.
+                    // once the upstream issues that fix the hang properly have been resolved.
+                    render_ctx.begin_frame();
+                    if let Some(store_view) = store_context {
+                        let entity_db = store_view.recording;
 
                         self.state.show(
                             app_blueprint,
@@ -868,15 +894,8 @@ impl App {
                             &self.rx,
                             &self.command_sender,
                         );
-
-                        render_ctx.before_submit();
                     }
-                } else {
-                    // There's nothing to show.
-                    // We get here when
-                    // A) there is nothing loaded
-                    // B) we decided not to show the welcome screen, presumably because data is expected at any time now.
-                    // The user can see the connection status in the top bar.
+                    render_ctx.before_submit();
                 }
             });
     }
@@ -967,25 +986,35 @@ impl App {
                     // Andled by EntityDb::add
                 }
 
-                LogMsg::ActivateStore(store_id) => {
-                    match store_id.kind {
-                        StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
-                            store_hub.set_active_recording_id(store_id.clone());
-                        }
-                        StoreKind::Blueprint => {
-                            if let Some(info) = entity_db.store_info() {
-                                re_log::debug!(
-                                    "Activating blueprint that was loaded from {channel_source}"
-                                );
-                                let app_id = info.application_id.clone();
-                                store_hub.set_blueprint_for_app_id(store_id.clone(), app_id);
-                            } else {
-                                re_log::warn!("Got ActivateStore message without first receiving a SetStoreInfo");
+                LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
+                    StoreKind::Recording => {
+                        re_log::debug!(
+                            "Unexpected `BlueprintActivationCommand` message for {store_id}"
+                        );
+                    }
+                    StoreKind::Blueprint => {
+                        if let Some(info) = entity_db.store_info() {
+                            re_log::debug!(
+                                "Activating blueprint that was loaded from {channel_source}"
+                            );
+                            let app_id = info.application_id.clone();
+                            if cmd.make_default {
+                                store_hub.set_default_blueprint_for_app(&app_id, store_id);
                             }
+                            if cmd.make_active {
+                                store_hub
+                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
+                                    .unwrap_or_else(|err| {
+                                        re_log::warn!("Failed to make blueprint active: {err}");
+                                    });
+                            }
+                        } else {
+                            re_log::warn!(
+                                "Got ActivateStore message without first receiving a SetStoreInfo"
+                            );
                         }
                     }
-                }
+                },
             }
 
             // Do analytics after ingesting the new message,
@@ -1127,7 +1156,7 @@ impl App {
     /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
-        if store_hub.active_recording().is_some() || store_hub.active_application_id().is_some() {
+        if store_hub.active_recording().is_some() || store_hub.active_app().is_some() {
             return false;
         }
 
@@ -1172,6 +1201,68 @@ impl App {
         }
 
         false
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn blueprint_loader() -> BlueprintPersistence {
+    // TODO(#2579): implement persistence for web
+    BlueprintPersistence {
+        loader: None,
+        saver: None,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn blueprint_loader() -> BlueprintPersistence {
+    use re_entity_db::StoreBundle;
+    use re_log_types::ApplicationId;
+
+    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+        if !blueprint_path.exists() {
+            return Ok(None);
+        }
+
+        re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+        let with_notifications = false;
+
+        if let Some(bundle) =
+            crate::loading::load_blueprint_file(&blueprint_path, with_notifications)
+        {
+            for store in bundle.entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint
+                    && !crate::blueprint::is_valid_blueprint(store)
+                {
+                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    return Ok(None);
+                }
+            }
+            Ok(Some(bundle))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+
+        let messages = blueprint.to_messages(None)?;
+
+        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+        Ok(())
+    }
+
+    BlueprintPersistence {
+        loader: Some(Box::new(load_blueprint_from_disk)),
+        saver: Some(Box::new(save_blueprint_to_disk)),
     }
 }
 
@@ -1292,7 +1383,7 @@ impl eframe::App for App {
         // Heuristic to set the app_id to the welcome screen blueprint.
         // Must be called before `read_context` below.
         if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_active_app_id(StoreHub::welcome_screen_app_id());
+            store_hub.set_active_app(StoreHub::welcome_screen_app_id());
         }
 
         let store_context = store_hub.read_context();

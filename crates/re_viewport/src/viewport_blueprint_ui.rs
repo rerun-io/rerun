@@ -5,7 +5,6 @@ use smallvec::SmallVec;
 
 use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
-use re_log_types::EntityPathRule;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item::ListItem, ReUi};
@@ -383,7 +382,7 @@ impl Viewport<'_, '_> {
         container_visible: bool,
     ) {
         let Some(space_view) = self.blueprint.space_views.get(space_view_id) else {
-            re_log::warn_once!("Bug: asked to show a ui for a Space View that doesn't exist");
+            re_log::warn_once!("Bug: asked to show a ui for a space view that doesn't exist");
             return;
         };
         debug_assert_eq!(space_view.id, *space_view_id);
@@ -418,7 +417,7 @@ impl Viewport<'_, '_> {
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, container_visible, &mut visible);
 
-                let response = remove_button_ui(re_ui, ui, "Remove Space View from the Viewport");
+                let response = remove_button_ui(re_ui, ui, "Remove space view from the viewport");
                 if response.clicked() {
                     self.blueprint.mark_user_interaction(ctx);
                     self.blueprint
@@ -464,7 +463,10 @@ impl Viewport<'_, '_> {
                         }
                     });
                     if !projections.is_empty() {
-                        ui.label(egui::RichText::new("Projections:").italics());
+                        ListItem::new(ctx.re_ui, "Projections:")
+                            .interactive(false)
+                            .italics(true)
+                            .show_flat(ui);
 
                         for projection in projections {
                             self.space_view_entity_hierarchy_ui(
@@ -481,7 +483,7 @@ impl Viewport<'_, '_> {
                 },
             );
 
-        response = response.on_hover_text("Space View");
+        response = response.on_hover_text("Space view");
 
         if response.clicked() {
             self.blueprint.focus_tab(space_view.id);
@@ -553,6 +555,7 @@ impl Viewport<'_, '_> {
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
         let visible = data_result_node.map_or(false, |n| n.data_result.is_visible(ctx));
+        let empty_origin = entity_path == &space_view.space_origin && data_result_node.is_none();
 
         let item_label = if entity_path.is_root() {
             "/ (root)".to_owned()
@@ -579,34 +582,43 @@ impl Viewport<'_, '_> {
             .subdued(subdued)
             .force_hovered(is_item_hovered)
             .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
-                let mut visible_after = visible;
-                let vis_response =
-                    visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
-                if visible_after != visible {
-                    if let Some(data_result_node) = data_result_node {
-                        data_result_node
-                            .data_result
-                            .save_recursive_override_or_clear_if_redundant(
-                                ctx,
-                                &query_result.tree,
-                                &Visible(visible_after),
-                            );
+                let vis_response = if !empty_origin {
+                    let mut visible_after = visible;
+                    let vis_response =
+                        visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
+                    if visible_after != visible {
+                        if let Some(data_result_node) = data_result_node {
+                            data_result_node
+                                .data_result
+                                .save_recursive_override_or_clear_if_redundant(
+                                    ctx,
+                                    &query_result.tree,
+                                    &Visible(visible_after),
+                                );
+                        }
                     }
-                }
 
-                let response = remove_button_ui(
+                    Some(vis_response)
+                } else {
+                    None
+                };
+
+                let mut response = remove_button_ui(
                     re_ui,
                     ui,
-                    "Remove Group and all its children from the Space View",
+                    "Remove group and all its children from the space view",
                 );
                 if response.clicked() {
-                    space_view.contents.add_entity_exclusion(
-                        ctx,
-                        EntityPathRule::including_subtree(entity_path.clone()),
-                    );
+                    space_view
+                        .contents
+                        .remove_subtree_and_matching_rules(ctx, entity_path.clone());
                 }
 
-                response | vis_response
+                if let Some(vis_response) = vis_response {
+                    response |= vis_response;
+                }
+
+                response
             });
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
@@ -656,6 +668,12 @@ impl Viewport<'_, '_> {
         let response = response.on_hover_ui(|ui| {
             let query = ctx.current_query();
             re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &query, store, entity_path);
+
+            if empty_origin {
+                ui.label(ctx.re_ui.warning_text(
+                    "This space view's query did not match any data under the space origin",
+                ));
+            }
         });
 
         context_menu_ui_for_item(
@@ -673,7 +691,7 @@ impl Viewport<'_, '_> {
         if ctx
             .re_ui
             .small_icon_button(ui, &re_ui::icons::ADD)
-            .on_hover_text("Add a new Space View or Container")
+            .on_hover_text("Add a new space view or container")
             .clicked()
         {
             // If a single container is selected, we use it as target. Otherwise, we target the

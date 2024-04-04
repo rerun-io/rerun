@@ -378,7 +378,7 @@ impl SpaceViewBlueprint {
                 .ui(ctx, ui, view_state, &props, query, system_output)
                 .unwrap_or_else(|err| {
                     re_log::error!(
-                        "Error in Space View UI (class: {}, display name: {}): {err}",
+                        "Error in space view UI (class: {}, display name: {}): {err}",
                         self.class_identifier,
                         class.display_name(),
                     );
@@ -554,6 +554,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -597,6 +598,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -646,6 +648,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
@@ -918,6 +921,7 @@ mod tests {
                 blueprint: &blueprint,
                 recording: &recording,
                 bundle: &Default::default(),
+                hub: &re_viewer_context::StoreHub::test_hub(),
             };
             let mut query_result = space_view
                 .contents

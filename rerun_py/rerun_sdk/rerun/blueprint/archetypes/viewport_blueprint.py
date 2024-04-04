@@ -24,7 +24,6 @@ class ViewportBlueprint(Archetype):
     def __init__(
         self: Any,
         *,
-        space_views: datatypes.UuidArrayLike | None = None,
         root_container: datatypes.UuidLike | None = None,
         maximized: datatypes.UuidLike | None = None,
         auto_layout: blueprint_components.AutoLayoutLike | None = None,
@@ -36,8 +35,6 @@ class ViewportBlueprint(Archetype):
 
         Parameters
         ----------
-        space_views:
-            All of the space-views that belong to the viewport.
         root_container:
             The layout of the space-views
         maximized:
@@ -66,7 +63,6 @@ class ViewportBlueprint(Archetype):
         # You can define your own __init__ function as a member of ViewportBlueprintExt in viewport_blueprint_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                space_views=space_views,
                 root_container=root_container,
                 maximized=maximized,
                 auto_layout=auto_layout,
@@ -79,7 +75,6 @@ class ViewportBlueprint(Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            space_views=None,  # type: ignore[arg-type]
             root_container=None,  # type: ignore[arg-type]
             maximized=None,  # type: ignore[arg-type]
             auto_layout=None,  # type: ignore[arg-type]
@@ -93,15 +88,6 @@ class ViewportBlueprint(Archetype):
         inst = cls.__new__(cls)
         inst.__attrs_clear__()
         return inst
-
-    space_views: blueprint_components.IncludedSpaceViewBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.IncludedSpaceViewBatch._optional,  # type: ignore[misc]
-    )
-    # All of the space-views that belong to the viewport.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
 
     root_container: blueprint_components.RootContainerBatch | None = field(
         metadata={"component": "optional"},

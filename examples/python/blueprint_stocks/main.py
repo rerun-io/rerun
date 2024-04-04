@@ -166,7 +166,8 @@ def main() -> None:
         else:
             blueprint = viewport
 
-    rr.script_setup(args, "rerun_example_blueprint_stocks", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_blueprint_stocks")
+    rr.send_blueprint(blueprint)
 
     # In a future blueprint release, this can move into the blueprint as well
     for symbol in symbols:
@@ -200,6 +201,8 @@ def main() -> None:
             close_time = dt.datetime.combine(day, dt.time(16, 00))
 
             hist = stock.history(start=open_time, end=close_time, interval="5m")
+            if len(hist.index) == 0:
+                continue
 
             hist.index = hist.index - et_timezone.localize(open_time)
             peak = hist.High.idxmax()

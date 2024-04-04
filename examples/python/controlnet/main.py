@@ -135,7 +135,7 @@ def main() -> None:
     rr.script_setup(
         args,
         "rerun_example_controlnet",
-        blueprint=rrb.Horizontal(
+        default_blueprint=rrb.Horizontal(
             rrb.Grid(
                 rrb.Spatial2DView(origin="input/raw"),
                 rrb.Spatial2DView(origin="input/canny"),

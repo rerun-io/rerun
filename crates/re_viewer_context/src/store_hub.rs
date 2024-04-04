@@ -1,14 +1,14 @@
 use ahash::{HashMap, HashMapExt};
 
+use anyhow::Context as _;
+
 use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
-use re_viewer_context::{AppOptions, StoreContext};
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
+use crate::{AppOptions, StoreContext};
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -17,11 +17,28 @@ use crate::{loading::load_blueprint_file, saving::default_blueprint_path};
 ///
 /// Internally, the [`StoreHub`] tracks which [`ApplicationId`] and `recording
 /// id` ([`StoreId`]) are currently active in the viewer. These can be configured
-/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app_id`] respectively.
+/// using [`StoreHub::set_active_recording_id`] and [`StoreHub::set_active_app`] respectively.
+///
+/// ## Blueprints
+/// For each [`ApplicationId`], the [`StoreHub`] also keeps track of two blueprints:
+/// * The active blueprint
+/// * The default blueprint
+///
+/// Either on of these can be `None`.
+///
+/// The active blueprint is what the user would see and edit, if they were to select that app id.
+/// If there is no active blueprint, the default will be cloned and made active.
+///
+/// The default blueprint is usually the blueprint set by the SDK.
+/// This lets users reset the active blueprint to the one sent by the SDK.
 pub struct StoreHub {
+    /// How we load and save blueprints.
+    persistence: BlueprintPersistence,
+
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
-    blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
@@ -29,6 +46,20 @@ pub struct StoreHub {
 
     // The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
+}
+
+/// Load a blueprint from persisted storage, e.g. disk.
+/// Returns `Ok(None)` if no blueprint is found.
+pub type BlueprintLoader =
+    dyn Fn(&ApplicationId) -> anyhow::Result<Option<StoreBundle>> + Send + Sync;
+
+/// Save a blueprint to persisted storage, e.g. disk.
+pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()> + Send + Sync;
+
+/// How to save and load blueprints
+pub struct BlueprintPersistence {
+    pub loader: Option<Box<BlueprintLoader>>,
+    pub saver: Option<Box<BlueprintSaver>>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -48,32 +79,49 @@ impl StoreHub {
         "<welcome screen>".into()
     }
 
+    /// Used only for tests
+    pub fn test_hub() -> Self {
+        Self::new(
+            BlueprintPersistence {
+                loader: None,
+                saver: None,
+            },
+            &|_| {},
+        )
+    }
+
     /// Create a new [`StoreHub`].
     ///
     /// The [`StoreHub`] will contain a single empty blueprint associated with the app ID returned
     /// by `[StoreHub::welcome_screen_app_id]`. It should be used as a marker to display the welcome
     /// screen.
-    pub fn new() -> Self {
+    pub fn new(
+        persistence: BlueprintPersistence,
+        setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
+    ) -> Self {
         re_tracing::profile_function!();
-        let mut blueprint_by_app_id = HashMap::new();
+        let mut active_blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
 
         let welcome_screen_store_id = StoreId::from_string(
             StoreKind::Blueprint,
             Self::welcome_screen_app_id().to_string(),
         );
-        blueprint_by_app_id.insert(
+        active_blueprint_by_app_id.insert(
             Self::welcome_screen_app_id(),
             welcome_screen_store_id.clone(),
         );
 
         let welcome_screen_blueprint = store_bundle.blueprint_entry(&welcome_screen_store_id);
-        crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
+        (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
         Self {
+            persistence,
+
             active_rec_id: None,
             active_application_id: None,
-            blueprint_by_app_id,
+            default_blueprint_by_app_id: Default::default(),
+            active_blueprint_by_app_id,
             store_bundle,
 
             was_recording_active: false,
@@ -81,6 +129,9 @@ impl StoreHub {
             blueprint_last_save: Default::default(),
         }
     }
+
+    // ---------------------
+    // Accessors
 
     /// All the loaded recordings and blueprints.
     #[inline]
@@ -94,18 +145,24 @@ impl StoreHub {
     /// matching [`ApplicationId`].
     pub fn read_context(&mut self) -> Option<StoreContext<'_>> {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
-            once_cell::sync::Lazy::new(|| {
-                EntityDb::new(re_log_types::StoreId::from_string(
-                    StoreKind::Recording,
-                    "<EMPTY>".to_owned(),
-                ))
-            });
+            once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
 
         // If we have an app-id, then use it to look up the blueprint.
         let app_id = self.active_application_id.clone()?;
 
+        // If there's no active blueprint for this app, try to make the current default one active.
+        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
+            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
+                self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
+                    .unwrap_or_else(|err| {
+                        re_log::warn!("Failed to make blueprint active: {err}");
+                    });
+            }
+        }
+
+        // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
         let blueprint_id = self
-            .blueprint_by_app_id
+            .active_blueprint_by_app_id
             .entry(app_id.clone())
             .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
 
@@ -123,41 +180,87 @@ impl StoreHub {
             blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
             bundle: &self.store_bundle,
+            hub: self,
         })
     }
+
+    /// Mutable access to a [`EntityDb`] by id
+    pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
+        self.store_bundle.entry(store_id)
+    }
+
+    // ---------------------
+    // Add and remove stores
+
+    /// Insert a new recording or blueprint into the [`StoreHub`].
+    ///
+    /// Note that the recording is not automatically made active. Use [`StoreHub::set_active_recording_id`]
+    /// if needed.
+    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
+        self.store_bundle.insert(entity_db);
+    }
+
+    pub fn remove(&mut self, store_id: &StoreId) {
+        if self.active_rec_id.as_ref() == Some(store_id) {
+            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
+                self.set_active_recording_id(new_selection.clone());
+            } else {
+                self.active_application_id = None;
+                self.active_rec_id = None;
+            }
+        }
+
+        self.store_bundle.remove(store_id);
+    }
+
+    /// Remove all open recordings, and go to the welcome page.
+    pub fn clear_recordings(&mut self) {
+        self.store_bundle
+            .retain(|db| db.store_kind() != StoreKind::Recording);
+        self.active_rec_id = None;
+        self.active_application_id = Some(Self::welcome_screen_app_id());
+    }
+
+    // ---------------------
+    // Active app
+
+    /// Change the active [`ApplicationId`]
+    pub fn set_active_app(&mut self, app_id: ApplicationId) {
+        // If we don't know of a blueprint for this `ApplicationId` yet,
+        // try to load one from the persisted store
+        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
+            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
+                re_log::warn!("Failed to load persisted blueprint: {err}");
+            }
+        }
+
+        self.active_application_id = Some(app_id);
+    }
+
+    #[inline]
+    pub fn active_app(&self) -> Option<&ApplicationId> {
+        self.active_application_id.as_ref()
+    }
+
+    // ---------------------
+    // Active recording
 
     /// Keeps track if a recording was ever activated.
     ///
     /// This is useful for the heuristic controlling the welcome screen.
+    #[inline]
     pub fn was_recording_active(&self) -> bool {
         self.was_recording_active
     }
 
-    /// Activate a store by its [`StoreId`].
-    ///
-    /// If this is a recording, switch to it.
-    /// If this is a blueprint, switch to the `AppId` of the blueprint,
-    /// and make this blueprint the active blueprint for that `AppId`.
-    pub fn activate_store(&mut self, store_id: StoreId) {
-        match store_id.kind {
-            StoreKind::Recording => self.set_active_recording_id(store_id),
-            StoreKind::Blueprint => {
-                if let Some(store) = self.store_bundle.get(&store_id) {
-                    if let Some(app_id) = store.app_id().cloned() {
-                        self.set_blueprint_for_app_id(store_id.clone(), app_id.clone());
-                        self.set_active_app_id(app_id.clone());
-                    }
-                }
-            }
-        }
-    }
-
     /// Directly access the [`EntityDb`] for the active recording.
+    #[inline]
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.active_rec_id.as_ref()
     }
 
     /// Directly access the [`EntityDb`] for the active recording.
+    #[inline]
     pub fn active_recording(&self) -> Option<&EntityDb> {
         self.active_rec_id
             .as_ref()
@@ -177,55 +280,95 @@ impl StoreHub {
             .as_ref()
             .and_then(|recording| recording.app_id())
         {
-            self.set_active_app_id(app_id.clone());
+            self.set_active_app(app_id.clone());
         }
 
         self.active_rec_id = Some(recording_id);
         self.was_recording_active = true;
     }
 
-    pub fn remove(&mut self, store_id: &StoreId) {
-        if self.active_rec_id.as_ref() == Some(store_id) {
-            if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
-                self.set_active_recording_id(new_selection.clone());
-            } else {
-                self.active_application_id = None;
-                self.active_rec_id = None;
+    /// Activate a recording by its [`StoreId`].
+    pub fn set_activate_recording(&mut self, store_id: StoreId) {
+        match store_id.kind {
+            StoreKind::Recording => self.set_active_recording_id(store_id),
+            StoreKind::Blueprint => {
+                re_log::debug!("Tried to activate the blueprint {store_id} as a recording.");
             }
         }
-
-        self.store_bundle.remove(store_id);
     }
 
-    /// Change the active [`ApplicationId`]
-    pub fn set_active_app_id(&mut self, app_id: ApplicationId) {
-        // If we don't know of a blueprint for this `ApplicationId` yet,
-        // try to load one from the persisted store
-        // TODO(#2579): implement web-storage for blueprints as well
-        #[cfg(not(target_arch = "wasm32"))]
-        if !self.blueprint_by_app_id.contains_key(&app_id) {
-            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
-                re_log::warn!("Failed to load persisted blueprint: {err}");
-            }
-        }
+    // ---------------------
+    // Default blueprint
 
-        self.active_application_id = Some(app_id);
+    pub fn default_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
+        self.default_blueprint_by_app_id.get(app_id)
     }
 
-    pub fn active_application_id(&self) -> Option<&ApplicationId> {
-        self.active_application_id.as_ref()
-    }
-
-    /// Change which blueprint is active for a given [`ApplicationId`]
+    /// Change which blueprint is the default for a given [`ApplicationId`]
     #[inline]
-    pub fn set_blueprint_for_app_id(&mut self, blueprint_id: StoreId, app_id: ApplicationId) {
-        re_log::debug!("Switching blueprint for {app_id} to {blueprint_id}");
-        self.blueprint_by_app_id.insert(app_id, blueprint_id);
+    pub fn set_default_blueprint_for_app(
+        &mut self,
+        app_id: &ApplicationId,
+        blueprint_id: &StoreId,
+    ) {
+        re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
+        self.default_blueprint_by_app_id
+            .insert(app_id.clone(), blueprint_id.clone());
+    }
+
+    /// Clear the current default blueprint
+    pub fn clear_default_blueprint(&mut self) {
+        if let Some(app_id) = &self.active_application_id {
+            self.default_blueprint_by_app_id.remove(app_id);
+        }
+    }
+
+    // ---------------------
+    // Active blueprint
+
+    /// What is the active blueprint for the active application?
+    pub fn active_blueprint_id(&self) -> Option<&StoreId> {
+        self.active_app()
+            .and_then(|app_id| self.active_blueprint_id_for_app(app_id))
+    }
+
+    pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
+        self.active_blueprint_by_app_id.get(app_id)
+    }
+
+    /// Make blueprint active for a given [`ApplicationId`]
+    ///
+    /// We never activate a blueprint directly. Instead, we clone it and activate the clone.
+    //TODO(jleibs): In the future this can probably be handled with snapshots instead.
+    pub fn set_cloned_blueprint_active_for_app(
+        &mut self,
+        app_id: &ApplicationId,
+        blueprint_id: &StoreId,
+    ) -> anyhow::Result<()> {
+        let new_id = StoreId::random(StoreKind::Blueprint);
+
+        re_log::debug!(
+            "Cloning {blueprint_id} as {new_id} the active blueprint for {app_id} to {blueprint_id}"
+        );
+
+        let blueprint = self
+            .store_bundle
+            .get(blueprint_id)
+            .context("missing blueprint")?;
+
+        let new_blueprint = blueprint.clone_with_new_id(new_id.clone())?;
+
+        self.store_bundle.insert(new_blueprint);
+
+        self.active_blueprint_by_app_id
+            .insert(app_id.clone(), new_id);
+
+        Ok(())
     }
 
     /// Is the given blueprint id the active blueprint for any app id?
     pub fn is_active_blueprint(&self, blueprint_id: &StoreId) -> bool {
-        self.blueprint_by_app_id
+        self.active_blueprint_by_app_id
             .values()
             .any(|id| id == blueprint_id)
     }
@@ -233,31 +376,25 @@ impl StoreHub {
     /// Clear the currently active blueprint
     pub fn clear_active_blueprint(&mut self) {
         if let Some(app_id) = &self.active_application_id {
-            if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
+            if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
                 self.store_bundle.remove(&blueprint_id);
             }
         }
     }
 
+    // ---------------------
+    // Misc operations
+
     /// Forgets all blueprints
     pub fn clear_all_blueprints(&mut self) {
-        for (_app_id, blueprint_id) in self.blueprint_by_app_id.drain() {
+        for (_app_id, blueprint_id) in self
+            .active_blueprint_by_app_id
+            .drain()
+            .chain(self.default_blueprint_by_app_id.drain())
+        {
             self.store_bundle.remove(&blueprint_id);
         }
-    }
-
-    /// Insert a new recording or blueprint into the [`StoreHub`].
-    ///
-    /// Note that the recording is not automatically made active. Use [`StoreHub::set_active_recording_id`]
-    /// if needed.
-    pub fn insert_entity_db(&mut self, entity_db: EntityDb) {
-        self.store_bundle.insert(entity_db);
-    }
-
-    /// Mutable access to a [`EntityDb`] by id
-    pub fn entity_db_mut(&mut self, store_id: &StoreId) -> &mut EntityDb {
-        self.store_bundle.entry(store_id)
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
@@ -320,7 +457,6 @@ impl StoreHub {
     }
 
     /// Remove any recordings with a network source pointing at this `uri`.
-    #[cfg(target_arch = "wasm32")]
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
         self.store_bundle.retain(|db| {
             let Some(data_source) = &db.data_source else {
@@ -344,7 +480,11 @@ impl StoreHub {
     pub fn gc_blueprints(&mut self, app_options: &AppOptions) {
         re_tracing::profile_function!();
         if app_options.blueprint_gc {
-            for blueprint_id in self.blueprint_by_app_id.values() {
+            for blueprint_id in self
+                .active_blueprint_by_app_id
+                .values()
+                .chain(self.default_blueprint_by_app_id.values())
+            {
                 if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                     // TODO(jleibs): Decide a better tuning for this. Would like to save a
                     // reasonable amount of history, or incremental snapshots.
@@ -362,11 +502,12 @@ impl StoreHub {
         app_options: &AppOptions,
     ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
+
         // Because we save blueprints based on their `ApplicationId`, we only
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
 
-        for (app_id, blueprint_id) in &self.blueprint_by_app_id {
+        for (app_id, blueprint_id) in &self.active_blueprint_by_app_id {
             let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
                 re_log::debug!("Failed to find blueprint {blueprint_id}.");
                 continue;
@@ -379,25 +520,10 @@ impl StoreHub {
                 blueprint.gc_everything_but_the_latest_row();
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                let blueprint_path = default_blueprint_path(app_id)?;
-
-                let messages = blueprint.to_messages(None)?;
-
-                // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
-                // be small & fast to save, but maybe not once we start adding big pieces of user data?
-                crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
-
-                re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
-
+            if let Some(saver) = &self.persistence.saver {
+                (saver)(app_id, blueprint)?;
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            {
-                _ = app_id;
             }
         }
 
@@ -407,48 +533,36 @@ impl StoreHub {
     /// Try to load the persisted blueprint for the given `ApplicationId`.
     /// Note: If no blueprint exists at the expected path, the result is still considered `Ok`.
     /// It is only an `Error` if a blueprint exists but fails to load.
-    // TODO(#2579): implement persistence for web
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn try_to_load_persisted_blueprint(
-        &mut self,
-        app_id: &ApplicationId,
-    ) -> anyhow::Result<()> {
-        use crate::blueprint::is_valid_blueprint;
-
+    fn try_to_load_persisted_blueprint(&mut self, app_id: &ApplicationId) -> anyhow::Result<()> {
         re_tracing::profile_function!();
-        let blueprint_path = default_blueprint_path(app_id)?;
-        if blueprint_path.exists() {
-            re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}",);
 
-            let with_notifications = false;
-            if let Some(mut bundle) = load_blueprint_file(&blueprint_path, with_notifications) {
-                for store in bundle.drain_entity_dbs() {
-                    if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
-                    {
-                        if !is_valid_blueprint(&store) {
-                            re_log::warn_once!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
-                            continue;
-                        }
-                        // We found the blueprint we were looking for; make it active.
-                        // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
-                        re_log::debug!(
-                            "Switching blueprint for {app_id} to {} loaded from {blueprint_path:?}",
-                            store.store_id(),
-                        );
-                        self.blueprint_by_app_id
-                            .insert(app_id.clone(), store.store_id().clone());
-                        self.blueprint_last_save
-                            .insert(store.store_id().clone(), store.generation());
-                        self.store_bundle.insert(store);
-                    } else {
-                        anyhow::bail!(
-                            "Found unexpected store while loading blueprint: {:?}",
-                            store.store_id()
-                        );
-                    }
+        let Some(loader) = &self.persistence.loader else {
+            return Ok(());
+        };
+
+        if let Some(mut bundle) = (loader)(app_id)? {
+            for store in bundle.drain_entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id) {
+                    // We found the blueprint we were looking for; make it active.
+                    // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
+                    re_log::debug!(
+                        "Activating new blueprint {} for {app_id}; loaded from disk",
+                        store.store_id(),
+                    );
+                    self.active_blueprint_by_app_id
+                        .insert(app_id.clone(), store.store_id().clone());
+                    self.blueprint_last_save
+                        .insert(store.store_id().clone(), store.generation());
+                    self.store_bundle.insert(store);
+                } else {
+                    anyhow::bail!(
+                        "Found unexpected store while loading blueprint: {:?}",
+                        store.store_id()
+                    );
                 }
             }
         }
+
         Ok(())
     }
 
@@ -463,7 +577,7 @@ impl StoreHub {
         let blueprint = self
             .active_application_id
             .as_ref()
-            .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
+            .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
         let blueprint_stats = blueprint

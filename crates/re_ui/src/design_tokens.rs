@@ -84,21 +84,21 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     // TODO(ab): font sizes should come from design tokens
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(28.0));
+        .insert(ReUi::welcome_screen_h1(), egui::FontId::proportional(41.0));
     egui_style
         .text_styles
-        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(24.0));
-    egui_style
-        .text_styles
-        .insert(ReUi::welcome_screen_h3(), egui::FontId::proportional(15.0));
+        .insert(ReUi::welcome_screen_h2(), egui::FontId::proportional(27.0));
     egui_style.text_styles.insert(
         ReUi::welcome_screen_example_title(),
-        egui::FontId::proportional(16.0),
+        egui::FontId::proportional(13.0),
     );
     egui_style.text_styles.insert(
         ReUi::welcome_screen_body(),
-        egui::FontId::proportional(13.0),
+        egui::FontId::proportional(15.0),
     );
+    egui_style
+        .text_styles
+        .insert(ReUi::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
     let panel_bg_color = get_aliased_color(&json, "{Alias.Color.Surface.Default.value}");
     // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");

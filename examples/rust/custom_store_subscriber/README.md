@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Custom Store Subscriber"
+title = "Custom store subscriber"
 tags = ["store-event", "store-diff", "store-subscriber"]
 -->
 

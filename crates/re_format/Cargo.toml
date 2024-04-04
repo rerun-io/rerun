@@ -24,6 +24,8 @@ default = []
 
 
 [dependencies]
+num-traits.workspace = true
+
 arrow2 = { workspace = true, optional = true }
 comfy-table = { workspace = true, optional = true }
 re_tuid = { workspace = true, optional = true }

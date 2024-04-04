@@ -232,7 +232,7 @@ def main() -> None:
         row_shares=[3, 2],
     )
 
-    rr.script_setup(args, "rerun_example_structure_from_motion", blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_structure_from_motion", default_blueprint=blueprint)
     dataset_path = get_downloaded_dataset_path(args.dataset)
     read_and_log_sparse_reconstruction(dataset_path, filter_output=not args.unfiltered, resize=args.resize)
     rr.script_teardown(args)

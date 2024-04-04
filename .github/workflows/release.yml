@@ -445,11 +445,11 @@ jobs:
           short_commit_hash=$(echo ${{ needs.version.outputs.release-commit }} | cut -c1-7)
 
           if [ ${{ inputs.release-type }} = "final" ]; then
-            web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
+            web_app_link="https://rerun.io/viewer/version/${{ needs.version.outputs.final }}"
             rerun_io_docs_link="https://rerun.io/docs"
             py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
           else
-            web_app_link="https://app.rerun.io/commit/$short_commit_hash"
+            web_app_link="https://rerun.io/viewer/commit/$short_commit_hash"
             rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
             py_docs_link="https://ref.rerun.io/docs/python/dev"
           fi

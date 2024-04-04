@@ -60,11 +60,11 @@ impl std::fmt::Display for SmartChannelSource {
         match self {
             Self::File(path) => path.display().fmt(f),
             Self::RrdHttpStream { url } => url.fmt(f),
-            Self::RrdWebEventListener => "Web Event Listener".fmt(f),
+            Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::Sdk => "SDK".fmt(f),
             Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
-            Self::TcpServer { port } => write!(f, "TCP Server, port {port}"),
-            Self::Stdin => "Standard Input".fmt(f),
+            Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
+            Self::Stdin => "Standard input".fmt(f),
         }
     }
 }

@@ -15,16 +15,16 @@ use super::{
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
-    #[error("Space View with class identifier {0:?} was already registered.")]
+    #[error("Space view with class identifier {0:?} was already registered.")]
     DuplicateClassIdentifier(SpaceViewClassIdentifier),
 
-    #[error("A Context System with identifier {0:?} was already registered.")]
+    #[error("A context system with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForContextSystem(&'static str),
 
-    #[error("A Visualizer System with identifier {0:?} was already registered.")]
+    #[error("A visualizer system with identifier {0:?} was already registered.")]
     IdentifierAlreadyInUseForVisualizer(&'static str),
 
-    #[error("Space View with class identifier {0:?} was not registered.")]
+    #[error("Space view with class identifier {0:?} was not registered.")]
     UnknownClassIdentifier(SpaceViewClassIdentifier),
 }
 

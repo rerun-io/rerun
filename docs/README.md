@@ -16,9 +16,10 @@ The entry point to the documentation is [`/content/index.md`](./content/index.md
 
 ## Special syntax
 
-### Title and Navigation Order
-The display titles navigation order of documentation sections are managed by the Metadata at the top of the Markdown
-file:
+### Frontmatter
+
+YAML frontmatter at the top of the Markdown file is used for metadata:
+
 ```
 ---
 title: Examples
@@ -26,6 +27,14 @@ order: 6
 ---
 ```
 
+The available attributes are:
+| name     | type    | required | description                                   |
+| -------- | ------- | -------- | --------------------------------------------- |
+| title    | string  | yes      | navigation item title                         |
+| order    | number  | yes      | used to sort navigation items                 |
+| redirect | string  | no       | redirect to the given url                     |
+| hidden   | boolean | no       | don't show the item in navigation             |
+| expand   | boolean | no       | expand the sub-items in navigation by default |
 
 ### Snippets
 
@@ -59,7 +68,7 @@ snippet: my-example
 ### Screenshot links
 
 If a screenshot shows an example or snippet which is runnable and built on CI, then you can turn the screenshot
-to a link to `app.rerun.io` pointing at the example using the `data-inline-viewer` attribute.
+to a link to `rerun.io/viewer` pointing at the example using the `data-inline-viewer` attribute.
 
 Add the attribute to any `<picture>` element like so:
 
