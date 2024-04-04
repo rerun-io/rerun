@@ -366,7 +366,20 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    open_example_url(command_sender, &example.desc.rrd_url);
+                                    let open_in_new_tab = ui.input(|i| i.modifiers.any());
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        open_in_new_tab,
+                                    );
+                                } else if response.middle_clicked() {
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        true,
+                                    );
                                 }
 
                                 row_example_responses.push(response);
@@ -434,7 +447,28 @@ impl ExampleSection {
     }
 }
 
-fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
+#[cfg(target_arch = "wasm32")]
+fn open_in_background_tab(egui_ctx: &egui::Context, rrd_url: &str) {
+    egui_ctx.open_url(egui::output::OpenUrl {
+        url: format!("/?url={}", crate::web_tools::percent_encode(rrd_url)),
+        new_tab: true,
+    });
+}
+
+fn open_example_url(
+    _egui_ctx: &egui::Context,
+    command_sender: &CommandSender,
+    rrd_url: &str,
+    _open_in_new_tab: bool,
+) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if _open_in_new_tab {
+            open_in_background_tab(_egui_ctx, rrd_url);
+            return;
+        }
+    }
+
     let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
 
     // If the user re-download an already open recording, clear it out first
