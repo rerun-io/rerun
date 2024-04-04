@@ -17,7 +17,13 @@ use crate::image_meaning_for_entity;
 use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
-    format!("[{}]", shape.iter().join(", "))
+    const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
+    let shapes = shape.iter().take(MAX_SHOWN).join(", ");
+    if shape.len() > MAX_SHOWN {
+        format!("{shapes}…")
+    } else {
+        shapes
+    }
 }
 
 impl EntityDataUi for re_types::components::TensorData {
@@ -149,16 +155,11 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                ui.label(format!(
-                    "{} x {}{}",
-                    tensor.dtype(),
-                    format_tensor_shape_single_line(shape.as_slice()),
-                    if original_tensor.buffer.is_compressed_image() {
-                        " (compressed)"
-                    } else {
-                        ""
-                    }
-                ))
+                ui.vertical(|ui| {
+                    // Put in a vertical layout to allow wrap around.
+                    ui.label(format_tensor_shape_single_line(shape.as_slice()))
+                })
+                .inner
                 .on_hover_ui(|ui| {
                     tensor_summary_ui(
                         ctx.re_ui,
