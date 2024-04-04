@@ -1,6 +1,6 @@
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{FileSource, LogMsg, StoreKind};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -51,7 +51,14 @@ pub struct StartupOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
 
-    pub skip_welcome_screen: bool,
+    /// This is a hint that we expect a recording to stream in very soon.
+    ///
+    /// This is set by the `spawn()` method in our logging SDK.
+    ///
+    /// The viewer will respond by fading in the welcome screen,
+    /// instead of showing it directly.
+    /// This ensures that it won't blink for a few frames before switching to the recording.
+    pub fade_in_welcome_screen: bool,
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
@@ -73,7 +80,7 @@ impl Default for StartupOptions {
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
 
-            skip_welcome_screen: false,
+            fade_in_welcome_screen: false,
             force_wgpu_backend: None,
         }
     }
@@ -90,6 +97,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
+    start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) re_ui: re_ui::ReUi,
     screenshotter: crate::screenshotter::Screenshotter,
@@ -217,6 +225,7 @@ impl App {
         Self {
             build_info,
             startup_options,
+            start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
             screenshotter,
@@ -901,6 +910,7 @@ impl App {
                             &self.space_view_class_registry,
                             &self.rx,
                             &self.command_sender,
+                            self.welcome_screen_opacity(egui_ctx),
                         );
                     }
                     render_ctx.before_submit();
@@ -1161,41 +1171,22 @@ impl App {
         }
     }
 
-    /// This function implements a heuristic which determines when the welcome screen
-    /// should show up.
-    ///
-    /// Why not always show it when no data is loaded?
-    /// Because sometimes we expect data to arrive at any moment,
-    /// and showing the wlecome screen for a few frames will just be an annoying flash
-    /// in the users face.
-    fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
-        // Don't show the welcome screen if we have actual data to display.
-        if store_hub.active_recording().is_some() || store_hub.active_app().is_some() {
-            return false;
-        }
-
-        // Don't show the welcome screen if the `--skip-welcome-screen` flag was used (e.g. by the
-        // Python SDK), until some data has been loaded and shown. This way, we *still* show the
-        // welcome screen when the user closes all recordings after, e.g., running a Python example.
-        if self.startup_options.skip_welcome_screen && !store_hub.was_recording_active() {
-            return false;
-        }
-
-        let sources = self.rx.sources();
-
-        if sources.is_empty() {
+    fn should_fade_in_welcome_screen(&self) -> bool {
+        if self.startup_options.fade_in_welcome_screen {
             return true;
         }
 
-        // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
-        // being used in.
-        for source in sources {
+        // The reason for the fade-in is to avoid the welcome screen
+        // flickering quickly before receiving some data.
+        // So: if we expect data very soon, we do a fade-in.
+
+        for source in self.rx.sources() {
+            #[allow(clippy::match_same_arms)]
             match &*source {
-                // No need for a welcome screen - data is coming soon!
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
                 | SmartChannelSource::Stdin => {
-                    return false;
+                    return true; // Data is coming soon, so fade-in
                 }
 
                 // The workflows associated with these sources typically do not require showing the
@@ -1204,17 +1195,40 @@ impl App {
                 | SmartChannelSource::Sdk
                 | SmartChannelSource::WsClient { .. } => {}
 
-                // This might be the trickiest case. When running the bare executable, we want to show
-                // the welcome screen (default, "new user" workflow). There are other case using Tcp
-                // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
-                // scenarios. In this cases, `--skip-welcome-screen` should be used.
                 SmartChannelSource::TcpServer { .. } => {
-                    return true;
+                    // This might be the trickiest case.
+                    // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
+                    // and in that case fading in the welcome screen would be slightly annoying.
+                    // However, we also use the TCP server for sending data from the logging SDKs
+                    // when they call `spawn()`, and in thaty case we really want to fade in the welcome screen.
+                    // Therefore `spawn()` uses the special `--fade-in-welcome-screen` flag
+                    // (handled earlier in this function), so here we know we are in the other case:
+                    // a user calling `rerun` in their terminal (don't fade in).
                 }
             }
         }
 
-        false
+        false // No special sources (or no sources at all), so don't fade in
+    }
+
+    /// Handle fading in the welcome screen, if we should.
+    fn welcome_screen_opacity(&self, egui_ctx: &egui::Context) -> f32 {
+        if self.should_fade_in_welcome_screen() {
+            // The reason for this delay is to avoid the welcome screen
+            // flickering quickly before receiving some data.
+            // The only time it has for that is between the call to `spawn` and sending the recording info,
+            // which should happen _right away_, so we only need a small delay.
+            // Why not skip the wlecome screen completely when we expect the data?
+            // Because maybe the data never comes.
+            let sec_since_first_shown = self.start_time.elapsed().as_secs_f32();
+            let opacity = egui::remap_clamp(sec_since_first_shown, 0.4..=0.6, 0.0..=1.0);
+            if opacity < 1.0 {
+                egui_ctx.request_repaint();
+            }
+            opacity
+        } else {
+            1.0
+        }
     }
 }
 
@@ -1230,7 +1244,6 @@ fn blueprint_loader() -> BlueprintPersistence {
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader() -> BlueprintPersistence {
     use re_entity_db::StoreBundle;
-    use re_log_types::ApplicationId;
 
     fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
@@ -1394,10 +1407,20 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        // Heuristic to set the app_id to the welcome screen blueprint.
+        // Make sure some app is active
         // Must be called before `read_context` below.
-        if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_active_app(StoreHub::welcome_screen_app_id());
+        if store_hub.active_app().is_none() {
+            let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
+                .store_bundle()
+                .entity_dbs()
+                .filter_map(|db| db.app_id())
+                .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                .collect();
+            if let Some(app_id) = apps.first().cloned() {
+                store_hub.set_active_app(app_id.clone());
+            } else {
+                store_hub.set_active_app(StoreHub::welcome_screen_app_id());
+            }
         }
 
         let store_context = store_hub.read_context();
