@@ -22,7 +22,7 @@ pub use sub_archetypes::{
     query_space_view_sub_archetype_or_default,
 };
 pub use visual_time_range::{
-    default_time_range, query_visual_history, time_range_boundary_to_visible_history_boundary,
+    query_visual_history, time_range_boundary_to_visible_history_boundary,
     visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
 };
 pub use visualizable::determine_visualizable_entities;
