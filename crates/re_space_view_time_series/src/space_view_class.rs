@@ -76,11 +76,11 @@ const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
 impl SpaceViewClass for TimeSeriesSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Time Series".into()
+        "TimeSeries".into()
     }
 
     fn display_name(&self) -> &'static str {
-        "Time Series"
+        "Time series"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {

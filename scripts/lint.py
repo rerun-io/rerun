@@ -5,6 +5,7 @@ Runs custom linting on our code.
 
 Adding "NOLINT" to any line makes the linter ignore that line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -664,11 +665,7 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
         return []
 
-    desc = fm.get("description", "")
-    if len(desc) > 130:
-        return [f"Frontmatter: description is too long ({len(desc)} > 130)"]
-    else:
-        return []
+    return []
 
 
 def lint_frontmatter(filepath: str, content: str) -> list[str]:

@@ -45,7 +45,7 @@ impl SpaceViewClass for TextSpaceView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Text Log"
+        "Text log"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
