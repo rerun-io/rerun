@@ -10,7 +10,7 @@ thumbnail_dimensions = [480, 480]
 
 This is an example that shows how to use Rerun's C++ API to log and visualize [ROS](https://www.ros.org/) messages.
 
-It works by subscribing to all topics with supported types, converting the messages, and logging the data to Rerun. It further allows to remap topic names to specific entity paths, specify additional timeless transforms, and pinhole parameters via an external config file. See the [launch](./rerun_logger/launch/) directory for usage examples.
+It works by subscribing to all topics with supported types, converting the messages, and logging the data to Rerun. It further allows to remap topic names to specific entity paths, specify additional timeless transforms, and pinhole parameters via an external config file.
 
 
 <picture>
