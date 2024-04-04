@@ -73,7 +73,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Color Coordinates"
+        "Color coordinates"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {

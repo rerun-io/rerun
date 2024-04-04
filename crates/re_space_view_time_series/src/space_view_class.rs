@@ -80,7 +80,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Time Series"
+        "Time series"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
