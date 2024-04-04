@@ -14,13 +14,13 @@ Examples related to spatial computing, augmented reality, virtual reality, and m
 """
 examples = [
   "arkit_scenes",
-  "arflow",
   "limap",
   "objectron",
   "simplerecon",
   "slahmr",
   "vrs",
   "widebaseline",
+  "arflow",
 ]
 
 [categories.robotics]
@@ -125,7 +125,6 @@ examples = [
   "custom_data_loader",
   "custom_space_view",
   "custom_store_subscriber",
-  "dna",
   "extend_viewer_ui",
   "external_data_loader",
   "incremental_logging",
