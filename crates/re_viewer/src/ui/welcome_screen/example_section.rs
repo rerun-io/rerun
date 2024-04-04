@@ -2,7 +2,7 @@ use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_viewer_context::{CommandSender, SystemCommandSender as _};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -436,9 +436,15 @@ impl ExampleSection {
 
 fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
     let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
-    command_sender.send_system(re_viewer_context::SystemCommand::LoadDataSource(
-        data_source,
+
+    // If the user re-download an already open recording, clear it out first
+    command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+        re_smart_channel::SmartChannelSource::RrdHttpStream {
+            url: rrd_url.to_owned(),
+        },
     ));
+
+    command_sender.send_system(SystemCommand::LoadDataSource(data_source));
 
     #[cfg(target_arch = "wasm32")]
     {

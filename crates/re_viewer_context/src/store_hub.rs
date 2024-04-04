@@ -232,6 +232,10 @@ impl StoreHub {
         }
     }
 
+    pub fn retain(&mut self, f: impl FnMut(&EntityDb) -> bool) {
+        self.store_bundle.retain(f);
+    }
+
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_recordings(&mut self) {
         // Keep only the welcome screen:

@@ -96,6 +96,12 @@ pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &
     if !urls.is_empty() {
         for url in urls {
             if let Some(receiver) = url_to_receiver(egui_ctx.clone(), url).ok_or_log_error() {
+                // We may be here because the user clicked Back/Forward in the browser while trying
+                // out examples. If we re-download the same file we should clear out the old data first.
+                command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+                    receiver.source().clone(),
+                ));
+
                 command_sender.send_system(SystemCommand::AddReceiver(receiver));
             }
         }
