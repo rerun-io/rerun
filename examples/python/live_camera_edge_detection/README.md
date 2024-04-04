@@ -21,8 +21,8 @@ Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/t
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image)
 
 # Background
-In this example, the results of the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) algorithm are visualized. 
-Canny Edge Detection is a popular edge detection algorithm, and can efficiently extract important structural information from visual objects while notably reducing the computational load. 
+In this example, the results of the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) algorithm are visualized.
+Canny Edge Detection is a popular edge detection algorithm, and can efficiently extract important structural information from visual objects while notably reducing the computational load.
 The process in this example involves converting the input image to RGB, then to grayscale, and finally applying the Canny Edge Detector for precise edge detection.
 
 # Logging and Visualizing with Rerun
@@ -59,7 +59,7 @@ rr.log("image/canny", rr.Image(canny))
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -75,5 +75,5 @@ python examples/python/live_camera_edge_detection/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/live_camera_edge_detection/main.py --help 
+python examples/python/live_camera_edge_detection/main.py --help
 ```

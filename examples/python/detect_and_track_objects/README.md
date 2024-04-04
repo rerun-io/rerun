@@ -23,7 +23,7 @@ Visualize object detection and segmentation using the [Huggingface's Transformer
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
 # Background
-In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames. 
+In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames.
 Additionally, the example showcases basic object detection and segmentation on a video using the Huggingface transformers library.
 
 
@@ -43,17 +43,17 @@ The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/r
 
 ```python
 rr.log(
-    "image", 
+    "image",
     rr.Image(rgb).compress(jpeg_quality=85)
 )
 ```
 
-Since the detection and segmentation model operates on smaller images the resized images are logged to the separate `segmentation/rgb_scaled` entity. 
+Since the detection and segmentation model operates on smaller images the resized images are logged to the separate `segmentation/rgb_scaled` entity.
 This allows us to subsequently visualize the segmentation mask on top of the video.
 
 ```python
 rr.log(
-    "segmentation/rgb_scaled", 
+    "segmentation/rgb_scaled",
     rr.Image(rgb_scaled).compress(jpeg_quality=85)
 )
 ```
@@ -67,7 +67,7 @@ contains the id for each pixel. It is logged to the `segmentation` entity.
 
 ```python
 rr.log(
-    "segmentation", 
+    "segmentation",
     rr.SegmentationImage(mask)
 )
 ```
@@ -80,8 +80,8 @@ entities that have a class id.
 ```python
 class_descriptions = [ rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories ]
 rr.log(
-     "/", 
-     rr.AnnotationContext(class_descriptions), 
+     "/",
+     rr.AnnotationContext(class_descriptions),
      timeless=True
 )
 ```
@@ -132,10 +132,10 @@ Note that it is also possible to log multiple annotation contexts should differe
 The annotation context is resolved by seeking up the entity hierarchy.
 
 ## Text Log
-Rerun integrates with the [Python logging module](https://docs.python.org/3/library/logging.html). 
+Rerun integrates with the [Python logging module](https://docs.python.org/3/library/logging.html).
 Through the [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration) text at different importance level can be logged. After an initial setup that is described on the
 [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration), statements
-such as `logging.info("…")`, `logging.debug("…")`, etc. will show up in the Rerun viewer. 
+such as `logging.info("…")`, `logging.debug("…")`, etc. will show up in the Rerun viewer.
 
 ```python
 def setup_logging() -> None:

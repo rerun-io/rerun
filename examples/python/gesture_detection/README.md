@@ -22,9 +22,9 @@ track hands and recognize gestures in images, video, and camera stream.
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 # Background
-The hand tracking and gesture recognition technology aims to give the ability of the devices to interpret hand movements and gestures as commands or inputs. 
-At the core of this technology, a pre-trained machine-learning model analyses the visual input and identifies hand landmarks and hand gestures. 
-The real applications of such technology vary, as hand movements and gestures can be used to control smart devices. 
+The hand tracking and gesture recognition technology aims to give the ability of the devices to interpret hand movements and gestures as commands or inputs.
+At the core of this technology, a pre-trained machine-learning model analyses the visual input and identifies hand landmarks and hand gestures.
+The real applications of such technology vary, as hand movements and gestures can be used to control smart devices.
 Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are a few of the fields where the potential applications of this technology appear most promising.
 
 In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Gesture and Hand Landmark Detection solutions were utilized to detect and track hand landmarks and recognize gestures.
@@ -53,13 +53,13 @@ rr.log(
 
 ## Hand Landmark Points
 Logging the hand landmarks involves specifying connections between the points, extracting pose landmark points and logging them to the Rerun SDK.
-The 2D points are visualized over the video and at a separate entity. 
+The 2D points are visualized over the video and at a separate entity.
 Meanwhile, the 3D points allows the creation of a 3D model of the hand for a more comprehensive representation of the hand landmarks.
 
 The 2D and 3D points are logged through a combination of two archetypes.
 For the 2D points, the Points2D and LineStrips2D archetypes are utilized. These archetypes help visualize the points and connect them with lines, respectively.
 As for the 3D points, the logging process involves two steps. First, a timeless [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
-the keypoints. Defining these connections automatically renders lines between them. Mediapipe provides the `HAND_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections. 
+the keypoints. Defining these connections automatically renders lines between them. Mediapipe provides the `HAND_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections.
 Second, the actual keypoint positions are logged in 3D [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 
 ### Label Mapping and Keypoint Connections
@@ -86,14 +86,14 @@ rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, timeless=True)
 # Log points to the image and Hand Entity
 for log_key in ["Media/Points", "Hand/Points"]:
     rr.log(
-      log_key, 
+      log_key,
       rr.Points2D(points, radii=10, colors=[255, 0, 0])
     )
 
 # Log connections to the image and Hand Entity [128, 128, 128]
 for log_key in ["Media/Connections", "Hand/Connections"]:
     rr.log(
-      log_key, 
+      log_key,
       rr.LineStrips2D(np.stack((points1, points2), axis=1), colors=[255, 165, 0])
     )
 ```
@@ -112,7 +112,7 @@ rr.log(
 )
 ```
 
-## Detection 
+## Detection
 
 To showcase gesture recognition, an image of the corresponding gesture emoji is displayed within a `TextDocument` under the `Detection` entity.
 
@@ -127,7 +127,7 @@ rr.log(
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
