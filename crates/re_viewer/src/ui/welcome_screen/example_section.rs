@@ -487,10 +487,21 @@ fn open_example_url(
 
         // So we know where to return to
         let welcome_screen_app_id = re_viewer_context::StoreHub::welcome_screen_app_id();
-        web_tools::push_history(&format!(
+        let welcome_screen_url = format!(
             "?app_id={}",
             web_tools::percent_encode(&welcome_screen_app_id.to_string())
-        ));
+        );
+
+        if web_tools::current_url_suffix()
+            .unwrap_or_default()
+            .is_empty()
+        {
+            // Replace, otherwise the user would need to hit back twice to return to
+            // whatever linked them to `https://www.rerun.io/viewer` in the first place.
+            web_tools::replace_history(&welcome_screen_url);
+        } else {
+            web_tools::push_history(&welcome_screen_url);
+        }
 
         // Where we're going:
         web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));

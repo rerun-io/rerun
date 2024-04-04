@@ -31,6 +31,14 @@ pub fn percent_encode(s: &str) -> String {
     format!("{}", js_sys::encode_uri_component(s))
 }
 
+/// The current percent-encoded URL suffix, e.g. "?foo=bar#baz".
+pub fn current_url_suffix() -> Option<String> {
+    let location = web_sys::window()?.location();
+    let search = location.search().unwrap_or_default();
+    let hash = location.hash().unwrap_or_default();
+    Some(format!("{search}{hash}"))
+}
+
 /// Push a relative url on the web `History`,
 /// so that the user can use the back button to navigate to it.
 ///
@@ -43,11 +51,7 @@ pub fn percent_encode(s: &str) -> String {
 /// push_history("foo/bar?baz=qux#fragment");
 /// ```
 pub fn push_history(new_relative_url: &str) -> Option<()> {
-    let location = web_sys::window()?.location();
-
-    let search = location.search().unwrap_or_default();
-    let hash = location.hash().unwrap_or_default();
-    let current_relative_url = format!("{search}{hash}");
+    let current_relative_url = current_url_suffix().unwrap_or_default();
 
     if current_relative_url == new_relative_url {
         re_log::debug!("Ignoring navigation to {new_relative_url:?} as we're already there");
@@ -71,6 +75,24 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
             .ok_or_log_error()?;
     }
     Some(())
+}
+
+/// Replace the current relative url with an new one.
+pub fn replace_history(new_relative_url: &str) -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+
+    history
+        .replace_state_with_url(&JsValue::NULL, "", Some(new_relative_url))
+        .map_err(|err| {
+            format!(
+                "Failed to push history state: {}",
+                string_from_js_value(err)
+            )
+        })
+        .ok_or_log_error()
 }
 
 /// Parse the `?query` parst of the url, and translate it into commands to control the application.
