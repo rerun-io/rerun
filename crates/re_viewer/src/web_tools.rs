@@ -79,10 +79,11 @@ pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &
 
     let location = eframe::web::web_location();
 
-    // NOTE: it's unclear what to do if we find bout `examples` and `url` in the query.
-
-    if location.query_map.get("examples").is_some() {
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
+    if let Some(app_ids) = location.query_map.get("app_id") {
+        if let Some(app_id) = app_ids.last() {
+            let app_id = re_log_types::ApplicationId::from(app_id.as_str());
+            command_sender.send_system(SystemCommand::ActivateApp(app_id));
+        }
     }
 
     // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
@@ -93,9 +94,6 @@ pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &
         .flatten()
         .collect();
     if !urls.is_empty() {
-        // Clear out any already open recordings to make room for the new ones.
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
-
         for url in urls {
             if let Some(receiver) = url_to_receiver(egui_ctx.clone(), url).ok_or_log_error() {
                 command_sender.send_system(SystemCommand::AddReceiver(receiver));

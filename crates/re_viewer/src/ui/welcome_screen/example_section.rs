@@ -446,7 +446,11 @@ fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
         use crate::web_tools;
 
         // So we know where to return to
-        web_tools::push_history("?examples");
+        let welcome_screen_app_id = re_viewer_context::StoreHub::welcome_screen_app_id();
+        web_tools::push_history(&format!(
+            "?app_id={}",
+            web_tools::percent_encode(&welcome_screen_app_id.to_string())
+        ));
 
         // Where we're going:
         web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));
