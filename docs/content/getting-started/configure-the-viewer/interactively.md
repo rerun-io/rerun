@@ -69,7 +69,7 @@ Removing a view or a container can be done by clicking the "-" button next to it
 
 ### Re-arrange existing Containers or Views
 
-The viewport hierarchy can be reorganised by drag-and-dropping containers or views in the blueprint panel. It ssi also possible to drag views directly in the viewport by using their title tab:
+The viewport hierarchy can be reorganized by drag-and-dropping containers or views in the blueprint panel. It ssi also possible to drag views directly in the viewport by using their title tab:
 
 <picture>
   <img src="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/full.png" alt="">
@@ -109,7 +109,7 @@ One key advantage of using the context menu is that it enable operations on mult
 
 ## Configuring the content of a view
 
-The content of a view is determined by its entity query, which can be manually edited in the selection panel when the view is selected (see [Entity Queries](../../reference/entity-queries.md) for more information). This section covers the interactive means of manipulating the view content (which typically operate by actually modifying the query). 
+The content of a view is determined by its entity query, which can be manually edited in the selection panel when the view is selected (see [Entity Queries](../../reference/entity-queries.md) for more information). This section covers the interactive means of manipulating the view content (which typically operate by actually modifying the query).
 
 
 ### Show or hide view content
