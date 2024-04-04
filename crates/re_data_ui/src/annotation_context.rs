@@ -107,9 +107,13 @@ impl DataUi for AnnotationContext {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
-                    ui.label(format!("AnnotationContext with one class containing {} keypoints and {} connections", descr.keypoint_annotations.len(), descr.keypoint_connections.len()));
+                    ui.label(format!(
+                        "One class containing {} keypoints and {} connections",
+                        descr.keypoint_annotations.len(),
+                        descr.keypoint_connections.len()
+                    ));
                 } else {
-                    ui.label(format!("AnnotationContext with {} classes", self.0.len()));
+                    ui.label(format!("{} classes", self.0.len()));
                 }
             }
             UiVerbosity::LimitHeight | UiVerbosity::Full => {
