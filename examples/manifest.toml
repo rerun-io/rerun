@@ -74,7 +74,7 @@ examples = [
   "tapir",
 ]
 
-[categories.3d-reconstruction]
+[categories.3d-reconstruction] # NOLINT
 order = 5
 title = "3D reconstruction and modelling"
 prelude = """
@@ -124,8 +124,8 @@ examples = [
   "raw_mesh",
 ]
 
-# These are examples that we explicitely exclude from our website. You can check that all examples are either included
-# or explicitely excluded by running `python scripts/check_example_manifest_coverage.py`.
+# These are examples that we explicitly exclude from our website. You can check that all examples are either included
+# or explicitly excluded by running `python scripts/check_example_manifest_coverage.py`.
 [ignored]
 examples = [
   "custom_collection_adapter",
