@@ -55,6 +55,7 @@ examples = [
   "mcc",
   "shape_pointe",
   "llm_embedding_ner",
+  "tfrecord_loader",
 ]
 
 [categories.video-image]
@@ -100,6 +101,7 @@ examples = [
   # display order, most interesting first
   "ros_node",
   "vrs",
+  "tfrecord_loader",
   "eigen_opencv",
   "dicom_mri",
   "blueprint_stocks",
