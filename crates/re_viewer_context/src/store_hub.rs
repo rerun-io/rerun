@@ -628,24 +628,35 @@ impl StoreHub {
 
         if let Some(mut bundle) = (loader)(app_id)? {
             for store in bundle.drain_entity_dbs() {
-                if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id) {
-                    // We found the blueprint we were looking for; make it active.
-                    // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
-                    re_log::debug!(
-                        "Activating new blueprint {} for {app_id}; loaded from disk",
-                        store.store_id(),
-                    );
-                    self.active_blueprint_by_app_id
-                        .insert(app_id.clone(), store.store_id().clone());
-                    self.blueprint_last_save
-                        .insert(store.store_id().clone(), store.generation());
-                    self.store_bundle.insert(store);
-                } else {
-                    anyhow::bail!(
-                        "Found unexpected store while loading blueprint: {:?}",
-                        store.store_id()
-                    );
+                match store.store_kind() {
+                    StoreKind::Recording => {
+                        anyhow::bail!(
+                            "Found a recording in a blueprint file: {:?}",
+                            store.store_id()
+                        );
+                    }
+                    StoreKind::Blueprint => {}
                 }
+
+                if store.app_id() != Some(app_id) {
+                    if let Some(store_app_id) = store.app_id() {
+                        anyhow::bail!("Found app_id {store_app_id}; expected {app_id}");
+                    } else {
+                        anyhow::bail!("Found store without an app_id");
+                    }
+                }
+
+                // We found the blueprint we were looking for; make it active.
+                // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
+                re_log::debug!(
+                    "Activating new blueprint {} for {app_id}; loaded from disk",
+                    store.store_id(),
+                );
+                self.active_blueprint_by_app_id
+                    .insert(app_id.clone(), store.store_id().clone());
+                self.blueprint_last_save
+                    .insert(store.store_id().clone(), store.generation());
+                self.store_bundle.insert(store);
             }
         }
 
