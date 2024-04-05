@@ -83,6 +83,14 @@ impl StoreHub {
         "Welcome screen".into()
     }
 
+    /// Blueprint ID used for the default welcome screen blueprint
+    fn welcome_screen_blueprint_id() -> StoreId {
+        StoreId::from_string(
+            StoreKind::Blueprint,
+            Self::welcome_screen_app_id().to_string(),
+        )
+    }
+
     /// Used only for tests
     pub fn test_hub() -> Self {
         Self::new(
@@ -107,16 +115,13 @@ impl StoreHub {
         let mut active_blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
 
-        let welcome_screen_store_id = StoreId::from_string(
-            StoreKind::Blueprint,
-            Self::welcome_screen_app_id().to_string(),
-        );
         active_blueprint_by_app_id.insert(
             Self::welcome_screen_app_id(),
-            welcome_screen_store_id.clone(),
+            Self::welcome_screen_blueprint_id(),
         );
 
-        let welcome_screen_blueprint = store_bundle.blueprint_entry(&welcome_screen_store_id);
+        let welcome_screen_blueprint =
+            store_bundle.blueprint_entry(&Self::welcome_screen_blueprint_id());
         (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
         Self {
@@ -369,6 +374,11 @@ impl StoreHub {
         self.default_blueprint_by_app_id.get(app_id)
     }
 
+    pub fn default_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
+        self.default_blueprint_id_for_app(app_id)
+            .and_then(|id| self.store_bundle.get(id))
+    }
+
     /// Change which blueprint is the default for a given [`ApplicationId`]
     #[inline]
     pub fn set_default_blueprint_for_app(
@@ -399,6 +409,11 @@ impl StoreHub {
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
         self.active_blueprint_by_app_id.get(app_id)
+    }
+
+    pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
+        self.active_blueprint_id_for_app(app_id)
+            .and_then(|id| self.store_bundle.get(id))
     }
 
     /// Make blueprint active for a given [`ApplicationId`]
@@ -458,8 +473,22 @@ impl StoreHub {
             .drain()
             .chain(self.default_blueprint_by_app_id.drain())
         {
+            if let Some(entity_db) = self.store_bundle.get(&blueprint_id) {
+                if entity_db.cloned_from().is_none()
+                    && entity_db.app_id() == Some(&Self::welcome_screen_app_id())
+                {
+                    // Don't remove the welcome screen blueprint
+                    continue;
+                }
+            }
+
             self.store_bundle.remove(&blueprint_id);
         }
+
+        self.active_blueprint_by_app_id.insert(
+            Self::welcome_screen_app_id(),
+            Self::welcome_screen_blueprint_id(),
+        );
     }
 
     /// Remove any empty [`EntityDb`]s from the hub

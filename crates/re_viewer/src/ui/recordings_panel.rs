@@ -93,6 +93,11 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
 fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let mut entity_dbs_map: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
+    // Always have a place for the welcome screen, even if there is no recordings or blueprints associated with it:
+    entity_dbs_map
+        .entry(StoreHub::welcome_screen_app_id())
+        .or_default();
+
     for entity_db in ctx.store_context.bundle.entity_dbs() {
         // We want to show all open applications, even if they have no recordings
         let Some(app_id) = entity_db.app_id().cloned() else {

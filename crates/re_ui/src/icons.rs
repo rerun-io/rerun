@@ -9,10 +9,12 @@ pub struct Icon {
 }
 
 impl Icon {
+    #[inline]
     pub const fn new(id: &'static str, png_bytes: &'static [u8]) -> Self {
         Self { id, png_bytes }
     }
 
+    #[inline]
     pub fn as_image(&self) -> Image<'static> {
         Image::new(ImageSource::Bytes {
             uri: self.id.into(),
@@ -68,8 +70,8 @@ pub const CLOSE: Icon = Icon::new("close", include_bytes!("../data/icons/close.p
 
 /// Used for HTTP URLs that leads out of the app.
 ///
-/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`
-/// and `.on_hover_text(url)`.
+/// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
+/// but don't add `.on_hover_text(url)`.
 pub const EXTERNAL_LINK: Icon = Icon::new(
     "external_link",
     include_bytes!("../data/icons/external_link.png"),
