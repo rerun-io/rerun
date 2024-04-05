@@ -1,4 +1,5 @@
-// Adapted from <https://github.com/LPGhatguy/nonmax>.
+// Adapted from <https://github.com/LPGhatguy/nonmax> because we want a `NonMinI64`, while `nonmax`
+// only provides `NonMaxI64`.
 //
 // Copyright (c) 2020 Lucien Greathouse | MIT or Apache 2
 
