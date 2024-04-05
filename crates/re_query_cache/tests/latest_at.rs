@@ -68,7 +68,7 @@ fn static_query() {
         DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, positions).unwrap();
     insert_and_react(&mut store, &mut caches, &row);
 
-    // Assign one of them a color with an explicit instance.. statically!
+    // Assign one of them a color with an explicit instance.. static_!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
     let row = DataRow::from_cells2_sized(

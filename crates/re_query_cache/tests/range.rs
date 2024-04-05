@@ -158,7 +158,7 @@ fn static_range() {
         .unwrap();
         insert_and_react(&mut store, &mut caches, &row);
 
-        // Insert statically too!
+        // Insert static_ too!
         let row = DataRow::from_cells2_sized(
             RowId::new(),
             entity_path.clone(),

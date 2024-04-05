@@ -936,15 +936,15 @@ impl RecordingStream {
     pub fn log_with_timeless(
         &self,
         ent_path: impl Into<EntityPath>,
-        statically: bool,
+        static_: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_static(ent_path, statically, arch)
+        self.log_with_static(ent_path, static_, arch)
     }
 
     /// Logs the contents of a [component bundle] into Rerun.
     ///
-    /// If `statically` is set to `true`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
     /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
     /// any temporal data of the same type.
@@ -968,14 +968,14 @@ impl RecordingStream {
     pub fn log_with_static(
         &self,
         ent_path: impl Into<EntityPath>,
-        statically: bool,
+        static_: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
             row_id,
             ent_path,
-            statically,
+            static_,
             arch.as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
@@ -984,7 +984,7 @@ impl RecordingStream {
 
     /// Logs a set of [`ComponentBatch`]es into Rerun.
     ///
-    /// If `statically` is set to `true`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
     /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
     /// any temporal data of the same type.
@@ -1008,18 +1008,18 @@ impl RecordingStream {
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        statically: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(row_id, ent_path, statically, comp_batches)
+        self.log_component_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
     fn log_component_batches_impl<'a>(
         &self,
         row_id: RowId,
         ent_path: impl Into<EntityPath>,
-        statically: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
@@ -1096,13 +1096,13 @@ impl RecordingStream {
         };
 
         if let Some(splatted) = splatted {
-            self.record_row(splatted, !statically);
+            self.record_row(splatted, !static_);
         }
 
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in here, see(#1215).
         if let Some(instanced) = instanced {
-            self.record_row(instanced, !statically);
+            self.record_row(instanced, !static_);
         }
 
         Ok(())
@@ -1121,9 +1121,9 @@ impl RecordingStream {
         &self,
         filepath: impl AsRef<std::path::Path>,
         entity_path_prefix: Option<EntityPath>,
-        statically: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None, entity_path_prefix, statically)
+        self.log_file(filepath, None, entity_path_prefix, static_)
     }
 
     /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
@@ -1140,9 +1140,9 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
         entity_path_prefix: Option<EntityPath>,
-        statically: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents), entity_path_prefix, statically)
+        self.log_file(filepath, Some(contents), entity_path_prefix, static_)
     }
 
     #[cfg(feature = "data_loaders")]
@@ -1151,7 +1151,7 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
         entity_path_prefix: Option<EntityPath>,
-        statically: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
             re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
@@ -1172,7 +1172,7 @@ impl RecordingStream {
             store_id: store_info.store_id,
             opened_store_id: None,
             entity_path_prefix,
-            timepoint: (!statically).then(|| {
+            timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current
                     // thread…
