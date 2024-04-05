@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "KISS-ICP"
-tags = ["3D", "point-cloud"]
+tags = ["3D", "Point cloud"]
 source = "https://github.com/rerun-io/kiss-icp"
 description = "Visualizes the KISS-ICP LiDAR odometry pipeline on the NCLT dataset."
 thumbnail = "https://static.rerun.io/kiss-icp-screenshot/881ec7c7c0a0e50ec5d78d82875efaf3bb3c6e01/480w.png"

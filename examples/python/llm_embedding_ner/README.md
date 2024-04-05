@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "LLM embedding-based named entity recognition"
-tags = ["LLM", "embeddings", "classification", "huggingface", "text"]
+tags = ["LLM", "Embeddings", "Classification", "Hugging Face", "Text"]
 description = "Visualize the BERT-based named entity recognition NER with UMAP Embeddings."
 thumbnail = "https://static.rerun.io/llm-embedding/999737b3b78d762e70116bc23929ebfde78e18c6/480w.png"
 thumbnail_dimensions = [480, 480]

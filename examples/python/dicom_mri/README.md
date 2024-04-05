@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Dicom MRI"
-tags = ["tensor", "mri", "dicom"]
+tags = ["Tensor", "MRI", "DICOM"]
 description = "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."
 thumbnail = "https://static.rerun.io/dicom-mri/d5a434f92504e8dda8af6c7f4eded2a9d662c991/480w.png"
 thumbnail_dimensions = [480, 480]

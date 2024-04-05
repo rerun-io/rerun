@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "ControlNet"
-tags = ["controlnet", "canny", "huggingface", "stable-diffusion", "tensor", "text"]
+tags = ["ControlNet", "Canny", "Hugging Face", "Stable diffusion", "Tensor", "Text"]
 description = "Use Hugging Face's ControlNet to generate an image from text, conditioned on detected edges from another image."
 thumbnail = "https://static.rerun.io/controlnet/2e984b27dd8120fb89d4e805df9da506ea6d9138/480w.png"
 thumbnail_dimensions = [480, 480]
