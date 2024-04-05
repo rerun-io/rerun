@@ -1128,7 +1128,7 @@ impl App {
     fn reset(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
 
-        store_hub.clear_all_blueprints();
+        store_hub.clear_all_cloned_blueprints();
 
         // Reset egui, but keep the style:
         let style = egui_ctx.style();

@@ -451,29 +451,25 @@ impl StoreHub {
     // ---------------------
     // Misc operations
 
-    /// Forgets all blueprints
-    pub fn clear_all_blueprints(&mut self) {
-        for (_app_id, blueprint_id) in self
-            .active_blueprint_by_app_id
-            .drain()
-            .chain(self.default_blueprint_by_app_id.drain())
-        {
-            if let Some(entity_db) = self.store_bundle.get(&blueprint_id) {
-                if entity_db.cloned_from().is_none()
-                    && entity_db.app_id() == Some(&Self::welcome_screen_app_id())
-                {
-                    // Don't remove the welcome screen blueprint
-                    continue;
+    /// Cloned blueprints are the ones the user has edited,
+    /// i.e. NOT sent from the SDK.
+    pub fn clear_all_cloned_blueprints(&mut self) {
+        let ids_to_clear: Vec<StoreId> = self
+            .store_bundle
+            .blueprints()
+            .filter_map(|entity_db| {
+                let is_clone = entity_db.cloned_from().is_some();
+                if is_clone {
+                    Some(entity_db.store_id().clone())
+                } else {
+                    None // keep
                 }
-            }
+            })
+            .collect();
 
-            self.store_bundle.remove(&blueprint_id);
+        for blueprint_id in ids_to_clear {
+            self.remove(&blueprint_id);
         }
-
-        self.active_blueprint_by_app_id.insert(
-            Self::welcome_screen_app_id(),
-            Self::welcome_screen_blueprint_id(),
-        );
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
