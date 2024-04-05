@@ -210,4 +210,5 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_landing_preview.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit

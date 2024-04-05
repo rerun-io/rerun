@@ -6,6 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      PR_NUMBER:
+        required: true
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-deploy-landing-preview
@@ -33,6 +36,7 @@ jobs:
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
       - name: Re-deploy rerun.io
+        id: deploy-vercel
         uses: ./.github/actions/deploy-vercel
         with:
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -40,3 +44,15 @@ jobs:
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ steps.get-sha.outputs.sha }}
           target: "preview"
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            ## Deployed docs
+
+            | Commit  | Link  |
+            | ------- | ----- |
+            | ${{ steps.get-sha.outputs.sha }} | ${{ steps.deploy-vercel.outputs.vercel_preview_url }} |
