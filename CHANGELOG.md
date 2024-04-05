@@ -186,8 +186,6 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 - Build wheels for Linux ARM64 [#5511](https://github.com/rerun-io/rerun/pull/5511)
 
 #### 🗣 Refactors
-- More context menu 1: refactor [#5392](https://github.com/rerun-io/rerun/pull/5392)
-- More context menu 7: cleanup [#5456](https://github.com/rerun-io/rerun/pull/5456)
 - Refactor `Selection` using `IndexMap` and make it more encapsulated [#5569](https://github.com/rerun-io/rerun/pull/5569)
 
 #### 📦 Dependencies
