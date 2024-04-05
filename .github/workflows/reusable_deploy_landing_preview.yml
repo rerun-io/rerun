@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
-          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
       - name: Re-deploy rerun.io
         uses: ./.github/actions/deploy-vercel
