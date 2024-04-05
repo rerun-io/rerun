@@ -24,7 +24,7 @@ Demonstrates how rerun can work with the python `multiprocessing` library.
 This example demonstrates how to use the rerun with `multiprocessing` to log data from multiple processes to the same Rerun viewer.
 It starts with the definition of the function for logging, the `task`, followed by typical usage of Python's `multiprocessing` library.
 
-The function `task` is decorated with `@rr.shutdown_at_exit`. This decorator ensures that data is flushed when the task completes, even if the normal atexit-handlers are not called at the termination of a multiprocessing process.
+The function `task` is decorated with `@rr.shutdown_at_exit`. This decorator ensures that data is flushed when the task completes, even if the normal `atexit`-handlers are not called at the termination of a multiprocessing process.
 
 ```python
 @rr.shutdown_at_exit
