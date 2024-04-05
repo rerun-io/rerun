@@ -2,6 +2,8 @@
 title = "NV12"
 tags = ["2D", "Image encoding", "YUV"]
 description = "Visualize an NV12 encoded video stream from a webcam."
+thumbnail = "https://static.rerun.io/nv12/3bffd358462a453c6358aa3cc4c8555b12fc0d35/480w.png"
+thumbnail_dimensions = [480, 480]
 -->
 
 
