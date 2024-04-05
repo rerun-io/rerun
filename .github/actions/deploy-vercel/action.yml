@@ -1,6 +1,10 @@
-# This action handles updating the target commit env variable (`RELEASE_COMMIT`)
-# which is used as the pointer for `rerun.io/docs` and `rerun.io/examples`
-# and triggering a redeploy of `rerun.io`.
+# If `target` is set to `production`, this action handles updating the
+# target commit env variable (`RELEASE_COMMIT`) which is used as the
+# pointer for `rerun.io/docs` and `rerun.io/examples` and triggering
+# a redeploy of `rerun.io`.
+
+# If `target` is set to `preview`, then this instead deploys a fresh preview
+# with an override for `release_commit`, and sets the `vercel_preview_url` output.
 
 name: "Deploy rerun.io"
 
@@ -24,6 +28,10 @@ inputs:
     required: true
   release_version:
     description: "Which release version to update the deployment to"
+    type: string
+    required: false
+  target:
+    description: "Which Vercel environment to deploy to"
     type: string
     required: true
 
