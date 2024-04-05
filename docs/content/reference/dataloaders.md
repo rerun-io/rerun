@@ -1,6 +1,6 @@
 ---
-title: Add support for arbitrary file types
-order: 11
+title: Data-loaders
+order: 550
 ---
 
 Internally, the [`DataLoader`](https://docs.rs/re_data_source/latest/re_data_source/trait.DataLoader.html) trait takes care of loading files into the Viewer and/or SDK.
@@ -36,6 +36,43 @@ The Rerun Viewer/SDK will then automatically load the data streamed to the exter
 
 Like any other `DataLoader`, an external loader will be notified of all file openings, unconditionally.
 To indicate that it does not support a given file, the loader has to exit with a [dedicated status code](https://docs.rs/rerun/latest/rerun/constant.EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE.html).
+
+When the viewer and/or SDK executes an external loader, it will pass to it a set of recommended settings in the form of CLI parameters:
+
+* `--application-id <application_id>`
+
+    The recommended `ApplicationId` to log the data to.
+
+* `--opened-application-id <opened_application_id>` (optional)
+
+    The `ApplicationId` that is currently opened in the viewer, if any.
+
+* `--recording-id <store_id>`
+
+    The recommended `RecordingId` to log the data to.
+    
+    Log data to this recording if you want it to appear in a new recording shared by all
+    data-loaders for the current loading session.
+
+* `--opened-recording-id <opened_store_id>` (optional)
+
+    The `RecordingId` that is currently opened in the viewer, if any.
+
+* `--entity-path-prefix <entity_path_prefix>` (optional)
+
+    Recommended prefix to prepend to all entity paths.
+
+* `--timeless` (optional)
+
+    The data is expected to be logged timelessly.
+
+* `--time <timeline1>=<time1> <timeline2>=<time2> ...` (optional)
+
+    The data is expected to be logged at these specific temporal timestamps.
+
+* `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (optional)
+
+    The data is expected to be logged at these specific sequence timestamps.
 
 Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_data_loader), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_data_loader) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_data_loader) that cover every steps in details.
 
