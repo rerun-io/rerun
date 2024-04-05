@@ -164,7 +164,7 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 - Save blueprint to file [#5491](https://github.com/rerun-io/rerun/pull/5491)
 - Add new design guidelines for title casing etc [#5501](https://github.com/rerun-io/rerun/pull/5501)
 - Automatically expand and scroll the streams tree when focusing on an item [#5494](https://github.com/rerun-io/rerun/pull/5494)
-- Reduce the height of the  the tab bars and side panel titles [#5609](https://github.com/rerun-io/rerun/pull/5609)
+- Reduce the height of the tab bars and side panel titles [#5609](https://github.com/rerun-io/rerun/pull/5609)
 - Support toggling item visibility on touch screens [#5624](https://github.com/rerun-io/rerun/pull/5624)
 - Select active recording if nothing else is selected [#5627](https://github.com/rerun-io/rerun/pull/5627)
 - Enable selecting data sources and blueprints and recordings in them [#5646](https://github.com/rerun-io/rerun/pull/5646)
