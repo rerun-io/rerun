@@ -21,7 +21,7 @@ class Tensor(TensorExt, Archetype):
 
     Example
     -------
-    ### Simple Tensor:
+    ### Simple tensor:
     ```python
     import numpy as np
     import rerun as rr

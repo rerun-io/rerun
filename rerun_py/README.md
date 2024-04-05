@@ -52,7 +52,7 @@ python3 python examples/python/plots/main.py --connect
 
 -------------------------
 
-# From Source
+# From source
 
 Setup:
 

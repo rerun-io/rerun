@@ -235,6 +235,7 @@ mod tests {
             info: StoreInfo {
                 application_id: ApplicationId::unknown(),
                 store_id: StoreId::from_string(StoreKind::Recording, "test".into()),
+                cloned_from: None,
                 is_official_example: false,
                 started: Time::from_ns_since_epoch(0),
                 store_source: StoreSource::Unknown,

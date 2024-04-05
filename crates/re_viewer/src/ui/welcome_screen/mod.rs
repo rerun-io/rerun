@@ -20,14 +20,19 @@ impl WelcomeScreen {
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         command_sender: &re_viewer_context::CommandSender,
+        welcome_screen_opacity: f32,
     ) {
+        if welcome_screen_opacity <= 0.0 {
+            return;
+        }
+
         // This is needed otherwise `example_page_ui` bleeds by a few pixels over the timeline panel
         // TODO(ab): figure out why that happens
         ui.set_clip_rect(ui.available_rect_before_wrap());
 
         let horizontal_scroll = ui.available_width() < 40.0 * 2.0 + MIN_COLUMN_WIDTH;
 
-        egui::ScrollArea::new([horizontal_scroll, true])
+        let response = egui::ScrollArea::new([horizontal_scroll, true])
             .id_source("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -41,11 +46,16 @@ impl WelcomeScreen {
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    //welcome_section_ui(ui);
-
                     self.example_page
                         .ui(ui, re_ui, command_sender, &welcome_section_ui);
                 });
             });
+
+        if welcome_screen_opacity < 1.0 {
+            let cover_opacity = 1.0 - welcome_screen_opacity;
+            let fill_color = ui.visuals().panel_fill.gamma_multiply(cover_opacity);
+            ui.painter()
+                .rect_filled(response.inner_rect, 0.0, fill_color);
+        }
     }
 }

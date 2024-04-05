@@ -1,4 +1,4 @@
-use re_format::{format_bytes, format_number};
+use re_format::{format_bytes, format_uint};
 use re_log_types::TimeInt;
 use re_types_core::SizeBytes as _;
 
@@ -40,7 +40,7 @@ impl std::fmt::Display for DataStore {
                     "{} timeless indexed tables, for a total of {} across {} total rows\n",
                     timeless_tables.len(),
                     format_bytes(self.timeless_size_bytes() as _),
-                    format_number(self.num_timeless_rows() as _)
+                    format_uint(self.num_timeless_rows())
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "timeless_tables: [\n"))?;
@@ -59,7 +59,7 @@ impl std::fmt::Display for DataStore {
                     "{} indexed tables, for a total of {} across {} total rows\n",
                     tables.len(),
                     format_bytes(self.temporal_size_bytes() as _),
-                    format_number(self.num_temporal_rows() as _)
+                    format_uint(self.num_temporal_rows())
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "tables: [\n"))?;
@@ -99,7 +99,7 @@ impl std::fmt::Display for IndexedTable {
             "size: {} buckets for a total of {} across {} total rows\n",
             self.buckets.len(),
             format_bytes(self.total_size_bytes() as _),
-            format_number(self.num_rows() as _),
+            format_uint(self.num_rows()),
         ))?;
         f.write_str("buckets: [\n")?;
         for (time, bucket) in buckets {
@@ -125,7 +125,7 @@ impl std::fmt::Display for IndexedBucket {
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_number(self.num_rows() as _),
+            format_uint(self.num_rows()),
         ))?;
 
         let time_range = {
@@ -166,7 +166,7 @@ impl std::fmt::Display for PersistentIndexedTable {
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_number(self.inner.read().num_rows() as _),
+            format_uint(self.inner.read().num_rows()),
         ))?;
 
         let (schema, columns) = self.serialize().map_err(|err| {

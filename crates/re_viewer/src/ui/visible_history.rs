@@ -6,7 +6,7 @@ use egui::{NumExt as _, Response, Ui};
 use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{TimeType, TimeZone};
 use re_space_view::{
-    default_time_range, time_range_boundary_to_visible_history_boundary,
+    time_range_boundary_to_visible_history_boundary,
     visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
@@ -55,9 +55,13 @@ pub fn visual_time_range_ui(
 
     let mut interacting_with_controls = false;
 
+    let space_view_class = ctx
+        .space_view_class_registry
+        .get_class_or_log_error(&space_view_class);
+
     let mut resolved_range = data_result
         .lookup_override::<VisibleTimeRange>(ctx)
-        .unwrap_or(default_time_range(space_view_class));
+        .unwrap_or(space_view_class.default_visible_time_range());
     let mut has_individual_range = if let Some(data_result_tree) = data_result_tree {
         // If there is a data-tree, we know we have individual settings if we are our own source.
         data_result

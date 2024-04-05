@@ -3,7 +3,7 @@
 //! TODO(andreas): This is not a `data_ui`, can this go somewhere else, shouldn't be in `re_data_ui`.
 
 use re_entity_db::{EntityTree, InstancePath};
-use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
+use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, SyntaxHighlighting};
 use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
 
@@ -551,6 +551,34 @@ pub fn entity_hover_card_ui(
     instance_hover_card_ui(ui, ctx, query, store, &instance_path);
 }
 
+pub fn app_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    app_id: &ApplicationId,
+) -> egui::Response {
+    let item = Item::AppId(app_id.clone());
+
+    let response = ctx.re_ui.selectable_label_with_icon(
+        ui,
+        &icons::APPLICATION,
+        app_id.to_string(),
+        ctx.selection().contains_item(&item),
+        re_ui::LabelStyle::Normal,
+    );
+
+    let response = response.on_hover_ui(|ui| {
+        app_id.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),  // unused
+            ctx.recording_store(), // unused
+        );
+    });
+
+    cursor_interact_with_selectable(ctx, response, item)
+}
+
 pub fn data_source_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -579,9 +607,24 @@ pub fn data_source_button_ui(
     cursor_interact_with_selectable(ctx, response, item)
 }
 
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
+pub fn store_id_button_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    store_id: &re_log_types::StoreId,
+) {
+    if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
+        entity_db_button_ui(ctx, ui, entity_db, true);
+    } else {
+        ui.label(store_id.to_string());
+    }
+}
+
 /// Show button for a store (recording or blueprint).
 ///
 /// You can set `include_app_id` to hide the App Id, but usually you want to show it.
+///
+/// This uses [`re_ui::ListItem::show_hierarchical`], meaning it comes with built-in indentation.
 pub fn entity_db_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -599,7 +642,7 @@ pub fn entity_db_button_ui(
         String::default()
     };
 
-    let time = entity_db
+    let creation_time = entity_db
         .store_info()
         .and_then(|info| {
             info.started
@@ -608,7 +651,7 @@ pub fn entity_db_button_ui(
         .unwrap_or("<unknown time>".to_owned());
 
     let size = re_format::format_bytes(entity_db.total_size_bytes() as _);
-    let title = format!("{app_id_prefix}{time} - {size}");
+    let title = format!("{app_id_prefix}{creation_time} - {size}");
 
     let store_id = entity_db.store_id().clone();
     let item = re_viewer_context::Item::StoreId(store_id.clone());
@@ -654,17 +697,15 @@ pub fn entity_db_button_ui(
         list_item = list_item.force_hovered(true);
     }
 
-    let response = list_item
-        .show_flat(ui) // never more than one level deep
-        .on_hover_ui(|ui| {
-            entity_db.data_ui(
-                ctx,
-                ui,
-                re_viewer_context::UiVerbosity::Reduced,
-                &ctx.current_query(),
-                entity_db.store(),
-            );
-        });
+    let response = list_item.show_hierarchical(ui).on_hover_ui(|ui| {
+        entity_db.data_ui(
+            ctx,
+            ui,
+            re_viewer_context::UiVerbosity::Reduced,
+            &ctx.current_query(),
+            entity_db.store(),
+        );
+    });
 
     if response.hovered() {
         ctx.selection_state().set_hovered(item.clone());
@@ -683,22 +724,7 @@ pub fn entity_db_button_ui(
                 .send_system(SystemCommand::ActivateRecording(store_id.clone()));
         }
 
-        // …and select the store in the selection panel.
-        // Note that we must do it in this order, since the selection state is stored in the recording.
-        // That's also why we use a command to set the selection.
-        match store_id.kind {
-            re_log_types::StoreKind::Recording => {
-                ctx.command_sender.send_system(SystemCommand::SetSelection {
-                    recording_id: Some(store_id),
-                    item,
-                });
-            }
-            re_log_types::StoreKind::Blueprint => {
-                ctx.command_sender.send_system(SystemCommand::SetSelection {
-                    recording_id: None,
-                    item,
-                });
-            }
-        }
+        ctx.command_sender
+            .send_system(SystemCommand::SetSelection(item));
     }
 }

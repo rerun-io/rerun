@@ -1,21 +1,18 @@
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{FileSource, LogMsg, StoreKind};
+use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
-    command_channel, AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    command_channel,
+    store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
+    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
+    SystemCommandSender,
 };
 
-use crate::{
-    app_blueprint::AppBlueprint,
-    background_tasks::BackgroundTasks,
-    store_hub::{StoreHub, StoreHubStats},
-    AppState,
-};
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks, AppState};
 
 // ----------------------------------------------------------------------------
 
@@ -54,7 +51,14 @@ pub struct StartupOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
 
-    pub skip_welcome_screen: bool,
+    /// This is a hint that we expect a recording to stream in very soon.
+    ///
+    /// This is set by the `spawn()` method in our logging SDK.
+    ///
+    /// The viewer will respond by fading in the welcome screen,
+    /// instead of showing it directly.
+    /// This ensures that it won't blink for a few frames before switching to the recording.
+    pub expect_data_soon: Option<bool>,
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
@@ -76,7 +80,7 @@ impl Default for StartupOptions {
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
 
-            skip_welcome_screen: false,
+            expect_data_soon: None,
             force_wgpu_backend: None,
         }
     }
@@ -93,6 +97,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 pub struct App {
     build_info: re_build_info::BuildInfo,
     startup_options: StartupOptions,
+    start_time: web_time::Instant,
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) re_ui: re_ui::ReUi,
     screenshotter: crate::screenshotter::Screenshotter,
@@ -220,6 +225,7 @@ impl App {
         Self {
             build_info,
             startup_options,
+            start_time: web_time::Instant::now(),
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             re_ui,
             screenshotter,
@@ -234,7 +240,10 @@ impl App {
             open_files_promise: Default::default(),
             state,
             background_tasks: Default::default(),
-            store_hub: Some(StoreHub::new()),
+            store_hub: Some(StoreHub::new(
+                blueprint_loader(),
+                &crate::app_blueprint::setup_welcome_screen_blueprint,
+            )),
             toasts: toasts::Toasts::new(),
             memory_panel: Default::default(),
             memory_panel_open: false,
@@ -336,11 +345,49 @@ impl App {
         egui_ctx: &egui::Context,
     ) {
         match cmd {
-            SystemCommand::ActivateRecording(store_id) => {
-                store_hub.activate_recording(store_id);
+            SystemCommand::ActivateApp(app_id) => {
+                store_hub.set_active_app(app_id);
             }
+
+            SystemCommand::CloseApp(app_id) => {
+                store_hub.close_app(&app_id);
+            }
+
+            SystemCommand::ActivateRecording(store_id) => {
+                store_hub.set_activate_recording(store_id);
+            }
+
             SystemCommand::CloseStore(store_id) => {
                 store_hub.remove(&store_id);
+            }
+
+            SystemCommand::CloseAllRecordings => {
+                store_hub.clear_recordings();
+
+                // Stop receiving into the old recordings.
+                // This is most important when going back to the example screen by using the "Back"
+                // button in the browser, and there is still a connection downloading an .rrd.
+                // That's the case of `SmartChannelSource::RrdHttpStream`.
+                // TODO(emilk): exactly what things get kept and what gets cleared?
+                self.rx.retain(|r| match r.source() {
+                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+
+                    SmartChannelSource::WsClient { .. }
+                    | SmartChannelSource::RrdWebEventListener
+                    | SmartChannelSource::Sdk
+                    | SmartChannelSource::TcpServer { .. }
+                    | SmartChannelSource::Stdin => true,
+                });
+            }
+
+            SystemCommand::ClearSourceAndItsStores(source) => {
+                self.rx.retain(|r| r.source() != &source);
+                store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
+            }
+
+            SystemCommand::AddReceiver(rx) => {
+                re_log::debug!("Received AddReceiver");
+                self.add_receiver(rx);
             }
 
             SystemCommand::LoadDataSource(data_source) => {
@@ -365,13 +412,7 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadStoreDb(entity_db) => {
-                let store_id = entity_db.store_id().clone();
-                store_hub.insert_entity_db(entity_db);
-                store_hub.set_active_recording_id(store_id);
-            }
-
-            SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearAndGenerateBlueprint => {
                 re_log::debug!("Clear and generate new blueprint");
                 // By clearing the default blueprint and the active blueprint
@@ -379,7 +420,7 @@ impl App {
                 store_hub.clear_default_blueprint();
                 store_hub.clear_active_blueprint();
             }
-            SystemCommand::ResetBlueprint => {
+            SystemCommand::ClearActiveBlueprint => {
                 // By clearing the blueprint the default blueprint will be restored
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
@@ -428,18 +469,8 @@ impl App {
                 }
             }
 
-            SystemCommand::SetSelection { recording_id, item } => {
-                let recording_id =
-                    recording_id.or_else(|| store_hub.active_recording_id().cloned());
-                if let Some(recording_id) = recording_id {
-                    if let Some(rec_cfg) = self.state.recording_config_mut(&recording_id) {
-                        rec_cfg.selection_state.set_selection(item);
-                    } else {
-                        re_log::debug!(
-                            "Failed to select item {item:?}: failed to find recording {recording_id}"
-                        );
-                    }
-                }
+            SystemCommand::SetSelection(item) => {
+                self.state.selection_state.set_selection(item);
             }
 
             SystemCommand::SetFocus(item) => {
@@ -502,6 +533,10 @@ impl App {
                     self.command_sender
                         .send_system(SystemCommand::CloseStore(cur_rec.clone()));
                 }
+            }
+            UICommand::CloseAllRecordings => {
+                self.command_sender
+                    .send_system(SystemCommand::CloseAllRecordings);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -582,22 +617,10 @@ impl App {
             }
 
             UICommand::SelectionPrevious => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_previous();
-                }
+                self.state.selection_state.select_previous();
             }
             UICommand::SelectionNext => {
-                let state = &mut self.state;
-                if let Some(rec_cfg) = store_context
-                    .map(|ctx| ctx.recording.store_id())
-                    .and_then(|rec_id| state.recording_config_mut(rec_id))
-                {
-                    rec_cfg.selection_state.select_next();
-                }
+                self.state.selection_state.select_next();
             }
             UICommand::ToggleCommandPalette => {
                 self.cmd_palette.toggle();
@@ -734,26 +757,36 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let location = eframe::web::web_location();
-        let mut href = location.origin;
-        if location.host == "app.rerun.io" {
-            // links to `app.rerun.io` can be made into permanent links:
-            let path = if self.build_info.is_final() {
-                // final release, use version tag
-                format!("version/{}", self.build_info.version)
-            } else {
-                // not a final release, use commit hash
-                format!("commit/{}", self.build_info.short_git_hash())
-            };
-            href = format!("{href}/{path}");
-        }
+        let location = web_sys::window().unwrap().location();
+        let origin = location.origin().unwrap();
+        let host = location.host().unwrap();
+        let pathname = location.pathname().unwrap();
+
+        let hosted_viewer_path = if self.build_info.is_final() {
+            // final release, use version tag
+            format!("version/{}", self.build_info.version)
+        } else {
+            // not a final release, use commit hash
+            format!("commit/{}", self.build_info.short_git_hash())
+        };
+
+        // links to `app.rerun.io` can be made into permanent links:
+        let href = if host == "app.rerun.io" {
+            format!("https://app.rerun.io/{hosted_viewer_path}")
+        } else if host == "rerun.io" && pathname.starts_with("/viewer") {
+            format!("https://rerun.io/viewer/{hosted_viewer_path}")
+        } else {
+            format!("{origin}{pathname}")
+        };
+
         let direct_link = match store_context
             .map(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
-            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}?url={url}"),
             _ => href,
         };
+
         self.re_ui
             .egui_ctx
             .output_mut(|o| o.copied_text = direct_link.clone());
@@ -853,19 +886,23 @@ impl App {
 
                 self.egui_debug_panel_ui(ui);
 
-                if let Some(store_view) = store_context {
-                    let entity_db = store_view.recording;
+                // TODO(andreas): store the re_renderer somewhere else.
+                let egui_renderer = {
+                    let render_state = frame.wgpu_render_state().unwrap();
+                    &mut render_state.renderer.write()
+                };
 
-                    // TODO(andreas): store the re_renderer somewhere else.
-                    let egui_renderer = {
-                        let render_state = frame.wgpu_render_state().unwrap();
-                        &mut render_state.renderer.write()
-                    };
-                    if let Some(render_ctx) = egui_renderer
-                        .callback_resources
-                        .get_mut::<re_renderer::RenderContext>()
-                    {
-                        render_ctx.begin_frame();
+                if let Some(render_ctx) = egui_renderer
+                    .callback_resources
+                    .get_mut::<re_renderer::RenderContext>()
+                {
+                    // TODO(#5283): There's no great reason to do this if we have no store-view and
+                    // subsequently won't actually be rendering anything. However, doing this here
+                    // avoids a hang on linux. Consider moving this back inside the below `if let`.
+                    // once the upstream issues that fix the hang properly have been resolved.
+                    render_ctx.begin_frame();
+                    if let Some(store_view) = store_context {
+                        let entity_db = store_view.recording;
 
                         self.state.show(
                             app_blueprint,
@@ -878,16 +915,10 @@ impl App {
                             &self.space_view_class_registry,
                             &self.rx,
                             &self.command_sender,
+                            self.welcome_screen_opacity(egui_ctx),
                         );
-
-                        render_ctx.before_submit();
                     }
-                } else {
-                    // There's nothing to show.
-                    // We get here when
-                    // A) there is nothing loaded
-                    // B) we decided not to show the welcome screen, presumably because data is expected at any time now.
-                    // The user can see the connection status in the top bar.
+                    render_ctx.before_submit();
                 }
             });
     }
@@ -963,6 +994,11 @@ impl App {
                         StoreKind::Recording => {
                             re_log::debug!("Opening a new recording: {store_id}");
                             store_hub.set_active_recording_id(store_id.clone());
+
+                            // Also select the new recording:
+                            self.command_sender.send_system(SystemCommand::SetSelection(
+                                re_viewer_context::Item::StoreId(store_id.clone()),
+                            ));
                         }
                         StoreKind::Blueprint => {
                             // We wait with activating blueprints until they are fully loaded,
@@ -975,7 +1011,7 @@ impl App {
                 }
 
                 LogMsg::ArrowMsg(_, _) => {
-                    // Andled by EntityDb::add
+                    // Handled by `EntityDb::add`
                 }
 
                 LogMsg::BlueprintActivationCommand(cmd) => match store_id.kind {
@@ -991,14 +1027,15 @@ impl App {
                             );
                             let app_id = info.application_id.clone();
                             if cmd.make_default {
-                                store_hub.set_default_blueprint_for_app_id(store_id, &app_id);
+                                store_hub.set_default_blueprint_for_app(&app_id, store_id);
                             }
                             if cmd.make_active {
                                 store_hub
-                                    .make_blueprint_active_for_app_id(store_id, &app_id)
+                                    .set_cloned_blueprint_active_for_app(&app_id, store_id)
                                     .unwrap_or_else(|err| {
                                         re_log::warn!("Failed to make blueprint active: {err}");
                                     });
+                                store_hub.set_active_app(app_id); // Switch to this app, e.g. on drag-and-drop of a blueprint file
                             }
                         } else {
                             re_log::warn!(
@@ -1088,10 +1125,10 @@ impl App {
     }
 
     /// Reset the viewer to how it looked the first time you ran it.
-    fn reset(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn reset_viewer(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
 
-        store_hub.clear_all_blueprints();
+        store_hub.clear_all_cloned_blueprints();
 
         // Reset egui, but keep the style:
         let style = egui_ctx.style();
@@ -1139,60 +1176,121 @@ impl App {
         }
     }
 
-    /// This function implements a heuristic which determines when the welcome screen
-    /// should show up.
-    ///
-    /// Why not always show it when no data is loaded?
-    /// Because sometimes we expect data to arrive at any moment,
-    /// and showing the wlecome screen for a few frames will just be an annoying flash
-    /// in the users face.
-    fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
-        // Don't show the welcome screen if we have actual data to display.
-        if store_hub.active_recording().is_some() || store_hub.active_application_id().is_some() {
-            return false;
+    fn should_fade_in_welcome_screen(&self) -> bool {
+        if let Some(expect_data_soon) = self.startup_options.expect_data_soon {
+            return expect_data_soon;
         }
 
-        // Don't show the welcome screen if the `--skip-welcome-screen` flag was used (e.g. by the
-        // Python SDK), until some data has been loaded and shown. This way, we *still* show the
-        // welcome screen when the user closes all recordings after, e.g., running a Python example.
-        if self.startup_options.skip_welcome_screen && !store_hub.was_recording_active() {
-            return false;
-        }
+        // The reason for the fade-in is to avoid the welcome screen
+        // flickering quickly before receiving some data.
+        // So: if we expect data very soon, we do a fade-in.
 
-        let sources = self.rx.sources();
-
-        if sources.is_empty() {
-            return true;
-        }
-
-        // Here, we use the type of Receiver as a proxy for which kind of workflow the viewer is
-        // being used in.
-        for source in sources {
+        for source in self.rx.sources() {
+            #[allow(clippy::match_same_arms)]
             match &*source {
-                // No need for a welcome screen - data is coming soon!
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::Stdin => {
-                    return false;
+                | SmartChannelSource::Stdin
+                | SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::WsClient { .. } => {
+                    return true; // We expect data soon, so fade-in
                 }
 
-                // The workflows associated with these sources typically do not require showing the
-                // welcome screen until after some recording have been loaded and then closed.
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. } => {}
-
-                // This might be the trickiest case. When running the bare executable, we want to show
-                // the welcome screen (default, "new user" workflow). There are other case using Tcp
-                // where it's not the case, including Python/C++ SDKs and possibly other, advanced used,
-                // scenarios. In this cases, `--skip-welcome-screen` should be used.
                 SmartChannelSource::TcpServer { .. } => {
-                    return true;
+                    // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
+                    // and in that case fading in the welcome screen would be slightly annoying.
+                    // However, we also use the TCP server for sending data from the logging SDKs
+                    // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
+                    // Therefore `spawn()` uses the special `--expect-data-soon` flag
+                    // (handled earlier in this function), so here we know we are in the other case:
+                    // a user calling `rerun` in their terminal (don't fade in).
                 }
             }
         }
 
-        false
+        false // No special sources (or no sources at all), so don't fade in
+    }
+
+    /// Handle fading in the welcome screen, if we should.
+    fn welcome_screen_opacity(&self, egui_ctx: &egui::Context) -> f32 {
+        if self.should_fade_in_welcome_screen() {
+            // The reason for this delay is to avoid the welcome screen
+            // flickering quickly before receiving some data.
+            // The only time it has for that is between the call to `spawn` and sending the recording info,
+            // which should happen _right away_, so we only need a small delay.
+            // Why not skip the wlecome screen completely when we expect the data?
+            // Because maybe the data never comes.
+            let sec_since_first_shown = self.start_time.elapsed().as_secs_f32();
+            let opacity = egui::remap_clamp(sec_since_first_shown, 0.4..=0.6, 0.0..=1.0);
+            if opacity < 1.0 {
+                egui_ctx.request_repaint();
+            }
+            opacity
+        } else {
+            1.0
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn blueprint_loader() -> BlueprintPersistence {
+    // TODO(#2579): implement persistence for web
+    BlueprintPersistence {
+        loader: None,
+        saver: None,
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn blueprint_loader() -> BlueprintPersistence {
+    use re_entity_db::StoreBundle;
+
+    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+        if !blueprint_path.exists() {
+            return Ok(None);
+        }
+
+        re_log::debug!("Trying to load blueprint for {app_id} from {blueprint_path:?}");
+
+        let with_notifications = false;
+
+        if let Some(bundle) =
+            crate::loading::load_blueprint_file(&blueprint_path, with_notifications)
+        {
+            for store in bundle.entity_dbs() {
+                if store.store_kind() == StoreKind::Blueprint
+                    && !crate::blueprint::is_valid_blueprint(store)
+                {
+                    re_log::warn_once!("Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions.");
+                    return Ok(None);
+                }
+            }
+            Ok(Some(bundle))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+        let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
+
+        let messages = blueprint.to_messages(None)?;
+
+        // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
+        // be small & fast to save, but maybe not once we start adding big pieces of user data?
+        crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
+
+        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+
+        Ok(())
+    }
+
+    BlueprintPersistence {
+        loader: Some(Box::new(load_blueprint_from_disk)),
+        saver: Some(Box::new(save_blueprint_to_disk)),
     }
 }
 
@@ -1229,6 +1327,22 @@ impl eframe::App for App {
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history
                 .add(egui_ctx.input(|i| i.time), seconds);
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
+            let back_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
+            let fwd_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
+
+            if back_pressed {
+                crate::web_tools::go_back();
+            }
+            if fwd_pressed {
+                crate::web_tools::go_forward();
+            }
         }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
@@ -1310,10 +1424,20 @@ impl eframe::App for App {
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
 
-        // Heuristic to set the app_id to the welcome screen blueprint.
+        // Make sure some app is active
         // Must be called before `read_context` below.
-        if self.should_show_welcome_screen(&store_hub) {
-            store_hub.set_active_app_id(StoreHub::welcome_screen_app_id());
+        if store_hub.active_app().is_none() {
+            let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
+                .store_bundle()
+                .entity_dbs()
+                .filter_map(|db| db.app_id())
+                .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                .collect();
+            if let Some(app_id) = apps.first().cloned() {
+                store_hub.set_active_app(app_id.clone());
+            } else {
+                store_hub.set_active_app(StoreHub::welcome_screen_app_id());
+            }
         }
 
         let store_context = store_hub.read_context();

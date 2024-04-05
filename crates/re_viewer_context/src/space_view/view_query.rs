@@ -401,10 +401,10 @@ pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
-    /// All queried [`DataResult`]s.
+    /// All [`DataResult`]s that are queried by active visualizers.
     ///
-    /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
-    pub per_system_data_results: PerSystemDataResults<'s>,
+    /// Contains also invisible objects, use `iter_visible_data_results` to iterate over visible ones.
+    pub per_visualizer_data_results: PerSystemDataResults<'s>,
 
     /// The timeline we're on.
     pub timeline: Timeline,
@@ -423,12 +423,12 @@ impl<'s> ViewQuery<'s> {
     pub fn iter_visible_data_results<'a>(
         &'a self,
         ctx: &'a ViewerContext<'a>,
-        system: ViewSystemIdentifier,
+        visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = &DataResult>
     where
         's: 'a,
     {
-        self.per_system_data_results.get(&system).map_or(
+        self.per_visualizer_data_results.get(&visualizer).map_or(
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
@@ -443,7 +443,7 @@ impl<'s> ViewQuery<'s> {
 
     /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
     pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
-        self.per_system_data_results
+        self.per_visualizer_data_results
             .values()
             .flat_map(|data_results| data_results.iter().copied())
     }

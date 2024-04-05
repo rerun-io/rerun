@@ -21,7 +21,7 @@ class Pinhole(PinholeExt, Archetype):
 
     Examples
     --------
-    ### Simple Pinhole Camera:
+    ### Simple pinhole camera:
     ```python
     import numpy as np
     import rerun as rr
@@ -43,7 +43,7 @@ class Pinhole(PinholeExt, Archetype):
     </picture>
     </center>
 
-    ### Perspective Pinhole Camera:
+    ### Perspective pinhole camera:
     ```python
     import rerun as rr
 

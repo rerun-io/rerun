@@ -349,7 +349,7 @@ While range queries have some surprisingly tricky semantics (especially around t
 However, the fact that we return row numbers instead of the actual data itself can have significant performance implications when it comes to range queries.
 For example, if you need to iterate through 100k values, you would need to run 100k `get` requests, which would require 100k binsearches in the component tables. This can be extremely costly and is a major reason why our ranged query scenes quickly become unusable as the dataset grows.
 
-### Garbage Collection
+### Garbage collection
 
 The current garbage collection mechanism was put together as a quick fix for the `MsgId`-mismatch issue, and it is largely unreliable.
 
@@ -783,7 +783,7 @@ Nothing specific to add to the above.
 
 Nothing specific to add to the above.
 
-### Garbage Collection
+### Garbage collection
 
 The garbage collector is the system undergoing the most changes.
 

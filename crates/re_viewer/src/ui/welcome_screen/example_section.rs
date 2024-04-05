@@ -2,7 +2,7 @@ use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_viewer_context::SystemCommandSender;
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -64,21 +64,6 @@ impl ExampleDescLayout {
             desc,
             rect: egui::Rect::NOTHING,
         }
-    }
-
-    /// Saves the rectangle of the hover/click area for this example.
-    fn set_rect(&mut self, rect: egui::Rect) {
-        self.rect = rect;
-    }
-
-    fn clicked(&self, ui: &egui::Ui, id: egui::Id) -> bool {
-        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::click())
-            .clicked()
-    }
-
-    fn hovered(&self, ui: &egui::Ui, id: egui::Id) -> bool {
-        ui.interact(self.rect, id.with(&self.desc.name), egui::Sense::hover())
-            .hovered()
     }
 
     /// Move the egui cursor to the bottom of this example card.
@@ -268,8 +253,8 @@ impl ExampleSection {
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
-        re_ui: &re_ui::ReUi,
-        command_sender: &re_viewer_context::CommandSender,
+        _re_ui: &re_ui::ReUi,
+        command_sender: &CommandSender,
         header_ui: &impl Fn(&mut Ui),
     ) {
         let examples = self
@@ -277,14 +262,25 @@ impl ExampleSection {
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
 
         let Some(examples) = examples.ready_mut() else {
-            ui.spinner();
+            // Still waiting for example to load
+
+            header_ui(ui); // Always show the header
+
+            ui.separator();
+
+            ui.spinner(); // Placeholder for the examples
             return;
         };
 
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
-                ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
+                // Examples failed to load.
+
+                header_ui(ui); // Always show the header
+
+                re_log::warn_once!("Failed to load examples: {err}");
+
                 return;
             }
         };
@@ -331,18 +327,30 @@ impl ExampleSection {
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
-                        for example_layouts in examples.chunks_mut(column_count) {
-                            for example in &mut *example_layouts {
+                        // Disable text selection so that hovering the example card only hovers the card
+                        ui.style_mut().interaction.selectable_labels = false;
+
+                        for row_of_examples in examples.chunks_mut(column_count) {
+                            let mut row_example_responses: Vec<egui::Response> = vec![];
+
+                            // Background and thumbnail
+                            for example in &mut *row_of_examples {
                                 // this is the beginning of the first cell for this example, we can
                                 // fully compute its rect now
-                                example.set_rect(egui::Rect::from_min_size(
+                                example.rect = egui::Rect::from_min_size(
                                     ui.cursor().min,
                                     egui::vec2(
                                         column_width,
                                         column_width / CARD_THUMBNAIL_ASPECT_RATIO
                                             + CARD_DESCRIPTION_HEIGHT,
                                     ),
-                                ));
+                                );
+
+                                let response = ui.interact(
+                                    example.rect,
+                                    self.id.with(&example.desc.name),
+                                    egui::Sense::click(),
+                                );
 
                                 // paint background
                                 ui.painter().rect_filled(
@@ -352,30 +360,51 @@ impl ExampleSection {
                                     egui::Color32::WHITE.gamma_multiply(0.04),
                                 );
 
-                                ui.vertical(|ui| {
-                                    example_thumbnail(ui, &example.desc, column_width);
-                                });
+                                if response.clicked() {
+                                    // TODO(#5177): This workaround is needed to avoid the click to "leak"
+                                    // through the UI, potentially causing some views (e.g. timeseries or time
+                                    // panel to quit auto-zoom mode.
+                                    ui.input_mut(|i| i.pointer = Default::default());
+
+                                    let open_in_new_tab = ui.input(|i| i.modifiers.any());
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        open_in_new_tab,
+                                    );
+                                } else if response.middle_clicked() {
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        true,
+                                    );
+                                }
+
+                                row_example_responses.push(response);
+
+                                ui.vertical(|ui| example.image_ui(ui, column_width));
                             }
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
-                                ui.vertical(|ui| {
-                                    example_title(ui, example);
-                                });
+                            // Title
+                            for example in &*row_of_examples {
+                                ui.vertical(|ui| example.tile_ui(ui));
                             }
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
-                                ui.vertical(|ui| {
-                                    example_tags(ui, &example.desc);
-                                });
+                            // Tags
+                            for example in &*row_of_examples {
+                                ui.vertical(|ui| example.tags_ui(ui));
                             }
 
                             ui.end_row();
 
-                            for example in &mut *example_layouts {
+                            // Source code link and file size
+                            for example in &*row_of_examples {
                                 ui.vertical(|ui| {
                                     // The previous row (tags) may take one or two lines, depending
                                     // on wrapping, so we use the bottom of the example card as
@@ -383,7 +412,7 @@ impl ExampleSection {
                                     example.move_cursor_to_bottom(ui);
                                     ui.add_space(-DESCRIPTION_INNER_MARGIN - 15.0);
 
-                                    example_source(ui, &example.desc);
+                                    example.github_link_and_size_ui(ui);
 
                                     // Ensure the egui cursor is moved according to this card's
                                     // geometry.
@@ -392,8 +421,15 @@ impl ExampleSection {
                                     // Manual spacing between rows.
                                     ui.add_space(ROW_VSPACE);
                                 });
+                            }
 
-                                if example.hovered(ui, self.id) {
+                            // Hover effect
+                            for (example, response) in
+                                itertools::izip!(&*row_of_examples, row_example_responses)
+                            {
+                                if response.hovered() {
+                                    // We do the hover effect here, last, so we can make the whole card,
+                                    // including the image, brighter.
                                     ui.painter().rect_filled(
                                         example.rect,
                                         THUMBNAIL_RADIUS,
@@ -406,144 +442,196 @@ impl ExampleSection {
                             ui.end_row();
                         }
                     });
-
-                for example in examples {
-                    if example.clicked(ui, self.id) {
-                        // TODO(#5177): This workaround is needed to avoid the click to "leak"
-                        // through the UI, potentially causing some views (e.g. timeseries or time
-                        // panel to quit auto-zoom mode.
-                        ui.input_mut(|i| i.pointer = Default::default());
-
-                        let data_source =
-                            re_data_source::DataSource::RrdHttpUrl(example.desc.rrd_url.clone());
-                        command_sender.send_system(
-                            re_viewer_context::SystemCommand::LoadDataSource(data_source),
-                        );
-                    }
-                }
             });
         });
     }
 }
 
-fn example_thumbnail(ui: &mut Ui, example: &ExampleDesc, column_width: f32) {
-    // dimensions of the source image to use as thumbnail
-    let image_width = example.thumbnail.width as f32;
-    let image_height = example.thumbnail.height as f32;
-
-    // the thumbnail rect is determined by the column width and a fixed aspect ratio
-    let thumbnail_rect = egui::Rect::from_min_size(
-        ui.cursor().left_top(),
-        egui::vec2(column_width, column_width / CARD_THUMBNAIL_ASPECT_RATIO),
-    );
-    let thumbnail_width = thumbnail_rect.width();
-    let thumbnail_height = thumbnail_rect.height();
-
-    // compute image UV coordinates implementing a "cropping" scale to fit thumbnail rect
-    let display_aspect_ratio = thumbnail_width / thumbnail_height;
-    let image_aspect_ratio = image_width / image_height;
-    let uv_rect = if image_aspect_ratio > display_aspect_ratio {
-        let a =
-            (image_width / image_height * thumbnail_height - thumbnail_width) / 2.0 / image_width;
-        egui::Rect::from_min_max(egui::Pos2::new(a, 0.0), egui::Pos2::new(1.0 - a, 1.0))
-    } else {
-        let a =
-            (image_height / image_width * thumbnail_width - thumbnail_height) / 2.0 / image_height;
-        egui::Rect::from_min_max(egui::Pos2::new(0.0, a), egui::Pos2::new(1.0, 1.0 - a))
-    };
-
-    let rounding = egui::Rounding {
-        nw: THUMBNAIL_RADIUS,
-        ne: THUMBNAIL_RADIUS,
-        sw: 0.0,
-        se: 0.0,
-    };
-    egui::Image::new(&example.thumbnail.url)
-        .uv(uv_rect)
-        .rounding(rounding)
-        .paint_at(ui, thumbnail_rect);
-    ui.advance_cursor_after_rect(thumbnail_rect);
-}
-
-fn example_title(ui: &mut Ui, example: &ExampleDescLayout) {
-    let title = egui::RichText::new(example.desc.title.clone())
-        .strong()
-        .line_height(Some(16.0))
-        .text_style(re_ui::ReUi::welcome_screen_example_title());
-
-    ui.add_space(DESCRIPTION_INNER_MARGIN);
-    egui::Frame {
-        inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.add(egui::Label::new(title).truncate(true));
-
-            if let Some(Some(size)) = example.rrd_byte_size_promise.ready().cloned() {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
-                });
-            }
-        });
+#[cfg(target_arch = "wasm32")]
+fn open_in_background_tab(egui_ctx: &egui::Context, rrd_url: &str) {
+    egui_ctx.open_url(egui::output::OpenUrl {
+        url: format!("/?url={}", crate::web_tools::percent_encode(rrd_url)),
+        new_tab: true,
     });
 }
 
-fn example_tags(ui: &mut Ui, example: &ExampleDesc) {
-    ui.add_space(10.0);
-
-    egui::Frame {
-        inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            // TODO(ab): use design tokens
-            ui.style_mut().spacing.button_padding = egui::vec2(4.0, 2.0);
-            ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 4.0);
-            for tag in &example.tags {
-                ui.add(
-                    egui::Button::new(
-                        egui::RichText::new(tag)
-                            .text_style(re_ui::ReUi::welcome_screen_tag())
-                            .strong(),
-                    )
-                    .sense(egui::Sense::hover())
-                    .rounding(6.0)
-                    .fill(egui::Color32::from_rgb(26, 29, 30))
-                    .stroke(egui::Stroke::new(
-                        1.0,
-                        egui::Color32::WHITE.gamma_multiply(0.086),
-                    ))
-                    .wrap(false),
-                );
-            }
-        });
-    });
-}
-
-fn example_source(ui: &mut Ui, example: &ExampleDesc) {
-    let source_url = example.source_url.as_deref();
-
-    egui::Frame {
-        inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
-        ..Default::default()
-    }
-    .show(ui, |ui| {
-        if ui
-            .add_enabled(
-                source_url.is_some(),
-                egui::Button::image_and_text(re_ui::icons::GITHUB.as_image(), "Source code"),
-            )
-            .on_disabled_hover_text("Source code is not available for this example")
-            .clicked()
-        {
-            if let Some(source_url) = source_url {
-                ui.ctx().open_url(egui::output::OpenUrl {
-                    url: source_url.to_owned(),
-                    new_tab: true,
-                });
-            }
+fn open_example_url(
+    _egui_ctx: &egui::Context,
+    command_sender: &CommandSender,
+    rrd_url: &str,
+    _open_in_new_tab: bool,
+) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if _open_in_new_tab {
+            open_in_background_tab(_egui_ctx, rrd_url);
+            return;
         }
-    });
+    }
+
+    let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
+
+    // If the user re-download an already open recording, clear it out first
+    command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+        re_smart_channel::SmartChannelSource::RrdHttpStream {
+            url: rrd_url.to_owned(),
+        },
+    ));
+
+    command_sender.send_system(SystemCommand::LoadDataSource(data_source));
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        // Ensure that the user returns to the welcome page after navigating to an example.
+        use crate::web_tools;
+
+        // So we know where to return to
+        let welcome_screen_app_id = re_viewer_context::StoreHub::welcome_screen_app_id();
+        let welcome_screen_url = format!(
+            "?app_id={}",
+            web_tools::percent_encode(&welcome_screen_app_id.to_string())
+        );
+
+        if web_tools::current_url_suffix()
+            .unwrap_or_default()
+            .is_empty()
+        {
+            // Replace, otherwise the user would need to hit back twice to return to
+            // whatever linked them to `https://www.rerun.io/viewer` in the first place.
+            web_tools::replace_history(&welcome_screen_url);
+        } else {
+            web_tools::push_history(&welcome_screen_url);
+        }
+
+        // Where we're going:
+        web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));
+    }
+}
+
+impl ExampleDescLayout {
+    fn image_ui(&self, ui: &mut Ui, column_width: f32) {
+        // dimensions of the source image to use as thumbnail
+        let image_width = self.desc.thumbnail.width as f32;
+        let image_height = self.desc.thumbnail.height as f32;
+
+        // the thumbnail rect is determined by the column width and a fixed aspect ratio
+        let thumbnail_rect = egui::Rect::from_min_size(
+            ui.cursor().left_top(),
+            egui::vec2(column_width, column_width / CARD_THUMBNAIL_ASPECT_RATIO),
+        );
+        let thumbnail_width = thumbnail_rect.width();
+        let thumbnail_height = thumbnail_rect.height();
+
+        // compute image UV coordinates implementing a "cropping" scale to fit thumbnail rect
+        let display_aspect_ratio = thumbnail_width / thumbnail_height;
+        let image_aspect_ratio = image_width / image_height;
+        let uv_rect = if image_aspect_ratio > display_aspect_ratio {
+            let a = (image_width / image_height * thumbnail_height - thumbnail_width)
+                / 2.0
+                / image_width;
+            egui::Rect::from_min_max(egui::Pos2::new(a, 0.0), egui::Pos2::new(1.0 - a, 1.0))
+        } else {
+            let a = (image_height / image_width * thumbnail_width - thumbnail_height)
+                / 2.0
+                / image_height;
+            egui::Rect::from_min_max(egui::Pos2::new(0.0, a), egui::Pos2::new(1.0, 1.0 - a))
+        };
+
+        let rounding = egui::Rounding {
+            nw: THUMBNAIL_RADIUS,
+            ne: THUMBNAIL_RADIUS,
+            sw: 0.0,
+            se: 0.0,
+        };
+        egui::Image::new(&self.desc.thumbnail.url)
+            .uv(uv_rect)
+            .rounding(rounding)
+            .paint_at(ui, thumbnail_rect);
+        ui.advance_cursor_after_rect(thumbnail_rect);
+    }
+
+    fn tile_ui(&self, ui: &mut Ui) {
+        let title = egui::RichText::new(self.desc.title.clone())
+            .strong()
+            .line_height(Some(16.0))
+            .text_style(re_ui::ReUi::welcome_screen_example_title());
+
+        ui.add_space(DESCRIPTION_INNER_MARGIN);
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.add(egui::Label::new(title).truncate(true));
+        });
+    }
+
+    fn tags_ui(&self, ui: &mut Ui) {
+        ui.add_space(10.0);
+
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                // TODO(ab): use design tokens
+                ui.style_mut().spacing.button_padding = egui::vec2(4.0, 2.0);
+                ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 4.0);
+                for tag in &self.desc.tags {
+                    ui.add(
+                        egui::Button::new(
+                            egui::RichText::new(tag).text_style(re_ui::ReUi::welcome_screen_tag()),
+                        )
+                        .sense(egui::Sense::hover())
+                        .rounding(6.0)
+                        .fill(egui::Color32::from_rgb(26, 29, 30))
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            egui::Color32::WHITE.gamma_multiply(0.086),
+                        ))
+                        .wrap(false),
+                    );
+                }
+            });
+        });
+    }
+
+    fn github_link_and_size_ui(&self, ui: &mut Ui) {
+        let source_url = self.desc.source_url.as_deref();
+
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(DESCRIPTION_INNER_MARGIN, 0.0),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(
+                        source_url.is_some(),
+                        egui::Button::image_and_text(
+                            re_ui::icons::GITHUB.as_image(),
+                            "Source code",
+                        ),
+                    )
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_disabled_hover_text("Source code is not available for this example")
+                    .clicked()
+                {
+                    if let Some(source_url) = source_url {
+                        ui.ctx().open_url(egui::output::OpenUrl {
+                            url: source_url.to_owned(),
+                            new_tab: true,
+                        });
+                    }
+                }
+
+                if let Some(Some(size)) = self.rrd_byte_size_promise.ready().cloned() {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
+                    });
+                }
+            });
+        });
+    }
 }

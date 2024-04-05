@@ -22,7 +22,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### Simple Tensor
+    /// ### Simple tensor
     /// ![image](https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png)
     ///
     /// ```cpp

@@ -1,4 +1,4 @@
-# Rerun Python SDK Architecture
+# Rerun Python SDK architecture
 
 ## Background
 

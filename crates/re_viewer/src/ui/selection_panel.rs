@@ -26,8 +26,8 @@ use re_viewport::{
     SelectionUpdateBehavior, Viewport, ViewportBlueprint,
 };
 
-use crate::ui::override_ui::override_ui;
 use crate::ui::override_ui::override_visualizer_ui;
+use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
 
 use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_time_range_ui};
 
@@ -52,7 +52,7 @@ impl SelectionPanel {
 
         let panel = egui::SidePanel::right("selection_view")
             .min_width(120.0)
-            .default_width((0.45 * screen_width).min(250.0).round())
+            .default_width(default_selection_panel_width(screen_width))
             .max_width((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
@@ -255,6 +255,7 @@ fn container_children(
 
 fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
     match item {
+        Item::AppId(app_id) => Some(Box::new(app_id.clone())),
         Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
@@ -298,6 +299,10 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::AppId(app_id) => {
+            let title = app_id.to_string();
+            item_title_ui(ctx.re_ui, ui, &title, Some(&icons::APPLICATION), &title);
+        }
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
             item_title_ui(ctx.re_ui, ui, &title, Some(&icons::DATA_SOURCE), &title);
@@ -804,7 +809,8 @@ fn show_list_item_for_container_child(
 
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::DataSource(_)
+        Item::AppId(_)
+        | Item::DataSource(_)
         | Item::StoreId(_)
         | Item::ComponentPath(_)
         | Item::Container(_)
@@ -822,6 +828,13 @@ fn blueprint_ui(
     item: &Item,
 ) {
     match item {
+        Item::AppId(_)
+        | Item::DataSource(_)
+        | Item::StoreId(_)
+        | Item::ComponentPath(_)
+        | Item::Container(_)
+        | Item::InstancePath(_) => {}
+
         Item::SpaceView(space_view_id) => {
             blueprint_ui_for_space_view(ui, ctx, viewport, *space_view_id);
         }
@@ -829,12 +842,6 @@ fn blueprint_ui(
         Item::DataResult(space_view_id, instance_path) => {
             blueprint_ui_for_data_result(ui, ctx, viewport, *space_view_id, instance_path);
         }
-
-        Item::DataSource(_)
-        | Item::StoreId(_)
-        | Item::ComponentPath(_)
-        | Item::Container(_)
-        | Item::InstancePath(_) => {}
     }
 }
 

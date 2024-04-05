@@ -1,25 +1,107 @@
 <!--[metadata]
-title = "Depth Guided Stable Diffusion"
-tags = ["2D", "depth", "huggingface", "stable-diffusion", "tensor", "text"]
-thumbnail = "https://static.rerun.io/stable-diffusiuon/55fd41b25d4f7c55e7493640905a21e41021969f/480w.png"
-thumbnail_dimensions = [480, 480]
-channel = "nightly"
+title = "Depth guided stable diffusion"
+tags = ["Depth guided", "Stable diffusion", "Hugging Face", "3D", "Tensor", "Text"]
+description = "Leverage Depth Guided Stable Diffusion to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images."
+thumbnail = "https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png"
+thumbnail_dimensions = [480, 266]
 -->
 
 <picture>
-  <img src="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/full.png" alt="Depth-guided stable diffusion screenshot">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/1200w.png">
+  <img src="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/full.png" alt="Depth-guided stable diffusion example">
 </picture>
 
-A more elaborate example running Depth Guided Stable Diffusion 2.0.
+Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stablediffusion?tab=readme-ov-file#depth-conditional-stable-diffusion) to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images.
 
-For more info see [here](https://github.com/Stability-AI/stablediffusion).
+## Used Rerun types
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document),[`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)
 
+## Background
+Depth Guided Stable Diffusion enriches the image generation process by incorporating depth information, providing a unique way to control the spatial composition of generated images. This approach allows for more nuanced and layered creations, making it especially useful for scenes requiring a sense of three-dimensionality.
+
+# Logging and visualizing with Rerun
+The visualizations in this example were created with the Rerun SDK, demonstrating the integration of depth information in the Stable Diffusion image generation process. Here is the code for generating the visualization in Rerun.
+
+## Prompt
+Visualizing the prompt and negative prompt
+```python
+rr.log("prompt/text", rr.TextLog(prompt))
+rr.log("prompt/text_negative", rr.TextLog(negative_prompt))
+```
+
+## Text
+Visualizing the text input ids, the text attention mask and the unconditional input ids
+```python
+rr.log("prompt/text_input/ids", rr.BarChart(text_input_ids))
+rr.log("prompt/text_input/attention_mask", rr.BarChart(text_inputs.attention_mask))
+rr.log("prompt/uncond_input/ids", rr.Tensor(uncond_input.input_ids))
+```
+
+## Text embeddings
+Visualizing the text embeddings. The text embeddings are generated in response to the specific prompts used while the unconditional text embeddings represent a neutral or baseline state without specific input conditions.
+```python
+rr.log("prompt/text_embeddings", rr.Tensor(text_embeddings))
+rr.log("prompt/uncond_embeddings", rr.Tensor(uncond_embeddings))
+```
+
+## Depth map
+Visualizing the pixel values of the depth estimation, estimated depth image, interpolated depth image and normalized depth image
+```python
+rr.log("depth/input_preprocessed", rr.Tensor(pixel_values))
+rr.log("depth/estimated", rr.DepthImage(depth_map))
+rr.log("depth/interpolated", rr.DepthImage(depth_map))
+rr.log("depth/normalized", rr.DepthImage(depth_map))
+```
+
+## Latents
+Log the latents, the representation of the images in the format used by the diffusion model.
+```python
+rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
+```
+
+## Denoising loop
+For each step in the denoising loop we set a time sequence with step and timestep and log the latent model input, noise predictions, latents and image. This make is possible for us to see all denoising steps in the Rerun viewer.
+```python
+rr.set_time_sequence("step", i)
+rr.set_time_sequence("timestep", t)
+rr.log("diffusion/latent_model_input", rr.Tensor(latent_model_input))
+rr.log("diffusion/noise_pred", rr.Tensor(noise_pred, dim_names=["b", "c", "h", "w"]))
+rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
+rr.log("image/diffused", rr.Image(image))
+```
+
+## Diffused image
+Finally we log the diffused image generated by the model.
+
+```python
+rr.log("image/diffused", rr.Image(image_8))
+```
+
+# Run the code
+
+To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
+```bash
+# Setup
+pip install --upgrade rerun-sdk  # install the latest Rerun SDK
+git clone git@github.com:rerun-io/rerun.git  # Clone the repository
+cd rerun
+git checkout latest  # Check out the commit matching the latest SDK release
+```
+
+Install the necessary libraries specified in the requirements file:
 ```bash
 pip install -r examples/python/depth_guided_stable_diffusion/requirements.txt
+```
+
+To run this example use
+```bash
 python examples/python/depth_guided_stable_diffusion/main.py
 ```
 
+You can specify your own image and prompts using
+```bash
+python examples/python/depth_guided_stable_diffusion/main.py [--img-path IMG_PATH] [--depth-map-path DEPTH_MAP_PATH] [--prompt PROMPT]
+`````

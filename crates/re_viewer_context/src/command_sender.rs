@@ -1,5 +1,4 @@
 use re_data_source::DataSource;
-use re_entity_db::EntityDb;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -8,17 +7,25 @@ use re_ui::{UICommand, UICommandSender};
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
 pub enum SystemCommand {
+    /// Make this the active application.
+    ActivateApp(re_log_types::ApplicationId),
+
+    /// Close this app and all its recordings.
+    CloseApp(re_log_types::ApplicationId),
+
     /// Load some data.
     LoadDataSource(DataSource),
 
-    /// Load some log messages.
-    LoadStoreDb(EntityDb),
+    /// Clear everything that came from this source, and close the source.
+    ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
+
+    AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
 
     /// Reset the `Blueprint` to the default state
-    ResetBlueprint,
+    ClearActiveBlueprint,
 
     /// Clear the blueprint and generate a new one
     ClearAndGenerateBlueprint,
@@ -28,6 +35,9 @@ pub enum SystemCommand {
 
     /// Close a recording or blueprint (free its memory).
     CloseStore(StoreId),
+
+    /// Close all stores and show the welcome screen again.
+    CloseAllRecordings,
 
     /// Update the blueprint with additional data
     ///
@@ -44,13 +54,7 @@ pub enum SystemCommand {
     EnableExperimentalDataframeSpaceView(bool),
 
     /// Set the item selection.
-    SetSelection {
-        /// If set, use the recording config of this recording.
-        /// Else, use the currently active recording.
-        recording_id: Option<StoreId>,
-
-        item: crate::Item,
-    },
+    SetSelection(crate::Item),
 
     /// Sets the focus to the given item.
     ///
@@ -75,6 +79,7 @@ pub trait SystemCommandSender {
 // ----------------------------------------------------------------------------
 
 /// Sender that queues up the execution of commands.
+#[derive(Clone)]
 pub struct CommandSender {
     system_sender: std::sync::mpsc::Sender<SystemCommand>,
     ui_sender: std::sync::mpsc::Sender<UICommand>,

@@ -68,7 +68,7 @@ cd cpp-example-opencv-eigen
 pixi run example
 ```
 
-### Known Issues
+### Known issues
 
 ⚠️ [#4050](https://github.com/rerun-io/rerun/issues/4050) `arrow-cpp` needs to be held back to 10.0.1 to avoid conflicts
 with the `rerun-sdk` package when installed in the same pixi environment.

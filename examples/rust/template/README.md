@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Template"
-tags = ["kebab-case", "comma", "separated"]
+tags = ["Human case", "Comma", "Separated", "ACRONYM", "Respect brand names", "Hugging Face", "Coca-Cola"]
 -->
 
 

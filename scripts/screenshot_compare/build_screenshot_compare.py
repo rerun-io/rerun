@@ -8,7 +8,7 @@ them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
   and the corresponding snippets in the docs (docs/snippets/*.rs)
-- The `app.rerun.io` examples, as built by the `re_build_examples` script.
+- The `rerun.io/viewer` examples, as built by the `re_build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
 option to show them in a browser.

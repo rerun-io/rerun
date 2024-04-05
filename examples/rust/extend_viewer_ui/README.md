@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Extend Viewer UI"
+title = "Extend viewer UI"
 thumbnail = "https://static.rerun.io/extend_viewer_ui/6ccfbe3718a50e659c484d31033db0bd9d40c262/480w.png"
 thumbnail_dimensions = [480, 290]
 -->

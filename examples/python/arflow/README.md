@@ -1,7 +1,7 @@
 <!--[metadata]
-title = "ARFlow: A Framework for Simplifying AR Experimentation Workflow"
+title = "ARFlow: a framework for simplifying AR experimentation workflow"
 source = "https://github.com/cake-lab/ARFlow"
-tags = ["3D", "Augmented Reality", "Spatial Computing"]
+tags = ["3D", "Augmented reality", "Spatial computing", "Integration"]
 thumbnail = "https://static.rerun.io/arflow/a6b509af10a42b3c7ad3909d44e972a3cb1a9c41/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
@@ -20,7 +20,7 @@ Watch our demo video:
 [![Demo video](https://img.youtube.com/vi/mml8YrCgfTk/maxresdefault.jpg)](https://youtu.be/mml8YrCgfTk)
 
 
-## Get Started
+## Get started
 
 Please check our [project repo](https://github.com/cake-lab/ARFlow/blob/main/README.md), and refer to the individual [server](https://github.com/cake-lab/ARFlow/blob/main/python/README.md) and [client](https://github.com/cake-lab/ARFlow/blob/main/unity/README.md) installation guides.
 

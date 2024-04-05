@@ -4,15 +4,16 @@ order: 0
 ---
 To get a feeling of what you can do with Rerun
 - browse the [example gallery](/examples) or
-- try Rerun directly [in your browser](https://app.rerun.io/).
+- try Rerun directly [in your browser](/viewer?speculative-link).
 
 ## What is Rerun?
 
 Rerun is an SDK and engine for visualizing and interacting with multimodal data streams.
 
 Rerun is
+- Free to use
 - Simple to integrate and get started with
-- Usable from Python, Rust, and C++
+- Usable from C++, Python, and Rust
 - Powerful, flexible, and extensible
 - Built in Rust to be cross platform and fast
 - Open source, dual licensed under MIT and Apache 2

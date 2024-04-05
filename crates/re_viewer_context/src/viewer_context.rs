@@ -49,6 +49,9 @@ pub struct ViewerContext<'a> {
     /// UI config for the current blueprint.
     pub blueprint_cfg: &'a RecordingConfig,
 
+    /// Selection & hovering state.
+    pub selection_state: &'a ApplicationSelectionState,
+
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
@@ -89,16 +92,16 @@ impl<'a> ViewerContext<'a> {
 
     /// Returns the current selection.
     pub fn selection(&self) -> &ItemCollection {
-        self.rec_cfg.selection_state.selected_items()
+        self.selection_state.selected_items()
     }
 
     /// Returns the currently hovered objects.
     pub fn hovered(&self) -> &ItemCollection {
-        self.rec_cfg.selection_state.hovered_items()
+        self.selection_state.hovered_items()
     }
 
     pub fn selection_state(&self) -> &ApplicationSelectionState {
-        &self.rec_cfg.selection_state
+        self.selection_state
     }
 
     /// The current time query, based on the current time control.
@@ -146,7 +149,4 @@ impl<'a> ViewerContext<'a> {
 pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
     pub time_ctrl: RwLock<TimeControl>,
-
-    /// Selection & hovering state.
-    pub selection_state: ApplicationSelectionState,
 }

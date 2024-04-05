@@ -39,7 +39,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
     if node_data:
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
-            # TODO(andreas): We should support 4x4 matrices directly
+            # TODO(#3559): We should support 4x4 matrices directly
             world_from_mesh = node_data[0]
             rr.log(
                 path,

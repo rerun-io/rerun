@@ -16,9 +16,6 @@ table ViewportBlueprint (
     // --- Required ---
 
     // --- Optional ---
-    /// All of the space-views that belong to the viewport.
-    space_views: [rerun.blueprint.components.IncludedSpaceView] ("attr.rerun.component_optional", nullable, order: 1000);
-
     /// The layout of the space-views
     root_container: rerun.blueprint.components.RootContainer ("attr.rerun.component_optional", nullable, order: 2500);
 

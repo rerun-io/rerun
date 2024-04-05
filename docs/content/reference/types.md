@@ -1,6 +1,6 @@
 ---
 title: Types
-order: 2
+order: 3
 ---
 
 Rerun comes with built-in support for a number of different types that can be logged via the Python and Rust Logging
@@ -11,7 +11,7 @@ The top-level types are called [**archetypes**](types/archetypes.md) to differen
 For more information on the relationship between **archetypes** and **components**, check out the concept page
 on [Entities and Components](../concepts/entity-component.md).
 
-## Spatial **Archetypes**
+## Spatial **archetypes**
 
 The spatial archetypes represent 2D and 3D spatial data. These types have some notion of a coordinate system and
 generally support spatial transformations. These types can be visualized by 2D and 3D space views.
@@ -35,7 +35,7 @@ To visualize a 3D entity in a 2D space view, the 2D's origin must be at a pinhol
 -   [Pinhole](types/archetypes/pinhole.md)
 -   [DisconnectedSpace](types/archetypes/disconnected_space.md): disconnect an entity path from its parent.
 
-## Image & Tensor **Archetypes**
+## Image & tensor **archetypes**
 
 Image and tensor archetypes all build on top of a common tensor component. The tensor component is a multi-dimensional
 generic container for arrays of data. Images are restricted to tensors of rank 2 or rank 3; these can be viewed in the
@@ -46,13 +46,13 @@ generic container for arrays of data. Images are restricted to tensors of rank 2
 -   [SegmentationImage](types/archetypes/segmentation_image.md)
 -   [Tensor](types/archetypes/tensor.md)
 
-## Time Series **Archetypes**
+## Time series **archetypes**
 
 -   [Scalar](types/archetypes/scalar.md): a single scalar / metric value.
 -   [SeriesPoint](types/archetypes/series_point.md): define the style properties for a point series in a chart.
 -   [SeriesLine](types/archetypes/series_line.md): define the style properties for a line series in a chart.
 
-## Other **Archetypes**
+## Other **archetypes**
 
 -   [AnnotationContext](types/archetypes/annotation_context.md): not viewed directly, but provides classes, labels, and connectivity information for other entities.
 -   [BarChart](types/archetypes/bar_chart.md): data displayed in a `BarChart` space view.

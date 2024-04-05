@@ -98,7 +98,7 @@ impl ViewContextSystem for TransformContext {
         // Build an entity_property_map for just the CamerasParts, where we would expect to find
         // the image_depth_plane_distance property.
         let entity_prop_map: EntityPropertyMap = query
-            .per_system_data_results
+            .per_visualizer_data_results
             .get(&CamerasVisualizer::identifier())
             .map(|results| {
                 results

@@ -48,11 +48,11 @@ pub struct TextDocumentSpaceView;
 
 impl SpaceViewClass for TextDocumentSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Text Document".into()
+        "TextDocument".into()
     }
 
     fn display_name(&self) -> &'static str {
-        "Text Document"
+        "Text document"
     }
 
     fn icon(&self) -> &'static re_ui::Icon {

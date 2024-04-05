@@ -8,6 +8,9 @@ use crate::{ContainerId, SpaceViewId};
 /// This is the granularity of what is selectable and hoverable.
 #[derive(Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Item {
+    /// Select a specific application, to see which recordings and blueprints are loaded for it.
+    AppId(re_log_types::ApplicationId),
+
     /// A place where data comes from, e.g. the path to a .rrd or a TCP port.
     DataSource(re_smart_channel::SmartChannelSource),
 
@@ -33,9 +36,11 @@ pub enum Item {
 impl Item {
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
-            Self::DataSource(_) | Self::SpaceView(_) | Self::Container(_) | Self::StoreId(_) => {
-                None
-            }
+            Self::AppId(_)
+            | Self::DataSource(_)
+            | Self::SpaceView(_)
+            | Self::Container(_)
+            | Self::StoreId(_) => None,
 
             Self::ComponentPath(component_path) => Some(&component_path.entity_path),
 
@@ -100,6 +105,7 @@ impl std::str::FromStr for Item {
 impl std::fmt::Debug for Item {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Item::AppId(app_id) => app_id.fmt(f),
             Item::DataSource(data_source) => data_source.fmt(f),
             Item::StoreId(store_id) => store_id.fmt(f),
             Item::ComponentPath(s) => s.fmt(f),
@@ -116,6 +122,7 @@ impl std::fmt::Debug for Item {
 impl Item {
     pub fn kind(self: &Item) -> &'static str {
         match self {
+            Item::AppId(_) => "Application",
             Item::DataSource(_) => "Data source",
             Item::StoreId(store_id) => match store_id.kind {
                 re_log_types::StoreKind::Recording => "Recording ID",
@@ -157,7 +164,8 @@ pub fn resolve_mono_instance_path_item(
             *space_view_id,
             resolve_mono_instance_path(query, store, instance_path),
         ),
-        Item::DataSource(_)
+        Item::AppId(_)
+        | Item::DataSource(_)
         | Item::StoreId(_)
         | Item::ComponentPath(_)
         | Item::SpaceView(_)

@@ -3,15 +3,39 @@ from __future__ import annotations
 
 import base64
 import logging
-import random
-import string
 from typing import Any
+
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun import bindings
 
-DEFAULT_WIDTH = 950
-DEFAULT_HEIGHT = 712
-DEFAULT_TIMEOUT = 2000
+from .html_shared import DEFAULT_HEIGHT, DEFAULT_TIMEOUT, DEFAULT_WIDTH, render_html_template
+from .recording_stream import RecordingStream
+
+
+def memory_recording(recording: RecordingStream | None = None) -> MemoryRecording:
+    """
+    Streams all log-data to a memory buffer.
+
+    This can be used to display the RRD to alternative formats such as html.
+    See: [rerun.MemoryRecording.as_html][].
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    MemoryRecording
+        A memory recording object that can be used to read the data.
+
+    """
+
+    recording = RecordingStream.to_native(recording)
+    return MemoryRecording(bindings.memory_recording(recording=recording))
 
 
 class MemoryRecording:
@@ -19,14 +43,6 @@ class MemoryRecording:
 
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
-
-    def reset_data(self) -> None:
-        """Reset the data in the MemoryRecording."""
-        self.storage.reset_data()
-
-    def reset_blueprint(self, *, add_to_app_default_blueprint: bool = False) -> None:
-        """Reset the blueprint in the MemoryRecording."""
-        self.storage.reset_blueprint(add_to_app_default_blueprint)
 
     def num_msgs(self) -> int:
         """
@@ -36,6 +52,7 @@ class MemoryRecording:
         """
         return self.storage.num_msgs()  # type: ignore[no-any-return]
 
+    @deprecated("Please use rerun.notebook_show() instead.")
     def as_html(
         self,
         *,
@@ -71,52 +88,23 @@ class MemoryRecording:
         if app_url is None:
             app_url = bindings.get_app_url()
 
-        # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
-        presentation_id = "".join(random.choice(string.ascii_letters) for i in range(6))
-
         if other:
             other = other.storage
         base64_data = base64.b64encode(self.storage.concat_as_bytes(other)).decode("utf-8")
 
-        html_template = f"""
-        <div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
-        <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
-        <p>Consider using <code>rr.start_web_viewer_server()</code></p></div>
-        <script>
-            {presentation_id}_timeout = setTimeout(() => {{
-                document.getElementById("{presentation_id}_error").style.display = 'block';
-            }}, {timeout_ms});
+        return """
+<div style="background-color: #ffcccb; color: #8b0000; padding: 10px; border: 1px solid #8b0000; border-radius: 5px; margin: 20px;">
+  Direct rendering of MemoryRecording has been deprecated. Please prefer rerun.notebook_show().
+</div>
+""" + render_html_template(
+            base64_data=base64_data,
+            app_url=app_url,
+            timeout_ms=timeout_ms,
+            width=width,
+            height=height,
+        )
 
-            window.addEventListener("message", function(rrd) {{
-                return async function {presentation_id}_onIframeReady(event) {{
-                    var iframe = document.getElementById("{presentation_id}_iframe");
-                    if (event.source === iframe.contentWindow) {{
-                        clearTimeout({presentation_id}_timeout);
-                        document.getElementById("{presentation_id}_error").style.display = 'none';
-                        iframe.style.display = 'inline';
-                        window.removeEventListener("message", {presentation_id}_onIframeReady);
-                        iframe.contentWindow.postMessage((await rrd), "*");
-                    }}
-                }}
-            }}(async function() {{
-                await new Promise(r => setTimeout(r, 0));
-                var div = document.getElementById("{presentation_id}_rrd");
-                var base64Data = div.dataset.rrd;
-                var intermediate = atob(base64Data);
-                var buff = new Uint8Array(intermediate.length);
-                for (var i = 0; i < intermediate.length; i++) {{
-                    buff[i] = intermediate.charCodeAt(i);
-                }}
-                return buff;
-            }}()));
-        </script>
-        <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
-            src="{app_url}?url=web_event://&persist=0&notebook=1"
-            frameborder="0" style="display: none;" allowfullscreen=""></iframe>
-        """
-
-        return html_template
-
+    @deprecated("Please use rerun.notebook_show() instead.")
     def show(
         self,
         *,

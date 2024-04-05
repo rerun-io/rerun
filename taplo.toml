@@ -1,6 +1,14 @@
 # https://github.com/tamasfe/taplo
 
-exclude = [".pixi/**", "build/**", "target/**", "venv/**"]
+exclude = [
+  ".nox/**",
+  ".pixi/**",
+  "build/**",
+  "target/**",
+  "target_ra/**",
+  "target_wasm/**",
+  "venv/**",
+]
 
 [formatting]
 indent_string = "  "

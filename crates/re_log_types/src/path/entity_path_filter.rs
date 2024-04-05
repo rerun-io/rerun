@@ -243,6 +243,22 @@ impl EntityPathFilter {
         );
     }
 
+    /// Remove a subtree and any existing rules that it would match.
+    ///
+    /// Because most-specific matches win, if we only add a subtree exclusion
+    /// it can still be overridden by existing inclusions. This method ensures
+    /// that not only do we add a subtree exclusion, but clear out any existing
+    /// inclusions or (now redundant) exclusions that would match the subtree.
+    pub fn remove_subtree_and_matching_rules(&mut self, clone: EntityPath) {
+        let new_exclusion = EntityPathRule::including_subtree(clone);
+
+        // Remove any rule that is a subtree of the new exclusion.
+        self.rules
+            .retain(|rule, _| !new_exclusion.matches(&rule.path));
+
+        self.rules.insert(new_exclusion, RuleEffect::Exclude);
+    }
+
     /// Remove any rule for the given entity path (ignoring whether or not that rule includes the subtree).
     pub fn remove_rule_for(&mut self, entity_path: &EntityPath) {
         self.rules.retain(|rule, _| rule.path != *entity_path);

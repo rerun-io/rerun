@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Examples
 ///
-/// ### Simple Pinhole Camera
+/// ### Simple pinhole camera
 /// ```ignore
 /// use ndarray::{Array, ShapeBuilder};
 ///
@@ -54,7 +54,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### Perspective Pinhole Camera
+/// ### Perspective pinhole camera
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;

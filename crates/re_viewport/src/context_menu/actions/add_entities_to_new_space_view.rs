@@ -35,26 +35,28 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
             .collect();
 
         ui.menu_button("Add to new space view", |ui| {
-            let buttons_for_space_view_classes =
-                |ui: &mut egui::Ui, space_view_classes: &IntSet<SpaceViewClassIdentifier>| {
-                    for (identifier, display_name) in space_view_classes
-                        .iter()
-                        .map(|identifier| {
-                            (
-                                identifier,
-                                space_view_class_registry
-                                    .get_class_or_log_error(identifier)
-                                    .display_name(),
-                            )
-                        })
-                        .sorted_by_key(|(_, display_name)| display_name.to_owned())
-                    {
-                        if ui.button(display_name).clicked() {
-                            create_space_view_for_selected_entities(ctx, *identifier);
-                            ui.close_menu();
-                        }
+            let buttons_for_space_view_classes = |ui: &mut egui::Ui,
+                                                  space_view_classes: &IntSet<
+                SpaceViewClassIdentifier,
+            >| {
+                for (identifier, class) in space_view_classes
+                    .iter()
+                    .map(|identifier| {
+                        (
+                            identifier,
+                            space_view_class_registry.get_class_or_log_error(identifier),
+                        )
+                    })
+                    .sorted_by_key(|(_, class)| class.display_name().to_owned())
+                {
+                    let btn =
+                        egui::Button::image_and_text(class.icon().as_image(), class.display_name());
+                    if ui.add(btn).clicked() {
+                        create_space_view_for_selected_entities(ctx, *identifier);
+                        ui.close_menu();
                     }
-                };
+                }
+            };
 
             ui.label(egui::WidgetText::from("Recommended:").italics());
             if recommended_space_view_classes.is_empty() {

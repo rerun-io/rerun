@@ -17,21 +17,24 @@ pub fn connect_to_ws_url(
 
     re_log::info!("Connecting to WebSocket server at {url:?}…");
 
-    let callback = move |binary: Vec<u8>| match re_ws_comms::decode_log_msg(&binary) {
-        Ok(log_msg) => {
-            if tx.send(log_msg).is_ok() {
-                if let Some(on_msg) = &on_msg {
-                    on_msg();
+    let callback = {
+        let url = url.to_owned();
+        move |binary: Vec<u8>| match re_ws_comms::decode_log_msg(&binary) {
+            Ok(log_msg) => {
+                if tx.send(log_msg).is_ok() {
+                    if let Some(on_msg) = &on_msg {
+                        on_msg();
+                    }
+                    std::ops::ControlFlow::Continue(())
+                } else {
+                    re_log::info_once!("Closing connection to {url}");
+                    std::ops::ControlFlow::Break(())
                 }
-                std::ops::ControlFlow::Continue(())
-            } else {
-                re_log::info!("Failed to send log message to viewer - closing");
+            }
+            Err(err) => {
+                re_log::error!("Failed to parse message: {err}");
                 std::ops::ControlFlow::Break(())
             }
-        }
-        Err(err) => {
-            re_log::error!("Failed to parse message: {err}");
-            std::ops::ControlFlow::Break(())
         }
     };
 
