@@ -50,7 +50,7 @@ When the viewer and/or SDK executes an external loader, it will pass to it a set
 * `--recording-id <store_id>`
 
     The recommended `RecordingId` to log the data to.
-    
+
     Log data to this recording if you want it to appear in a new recording shared by all
     data-loaders for the current loading session.
 
