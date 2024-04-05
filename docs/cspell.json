@@ -251,6 +251,8 @@
     "noqa",
     "numpages",
     "numpy",
+    "nusc",
+    "nuscene",
     "nuScenes",
     "nyud",
     "obbs",
