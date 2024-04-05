@@ -114,6 +114,7 @@ impl AppState {
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
+        welcome_screen_opacity: f32,
     ) {
         re_tracing::profile_function!();
 
@@ -379,7 +380,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            welcome_screen.ui(ui, re_ui, command_sender);
+                            welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_opacity);
                         } else {
                             viewport.viewport_ui(ui, &ctx);
                         }

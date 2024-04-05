@@ -42,9 +42,6 @@ pub struct StoreHub {
     active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
     store_bundle: StoreBundle,
 
-    /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
-    was_recording_active: bool,
-
     /// The [`StoreGeneration`] from when the [`EntityDb`] was last saved
     blueprint_last_save: HashMap<StoreId, StoreGeneration>,
 
@@ -132,8 +129,6 @@ impl StoreHub {
             default_blueprint_by_app_id: Default::default(),
             active_blueprint_by_app_id,
             store_bundle,
-
-            was_recording_active: false,
 
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
@@ -287,7 +282,6 @@ impl StoreHub {
         {
             if rec.app_id() == Some(&app_id) {
                 self.active_rec_id = Some(rec.store_id().clone());
-                self.was_recording_active = true;
                 return;
             }
         }
@@ -313,14 +307,6 @@ impl StoreHub {
 
     // ---------------------
     // Active recording
-
-    /// Keeps track if a recording was ever activated.
-    ///
-    /// This is useful for the heuristic controlling the welcome screen.
-    #[inline]
-    pub fn was_recording_active(&self) -> bool {
-        self.was_recording_active
-    }
 
     /// Directly access the [`EntityDb`] for the active recording.
     #[inline]
@@ -354,7 +340,6 @@ impl StoreHub {
         }
 
         self.active_rec_id = Some(recording_id);
-        self.was_recording_active = true;
     }
 
     /// Activate a recording by its [`StoreId`].
