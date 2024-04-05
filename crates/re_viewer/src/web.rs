@@ -126,7 +126,7 @@ fn create_app(
         location: Some(cc.integration_info.web_info.location.clone()),
         persist_state: get_persist_state(&cc.integration_info),
         is_in_notebook: is_in_notebook(&cc.integration_info),
-        fade_in_welcome_screen: false,
+        expect_data_soon: None,
         force_wgpu_backend: None,
     };
     let re_ui = crate::customize_eframe(cc);

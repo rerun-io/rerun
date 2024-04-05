@@ -620,7 +620,11 @@ async fn run_impl(
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
-            expect_data_soon: args.expect_data_soon,
+            expect_data_soon: if args.expect_data_soon {
+                Some(true)
+            } else {
+                None
+            },
 
             // TODO(emilk): make it easy to set this on eframe instead
             resolution_in_points: if let Some(size) = &args.window_size {

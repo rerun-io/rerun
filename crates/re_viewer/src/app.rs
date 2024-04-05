@@ -58,7 +58,7 @@ pub struct StartupOptions {
     /// The viewer will respond by fading in the welcome screen,
     /// instead of showing it directly.
     /// This ensures that it won't blink for a few frames before switching to the recording.
-    pub expect_data_soon: bool,
+    pub expect_data_soon: Option<bool>,
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
@@ -1177,8 +1177,8 @@ impl App {
     }
 
     fn should_fade_in_welcome_screen(&self) -> bool {
-        if self.startup_options.expect_data_soon {
-            return true;
+        if let Some(expect_data_soon) = self.startup_options.expect_data_soon {
+            return expect_data_soon;
         }
 
         // The reason for the fade-in is to avoid the welcome screen
