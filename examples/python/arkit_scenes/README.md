@@ -86,7 +86,7 @@ for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
 
 ### Setting up the default blueprint
 
-This example benefits at lot from having a custom blueprint defined. This happens with the following code: 
+This example benefits at lot from having a custom blueprint defined. This happens with the following code:
 
 ```python
 primary_camera_entity = HIGHRES_ENTITY_PATH if args.include_highres else LOWRES_POSED_ENTITY_PATH
