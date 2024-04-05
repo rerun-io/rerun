@@ -57,4 +57,4 @@ jobs:
 
             | Commit  | Link  |
             | ------- | ----- |
-            | ${{ steps.get-sha.outputs.sha }} | ${{ steps.deploy-vercel.outputs.vercel_preview_url }} |
+            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.deploy-vercel.outputs.vercel_preview_url }} |
