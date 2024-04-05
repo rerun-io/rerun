@@ -9,4 +9,4 @@ blueprint = rrb.Blueprint(
     rrb.BlueprintPanel(expanded=False),
 )
 
-blueprint.save("rerun_example_blueprint_test")
+blueprint.save("rerun_example_blueprint_test.rbl")
