@@ -316,7 +316,7 @@ def log_components(
         bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
             entity_path,
             components=splats,
-            statically=static,
+            static_=static,
             recording=recording,
         )
 
@@ -324,7 +324,7 @@ def log_components(
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,
         components=instanced,
-        statically=static,
+        static_=static,
         recording=recording,
     )
 
@@ -388,7 +388,7 @@ def log_file_from_path(
     bindings.log_file_from_path(
         Path(file_path),
         entity_path_prefix=entity_path_prefix,
-        statically=static,
+        static_=static,
         recording=recording,
     )
 
@@ -449,7 +449,7 @@ def log_file_from_contents(
         Path(file_path),
         file_contents,
         entity_path_prefix=entity_path_prefix,
-        statically=static,
+        static_=static,
         recording=recording,
     )
 

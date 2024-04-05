@@ -914,14 +914,14 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
 #[pyo3(signature = (
     entity_path,
     components,
-    statically,
+    static_,
     recording=None,
 ))]
 fn log_arrow_msg(
     py: Python<'_>,
     entity_path: &str,
     components: &PyDict,
-    statically: bool,
+    static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -939,7 +939,7 @@ fn log_arrow_msg(
         &TimePoint::default(),
     )?;
 
-    recording.record_row(row, !statically);
+    recording.record_row(row, !static_);
 
     py.allow_threads(flush_garbage_queue);
 
@@ -950,24 +950,17 @@ fn log_arrow_msg(
 #[pyo3(signature = (
     file_path,
     entity_path_prefix = None,
-    statically = false,
+    static_ = false,
     recording = None,
 ))]
 fn log_file_from_path(
     py: Python<'_>,
     file_path: std::path::PathBuf,
     entity_path_prefix: Option<String>,
-    statically: bool,
+    static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
-    log_file(
-        py,
-        file_path,
-        None,
-        entity_path_prefix,
-        statically,
-        recording,
-    )
+    log_file(py, file_path, None, entity_path_prefix, static_, recording)
 }
 
 #[pyfunction]
@@ -975,7 +968,7 @@ fn log_file_from_path(
     file_path,
     file_contents,
     entity_path_prefix = None,
-    statically = false,
+    static_ = false,
     recording = None,
 ))]
 fn log_file_from_contents(
@@ -983,7 +976,7 @@ fn log_file_from_contents(
     file_path: std::path::PathBuf,
     file_contents: &[u8],
     entity_path_prefix: Option<String>,
-    statically: bool,
+    static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     log_file(
@@ -991,7 +984,7 @@ fn log_file_from_contents(
         file_path,
         Some(file_contents),
         entity_path_prefix,
-        statically,
+        static_,
         recording,
     )
 }
@@ -1001,7 +994,7 @@ fn log_file(
     file_path: std::path::PathBuf,
     file_contents: Option<&[u8]>,
     entity_path_prefix: Option<String>,
-    statically: bool,
+    static_: bool,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
@@ -1014,12 +1007,12 @@ fn log_file(
                 file_path,
                 std::borrow::Cow::Borrowed(contents),
                 entity_path_prefix.map(Into::into),
-                statically,
+                static_,
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     } else {
         recording
-            .log_file_from_path(file_path, entity_path_prefix.map(Into::into), statically)
+            .log_file_from_path(file_path, entity_path_prefix.map(Into::into), static_)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
     }
 
