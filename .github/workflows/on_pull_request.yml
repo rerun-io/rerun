@@ -206,7 +206,7 @@ jobs:
 
   deploy-landing-preview:
     name: "Deploy Landing Preview"
-    # if: needs.docs-paths-filter.outputs.docs_changes == 'true'
+    if: needs.docs-paths-filter.outputs.docs_changes == 'true'
     uses: ./.github/workflows/reusable_deploy_landing_preview.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
