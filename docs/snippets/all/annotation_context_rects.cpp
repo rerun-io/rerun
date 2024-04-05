@@ -7,7 +7,7 @@ int main() {
     rec.spawn().exit_on_failure();
 
     // Log an annotation context to assign a label and color to each class
-    rec.log_timeless(
+    rec.log_static(
         "/",
         rerun::AnnotationContext({
             rerun::AnnotationInfo(1, "red", rerun::Rgba32(255, 0, 0)),
