@@ -38,6 +38,7 @@ Right now this is only supported by the Python API, with C++ and Rust support co
 - 💾 Save and load blueprint files in the viewer
 - 🖵 Improved UI for managing recordings and applications
 - ❌ Remove `InstanceKey` from our logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
+- ❌ Remove groups from blueprints panel [#5326](https://github.com/rerun-io/rerun/pull/5326)
 - 💪 Linux ARM64 support [#5489](https://github.com/rerun-io/rerun/pull/5489) [#5511](https://github.com/rerun-io/rerun/pull/5511) [#5503](https://github.com/rerun-io/rerun/pull/5503)
 - 🎨 Configurable background color for 3D Space Views [#5443](https://github.com/rerun-io/rerun/pull/5443)
 - 🖼️ Show examples in the welcome page
