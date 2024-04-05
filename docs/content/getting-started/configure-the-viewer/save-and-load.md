@@ -3,22 +3,23 @@ title: Save and load viewer configuration files
 order: 2
 ---
 
-If you have made changes to your blueprint and you would like to save or share these changes,
+If you have made changes to the viewer and you would like to save or share them,
 you can do so by saving your blueprint to an `.rbl` file.
 
 ## Saving a blueprint
 
-To save your blueprint, go to the file-menu and choose "Save blueprint…"
-TODO(#5636): save
+To save the currently active blueprint, go to the file-menu and choose "Save blueprint…"
+
+<picture>
+  <img src="https://static.rerun.io/save_blueprint/85644e086ba9cf7fb81cb7ece55b38bef863c755/full.png" alt="">
+</picture>
 
 ## Loading a blueprint
 
-Once you have saved a blueprint, you can load it again.
+Once you have saved a blueprint, you can later load it in the viewer. The
+"Open…" menu item is used to load either recordings (`.rrd`) or blueprints
+(`.rbl`). Alternatively, you can drag an `.rbl` file directly into the viewer.
 
-When loading a blueprint, it must match the "application_id" used by the recording.
-
-To load a blueprint, go to the file-menu and choose "Open…" and select the `.rbl` file you would like to load.
-TODO(#5636): open_1
-
-You can also drag and drop an `.rbl` file directly into the viewer
-TODO(#5636): open_2
+Note that the application ID of the blueprint must match the application ID of
+the recording you wish to use it with. It is not currently possible to change
+the application ID of a blueprint to use it with a different type of recording.
