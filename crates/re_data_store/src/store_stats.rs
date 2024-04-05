@@ -185,7 +185,7 @@ impl SizeBytes for ClusterCellCache {
 impl SizeBytes for DataStore {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.timeless_size_bytes() + self.temporal_size_bytes() // approximate
+        self.static_size_bytes() + self.temporal_size_bytes() // approximate
     }
 }
 
