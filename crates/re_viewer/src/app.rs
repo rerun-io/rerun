@@ -80,7 +80,7 @@ impl Default for StartupOptions {
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
 
-            expect_data_soon: false,
+            expect_data_soon: None,
             force_wgpu_backend: None,
         }
     }
