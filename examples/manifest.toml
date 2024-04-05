@@ -46,7 +46,7 @@ examples = [
 
 [categories.generative-vision]
 order = 3
-title = "Diffusion models, LLMs, and Machine Learning"
+title = "Diffusion models, LLMs, and machine learning"
 prelude = """
 Examples using machine learning and generative AI methods such as diffusion and LLMs.
 """
