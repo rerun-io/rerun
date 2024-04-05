@@ -1,6 +1,6 @@
 ---
-title: Using Rerun with Notebooks
-order: 3
+title: Embed Rerun in notebooks
+order: 600
 description: How to embed Rerun in notebooks like Jupyter or Colab
 ---
 
