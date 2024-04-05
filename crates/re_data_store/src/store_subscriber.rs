@@ -230,9 +230,9 @@ mod tests {
         let row = DataRow::from_component_batches(
             RowId::new(),
             TimePoint::from_iter([
-                (timeline_frame, 42.into()),      //
-                (timeline_other, 666.into()),     //
-                (timeline_yet_another, 1.into()), //
+                (timeline_frame, 42),      //
+                (timeline_other, 666),     //
+                (timeline_yet_another, 1), //
             ]),
             "entity_a".into(),
             [&InstanceKey::from_iter(0..10) as _],
@@ -249,8 +249,8 @@ mod tests {
             DataRow::from_component_batches(
                 RowId::new(),
                 TimePoint::from_iter([
-                    (timeline_frame, 42.into()),      //
-                    (timeline_yet_another, 1.into()), //
+                    (timeline_frame, 42),      //
+                    (timeline_yet_another, 1), //
                 ]),
                 "entity_b".into(),
                 [&points as _, &colors as _],
@@ -264,7 +264,7 @@ mod tests {
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
                 RowId::new(),
-                TimePoint::timeless(),
+                TimePoint::default(),
                 "entity_b".into(),
                 [
                     &InstanceKey::from_iter(0..num_instances as _) as _,

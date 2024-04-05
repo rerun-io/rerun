@@ -104,12 +104,12 @@ impl IndexedTable {
                 let &[t1, t2] = time_ranges else {
                     unreachable!()
                 };
-                if t1.max.as_i64() >= t2.min.as_i64() {
+                if t1.max().as_i64() >= t2.min().as_i64() {
                     return Err(SanityError::OverlappingBuckets {
-                        t1_max: t1.max.as_i64(),
-                        t1_max_formatted: self.timeline.typ().format_utc(t1.max),
-                        t2_max: t2.max.as_i64(),
-                        t2_max_formatted: self.timeline.typ().format_utc(t2.max),
+                        t1_max: t1.max().as_i64(),
+                        t1_max_formatted: self.timeline.typ().format_utc(t1.max()),
+                        t2_max: t2.max().as_i64(),
+                        t2_max_formatted: self.timeline.typ().format_utc(t2.max()),
                     });
                 }
             }
@@ -184,13 +184,13 @@ impl IndexedBucket {
                 let expected_min = times
                     .front()
                     .copied()
-                    .unwrap_or(TimeInt::MAX.as_i64())
-                    .into();
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MAX);
                 let expected_max = times
                     .back()
                     .copied()
-                    .unwrap_or(TimeInt::MIN.as_i64())
-                    .into();
+                    .and_then(|t| TimeInt::try_from(t).ok())
+                    .unwrap_or(TimeInt::MIN);
                 let expected_time_range = TimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {

@@ -1,5 +1,6 @@
 use std::collections::{btree_map, BTreeMap};
 
+mod non_min_i64;
 mod time_int;
 mod timeline;
 
@@ -9,6 +10,7 @@ use crate::{
 };
 
 // Re-exports
+pub use non_min_i64::{NonMinI64, TryFromIntError};
 pub use time_int::TimeInt;
 pub use timeline::{Timeline, TimelineName};
 
@@ -16,9 +18,9 @@ pub use timeline::{Timeline, TimelineName};
 ///
 /// It can be represented by [`Time`], a sequence index, or a mix of several things.
 ///
-/// If this is empty, the data is _timeless_.
-/// Timeless data will show up on all timelines, past and future,
-/// and will hit all time queries. In other words, it is always there.
+/// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
+/// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+/// any temporal data of the same type.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
@@ -30,27 +32,30 @@ impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
 }
 
 impl TimePoint {
-    /// Logging to this time means the data will show upp in all timelines,
-    /// past and future. The time will be [`TimeInt::BEGINNING`], meaning it will
-    /// always be in range for any time query.
-    pub fn timeless() -> Self {
-        Self::default()
-    }
-
+    #[inline]
     pub fn get(&self, timeline: &Timeline) -> Option<&TimeInt> {
         self.0.get(timeline)
     }
 
-    pub fn insert(&mut self, timeline: Timeline, time: TimeInt) -> Option<TimeInt> {
+    #[inline]
+    pub fn insert(&mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Option<TimeInt> {
+        let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
         self.0.insert(timeline, time)
     }
 
+    #[inline]
+    pub fn with(mut self, timeline: Timeline, time: impl TryInto<TimeInt>) -> Self {
+        self.insert(timeline, time);
+        self
+    }
+
+    #[inline]
     pub fn remove(&mut self, timeline: &Timeline) -> Option<TimeInt> {
         self.0.remove(timeline)
     }
 
     #[inline]
-    pub fn is_timeless(&self) -> bool {
+    pub fn is_static(&self) -> bool {
         self.0.is_empty()
     }
 
@@ -96,17 +101,7 @@ impl TimePoint {
 impl re_types_core::SizeBytes for TimePoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        type K = Timeline;
-        type V = TimeInt;
-
-        // NOTE: This is only here to make sure this method fails to compile if the inner type
-        // changes, as the following size computation assumes POD types.
-        let inner: &BTreeMap<K, V> = &self.0;
-
-        let keys_size_bytes = std::mem::size_of::<K>() * inner.len();
-        let values_size_bytes = std::mem::size_of::<V>() * inner.len();
-
-        (keys_size_bytes + values_size_bytes) as u64
+        self.0.heap_size_bytes()
     }
 }
 
@@ -124,6 +119,7 @@ pub enum TimeType {
 }
 
 impl TimeType {
+    #[inline]
     fn hash(&self) -> u64 {
         match self {
             Self::Time => 0,
@@ -131,23 +127,26 @@ impl TimeType {
         }
     }
 
+    #[inline]
     pub fn format(&self, time_int: TimeInt, time_zone_for_timestamps: TimeZone) -> String {
-        if time_int <= TimeInt::BEGINNING {
-            "-∞".into()
-        } else if time_int >= TimeInt::MAX {
-            "+∞".into()
-        } else {
-            match self {
+        match time_int {
+            TimeInt::STATIC => "<static>".into(),
+            // TODO(#5264): remove time panel hack once we migrate to the new static UI
+            TimeInt::MIN | TimeInt::MIN_TIME_PANEL => "-∞".into(),
+            TimeInt::MAX => "+∞".into(),
+            _ => match self {
                 Self::Time => Time::from(time_int).format(time_zone_for_timestamps),
-                Self::Sequence => format!("#{}", re_format::format_int(time_int.0)),
-            }
+                Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
+            },
         }
     }
 
+    #[inline]
     pub fn format_utc(&self, time_int: TimeInt) -> String {
         self.format(time_int, TimeZone::Utc)
     }
 
+    #[inline]
     pub fn format_range(
         &self,
         time_range: TimeRange,
@@ -155,11 +154,12 @@ impl TimeType {
     ) -> String {
         format!(
             "{}..={}",
-            self.format(time_range.min, time_zone_for_timestamps),
-            self.format(time_range.max, time_zone_for_timestamps)
+            self.format(time_range.min(), time_zone_for_timestamps),
+            self.format(time_range.max(), time_zone_for_timestamps)
         )
     }
 
+    #[inline]
     pub fn format_range_utc(&self, time_range: TimeRange) -> String {
         self.format_range(time_range, TimeZone::Utc)
     }
@@ -189,16 +189,31 @@ impl<'a> IntoIterator for &'a TimePoint {
     }
 }
 
-impl FromIterator<(Timeline, TimeInt)> for TimePoint {
+impl<T: TryInto<TimeInt>> FromIterator<(Timeline, T)> for TimePoint {
     #[inline]
-    fn from_iter<T: IntoIterator<Item = (Timeline, TimeInt)>>(iter: T) -> Self {
-        Self(iter.into_iter().collect())
+    fn from_iter<I: IntoIterator<Item = (Timeline, T)>>(iter: I) -> Self {
+        Self(
+            iter.into_iter()
+                .map(|(timeline, time)| {
+                    let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
+                    (timeline, time)
+                })
+                .collect(),
+        )
     }
 }
 
-impl<const N: usize> From<[(Timeline, TimeInt); N]> for TimePoint {
+impl<T: TryInto<TimeInt>, const N: usize> From<[(Timeline, T); N]> for TimePoint {
     #[inline]
-    fn from(timelines: [(Timeline, TimeInt); N]) -> Self {
-        Self(timelines.into_iter().collect())
+    fn from(timelines: [(Timeline, T); N]) -> Self {
+        Self(
+            timelines
+                .into_iter()
+                .map(|(timeline, time)| {
+                    let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
+                    (timeline, time)
+                })
+                .collect(),
+        )
     }
 }

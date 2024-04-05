@@ -1,4 +1,4 @@
-use re_log_types::{EntityPath, TimeInt, TimeRange};
+use re_log_types::{EntityPath, TimeRange};
 use re_space_view::visible_time_range_to_time_range;
 use re_types::datatypes::Utf8;
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
@@ -51,14 +51,14 @@ pub fn determine_time_range(
     // Just try it out and you'll see what I mean.
     if enable_query_clamping {
         if let Some(plot_bounds) = plot_bounds {
-            time_range.min = TimeInt::max(
-                time_range.min,
-                (plot_bounds.range_x().start().floor() as i64).into(),
-            );
-            time_range.max = TimeInt::min(
-                time_range.max,
-                (plot_bounds.range_x().end().ceil() as i64).into(),
-            );
+            time_range.set_min(i64::max(
+                time_range.min().as_i64(),
+                plot_bounds.range_x().start().floor() as i64,
+            ));
+            time_range.set_max(i64::min(
+                time_range.max().as_i64(),
+                plot_bounds.range_x().end().ceil() as i64,
+            ));
         }
     }
     time_range

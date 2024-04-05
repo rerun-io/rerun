@@ -115,7 +115,7 @@ fn insert_same_time_point(c: &mut Criterion) {
             group.throughput(criterion::Throughput::Elements(num_rows * num_instances));
 
             let rows = build_rows_ex(num_rows as _, num_instances as _, shuffled, packed, |_| {
-                TimePoint::from([build_frame_nr(TimeInt::from(0))])
+                TimePoint::from([build_frame_nr(TimeInt::ZERO)])
             });
 
             // Default config
@@ -385,7 +385,7 @@ fn build_rows_with_packed(packed: bool) -> Vec<DataRow> {
         NUM_INSTANCES as _,
         false,
         packed,
-        |row_idx| TimePoint::from([build_frame_nr((row_idx as i64).into())]),
+        |row_idx| TimePoint::from([build_frame_nr(row_idx as i64)]),
     )
 }
 
@@ -453,7 +453,7 @@ fn latest_data_at<const N: usize>(
     secondaries: &[ComponentName; N],
 ) -> [Option<DataCell>; N] {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let timeline_query = LatestAtQuery::new(timeline_frame_nr, (NUM_ROWS / 2).into());
+    let timeline_query = LatestAtQuery::new(timeline_frame_nr, NUM_ROWS / 2);
     let ent_path = EntityPath::from("large_structs");
 
     store
@@ -466,7 +466,7 @@ fn range_data<const N: usize>(
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (Option<TimeInt>, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(0.into(), NUM_ROWS.into()));
+    let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(TimeInt::ZERO, NUM_ROWS));
     let ent_path = EntityPath::from("large_structs");
 
     store

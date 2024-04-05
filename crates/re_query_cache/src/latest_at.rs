@@ -244,11 +244,11 @@ macro_rules! impl_query_archetype_latest_at {
                     total_size_bytes,
                 } = latest_at_cache;
 
-                let query_time_bucket_at_query_time = match per_query_time.entry(query.at) {
+                let query_time_bucket_at_query_time = match per_query_time.entry(query.at()) {
                     std::collections::btree_map::Entry::Occupied(_) => {
                         // Fastest path: we have an entry for this exact query time, no need to look any
                         // further.
-                        re_log::trace!(query_time=?query.at, "cache hit (query time)");
+                        re_log::trace!(query_time=?query.at(), "cache hit (query time)");
                         return Ok(());
                     }
                     std::collections::btree_map::Entry::Vacant(entry) => entry,
@@ -261,7 +261,7 @@ macro_rules! impl_query_archetype_latest_at {
                 // _data_ time, so let's use that to avoid join & deserialization costs.
                 if let Some(data_time) = data_time { // Reminder: `None` means timeless.
                     if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
-                        re_log::trace!(query_time=?query.at, ?data_time, "cache hit (data time)");
+                        re_log::trace!(query_time=?query.at(), ?data_time, "cache hit (data time)");
 
                         query_time_bucket_at_query_time.insert(Arc::clone(&data_time_bucket_at_data_time));
 
@@ -277,7 +277,7 @@ macro_rules! impl_query_archetype_latest_at {
                     }
                 } else {
                     if let Some(timeless) = timeless.as_ref() {
-                        re_log::trace!(query_time=?query.at, "cache hit (data time, timeless)");
+                        re_log::trace!(query_time=?query.at(), "cache hit (data time, timeless)");
                         query_time_bucket_at_query_time.insert(Arc::clone(timeless));
                         return Ok(());
                     }
@@ -285,7 +285,7 @@ macro_rules! impl_query_archetype_latest_at {
 
                 // Slowest path: this is a complete cache miss.
                 if let Some(data_time) = data_time { // Reminder: `None` means timeless.
-                    re_log::trace!(query_time=?query.at, ?data_time, "cache miss");
+                    re_log::trace!(query_time=?query.at(), ?data_time, "cache miss");
 
                     let bucket = Arc::new(create_and_fill_bucket(data_time, &arch_view)?);
                     *total_size_bytes += bucket.total_size_bytes;
@@ -298,7 +298,7 @@ macro_rules! impl_query_archetype_latest_at {
 
                     Ok(())
                 } else {
-                    re_log::trace!(query_time=?query.at, "cache miss (timeless)");
+                    re_log::trace!(query_time=?query.at(), "cache miss (timeless)");
 
                     let bucket = create_and_fill_bucket(TimeInt::MIN, &arch_view)?;
                     *total_size_bytes += bucket.total_size_bytes;
@@ -323,7 +323,7 @@ macro_rules! impl_query_archetype_latest_at {
                 } = latest_at_cache;
 
                 // Expected path: cache was properly upserted.
-                if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at) {
+                if let Some(query_time_bucket_at_query_time) = per_query_time.get(&query.at()) {
                     let is_timeless = std::ptr::eq(
                         Arc::as_ptr(query_time_bucket_at_query_time),
                         timeless.as_ref().map_or(std::ptr::null(), |bucket| Arc::as_ptr(bucket)),

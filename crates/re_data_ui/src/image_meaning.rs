@@ -10,7 +10,7 @@ pub fn image_meaning_for_entity(
     query: &re_data_store::LatestAtQuery,
     store: &re_data_store::DataStore,
 ) -> TensorDataMeaning {
-    let timeline = &query.timeline;
+    let timeline = &query.timeline();
     if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {
         TensorDataMeaning::Depth
     } else if store.entity_has_component(

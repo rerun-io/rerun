@@ -74,7 +74,7 @@ fn mono_points_arrow(c: &mut Criterion) {
                     [DataRow::from_cells2(
                         RowId::ZERO,
                         entity_path!("points", i.to_string()),
-                        [build_frame_nr(0.into())],
+                        [build_frame_nr(TimeInt::ZERO)],
                         1,
                         (build_some_positions2d(1), build_some_colors(1)),
                     )
@@ -132,7 +132,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                 DataRow::from_cells2(
                     RowId::ZERO,
                     entity_path!("points", i.to_string()),
-                    [build_frame_nr(0.into())],
+                    [build_frame_nr(TimeInt::ZERO)],
                     1,
                     (build_some_positions2d(1), build_some_colors(1)),
                 )
@@ -188,7 +188,7 @@ fn batch_points_arrow(c: &mut Criterion) {
             [DataRow::from_cells2(
                 RowId::ZERO,
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
+                [build_frame_nr(TimeInt::ZERO)],
                 NUM_POINTS as _,
                 (
                     build_some_positions2d(NUM_POINTS),

@@ -162,7 +162,7 @@ impl DataStore {
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
 
-        if timepoint.is_timeless() {
+        if timepoint.is_static() {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
@@ -355,7 +355,7 @@ impl IndexedTable {
                         entity = %ent_path,
                         len_limit = config.indexed_bucket_num_rows,
                         len, len_overflow,
-                        new_time_bound = timeline.typ().format_utc(new_time_bound.into()),
+                        new_time_bound = timeline.typ().format_utc(TimeInt::new_temporal(new_time_bound)),
                         "creating brand new indexed bucket following overflow"
                     );
 
@@ -368,7 +368,7 @@ impl IndexedTable {
                         (inner, size_bytes)
                     };
                     self.buckets.insert(
-                        (new_time_bound).into(),
+                        TimeInt::new_temporal(new_time_bound),
                         IndexedBucket {
                             timeline,
                             cluster_key: self.cluster_key,
@@ -387,13 +387,13 @@ impl IndexedTable {
                 re_log::debug_once!("Failed to split bucket on timeline {}", timeline.name());
 
                 if 1 < config.indexed_bucket_num_rows
-                    && bucket_time_range.min == bucket_time_range.max
+                    && bucket_time_range.min() == bucket_time_range.max()
                 {
                     re_log::warn_once!(
                         "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
                         config.indexed_bucket_num_rows,
                         bucket.timeline.name(),
-                        bucket.timeline.typ().format_utc(bucket_time_range.min)
+                        bucket.timeline.typ().format_utc(bucket_time_range.min())
                     );
                 }
             }
@@ -454,7 +454,7 @@ impl IndexedBucket {
         }
 
         col_time.push_back(time.as_i64());
-        *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
+        *time_range = TimeRange::new(time_range.min().min(time), time_range.max().max(time));
         size_bytes_added += time.as_i64().total_size_bytes();
 
         // update all control columns
@@ -649,7 +649,7 @@ impl IndexedBucket {
                 inner: RwLock::new(inner2),
             };
 
-            (time_range2.min, bucket2)
+            (time_range2.min(), bucket2)
         };
 
         inner1.compute_size_bytes();
@@ -775,17 +775,17 @@ fn split_time_range_off(
     times1: &[i64],
     time_range1: &mut TimeRange,
 ) -> TimeRange {
-    let time_range2 = TimeRange::new(times1[split_idx].into(), time_range1.max);
+    let time_range2 = TimeRange::new(TimeInt::new_temporal(times1[split_idx]), time_range1.max());
 
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
     // entries.
-    time_range1.max = times1[split_idx - 1].into();
+    time_range1.set_max(times1[split_idx - 1]);
 
     debug_assert!(
-        time_range1.max.as_i64() < time_range2.min.as_i64(),
+        time_range1.max().as_i64() < time_range2.min().as_i64(),
         "split resulted in overlapping time ranges: {} <-> {}\n{:#?}",
-        time_range1.max.as_i64(),
-        time_range2.min.as_i64(),
+        time_range1.max().as_i64(),
+        time_range2.min().as_i64(),
         (&time_range1, &time_range2),
     );
 

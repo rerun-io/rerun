@@ -317,8 +317,8 @@ impl DataStore {
                 let entry = oldest_time_per_timeline
                     .entry(bucket.timeline)
                     .or_insert(TimeInt::MAX);
-                if let Some(time) = bucket.inner.read().col_time.front() {
-                    *entry = TimeInt::min(*entry, (*time).into());
+                if let Some(&time) = bucket.inner.read().col_time.front() {
+                    *entry = TimeInt::min(*entry, TimeInt::new_temporal(time));
                 }
             }
         }
