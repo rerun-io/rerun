@@ -166,14 +166,14 @@ impl StoreHub {
         }
 
         // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
-        let blueprint_id = self
+        let active_blueprint_id = self
             .active_blueprint_by_app_id
             .entry(app_id.clone())
             .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
 
         // Get or create the blueprint:
-        self.store_bundle.blueprint_entry(blueprint_id);
-        let blueprint = self.store_bundle.get(blueprint_id)?;
+        self.store_bundle.blueprint_entry(active_blueprint_id);
+        let blueprint = self.store_bundle.get(active_blueprint_id)?;
 
         let recording = self
             .active_rec_id
@@ -248,8 +248,21 @@ impl StoreHub {
         }
     }
 
-    pub fn retain(&mut self, f: impl FnMut(&EntityDb) -> bool) {
-        self.store_bundle.retain(f);
+    pub fn retain(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
+        let stores_to_remove: Vec<StoreId> = self
+            .store_bundle
+            .entity_dbs()
+            .filter_map(|store| {
+                if should_retain(store) {
+                    None
+                } else {
+                    Some(store.store_id().clone())
+                }
+            })
+            .collect();
+        for store in stores_to_remove {
+            self.remove(&store);
+        }
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
@@ -387,7 +400,9 @@ impl StoreHub {
     /// Clear the current default blueprint
     pub fn clear_default_blueprint(&mut self) {
         if let Some(app_id) = &self.active_application_id {
-            self.default_blueprint_by_app_id.remove(app_id);
+            if let Some(blueprint_id) = self.default_blueprint_by_app_id.remove(app_id) {
+                self.remove(&blueprint_id);
+            }
         }
     }
 
@@ -451,7 +466,7 @@ impl StoreHub {
         if let Some(app_id) = &self.active_application_id {
             if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
                 re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
-                self.store_bundle.remove(&blueprint_id);
+                self.remove(&blueprint_id);
             }
         }
     }
@@ -462,27 +477,15 @@ impl StoreHub {
     /// Cloned blueprints are the ones the user has edited,
     /// i.e. NOT sent from the SDK.
     pub fn clear_all_cloned_blueprints(&mut self) {
-        let ids_to_clear: Vec<StoreId> = self
-            .store_bundle
-            .blueprints()
-            .filter_map(|entity_db| {
-                let is_clone = entity_db.cloned_from().is_some();
-                if is_clone {
-                    Some(entity_db.store_id().clone())
-                } else {
-                    None // keep
-                }
-            })
-            .collect();
-
-        for blueprint_id in ids_to_clear {
-            self.remove(&blueprint_id);
-        }
+        self.retain(|db| match db.store_kind() {
+            StoreKind::Recording => true,
+            StoreKind::Blueprint => db.cloned_from().is_none(),
+        });
     }
 
     /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
-        self.store_bundle.purge_empty();
+        self.retain(|entity_db| !entity_db.is_empty());
     }
 
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
@@ -541,7 +544,7 @@ impl StoreHub {
 
     /// Remove any recordings with a network source pointing at this `uri`.
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.store_bundle.retain(|db| {
+        self.retain(|db| {
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;
