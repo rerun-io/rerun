@@ -7,14 +7,17 @@ The biggest news is the ability to create a _blueprint_ via the Python logging A
 import rerun.blueprint as rrb
 
 blueprint = rrb.Blueprint(
-    rrb.Horizontal(
-        rrb.Spatial3DView(origin="/world"),
-        rrb.Grid(
-            rrb.BarChartView(name="Word embedding", origin="/embedding"),
-            rrb.TimeSeriesView(name="Loss", origin="/loss"),
+    rrb.Vertical(
+        rrb.Spatial3DView(name="3D", origin="/"),
+        rrb.Horizontal(
+            rrb.TextDocumentView(name="README", origin="/description"),
+            rrb.Spatial2DView(name="Camera", origin="/camera/image"),
+            rrb.TimeSeriesView(origin="/plot"),
         ),
-        column_shares=[2, 1],
-    ),
+        row_shares=[3, 2],
+    )
+    rrb.BlueprintPanel(expanded=True),
+    rrb.SelectionPanel(expanded=False),
     rrb.TimePanel(expanded=False),
 )
 ```
@@ -29,11 +32,21 @@ Or stored to a file, and then later opened in the viewer:
 blueprint.save("my_nice_dashboard.rbl")
 ```
 
-Blueprints are only supported by the Python API, with C++ and Rust support coming later.
+In this case, the results looks something like this:
+
+<picture>
+  <img src="https://static.rerun.io/blueprint-example/80071610c7a5e668438ebe0392826fbfbd797d30/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-example/80071610c7a5e668438ebe0392826fbfbd797d30/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint-example/80071610c7a5e668438ebe0392826fbfbd797d30/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint-example/80071610c7a5e668438ebe0392826fbfbd797d30/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint-example/80071610c7a5e668438ebe0392826fbfbd797d30/1200w.png">
+</picture>
+
+Blueprints are currently only supported in the Python API, with C++ and Rust support coming later.
 
 
 ### ✨ Overview & highlights
-- 🟦 Configure the layout and content of space views via the new blueprint logging Python API [(docs)](https://www.rerun.io/docs/howto/configure-viewer-through-code?speculative-link)
+- 🟦 Configure the layout and content of space views from Python [(docs)](https://www.rerun.io/docs/howto/configure-viewer-through-code?speculative-link)
 - 🖧 More powerful and flexible data loaders [(docs)](https://www.rerun.io/docs/reference/dataloaders?speculative-link)
 - 💾 Save and load blueprint files in the viewer
 - 🖵 Improved UI for managing recordings and applications
