@@ -24,7 +24,7 @@ The blueprint can then be sent to the viewer with
 rr.send_blueprint(blueprint)
 ```
 
-Or stored to file, and the later opened in the viewer:
+Or stored to a file, and then later opened in the viewer:
 ```py
 blueprint.save("my_nice_dashboard.rbl")
 ```
