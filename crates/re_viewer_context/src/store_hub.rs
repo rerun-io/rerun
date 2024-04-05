@@ -608,7 +608,9 @@ impl StoreHub {
                     .insert(blueprint_id.clone(), blueprint.generation());
             }
 
-            if let Some(saver) = &self.persistence.saver {
+            if blueprint.app_id() == Some(&Self::welcome_screen_app_id()) {
+                // Don't save changes to the welcome screen
+            } else if let Some(saver) = &self.persistence.saver {
                 (saver)(app_id, blueprint)?;
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
