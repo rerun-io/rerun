@@ -1200,7 +1200,7 @@ impl App {
                     // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
                     // However, we also use the TCP server for sending data from the logging SDKs
-                    // when they call `spawn()`, and in thaty case we really want to fade in the welcome screen.
+                    // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
                     // Therefore `spawn()` uses the special `--fade-in-welcome-screen` flag
                     // (handled earlier in this function), so here we know we are in the other case:
                     // a user calling `rerun` in their terminal (don't fade in).
