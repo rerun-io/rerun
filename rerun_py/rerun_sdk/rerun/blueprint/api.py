@@ -9,6 +9,7 @@ from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
 from ..notebook import as_html
 from ..recording_stream import RecordingStream
+from ..spawn import _spawn_viewer
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKindLike
@@ -456,6 +457,49 @@ class Blueprint:
         """IPython interface to conversion to html."""
         return as_html(blueprint=self)
 
+    def connect(
+        self,
+        application_id: str,
+        *,
+        addr: str | None = None,
+        make_active: bool = True,
+        make_default: bool = True,
+    ) -> None:
+        """
+        Connect to a remote Rerun Viewer on the given ip:port and send this blueprint.
+
+        Parameters
+        ----------
+        application_id:
+            The application ID to use for this blueprint. This must match the application ID used
+            when initiating rerun for any data logging you wish to associate with this blueprint.
+        addr:
+            The ip:port to connect to
+        make_active:
+            Immediately make this the active blueprint for the associated `app_id`.
+            Note that setting this to `false` does not mean the blueprint may not still end
+            up becoming active. In particular, if `make_default` is true and there is no other
+            currently active blueprint.
+        make_default:
+            Make this the default blueprint for the `app_id`.
+            The default blueprint will be used as the template when the user resets the
+            blueprint for the app. It will also become the active blueprint if no other
+            blueprint is currently active.
+
+        """
+        blueprint_stream = RecordingStream(
+            bindings.new_blueprint(
+                application_id=application_id,
+                make_default=False,
+                make_thread_default=False,
+                default_enabled=True,
+            )
+        )
+        blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        self._log_to_stream(blueprint_stream)
+
+        bindings.connect_blueprint(addr, make_active, make_default, blueprint_stream.to_native())
+
     def save(self, application_id: str, path: str | None = None) -> None:
         """
         Save this blueprint to a file. Rerun recommends the `.rbl` suffix.
@@ -473,7 +517,7 @@ class Blueprint:
         if path is None:
             path = f"{application_id}.rbl"
 
-        blueprint_file = RecordingStream(
+        blueprint_stream = RecordingStream(
             bindings.new_blueprint(
                 application_id=application_id,
                 make_default=False,
@@ -481,10 +525,30 @@ class Blueprint:
                 default_enabled=True,
             )
         )
-        blueprint_file.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
-        self._log_to_stream(blueprint_file)
+        blueprint_stream.set_time_sequence("blueprint", 0)  # type: ignore[attr-defined]
+        self._log_to_stream(blueprint_stream)
 
-        bindings.save_blueprint(path, blueprint_file.to_native())
+        bindings.save_blueprint(path, blueprint_stream.to_native())
+
+    def spawn(self, application_id: str, port: int = 9876, memory_limit: str = "75%") -> None:
+        """
+        Spawn a Rerun viewer with this blueprint.
+
+        Parameters
+        ----------
+        application_id:
+            The application ID to use for this blueprint. This must match the application ID used
+            when initiating rerun for any data logging you wish to associate with this blueprint.
+        port:
+            The port to listen on.
+        memory_limit:
+            An upper limit on how much memory the Rerun Viewer should use.
+            When this limit is reached, Rerun will drop the oldest data.
+            Example: `16GB` or `50%` (of system total).
+
+        """
+        _spawn_viewer(port=port, memory_limit=memory_limit)
+        self.connect(application_id=application_id, addr=f"127.0.0.1:{port}")
 
 
 BlueprintLike = Union[Blueprint, SpaceView, Container]
