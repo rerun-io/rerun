@@ -1,6 +1,6 @@
 ---
 title: Entity Queries
-order: 4
+order: 500
 ---
 
 Many space views are made up of visualizations that include more than one
