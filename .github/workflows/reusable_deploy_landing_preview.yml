@@ -1,0 +1,42 @@
+name: Reusable Deploy Landing Preview
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-deploy-landing-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    runs-on: ubuntu-latest-16-cores
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+
+      - name: Get sha
+        id: get-sha
+        shell: bash
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Re-deploy rerun.io
+        uses: ./.github/actions/deploy-vercel
+        with:
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: ${{ steps.get-sha.outputs.sha }}
+          target: "preview"
