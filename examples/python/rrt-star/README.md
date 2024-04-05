@@ -17,12 +17,12 @@ channel = "main"
 
 This example visualizes the path finding algorithm RRT/* in a simple environment.
 
-# Used Rerun Types
+# Used Rerun types
 [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
 # Background
-The algorithm finds a path between two points by randomly expanding a tree from the start point. 
-After it has added a random edge to the tree it looks at nearby nodes to check if it's faster to reach them through this new edge instead, 
+The algorithm finds a path between two points by randomly expanding a tree from the start point.
+After it has added a random edge to the tree it looks at nearby nodes to check if it's faster to reach them through this new edge instead,
 and if so it changes the parent of these nodes. This ensures that the algorithm will converge to the optimal path given enough time.
 
 A detailed explanation can be found in the original paper
@@ -30,7 +30,7 @@ Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion pla
 or in [this medium article](https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378)
 
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 All points are logged using the [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) archetype, while the lines are logged using the LineStrips2D [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d).
 
@@ -56,7 +56,7 @@ rr.log("map/obstacles", rr.LineStrips2D(self.obstacles))
 
 ## RRT Tree
 
-### Edges 
+### Edges
 ```python
 rr.log("map/tree/edges", rr.LineStrips2D(tree.segments(), radii=0.0005, colors=[0, 0, 255, 128]))
 ```
@@ -100,7 +100,7 @@ rr.log("map/path", rr.LineStrips2D(segments, radii=0.002, colors=[0, 255, 255, 2
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -116,5 +116,5 @@ python examples/python/rrt-star/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/rrt-star/main.py --help 
+python examples/python/rrt-star/main.py --help
 ```

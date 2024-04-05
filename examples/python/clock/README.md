@@ -16,11 +16,11 @@ thumbnail_dimensions = [480, 480]
 
 An example visualizing an analog clock with hour, minute and seconds hands using Rerun Arrow3D primitives.
 
-# Used Rerun Types
+# Used Rerun types
 
 [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d)
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -33,31 +33,31 @@ rr.log(
 )
  ```
 
-Then, the positions and colors of points and arrows representing the hands of a clock for seconds, minutes, and hours are logged in each simulation time. 
-It first sets the simulation time using [`timelines`](https://www.rerun.io/docs/concepts/timelines), calculates the data for each hand, and logs it using [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) and [`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) archetypes. 
+Then, the positions and colors of points and arrows representing the hands of a clock for seconds, minutes, and hours are logged in each simulation time.
+It first sets the simulation time using [`timelines`](https://www.rerun.io/docs/concepts/timelines), calculates the data for each hand, and logs it using [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) and [`Arrows3D`](https://www.rerun.io/docs/reference/types/archetypes/arrows3d) archetypes.
 This enables the visualization of the clock's movement over time.
 
  ```python
 for step in range(steps):
     rr.set_time_seconds("sim_time", t_secs)
 
-    # ... calculating seconds ...
+    # … calculating seconds …
     rr.log("world/seconds_pt", rr.Points3D(positions=point_s, colors=color_s))
     rr.log("world/seconds_hand", rr.Arrows3D(vectors=point_s, colors=color_s, radii=WIDTH_S))
 
-    # ... calculating minutes ...
+    # … calculating minutes …
     rr.log("world/minutes_pt", rr.Points3D(positions=point_m, colors=color_m))
     rr.log("world/minutes_hand", rr.Arrows3D(vectors=point_m, colors=color_m, radii=WIDTH_M))
-    
-    # ... calculating hours ...
+
+    # … calculating hours …
     rr.log("world/hours_pt", rr.Points3D(positions=point_h, colors=color_h))
     rr.log("world/hours_hand", rr.Arrows3D(vectors=point_h, colors=color_h, radii=WIDTH_H))
  ```
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -73,5 +73,5 @@ python examples/python/clock/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/clock/main.py --help 
+python examples/python/clock/main.py --help
 ```

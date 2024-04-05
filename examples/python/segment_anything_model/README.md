@@ -18,20 +18,20 @@ channel = "release"
 
 Visualize the output of [Meta AI's Segment Anything model](https://segment-anything.com/).
 
-# Used Rerun Types
+# Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
 # Background
-This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/). 
-The visualization provided in this example demonstrates the precise and accurate segmentation capabilities of the model, effectively distinguishing each object from the background and creating a transparent mask around them. 
+This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/).
+The visualization provided in this example demonstrates the precise and accurate segmentation capabilities of the model, effectively distinguishing each object from the background and creating a transparent mask around them.
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
 ## Timelines
 
-All data logged using Rerun in the following sections is connected to a specific frame. 
+All data logged using Rerun in the following sections is connected to a specific frame.
 Rerun assigns a frame to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
 
  ```python
@@ -63,10 +63,10 @@ rr.log(
 )
 ```
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -82,5 +82,5 @@ python examples/python/segment_anything_model/main.py # run the example
 ```
 If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/segment_anything_model/main.py --help 
+python examples/python/segment_anything_model/main.py --help
 ```

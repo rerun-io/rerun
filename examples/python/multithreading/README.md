@@ -16,10 +16,10 @@ thumbnail_dimensions = [480, 480]
 
 Demonstration of logging to Rerun from multiple threads.
 
-# Used Rerun Types
+# Used Rerun types
 [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 This example showcases logging from multiple threads, starting with the definition of the function for logging, the `rect_logger`, followed by typical usage of Python's `threading` module in the main function.
 
  ```python
@@ -34,25 +34,25 @@ def rect_logger(path: str, color: npt.NDArray[np.float32]) -> None:
 The main function manages the multiple threads for logging data to the Rerun viewer.
  ```python
 def main() -> None:
-    # ... existing code ...
-    
+    # … existing code …
+
     threads = []
-    
+
     for i in range(10): # Create 10 threads to run the rect_logger function with different paths and colors.
         t = threading.Thread(target=rect_logger, args=(f"thread/{i}", [random.randrange(255) for _ in range(3)]))
         t.start()
         threads.append(t)
-        
+
     for t in threads: # Wait for all threads to complete before proceeding.
         t.join()
-        
-    # ... existing code ...
- ```
 
-# Run the Code
+    # … existing code …
+```
+
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -68,5 +68,5 @@ python examples/python/multithreading/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/multithreading/main.py --help 
+python examples/python/multithreading/main.py --help
 ```

@@ -18,11 +18,11 @@ channel = "main"
 
 Demonstration of various plots and charts supported by Rerun.
 
-# Used Rerun Types
+# Used Rerun types
 
-[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document) 
+[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 This example shows various plot types that you can create using Rerun. Common usecases for such plots would be logging
 losses or metrics over time, histograms, or general function plots.
@@ -35,23 +35,23 @@ Additionally, the plots are styled using the [`SeriesLine`](https://www.rerun.io
 
 The visualizations in this example were created with the following Rerun code:
 
-## Bar Chart
+## Bar chart
 
 The `log_bar_chart` function logs a bar chat.
 It generates data for a Gaussian bell curve and logs it using [`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart) archetype.
- ```python
+```python
 def log_bar_chart() -> None:
-    # ... existing code ...
+    # … existing code …
     rr.log("bar_chart", rr.BarChart(y))
- ```
+```
 
 ## Curves
 The `log_parabola` function logs a parabola curve (sine and cosine functions) as a time series.
 
-It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype. 
+It first sets up a time sequence using [`timelines`](https://www.rerun.io/docs/concepts/timelines), then calculates the y-value of the parabola at each time step, and logs it using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
 It also adjusts the width and color of the plotted line based on the calculated y value using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype.
 
- ```python
+```python
 def log_parabola() -> None:
     # Name never changes, log it only once.
     rr.log("curves/parabola", rr.SeriesLine(name="f(t) = (0.01t - 3)³ + 1"), timeless=True)
@@ -60,14 +60,15 @@ def log_parabola() -> None:
     for t in range(0, 1000, 10):
         rr.set_time_sequence("frame_nr", t)
 
-        # ... existing code ...
+        # … existing code …
 
         rr.log(
             "curves/parabola",
             rr.Scalar(f_of_t),
             rr.SeriesLine(width=width, color=color),
         )
- ```
+```
+
 ## Trig
 
 The `log_trig` function logs sin and cos functions as time series. Sin and cos are logged with the same parent entity (i.e.,`trig/{cos,sin}`) which will put them in the same view by default.
@@ -95,8 +96,8 @@ def log_trig() -> None:
 
 The `log_classification` function simulates a classification problem by logging a line function and randomly generated samples around that line.
 
-It first logs the styling properties of the line plot using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype. 
-Then, it iterates over a range of time steps, calculates the y value of the line function at each time step, and logs it as a scalar using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype. 
+It first logs the styling properties of the line plot using [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line) archetype.
+Then, it iterates over a range of time steps, calculates the y value of the line function at each time step, and logs it as a scalar using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype.
 Additionally, it generates random samples around the line function and logs them using [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) and [`SeriesPoint`](https://www.rerun.io/docs/reference/types/archetypes/series_point) archetypes.
 
  ```python
@@ -107,18 +108,18 @@ def log_classification() -> None:
     for t in range(0, 1000, 2):
         rr.set_time_sequence("frame_nr", t)
 
-        # ... existing code ...
+        # … existing code …
         rr.log("classification/line", rr.Scalar(f_of_t))
 
-        # ... existing code ...
+        # … existing code …
         rr.log("classification/samples", rr.Scalar(g_of_t), rr.SeriesPoint(color=color, marker_size=marker_size))
  ```
 
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -134,5 +135,5 @@ python examples/python/plots/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/plots/main.py --help 
+python examples/python/plots/main.py --help
 ```

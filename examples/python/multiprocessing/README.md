@@ -17,22 +17,20 @@ thumbnail_dimensions = [480, 480]
 
 Demonstrates how rerun can work with the python `multiprocessing` library.
 
-# Used Rerun Types
+# Used Rerun types
 [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 This example demonstrates how to use the rerun with `multiprocessing` to log data from multiple processes to the same Rerun viewer.
 It starts with the definition of the function for logging, the `task`, followed by typical usage of Python's `multiprocessing` library.
 
-The function `task` is decorated with @rr.shutdown_at_exit. This decorator ensures that data is flushed when the task completes, even if the normal atexit-handlers are not called at the termination of a multiprocessing process.
+The function `task` is decorated with `@rr.shutdown_at_exit`. This decorator ensures that data is flushed when the task completes, even if the normal atexit-handlers are not called at the termination of a multiprocessing process.
 
-
- ```python
+```python
 @rr.shutdown_at_exit
 def task(child_index: int) -> None:
     rr.init("rerun_example_multiprocessing")
 
-    # We then have to connect to the viewer instance.
     rr.connect()
 
     title = f"task_{child_index}"
@@ -40,7 +38,7 @@ def task(child_index: int) -> None:
         "log",
         rr.TextLog(
             f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
-        ),  # noqa: E501 line too long
+        )
     )
     if child_index == 0:
         rr.log(title, rr.Boxes2D(array=[5, 5, 80, 80], array_format=rr.Box2DFormat.XYWH, labels=title))
@@ -53,18 +51,18 @@ def task(child_index: int) -> None:
                 labels=title,
             ),
         )
- ```
+```
 
 The main function initializes rerun with a specific application ID and manages the multiprocessing processes for logging data to the Rerun viewer.
 
-> Caution: Ensure that the `recording_id` specified in the main function matches the one used in the logging functions
+> Caution: Ensure that the `recording id` specified in the main function matches the one used in the logging functions
  ```python
 def main() -> None:
-    # ... existing code ...
-    
+    # … existing code …
+
     rr.init("rerun_example_multiprocessing")
     rr.spawn(connect=False)  # this is the viewer that each child process will connect to
-    
+
     task(0)
 
     for i in [1, 2, 3]:
@@ -73,10 +71,10 @@ def main() -> None:
         p.join()
  ```
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -92,5 +90,5 @@ python examples/python/multiprocessing/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/multiprocessing/main.py --help 
+python examples/python/multiprocessing/main.py --help
 ```

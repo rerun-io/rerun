@@ -14,15 +14,13 @@ thumbnail_dimensions = [480, 480]
   <img src="https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/full.png" alt="Minimal example screenshot">
 </picture>
 
-[//]: # (The simplest example of how to use Rerun, showing how to log a point cloud. This is part of the [Quick Start guide]&#40;https://www.rerun.io/docs/getting-started/python&#41;.)
+Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/getting-started/python) to generate a 3D colored cube and demonstrate how to log a point cloud.
 
-Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/getting-started/python) to generate a 3D colored cube and demonstrate how to log a point cloud. 
-
-# Used Rerun Types
+# Used Rerun types
 
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 
-# Logging and Visualizing with Rerun
+# Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -50,7 +48,7 @@ rr.log(
 # Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup 
+# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
@@ -66,5 +64,5 @@ python examples/python/minimal/main.py # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/minimal/main.py --help 
+python examples/python/minimal/main.py --help
 ```
