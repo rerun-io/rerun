@@ -155,6 +155,19 @@ impl StoreHub {
         // If we have an app-id, then use it to look up the blueprint.
         let app_id = self.active_application_id.clone()?;
 
+        // Check that default and active blueprints exists,
+        // in case some of our book-keeping is broken.
+        if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id) {
+            if !self.store_bundle.contains(blueprint_id) {
+                self.default_blueprint_by_app_id.remove(&app_id);
+            }
+        }
+        if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id) {
+            if !self.store_bundle.contains(blueprint_id) {
+                self.active_blueprint_by_app_id.remove(&app_id);
+            }
+        }
+
         // If there's no active blueprint for this app, try to make the current default one active.
         if !self.active_blueprint_by_app_id.contains_key(&app_id) {
             if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
