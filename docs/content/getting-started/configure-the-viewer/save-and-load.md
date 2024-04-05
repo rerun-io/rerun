@@ -18,8 +18,7 @@ To save the currently active blueprint, go to the file-menu and choose "Save blu
 
 Once you have saved a blueprint, you can later load it in the viewer. The
 "Open…" menu item is used to load either recordings (`.rrd`) or blueprints
-(`.rbl`). Alternatively, if your OS supports drag-and-drop, you can drag an
-`.rbl` file directly into the viewer.
+(`.rbl`). Alternatively, you can drag an `.rbl` file directly into the viewer.
 
 Note that the application ID of the blueprint must match the application ID of
 the recording you wish to use it with. It is not currently possible to change
