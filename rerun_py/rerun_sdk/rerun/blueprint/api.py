@@ -9,7 +9,7 @@ from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
 from ..notebook import as_html
 from ..recording_stream import RecordingStream
-from ..spawn import _spawn_viewer
+from .._spawn import _spawn_viewer
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
 from .components import ColumnShareArrayLike, RowShareArrayLike
 from .components.container_kind import ContainerKindLike
