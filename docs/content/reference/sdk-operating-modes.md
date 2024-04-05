@@ -1,6 +1,6 @@
 ---
 title: SDK Operating Modes
-order: 7
+order: 800
 ---
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying to achieve and whether the viewer is running in the same process as your code, in another process, or even as a separate web application.
