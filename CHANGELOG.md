@@ -41,13 +41,13 @@ Right now this is only supported by the Python API, with C++ and Rust support co
 - 💪 Linux ARM64 support [#5489](https://github.com/rerun-io/rerun/pull/5489) [#5511](https://github.com/rerun-io/rerun/pull/5511) [#5503](https://github.com/rerun-io/rerun/pull/5503)
 - 🎨 Configurable background color for 3D Space Views [#5443](https://github.com/rerun-io/rerun/pull/5443)
 - 🖼️ Show examples in the welcome page
-- 🖱️ Improve context-menu when right-clicking items in the bluerint panel
+- 🖱️ Improve context-menu when right-clicking items in the blueprint panel
 
 ### 🔎 Details
 
 #### 🪵 Log API
 - Replace `MarkerShape` with code-generated `enum` type [#5336](https://github.com/rerun-io/rerun/pull/5336)
-- Key-less datamodel 1: scrap `InstanceKey` from public logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
+- Key-less data model 1: scrap `InstanceKey` from public logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
 - Remove the check for `WrongNumberOfInstances` [#5399](https://github.com/rerun-io/rerun/pull/5399)
 - Control panel expanded state via blueprint APIs [#5484](https://github.com/rerun-io/rerun/pull/5484)
 - Remove deprecated `TimeSeriesScalar` [#5604](https://github.com/rerun-io/rerun/pull/5604)
@@ -78,7 +78,7 @@ Right now this is only supported by the Python API, with C++ and Rust support co
 - Fix image view not handling images with extra leading dimensions of size `1` [#5579](https://github.com/rerun-io/rerun/pull/5579)
 - Fix web viewer crash on invalid url parameter [#5631](https://github.com/rerun-io/rerun/pull/5631)
 - Be consistent in how items are removed from selection [#5643](https://github.com/rerun-io/rerun/pull/5643)
-- Fix layouting issue on welcome screen for narrow window, triggering debug assertion [#5650](https://github.com/rerun-io/rerun/pull/5650)
+- Fix layout issue on welcome screen for narrow window, triggering debug assertion [#5650](https://github.com/rerun-io/rerun/pull/5650)
 - Fix broken 2D space view heuristics in Python Notebooks [#5674](https://github.com/rerun-io/rerun/pull/5674)
 - Avoid a hang on linux by always create the renderer, even when we have no store_view [#5724](https://github.com/rerun-io/rerun/pull/5724)
 - Fix crash/freeze when zooming out too far in a plot [#5737](https://github.com/rerun-io/rerun/pull/5737)
@@ -183,7 +183,7 @@ Right now this is only supported by the Python API, with C++ and Rust support co
 - Introduce basic support for `$origin` substitution in `EntityPathFilter` [#5517](https://github.com/rerun-io/rerun/pull/5517)
 - Introduce `rr.notebook_show()` to simplify notebook experience [#5715](https://github.com/rerun-io/rerun/pull/5715)
 - Also remove nested inclusions when removing a subtree [#5720](https://github.com/rerun-io/rerun/pull/5720)
-- Prevent gratuitous blueprint saves by not gc'ing when the blueprint hasn't changed [#5793](https://github.com/rerun-io/rerun/pull/5793)
+- Prevent gratuitous blueprint saves by not garbage collecting when the blueprint hasn't changed [#5793](https://github.com/rerun-io/rerun/pull/5793)
 
 
 ## [0.14.1](https://github.com/rerun-io/rerun/compare/0.14.0...0.14.1) - C++ build artifact fix - 2024-02-29
