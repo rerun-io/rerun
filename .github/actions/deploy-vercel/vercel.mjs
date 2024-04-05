@@ -106,7 +106,10 @@ export class Client {
    */
   async teams() {
     const response = await this.get("v2/teams");
-    assert("teams" in response, () => `failed to get teams: ${JSON.stringify(response)}`);
+    assert(
+      "teams" in response,
+      () => `failed to get teams: ${JSON.stringify(response)}`,
+    );
     return response.teams;
   }
 
@@ -119,7 +122,10 @@ export class Client {
    */
   async projects(teamId) {
     const response = await this.get("v9/projects", { teamId });
-    assert("projects" in response, () => `failed to get projects: ${JSON.stringify(response)}`);
+    assert(
+      "projects" in response,
+      () => `failed to get projects: ${JSON.stringify(response)}`,
+    );
     return response.projects;
   }
 
@@ -146,7 +152,7 @@ export class Client {
     });
     assert(
       "deployments" in response,
-      () => `failed to get deployments: ${JSON.stringify(response)}`
+      () => `failed to get deployments: ${JSON.stringify(response)}`,
     );
     return response.deployments;
   }
@@ -162,7 +168,7 @@ export class Client {
     const response = await this.get(`v9/projects/${projectId}/env`, { teamId });
     assert(
       "envs" in response,
-      () => `failed to get environment variables: ${JSON.stringify(response)}`
+      () => `failed to get environment variables: ${JSON.stringify(response)}`,
     );
     return response.envs;
   }
@@ -177,7 +183,10 @@ export class Client {
    * @returns {Promise<Env>}
    */
   async getEnvDecrypted(teamId, projectId, envId) {
-    return await this.get(`v9/projects/${projectId}/env/${envId}`, { teamId, decrypt: "true" });
+    return await this.get(`v9/projects/${projectId}/env/${envId}`, {
+      teamId,
+      decrypt: "true",
+    });
   }
 
   /**
@@ -194,12 +203,17 @@ export class Client {
     teamId,
     projectId,
     envId,
-    { key, target = ["production", "preview", "development"], type = "encrypted", value }
+    {
+      key,
+      target = ["production", "preview", "development"],
+      type = "encrypted",
+      value,
+    },
   ) {
     return await this.patch(
       `v9/projects/${projectId}/env/${envId}`,
       { gitBranch: null, key, target, type, value },
-      { teamId }
+      { teamId },
     );
   }
 
@@ -217,9 +231,36 @@ export class Client {
   async redeploy(teamId, deploymentId, name) {
     return await this.post(
       `v13/deployments`,
-      { deploymentId, meta: { action: "redeploy" }, name, target: "production" },
-      { teamId, forceNew: "1" }
+      {
+        deploymentId,
+        meta: { action: "redeploy" },
+        name,
+        target: "production",
+      },
+      { teamId, forceNew: "1" },
     );
   }
-}
 
+  /**
+   * Trigger a preview deploy using the files of an existing deployment (`deploymentId`).
+   *
+   * @param {string} teamId
+   * @param {string} deploymentId
+   * @param {string} name
+   * @param {Record<string, string>} [env]
+   * @returns {Promise<any>}
+   */
+  async deployPreviewFrom(teamId, deploymentId, name, env) {
+    // `target` not being set means "preview"
+    const body = {
+      deploymentId,
+      meta: { action: "redeploy" },
+      name,
+    };
+    if (env) {
+      body.env = env;
+      body.build = { env };
+    }
+    return await this.post(`v13/deployments`, body, { teamId, forceNew: "1" });
+  }
+}

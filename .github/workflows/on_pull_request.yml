@@ -55,6 +55,23 @@ jobs:
               - '**/CMakeLists.txt'
               - '**/*cmake'
 
+  docs-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      docs_changes: ${{ steps.filter.outputs.docs_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            docs_changes:
+              - 'docs/content/**/*.md'
+              - 'examples/**/*.md'
+              - 'examples/manifest.toml'
+
   rust-checks:
     name: "Rust Checks"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.rust-paths-filter.outputs.rust_changes == 'true'
@@ -182,6 +199,15 @@ jobs:
     name: "Update PR Body"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     uses: ./.github/workflows/reusable_update_pr_body.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  deploy-landing-preview:
+    name: "Deploy Landing Preview"
+    if: needs.docs-paths-filter.outputs.docs_changes == 'true'
+    uses: ./.github/workflows/reusable_deploy_landing_preview.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
