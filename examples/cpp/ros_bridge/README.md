@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "ROS Bridge"
 source = "https://github.com/rerun-io/cpp-example-ros-bridge"
-tags = ["2D", "3D", "mesh", "pinhole-camera", "ros", "time-series", "C++"]
+tags = ["2D", "3D", "Mesh", "Pinhole camera", "ROS", "Time series", "C++"]
 thumbnail = "https://static.rerun.io/ros_bridge/121f72ebaea57a1b895196a5587fd1a428a9fd0e/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

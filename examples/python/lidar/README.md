@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Lidar"
-tags = ["lidar", "3D"]
+tags = ["Lidar", "3D"]
 description = "Visualize the lidar data from the nuScenes dataset."
 thumbnail = "https://static.rerun.io/lidar/caaf3b9531e50285442d17f0bc925eb7c8e12246/480w.png"
 thumbnail_dimensions = [480, 480]

@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Face tracking"
-tags = ["2D", "3D", "camera", "face-tracking", "live", "mediapipe", "time-series"]
+tags = ["2D", "3D", "Camera", "Face tracking", "Live", "MediaPipe", "Time series"]
 description = "Use the MediaPipe Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream."
 thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f32fa1145c23b/480w.png"
 thumbnail_dimensions = [480, 480]

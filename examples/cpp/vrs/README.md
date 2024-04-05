@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "VRS viewer"
 source = "https://github.com/rerun-io/cpp-example-vrs"
-tags = ["2D", "3D", "vrs", "viewer", "C++"]
+tags = ["2D", "3D", "VRS", "Viewer", "C++"]
 thumbnail = "https://static.rerun.io/vrs-viewer/28da92ebc2f0bccd5cf904314d2f8b0b0c45c879/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "NV12"
-tags = ["2D", "image-encoding", "yuv"]
+tags = ["2D", "Image encoding", "YUV"]
 description = "Visualize an NV12 encoded video stream from a webcam."
 -->
 
