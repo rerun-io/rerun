@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "ARKit Scenes"
+title = "ARKit scenes"
 tags = ["2D", "3D", "depth", "mesh", "object-detection", "pinhole-camera"]
 description = "This example visualizes the ARKitScenes dataset using Rerun. The dataset contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture."
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
@@ -19,7 +19,7 @@ channel = "main"
 This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
 contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
-## Used Rerun Types
+## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image),
 [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d),
 [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d),
@@ -30,7 +30,7 @@ contains color images, depth images, the reconstructed mesh, and labeled boundin
 
 The ARKitScenes dataset, captured using Apple's ARKit technology, encompasses a diverse array of indoor scenes, offering color and depth images, reconstructed 3D meshes, and labeled bounding boxes around objects like furniture. It's a valuable resource for researchers and developers in computer vision and augmented reality, enabling advancements in object recognition, depth estimation, and spatial understanding.
 
-## Logging and Visualizing with Rerun
+## Logging and visualizing with Rerun
 This visualization through Rerun highlights the dataset's potential in developing immersive AR experiences and enhancing machine learning models for real-world applications while showcasing Reruns visualization capabilities.
 
 # Logging a moving RGB-D camera
@@ -84,7 +84,7 @@ for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
  -->
 
 
-# Run the Code
+# Run the code
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash

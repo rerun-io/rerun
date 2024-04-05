@@ -289,8 +289,7 @@ fn website_link_ui(ui: &mut egui::Ui) {
     let url = "https://rerun.io/";
     let response = ui
         .add(egui::ImageButton::new(image))
-        .on_hover_cursor(egui::CursorIcon::PointingHand)
-        .on_hover_text(url);
+        .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
         ui.ctx().open_url(egui::output::OpenUrl {
             url: url.to_owned(),

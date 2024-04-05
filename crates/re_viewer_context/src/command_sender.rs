@@ -16,6 +16,9 @@ pub enum SystemCommand {
     /// Load some data.
     LoadDataSource(DataSource),
 
+    /// Clear everything that came from this source, and close the source.
+    ClearSourceAndItsStores(re_smart_channel::SmartChannelSource),
+
     AddReceiver(re_smart_channel::Receiver<re_log_types::LogMsg>),
 
     /// Reset the `Viewer` to the default state

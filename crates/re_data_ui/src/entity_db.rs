@@ -65,7 +65,7 @@ impl crate::DataUi for EntityDb {
                 ui.label(store_kind.to_string());
                 ui.end_row();
 
-                re_ui.grid_left_hand_label(ui, "Recording started");
+                re_ui.grid_left_hand_label(ui, "Created");
                 ui.label(started.format(ctx.app_options.time_zone));
                 ui.end_row();
             }
@@ -73,7 +73,7 @@ impl crate::DataUi for EntityDb {
             if let Some(latest_row_id) = self.latest_row_id() {
                 if let Ok(nanos_since_epoch) = i64::try_from(latest_row_id.nanoseconds_since_epoch()) {
                     let time = re_log_types::Time::from_ns_since_epoch(nanos_since_epoch);
-                    re_ui.grid_left_hand_label(ui, "Last modified at");
+                    re_ui.grid_left_hand_label(ui, "Modified");
                     ui.label(time.format(ctx.app_options.time_zone));
                     ui.end_row();
                 }
@@ -120,9 +120,8 @@ impl crate::DataUi for EntityDb {
                             ui.add_space(8.0);
                             ui.label("This is the default blueprint for the current application.");
 
-                            if let Some(active_blueprint) = hub
-                                .active_blueprint_id_for_app(active_app_id)
-                                .and_then(|id| hub.store_bundle().get(id))
+                            if let Some(active_blueprint) =
+                                hub.active_blueprint_for_app(active_app_id)
                             {
                                 if active_blueprint.cloned_from() == Some(self.store_id()) {
                                     // The active blueprint is a clone of the selected blueprint.

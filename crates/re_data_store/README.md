@@ -1,4 +1,4 @@
-# Rerun Data Store
+# Rerun data store
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 

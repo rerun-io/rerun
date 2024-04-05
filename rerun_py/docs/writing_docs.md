@@ -1,4 +1,4 @@
-# Python Docs
+# Python docs
 
 A high-level overview of writing and previewing the Rerun python documentation.
 

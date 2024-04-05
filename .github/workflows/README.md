@@ -15,7 +15,7 @@ If you are going to be doing any editing of workflows, the
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=cschleiden.vscode-github-actions)
 for GitHub Actions is highly recommended.
 
-## Reusable Workflows
+## Reusable workflows
 
 -   [reusable_checks.yml](reusable_checks.yml) - These are all the checks that run to ensure the code is formatted,
     linted, and tested. This job produces no artifacts other than a pass/fail criteria for the build.
@@ -66,7 +66,7 @@ for GitHub Actions is highly recommended.
     -   `PR_NUMBER` - The PR number to update. This will generally be set by the `on_pull_request.yml` workflow using:
         `${{github.event.pull_request.number}}`
 
-## Manual Workflows
+## Manual workflows
 
 -   [manual_dispatch](manual_dispatch.yml) - This workflow is used to manually trigger the assorted reusable workflows for
     testing.

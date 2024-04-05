@@ -24,7 +24,7 @@ Additionally, it gives you an overview of all events on a given timeline.
 ### [Viewport](viewport.md)
 The viewport is where your visualizations live. It is composed of one or more Space Views that you can arrange freely.
 
-### Top bar & Menu
+### Top bar & menu
 The top bar contains operating system controls and generic information.
 In the menu you find application wide options and actions.
 Use the buttons at the top right corner to hide/show parts of the viewer.

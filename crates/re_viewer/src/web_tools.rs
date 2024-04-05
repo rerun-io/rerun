@@ -31,6 +31,36 @@ pub fn percent_encode(s: &str) -> String {
     format!("{}", js_sys::encode_uri_component(s))
 }
 
+pub fn go_back() -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+    history
+        .back()
+        .map_err(|err| format!("Failed to go back: {}", string_from_js_value(err)))
+        .ok_or_log_error()
+}
+
+pub fn go_forward() -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+    history
+        .forward()
+        .map_err(|err| format!("Failed to go forward: {}", string_from_js_value(err)))
+        .ok_or_log_error()
+}
+
+/// The current percent-encoded URL suffix, e.g. "?foo=bar#baz".
+pub fn current_url_suffix() -> Option<String> {
+    let location = web_sys::window()?.location();
+    let search = location.search().unwrap_or_default();
+    let hash = location.hash().unwrap_or_default();
+    Some(format!("{search}{hash}"))
+}
+
 /// Push a relative url on the web `History`,
 /// so that the user can use the back button to navigate to it.
 ///
@@ -43,11 +73,7 @@ pub fn percent_encode(s: &str) -> String {
 /// push_history("foo/bar?baz=qux#fragment");
 /// ```
 pub fn push_history(new_relative_url: &str) -> Option<()> {
-    let location = web_sys::window()?.location();
-
-    let search = location.search().unwrap_or_default();
-    let hash = location.hash().unwrap_or_default();
-    let current_relative_url = format!("{search}{hash}");
+    let current_relative_url = current_url_suffix().unwrap_or_default();
 
     if current_relative_url == new_relative_url {
         re_log::debug!("Ignoring navigation to {new_relative_url:?} as we're already there");
@@ -73,16 +99,35 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
     Some(())
 }
 
+/// Replace the current relative url with an new one.
+pub fn replace_history(new_relative_url: &str) -> Option<()> {
+    let history = web_sys::window()?
+        .history()
+        .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
+        .ok_or_log_error()?;
+
+    history
+        .replace_state_with_url(&JsValue::NULL, "", Some(new_relative_url))
+        .map_err(|err| {
+            format!(
+                "Failed to push history state: {}",
+                string_from_js_value(err)
+            )
+        })
+        .ok_or_log_error()
+}
+
 /// Parse the `?query` parst of the url, and translate it into commands to control the application.
 pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &CommandSender) {
     use re_viewer_context::{SystemCommand, SystemCommandSender as _};
 
     let location = eframe::web::web_location();
 
-    // NOTE: it's unclear what to do if we find bout `examples` and `url` in the query.
-
-    if location.query_map.get("examples").is_some() {
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
+    if let Some(app_ids) = location.query_map.get("app_id") {
+        if let Some(app_id) = app_ids.last() {
+            let app_id = re_log_types::ApplicationId::from(app_id.as_str());
+            command_sender.send_system(SystemCommand::ActivateApp(app_id));
+        }
     }
 
     // NOTE: we support passing in multiple urls to multiple different recorording, blueprints, etc
@@ -93,11 +138,14 @@ pub fn translate_query_into_commands(egui_ctx: &egui::Context, command_sender: &
         .flatten()
         .collect();
     if !urls.is_empty() {
-        // Clear out any already open recordings to make room for the new ones.
-        command_sender.send_system(SystemCommand::CloseAllRecordings);
-
         for url in urls {
             if let Some(receiver) = url_to_receiver(egui_ctx.clone(), url).ok_or_log_error() {
+                // We may be here because the user clicked Back/Forward in the browser while trying
+                // out examples. If we re-download the same file we should clear out the old data first.
+                command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+                    receiver.source().clone(),
+                ));
+
                 command_sender.send_system(SystemCommand::AddReceiver(receiver));
             }
         }

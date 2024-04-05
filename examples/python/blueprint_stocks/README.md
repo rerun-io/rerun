@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Stock Charts"
+title = "Stock charts"
 description = "Uses stock data as an example of how to leverage Rerun blueprints to control the layout and presentation of the viewer."
 tags = ["time-series", "blueprint"]
 thumbnail = "https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png"

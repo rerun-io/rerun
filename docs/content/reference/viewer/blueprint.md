@@ -22,14 +22,14 @@ Controls
 The reset button resets the entire Blueprint back to its heuristic-chosen default.
 This includes all settings for Entities, Groups and Space Views.
 
-### Add Space View
+### Add space view
 With this control you can add new Space Views for arbitrary [Spaces](../../concepts/spaces-and-transforms.md).
 
 Contents
 --------
 Upon hovering any line in the Blueprint panel, you'll find shorthands for removing and hide/show.
 
-### Data Blueprints
+### Data blueprints
 All Entities shown in the blueprint panel refer in fact to their Data Blueprints.
 I.e. the entity plus the associated blueprint settings.
 As such, all changes made here are only relevant for the Space View in which they reside.

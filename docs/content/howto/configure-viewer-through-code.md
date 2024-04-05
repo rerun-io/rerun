@@ -106,7 +106,7 @@ rr.send_blueprint(my_blueprint, make_active=True)
 
 ```
 
-## Customizing Space Views
+## Customizing space views
 
 Any of the space views (`BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
 `TextDocumentView`, `TextLogView`, or `TimeSeriesView`) can be instantiated with no arguments.

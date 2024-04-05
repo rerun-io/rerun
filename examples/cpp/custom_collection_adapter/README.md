@@ -1,4 +1,4 @@
-# Custom Collection Adapter
+# Custom collection adapter
 
 Especially when dealing with large amounts of data, it can be both slow and inconvenient to convert
 your data into the components & datatypes provided by the Rerun SDK in order to log it.

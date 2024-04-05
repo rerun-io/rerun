@@ -2,7 +2,7 @@ use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
 use poll_promise::Promise;
 
-use re_viewer_context::{CommandSender, SystemCommandSender as _};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -366,7 +366,20 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    open_example_url(command_sender, &example.desc.rrd_url);
+                                    let open_in_new_tab = ui.input(|i| i.modifiers.any());
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        open_in_new_tab,
+                                    );
+                                } else if response.middle_clicked() {
+                                    open_example_url(
+                                        ui.ctx(),
+                                        command_sender,
+                                        &example.desc.rrd_url,
+                                        true,
+                                    );
                                 }
 
                                 row_example_responses.push(response);
@@ -434,11 +447,38 @@ impl ExampleSection {
     }
 }
 
-fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
+#[cfg(target_arch = "wasm32")]
+fn open_in_background_tab(egui_ctx: &egui::Context, rrd_url: &str) {
+    egui_ctx.open_url(egui::output::OpenUrl {
+        url: format!("/?url={}", crate::web_tools::percent_encode(rrd_url)),
+        new_tab: true,
+    });
+}
+
+fn open_example_url(
+    _egui_ctx: &egui::Context,
+    command_sender: &CommandSender,
+    rrd_url: &str,
+    _open_in_new_tab: bool,
+) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        if _open_in_new_tab {
+            open_in_background_tab(_egui_ctx, rrd_url);
+            return;
+        }
+    }
+
     let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
-    command_sender.send_system(re_viewer_context::SystemCommand::LoadDataSource(
-        data_source,
+
+    // If the user re-download an already open recording, clear it out first
+    command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
+        re_smart_channel::SmartChannelSource::RrdHttpStream {
+            url: rrd_url.to_owned(),
+        },
     ));
+
+    command_sender.send_system(SystemCommand::LoadDataSource(data_source));
 
     #[cfg(target_arch = "wasm32")]
     {
@@ -446,7 +486,22 @@ fn open_example_url(command_sender: &CommandSender, rrd_url: &str) {
         use crate::web_tools;
 
         // So we know where to return to
-        web_tools::push_history("?examples");
+        let welcome_screen_app_id = re_viewer_context::StoreHub::welcome_screen_app_id();
+        let welcome_screen_url = format!(
+            "?app_id={}",
+            web_tools::percent_encode(&welcome_screen_app_id.to_string())
+        );
+
+        if web_tools::current_url_suffix()
+            .unwrap_or_default()
+            .is_empty()
+        {
+            // Replace, otherwise the user would need to hit back twice to return to
+            // whatever linked them to `https://www.rerun.io/viewer` in the first place.
+            web_tools::replace_history(&welcome_screen_url);
+        } else {
+            web_tools::push_history(&welcome_screen_url);
+        }
 
         // Where we're going:
         web_tools::push_history(&format!("?url={}", web_tools::percent_encode(rrd_url)));
@@ -526,9 +581,7 @@ impl ExampleDescLayout {
                 for tag in &self.desc.tags {
                     ui.add(
                         egui::Button::new(
-                            egui::RichText::new(tag)
-                                .text_style(re_ui::ReUi::welcome_screen_tag())
-                                .strong(),
+                            egui::RichText::new(tag).text_style(re_ui::ReUi::welcome_screen_tag()),
                         )
                         .sense(egui::Sense::hover())
                         .rounding(6.0)

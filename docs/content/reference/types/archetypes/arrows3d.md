@@ -19,7 +19,7 @@ title: "Arrows3D"
 
 ## Example
 
-### Simple batch of 3D Arrows
+### Simple batch of 3D arrows
 
 snippet: arrow3d_simple
 

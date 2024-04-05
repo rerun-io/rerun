@@ -1,9 +1,7 @@
 use re_log_types::{EntityPath, TimeInt, TimeRange};
-use re_space_view::{default_time_range, visible_time_range_to_time_range};
+use re_space_view::visible_time_range_to_time_range;
 use re_types::datatypes::Utf8;
-use re_viewer_context::{
-    external::re_entity_db::TimeSeriesAggregator, SpaceViewClass, ViewQuery, ViewerContext,
-};
+use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
@@ -39,7 +37,7 @@ pub fn determine_time_range(
 ) -> TimeRange {
     let visible_time_range_override = data_result
         .lookup_override::<re_types::blueprint::components::VisibleTimeRange>(ctx)
-        .unwrap_or(default_time_range(TimeSeriesSpaceView::identifier()));
+        .unwrap_or(TimeSeriesSpaceView::DEFAULT_TIME_RANGE);
 
     let mut time_range = visible_time_range_to_time_range(
         &visible_time_range_override,

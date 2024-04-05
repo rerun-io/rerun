@@ -1,4 +1,4 @@
-# Python Quick Start
+# Python quick start
 
 ## Installing the Rerun SDK
 

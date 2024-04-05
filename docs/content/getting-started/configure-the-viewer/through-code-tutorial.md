@@ -168,7 +168,7 @@ layout is far from ideal:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_no_blueprint/b7341f41683825f4186d661af509f8da03dc4ed1/1200w.png">
 </picture>
 
-## Create a Blueprint
+## Create a blueprint
 
 To improve the layout, we will now use the blueprint APIs to create some custom layouts.
 

@@ -29,7 +29,7 @@ class SeriesPoint(Archetype):
 
     Example
     -------
-    ### Series Point:
+    ### Point series:
     ```python
     from math import cos, sin, tau
 

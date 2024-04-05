@@ -41,7 +41,7 @@ Any container or view can be hidden or shown by clicking the "eye" icon.
 </picture>
 
 
-### Add new Containers or Views
+### Add new containers or views
 
 Adding a container or a view to the view port can be done by clicking the "+" at the top of the blueprint panel.
 
@@ -58,7 +58,7 @@ If a container (or the viewport) is already selected, a "+" button will also be 
 </picture>
 
 
-### Remove a View or Container
+### Remove a view or container
 
 Removing a view or a container can be done by clicking the "-" button next to it:
 
@@ -67,7 +67,7 @@ Removing a view or a container can be done by clicking the "-" button next to it
 </picture>
 
 
-### Re-arrange existing Containers or Views
+### Re-arrange existing containers or views
 
 The viewport hierarchy can be reorganized by drag-and-dropping containers or views in the blueprint panel. It ssi also possible to drag views directly in the viewport by using their title tab:
 
@@ -77,7 +77,7 @@ The viewport hierarchy can be reorganized by drag-and-dropping containers or vie
 </picture>
 
 
-### Rename a View or Container
+### Rename a view or container
 
 Both views and containers may be assigned a custom name. This can be done by selecting the view or container, and editing the name at the top of the selection panel.
 
@@ -85,7 +85,7 @@ Both views and containers may be assigned a custom name. This can be done by sel
   <img src="https://static.rerun.io/rename/94be9e29a0120fbab1a7c07a8952f2cba4dcea68/full.png" alt="">
 </picture>
 
-### Change a Container kind
+### Change a container kind
 
 Containers come in four different kinds: vertical, horizontal, grid, and tabs. To change an existing container's kind, select it and change the value from the dropdown menu in the selection panel:
 
@@ -121,7 +121,7 @@ Like containers and views, any entity in a view may be shown and hidden with the
 </picture>
 
 
-### Remove Data from a View
+### Remove data from a view
 
 Likewise, entities may be removed from a view by clicking the "-" next to it:
 

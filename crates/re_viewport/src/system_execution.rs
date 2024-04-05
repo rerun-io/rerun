@@ -104,13 +104,13 @@ pub fn execute_systems_for_space_view<'a>(
 
     let query_result = ctx.lookup_query_result(space_view.id);
 
-    let mut per_system_data_results = PerSystemDataResults::default();
+    let mut per_visualizer_data_results = PerSystemDataResults::default();
     {
         re_tracing::profile_scope!("per_system_data_results");
 
         query_result.tree.visit(&mut |node| {
             for system in &node.data_result.visualizers {
-                per_system_data_results
+                per_visualizer_data_results
                     .entry(*system)
                     .or_default()
                     .push(&node.data_result);
@@ -122,7 +122,7 @@ pub fn execute_systems_for_space_view<'a>(
     let query = re_viewer_context::ViewQuery {
         space_view_id: space_view.id,
         space_origin: &space_view.space_origin,
-        per_system_data_results,
+        per_visualizer_data_results,
         timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
         latest_at,
         highlights,

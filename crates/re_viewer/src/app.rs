@@ -380,6 +380,11 @@ impl App {
                 });
             }
 
+            SystemCommand::ClearSourceAndItsStores(source) => {
+                self.rx.retain(|r| r.source() != &source);
+                store_hub.retain(|db| db.data_source.as_ref() != Some(&source));
+            }
+
             SystemCommand::AddReceiver(rx) => {
                 re_log::debug!("Received AddReceiver");
                 self.add_receiver(rx);
@@ -1322,6 +1327,22 @@ impl eframe::App for App {
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history
                 .add(egui_ctx.input(|i| i.time), seconds);
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // Handle pressing the back/forward mouse buttons explicitly, since eframe catches those.
+            let back_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra1));
+            let fwd_pressed =
+                egui_ctx.input(|i| i.pointer.button_pressed(egui::PointerButton::Extra2));
+
+            if back_pressed {
+                crate::web_tools::go_back();
+            }
+            if fwd_pressed {
+                crate::web_tools::go_forward();
+            }
         }
 
         // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability

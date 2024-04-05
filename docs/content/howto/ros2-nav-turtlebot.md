@@ -58,7 +58,7 @@ $ ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False
 Make sure that you can set the 2D Pose Estimate and send a Navigation Goal via rviz. You can now leave this
 running in the background for the remainder of the guide.
 
-### Additional Dependencies
+### Additional dependencies
 
 The code for this guide is in the `rerun` repository. If you do not already have rerun cloned,
 you should do so now:
@@ -122,7 +122,7 @@ If you are familiar with the turtlebot nav example and rviz, this view will like
 -   `odometry/vel` is a plot of the linear velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
 -   `odometry/ang_vel` is a plot of the angular velocity of the robot logged as a [scalar](../reference/types/archetypes/scalar.md).
 
-## Code Explanation
+## Code explanation
 
 It may be helpful to open [rerun/examples/python/ros_node/main.py](https://github.com/rerun-io/rerun/blob/main/examples/python/ros_node/main.py)
 to follow along.
@@ -134,7 +134,7 @@ For simplicity, this example uses the rosclpy `MultiThreadedExecutor` and `Reent
 allows each callback thread to do TF lookups without blocking the other incoming messages. More advanced ROS execution
 models and using asynchronous TF lookups are outside the scope of this guide.
 
-### Updating Time
+### Updating time
 
 First of all, we want our messages to show up on the timeline based on their _stamped_ time rather than the
 time that they were received by the listener, or relayed to Rerun.
@@ -465,7 +465,7 @@ if node_data:
 
 Color data is also extracted from the trimesh, but omitted here for brevity.
 
-## In Summary
+## In summary
 
 Although there is a non-trivial amount of code, none of it is overly complicated. Each message callback
 operates independently of the others, processing an incoming message, adapting it to Rerun and then
