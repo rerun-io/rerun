@@ -505,11 +505,7 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(
-                entity_path,
-                static_,
-                std::move(serialized_batches)
-            );
+            return try_log_serialized_batches(entity_path, static_, std::move(serialized_batches));
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
