@@ -109,10 +109,10 @@ impl StoreHub {
         setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
     ) -> Self {
         re_tracing::profile_function!();
-        let mut active_blueprint_by_app_id = HashMap::new();
+        let mut default_blueprint_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
 
-        active_blueprint_by_app_id.insert(
+        default_blueprint_by_app_id.insert(
             Self::welcome_screen_app_id(),
             Self::welcome_screen_blueprint_id(),
         );
@@ -126,8 +126,8 @@ impl StoreHub {
 
             active_rec_id: None,
             active_application_id: None,
-            default_blueprint_by_app_id: Default::default(),
-            active_blueprint_by_app_id,
+            default_blueprint_by_app_id,
+            active_blueprint_by_app_id: Default::default(),
             store_bundle,
 
             blueprint_last_save: Default::default(),
