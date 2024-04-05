@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "nuScenes"
-tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera"]
+tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
 description = "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
 thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
 thumbnail_dimensions = [480, 480]
@@ -18,21 +18,21 @@ build_args = ["--seconds=5"]
 
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
-# Used Rerun types
+## Used Rerun types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
 
-# Background
+## Background
 This example demonstrates the ability to read and visualize scenes from the nuScenes dataset, which is a public large-scale dataset specifically designed for autonomous driving.
 The scenes in this dataset encompass data collected from a comprehensive suite of sensors on autonomous vehicles.
 These include 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors.
 Consequently, the dataset provides information about the vehicle's pose, the images captured, the recorded sensor data and the results of object detection at any given moment.
 
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## Sensor calibration
+### Sensor calibration
 
 First, pinhole cameras and sensor poses are initialized to offer a 3D view and camera perspective. This is achieved using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
 
@@ -60,7 +60,7 @@ rr.log(
         )
 ```
 
-## Timelines
+### Timelines
 
 All data logged using Rerun in the following sections is initially connected to a specific time.
 Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/concepts/timelines).
@@ -70,7 +70,7 @@ rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
 ```
 
 
-## Vehicle pose
+### Vehicle pose
 
 As the vehicle is moving, its pose needs to be updated. Consequently, the positions of pinhole cameras and sensors must also be adjusted using [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d).
 ```python
@@ -84,33 +84,56 @@ rr.log(
 )
 ```
 
-## LiDAR data
+### LiDAR data
 LiDAR data is logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 ```
 
-## Camera data
+### Camera data
 Camera data is logged as encoded images using [`ImageEncoded`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded).
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
 ```
 
-## Radar data
+### Radar data
 Radar data is logged similar to LiDAR data, as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d).
 ```python
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 ```
 
-## Annotations
+### Annotations
 
 Annotations are logged as [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), containing details such as object positions, sizes, and rotation.
 ```python
 rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
 ```
 
+### Setting up the default blueprint
 
-# Run the code
+The default blueprint for this example is created by the following code:
+
+```python
+sensor_space_views = [
+    rrb.Spatial2DView(
+        name=sensor_name,
+        origin=f"world/ego_vehicle/{sensor_name}",
+    )
+    for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
+]
+blueprint = rrb.Vertical(
+    rrb.Spatial3DView(name="3D", origin="world"),
+    rrb.Grid(*sensor_space_views),
+    row_shares=[3, 2],
+)
+```
+
+We programmatically create one view per sensor and arrange them in a grid layout, which is convenient when the number of views can significantly vary from dataset to dataset. This code also showcases the `row_shares` argument for vertical containers: it can be used to assign a relative size to each of the container's children. A similar `column_shares` argument exists for horizontal containers, while grid containers accept both.
+
+
+
+
+## Run the code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup
