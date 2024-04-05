@@ -29,7 +29,7 @@ Or stored to a file, and then later opened in the viewer:
 blueprint.save("my_nice_dashboard.rbl")
 ```
 
-Right now this is only supported by the Python API, with C++ and Rust support coming later.
+Blueprints are only supported by the Python API, with C++ and Rust support coming later.
 
 
 ### ✨ Overview & highlights
