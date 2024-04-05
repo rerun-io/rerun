@@ -554,6 +554,9 @@ pub struct StaticTable {
     /// place.
     pub cluster_key: ComponentName,
 
+    /// Keeps track of one and only one [`StaticCell`] per component.
+    ///
+    /// Last-write-wins semantics apply, where ordering is defined by `RowId`.
     pub cells: BTreeMap<ComponentName, StaticCell>,
 }
 
@@ -570,7 +573,9 @@ impl StaticTable {
 
 #[derive(Clone)]
 pub struct StaticCell {
+    /// None if [`DataStoreConfig::store_insert_ids`] is `false`.
     pub insert_id: Option<u64>,
+
     pub row_id: RowId,
     pub num_instances: NumInstances,
     pub cell: DataCell,

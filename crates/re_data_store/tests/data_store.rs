@@ -839,7 +839,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     // The 3 static cells should still be around.
     let stats = DataStoreStats::from_store(store);
-    assert_eq!(stats.static_tables.num_rows, 2);
+    assert_eq!(stats.static_tables.num_rows, 1);
 
     // Now erase points and GC again
     let mut static_table = DataTable::from_rows(TableId::new(), [row4]);
@@ -856,5 +856,5 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     });
 
     let stats = DataStoreStats::from_store(store);
-    assert_eq!(stats.static_tables.num_rows, 2);
+    assert_eq!(stats.static_tables.num_rows, 1);
 }

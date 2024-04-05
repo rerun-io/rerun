@@ -1,6 +1,6 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
-use re_log_types::RowId;
+use re_log_types::{RowId, TimeInt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -17,8 +17,7 @@ pub struct Entry {
 
     pub entity_path: EntityPath,
 
-    /// `None` for timeless data.
-    pub time: Option<i64>,
+    pub time: TimeInt,
 
     pub color: Option<Color>,
 
@@ -74,7 +73,7 @@ impl VisualizerSystem for TextLogSystem {
                         self.entries.push(Entry {
                             row_id,
                             entity_path: data_result.entity_path.clone(),
-                            time: (time.is_static()).then(|| time.as_i64()),
+                            time,
                             color: *color,
                             body: body.clone(),
                             level: level.clone(),

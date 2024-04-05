@@ -118,7 +118,7 @@ impl DataStoreStats {
         let static_tables = {
             re_tracing::profile_scope!("static data");
             DataStoreRowStats {
-                num_rows: store.num_static_cells(),
+                num_rows: store.num_static_rows(),
                 num_bytes: store.static_size_bytes(),
             }
         };
@@ -190,14 +190,11 @@ impl SizeBytes for DataStore {
 }
 
 impl DataStore {
-    /// Returns the number of static cells stored across this entire store.
+    /// Returns the number of static rows stored across this entire store.
     #[inline]
-    pub fn num_static_cells(&self) -> u64 {
-        re_tracing::profile_function!();
-        self.static_tables
-            .values()
-            .map(|static_table| static_table.cells.len() as u64)
-            .sum()
+    pub fn num_static_rows(&self) -> u64 {
+        // A static table only ever contains a single row.
+        self.static_tables.len() as _
     }
 
     /// Returns the size of the static data stored across this entire store.

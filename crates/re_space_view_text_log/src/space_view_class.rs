@@ -194,7 +194,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("search scroll time");
-                entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                entries.partition_point(|te| te.time.as_i64() < time)
             });
 
             state.latest_time = time;

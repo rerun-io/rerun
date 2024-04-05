@@ -37,10 +37,9 @@ impl std::fmt::Display for DataStore {
             f.write_str(&indent::indent_all_by(
                 4,
                 format!(
-                    "{} static tables, for a total of {} across {} total cells\n",
+                    "{} static tables, for a total of {}\n",
                     static_tables.len(),
                     format_bytes(self.static_size_bytes() as _),
-                    format_uint(self.num_static_cells())
                 ),
             ))?;
             f.write_str(&indent::indent_all_by(4, "static_tables: [\n"))?;

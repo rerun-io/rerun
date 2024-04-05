@@ -96,6 +96,8 @@ impl DataStore {
     /// the specified [`Timeline`].
     ///
     /// Static components are always included in the results.
+    ///
+    /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components(
         &self,
         timeline: &Timeline,

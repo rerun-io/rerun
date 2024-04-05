@@ -4564,6 +4564,7 @@ dependencies = [
  "re_types_core",
  "seq-macro",
  "similar-asserts",
+ "static_assertions",
  "web-time",
 ]
 

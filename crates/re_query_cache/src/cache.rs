@@ -772,9 +772,8 @@ impl CacheBucket {
     /// multiple times.
     #[inline]
     pub fn static_range(&self) -> Range<usize> {
-        let start_index = self
-            .data_times
-            .partition_point(|(data_time, _)| data_time < &TimeInt::STATIC);
+        static_assertions::const_assert_eq!(TimeInt::STATIC.as_i64(), i64::MIN);
+        let start_index = 0;
         let end_index = self
             .data_times
             .partition_point(|(data_time, _)| data_time <= &TimeInt::STATIC);
