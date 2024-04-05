@@ -14,7 +14,7 @@ thumbnail_dimensions = [480, 480]
   <img src="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/full.png" alt="">
 </picture>
 
-# Overview
+## Overview
 
 A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
 
@@ -24,7 +24,7 @@ future improved ROS support, see the tracking issue: [#1527](https://github.com/
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 
-# Dependencies
+## Dependencies
 
 This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
 and the [turtlebot3 navigation example](https://navigation.ros.org/getting_started/index.html).
@@ -42,7 +42,7 @@ source /opt/ros/humble/setup.bash
 ```
 
 
-# Running
+## Running
 
 First, in one terminal launch the nav2 turtlebot demo:
 ```

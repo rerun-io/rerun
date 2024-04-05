@@ -17,18 +17,18 @@ thumbnail_dimensions = [480, 480]
 
 Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) results from a live camera stream.
 
-# Used Rerun Types
+## Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image)
 
-# Background
+## Background
 In this example, the results of the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) algorithm are visualized.
 Canny Edge Detection is a popular edge detection algorithm, and can efficiently extract important structural information from visual objects while notably reducing the computational load.
 The process in this example involves converting the input image to RGB, then to grayscale, and finally applying the Canny Edge Detector for precise edge detection.
 
-# Logging and Visualizing with Rerun
+## Logging and Visualizing with Rerun
 
 The visualization in this example were created with the following Rerun code:
-## RGB Image
+### RGB Image
 
 The original image is read and logged in RGB format under the entity "image/rgb".
 ```python
@@ -37,7 +37,7 @@ rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 rr.log("image/rgb", rr.Image(rgb))
 ```
 
-## Grayscale Image
+### Grayscale Image
 
 The input image is converted from BGR color space to grayscale, and the resulting grayscale image is logged under the entity "image/gray".
 ```python
@@ -46,7 +46,7 @@ gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 rr.log("image/gray", rr.Image(gray))
 ```
 
-## Canny Edge Detection Image
+### Canny Edge Detection Image
 
 The Canny edge detector is applied to the grayscale image, and the resulting edge-detected image is logged under the entity "image/canny".
 ```python
@@ -56,7 +56,7 @@ rr.log("image/canny", rr.Image(canny))
 ```
 
 
-# Run the Code
+## Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

@@ -15,35 +15,36 @@ thumbnail_dimensions = [480, 480]
 
 Visualize the [BERT-based named entity recognition (NER)](https://huggingface.co/dslim/bert-base-NER) with UMAP Embeddings.
 
-# Used Rerun types
+## Used Rerun types
 [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 
-# Background
+## Background
 This example splits text into tokens, feeds the token sequence into a large language model (BERT), which outputs an embedding per token.
 The embeddings are then classified into four types of entities: location (LOC), organizations (ORG), person (PER) and Miscellaneous (MISC). The embeddings are projected to a 3D space using [UMAP](https://umap-learn.readthedocs.io/en/latest), and visualized together with all other data in Rerun.
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code:
 
-## Text
+### Text
 The logging begins with the original text. Following this, the tokenized version is logged for further analysis, and the named entities identified by the NER model are logged separately.
 All texts are logged using [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document) as a Markdown document to preserves structure and formatting.
-### Original text
+
+#### Original text
 ```python
 rr.log("text", rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN))
 ```
 
-### Tokenized text
+#### Tokenized text
 ```python
 rr.log("tokenized_text", rr.TextDocument(markdown, media_type=rr.MediaType.MARKDOWN))
 ```
 
-### Named entities
+#### Named entities
 ```python
 rr.log("named_entities", rr.TextDocument(named_entities_str, media_type=rr.MediaType.MARKDOWN))
 ```
 
-## UMAP embeddings
+### UMAP embeddings
 
 [//]: # (The embeddings to UMAP facilitates the exploration, understanding, and evaluation of the NER model's output in a more interpretable and visually appealing manner.)
 
@@ -77,7 +78,7 @@ rr.log(
 ```
 
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup
