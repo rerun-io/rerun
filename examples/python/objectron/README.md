@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Objectron"
-tags = ["2D", "3D", "Object detection", "Pinhole camera"]
+tags = ["2D", "3D", "Object detection", "Pinhole camera", "Blueprint"]
 description = "Example of using the Rerun SDK to log the Google Research Objectron dataset."
 thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
 thumbnail_dimensions = [480, 480]
@@ -20,20 +20,20 @@ build_args = ["--frames=150"]
 
 Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset including camera poses, sparse point-clouds and surfaces characterization.
 
-# Used Rerun types
+## Used Rerun types
  [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>, [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
-# Background
+## Background
 
 This example visualizes the Objectron database, a rich collection of object-centric video clips accompanied by AR session metadata.
 With high-resolution images, object pose, camera pose, point-cloud, and surface plane information available for each sample, the visualization offers a comprehensive view of the object from various angles.
 Additionally, the dataset provides manually annotated 3D bounding boxes, enabling precise object localization and orientation.
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## Timelines
+### Timelines
 
 For each processed frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
 
@@ -42,7 +42,7 @@ rr.set_time_sequence("frame", sample.index)
 rr.set_time_seconds("time", sample.timestamp)
 ```
 
-## Video
+### Video
 
 Pinhole camera is utilized for achieving a 3D view and camera perspective through the use of the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
 
@@ -68,7 +68,7 @@ The input video is logged as a sequence of [`ImageEncoded`](https://ref.rerun.io
 rr.log("world/camera", rr.ImageEncoded(path=sample.image_path))
 ```
 
-## Sparse point clouds
+### Sparse point clouds
 
 Sparse point clouds from `ARFrame` are logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `world/points` entity.
 
@@ -76,7 +76,7 @@ Sparse point clouds from `ARFrame` are logged as [`Points3D`](https://www.rerun.
 rr.log("world/points", rr.Points3D(positions, colors=[255, 255, 255, 255]))
 ```
 
-## Annotated bounding boxes
+### Annotated bounding boxes
 
 Bounding boxes annotated from `ARFrame` are logged as [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), containing details such as object position, sizes, center and rotation.
 
@@ -94,7 +94,22 @@ rr.log(
 )
 ```
 
-# Run the code
+### Setting up the default blueprint
+
+The default blueprint is configured with the following code:
+
+```python
+blueprint = rrb.Horizontal(
+    rrb.Spatial3DView(origin="/world", name="World"),
+    rrb.Spatial2DView(origin="/world/camera", name="Camera", contents=["/world/**"]),
+)
+```
+
+In particular, we want to reproject the points and the 3D annotation box in the 2D camera view corresponding to the pinhole logged at `"/world/camera"`. This is achieved by setting the view's contents to the entire `"/world/**"` subtree, which include both the pinhole transform and the image data, as well as the point cloud and the 3D annotation box.
+
+
+
+## Run the code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

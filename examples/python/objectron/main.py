@@ -215,13 +215,14 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
+    blueprint = rrb.Horizontal(
+        rrb.Spatial3DView(origin="/world", name="World"),
+        rrb.Spatial2DView(origin="/world/camera", name="Camera", contents=["/world/**"]),
+    )
     rr.script_setup(
         args,
         "rerun_example_objectron",
-        default_blueprint=rrb.Horizontal(
-            rrb.Spatial3DView(origin="/world", name="World"),
-            rrb.Spatial2DView(origin="/world/camera", name="Camera", contents=["+ $origin/**", "+ /world/**"]),
-        ),
+        default_blueprint=blueprint,
     )
 
     dir = ensure_recording_available(args.recording, args.dataset_dir, args.force_reprocess_video)
