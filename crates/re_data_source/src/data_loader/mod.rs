@@ -101,7 +101,7 @@ impl DataLoaderSettings {
 
         if let Some(timepoint) = timepoint {
             if timepoint.is_static() {
-                args.push("--timeless".to_owned());
+                args.push("--timeless".to_owned()); // for backwards compatibility
                 args.push("--static".to_owned());
             }
 
