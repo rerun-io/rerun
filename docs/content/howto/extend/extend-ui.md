@@ -4,7 +4,7 @@ order: 2
 description: How to extend the Rerun Viewer UI using Rust and egui
 ---
 
-## Custom UI embedding the Viewer
+## Custom UI embedding the viewer
 
 ![The Rerun Viewer, extended with a custom panel to the right](https://github.com/rerun-io/rerun/assets/1148717/cbbad63e-9b18-4e54-bafe-b6ffd723f63e)
 
@@ -17,7 +17,7 @@ The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-
 The best way to get started is by reading [the source code of the `extend_viewer_ui` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/extend_viewer_ui).
 
 
-## Custom Space Views classes
+## Custom space views classes
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_space_view/e05a073d64003645b6af6de91b068c2f646c1b8a/480w.jpeg">

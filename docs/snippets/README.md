@@ -1,4 +1,4 @@
-# API Examples
+# API examples
 
 These examples showcase common usage of each individual Rerun `Archetype`s.
 

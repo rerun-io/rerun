@@ -1,4 +1,4 @@
-# Rerun Python Examples
+# Rerun Python examples
 The simplest example is [`minimal`](minimal/main.py). You may want to start there!
 
 Read more about our examples at <https://www.rerun.io/examples>.

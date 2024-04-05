@@ -62,13 +62,13 @@ For more complex use-cases, custom objects implementing the `rr.AsComponents` pr
 
 snippet: custom_data
 
-### Empty Entities
+### Empty entities
 
 An entity without components is nothing more than an identity (represented by its entity
 path). It contains no data, and has no type. When you log a piece of data, all that you are doing is setting the values
 of one or more components associated with that entity.
 
-## ECS Systems
+## ECS systems
 
 There is a third concept we haven't touched on: *systems* are processes which operate on the entities based on the components they possess.
 Rerun is still settling on the exact form of formalized systems and outside of Rust viewer code it is not yet possible to write your own systems. However, space views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../howto/extend/extend-ui.md) section.

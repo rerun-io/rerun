@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ## Example
 ///
-/// ### Simple Tensor
+/// ### Simple tensor
 /// ```ignore
 /// use ndarray::{Array, ShapeBuilder};
 ///

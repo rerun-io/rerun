@@ -23,7 +23,7 @@ but can be used more generally for any kind of reoccurring categorization within
 
 
 
-### Keypoints & Keypoint Connections
+### Keypoints & keypoint connections
 
 Rerun allows you to define keypoints *within* a class.
 Each keypoint can define its own properties (colors, labels, etc.) that overwrite its parent class.
@@ -44,7 +44,7 @@ Keypoints are currently only applicable to 2D and 3D points.
 
 
 
-### Logging an Annotation Context
+### Logging an annotation context
 
 Annotation Context is typically logged as [timeless](timelines.md#timeless-data) data, but can change over time if needed.
 
@@ -59,7 +59,7 @@ Annotation contexts are logged with:
 snippet: annotation-context
 
 
-## Affected Entities
+## Affected entities
 
 Each entity that uses a Class ID component (and optionally Keypoint ID components) will look for
 the nearest ancestor that in the [entity path hierarchy](entity-path.md#path-hierarchy-functions) that has an Annotation Context defined.

@@ -21,7 +21,7 @@ class Arrows2D(Arrows2DExt, Archetype):
 
     Example
     -------
-    ### Simple batch of 2D Arrows:
+    ### Simple batch of 2D arrows:
     ```python
     import rerun as rr
 

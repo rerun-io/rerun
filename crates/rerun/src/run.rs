@@ -140,9 +140,15 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     serve: bool,
 
-    /// Do not display the welcome screen.
+    /// This is a hint that we expect a recording to stream in very soon.
+    ///
+    /// This is set by the `spawn()` method in our logging SDK.
+    ///
+    /// The viewer will respond by fading in the welcome screen,
+    /// instead of showing it directly.
+    /// This ensures that it won't blink for a few frames before switching to the recording.
     #[clap(long)]
-    skip_welcome_screen: bool,
+    expect_data_soon: bool,
 
     /// The number of compute threads to use.
     ///
@@ -614,7 +620,11 @@ async fn run_impl(
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
-            skip_welcome_screen: args.skip_welcome_screen,
+            expect_data_soon: if args.expect_data_soon {
+                Some(true)
+            } else {
+                None
+            },
 
             // TODO(emilk): make it easy to set this on eframe instead
             resolution_in_points: if let Some(size) = &args.window_size {

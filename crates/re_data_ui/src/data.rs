@@ -62,7 +62,8 @@ impl DataUi for ViewCoordinates {
     ) {
         match verbosity {
             UiVerbosity::Small => {
-                ui.label(format!("ViewCoordinates: {}", self.describe()));
+                ui.label(self.describe_short())
+                    .on_hover_text(self.describe());
             }
             UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 ui.label(self.describe());
@@ -238,7 +239,7 @@ impl DataUi for MeshProperties {
             if let Some(indices) = self.indices.as_ref() {
                 ui.label(format!(
                     "{} triangles",
-                    re_format::format_number(indices.len() / 3)
+                    re_format::format_uint(indices.len() / 3)
                 ));
             } else {
                 ui.weak("(empty)");

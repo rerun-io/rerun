@@ -359,7 +359,7 @@ jobs:
             Please report any issues you find.
 
             ## Example Hosted App
-            https://app.rerun.io/commit/${{ env.SHORT_SHA }}
+            https://rerun.io/viewer/commit/${{ env.SHORT_SHA }}
 
             ## Wheels can be installed with:
             ```

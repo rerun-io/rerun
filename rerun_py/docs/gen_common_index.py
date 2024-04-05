@@ -90,6 +90,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "serve",
             "spawn",
             "memory_recording",
+            "notebook_show",
         ],
     ),
     Section(

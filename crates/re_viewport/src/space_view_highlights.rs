@@ -44,7 +44,11 @@ pub fn highlights_for_space_view(
 
     for current_selection in ctx.selection_state().selected_items().iter_items() {
         match current_selection {
-            Item::DataSource(_) | Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::SpaceView(_)
+            | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();
@@ -80,7 +84,11 @@ pub fn highlights_for_space_view(
 
     for current_hover in ctx.selection_state().hovered_items().iter_items() {
         match current_hover {
-            Item::DataSource(_) | Item::StoreId(_) | Item::SpaceView(_) | Item::Container(_) => {}
+            Item::AppId(_)
+            | Item::DataSource(_)
+            | Item::StoreId(_)
+            | Item::SpaceView(_)
+            | Item::Container(_) => {}
 
             Item::ComponentPath(component_path) => {
                 let entity_hash = component_path.entity_path.hash();

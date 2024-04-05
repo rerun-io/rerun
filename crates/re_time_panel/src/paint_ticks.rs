@@ -79,6 +79,7 @@ fn paint_time_range_ticks(
                 |ns| Time::from_ns_since_epoch(ns).format_time_compact(time_zone_for_timestamps),
             )
         }
+
         TimeType::Sequence => {
             fn next_power_of_10(i: i64) -> i64 {
                 i * 10
@@ -91,7 +92,7 @@ fn paint_time_range_ticks(
                 &ui.clip_rect(),
                 time_range,
                 next_power_of_10,
-                |seq| format!("#{seq}"),
+                |seq| format!("#{}", re_format::format_int(seq)),
             )
         }
     }

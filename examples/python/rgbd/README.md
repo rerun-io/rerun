@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "RGBD"
-tags = ["2D", "3D", "depth", "nyud", "pinhole-camera"]
+tags = ["2D", "3D", "Depth", "NYUD", "Pinhole camera"]
 description = "Visualizes an example recording from the NYUD dataset with RGB and Depth channels."
 thumbnail = "https://static.rerun.io/rgbd/2fde3a620adc8bd9a5680260f0792d16ac5498bd/480w.png"
 thumbnail_dimensions = [480, 480]

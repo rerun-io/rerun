@@ -31,6 +31,7 @@ pub enum SmartChannelSource {
     /// js event.
     ///
     /// Only applicable to web browser iframes.
+    /// Used for the inline web viewer in a notebook.
     RrdWebEventListener,
 
     /// The channel was created in the context of loading data using a Rerun SDK sharing the same

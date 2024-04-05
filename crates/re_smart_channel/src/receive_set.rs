@@ -36,6 +36,15 @@ impl<T: Send> ReceiveSet<T> {
         self.receivers.lock().retain(|r| r.source() != source);
     }
 
+    pub fn retain(&self, mut f: impl FnMut(&Receiver<T>) -> bool) {
+        self.receivers.lock().retain(|r| f(r));
+    }
+
+    /// Remove all receivers.
+    pub fn clear(&self) {
+        self.receivers.lock().clear();
+    }
+
     /// Disconnect from any channel with a source pointing at this `uri`.
     #[cfg(target_arch = "wasm32")]
     pub fn remove_by_uri(&self, uri: &str) {

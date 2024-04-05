@@ -131,6 +131,11 @@ impl StoreId {
     }
 
     #[inline]
+    pub fn empty_recording() -> Self {
+        Self::from_string(StoreKind::Recording, "<EMPTY>".to_owned())
+    }
+
+    #[inline]
     pub fn from_uuid(kind: StoreKind, uuid: uuid::Uuid) -> Self {
         Self {
             kind,
@@ -149,6 +154,10 @@ impl StoreId {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.id.as_str()
+    }
+
+    pub fn is_empty_recording(&self) -> bool {
+        self.kind == StoreKind::Recording && self.id.as_str() == "<EMPTY>"
     }
 }
 
@@ -329,6 +338,16 @@ pub struct StoreInfo {
 
     /// Should be unique for each recording.
     pub store_id: StoreId,
+
+    /// If this store is the result of a clone, which store was it cloned from?
+    ///
+    /// A cloned store always gets a new unique ID.
+    ///
+    /// We currently only clone stores for blueprints:
+    /// when we receive a _default_ blueprints on the wire (e.g. from a recording),
+    /// we clone it and make the clone the _active_ blueprint.
+    /// This means all active blueprints are clones.
+    pub cloned_from: Option<StoreId>,
 
     /// True if the recording is one of the official Rerun examples.
     pub is_official_example: bool,

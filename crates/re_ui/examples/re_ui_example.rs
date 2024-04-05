@@ -1,4 +1,4 @@
-use re_ui::list_item::ListItem;
+use re_ui::ListItem;
 use re_ui::{toasts, CommandPalette, ReUi, UICommand, UICommandSender};
 
 /// Sender that queues up the execution of a command.
@@ -187,7 +187,7 @@ impl eframe::App for ExampleApp {
                 // no need to extend `ui.max_rect()` as the enclosing frame doesn't have margins
                 ui.set_clip_rect(ui.max_rect());
 
-                egui::TopBottomPanel::top("left_panel_tio_bar")
+                egui::TopBottomPanel::top("left_panel_top_bar")
                     .exact_height(re_ui::ReUi::title_bar_height())
                     .frame(egui::Frame {
                         inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
@@ -830,7 +830,7 @@ mod hierarchical_drag_and_drop {
             target_position_index: usize,
         },
 
-        /// Specify the currently identifed target container to be highlighted.
+        /// Specify the currently identified target container to be highlighted.
         HighlightTargetContainer(ItemId),
     }
 

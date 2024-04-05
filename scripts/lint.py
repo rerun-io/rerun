@@ -5,6 +5,7 @@ Runs custom linting on our code.
 
 Adding "NOLINT" to any line makes the linter ignore that line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -609,6 +610,80 @@ def test_lint_workspace_deps() -> None:
 
 
 # -----------------------------------------------------------------------------
+
+
+def fix_header_casing(s: str) -> str:
+    allowed_title_words = [
+        "Apache",
+        "APIs",
+        "Arrow",
+        "C",
+        "C++",
+        "Colab",
+        "Google",
+        "Jupyter",
+        "Linux",
+        "Numpy",
+        "Pixi",
+        "Python",
+        "Rerun",
+        "Rust",
+        "Wasm",
+        "Windows",
+    ]
+
+    def is_acronym_or_pascal_case(s: str) -> bool:
+        return sum(1 for c in s if c.isupper()) > 1
+
+    new_words = []
+
+    for i, word in enumerate(s.strip().split(" ")):
+        if word == "":
+            continue
+        if word.lower() in ("2d", "3d"):
+            word = word.upper()
+        elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
+            pass  # acroym, PascalCase, code, …
+        elif i == 0:
+            # First word:
+            word = word.capitalize()
+        else:
+            if word not in allowed_title_words:
+                word = word.lower()
+        new_words.append(word)
+
+    return " ".join(new_words)
+
+
+def lint_markdown(lines_in: list[str]) -> tuple[list[str], list[str]]:
+    """Only for .md files."""
+
+    errors = []
+    lines_out = []
+
+    for line_nr, line in enumerate(lines_in):
+        line_nr = line_nr + 1
+
+        # Check the casing on markdown headers
+        if m := re.match(r"(\#+ )(.*)", line):
+            new_header = fix_header_casing(m.group(2))
+            if new_header != m.group(2):
+                errors.append(f"{line_nr}: Markdown headers should NOT be title cased. This should be '{new_header}'.")
+                line = m.group(1) + new_header + "\n"
+
+        # Check the casing on `title = "…"` frontmatter
+        if m := re.match(r'title\s*\=\s*"(.*)"', line):
+            new_title = fix_header_casing(m.group(1))
+            if new_title != m.group(1):
+                errors.append(f"{line_nr}: Titles should NOT be title cased. This should be '{new_title}'.")
+                line = f'title = "{new_title}"\n'
+
+        lines_out.append(line)
+
+    return errors, lines_out
+
+
+# -----------------------------------------------------------------------------
 # We may not use egui's widgets for which we have a custom version in re_ui.
 
 # Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
@@ -664,11 +739,7 @@ def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
         return []
 
-    desc = fm.get("description", "")
-    if len(desc) > 130:
-        return [f"Frontmatter: description is too long ({len(desc)} > 130)"]
-    else:
-        return []
+    return []
 
 
 def lint_frontmatter(filepath: str, content: str) -> list[str]:
@@ -793,6 +864,18 @@ def lint_file(filepath: str, args: Any) -> int:
         if args.fix:
             source.rewrite(lines_out)
 
+    if filepath.endswith(".md") and args.extra:
+        errors, lines_out = lint_markdown(source.lines)
+
+        for error in errors:
+            print(source.error(error))
+        num_errors += len(errors)
+
+        if args.fix:
+            source.rewrite(lines_out)
+        elif 0 < num_errors:
+            print(f"Run with --fix to automatically fix {num_errors} errors.")
+
     if filepath.startswith("./examples/rust") and filepath.endswith("Cargo.toml"):
         errors, lines_out = lint_workspace_deps(source.lines)
 
@@ -870,6 +953,12 @@ def main() -> None:
         dest="fix",
         action="store_true",
         help="Automatically fix some problems.",
+    )
+    parser.add_argument(
+        "--extra",
+        dest="extra",
+        action="store_true",
+        help="Run some extra checks.",
     )
 
     args = parser.parse_args()

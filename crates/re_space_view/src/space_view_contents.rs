@@ -184,15 +184,35 @@ impl SpaceViewContents {
         }
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Remove a subtree and any existing rules that it would match.
+    ///
+    /// Because most-specific matches win, if we only add a subtree exclusion
+    /// it can still be overridden by existing inclusions. This method ensures
+    /// that not only do we add a subtree exclusion, but clear out any existing
+    /// inclusions or (now redundant) exclusions that would match the subtree.
+    pub fn remove_subtree_and_matching_rules(&self, ctx: &ViewerContext<'_>, path: EntityPath) {
+        let mut new_entity_path_filter = self.entity_path_filter.clone();
+        new_entity_path_filter.remove_subtree_and_matching_rules(path);
+        self.set_entity_path_filter(ctx, &new_entity_path_filter);
+    }
+
+    /// Directly add an exclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    ///
+    /// If you are trying to remove an entire subtree, prefer using [`Self::remove_subtree_and_matching_rules`].
+    pub fn raw_add_entity_exclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Exclude, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
     }
 
-    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
-        // TODO(emilk): ignore new rule if it is already covered by existing rules (noop)
+    /// Directly add an inclusion rule to the [`EntityPathFilter`].
+    ///
+    /// This is a direct modification of the filter and will not do any simplification
+    /// related to overlapping or conflicting rules.
+    pub fn raw_add_entity_inclusion(&self, ctx: &ViewerContext<'_>, rule: EntityPathRule) {
         let mut new_entity_path_filter = self.entity_path_filter.clone();
         new_entity_path_filter.add_rule(RuleEffect::Include, rule);
         self.set_entity_path_filter(ctx, &new_entity_path_filter);
@@ -611,7 +631,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
-    use re_viewer_context::{StoreContext, VisualizableEntities};
+    use re_viewer_context::{StoreContext, StoreHub, VisualizableEntities};
 
     use super::*;
 
@@ -662,7 +682,7 @@ mod tests {
             blueprint: &blueprint,
             recording: &recording,
             bundle: &Default::default(),
-            default_blueprint: None,
+            hub: &StoreHub::test_hub(),
         };
 
         struct Scenario {

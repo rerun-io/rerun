@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Template"
-tags = ["kebab-case", "comma", "separated"]
-description = "Short ~100-sign description of the example. No longer than 130 signs!"
+tags = ["Human case", "Comma", "Separated", "ACRONYM", "Respect brand names", "Hugging Face", "Coca-Cola"]
+description = "Short description of the example (currently unused)."
 -->
 
 

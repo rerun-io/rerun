@@ -1,4 +1,4 @@
-# Blueprint Operation: APIs and Datastore
+# Blueprint operation: APIs and datastore
 Status: proposal
 
 ## Intro
@@ -27,7 +27,7 @@ give users explicit control over the details of how data is displayed in the vie
 
 ## Proposal
 
-### Blueprint Lifecycle
+### Blueprint lifecycle
 In order to simplify many edge cases, custom blueprints will only be able to be sent to the viewer in their entirety as
 part of viewer startup. This limits blueprint control to: `rr.spawn()` (launch a native app), `rr.serve()` (launch a
 hosted web-app), and `rr.show()` (embed a viewer in a notebook). Additionally a blueprint file will be able to be
@@ -131,7 +131,7 @@ particular:
 
 This means a trivial expression like: `rr.show(rrb.Points3D("points"))` is still a valid Blueprint.
 
-## Blueprint-Static Data
+## Blueprint-Static data
 
 As a further simplification, the Blueprint will allow for the direct inclusion of static data, allowing users to bypass
 the data-logging APIs entirely for simple use-cases that don't require temporal information. This will be accomplished
@@ -139,12 +139,12 @@ by allowing `rrb.Data` objects to be constructed from any Rerun-loggable object.
 
 Data that is a *query* from the recording store references an entity path used separately by the logging APIs:
 ```python
-# Log Data
+# Log data
 for t in range(100):
     rr.set_time('step', t)
     rr.log("world/points", rr.Points3D(points))
 …
-# Construct Blueprint
+# Construct blueprint
 rrb.Auto("/world/points")
 ```
 While static data skips the logging step all together, but only allows for a single element:
@@ -166,7 +166,7 @@ grid = rrd.GridLayout(cols=3, [rr.Image(img) for img in images])
 Note the usage of `rr.Image` (the loggable) vs `rrb.Image` (the blueprint template).
 
 
-## Blueprint Store
+## Blueprint store
 
 Behind the APIs, the blueprint is implemented using a “blueprint store” that leverages the same code as the existing
 data-store. We will therefore have both “data entities” and “blueprint entities”.

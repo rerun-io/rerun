@@ -11,7 +11,7 @@ pub struct SpaceViewClassPlaceholder;
 
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Unknown space view class".into()
+        "UnknownSpaceViewClass".into()
     }
 
     fn display_name(&self) -> &'static str {
