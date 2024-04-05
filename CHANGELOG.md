@@ -185,8 +185,6 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 #### 🧑‍💻 Dev-experience
 - Build wheels for Linux ARM64 [#5511](https://github.com/rerun-io/rerun/pull/5511)
 
-#### 🗣 Refactors
-- Refactor `Selection` using `IndexMap` and make it more encapsulated [#5569](https://github.com/rerun-io/rerun/pull/5569)
 
 #### 📦 Dependencies
 - Update wgpu to 0.19.3 [#5409](https://github.com/rerun-io/rerun/pull/5409)
@@ -199,6 +197,7 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 - Introduce `rr.notebook_show()` to simplify notebook experience [#5715](https://github.com/rerun-io/rerun/pull/5715)
 - Also remove nested inclusions when removing a subtree [#5720](https://github.com/rerun-io/rerun/pull/5720)
 - Prevent gratuitous blueprint saves by not garbage collecting when the blueprint hasn't changed [#5793](https://github.com/rerun-io/rerun/pull/5793)
+- Refactor `Selection` using `IndexMap` and make it more encapsulated [#5569](https://github.com/rerun-io/rerun/pull/5569)
 
 
 ## [0.14.1](https://github.com/rerun-io/rerun/compare/0.14.0...0.14.1) - C++ build artifact fix - 2024-02-29
