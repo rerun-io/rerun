@@ -71,7 +71,7 @@ def list_dicom_files(dir: Path) -> Iterable[Path]:
 
 
 def read_and_log_dicom_dataset(dicom_files: Iterable[Path]) -> None:
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     voxels_volume, _ = extract_voxel_data(dicom_files)
 

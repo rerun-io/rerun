@@ -54,7 +54,7 @@ def run_segmentation() -> None:
     # Log an initial segmentation map with arbitrary colors
     rr.set_time_seconds("sim_time", 2)
 
-    rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), timeless=False)
+    rr.log("seg_test", rr.AnnotationContext([(13, "label1"), (42, "label2"), (99, "label3")]), static=False)
 
     rr.log(
         "logs/seg_test_log",
@@ -68,7 +68,7 @@ def run_segmentation() -> None:
     rr.log(
         "seg_test",
         rr.AnnotationContext([(13, "label1", (255, 0, 0)), (42, "label2", (0, 255, 0)), (99, "label3", (0, 0, 255))]),
-        timeless=False,
+        static=False,
     )
     rr.log("logs/seg_test_log", rr.TextLog("points/rects with user specified colors"))
 
@@ -84,7 +84,7 @@ def run_segmentation() -> None:
                 rr.AnnotationInfo(99, label="label3"),
             ]
         ),
-        timeless=False,
+        static=False,
     )
     rr.log("logs/seg_test_log", rr.TextLog("label1 disappears and everything with label3 is now default colored again"))
 
@@ -98,7 +98,7 @@ def small_image() -> None:
 
 
 def transforms() -> None:
-    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
+    rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
     rr.log("transforms/disconnected", rr.DisconnectedSpace())
@@ -218,7 +218,7 @@ def run_rects() -> None:
 
 
 def run_text_logs() -> None:
-    rr.log("logs", rr.TextLog("Text with explicitly set color", color=[255, 215, 0]), timeless=True)
+    rr.log("logs", rr.TextLog("Text with explicitly set color", color=[255, 215, 0]), static=True)
     rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level="TRACE"))
 
     logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))
@@ -255,10 +255,10 @@ def transforms_rigid_3d() -> None:
     rotation_speed_moon = 5.0
 
     # Planetary motion is typically in the XY plane.
-    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
-    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("transforms3d", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun/planet", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
+    rr.log("transforms3d/sun/planet/moon", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     # All are in the center of their own space:
     rr.log("transforms3d/sun", rr.Points3D([0.0, 0.0, 0.0], radii=1.0, colors=[255, 200, 10]))

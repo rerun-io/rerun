@@ -60,7 +60,7 @@ image itself is logged as an
 [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
 [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged with `timeless=True` as it should apply to the whole sequence.
+logged with `static=True` as it should apply to the whole sequence.
 
 ### Label mapping
 
@@ -73,7 +73,7 @@ rr.log(
                 rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
             ]
         ),
-        timeless=True,
+        static=True,
     )
 ```
 
@@ -111,7 +111,7 @@ rr.log(
             keypoint_connections=mp_pose.POSE_CONNECTIONS,
         )
     ),
-    timeless=True,
+    static=True,
 )
 ```
 

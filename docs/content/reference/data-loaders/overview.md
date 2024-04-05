@@ -62,9 +62,9 @@ When the viewer and/or SDK executes an external loader, it will pass to it a set
 
     Recommended prefix to prepend to all entity paths.
 
-* `--timeless` (optional)
+* `--static` (optional)
 
-    The data is expected to be logged timelessly.
+    The data is expected to be logged as static.
 
 * `--time <timeline1>=<time1> <timeline2>=<time2> …` (optional)
 
