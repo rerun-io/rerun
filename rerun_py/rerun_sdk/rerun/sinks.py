@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import socket
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
 

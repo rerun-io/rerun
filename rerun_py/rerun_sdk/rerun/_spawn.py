@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import logging
 import socket
-
-import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 
 # TODO(#4019): application-level handshake
