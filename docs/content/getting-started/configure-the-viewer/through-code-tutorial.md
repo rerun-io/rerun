@@ -3,14 +3,28 @@ title: Configure the viewer through code
 order: 3
 ---
 
-This tutorial will walk you through using the Blueprint APIs to better control the
-layout and appearance of your data in the Rerun Viewer in Python.
+This tutorial will walk you through using the
+[Blueprint APIs](../../howto/configure-viewer-through-code.md) to better control
+the layout and appearance of your data in the Rerun Viewer in Python.
 
 This walkthrough is based on the [stock charts](https://github.com/rerun-io/rerun/tree/main/examples/python/blueprint_stocks?speculative-link) example.
 The main differences between this tutorial and the linked example are related to additional processing of
 command-line flags, which are omitted here for simplicity.
 
-## Create an environment for you example
+All of the examples in this tutorial use the exact same data. However, by changing the blueprint using
+small statements such as:
+```python
+rrb.Blueprint(
+    rrb.Vertical(
+        rrb.TextDocumentView(name="Info", origin="/stocks/AAPL/info"),
+        rrb.TimeSeriesView(name="Chart", origin="/stocks/AAPL"),
+        row_shares=[1, 4],
+    )
+)
+```
+we will completely change the way the data is presented.
+
+## Create an environment for the example
 
 We start by creating a new virtual environment and installing the Rerun SDK along with the dependencies
 we will use in this example.
