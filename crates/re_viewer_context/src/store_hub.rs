@@ -216,17 +216,25 @@ impl StoreHub {
             return;
         };
 
-        if removed_store.store_kind() == StoreKind::Recording {
-            if let Some(app_id) = removed_store.app_id().cloned() {
-                let any_other_recordings_for_this_app = self
-                    .store_bundle
-                    .recordings()
-                    .any(|rec| rec.app_id() == Some(&app_id));
+        match removed_store.store_kind() {
+            StoreKind::Recording => {
+                if let Some(app_id) = removed_store.app_id().cloned() {
+                    let any_other_recordings_for_this_app = self
+                        .store_bundle
+                        .recordings()
+                        .any(|rec| rec.app_id() == Some(&app_id));
 
-                if !any_other_recordings_for_this_app {
-                    re_log::trace!("Removed last recording of {app_id}. Closing app.");
-                    self.close_app(&app_id);
+                    if !any_other_recordings_for_this_app {
+                        re_log::trace!("Removed last recording of {app_id}. Closing app.");
+                        self.close_app(&app_id);
+                    }
                 }
+            }
+            StoreKind::Blueprint => {
+                self.active_blueprint_by_app_id
+                    .retain(|_, id| id != store_id);
+                self.default_blueprint_by_app_id
+                    .retain(|_, id| id != store_id);
             }
         }
 
