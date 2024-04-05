@@ -48,14 +48,14 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 ### ✨ Overview & highlights
 - 🟦 Configure the layout and content of space views from Python [(docs)](https://www.rerun.io/docs/howto/configure-viewer-through-code?speculative-link)
 - 🖧 More powerful and flexible data loaders [(docs)](https://www.rerun.io/docs/reference/dataloaders?speculative-link)
-- 💾 Save and load blueprint files in the viewer
 - 🖵 Improved UI for managing recordings and applications
-- ❌ Remove `InstanceKey` from our logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
-- ❌ Remove groups from blueprints panel [#5326](https://github.com/rerun-io/rerun/pull/5326)
-- 💪 Linux ARM64 support [#5489](https://github.com/rerun-io/rerun/pull/5489) [#5511](https://github.com/rerun-io/rerun/pull/5511) [#5503](https://github.com/rerun-io/rerun/pull/5503)
+- 💾 Save and load blueprint files in the viewer
 - 🎨 Configurable background color for 3D Space Views [#5443](https://github.com/rerun-io/rerun/pull/5443)
+- 💪 Linux ARM64 support [#5489](https://github.com/rerun-io/rerun/pull/5489) [#5503](https://github.com/rerun-io/rerun/pull/5503) [#5511](https://github.com/rerun-io/rerun/pull/5511)
 - 🖼️ Show examples in the welcome page
 - 🖱️ Improve context-menu when right-clicking items in the blueprint panel
+- ❌ Remove `InstanceKey` from our logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
+- ❌ Remove groups from blueprints panel [#5326](https://github.com/rerun-io/rerun/pull/5326)
 
 ### 🔎 Details
 
