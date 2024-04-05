@@ -53,8 +53,6 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
     let arch_view = arch_views.next().unwrap();
     assert!(arch_views.next().is_none());
 
-    // dbg!(arch_view);
-
     let actual_instance_keys = arch_view.iter_instance_keys().collect_vec();
     let actual_positions = arch_view
         .iter_required_component::<Position2D>()

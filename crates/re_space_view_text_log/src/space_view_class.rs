@@ -194,7 +194,7 @@ impl SpaceViewClass for TextSpaceView {
             let time_cursor_moved = state.latest_time != time;
             let scroll_to_row = time_cursor_moved.then(|| {
                 re_tracing::profile_scope!("search scroll time");
-                entries.partition_point(|te| te.time.unwrap_or(i64::MIN) < time)
+                entries.partition_point(|te| te.time.as_i64() < time)
             });
 
             state.latest_time = time;
@@ -268,7 +268,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some((time_point, _)) = ctx.recording_store().get_msg_metadata(&entry.row_id) {
+    if let Some((time_point, _)) = ctx.recording_store().row_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);

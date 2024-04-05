@@ -45,14 +45,14 @@ fn pathological_bucket_topology() {
         store_forward: &mut DataStore,
         store_backward: &mut DataStore,
     ) {
-        let ent_path = EntityPath::from("this/that");
+        let entity_path = EntityPath::from("this/that");
         let num_instances = 1;
 
         let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
         for _ in 0..num {
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
-                ent_path.clone(),
+                entity_path.clone(),
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
@@ -62,7 +62,7 @@ fn pathological_bucket_topology() {
 
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
-                ent_path.clone(),
+                entity_path.clone(),
                 timepoint.clone(),
                 num_instances,
                 build_some_instances(num_instances as _),
@@ -77,7 +77,7 @@ fn pathological_bucket_topology() {
         store_forward: &mut DataStore,
         store_backward: &mut DataStore,
     ) {
-        let ent_path = EntityPath::from("this/that");
+        let entity_path = EntityPath::from("this/that");
         let num_instances = 1;
 
         let rows = range
@@ -85,7 +85,7 @@ fn pathological_bucket_topology() {
                 let timepoint = TimePoint::from([build_frame_nr(frame_nr)]);
                 DataRow::from_cells1_sized(
                     RowId::new(),
-                    ent_path.clone(),
+                    entity_path.clone(),
                     timepoint,
                     num_instances,
                     build_some_instances(num_instances as _),

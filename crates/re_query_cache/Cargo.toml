@@ -36,6 +36,7 @@ itertools.workspace = true
 parking_lot.workspace = true
 paste.workspace = true
 seq-macro.workspace = true
+static_assertions.workspace = true
 web-time.workspace = true
 
 

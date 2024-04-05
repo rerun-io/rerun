@@ -17,14 +17,14 @@ fn simple_range() {
         Default::default(),
     );
 
-    let ent_path: EntityPath = "point".into();
+    let entity_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint1, 2, positions)
+            DataRow::from_cells1_sized(RowId::new(), entity_path.clone(), timepoint1, 2, positions)
                 .unwrap();
         store.insert_row(&row).unwrap();
 
@@ -33,7 +33,7 @@ fn simple_range() {
         let colors = vec![Color::from_rgb(255, 0, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint1,
             1,
             (color_instances, colors),
@@ -49,7 +49,7 @@ fn simple_range() {
         let colors = vec![Color::from_rgb(255, 0, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint2,
             1,
             (color_instances, colors),
@@ -63,7 +63,7 @@ fn simple_range() {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, positions)
+            DataRow::from_cells1_sized(RowId::new(), entity_path.clone(), timepoint3, 2, positions)
                 .unwrap();
         store.insert_row(&row).unwrap();
     }
@@ -76,7 +76,7 @@ fn simple_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
@@ -95,7 +95,7 @@ fn simple_range() {
         // Frame #323
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -127,7 +127,7 @@ fn simple_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
@@ -155,7 +155,7 @@ fn simple_range() {
         // Frame #123
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -182,7 +182,7 @@ fn simple_range() {
         // Frame #323
 
         let arch_view = &results[1];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -208,34 +208,23 @@ fn simple_range() {
 }
 
 #[test]
-fn timeless_range() {
+fn static_range() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
         Default::default(),
     );
 
-    let ent_path: EntityPath = "point".into();
+    let entity_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let mut row =
-            DataRow::from_cells1(RowId::new(), ent_path.clone(), timepoint1, 2, &positions)
+            DataRow::from_cells1(RowId::new(), entity_path.clone(), timepoint1, 2, positions)
                 .unwrap();
         row.compute_all_size_bytes();
-        store.insert_row(&row).unwrap();
-
-        // Insert timelessly too!
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            ent_path.clone(),
-            TimePoint::default(),
-            2,
-            &positions,
-        )
-        .unwrap();
         store.insert_row(&row).unwrap();
 
         // Assign one of them a color with an explicit instance
@@ -243,21 +232,10 @@ fn timeless_range() {
         let colors = vec![Color::from_rgb(255, 0, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint1,
             1,
             (color_instances.clone(), colors.clone()),
-        )
-        .unwrap();
-        store.insert_row(&row).unwrap();
-
-        // Insert timelessly too!
-        let row = DataRow::from_cells2_sized(
-            RowId::new(),
-            ent_path.clone(),
-            TimePoint::default(),
-            1,
-            (color_instances, colors),
         )
         .unwrap();
         store.insert_row(&row).unwrap();
@@ -270,7 +248,7 @@ fn timeless_range() {
         let colors = vec![Color::from_rgb(255, 0, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint2,
             1,
             (color_instances.clone(), colors.clone()),
@@ -278,11 +256,11 @@ fn timeless_range() {
         .unwrap();
         store.insert_row(&row).unwrap();
 
-        // Insert timelessly too!
+        // Insert statically too!
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
-            timepoint2,
+            entity_path.clone(),
+            TimePoint::default(),
             1,
             (color_instances, colors),
         )
@@ -295,30 +273,15 @@ fn timeless_range() {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, &positions)
+            DataRow::from_cells1_sized(RowId::new(), entity_path.clone(), timepoint3, 2, positions)
                 .unwrap();
-        store.insert_row(&row).unwrap();
-
-        // Insert timelessly too!
-        let row = DataRow::from_cells1_sized(
-            RowId::new(),
-            ent_path.clone(),
-            TimePoint::default(),
-            2,
-            &positions,
-        )
-        .unwrap();
         store.insert_row(&row).unwrap();
     }
 
     // ┌───────────┬──────────┬────────┬─────────────────┬────────────────────┬────────────────────┬────────────────────────────┐
-    // │ insert_id ┆ frame_nr ┆ entity ┆ Color ┆ InstanceKey ┆ rerun.row_id       ┆ Point2D              │
+    // │ insert_id ┆ frame_nr ┆ entity ┆ Color           ┆ InstanceKey        ┆ rerun.row_id       ┆ Point2D                    │
     // ╞═══════════╪══════════╪════════╪═════════════════╪════════════════════╪════════════════════╪════════════════════════════╡
-    // │ 2         ┆ null     ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302243… ┆ [{1.0,2.0}, {3.0,4.0}]     │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     // │ 4         ┆ null     ┆ point  ┆ [4278190080]    ┆ [1]                ┆ [{167328063302246… ┆ null                       │
-    // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 8         ┆ null     ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302249… ┆ [{10.0,20.0}, {30.0,40.0}] │
     // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
     // │ 1         ┆ 123      ┆ point  ┆ null            ┆ [0, 1]             ┆ [{167328063302236… ┆ [{1.0,2.0}, {3.0,4.0}]     │
     // ├╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
@@ -339,26 +302,15 @@ fn timeless_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
-
-    // We expect this to generate the following `DataFrame`s:
-    //
-    // Frame #323:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────────┴───────────────┴─────────────────┘
 
     {
         // Frame #323
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -390,35 +342,15 @@ fn timeless_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
-    // We expect this to generate the following `DataFrame`s:
-    //
-    // Frame #123:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #323:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────────┴───────────────┴─────────────────┘
-
     {
-        // Frame #123 (partially timeless)
+        // Frame #123 (partially static)
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -426,14 +358,15 @@ fn timeless_range() {
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
+        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
         let expected = DataCellRow(smallvec![
             DataCell::from_native_sparse(instances),
             DataCell::from_native_sparse(positions),
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{expected:?}");
+        // eprintln!("{arch_view:#?}");
+        // eprintln!("{expected:#?}");
 
         assert_eq!(TimeInt::new_temporal(123), time);
         assert_eq!(
@@ -445,7 +378,7 @@ fn timeless_range() {
         // Frame #323
 
         let arch_view = &results[1];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -475,50 +408,12 @@ fn timeless_range() {
         re_data_store::RangeQuery::new(timepoint1[0].0, TimeRange::new(TimeInt::MIN, TimeInt::MAX));
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
-    // We expect this to generate the following `DataFrame`s:
-    //
-    // Timeless #1:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {3.0,4.0}     ┆ null            │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
-    // Timeless #2:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {10.0,20.0}   ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {30.0,40.0}   ┆ 4278190080      │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #123:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {1.0,2.0}     ┆ null            │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {3.0,4.0}     ┆ 4278190080      │
-    // └────────────────────┴───────────────┴─────────────────┘
-    //
-    // Frame #323:
-    // ┌────────────────────┬───────────────┬─────────────────┐
-    // │ InstanceKey ┆ Point2D ┆ Color │
-    // ╞════════════════════╪═══════════════╪═════════════════╡
-    // │ 0                  ┆ {10.0,20.0}   ┆ 4278190080      │
-    // ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-    // │ 1                  ┆ {30.0,40.0}   ┆ null            │
-    // └────────────────────┴───────────────┴─────────────────┘
-
     {
-        // Timeless #1
+        // Frame #123 (partially static)
 
         let arch_view = &results[0];
         let time = arch_view.data_time();
@@ -529,66 +424,15 @@ fn timeless_range() {
             Some(Position2D::new(1.0, 2.0)),
             Some(Position2D::new(3.0, 4.0)),
         ];
-        let colors: Vec<Option<Color>> = vec![None, None];
+        let colors = vec![Some(Color::from_rgb(255, 0, 0)), None];
         let expected = DataCellRow(smallvec![
             DataCell::from_native_sparse(instances),
             DataCell::from_native_sparse(positions),
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{expected:?}");
-
-        assert_eq!(None, time);
-        assert_eq!(
-            &expected,
-            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
-        );
-
-        // Timeless #2
-
-        let arch_view = &results[1];
-        let time = arch_view.data_time();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(10.0, 20.0)),
-            Some(Position2D::new(30.0, 40.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = DataCellRow(smallvec![
-            DataCell::from_native_sparse(instances),
-            DataCell::from_native_sparse(positions),
-            DataCell::from_native_sparse(colors)
-        ]);
-
-        //eprintln!("{expected:?}");
-
-        assert_eq!(None, time);
-        assert_eq!(
-            &expected,
-            &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
-        );
-
-        // Frame #123 (partially timeless)
-
-        let arch_view = &results[2];
-        let time = arch_view.data_time().unwrap();
-
-        // Build expected df manually
-        let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
-        let positions = vec![
-            Some(Position2D::new(1.0, 2.0)),
-            Some(Position2D::new(3.0, 4.0)),
-        ];
-        let colors = vec![None, Some(Color::from_rgb(255, 0, 0))];
-        let expected = DataCellRow(smallvec![
-            DataCell::from_native_sparse(instances),
-            DataCell::from_native_sparse(positions),
-            DataCell::from_native_sparse(colors)
-        ]);
-
-        //eprintln!("{expected:?}");
+        // eprintln!("{arch_view:#?}");
+        // eprintln!("{expected:#?}");
 
         assert_eq!(TimeInt::new_temporal(123), time);
         assert_eq!(
@@ -599,8 +443,8 @@ fn timeless_range() {
     {
         // Frame #323
 
-        let arch_view = &results[3];
-        let time = arch_view.data_time().unwrap();
+        let arch_view = &results[1];
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -633,14 +477,14 @@ fn simple_splatted_range() {
         Default::default(),
     );
 
-    let ent_path: EntityPath = "point".into();
+    let entity_path: EntityPath = "point".into();
 
     let timepoint1 = [build_frame_nr(123)];
     {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint1, 2, positions)
+            DataRow::from_cells1_sized(RowId::new(), entity_path.clone(), timepoint1, 2, positions)
                 .unwrap();
         store.insert_row(&row).unwrap();
 
@@ -649,7 +493,7 @@ fn simple_splatted_range() {
         let colors = vec![Color::from_rgb(255, 0, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint1,
             1,
             (color_instances, colors),
@@ -665,7 +509,7 @@ fn simple_splatted_range() {
         let colors = vec![Color::from_rgb(0, 255, 0)];
         let row = DataRow::from_cells2_sized(
             RowId::new(),
-            ent_path.clone(),
+            entity_path.clone(),
             timepoint2,
             1,
             (color_instances, colors),
@@ -679,7 +523,7 @@ fn simple_splatted_range() {
         // Create some Positions with implicit instances
         let positions = vec![Position2D::new(10.0, 20.0), Position2D::new(30.0, 40.0)];
         let row =
-            DataRow::from_cells1_sized(RowId::new(), ent_path.clone(), timepoint3, 2, positions)
+            DataRow::from_cells1_sized(RowId::new(), entity_path.clone(), timepoint3, 2, positions)
                 .unwrap();
         store.insert_row(&row).unwrap();
     }
@@ -692,7 +536,7 @@ fn simple_splatted_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
@@ -713,7 +557,7 @@ fn simple_splatted_range() {
         // Frame #323
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -747,7 +591,7 @@ fn simple_splatted_range() {
     );
 
     let arch_views =
-        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &ent_path);
+        range_archetype::<Points2D, { Points2D::NUM_COMPONENTS }>(&store, &query, &entity_path);
 
     let results = arch_views.collect::<Vec<_>>();
 
@@ -775,7 +619,7 @@ fn simple_splatted_range() {
         // Frame #123
 
         let arch_view = &results[0];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];
@@ -802,7 +646,7 @@ fn simple_splatted_range() {
         // Frame #323
 
         let arch_view = &results[1];
-        let time = arch_view.data_time().unwrap();
+        let time = arch_view.data_time();
 
         // Build expected df manually
         let instances = vec![Some(InstanceKey(0)), Some(InstanceKey(1))];

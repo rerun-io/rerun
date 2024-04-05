@@ -105,9 +105,6 @@ impl framework::Example for Picking {
         {
             // Grab the middle pixel. usually we'd want to do something clever that snaps the closest object of interest.
             let picked_id = picking_result.picked_id(picking_result.rect.extent / 2);
-            //let picked_position =
-            //    picking_result.picked_world_position(picking_result.rect.extent / 2);
-            //dbg!(picked_position, picked_id);
 
             self.mesh_is_hovered = false;
             if picked_id == MESH_ID {

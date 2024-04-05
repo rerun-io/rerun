@@ -105,10 +105,10 @@ fn data_store_dump() {
 }
 
 fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: &mut DataStore) {
-    let ent_paths = ["this/that", "other", "yet/another/one"];
-    let tables = ent_paths
+    let entity_paths = ["this/that", "other", "yet/another/one"];
+    let tables = entity_paths
         .iter()
-        .map(|ent_path| create_insert_table(*ent_path))
+        .map(|entity_path| create_insert_table(*entity_path))
         .collect_vec();
 
     // Fill the first store.
@@ -116,10 +116,10 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
         // insert temporal
         insert_table(store1, table);
 
-        // insert timeless
-        let mut table_timeless = table.clone();
-        table_timeless.col_timelines = Default::default();
-        insert_table_with_retries(store1, &table_timeless);
+        // insert static
+        let mut table_static = table.clone();
+        table_static.col_timelines = Default::default();
+        insert_table_with_retries(store1, &table_static);
     }
     sanity_unwrap(store1);
 
@@ -160,13 +160,13 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     let store3_stats = DataStoreStats::from_store(store3);
     assert!(
         store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
-            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
+            && store1_stats.static_tables.num_bytes <= store2_stats.static_tables.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );
     assert!(
         store2_stats.temporal.num_bytes <= store3_stats.temporal.num_bytes
-            && store2_stats.timeless.num_bytes <= store3_stats.timeless.num_bytes,
+            && store2_stats.static_tables.num_bytes <= store3_stats.static_tables.num_bytes,
         "Second store should have <= amount of data of third store:\n\
             {store2_stats:#?}\n{store3_stats:#?}"
     );
@@ -211,10 +211,10 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let ent_paths = ["this/that", "other", "yet/another/one"];
-    let tables = ent_paths
+    let entity_paths = ["this/that", "other", "yet/another/one"];
+    let tables = entity_paths
         .iter()
-        .map(|ent_path| create_insert_table(*ent_path))
+        .map(|entity_path| create_insert_table(*entity_path))
         .collect_vec();
 
     // Fill the first store.
@@ -265,7 +265,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     let store2_stats = DataStoreStats::from_store(store2);
     assert!(
         store1_stats.temporal.num_bytes <= store2_stats.temporal.num_bytes
-            && store1_stats.timeless.num_bytes <= store2_stats.timeless.num_bytes,
+            && store1_stats.static_tables.num_bytes <= store2_stats.static_tables.num_bytes,
         "First store should have <= amount of data of second store:\n\
             {store1_stats:#?}\n{store2_stats:#?}"
     );
@@ -273,8 +273,8 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
 // ---
 
-fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
-    let ent_path = ent_path.into();
+fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
+    let entity_path = entity_path.into();
 
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
@@ -282,22 +282,22 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
     let frame4 = TimeInt::new_temporal(4);
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 = test_row!(ent_path @ [
+    let row1 = test_row!(entity_path @ [
             build_frame_nr(frame1),
         ] => 3; [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(ent_path @ [
+    let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => 3; [instances1, positions2]);
 
     let positions3 = build_some_positions2d(10);
-    let row3 = test_row!(ent_path @ [
+    let row3 = test_row!(entity_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
         ] => 10; [positions3]);
 
     let colors4 = build_some_colors(5);
-    let row4 = test_row!(ent_path @ [
+    let row4 = test_row!(entity_path @ [
             build_frame_nr(frame4),
         ] => 5; [colors4]);
 
@@ -329,7 +329,7 @@ fn data_store_dump_empty_column() {
 }
 
 fn data_store_dump_empty_column_impl(store: &mut DataStore) {
-    let ent_path: EntityPath = "points".into();
+    let entity_path: EntityPath = "points".into();
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
@@ -337,12 +337,12 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {
         let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-        let row1 = test_row!(ent_path @ [
+        let row1 = test_row!(entity_path @ [
                 build_frame_nr(frame1),
             ] => 3; [instances1, colors1]);
 
         let (instances2, positions2) = (build_some_instances(3), build_some_positions2d(3));
-        let row2 = test_row!(ent_path @ [
+        let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => 3; [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::new(), [row1, row2]);
@@ -353,7 +353,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
     // Now insert another table with points only.
     {
         let (instances3, positions3) = (build_some_instances(3), build_some_colors(3));
-        let row3 = test_row!(ent_path @ [
+        let row3 = test_row!(entity_path @ [
                 build_frame_nr(frame3),
             ] => 3; [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::new(), [row3]);

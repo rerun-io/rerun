@@ -112,7 +112,7 @@ impl TimeInt {
 
     /// Returns `i64::MIN` for [`Self::STATIC`].
     #[inline]
-    pub fn as_i64(&self) -> i64 {
+    pub const fn as_i64(&self) -> i64 {
         match self.0 {
             Some(t) => t.get(),
             None => i64::MIN,
@@ -121,7 +121,7 @@ impl TimeInt {
 
     /// Returns `f64::MIN` for [`Self::STATIC`].
     #[inline]
-    pub fn as_f64(&self) -> f64 {
+    pub const fn as_f64(&self) -> f64 {
         match self.0 {
             Some(t) => t.get() as _,
             None => f64::MIN,
