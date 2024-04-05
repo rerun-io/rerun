@@ -11,7 +11,7 @@
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -78,7 +78,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -168,7 +168,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -278,7 +278,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -419,7 +419,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -582,7 +582,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -775,7 +775,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -991,7 +991,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1230,7 +1230,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`, `o8`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`, `o8`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1492,7 +1492,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1570,7 +1570,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1668,7 +1668,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1786,7 +1786,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -1936,7 +1936,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -2116,7 +2116,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -2319,7 +2319,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -2545,7 +2545,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function
@@ -2794,7 +2794,7 @@ where
 /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
 /// shortest of its required iterators (`r0`, `r1`).
 ///
-/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`, `o8`) will repeat their latest values if they happen to be to short
+/// Optional iterators (`o0`, `o1`, `o2`, `o3`, `o4`, `o5`, `o6`, `o7`, `o8`) will repeat their latest values if they happen to be too short
 /// to be zipped with the shortest of the required iterators.
 ///
 /// If an optional iterator is not only too short but actually empty, its associated default function

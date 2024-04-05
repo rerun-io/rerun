@@ -174,7 +174,7 @@ fn generate_helper_func(params: &Params) -> String {
         /// The number of elements in a clamped zip iterator corresponds to the number of elements in the
         /// shortest of its required iterators ({required_names}).
         ///
-        /// Optional iterators ({optional_names}) will repeat their latest values if they happen to be to short
+        /// Optional iterators ({optional_names}) will repeat their latest values if they happen to be too short
         /// to be zipped with the shortest of the required iterators.
         ///
         /// If an optional iterator is not only too short but actually empty, its associated default function
