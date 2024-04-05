@@ -14,12 +14,14 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-deploy-landing-preview
   cancel-in-progress: true
 
+permissions:
+  contents: "write"
+  id-token: "write"
+  pull-requests: "write"
+
 jobs:
   deploy:
     name: Deploy
-    permissions:
-      contents: "read"
-      id-token: "write"
 
     runs-on: ubuntu-latest
 
