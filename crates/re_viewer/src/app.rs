@@ -1185,18 +1185,14 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::Stdin => {
-                    return true; // Data is coming soon, so fade-in
+                | SmartChannelSource::Stdin
+                | SmartChannelSource::RrdWebEventListener
+                | SmartChannelSource::Sdk
+                | SmartChannelSource::WsClient { .. } => {
+                    return true; // We expect data soon, so fade-in
                 }
 
-                // The workflows associated with these sources typically do not require showing the
-                // welcome screen until after some recording have been loaded and then closed.
-                SmartChannelSource::RrdWebEventListener
-                | SmartChannelSource::Sdk
-                | SmartChannelSource::WsClient { .. } => {}
-
                 SmartChannelSource::TcpServer { .. } => {
-                    // This might be the trickiest case.
                     // We start a TCP server by default in native rerun, i.e. when just running `rerun`,
                     // and in that case fading in the welcome screen would be slightly annoying.
                     // However, we also use the TCP server for sending data from the logging SDKs
