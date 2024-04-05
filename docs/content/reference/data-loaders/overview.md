@@ -66,13 +66,13 @@ When the viewer and/or SDK executes an external loader, it will pass to it a set
 
     The data is expected to be logged timelessly.
 
-* `--time <timeline1>=<time1> <timeline2>=<time2> ...` (optional)
+* `--time <timeline1>=<time1> <timeline2>=<time2> …` (optional)
 
     The data is expected to be logged at these specific temporal timestamps.
 
     The timestamps are expected to be in nanoseconds: use `rr.set_time_nanos` (Python) / `RecordingStream::set_time_nanos` (C++, Rust) appropriately.
 
-* `--sequence <timeline1>=<seq1> <timeline2>=<seq2> ...` (optional)
+* `--sequence <timeline1>=<seq1> <timeline2>=<seq2> …` (optional)
 
     The data is expected to be logged at these specific sequence timestamps.
 

@@ -1,6 +1,6 @@
 ---
-title: Using native loggers
-order: 5
+title: Integrate Rerun with native loggers
+order: 700
 description: How to use the Rerun SDK as a native logger for the host language
 ---
 

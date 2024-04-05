@@ -1,6 +1,6 @@
 ---
 title: Configure the viewer through code
-order: 0
+order: 100
 ---
 
 As of Rerun 0.15, the state of the [blueprint](../reference/viewer/blueprint.md) can be directly manipulated using the
