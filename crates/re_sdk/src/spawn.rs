@@ -246,7 +246,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
-        .arg("--fade-in-welcome-screen")
+        .arg("--expect-data-soon")
         .args(opts.extra_args.clone())
         .spawn()
         .map_err(map_err)?;

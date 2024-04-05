@@ -148,7 +148,7 @@ When persisted, the state will be stored at the following locations:
     /// instead of showing it directly.
     /// This ensures that it won't blink for a few frames before switching to the recording.
     #[clap(long)]
-    fade_in_welcome_screen: bool,
+    expect_data_soon: bool,
 
     /// The number of compute threads to use.
     ///
@@ -620,7 +620,7 @@ async fn run_impl(
             is_in_notebook: false,
             screenshot_to_path_then_quit: args.screenshot_to.clone(),
 
-            fade_in_welcome_screen: args.fade_in_welcome_screen,
+            expect_data_soon: args.expect_data_soon,
 
             // TODO(emilk): make it easy to set this on eframe instead
             resolution_in_points: if let Some(size) = &args.window_size {

@@ -58,7 +58,7 @@ pub struct StartupOptions {
     /// The viewer will respond by fading in the welcome screen,
     /// instead of showing it directly.
     /// This ensures that it won't blink for a few frames before switching to the recording.
-    pub fade_in_welcome_screen: bool,
+    pub expect_data_soon: bool,
 
     /// Forces wgpu backend to use the specified graphics API.
     pub force_wgpu_backend: Option<String>,
@@ -80,7 +80,7 @@ impl Default for StartupOptions {
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
 
-            fade_in_welcome_screen: false,
+            expect_data_soon: false,
             force_wgpu_backend: None,
         }
     }
@@ -1172,7 +1172,7 @@ impl App {
     }
 
     fn should_fade_in_welcome_screen(&self) -> bool {
-        if self.startup_options.fade_in_welcome_screen {
+        if self.startup_options.expect_data_soon {
             return true;
         }
 
@@ -1201,7 +1201,7 @@ impl App {
                     // and in that case fading in the welcome screen would be slightly annoying.
                     // However, we also use the TCP server for sending data from the logging SDKs
                     // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
-                    // Therefore `spawn()` uses the special `--fade-in-welcome-screen` flag
+                    // Therefore `spawn()` uses the special `--expect-data-soon` flag
                     // (handled earlier in this function), so here we know we are in the other case:
                     // a user calling `rerun` in their terminal (don't fade in).
                 }

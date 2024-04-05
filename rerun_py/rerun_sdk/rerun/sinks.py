@@ -392,7 +392,7 @@ def spawn(
                 "import rerun_bindings; rerun_bindings.main()",
                 f"--port={port}",
                 f"--memory-limit={memory_limit}",
-                "--fade-in-welcome-screen",
+                "--expect-data-soon",
             ],
             env=new_env,
             start_new_session=True,
