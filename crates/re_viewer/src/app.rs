@@ -412,7 +412,7 @@ impl App {
                 }
             }
 
-            SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearAndGenerateBlueprint => {
                 re_log::debug!("Clear and generate new blueprint");
                 // By clearing the default blueprint and the active blueprint
@@ -1125,10 +1125,10 @@ impl App {
     }
 
     /// Reset the viewer to how it looked the first time you ran it.
-    fn reset(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn reset_viewer(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
 
-        store_hub.clear_all_blueprints();
+        store_hub.clear_all_cloned_blueprints();
 
         // Reset egui, but keep the style:
         let style = egui_ctx.style();

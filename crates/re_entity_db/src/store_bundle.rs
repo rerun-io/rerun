@@ -140,10 +140,6 @@ impl StoreBundle {
         self.entity_dbs.retain(|_, db| f(db));
     }
 
-    pub fn purge_empty(&mut self) {
-        self.entity_dbs.retain(|_, entity_db| !entity_db.is_empty());
-    }
-
     /// In no particular order.
     pub fn drain_entity_dbs(&mut self) -> impl Iterator<Item = EntityDb> + '_ {
         self.entity_dbs.drain().map(|(_, store)| store)
