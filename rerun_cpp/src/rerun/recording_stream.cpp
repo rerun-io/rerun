@@ -189,7 +189,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        std::string_view entity_path, bool statically, std::vector<DataCell> batches
+        std::string_view entity_path, bool static_, std::vector<DataCell> batches
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -210,7 +210,7 @@ namespace rerun {
             }
         }
 
-        bool inject_time = !statically;
+        bool inject_time = !static_;
 
         if (!splatted.empty()) {
             splatted.push_back(
@@ -258,7 +258,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_file_from_path(
-        const std::filesystem::path& filepath, std::string_view entity_path_prefix, bool statically
+        const std::filesystem::path& filepath, std::string_view entity_path_prefix, bool static_
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -269,7 +269,7 @@ namespace rerun {
             _id,
             detail::to_rr_string(filepath.string()),
             detail::to_rr_string(entity_path_prefix),
-            statically,
+            static_,
             &status
         );
 
@@ -278,7 +278,7 @@ namespace rerun {
 
     Error RecordingStream::try_log_file_from_contents(
         const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-        std::string_view entity_path_prefix, bool statically
+        std::string_view entity_path_prefix, bool static_
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -294,7 +294,7 @@ namespace rerun {
             detail::to_rr_string(filepath.string()),
             data,
             detail::to_rr_string(entity_path_prefix),
-            statically,
+            static_,
             &status
         );
 

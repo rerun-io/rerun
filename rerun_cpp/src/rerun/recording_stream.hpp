@@ -429,7 +429,7 @@ namespace rerun {
         /// Returns an error if an error occurs during serialization or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -440,16 +440,16 @@ namespace rerun {
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
         void log_with_static(
-            std::string_view entity_path, bool statically, const Ts&... archetypes_or_collections
+            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
         ) const {
-            try_log_with_static(entity_path, statically, archetypes_or_collections...).handle();
+            try_log_with_static(entity_path, static_, archetypes_or_collections...).handle();
         }
 
         template <typename... Ts>
         [[deprecated("Use `try_log_with_static` instead")]] Error try_log_with_timeless(
-            std::string_view entity_path, bool statically, const Ts&... archetypes_or_collections
+            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
         ) const {
-            return try_log_with_static(entity_path, statically, archetypes_or_collections...);
+            return try_log_with_static(entity_path, static_, archetypes_or_collections...);
         }
 
         /// Logs one or more archetype and/or component batches optionally static, returning an error.
@@ -458,7 +458,7 @@ namespace rerun {
         /// Returns an error if an error occurs during serialization or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -470,7 +470,7 @@ namespace rerun {
         /// @see log, try_log, log_static, try_log_static
         template <typename... Ts>
         Error try_log_with_static(
-            std::string_view entity_path, bool statically, const Ts&... archetypes_or_collections
+            std::string_view entity_path, bool static_, const Ts&... archetypes_or_collections
         ) const {
             if (!is_enabled()) {
                 return Error::ok();
@@ -507,7 +507,7 @@ namespace rerun {
 
             return try_log_serialized_batches(
                 entity_path,
-                statically,
+                static_,
                 std::move(serialized_batches)
             );
         }
@@ -518,7 +518,7 @@ namespace rerun {
         /// ahead of time.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -527,7 +527,7 @@ namespace rerun {
         ///
         /// \see `log`, `try_log`, `log_static`, `try_log_static`, `try_log_with_static`
         Error try_log_serialized_batches(
-            std::string_view entity_path, bool statically, std::vector<DataCell> batches
+            std::string_view entity_path, bool static_, std::vector<DataCell> batches
         ) const;
 
         /// Bottom level API that logs raw data cells to the recording stream.
@@ -560,7 +560,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -569,9 +569,9 @@ namespace rerun {
         /// \see `try_log_file_from_path`
         void log_file_from_path(
             const std::filesystem::path& filepath,
-            std::string_view entity_path_prefix = std::string_view(), bool statically = false
+            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
         ) const {
-            try_log_file_from_path(filepath, entity_path_prefix, statically).handle();
+            try_log_file_from_path(filepath, entity_path_prefix, static_).handle();
         }
 
         /// Logs the file at the given `path` using all `DataLoader`s available.
@@ -585,7 +585,7 @@ namespace rerun {
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -594,7 +594,7 @@ namespace rerun {
         /// \see `log_file_from_path`
         Error try_log_file_from_path(
             const std::filesystem::path& filepath,
-            std::string_view entity_path_prefix = std::string_view(), bool statically = false
+            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
         ) const;
 
         /// Logs the given `contents` using all `DataLoader`s available.
@@ -610,7 +610,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -619,14 +619,14 @@ namespace rerun {
         /// \see `try_log_file_from_contents`
         void log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-            std::string_view entity_path_prefix = std::string_view(), bool statically = false
+            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
         ) const {
             try_log_file_from_contents(
                 filepath,
                 contents,
                 contents_size,
                 entity_path_prefix,
-                statically
+                static_
             )
                 .handle();
         }
@@ -644,7 +644,7 @@ namespace rerun {
         /// \param contents Contents to be logged.
         /// \param contents_size Size in bytes of the `contents`.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
-        /// \param statically If true, the logged components will be static.
+        /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
@@ -653,7 +653,7 @@ namespace rerun {
         /// \see `log_file_from_contents`
         Error try_log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
-            std::string_view entity_path_prefix = std::string_view(), bool statically = false
+            std::string_view entity_path_prefix = std::string_view(), bool static_ = false
         ) const;
 
         /// @}
