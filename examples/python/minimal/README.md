@@ -1,7 +1,8 @@
 <!--[metadata]
-title = "Minimal example"
+title = "Minimal"
 thumbnail = "https://static.rerun.io/minimal-example/9e694c0689f20323ed0053506a7a099f7391afca/480w.png"
 thumbnail_dimensions = [480, 480]
+tags = ["3D", "API example"]
 -->
 
 
