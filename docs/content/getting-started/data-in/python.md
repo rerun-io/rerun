@@ -7,8 +7,7 @@ In this section we'll log and visualize our first non-trivial dataset, putting m
 
 In a few lines of code, we'll go from a blank sheet to something you don't see every day: an animated, interactive, DNA-shaped abacus:
 <video width="100%" autoplay loop muted controls>
-
-<source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
+    <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
 
 This guide aims to go wide instead of deep.
