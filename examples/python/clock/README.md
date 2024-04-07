@@ -27,9 +27,9 @@ The visualizations in this example were created with the following Rerun code:
 The clock's frame is logged as a 3D box using [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d) archetype.
  ```python
 rr.log(
-        "world/frame",
-        rr.Boxes3D(half_sizes=[LENGTH_S, LENGTH_S, 1.0], centers=[0.0, 0.0, 0.0]),
-        timeless=True,
+    "world/frame",
+    rr.Boxes3D(half_sizes=[LENGTH_S, LENGTH_S, 1.0], centers=[0.0, 0.0, 0.0]),
+    timeless=True,
 )
  ```
 

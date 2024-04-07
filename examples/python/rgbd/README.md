@@ -49,14 +49,13 @@ rr.log("world/camera/image/rgb", rr.Image(img_rgb).compress(jpeg_quality=95))
 Pinhole camera is utilized for achieving a 3D view and camera perspective through the use of the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole).
 
 ```python
-
-    rr.log(
-        "world/camera/image",
-        rr.Pinhole(
-            resolution=[img_depth.shape[1], img_depth.shape[0]],
-            focal_length=0.7 * img_depth.shape[1],
-        ),
-    )
+rr.log(
+    "world/camera/image",
+    rr.Pinhole(
+        resolution=[img_depth.shape[1], img_depth.shape[0]],
+        focal_length=0.7 * img_depth.shape[1],
+    ),
+)
 ```
 
 Then, the depth image is logged as an [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to the `world/camera/image/depth` entity.

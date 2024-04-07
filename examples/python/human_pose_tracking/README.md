@@ -66,15 +66,15 @@ logged with `timeless=True` as it should apply to the whole sequence.
 
 ```python
 rr.log(
-        "video/mask",
-        rr.AnnotationContext(
-            [
-                rr.AnnotationInfo(id=0, label="Background"),
-                rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
-            ]
-        ),
-        timeless=True,
-    )
+    "video/mask",
+    rr.AnnotationContext(
+        [
+            rr.AnnotationInfo(id=0, label="Background"),
+            rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
+        ]
+    ),
+    timeless=True,
+)
 ```
 
 #### Segmentation image

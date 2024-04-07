@@ -46,26 +46,26 @@ First, the pinhole camera is set using the [`Pinhole`](https://www.rerun.io/docs
 
 ```python
 rgb_from_depth = depth_profile.get_extrinsics_to(rgb_profile)
-    rr.log(
-        "realsense/rgb",
-        rr.Transform3D(
-            translation=rgb_from_depth.translation,
-            mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
-            from_parent=True,
-        ),
-        timeless=True,
+rr.log(
+    "realsense/rgb",
+    rr.Transform3D(
+        translation=rgb_from_depth.translation,
+        mat3x3=np.reshape(rgb_from_depth.rotation, (3, 3)),
+        from_parent=True,
+    ),
+    timeless=True,
 )
 ```
 
 ```python
 rr.log(
-        "realsense/rgb/image",
-        rr.Pinhole(
-            resolution=[rgb_intr.width, rgb_intr.height],
-            focal_length=[rgb_intr.fx, rgb_intr.fy],
-            principal_point=[rgb_intr.ppx, rgb_intr.ppy],
-        ),
-        timeless=True,
+    "realsense/rgb/image",
+    rr.Pinhole(
+        resolution=[rgb_intr.width, rgb_intr.height],
+        focal_length=[rgb_intr.fx, rgb_intr.fy],
+        principal_point=[rgb_intr.ppx, rgb_intr.ppy],
+    ),
+    timeless=True,
 )
 ```
 ```python
@@ -79,13 +79,13 @@ Just like the RGB images, the RealSense sensor also captures depth data. The dep
 
 ```python
 rr.log(
-        "realsense/depth/image",
-        rr.Pinhole(
-            resolution=[depth_intr.width, depth_intr.height],
-            focal_length=[depth_intr.fx, depth_intr.fy],
-            principal_point=[depth_intr.ppx, depth_intr.ppy],
-        ),
-        timeless=True,
+    "realsense/depth/image",
+    rr.Pinhole(
+        resolution=[depth_intr.width, depth_intr.height],
+        focal_length=[depth_intr.fx, depth_intr.fy],
+        principal_point=[depth_intr.ppx, depth_intr.ppy],
+    ),
+    timeless=True,
 )
 ```
 ```python
