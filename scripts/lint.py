@@ -767,7 +767,12 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
     if not filepath.endswith(".md"):
         return errors
 
-    fm = load_frontmatter(content)
+    try:
+        fm = load_frontmatter(content)
+    except Exception as e:
+        errors.append(f"Error parsing frontmatter: {e}")
+        return errors
+
     if fm is None:
         return []
 
