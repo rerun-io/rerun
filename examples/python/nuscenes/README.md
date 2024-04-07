@@ -37,26 +37,26 @@ First, pinhole cameras and sensor poses are initialized to offer a 3D view and c
 
 ```python
 rr.log(
-        f"world/ego_vehicle/{sensor_name}",
-        rr.Transform3D(
-            translation=calibrated_sensor["translation"],
-            rotation=rr.Quaternion(xyzw=rotation_xyzw),
-            from_parent=False,
-        ),
-        timeless=True,
-    )
+    f"world/ego_vehicle/{sensor_name}",
+    rr.Transform3D(
+        translation=calibrated_sensor["translation"],
+        rotation=rr.Quaternion(xyzw=rotation_xyzw),
+        from_parent=False,
+    ),
+    timeless=True,
+)
 ```
 
 ```python
 rr.log(
-            f"world/ego_vehicle/{sensor_name}",
-            rr.Pinhole(
-                image_from_camera=calibrated_sensor["camera_intrinsic"],
-                width=sample_data["width"],
-                height=sample_data["height"],
-            ),
-            timeless=True,
-        )
+    f"world/ego_vehicle/{sensor_name}",
+    rr.Pinhole(
+        image_from_camera=calibrated_sensor["camera_intrinsic"],
+        width=sample_data["width"],
+        height=sample_data["height"],
+    ),
+    timeless=True,
+)
 ```
 
 ### Timelines

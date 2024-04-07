@@ -69,9 +69,9 @@ rr.log("/", rr.AnnotationContext(annotation_context))
 
 ```python
 rr.log(
-        "umap_embeddings",
-        rr.Points3D(umap_embeddings, class_ids=class_ids),
-        rr.AnyValues(**{"Token": token_words, "Named Entity": entity_per_token(token_words, ner_results)}),
+    "umap_embeddings",
+    rr.Points3D(umap_embeddings, class_ids=class_ids),
+    rr.AnyValues(**{"Token": token_words, "Named Entity": entity_per_token(token_words, ner_results)}),
 )
 ```
 
