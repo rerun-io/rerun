@@ -1,10 +1,11 @@
 <!--[metadata]
 title = "Depth guided stable diffusion"
 tags = ["Depth guided", "Stable diffusion", "Hugging Face", "3D", "Tensor", "Text"]
-description = "Leverage Depth Guided Stable Diffusion to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images."
 thumbnail = "https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png"
 thumbnail_dimensions = [480, 266]
 -->
+
+Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stablediffusion?tab=readme-ov-file#depth-conditional-stable-diffusion) to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png">
@@ -13,8 +14,6 @@ thumbnail_dimensions = [480, 266]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/1200w.png">
   <img src="https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/full.png" alt="Depth-guided stable diffusion example">
 </picture>
-
-Leverage [Depth Guided Stable Diffusion](https://github.com/Stability-AI/stablediffusion?tab=readme-ov-file#depth-conditional-stable-diffusion) to generate images with enhanced depth perception. This method integrates depth maps to guide the Stable Diffusion model, creating more visually compelling and contextually accurate images.
 
 ## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document),[`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)[`BarChart`](https://www.rerun.io/docs/reference/types/archetypes/bar_chart)

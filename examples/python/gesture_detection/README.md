@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "Hand tracking and gesture recognition"
 tags = ["MediaPipe", "Keypoint detection", "2D", "3D"]
-description = "Use the MediaPipe Hand Landmark and Gesture Detection solution to track hand and recognize gestures in images, video, and camera stream.."
 thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
+Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
+track hands and recognize gestures in images, video, and camera stream.
 
 <picture>
   <img src="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/full.png" alt="">
@@ -14,9 +15,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1200w.png">
 </picture>
-
-Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
-track hands and recognize gestures in images, video, and camera stream.
 
 ## Used rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)

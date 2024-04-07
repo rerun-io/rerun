@@ -1,12 +1,12 @@
 <!--[metadata]
 title = "Segment Anything Model"
 tags = ["2D", "SAM", "Segmentation"]
-description = "Example of using Rerun to log and visualize the output of Meta AI's Segment Anything model."
 thumbnail = "https://static.rerun.io/segment-anything-model/36438df27a287e5eff3a673e2464af071e665fdf/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
 
+Example of using Rerun to log and visualize the output of Meta AI's Segment Anything model.
 
 <picture data-inline-viewer="examples/segment_anything_model">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png">
@@ -15,8 +15,6 @@ channel = "release"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/1200w.png">
   <img src="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/full.png" alt="Segment Anything Model example screenshot">
 </picture>
-
-Example of using Rerun to log and visualize the output of Meta AI's Segment Anything model.
 
 For more info see [here](https://segment-anything.com/).
 

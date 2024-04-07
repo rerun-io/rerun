@@ -1,10 +1,12 @@
 <!--[metadata]
 title = "Stock charts"
-description = "Uses stock data as an example of how to leverage Rerun blueprints to control the layout and presentation of the viewer."
 tags = ["Time series", "Blueprint"]
 thumbnail = "https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png"
 thumbnail_dimensions = [480, 270]
 -->
+
+This example fetches the last 5 days of stock data for a few different stocks.
+We show how Rerun blueprints can then be used to present many different views of the same data.
 
 <picture>
   <img src="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/full.png" alt="">
@@ -14,8 +16,6 @@ thumbnail_dimensions = [480, 270]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/1200w.png">
 </picture>
 
-This example fetches the last 5 days of stock data for a few different stocks.
-We show how Rerun blueprints can then be used to present many different views of the same data.
 
 ```bash
 pip install -r examples/python/blueprint_stocks/requirements.txt

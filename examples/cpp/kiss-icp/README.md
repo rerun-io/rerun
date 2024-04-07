@@ -2,10 +2,11 @@
 title = "KISS-ICP"
 tags = ["3D", "Point cloud"]
 source = "https://github.com/rerun-io/kiss-icp"
-description = "Visualizes the KISS-ICP LiDAR odometry pipeline on the NCLT dataset."
 thumbnail = "https://static.rerun.io/kiss-icp-screenshot/881ec7c7c0a0e50ec5d78d82875efaf3bb3c6e01/480w.png"
 thumbnail_dimensions = [480, 288]
 -->
+
+Visualizes the KISS-ICP LiDAR odometry pipeline on the NCLT dataset.
 
 Estimating the odometry is a common problem in robotics and in the [2023, "KISS-ICP: In Defense of Point-to-Point ICP -- Simple, Accurate, and Robust Registration If Done the Right Way" Ignacio Vizzo et al.](https://arxiv.org/abs/2209.15397) they show how one can use an ICP (iterative closest point) algorithm to robustly and accurately estimate poses from LiDAR data. We will demonstrate the KISS-ICP pipeline on the [NCLT dataset](http://robots.engin.umich.edu/nclt/) along with some brief explanations, for a more detailed explanation you should look at the [original paper](https://arxiv.org/abs/2209.15397).
 

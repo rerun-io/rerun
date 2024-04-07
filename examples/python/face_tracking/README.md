@@ -1,10 +1,11 @@
 <!--[metadata]
 title = "Face tracking"
 tags = ["2D", "3D", "Camera", "Face tracking", "Live", "MediaPipe", "Time series"]
-description = "Use the MediaPipe Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream."
 thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f32fa1145c23b/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
+
+Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream.
 
 
 <picture>
@@ -14,9 +15,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/1200w.png">
   <img src="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/full.png" alt="screenshot of the Rerun visualization of the MediaPipe Face Detector and Landmarker">
 </picture>
-
-
-Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream.
 
 ## Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)

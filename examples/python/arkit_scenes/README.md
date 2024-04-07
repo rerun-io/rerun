@@ -1,12 +1,13 @@
 <!--[metadata]
 title = "ARKit scenes"
 tags = ["2D", "3D", "Depth", "Mesh", "Object detection", "Pinhole camera", "Blueprint"]
-description = "This example visualizes the ARKitScenes dataset using Rerun. The dataset contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture."
 thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun.
+The dataset contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
 <picture data-inline-viewer="examples/arkit_scenes">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/480w.png">
@@ -15,9 +16,6 @@ channel = "main"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/1200w.png">
   <img src="https://static.rerun.io/arkit_scenes/fb9ec9e8d965369d39d51b17fc7fc5bae6be10cc/full.png" alt="ARKit Scenes screenshot">
 </picture>
-
-This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
-contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
 
 ## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image),
