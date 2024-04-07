@@ -33,8 +33,6 @@ The visualizations in this example were created with the following Rerun code:
 
 ## 3D asset
 
-[//]: # (The example image is logged as [`Image`]&#40;https://www.rerun.io/docs/reference/types/archetypes/image&#41; to the `world/camera/image/rgb` entity.)
-
 ```python
 # Internally, `mesh_to_sdf` will normalize everything to a unit sphere centered around the center of mass.
 bs1 = mesh.bounding_sphere

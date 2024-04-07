@@ -88,31 +88,3 @@ If you wish to customize it, or explore additional features, use the CLI with th
 ```bash
 python examples/python/ros_node/main.py --help
 ```
-
-
-[//]: # (First, in one terminal launch the nav2 turtlebot demo:)
-
-[//]: # (```)
-
-[//]: # (source /opt/ros/humble/setup.bash)
-
-[//]: # (export TURTLEBOT3_MODEL=waffle)
-
-[//]: # (export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/humble/share/turtlebot3_gazebo/models)
-
-[//]: # ()
-[//]: # (ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False)
-
-[//]: # (```)
-
-[//]: # ()
-[//]: # (As described in the nav demo, use the rviz window to initialize the pose estimate and set a navigation goal.)
-
-[//]: # ()
-[//]: # (You can now connect to the running ROS system by running:)
-
-[//]: # (```)
-
-[//]: # (python3 examples/python/ros_node/main.py)
-
-[//]: # (```)

@@ -16,8 +16,6 @@ build_args = ["--frames=150"]
   <img src="https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/full.png" alt="Objectron example screenshot">
 </picture>
 
-[//]: # (Visualize the [Google Research Objectron]&#40;https://github.com/google-research-datasets/Objectron&#41; dataset, which contains camera poses, sparse point-clouds and characterization of the planar surfaces in the surrounding environment.)
-
 Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset including camera poses, sparse point-clouds and surfaces characterization.
 
 ## Used Rerun types
