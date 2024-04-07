@@ -31,7 +31,7 @@ The generated SDFs help with accurate 3D reconstruction and visualization.
 
 The visualizations in this example were created with the following Rerun code:
 
-## 3D Asset
+## 3D asset
 
 [//]: # (The example image is logged as [`Image`]&#40;https://www.rerun.io/docs/reference/types/archetypes/image&#41; to the `world/camera/image/rgb` entity.)
 
