@@ -2,6 +2,7 @@
 title = "Multithreading"
 thumbnail = "https://static.rerun.io/multithreading/80a3e566d6d9f8f17b04c839cd0ae2380c2baf02/480w.png"
 thumbnail_dimensions = [480, 480]
+tags = ["API example"]
 -->
 
 
