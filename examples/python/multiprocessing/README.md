@@ -38,7 +38,7 @@ def task(child_index: int) -> None:
     rr.log(
         "log",
         rr.TextLog(
-            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the rerun recording id {rr.get_recording_id()}"
+            f"Logging from pid={os.getpid()}, thread={threading.get_ident()} using the Rerun recording id {rr.get_recording_id()}"
         )
     )
     if child_index == 0:
