@@ -244,12 +244,7 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 
 ### Up next
 
-The followup to this tutorial involves further configuring how the viewer displays the data.
-
--   See: [Configure the viewer interactively](./configure-the-viewer/interactively.md)
-
-To get started with writing a program to logging data with the Rerun SDK see the [getting started guides](./quick-start).
-
-To see and explore other data, you can check out the [examples](/examples).
-
-For deeper context on the ideas covered here, consult the [Concept overview](../concepts.md).
+- [Get started](./quick-start) by writing a program to log data with the Rerun SDK.
+- Learn how to further [configure the viewer](./configure-the-viewer) to suit your data.
+- Explore other [examples of using Rerun](/examples).
+- Consult the [concept overview](../concepts.md) for more context on the ideas covered here.
