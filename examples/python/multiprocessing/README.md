@@ -3,6 +3,7 @@ title = "Multiprocessing"
 description = "Demonstrates how rerun can work with the python multiprocessing library."
 thumbnail = "https://static.rerun.io/multiprocessing/959e2c675f52a7ca83e11e5170903e8f0f53f5ed/480w.png"
 thumbnail_dimensions = [480, 480]
+tags = ["API example"]
 -->
 
 

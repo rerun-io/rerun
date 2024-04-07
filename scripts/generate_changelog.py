@@ -279,7 +279,7 @@ def main() -> None:
     print_section("🧑‍💻 Dev-experience", dev_experience)
     print_section("🗣 Refactors", refactor)
     print_section("📦 Dependencies", dependencies)
-    print_section("🤷‍♂️ Other", misc)
+    print_section("🤷‍ Other", misc)
 
     print()
     print_section("Chronological changes (don't include these)", chronological)

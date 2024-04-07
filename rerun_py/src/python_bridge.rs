@@ -163,6 +163,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
@@ -589,6 +590,48 @@ fn connect(
 }
 
 #[pyfunction]
+#[pyo3(signature = (addr, make_active, make_default, blueprint_stream))]
+/// Special binding for directly sending a blueprint stream to a connection.
+fn connect_blueprint(
+    addr: Option<String>,
+    make_active: bool,
+    make_default: bool,
+    blueprint_stream: &PyRecordingStream,
+    py: Python<'_>,
+) -> PyResult<()> {
+    let addr = if let Some(addr) = addr {
+        addr.parse()?
+    } else {
+        rerun::default_server_addr()
+    };
+
+    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+        // The call to save, needs to flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            // Flush all the pending blueprint messages before we include the Ready message
+            blueprint_stream.flush_blocking();
+
+            let activation_cmd = BlueprintActivationCommand {
+                blueprint_id,
+                make_active,
+                make_default,
+            };
+
+            blueprint_stream.record_msg(activation_cmd.into());
+
+            blueprint_stream.connect_opts(addr, None);
+            flush_garbage_queue();
+        });
+        Ok(())
+    } else {
+        Err(PyRuntimeError::new_err(
+            "Blueprint stream has no store info".to_owned(),
+        ))
+    }
+}
+
+#[pyfunction]
 #[pyo3(signature = (path, default_blueprint = None, recording = None))]
 fn save(
     path: &str,
@@ -633,14 +676,14 @@ fn save_blueprint(
     blueprint_stream: &PyRecordingStream,
     py: Python<'_>,
 ) -> PyResult<()> {
-    if let Some(recording_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
+    if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
         // The call to save, needs to flush.
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             // Flush all the pending blueprint messages before we include the Ready message
             blueprint_stream.flush_blocking();
 
-            let activation_cmd = BlueprintActivationCommand::make_active(recording_id.clone());
+            let activation_cmd = BlueprintActivationCommand::make_active(blueprint_id.clone());
 
             blueprint_stream.record_msg(activation_cmd.into());
 

@@ -1,11 +1,11 @@
 ---
-title: Configure the Viewer
+title: Configure the viewer
 order: 5
 ---
 
-Although the Rerun Viewer tries to do a reasonable job of using heuristics to automatically determine
-an appropriate layout given the data that you provide, there will always be situations where the heuristic
-results don't match the needs of a particular use-case.
+By default, the Rerun viewer uses heuristics to automatically determine an appropriate
+layout given the data that you provide. However, there will always be situations
+where the heuristic results don't match the needs of a particular use-case.
 
 Fortunately, almost all aspects of the viewer can be configured via the [Blueprint](../reference/viewer/blueprint.md).
 

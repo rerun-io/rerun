@@ -30,7 +30,6 @@ ORIENTATION = {
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
 
-
 DESCRIPTION = """
 # ARKit Scenes
 This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
@@ -83,8 +82,8 @@ The bounding boxes around the furniture is visualized by logging the
 bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
 """.strip()
 
-lowres_posed_entity_path = "world/camera_lowres"
-highres_entity_path = "world/camera_highres"
+LOWRES_POSED_ENTITY_PATH = "world/camera_lowres"
+HIGHRES_ENTITY_PATH = "world/camera_highres"
 
 
 def load_json(js_path: Path) -> dict[str, Any]:
@@ -282,11 +281,11 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 lowres_intri_path,
                 frame_timestamp,
                 camera_from_world_dict,
-                lowres_posed_entity_path,
+                LOWRES_POSED_ENTITY_PATH,
             )
 
-            rr.log(f"{lowres_posed_entity_path}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
-            rr.log(f"{lowres_posed_entity_path}/depth", rr.DepthImage(depth, meter=1000))
+            rr.log(f"{LOWRES_POSED_ENTITY_PATH}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
+            rr.log(f"{LOWRES_POSED_ENTITY_PATH}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
         if high_res_exists:
@@ -298,7 +297,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 highres_intri_path,
                 closest_lowres_frame_id,
                 camera_from_world_dict,
-                highres_entity_path,
+                HIGHRES_ENTITY_PATH,
             )
 
             # load the highres image and depth if they exist
@@ -307,8 +306,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
 
-            rr.log(f"{highres_entity_path}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
-            rr.log(f"{highres_entity_path}/depth", rr.DepthImage(highres_depth, meter=1000))
+            rr.log(f"{HIGHRES_ENTITY_PATH}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
+            rr.log(f"{HIGHRES_ENTITY_PATH}/depth", rr.DepthImage(highres_depth, meter=1000))
 
 
 def main() -> None:
@@ -328,7 +327,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    primary_camera_entity = highres_entity_path if args.include_highres else lowres_posed_entity_path
+    primary_camera_entity = HIGHRES_ENTITY_PATH if args.include_highres else LOWRES_POSED_ENTITY_PATH
 
     blueprint = rrb.Horizontal(
         rrb.Spatial3DView(name="3D"),

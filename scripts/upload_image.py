@@ -72,8 +72,6 @@ SIZES = [
     1200,
 ]
 
-ASPECT_RATIO_RANGE = (1.6, 1.8)
-
 
 def build_image_stack(image: Image) -> list[tuple[int | None, Image]]:
     image_stack: list[tuple[int | None, Image]] = [(None, image)]
@@ -120,31 +118,13 @@ def image_from_clipboard() -> Image:
 
 
 class Uploader:
-    def __init__(self, auto_accept: bool):
+    def __init__(self):
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
-        self.auto_accept = auto_accept
 
     def _check_aspect_ratio(self, image: Path | Image) -> None:
         if isinstance(image, Path):
             image = PIL.Image.open(image)
-
-        aspect_ratio = image.width / image.height
-        aspect_ok = ASPECT_RATIO_RANGE[0] < aspect_ratio < ASPECT_RATIO_RANGE[1]
-
-        if not aspect_ok and not self.auto_accept:
-            logging.warning(
-                f"Aspect ratio is {aspect_ratio:.2f} but should be between {ASPECT_RATIO_RANGE[0]} and "
-                f"{ASPECT_RATIO_RANGE[1]}."
-            )
-            # do not pass prompt to input as this goes to stdout
-            print(
-                "The image aspect ratio is outside the range recommended for example screenshots. Continue? [y/N] ",
-                end="",
-                file=sys.stderr,
-            )
-            if input().lower() != "y":
-                sys.exit(1)
 
     def upload_file(self, path: Path) -> str:
         """
@@ -355,7 +335,7 @@ def download_file(url: str, path: Path) -> None:
 def run(args: argparse.Namespace) -> None:
     """Run the script based on the provided args."""
     try:
-        uploader = Uploader(args.auto_accept)
+        uploader = Uploader()
 
         if args.single:
             if args.path is None:
@@ -415,7 +395,6 @@ def main() -> None:
         "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
-    parser.add_argument("--auto-accept", action="store_true", help="Auto-accept the aspect ratio confirmation prompt")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()
 

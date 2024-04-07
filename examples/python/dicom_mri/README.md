@@ -18,13 +18,13 @@ channel = "main"
 
 Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
-# Used Rerun Types
+## Used Rerun Types
 [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
-# Background
+## Background
 Digital Imaging and Communications in Medicine (DICOM) serves as a technical standard for the digital storage and transmission of medical images. In this instance, an MRI scan is visualized using Rerun.
 
-# Logging and Visualizing with Rerun
+## Logging and Visualizing with Rerun
 
 The visualizations in this example were created with just the following line.
 ```python
@@ -39,7 +39,7 @@ give semantic meaning to each axis. After selecting the tensor view, you can adj
 settings on the right-hand side. For example, you can adjust the color map, the brightness, which dimensions to show as
 an image and which to select from, and more.
 
-# Run the Code
+##  Run the Code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

@@ -1,6 +1,6 @@
 ---
 title: Types
-order: 3
+order: 400
 ---
 
 Rerun comes with built-in support for a number of different types that can be logged via the Python and Rust Logging

@@ -1,11 +1,13 @@
 <!--[metadata]
 title = "ROS Node"
 tags = ["2D", "3D", "mesh", "pinhole-camera", "ros", "time-series"]
-description = "A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls."
 thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06372842/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
+A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
+
+The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/480w.png">
@@ -14,11 +16,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/1200w.png">
   <img src="https://static.rerun.io/ros_node/de224f02697d8fa26a387e497ef5823a68122356/full.png" alt="">
 </picture>
-
-A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
-
-The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
-
 
 # Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)
@@ -69,9 +66,9 @@ source venv/bin/active
 source /opt/ros/humble/setup.bash
 ```
 
-## Run
+## Run the code
 
-In one terminal launch the nav2 turtlebot demo:
+First, in one terminal launch the nav2 turtlebot demo:
 ```
 source /opt/ros/humble/setup.bash
 export TURTLEBOT3_MODEL=waffle

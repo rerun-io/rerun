@@ -1,5 +1,8 @@
 // @ts-check
 
+import { appendFileSync } from "fs";
+import os from "os";
+
 /**
  * Log a message with level `INFO`
  *
@@ -42,6 +45,16 @@ export function getRequiredInput(name) {
 }
 
 /**
+ * Set a GitHub Actions output for other workflows steps to read.
+ * @param {string} key
+ * @param {string} value
+ */
+export function setOutput(key, value) {
+  const outputFile = /** @type {string} */ (process.env["GITHUB_OUTPUT"]);
+  appendFileSync(outputFile, `${key}=${value}${os.EOL}`);
+}
+
+/**
  * Assert that `value` is truthy, throwing an error if it is not.
  *
  * @param {any} value
@@ -61,4 +74,3 @@ export function assert(value, message) {
     throw new Error(error);
   }
 }
-

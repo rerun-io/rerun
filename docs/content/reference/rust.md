@@ -1,5 +1,5 @@
 ---
 title: 🦀 Rust APIs
-order: 11
+order: 1200
 redirect: https://docs.rs/rerun/
 ---

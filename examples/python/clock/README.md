@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Clock"
-description = "Visualize an analog clock with hour, minute and seconds hands."
+tags = ["3D", "API example"]
 thumbnail = "https://static.rerun.io/clock/8c49e25f5cac4d6a1d7d0490b14cf6881bdb707b/480w.png"
 thumbnail_dimensions = [480, 480]
 -->

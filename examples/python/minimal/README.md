@@ -1,10 +1,11 @@
 <!--[metadata]
 title = "Minimal example"
-description = "Generates a 3D colored cube and demonstrates how to log a point cloud."
 thumbnail = "https://static.rerun.io/minimal-example/9e694c0689f20323ed0053506a7a099f7391afca/480w.png"
 thumbnail_dimensions = [480, 480]
+tags = ["3D", "API example"]
 -->
 
+Generates a 3D colored cube and demonstrates how to log a point cloud.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png">
