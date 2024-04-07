@@ -53,6 +53,7 @@ impl std::fmt::Display for InstanceKey {
         if self.is_splat() {
             "splat".fmt(f)
         } else {
+            // TODO(emilk): re_format::uint(self.0).fmt(f) (fix cyclic dependency!)
             self.0.fmt(f)
         }
     }

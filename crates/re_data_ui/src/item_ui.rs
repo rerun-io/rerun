@@ -283,7 +283,7 @@ pub fn instance_path_parts_buttons(
         }
 
         if !instance_path.instance_key.is_splat() {
-            ui.strong("/");
+            ui.weak("[");
             instance_path_button_to_ex(
                 ctx,
                 query,
@@ -294,6 +294,7 @@ pub fn instance_path_parts_buttons(
                 instance_path.instance_key.syntax_highlighted(ui.style()),
                 with_icon,
             );
+            ui.weak("]");
         }
     })
     .response

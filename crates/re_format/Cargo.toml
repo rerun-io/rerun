@@ -26,6 +26,7 @@ default = []
 [dependencies]
 num-traits.workspace = true
 
+# TODO(emilk): remove these high-level dependencies, or split this crate into two.
 arrow2 = { workspace = true, optional = true }
 comfy-table = { workspace = true, optional = true }
 re_tuid = { workspace = true, optional = true }
