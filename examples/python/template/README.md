@@ -2,7 +2,7 @@
 title = "Template"
 tags = ["Human case", "Comma", "Separated", "ACRONYM", "Respect brand names", "Hugging Face", "Coca-Cola"]
 thumbnail = "https://static.rerun.io/template/f53a939567970272cf7c740f1efe5c72f20de7ab/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail_dimensions = [480, 359]
 # channel = "main" # uncomment if this example can be run fast an easily
 -->
 
