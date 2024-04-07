@@ -3,7 +3,7 @@ title = "VRS viewer"
 source = "https://github.com/rerun-io/cpp-example-vrs"
 tags = ["2D", "3D", "VRS", "Viewer", "C++"]
 thumbnail = "https://static.rerun.io/vrs/614f0adf0dd31fa01fff0d6eaeae67bbe8ba9af0/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail_dimensions = [480, 482]
 -->
 
 <picture>
