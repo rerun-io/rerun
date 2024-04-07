@@ -1,12 +1,13 @@
 <!--[metadata]
 title = "Open Photogrammetry Format"
 tags = ["2D", "3D", "Camera", "Photogrammetry"]
-description = "Displays a photogrammetrically reconstructed 3D point cloud loaded from an Open Photogrammetry Format (OPF) file."
 thumbnail = "https://static.rerun.io/open-photogrammetry-format/c9bec43a3a3abd725a55ee8eb527a4c0cb01979b/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 build_args = ["--jpeg-quality=50"]
 -->
+
+Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
 <picture data-inline-viewer="examples/open_photogrammetry_format">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png">
@@ -15,9 +16,6 @@ build_args = ["--jpeg-quality=50"]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/1200w.png">
   <img src="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/full.png" alt="">
 </picture>
-
-
-Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
 ## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)

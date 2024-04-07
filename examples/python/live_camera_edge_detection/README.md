@@ -1,11 +1,11 @@
 <!--[metadata]
 title = "Live camera edge detection"
 tags = ["2D", "Canny", "Live", "OpenCV"]
-description = "Visualize the OpenCV Canny Edge Detection results from a live camera stream."
 thumbnail = "https://static.rerun.io/live-camera-edge-detection/f747bcf9ff3039c895f0bf0290e2dea0a72631ea/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
+Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) results from a live camera stream.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/live_camera_edge_detection/bf877bffd225f6c62cae3b87eecbc8e247abb202/480w.png">
@@ -14,8 +14,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/live_camera_edge_detection/bf877bffd225f6c62cae3b87eecbc8e247abb202/1200w.png">
   <img src="https://static.rerun.io/live_camera_edge_detection/bf877bffd225f6c62cae3b87eecbc8e247abb202/full.png" alt="Live Camera Edge Detection example screenshot">
 </picture>
-
-Visualize the [OpenCV Canny Edge Detection](https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html) results from a live camera stream.
 
 ## Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image)

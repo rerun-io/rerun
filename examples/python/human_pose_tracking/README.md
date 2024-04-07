@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "Human pose tracking"
 tags = ["MediaPipe", "Keypoint detection", "2D", "3D"]
-description = "Use the MediaPipe Pose solution to detect and track a human pose in video."
 thumbnail = "https://static.rerun.io/human-pose-tracking/5d62a38b48bed1467698d4dc95c1f9fba786d254/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
+
+Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution to detect and track a human pose in video.
 
 <picture data-inline-viewer="examples/human_pose_tracking">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/480w.png">
@@ -14,10 +15,6 @@ channel = "main"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/1200w.png">
   <img src="https://static.rerun.io/human_pose_tracking/37d47fe7e3476513f9f58c38da515e2cd4a093f9/full.png" alt="">
 </picture>
-
-Use the [MediaPipe Pose Landmark Detection](https://developers.google.com/mediapipe/solutions/vision/pose_landmarker) solution to detect and track a human pose in video.
-
-
 
 ## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image)

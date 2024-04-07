@@ -1,12 +1,12 @@
 <!--[metadata]
 title = "Dicom MRI"
 tags = ["Tensor", "MRI", "DICOM"]
-description = "Example using a DICOM MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer."
 thumbnail = "https://static.rerun.io/dicom-mri/d5a434f92504e8dda8af6c7f4eded2a9d662c991/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
 
+Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
 <picture data-inline-viewer="examples/dicom_mri">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/480w.png">
@@ -15,8 +15,6 @@ channel = "main"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/1200w.png">
   <img src="https://static.rerun.io/dicom_mri/e39f34a1b1ddd101545007f43a61783e1d2e5f8e/full.png" alt="">
 </picture>
-
-Visualize a [DICOM](https://en.wikipedia.org/wiki/DICOM) MRI scan. This demonstrates the flexible tensor slicing capabilities of the Rerun viewer.
 
 ## Used Rerun Types
 [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
