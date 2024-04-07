@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Depth guided stable diffusion"
-tags = ["Depth guided", "Stable diffusion", "Hugging Face", "3D", "Tensor", "Text"]creating more visually compelling and contextually accurate images."
+tags = ["Depth guided", "Stable diffusion", "Hugging Face", "3D", "Tensor", "Text"]
 thumbnail = "https://static.rerun.io/depth-guided-stable-diffusion/bea9bfaf33ebed4296f576d931c8c8e6fdd08a21/480w.png"
 thumbnail_dimensions = [480, 266]
 -->
