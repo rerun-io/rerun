@@ -99,7 +99,8 @@ impl DataUi for EntityComponentWithInstances {
             table_for_verbosity(verbosity, ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .columns(egui_extras::Column::auto(), 2)
+                .column(egui_extras::Column::auto())
+                .column(egui_extras::Column::remainder())
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {
