@@ -1,11 +1,11 @@
 <!--[metadata]
 title = "Live depth sensor"
 tags = ["2D", "3D", "Live", "Depth", "RealSense"]
-description = "Visualize the live-streaming frames from an Intel RealSense depth sensor."
 thumbnail = "https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/480w.png"
 thumbnail_dimensions = [480, 360]
 -->
 
+Visualize the live-streaming frames from an Intel RealSense depth sensor.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/480w.png">
@@ -14,8 +14,6 @@ thumbnail_dimensions = [480, 360]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/1200w.png">
   <img src="https://static.rerun.io/live_depth_sensor/d3c0392bebe2003d24110a779d6f6748167772d8/full.png" alt="Live Depth Sensor example screenshot">
 </picture>
-
-Visualize the live-streaming frames from an Intel RealSense depth sensor.
 
 This example requires a connected realsense depth sensor.
 

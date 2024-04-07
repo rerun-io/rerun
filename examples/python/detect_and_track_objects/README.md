@@ -1,13 +1,12 @@
 <!--[metadata]
 title = "Detect and track objects"
 tags = ["2D", "Hugging face", "Object detection", "Object tracking", "OpenCV"]
-description = "Visualize object detection and segmentation using the Huggingface `transformers` library and CSRT from OpenCV."
 thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
 
-
+Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
 
 <picture data-inline-viewer="examples/detect_and_track_objects">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png">
@@ -16,8 +15,6 @@ channel = "release"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/1200w.png">
   <img src="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/full.png" alt="">
 </picture>
-
-Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
 
 ## Used Rerun Types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)

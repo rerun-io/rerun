@@ -1,13 +1,13 @@
 <!--[metadata]
 title = "Structure from motion"
 tags = ["2D", "3D", "COLMAP", "Pinhole camera", "Time series"]
-description = "Visualize a sparse reconstruction by COLMAP, a general-purpose Structure-from-Motion and Multi-View Stereo pipeline."
 thumbnail = "https://static.rerun.io/structure-from-motion/af24e5e8961f46a9c10399dbc31b6611eea563b4/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
 build_args = ["--dataset=colmap_fiat", "--resize=800x600"]
 -->
 
+Visualize a sparse reconstruction by [COLMAP](https://colmap.github.io/index.html), a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface
 
 <picture data-inline-viewer="examples/structure_from_motion">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/480w.png">
@@ -16,8 +16,6 @@ build_args = ["--dataset=colmap_fiat", "--resize=800x600"]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/1200w.png">
   <img src="https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/full.png" alt="Structure From Motion example screenshot">
 </picture>
-
-Visualize a sparse reconstruction by [COLMAP](https://colmap.github.io/index.html) including camera frames, camera poses, and point clouds over time.
 
 # Background
 

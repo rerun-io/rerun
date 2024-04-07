@@ -1,12 +1,13 @@
 <!--[metadata]
 title = "Objectron"
 tags = ["2D", "3D", "Object detection", "Pinhole camera", "Blueprint"]
-description = "Example of using the Rerun SDK to log the Google Research Objectron dataset."
 thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
 thumbnail_dimensions = [480, 480]
 # channel = "release"  - Disabled because it sometimes have bad first-frame heuristics
 build_args = ["--frames=150"]
 -->
+
+Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset including camera poses, sparse point-clouds and surfaces characterization.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/480w.png">
@@ -15,8 +16,6 @@ build_args = ["--frames=150"]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/1200w.png">
   <img src="https://static.rerun.io/objectron/8ea3a37e6b4af2e06f8e2ea5e70c1951af67fea8/full.png" alt="Objectron example screenshot">
 </picture>
-
-Visualize the [Google Research Objectron](https://github.com/google-research-datasets/Objectron) dataset including camera poses, sparse point-clouds and surfaces characterization.
 
 ## Used Rerun types
  [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>, [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)

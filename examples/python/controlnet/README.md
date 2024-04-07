@@ -1,10 +1,11 @@
 <!--[metadata]
 title = "ControlNet"
 tags = ["ControlNet", "Canny", "Hugging Face", "Stable diffusion", "Tensor", "Text"]
-description = "Use Hugging Face's ControlNet to generate an image from text, conditioned on detected edges from another image."
 thumbnail = "https://static.rerun.io/controlnet/2e984b27dd8120fb89d4e805df9da506ea6d9138/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
+
+Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) to generate an image from text, conditioned on detected edges from another image.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/480w.png">
@@ -13,9 +14,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/1200w.png">
   <img src="https://static.rerun.io/controlnet/8aace9c59a423c2eeabe4b7f9abb5187559c52e8/full.png" alt="">
 </picture>
-
-Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) to generate an image from text, conditioned on detected edges from another image.
-
 
 
 ## Used Rerun types

@@ -1,10 +1,12 @@
 <!--[metadata]
 title = "LLM embedding-based named entity recognition"
 tags = ["LLM", "Embeddings", "Classification", "Hugging Face", "Text"]
-description = "Visualize the BERT-based named entity recognition NER with UMAP Embeddings."
 thumbnail = "https://static.rerun.io/llm-embedding/999737b3b78d762e70116bc23929ebfde78e18c6/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
+
+Visualize the [BERT-based named entity recognition (NER)](https://huggingface.co/dslim/bert-base-NER) with UMAP Embeddings.
+
 <picture>
   <img src="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/480w.png">
@@ -12,8 +14,6 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/llm_embedding_ner/d98c09dd6bfa20ceea3e431c37dc295a4009fa1b/1200w.png">
 </picture>
-
-Visualize the [BERT-based named entity recognition (NER)](https://huggingface.co/dslim/bert-base-NER) with UMAP Embeddings.
 
 ## Used Rerun types
 [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)

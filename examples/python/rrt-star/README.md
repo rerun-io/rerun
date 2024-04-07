@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "RRT*"
 tags = ["2D"]
-description = "Visualization of the path finding algorithm RRT* in a simple environment."
 thumbnail= "https://static.rerun.io/rrt-star/fbbda33bdbbfa469ec95c905178ac3653920473a/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "main"
 -->
+
+This example visualizes the path finding algorithm RRT\* in a simple environment.
 
 <picture>
   <img src="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/full.png" alt="RRT* example screenshot">
@@ -14,8 +15,6 @@ channel = "main"
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rrt-star/4d4684a24eab7d5def5768b7c1685d8b1cb2c010/1200w.png">
 </picture>
-
-This example visualizes the path finding algorithm RRT/* in a simple environment.
 
 # Used Rerun types
 [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)

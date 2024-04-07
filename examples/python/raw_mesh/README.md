@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "Raw mesh"
 tags = ["Mesh"]
-description = "Demonstrates logging of raw 3D mesh data with simple material properties."
 thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c32673909071cb40/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
+
+Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
 
 <picture data-inline-viewer="examples/raw_mesh">
   <img src="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/full.png" alt="">
@@ -14,8 +15,6 @@ channel = "release"
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/1200w.png">
 </picture>
-
-Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
 
 ## Used Rerun types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d)

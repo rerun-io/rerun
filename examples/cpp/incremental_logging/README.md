@@ -1,11 +1,11 @@
 <!--[metadata]
 title = "Incremental logging"
 tags = ["3D", "API Example"]
-description = "Showcases how to incrementally log data belonging to the same archetype."
 thumbnail = "https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/480w.png"
 thumbnail_dimensions = [480, 301]
 -->
 
+Showcases how to incrementally log data belonging to the same archetype, and re-use some or all of it across frames.
 
 <picture>
   <img src="https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/full.png" alt="">
@@ -15,8 +15,8 @@ thumbnail_dimensions = [480, 301]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/incremental_logging/b7a2bd889b09c3840f56dc31bd6d677934ab3126/1200w.png">
 </picture>
 
-Showcases how to incrementally log data belonging to the same archetype, and re-use some or all of it across frames.
 
+## Run the code
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
