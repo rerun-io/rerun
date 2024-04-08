@@ -1,7 +1,9 @@
 use egui::NumExt;
+
 use re_entity_db::{EntityPath, InstancePath};
 use re_query::ComponentWithInstances;
 use re_types::ComponentName;
+use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::{table_for_verbosity, DataUi};
@@ -99,11 +101,12 @@ impl DataUi for EntityComponentWithInstances {
             table_for_verbosity(verbosity, ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .columns(egui_extras::Column::auto(), 2)
+                .column(egui_extras::Column::auto())
+                .column(egui_extras::Column::remainder())
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {
-                        ui.label("Instance key");
+                        ui.label("Index");
                     });
                     header.col(|ui| {
                         ui.label(self.component_name().short_name());
@@ -124,7 +127,7 @@ impl DataUi for EntityComponentWithInstances {
                                     ui,
                                     None,
                                     &instance_path,
-                                    instance_key.to_string(),
+                                    instance_key.syntax_highlighted(ui.style()),
                                 );
                             });
                             row.col(|ui| {
