@@ -734,9 +734,7 @@ impl CacheBucket {
 
     /// Iterate over the batches of the specified non-optional component.
     #[inline]
-    pub fn iter_component<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<impl Iterator<Item = &[C]>> {
+    pub fn iter_component<C: Component>(&self) -> Option<impl Iterator<Item = &[C]>> {
         let data = self
             .components
             .get(&C::name())
@@ -746,9 +744,7 @@ impl CacheBucket {
 
     /// Iterate over the batches of the specified optional component.
     #[inline]
-    pub fn iter_component_opt<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<impl Iterator<Item = &[Option<C>]>> {
+    pub fn iter_component_opt<C: Component>(&self) -> Option<impl Iterator<Item = &[Option<C>]>> {
         let data = self
             .components
             .get(&C::name())
@@ -823,7 +819,7 @@ impl CacheBucket {
 
     /// Get the raw batches for the specified non-optional component.
     #[inline]
-    pub fn component<C: Component + Send + Sync + 'static>(&self) -> Option<&FlatVecDeque<C>> {
+    pub fn component<C: Component>(&self) -> Option<&FlatVecDeque<C>> {
         self.components
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())
@@ -831,7 +827,7 @@ impl CacheBucket {
 
     /// Range over the batches of the specified non-optional component.
     #[inline]
-    pub fn range_component<C: Component + Send + Sync + 'static>(
+    pub fn range_component<C: Component>(
         &self,
         entry_range: Range<usize>,
     ) -> Option<impl Iterator<Item = &[C]>> {
@@ -844,9 +840,7 @@ impl CacheBucket {
 
     /// Get the raw batches for the specified optional component.
     #[inline]
-    pub fn component_opt<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<&FlatVecDeque<Option<C>>> {
+    pub fn component_opt<C: Component>(&self) -> Option<&FlatVecDeque<Option<C>>> {
         self.components
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())
@@ -854,7 +848,7 @@ impl CacheBucket {
 
     /// Range over the batches of the specified optional component.
     #[inline]
-    pub fn range_component_opt<C: Component + Send + Sync + 'static>(
+    pub fn range_component_opt<C: Component>(
         &self,
         entry_range: Range<usize>,
     ) -> Option<impl Iterator<Item = &[Option<C>]>> {
@@ -934,8 +928,8 @@ macro_rules! impl_insert {
         ) -> ::re_query::Result<u64>
         where
             A: Archetype,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
@@ -992,7 +986,7 @@ impl CacheBucket {
     ) -> ::re_query::Result<u64>
     where
         A: Archetype,
-        R1: Component + Send + Sync + 'static,
+        R1: Component,
     {
         self.insert_pov1_comp0::<A, R1>(query_time, arch_view)
     }
@@ -1002,7 +996,7 @@ impl CacheBucket {
     });
 
     #[inline]
-    fn insert_component<A: Archetype, C: Component + Send + Sync + 'static>(
+    fn insert_component<A: Archetype, C: Component>(
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,
@@ -1041,7 +1035,7 @@ impl CacheBucket {
 
     /// This will insert an empty slice for a missing component (instead of N `None` values).
     #[inline]
-    fn insert_component_opt<A: Archetype, C: Component + Send + Sync + 'static>(
+    fn insert_component_opt<A: Archetype, C: Component>(
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,
