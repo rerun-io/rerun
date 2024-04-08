@@ -666,22 +666,26 @@ impl StoreHub {
                 continue; // Don't save changes to the welcome screen
             }
 
-            let Some(blueprint_id) = &app_blueprints.active else {
-                continue;
-            };
+            if let Some(blueprint_id) = &app_blueprints.active {
+                let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
+                    re_log::debug!("Failed to find blueprint {blueprint_id}.");
+                    continue;
+                };
+                if self.blueprint_last_save.get(blueprint_id) == Some(&blueprint.generation()) {
+                    continue; // no change since last save
+                }
 
-            let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
-                re_log::debug!("Failed to find blueprint {blueprint_id}.");
-                continue;
-            };
-            if self.blueprint_last_save.get(blueprint_id) == Some(&blueprint.generation()) {
-                continue; // no change since last save
+                let messages = blueprint.to_messages(None)?;
+                (saver)(app_id, &messages)?;
+                self.blueprint_last_save
+                    .insert(blueprint_id.clone(), blueprint.generation());
+            } else {
+                // Save an empty blueprint file for this app.
+                // This is important for the case when the user has reset/cleared/deleted the active blueprint,
+                // in which case we want to over-write the old blueprint file.
+                let messages = [];
+                (saver)(app_id, &messages)?;
             }
-
-            let messages = blueprint.to_messages(None)?;
-            (saver)(app_id, &messages)?;
-            self.blueprint_last_save
-                .insert(blueprint_id.clone(), blueprint.generation());
         }
 
         Ok(())
