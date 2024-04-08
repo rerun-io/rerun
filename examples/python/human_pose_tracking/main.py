@@ -24,7 +24,7 @@ This example uses Rerun to visualize the output of [MediaPipe](https://developer
 of a human pose in 2D and 3D.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking).
 """.strip()
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))

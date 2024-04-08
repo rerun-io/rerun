@@ -33,7 +33,7 @@ rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"])
 ```
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/dicom_mri/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/dicom_mri).
 """
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"

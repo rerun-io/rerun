@@ -30,7 +30,7 @@ In this example a short video clip has been processed offline by the COLMAP pipe
 individual camera frames, estimated camera poses, and resulting point clouds over time.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/structure_from_motion).
 """.strip()
 
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"

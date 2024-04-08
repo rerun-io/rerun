@@ -25,7 +25,7 @@ DESCRIPTION = """
 # Raw meshes
 This example shows how you can log a hierarchial 3D mesh, including its transform hierarchy.
 
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/raw_mesh/main.py).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/raw_mesh).
 """
 
 

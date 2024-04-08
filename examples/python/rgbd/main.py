@@ -26,7 +26,7 @@ DESCRIPTION = """
 # RGBD
 Visualizes an example recording from [the NYUD dataset](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html) with RGB and Depth channels.
 
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rgbd/main.py).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rgbd).
 """
 
 DEPTH_IMAGE_SCALING: Final = 1e4

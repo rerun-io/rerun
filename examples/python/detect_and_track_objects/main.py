@@ -25,7 +25,7 @@ This is a more elaborate example applying simple object detection and segmentati
 OpenCV. The results are visualized using Rerun.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/detect_and_track_objects/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/detect_and_track_objects).
 """.strip()
 
 

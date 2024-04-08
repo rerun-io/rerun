@@ -38,7 +38,7 @@ from tqdm import tqdm
 DESCRIPTION = """
 Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
 
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model/main.py).
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model).
 """.strip()
 
 MODEL_DIR: Final = Path(os.path.dirname(__file__)) / "model"

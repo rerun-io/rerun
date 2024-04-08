@@ -27,7 +27,7 @@ DESCRIPTION = """
 Visualizes an Open Photogrammetry Format (OPF) project, displaying the cameras and point cloud.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/open_photogrammetry_format/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/open_photogrammetry_format).
 
 ### Links
 * [OPF specification](https://pix4d.github.io/opf-spec/index.html)

@@ -19,7 +19,7 @@ DESCRIPTION = """
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/nuscenes/main.py).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/nuscenes).
 """
 
 EXAMPLE_DIR: Final = pathlib.Path(os.path.dirname(__file__))
