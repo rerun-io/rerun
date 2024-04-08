@@ -89,7 +89,7 @@ impl StoreSubscriber for Caches {
 
         #[derive(Default, Debug)]
         struct CompactedEvents {
-            timeless: HashSet<(EntityPath, ComponentName)>,
+            static_: HashSet<(EntityPath, ComponentName)>,
             temporal: HashMap<CacheKey, BTreeSet<TimeInt>>,
         }
 
@@ -124,7 +124,7 @@ impl StoreSubscriber for Caches {
                 if times.is_empty() {
                     for component_name in cells.keys() {
                         compacted
-                            .timeless
+                            .static_
                             .insert((entity_path.clone(), *component_name));
                     }
                 }
@@ -151,7 +151,7 @@ impl StoreSubscriber for Caches {
             // yet another layer of caching indirection.
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
-            for (entity_path, component_name) in compacted.timeless {
+            for (entity_path, component_name) in compacted.static_ {
                 for (key, cache) in caches.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);

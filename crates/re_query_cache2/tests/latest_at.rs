@@ -492,7 +492,7 @@ fn query_and_compare(
             .flatten()
             .unwrap();
 
-        let cached_colors = cached.get_optional::<MyColor>();
+        let cached_colors = cached.get_or_empty::<MyColor>();
         let cached_color_data = cached_colors
             .to_sparse::<MyColor>(&resolver)
             .flatten()
@@ -511,7 +511,7 @@ fn query_and_compare(
             .flatten()
             .unwrap();
 
-        let expected_colors = expected.get_optional::<MyColor>();
+        let expected_colors = expected.get_or_empty::<MyColor>();
         let expected_color_data = expected_colors
             .to_sparse::<MyColor>(&resolver)
             .flatten()

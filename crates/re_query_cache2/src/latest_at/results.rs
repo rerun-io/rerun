@@ -19,7 +19,7 @@ use crate::{
 /// The data is both deserialized and resolved/converted.
 ///
 /// Use [`CachedLatestAtResults::get`], [`CachedLatestAtResults::get_required`] and
-/// [`CachedLatestAtResults::get_optional`] in order to access the results for each individual component.
+/// [`CachedLatestAtResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
 pub struct CachedLatestAtResults {
     /// The compound index of this query result.
@@ -75,7 +75,7 @@ impl CachedLatestAtResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_optional<C: Component>(&self) -> &CachedLatestAtComponentResults {
+    pub fn get_or_empty<C: Component>(&self) -> &CachedLatestAtComponentResults {
         if let Some(component) = self.components.get(&C::name()) {
             component
         } else {

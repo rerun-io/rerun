@@ -297,7 +297,7 @@ fn query_and_visit_points(
         );
 
         let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_optional::<Color>();
+        let colors = results.get_or_empty::<Color>();
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
@@ -348,7 +348,7 @@ fn query_and_visit_strings(
         );
 
         let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_optional::<Text>();
+        let colors = results.get_or_empty::<Text>();
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
