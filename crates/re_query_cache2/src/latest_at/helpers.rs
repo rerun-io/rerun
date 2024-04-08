@@ -153,14 +153,23 @@ impl CachedLatestAtComponentResults {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
             }
-            PromiseResult::Ready(data) if data.len() > index => Some(data[index].clone()),
             PromiseResult::Ready(data) => {
-                re_log::log_once!(
+                // TODO(#5303): Figure out we'd like to integrate clamping semantics into selection panel.
+                //
+                // For now, we simply always clamp, which is the closest to the legacy behavior that the UI
+                // expects.
+                let index = usize::min(index, data.len().saturating_sub(1));
+
+                if data.len() > index {
+                    Some(data[index].clone())
+                } else {
+                    re_log::log_once!(
                         level,
                         "Couldn't deserialize {component_name}: index not found (index: {index}, length: {})",
                         data.len(),
                     );
-                None
+                    None
+                }
             }
             PromiseResult::Error(err) => {
                 re_log::log_once!(
