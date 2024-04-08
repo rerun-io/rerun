@@ -51,6 +51,9 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
    - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
      or defaulted to `1` if no previous alpha exists.
 
+   Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
+   e.g. `release-0.15.0` instead of `release-0.15`.
+
 ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
 Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
