@@ -43,11 +43,6 @@ fn generate_mod(
     let mut mods = Vec::new();
 
     for obj in objects.ordered_objects(Some(ObjectKind::Archetype)) {
-        if obj.scope() == Some("blueprint".to_owned()) {
-            // TODO(cmc): support types in re_viewport and somehow manage the dep-cycle of doom.
-            continue;
-        }
-
         // TODO(#4478): add a 'testing' scope
         if obj.fqname.contains("testing") {
             continue;
@@ -79,11 +74,6 @@ fn generate_impls(
     };
 
     for obj in objects.ordered_objects(Some(ObjectKind::Archetype)) {
-        if obj.scope() == Some("blueprint".to_owned()) {
-            // TODO(cmc): support types in re_viewport and somehow manage the dep-cycle of doom.
-            continue;
-        }
-
         if obj
             .try_get_attr::<String>(crate::ATTR_RUST_SERDE_TYPE)
             .is_some()
@@ -263,7 +253,6 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
 
 // ---
 
-// TODO(cmc): support types in re_viewport and somehow manage the dep-cycle of doom.
 fn quote_fqname_as_type_path(crate_name: &str, fqname: impl AsRef<str>) -> TokenStream {
     let fqname = fqname
         .as_ref()
