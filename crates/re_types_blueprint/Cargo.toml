@@ -21,8 +21,6 @@ all-features = true
 default = []
 
 
-# TODO: clean up
-
 [dependencies]
 # Rerun
 re_error.workspace = true
