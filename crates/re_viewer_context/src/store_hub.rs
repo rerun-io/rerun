@@ -75,7 +75,7 @@ impl AppBlueprints {
         active.iter().chain(default.iter())
     }
 
-    fn retains(&mut self, mut keep: impl FnMut(&StoreId) -> bool) {
+    fn retain(&mut self, mut keep: impl FnMut(&StoreId) -> bool) {
         let Self { active, default } = self;
         if let Some(active) = active {
             if !keep(active) {
@@ -294,7 +294,7 @@ impl StoreHub {
             }
             StoreKind::Blueprint => {
                 for app_blueprints in self.app_blueprints.values_mut() {
-                    app_blueprints.retains(|id| id != store_id);
+                    app_blueprints.retain(|id| id != store_id);
                 }
             }
         }
