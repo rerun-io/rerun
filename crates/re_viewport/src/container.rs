@@ -16,7 +16,7 @@ use re_viewer_context::{
 
 use re_types_blueprint::blueprint::components::GridColumns;
 
-/// The native version of a [`crate::blueprint::archetypes::ContainerBlueprint`].
+/// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
