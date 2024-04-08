@@ -12,7 +12,7 @@ use crate::{Promise, PromiseResolver, PromiseResult};
 /// The data is neither deserialized, nor resolved/converted.
 /// It it the raw [`DataCell`]s, straight from our datastore.
 ///
-/// Use [`LatestAtResults::get`], [`LatestAtResults::get_required`] and [`LatestAtResults::get_optional`]
+/// Use [`LatestAtResults::get`], [`LatestAtResults::get_required`] and [`LatestAtResults::get_or_empty`]
 /// in order to access the raw results for each individual component.
 #[derive(Debug, Clone)]
 pub struct LatestAtResults {
@@ -69,11 +69,11 @@ impl LatestAtResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_optional<C: Component>(&self) -> &LatestAtComponentResults {
+    pub fn get_or_empty<C: Component>(&self) -> &LatestAtComponentResults {
         if let Some(component) = self.components.get(&C::name()) {
             component
         } else {
-            static DEFAULT: LatestAtComponentResults = LatestAtComponentResults::empty();
+            static DEFAULT: LatestAtComponentResults = LatestAtComponentResults::EMPTY;
             &DEFAULT
         }
     }
@@ -120,18 +120,15 @@ pub struct LatestAtComponentResults {
 impl Default for LatestAtComponentResults {
     #[inline]
     fn default() -> Self {
-        Self::empty()
+        Self::EMPTY
     }
 }
 
 impl LatestAtComponentResults {
-    #[inline]
-    const fn empty() -> Self {
-        Self {
-            index: (TimeInt::STATIC, RowId::ZERO),
-            promise: None,
-        }
-    }
+    const EMPTY: Self = Self {
+        index: (TimeInt::STATIC, RowId::ZERO),
+        promise: None,
+    };
 }
 
 impl LatestAtComponentResults {
@@ -188,11 +185,6 @@ impl LatestAtComponentResults {
         &self,
         resolver: &PromiseResolver,
     ) -> PromiseResult<DeserializationResult<Vec<Option<C>>>> {
-        // Manufactured empty result.
-        if self.promise.is_none() {
-            return PromiseResult::Ready(Ok(vec![]));
-        }
-
         if let Some(cell) = self.promise.as_ref() {
             resolver.resolve(cell).map(|cell| {
                 cell.try_to_native_opt()

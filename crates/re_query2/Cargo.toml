@@ -47,6 +47,7 @@ itertools = { workspace = true }
 nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 smallvec.workspace = true
+static_assertions.workspace = true
 thiserror.workspace = true
 
 # Optional:

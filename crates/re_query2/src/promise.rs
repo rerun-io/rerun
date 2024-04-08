@@ -37,6 +37,8 @@ pub struct Promise {
     source: DataCell,
 }
 
+static_assertions::assert_eq_size!(Promise, Option<Promise>);
+
 impl Promise {
     #[inline]
     pub fn new(source: DataCell) -> Self {

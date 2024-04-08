@@ -4567,6 +4567,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "smallvec",
+ "static_assertions",
  "thiserror",
  "unindent",
 ]

@@ -61,16 +61,10 @@ fn simple_query() -> anyhow::Result<()> {
         ];
 
         let points = results.get_required::<MyPoint>()?;
-        let point_data = points
-            .iter_dense::<MyPoint>(&resolver)
-            .flatten()
-            .unwrap();
+        let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
-        let color_data = colors
-            .iter_sparse::<MyColor>(&resolver)
-            .flatten()
-            .unwrap();
+        let colors = results.get_or_empty::<MyColor>();
+        let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 
         let (got_points, got_colors): (Vec<_>, Vec<_>) =
@@ -137,16 +131,10 @@ fn static_query() -> anyhow::Result<()> {
         ];
 
         let points = results.get_required::<MyPoint>()?;
-        let point_data = points
-            .iter_dense::<MyPoint>(&resolver)
-            .flatten()
-            .unwrap();
+        let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
-        let color_data = colors
-            .iter_sparse::<MyColor>(&resolver)
-            .flatten()
-            .unwrap();
+        let colors = results.get_or_empty::<MyColor>();
+        let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 
         let (got_points, got_colors): (Vec<_>, Vec<_>) =
@@ -212,16 +200,10 @@ fn no_instance_join_query() -> anyhow::Result<()> {
         ];
 
         let points = results.get_required::<MyPoint>()?;
-        let point_data = points
-            .iter_dense::<MyPoint>(&resolver)
-            .flatten()
-            .unwrap();
+        let point_data = points.iter_dense::<MyPoint>(&resolver).flatten().unwrap();
 
-        let colors = results.get_optional::<MyColor>();
-        let color_data = colors
-            .iter_sparse::<MyColor>(&resolver)
-            .flatten()
-            .unwrap();
+        let colors = results.get_or_empty::<MyColor>();
+        let color_data = colors.iter_sparse::<MyColor>(&resolver).flatten().unwrap();
         let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
 
         let (got_points, got_colors): (Vec<_>, Vec<_>) =
