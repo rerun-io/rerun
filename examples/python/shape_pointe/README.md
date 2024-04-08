@@ -6,7 +6,7 @@ thumbnail = "https://static.rerun.io/point-e/5b5beb36dce77d2dac7123b197b825421af
 thumbnail_dimensions = [480, 480]
 -->
 
-This example is a visual comparison of two popular test to 3D methods that uses Rerun to compare the generation process and results.
+This example is a visual comparison of two popular text-to-3D methods that uses Rerun to compare the generation process and results.
 
 ## Visual paper comparison
 
