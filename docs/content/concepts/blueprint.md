@@ -44,7 +44,7 @@ all state to the blueprint.)
 
 ## Current, default, and heuristics blueprints
 
-Blueprints may originate from multiple source.
+Blueprints may originate from multiple sources.
 
 - The "current blueprint" for a given application ID is the one that is used by the viewer to display data at any given time. It is updated for each change made to the visualization within the viewer, and may be saved to a blueprint file at any time.
 - The "default blueprint" is a snapshot that is set or updated when a blueprint is received from code or loaded from a file. The current blueprint may be reset to default blueprint at any time by using the "reset" button in the blueprint panel's header.
