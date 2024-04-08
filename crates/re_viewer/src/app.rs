@@ -1311,6 +1311,7 @@ impl eframe::App for App {
         [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
+    /// Will be called periodically (auto-save), and on shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if !self.startup_options.persist_state {
             return;
@@ -1322,13 +1323,15 @@ impl eframe::App for App {
         eframe::set_value(storage, eframe::APP_KEY, &self.state);
 
         // Save the blueprints
-        // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
-            match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
-                Ok(f) => f,
-                Err(err) => {
-                    re_log::error!("Saving blueprints failed: {err}");
-                }
+            if self.state.app_options.blueprint_gc {
+                // First make the blueprints smaller:
+                hub.gc_blueprints();
+            }
+
+            // Then save them:
+            if let Err(err) = hub.save_app_blueprints() {
+                re_log::error!("Saving blueprints failed: {err}");
             };
         } else {
             re_log::error!("Could not save blueprints: the store hub is not available");
@@ -1429,7 +1432,9 @@ impl eframe::App for App {
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
-        store_hub.gc_blueprints(self.app_options());
+        if self.app_options().blueprint_gc {
+            store_hub.gc_blueprints();
+        }
 
         store_hub.purge_empty();
         self.state.cleanup(&store_hub);

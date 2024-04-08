@@ -9,7 +9,7 @@ use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query_cache::CachesStats;
 
-use crate::{AppOptions, StoreContext};
+use crate::StoreContext;
 
 /// Interface for accessing all blueprints and recordings
 ///
@@ -629,44 +629,43 @@ impl StoreHub {
         });
     }
 
-    pub fn gc_blueprints(&mut self, app_options: &AppOptions) {
+    pub fn gc_blueprints(&mut self) {
         re_tracing::profile_function!();
-        if app_options.blueprint_gc {
-            for blueprint_id in self
-                .app_blueprints
-                .values()
-                .flat_map(|app_blueprints| app_blueprints.iter())
-            {
-                if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
-                    if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
-                        continue; // no change since last gc
-                    }
 
-                    // TODO(jleibs): Decide a better tuning for this. Would like to save a
-                    // reasonable amount of history, or incremental snapshots.
-                    blueprint.gc_everything_but_the_latest_row();
-
-                    self.blueprint_last_gc
-                        .insert(blueprint_id.clone(), blueprint.generation());
+        for blueprint_id in self
+            .app_blueprints
+            .values()
+            .flat_map(|app_blueprints| app_blueprints.iter())
+        {
+            if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
+                if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
+                    continue; // no change since last gc
                 }
+
+                // TODO(jleibs): Decide a better tuning for this. Would like to save a
+                // reasonable amount of history, or incremental snapshots.
+                blueprint.gc_everything_but_the_latest_row();
+
+                self.blueprint_last_gc
+                    .insert(blueprint_id.clone(), blueprint.generation());
             }
         }
     }
 
     /// Persist any in-use blueprints to durable storage.
-    // TODO(#2579): implement persistence for web
     #[allow(clippy::unnecessary_wraps)]
-    pub fn gc_and_persist_app_blueprints(
-        &mut self,
-        app_options: &AppOptions,
-    ) -> anyhow::Result<()> {
+    pub fn save_app_blueprints(&mut self) -> anyhow::Result<()> {
+        let Some(saver) = &self.persistence.saver else {
+            return Ok(());
+        };
+
         re_tracing::profile_function!();
 
-        // Because we save blueprints based on their `ApplicationId`, we only
-        // save the blueprints referenced by `blueprint_by_app_id`, even though
-        // there may be other Blueprints in the Hub.
-
         for (app_id, app_blueprints) in &self.app_blueprints {
+            if app_id == &Self::welcome_screen_app_id() {
+                continue; // Don't save changes to the welcome screen
+            }
+
             let Some(blueprint_id) = &app_blueprints.active else {
                 continue;
             };
@@ -679,20 +678,10 @@ impl StoreHub {
                 continue; // no change since last save
             }
 
-            if app_options.blueprint_gc {
-                blueprint.gc_everything_but_the_latest_row();
-                self.blueprint_last_gc
-                    .insert(blueprint_id.clone(), blueprint.generation());
-            }
-
-            if blueprint.app_id() == Some(&Self::welcome_screen_app_id()) {
-                // Don't save changes to the welcome screen
-            } else if let Some(saver) = &self.persistence.saver {
-                let messages = blueprint.to_messages(None)?;
-                (saver)(app_id, &messages)?;
-                self.blueprint_last_save
-                    .insert(blueprint_id.clone(), blueprint.generation());
-            }
+            let messages = blueprint.to_messages(None)?;
+            (saver)(app_id, &messages)?;
+            self.blueprint_last_save
+                .insert(blueprint_id.clone(), blueprint.generation());
         }
 
         Ok(())
