@@ -46,7 +46,7 @@ rr.log(
 )
  ```
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

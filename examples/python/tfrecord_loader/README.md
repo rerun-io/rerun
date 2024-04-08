@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "TFRecord Loader"
+title = "TFRecord loader"
 source = "https://github.com/rerun-io/rerun-loader-python-example-tfrecord"
 tags = ["2D", "Tensor", "Loader", "Time series"]
 thumbnail = "https://static.rerun.io/tfrecord_loader/26da14f065a3d12322890d2842c988031113bd7b/480w.png"

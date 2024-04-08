@@ -16,7 +16,7 @@ Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landm
   <img src="https://static.rerun.io/mp_face/f5ee03278408bf8277789b637857d5a4fda7eba3/full.png" alt="screenshot of the Rerun visualization of the MediaPipe Face Detector and Landmarker">
 </picture>
 
-## Used Rerun Types
+## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar)
 
 ## Background
@@ -27,7 +27,7 @@ Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are among th
 In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Face and Face Landmark Detection solutions were utilized to detect human face, detect face landmarks and identify facial expressions.
 Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
-## Logging and Visualizing with Rerun
+## Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
 
 ### Timelines
@@ -48,7 +48,7 @@ rr.log(
 )
 ```
 
-### Face Landmark Points
+### Face landmark points
 Logging the face landmarks involves specifying connections between the points, extracting face landmark points and logging them to the Rerun SDK.
 The 2D points are visualized over the video/image for a better understanding and visualization of the face.
 The 3D points allows the creation of a 3D model of the face reconstruction for a more comprehensive representation of the face.
@@ -58,7 +58,7 @@ The 2D and 3D points are logged through a combination of two archetypes. First, 
 the keypoints. Defining these connections automatically renders lines between them.
 Second, the actual keypoint positions are logged in 2D and 3D as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d) and [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
 
-#### Label Mapping and Keypoint Connections
+#### Label mapping and keypoint connections
 
 An annotation context is logged with one class ID assigned per facial feature. The class description includes the connections between corresponding keypoints extracted from the MediaPipe face mesh solution.
 A class ID array is generated to match the class IDs in the annotation context with keypoint indices (to be utilized as the class_ids argument to rr.log).
@@ -117,7 +117,7 @@ rr.log(
     timeless=True,
 )
 ```
-#### Bounding Box
+#### Bounding box
 
 ```python
 rr.log(
@@ -130,7 +130,7 @@ rr.log(
 ```
 
 
-#### 2D Points
+#### 2D points
 
 ```python
 rr.log(
@@ -146,7 +146,7 @@ rr.log(
 )
 ```
 
-#### 3D Points
+#### 3D points
 
 ```python
 rr.log(
@@ -169,7 +169,7 @@ for blendshape in blendshapes:
         rr.log(f"blendshapes/{i}/{blendshape.category_name}", rr.Scalar(blendshape.score))
 ```
 
-## Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

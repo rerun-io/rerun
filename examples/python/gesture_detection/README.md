@@ -60,7 +60,7 @@ As for the 3D points, the logging process involves two steps. First, a timeless 
 the keypoints. Defining these connections automatically renders lines between them. Mediapipe provides the `HAND_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections.
 Second, the actual keypoint positions are logged in 3D [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 
-#### Label Mapping and Keypoint Connections
+#### Label mapping and keypoint connections
 
 ```python
 rr.log(
@@ -121,7 +121,7 @@ rr.log(
 )
 ```
 
-## Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

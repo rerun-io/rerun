@@ -37,12 +37,12 @@ The visualizations in this example were created with the following Rerun code:
 
 ## Map
 
-### Starting Point
+### Starting point
 ```python
 rr.log("map/start", rr.Points2D([start_point], radii=0.02, colors=[[255, 255, 255, 255]]))
 ```
 
-### Destination Point
+### Destination point
 ```python
 rr.log("map/destination", rr.Points2D([end_point], radii=0.02, colors=[[255, 255, 0, 255]]))
 ```
@@ -53,7 +53,7 @@ rr.log("map/obstacles", rr.LineStrips2D(self.obstacles))
 ```
 
 
-## RRT Tree
+## RRT tree
 
 ### Edges
 ```python
@@ -70,22 +70,22 @@ rr.log("map/new/new_edge", rr.LineStrips2D([(closest_node.pos, new_point)], colo
 rr.log("map/tree/vertices", rr.Points2D([node.pos for node in tree], radii=0.002), rr.AnyValues(cost=[float(node.cost) for node in tree]))
 ```
 
-### Close Nodes
+### Close nodes
 ```python
 rr.log("map/new/close_nodes", rr.Points2D([node.pos for node in close_nodes]))
 ```
 
-### Closest Node
+### Closest node
 ```python
 rr.log("map/new/closest_node", rr.Points2D([closest_node.pos], radii=0.008))
 ```
 
-### Random Points
+### Random points
 ```python
 rr.log("map/new/random_point", rr.Points2D([random_point], radii=0.008))
 ```
 
-### New Points
+### New points
 ```python
 rr.log("map/new/new_point", rr.Points2D([new_point], radii=0.008))
 ```
@@ -96,7 +96,7 @@ rr.log("map/path", rr.LineStrips2D(segments, radii=0.002, colors=[0, 255, 255, 2
 ```
 
 
-# Run the Code
+# Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

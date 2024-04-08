@@ -17,13 +17,13 @@ Visualize the live-streaming frames from an Intel RealSense depth sensor.
 
 This example requires a connected realsense depth sensor.
 
-## Used Rerun Types
+## Used Rerun types
 [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image)
 
 ## Background
 The Intel RealSense depth sensor can stream live depth and color data. To visualize this data output, we utilized Rerun.
 
-## Logging and Visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The RealSense sensor captures data in both RGB and depth formats, which are logged using the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) and [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) archetypes, respectively.
 Additionally, to provide a 3D view, the visualization includes a pinhole camera using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
@@ -71,7 +71,7 @@ rr.set_time_sequence("frame_nr", frame_nr)
 rr.log("realsense/rgb/image", rr.Image(color_image))
 ```
 
-### Depth Image
+### Depth image
 
 Just like the RGB images, the RealSense sensor also captures depth data. The depth images are logged as [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) objects and are linked with the time they were captured.
 
@@ -91,7 +91,7 @@ rr.set_time_sequence("frame_nr", frame_nr)
 rr.log("realsense/depth/image", rr.DepthImage(depth_image, meter=1.0 / depth_units))
 ```
 
-## Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

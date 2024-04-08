@@ -15,7 +15,7 @@ Visualize the LiDAR data from the [nuScenes dataset](https://www.nuscenes.org/).
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/lidar/bcea9337044919c1524429bd26bc51a3c4db8ccb/1200w.png">
 </picture>
 
-## Used Rerun Types
+## Used Rerun types
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 
 ## Background
@@ -25,7 +25,7 @@ The scenes in this dataset encompass data collected from a comprehensive suite o
 
 It's important to note that in this example, only the LiDAR data is visualized. For a more extensive example including other sensors and annotations check out the [nuScenes example](https://www.rerun.io/examples/real-data/nuscenes).
 
-## Logging and Visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualization in this example was created with just the following lines.
 
@@ -38,7 +38,7 @@ rr.log("world/lidar", rr.Points3D(points, colors=point_colors)) # Log the 3D dat
 When logging data to Rerun, it's possible to associate it with specific time by using the Rerun's [`timelines`](https://www.rerun.io/docs/concepts/timelines).
 In the following code, we first establish the desired time frame and then proceed to log the 3D data points.
 
-## Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

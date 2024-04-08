@@ -41,7 +41,7 @@ rec.log("world/points_from_vector", rerun::Points3D(points3d_vector));
 rec.log("world/points_from_matrix", rerun::Points3D(points3d_matrix));
 ```
 
-## Pinhole Camera
+## Pinhole camera
 A pinhole camera is logged to "world/camera" using the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) archetype.
 Additionally, the 3D transformation of the camera, including its position and orientation, is logged using the [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetype.
 ```cpp
@@ -71,5 +71,5 @@ rec.log("image0", rerun::Image(tensor_shape(img), rerun::TensorBuffer::u8(img)))
 rec.log("image1", rerun::Image(tensor_shape(img), reinterpret_cast<const uint8_t*>(img.data)));
 ```
 
-# Run the Code
+# Run the code
 You can find the build instructions here: [C++ Example with OpenCV and Eigen](https://github.com/rerun-io/cpp-example-opencv-eigen/blob/main/README.md)
