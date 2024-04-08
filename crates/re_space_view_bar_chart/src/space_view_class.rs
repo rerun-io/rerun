@@ -4,8 +4,9 @@ use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity};
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableEntities,
 };
 
 use super::visualizer_system::BarChartVisualizerSystem;
@@ -64,6 +65,27 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
+    }
+
+    fn choose_default_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        visualizable_entities_per_visualizer: &PerVisualizer<VisualizableEntities>,
+        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+    ) -> re_viewer_context::SmallVisualizerSet {
+        // Default implementation would not suggest the BarChart visualizer for tensors and 1D images,
+        // since they're not indicated with a BarChart indicator.
+        // (and as of writing, something needs to be both visualizable and indicated to be shown in a visualizer)
+
+        // Keeping this implementation simple: We know there's only a single visualizer here.
+        if visualizable_entities_per_visualizer
+            .get(&BarChartVisualizerSystem::identifier())
+            .map_or(false, |entities| entities.contains(entity_path))
+        {
+            std::iter::once(BarChartVisualizerSystem::identifier()).collect()
+        } else {
+            Default::default()
+        }
     }
 
     fn spawn_heuristics(
