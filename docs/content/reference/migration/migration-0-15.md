@@ -8,7 +8,8 @@ In PR [#5395](https://github.com/rerun-io/rerun/pull/5395) we removed the `Insta
 
 What were instance keys?
 
-In Rerun, each entity can be a batch of _instances_. For instance, a point cloud can be one entity, and each point is an instance of that entity.
+In Rerun, each entity can be a batch of _instances_.
+For instance, a point cloud is usually logged as one entity where each point is an instance of that entity.
 An entity is made up of several components (e.g. position, color, …), and you may log these different components separately.
 For example, this lets you update only the colors of a point cloud, keeping the same positions.
 
