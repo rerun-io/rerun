@@ -528,13 +528,19 @@ class Target(Enum):
 
 
 # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-VERSION_RE = re.compile(
+SEMVER_RE = re.compile(
     "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
 )
 
 
 def is_valid_version_string(version: str) -> bool:
-    return VERSION_RE.fullmatch(version) is not None
+    """
+    Checks if `version` is a valid version string.
+
+    Our definition of "valid" is just whether or not it conforms to semver,
+    because the `semver` library is less strict than we need it to be.
+    """
+    return SEMVER_RE.fullmatch(version) is not None
 
 
 def get_release_version_from_git_branch() -> str:
