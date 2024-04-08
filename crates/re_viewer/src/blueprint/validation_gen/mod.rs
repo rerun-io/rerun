@@ -16,13 +16,13 @@ pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
 pub use re_types::blueprint::components::VisibleTimeRange;
-pub use re_viewport::blueprint::components::AutoLayout;
-pub use re_viewport::blueprint::components::AutoSpaceViews;
-pub use re_viewport::blueprint::components::ContainerKind;
-pub use re_viewport::blueprint::components::GridColumns;
-pub use re_viewport::blueprint::components::IncludedSpaceView;
-pub use re_viewport::blueprint::components::RootContainer;
-pub use re_viewport::blueprint::components::SpaceViewMaximized;
+pub use re_types_blueprint::blueprint::components::AutoLayout;
+pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
+pub use re_types_blueprint::blueprint::components::ContainerKind;
+pub use re_types_blueprint::blueprint::components::GridColumns;
+pub use re_types_blueprint::blueprint::components::IncludedSpaceView;
+pub use re_types_blueprint::blueprint::components::RootContainer;
+pub use re_types_blueprint::blueprint::components::SpaceViewMaximized;
 
 /// Because blueprints are both read and written the schema must match what
 /// we expect to find or else we will run into all kinds of problems.

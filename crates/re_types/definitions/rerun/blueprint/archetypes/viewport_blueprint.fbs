@@ -11,7 +11,7 @@ namespace rerun.blueprint.archetypes;
 table ViewportBlueprint (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.rust.override_crate": "re_viewport"
+    "attr.rust.override_crate": "re_types_blueprint"
 ) {
     // --- Required ---
 

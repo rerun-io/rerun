@@ -1,0 +1,48 @@
+[package]
+name = "re_types_blueprint"
+authors.workspace = true
+description = "The core traits and types that power Rerun's Blueprint sub-sytem."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+
+# TODO: clean up
+
+[dependencies]
+# Rerun
+re_error.workspace = true
+re_string_interner.workspace = true
+re_tracing.workspace = true
+re_tuid.workspace = true
+re_types.workspace = true
+re_types_core.workspace = true
+
+# External
+anyhow.workspace = true
+array-init.workspace = true
+arrow2 = { workspace = true, features = [
+  "io_ipc",
+  "io_print",
+  "compute_concatenate",
+] }
+backtrace.workspace = true
+bytemuck.workspace = true
+document-features.workspace = true
+once_cell.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true

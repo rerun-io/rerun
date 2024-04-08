@@ -32,6 +32,7 @@ pub use viewport_blueprint_ui::contents_name_style;
 
 pub mod external {
     pub use re_space_view;
+    pub use re_types_blueprint;
 }
 
 use re_types::datatypes;

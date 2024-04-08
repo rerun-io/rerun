@@ -5034,6 +5034,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_types_blueprint"
+version = "0.15.0-alpha.5"
+dependencies = [
+ "anyhow",
+ "array-init",
+ "backtrace",
+ "bytemuck",
+ "document-features",
+ "once_cell",
+ "re_arrow2",
+ "re_error",
+ "re_string_interner",
+ "re_tracing",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "re_types_builder"
 version = "0.15.0-alpha.5"
 dependencies = [
@@ -5148,6 +5169,7 @@ dependencies = [
  "re_time_panel",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -5236,6 +5258,7 @@ dependencies = [
  "re_space_view_time_series",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
