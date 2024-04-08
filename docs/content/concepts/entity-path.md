@@ -1,6 +1,6 @@
 ---
 title: The Entity Path Hierarchy
-order: 1
+order: 200
 ---
 
 ## Entity paths
