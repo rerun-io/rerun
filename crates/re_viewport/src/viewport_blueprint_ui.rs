@@ -573,40 +573,38 @@ impl Viewport<'_, '_> {
 
         let subdued = !space_view_visible || !visible;
 
-        let list_item = ListItem::new(ctx.re_ui, item_label)
+        let mut list_item = ListItem::new(ctx.re_ui, item_label)
             .selected(is_selected)
             .with_icon(guess_instance_path_icon(
                 ctx,
                 &InstancePath::from(entity_path.clone()),
             ))
             .subdued(subdued)
-            .force_hovered(is_item_hovered)
-            .with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
-                let vis_response = if !empty_origin {
-                    let mut visible_after = visible;
-                    let vis_response =
-                        visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
-                    if visible_after != visible {
-                        if let Some(data_result_node) = data_result_node {
-                            data_result_node
-                                .data_result
-                                .save_recursive_override_or_clear_if_redundant(
-                                    ctx,
-                                    &query_result.tree,
-                                    &Visible(visible_after),
-                                );
-                        }
+            .force_hovered(is_item_hovered);
+
+        // We force the origin to be displayed, even if it's fully empty, in which case it can be
+        // neither shown/hidden nor removed.
+        if !empty_origin {
+            list_item = list_item.with_buttons(|re_ui: &_, ui: &mut egui::Ui| {
+                let mut visible_after = visible;
+                let vis_response =
+                    visibility_button_ui(re_ui, ui, space_view_visible, &mut visible_after);
+                if visible_after != visible {
+                    if let Some(data_result_node) = data_result_node {
+                        data_result_node
+                            .data_result
+                            .save_recursive_override_or_clear_if_redundant(
+                                ctx,
+                                &query_result.tree,
+                                &Visible(visible_after),
+                            );
                     }
+                }
 
-                    Some(vis_response)
-                } else {
-                    None
-                };
-
-                let mut response = remove_button_ui(
+                let response = remove_button_ui(
                     re_ui,
                     ui,
-                    "Remove group and all its children from the space view",
+                    "Remove this entity and all its children from the space view",
                 );
                 if response.clicked() {
                     space_view
@@ -614,12 +612,9 @@ impl Viewport<'_, '_> {
                         .remove_subtree_and_matching_rules(ctx, entity_path.clone());
                 }
 
-                if let Some(vis_response) = vis_response {
-                    response |= vis_response;
-                }
-
-                response
+                response | vis_response
             });
+        }
 
         // If there's any children on the data result nodes, show them, otherwise we're good with this list item as is.
         let has_children = data_result_node.map_or(false, |n| !n.children.is_empty());
