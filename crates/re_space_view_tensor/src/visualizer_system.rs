@@ -1,12 +1,10 @@
 use re_data_store::{LatestAtQuery, VersionedComponent};
 use re_entity_db::EntityPath;
 use re_log_types::RowId;
-use re_space_view::diff_component_filter;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizerAdditionalApplicabilityFilter, VisualizerQueryInfo,
-    VisualizerSystem,
+    ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 #[derive(Default)]
@@ -20,23 +18,9 @@ impl IdentifiedViewSystem for TensorSystem {
     }
 }
 
-struct TensorVisualizerEntityFilter;
-
-impl VisualizerAdditionalApplicabilityFilter for TensorVisualizerEntityFilter {
-    fn update_applicability(&mut self, event: &re_data_store::StoreEvent) -> bool {
-        diff_component_filter(event, |tensor: &re_types::components::TensorData| {
-            !tensor.is_vector()
-        })
-    }
-}
-
 impl VisualizerSystem for TensorSystem {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<Tensor>()
-    }
-
-    fn applicability_filter(&self) -> Option<Box<dyn VisualizerAdditionalApplicabilityFilter>> {
-        Some(Box::new(TensorVisualizerEntityFilter))
     }
 
     fn execute(

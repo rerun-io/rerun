@@ -565,18 +565,37 @@ pub fn selected_tensor_slice<'a, T: Copy>(
 
     assert!(dimension_mapping.is_valid(tensor.ndim()));
 
-    // TODO(andreas) - shouldn't just give up here
-    if dimension_mapping.width.is_none() || dimension_mapping.height.is_none() {
-        return tensor.view();
-    }
+    let (width, height) =
+        if let (Some(width), Some(height)) = (dimension_mapping.width, dimension_mapping.height) {
+            (width, height)
+        } else if let Some(width) = dimension_mapping.width {
+            // If height is missing, create a 1D row.
+            (width, 1)
+        } else if let Some(height) = dimension_mapping.height {
+            // If width is missing, create a 1D column.
+            (1, height)
+        } else {
+            // If both are missing, give up.
+            return tensor.view();
+        };
 
-    let axis = dimension_mapping
-        .height
+    let view = if tensor.shape().len() == 1 {
+        // We want 2D slices, so for "pure" 1D tensors add a dimension.
+        // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
+        tensor
+            .view()
+            .into_shape(ndarray::IxDyn(&[tensor.len(), 1]))
+            .unwrap()
+    } else {
+        tensor.view()
+    };
+
+    #[allow(clippy::tuple_array_conversions)]
+    let axis = [height, width]
         .into_iter()
-        .chain(dimension_mapping.width)
         .chain(dimension_mapping.selectors.iter().map(|s| s.dim_idx))
         .collect::<Vec<_>>();
-    let mut slice = tensor.view().permuted_axes(axis);
+    let mut slice = view.permuted_axes(axis);
 
     for DimensionSelector { dim_idx, .. } in &dimension_mapping.selectors {
         let selector_value = selector_values.get(dim_idx).copied().unwrap_or_default() as usize;
