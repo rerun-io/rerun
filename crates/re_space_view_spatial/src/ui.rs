@@ -587,12 +587,18 @@ pub fn picking(
                 item_ui::instance_path_button(
                     ctx,
                     &query.latest_at_query(),
-                    store,
+                    ctx.recording(),
                     ui,
                     Some(query.space_view_id),
                     &instance_path,
                 );
-                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
+                instance_path.data_ui(
+                    ctx,
+                    ui,
+                    UiVerbosity::Reduced,
+                    &ctx.current_query(),
+                    ctx.recording(),
+                );
             })
         };
     }
@@ -673,7 +679,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.recording_store(),
+            ctx.recording(),
         );
     } else {
         // Show it all, like we do for any other thing we hover
@@ -682,7 +688,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.recording_store(),
+            ctx.recording(),
         );
     }
 

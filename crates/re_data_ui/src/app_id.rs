@@ -13,7 +13,7 @@ impl crate::DataUi for ApplicationId {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _db: &EntityDb,
     ) {
         egui::Grid::new("application_id")
             .num_columns(2)
