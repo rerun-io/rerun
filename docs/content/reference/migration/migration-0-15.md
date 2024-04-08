@@ -19,4 +19,13 @@ For now the `InstanceKey` component as such still remains, but is always assigne
 This means that if you first log the positions `A, B, C` and then later log the colors `red, green, blue` to the same entity, they will always be matched as `(A, red), (B, green), (C, blue)`.
 We still support _splatting_, where you log one single color for the whole point cloud.
 
-In the future we plan on introducing a new way to identify instances over time.
+If you were relying on `InstanceKey` solely to identify your instances when inspecting them in the viewer, then you can replace it with a custom value using [custom data](../../howto/extend/custom-data):
+
+```py
+rr.log(
+    "my/points",
+    rr.AnyValues(point_id=[17, 42, 103]),
+)
+```
+
+In the future we plan on introducing a better way to identify and track instances over time.
