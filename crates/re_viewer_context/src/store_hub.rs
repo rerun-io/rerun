@@ -55,7 +55,8 @@ pub type BlueprintLoader =
     dyn Fn(&ApplicationId) -> anyhow::Result<Option<StoreBundle>> + Send + Sync;
 
 /// Save a blueprint to persisted storage, e.g. disk.
-pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()> + Send + Sync;
+pub type BlueprintSaver =
+    dyn Fn(&ApplicationId, &[re_log_types::LogMsg]) -> anyhow::Result<()> + Send + Sync;
 
 /// How to save and load blueprints
 pub struct BlueprintPersistence {
@@ -631,7 +632,8 @@ impl StoreHub {
             if blueprint.app_id() == Some(&Self::welcome_screen_app_id()) {
                 // Don't save changes to the welcome screen
             } else if let Some(saver) = &self.persistence.saver {
-                (saver)(app_id, blueprint)?;
+                let messages = blueprint.to_messages(None)?;
+                (saver)(app_id, &messages)?;
                 self.blueprint_last_save
                     .insert(blueprint_id.clone(), blueprint.generation());
             }

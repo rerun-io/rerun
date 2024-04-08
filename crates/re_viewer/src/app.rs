@@ -241,7 +241,7 @@ impl App {
             state,
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
-                blueprint_loader(),
+                blueprint_persistence(),
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
             toasts: toasts::Toasts::new(),
@@ -1257,7 +1257,7 @@ fn blueprint_loader() -> BlueprintPersistence {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn blueprint_loader() -> BlueprintPersistence {
+fn blueprint_persistence() -> BlueprintPersistence {
     use re_entity_db::StoreBundle;
 
     fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
@@ -1288,10 +1288,8 @@ fn blueprint_loader() -> BlueprintPersistence {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_blueprint_to_disk(app_id: &ApplicationId, blueprint: &EntityDb) -> anyhow::Result<()> {
+    fn save_blueprint_to_disk(app_id: &ApplicationId, messages: &[LogMsg]) -> anyhow::Result<()> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
-
-        let messages = blueprint.to_messages(None)?;
 
         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
         // be small & fast to save, but maybe not once we start adding big pieces of user data?
