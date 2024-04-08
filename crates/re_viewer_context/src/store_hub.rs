@@ -602,6 +602,10 @@ impl StoreHub {
     /// Remove any recordings with a network source pointing at this `uri`.
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
         self.retain(|db| {
+            if db.store_kind() != StoreKind::Recording {
+                return true;
+            }
+
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;
