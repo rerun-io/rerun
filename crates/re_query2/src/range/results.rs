@@ -14,19 +14,10 @@ use crate::{Promise, PromiseResolver, PromiseResult};
 ///
 /// Use [`RangeResults::get`], [`RangeResults::get_required`] and [`RangeResults::get_optional`]
 /// in order to access the raw results for each individual component.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct RangeResults {
     /// Raw results for each individual component.
     pub components: IntMap<ComponentName, RangeComponentResults>,
-}
-
-impl Default for RangeResults {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            components: Default::default(),
-        }
-    }
 }
 
 impl RangeResults {
