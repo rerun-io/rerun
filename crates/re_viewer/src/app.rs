@@ -1029,14 +1029,17 @@ impl App {
                     }
                     StoreKind::Blueprint => {
                         if let Some(info) = entity_db.store_info() {
-                            re_log::debug!(
-                                "Activating blueprint that was loaded from {channel_source}"
-                            );
                             let app_id = info.application_id.clone();
                             if cmd.make_default {
+                                re_log::debug!(
+                                    "Making blueprint that was loaded from {channel_source} the default for app {app_id}"
+                                );
                                 store_hub.set_default_blueprint_for_app(&app_id, store_id);
                             }
                             if cmd.make_active {
+                                re_log::debug!(
+                                    "Activating blueprint that was loaded from {channel_source}"
+                                );
                                 store_hub
                                     .set_cloned_blueprint_active_for_app(&app_id, store_id)
                                     .unwrap_or_else(|err| {
