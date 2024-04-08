@@ -362,7 +362,7 @@ impl App {
             }
 
             SystemCommand::CloseAllRecordings => {
-                store_hub.clear_recordings();
+                store_hub.clear_all_recordings();
 
                 // Stop receiving into the old recordings.
                 // This is most important when going back to the example screen by using the "Back"
@@ -1446,22 +1446,6 @@ impl eframe::App for App {
         self.state.cleanup(&store_hub);
 
         file_saver_progress_ui(egui_ctx, &mut self.background_tasks); // toasts for background file saver
-
-        // Make sure some app is active
-        // Must be called before `read_context` below.
-        if store_hub.active_app().is_none() {
-            let apps: std::collections::BTreeSet<&ApplicationId> = store_hub
-                .store_bundle()
-                .entity_dbs()
-                .filter_map(|db| db.app_id())
-                .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
-                .collect();
-            if let Some(app_id) = apps.first().cloned() {
-                store_hub.set_active_app(app_id.clone());
-            } else {
-                store_hub.set_active_app(StoreHub::welcome_screen_app_id());
-            }
-        }
 
         let store_context = store_hub.read_context();
 

@@ -37,7 +37,9 @@ pub struct StoreHub {
     persistence: BlueprintPersistence,
 
     active_rec_id: Option<StoreId>,
-    active_application_id: Option<ApplicationId>,
+
+    /// The default and fallback value for this is the welcome screen.
+    active_app_id: ApplicationId,
 
     /// Once added, we never remove a key from this map.
     /// Instead we clear the contents of [`AppBlueprints`].
@@ -168,7 +170,7 @@ impl StoreHub {
             persistence,
 
             active_rec_id: None,
-            active_application_id: None,
+            active_app_id: Self::welcome_screen_app_id(),
             app_blueprints: blueprints_by_app_id,
             store_bundle,
 
@@ -194,8 +196,7 @@ impl StoreHub {
         static EMPTY_ENTITY_DB: once_cell::sync::Lazy<EntityDb> =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
 
-        // If we have an app-id, then use it to look up the blueprint.
-        let app_id = self.active_application_id.clone()?;
+        let app_id = self.active_app_id.clone();
 
         // Defensive coding: Check that default and active blueprints exists,
         // in case some of our book-keeping is broken.
@@ -302,7 +303,7 @@ impl StoreHub {
             if let Some(new_selection) = self.store_bundle.find_closest_recording(store_id) {
                 self.set_active_recording_id(new_selection.clone());
             } else {
-                self.active_application_id = None;
+                self.active_app_id = Self::welcome_screen_app_id();
                 self.active_rec_id = None;
             }
         }
@@ -326,12 +327,12 @@ impl StoreHub {
     }
 
     /// Remove all open recordings and applications, and go to the welcome page.
-    pub fn clear_recordings(&mut self) {
+    pub fn clear_all_recordings(&mut self) {
         // Keep only the welcome screen:
         self.store_bundle
             .retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
         self.active_rec_id = None;
-        self.active_application_id = Some(Self::welcome_screen_app_id());
+        self.active_app_id = Self::welcome_screen_app_id();
     }
 
     // ---------------------
@@ -347,11 +348,11 @@ impl StoreHub {
             }
         }
 
-        if self.active_application_id.as_ref() == Some(&app_id) {
+        if self.active_app_id == app_id {
             return;
         }
 
-        self.active_application_id = Some(app_id.clone());
+        self.active_app_id = app_id.clone();
         self.active_rec_id = None;
 
         // Find any matching recording and activate it
@@ -371,18 +372,13 @@ impl StoreHub {
     pub fn close_app(&mut self, app_id: &ApplicationId) {
         self.store_bundle.retain(|db| db.app_id() != Some(app_id));
 
-        if self.active_application_id.as_ref() == Some(app_id) {
-            self.active_application_id = None;
+        if &self.active_app_id == app_id {
+            self.active_app_id = Self::welcome_screen_app_id();
             self.active_rec_id = None;
         }
 
         let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
         *app_blueprints = Default::default();
-    }
-
-    #[inline]
-    pub fn active_app(&self) -> Option<&ApplicationId> {
-        self.active_application_id.as_ref()
     }
 
     // ---------------------
@@ -460,11 +456,9 @@ impl StoreHub {
 
     /// Clear the current default blueprint
     pub fn clear_default_blueprint(&mut self) {
-        if let Some(app_id) = &self.active_application_id {
-            if let Some(app_blueprints) = self.app_blueprints.get_mut(app_id) {
-                if let Some(blueprint_id) = app_blueprints.default.take() {
-                    self.remove(&blueprint_id);
-                }
+        if let Some(app_blueprints) = self.app_blueprints.get_mut(&self.active_app_id) {
+            if let Some(blueprint_id) = app_blueprints.default.take() {
+                self.remove(&blueprint_id);
             }
         }
     }
@@ -474,8 +468,7 @@ impl StoreHub {
 
     /// What is the active blueprint for the active application?
     pub fn active_blueprint_id(&self) -> Option<&StoreId> {
-        self.active_app()
-            .and_then(|app_id| self.active_blueprint_id_for_app(app_id))
+        self.active_blueprint_id_for_app(&self.active_app_id)
     }
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
@@ -528,11 +521,9 @@ impl StoreHub {
 
     /// Clear the currently active blueprint
     pub fn clear_active_blueprint(&mut self) {
-        if let Some(app_id) = &self.active_application_id {
-            if let Some(app_blueprints) = self.app_blueprints.get_mut(app_id) {
-                if let Some(blueprint_id) = app_blueprints.active.take() {
-                    self.remove(&blueprint_id);
-                }
+        if let Some(app_blueprints) = self.app_blueprints.get_mut(&self.active_app_id) {
+            if let Some(blueprint_id) = app_blueprints.active.take() {
+                self.remove(&blueprint_id);
             }
         }
     }
