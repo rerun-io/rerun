@@ -108,6 +108,7 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 - Entity path query now shows simple statistics and warns if nothing is displayed [#5693](https://github.com/rerun-io/rerun/pull/5693)
 - Go back to example page with browser Back-button [#5750](https://github.com/rerun-io/rerun/pull/5750)
 - On Web, implement navigating back/forward with mouse buttons [#5792](https://github.com/rerun-io/rerun/pull/5792)
+- Support displaying 1D tensors [#5837](https://github.com/rerun-io/rerun/pull/5837)
 
 #### 🧑‍🏫 Examples
 - New `incremental_logging` example [#5462](https://github.com/rerun-io/rerun/pull/5462)
