@@ -211,12 +211,13 @@ impl EntityDb {
         &self.resolver
     }
 
+    /// Returns `Ok(None)` if any of the required components are missing.
     #[inline]
     pub fn latest_at_archetype<A: re_types_core::Archetype>(
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> PromiseResult<A>
+    ) -> PromiseResult<Option<A>>
     where
         re_query_cache2::CachedLatestAtResults: re_query_cache2::ToArchetype<A>,
     {
@@ -228,7 +229,18 @@ impl EntityDb {
         );
 
         use re_query_cache2::ToArchetype as _;
-        results.to_archetype(self.resolver()).flatten()
+        match results.to_archetype(self.resolver()).flatten() {
+            PromiseResult::Pending => PromiseResult::Pending,
+            PromiseResult::Error(err) => {
+                if let Some(err) = err.downcast_ref::<re_query_cache2::QueryError>() {
+                    if matches!(err, re_query_cache2::QueryError::PrimaryNotFound(_)) {
+                        return PromiseResult::Ready(None);
+                    }
+                }
+                PromiseResult::Error(err)
+            }
+            PromiseResult::Ready(arch) => PromiseResult::Ready(Some(arch)),
+        }
     }
 
     #[inline]
