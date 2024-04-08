@@ -5,6 +5,9 @@ order: 600
 
 ## Blueprints and recordings
 
+<!-- source: Rerun Design System/Documentation schematics -->
+<img src="https://static.rerun.io/6e2095a0ffa4f093deb59848b7c294581ded4678_blueprints_and_recordings.png" width="550px">
+
 When you are working with the Rerun viewer, there are two separate pieces that
 combine to produce what you see: the "recording" and the "blueprint."
 
@@ -43,6 +46,9 @@ some exceptions to this rule at the moment, the intent is to eventually migrate
 all state to the blueprint.)
 
 ## Current, default, and heuristics blueprints
+
+<!-- source: Rerun Design System/Documentation schematics -->
+<img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px">
 
 Blueprints may originate from multiple sources.
 
