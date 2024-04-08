@@ -183,29 +183,53 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
             let quoted_type_fqname =
             quote_fqname_as_type_path(&objects[type_fqname].crate_name(), type_fqname);
 
-            let quoted_data = if obj_field.typ.is_plural() {
-                quote!(Some(data.to_vec()))
-            } else {
-                quote!(data.first().cloned())
-            };
-
-            Some(quote! {
-                #NEWLINE_TOKEN
-
-                use #quoted_type_fqname;
-                let #quoted_name = if let Some(#quoted_name) = self.get(<#quoted_type_name>::name()) {
-                    match #quoted_name.to_dense::<#quoted_type_name>(resolver) {
-                        PromiseResult::Pending => return PromiseResult::Pending,
-                        PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
-                        PromiseResult::Ready(query_res) => match query_res {
-                            Ok(data) => #quoted_data,
-                            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
-                        },
-                    }
+            if obj_field.is_nullable {
+                let quoted_data = if obj_field.typ.is_plural() {
+                    quote!(Some(data.to_vec()))
                 } else {
-                    None
+                    quote!(data.first().cloned())
                 };
-            })
+
+                Some(quote! {
+                    #NEWLINE_TOKEN
+
+                    use #quoted_type_fqname;
+                    let #quoted_name = if let Some(#quoted_name) = self.get(<#quoted_type_name>::name()) {
+                        match #quoted_name.to_dense::<#quoted_type_name>(resolver) {
+                            PromiseResult::Pending => return PromiseResult::Pending,
+                            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                            PromiseResult::Ready(query_res) => match query_res {
+                                Ok(data) => #quoted_data,
+                                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                            },
+                        }
+                    } else {
+                        None
+                    };
+                })
+            } else {
+                let quoted_data = if obj_field.typ.is_plural() {
+                    quote!(data.to_vec())
+                } else {
+                    panic!("optional, non-nullable, non-plural data is not representable");
+                };
+
+                Some(quote! {
+                    #NEWLINE_TOKEN
+
+                    use #quoted_type_fqname;
+                    let #quoted_name =
+                        match self.get_or_empty(<#quoted_type_name>::name()).to_dense::<#quoted_type_name>(resolver) {
+                            PromiseResult::Pending => return PromiseResult::Pending,
+                            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+                            PromiseResult::Ready(query_res) => match query_res {
+                                Ok(data) => #quoted_data,
+                                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+                            },
+                        };
+                })
+            }
+
         });
 
     let quoted_fields = obj.fields.iter().map(|obj_field| {
