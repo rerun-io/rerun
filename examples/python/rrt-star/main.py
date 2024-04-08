@@ -26,6 +26,21 @@ from typing import Annotated, Generator, Literal
 import numpy as np
 import numpy.typing as npt
 import rerun as rr
+import rerun.blueprint as rrb
+
+DESCRIPTION = """
+Visualizes the path finding algorithm RRT* in a simple environment.
+
+The algorithm finds a [path](recording://map/path) between two points by randomly expanding a [tree](recording://map/tree/edges) from the [start point](recording://map/start).
+After it has added a [random edge](recording://map/new/new_edge) to the tree it looks at [nearby nodes](recording://map/new/close_nodes) to check if it's faster to reach them through this [new edge](recording://map/new/new_edge) instead, and if so it changes the parent of these nodes.
+This ensures that the algorithm will converge to the optimal path given enough time.
+
+A more detailed explanation can be found in the original paper
+Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
+or in [this medium article](https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378).
+
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rrt-star/main.py).
+""".strip()
 
 Point2D = Annotated[npt.NDArray[np.float64], Literal[2]]
 
@@ -259,7 +274,13 @@ def main() -> None:
     parser.add_argument("--max-step-size", type=float, default=0.1)
     parser.add_argument("--iterations", type=int, help="How many iterations it should do")
     args = parser.parse_args()
-    rr.script_setup(args, "rerun_example_rrt_star")
+
+    blueprint = rrb.Horizontal(
+        rrb.Spatial2DView(name="Map", origin="/map"),
+        rrb.TextDocumentView(name="Description", origin="/description"),
+        column_shares=[3, 1],
+    )
+    rr.script_setup(args, "rerun_example_rrt_star", default_blueprint=blueprint)
 
     max_step_size = args.max_step_size
     neighborhood_size = max_step_size * 1.5
@@ -268,23 +289,7 @@ def main() -> None:
     end_point = np.array([1.8, 0.5])
 
     rr.set_time_sequence("step", 0)
-    rr.log(
-        "description",
-        rr.TextDocument(
-            """
-Visualizes the path finding algorithm RRT* in a simple environment.
-
-The algorithm finds a [path](recording://map/path) between two points by randomly expanding a [tree](recording://map/tree/edges) from the [start point](recording://map/start).
-After it has added a [random edge](recording://map/new/new_edge) to the tree it looks at [nearby nodes](recording://map/new/close_nodes) to check if it's faster to reach them through this [new edge](recording://map/new/new_edge) instead, and if so it changes the parent of these nodes.
-This ensures that the algorithm will converge to the optimal path given enough time.
-
-A more detailed explanation can be found in the original paper
-Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
-or in [this medium article](https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378)
-            """.strip(),
-            media_type=rr.MediaType.MARKDOWN,
-        ),
-    )
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     rr.log(
         "map/start",
         rr.Points2D([start_point], radii=0.02, colors=[[255, 255, 255, 255]]),

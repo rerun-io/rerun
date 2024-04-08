@@ -16,9 +16,17 @@ from typing import cast
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import trimesh
 from download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
 from rerun.components import Material
+
+DESCRIPTION = """
+# Raw meshes
+This example shows how you can log a hierarchial 3D mesh, including its transform hierarchy.
+
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/raw_mesh/main.py).
+"""
 
 
 def load_scene(path: Path) -> trimesh.Scene:
@@ -119,14 +127,21 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_raw_mesh")
-
     scene_path = args.scene_path
     if scene_path is None:
         scene_path = ensure_mesh_downloaded(args.scene)
     scene = load_scene(scene_path)
 
     root = next(iter(scene.graph.nodes))
+
+    blueprint = rrb.Horizontal(
+        rrb.Spatial3DView(name="Mesh", origin="/world"),
+        rrb.TextDocumentView(name="Description", origin="/description"),
+        column_shares=[3, 1],
+    )
+
+    rr.script_setup(args, "rerun_example_raw_mesh", default_blueprint=blueprint)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
     rr.log(root, rr.ViewCoordinates.RUB, timeless=True)

@@ -23,32 +23,21 @@ import pydicom as dicom
 import requests
 import rerun as rr  # pip install rerun-sdk
 
-DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
-DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"
-
 DESCRIPTION = """
 # Dicom MRI
 This example visualizes an MRI scan using Rerun.
-
-## How it was made
-The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/dicom_mri/main.py).
 
 The visualization of the data consists of just the following line
 ```python
 rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"]))
 ```
 
-`voxels_volume_u16` is a `numpy.array` of shape `(512, 512, 512)` containing volumetric MRI intensities. We can
-visualize such information in Rerun by logging the `numpy.array` as an
-[rr.Tensor archetype](https://www.rerun.io/docs/reference/types/archetypes/tensor). Here the tensor is logged to
-the [tensor entity](recording://tensor), however any other name for the entity could have been chosen.
-
-In the Rerun viewer you can inspect the data in detail. The `dim_names` provided in the above call to `rr.log` help to
-give semantic meaning to each axis. After selecting the tensor view, you can adjust various settings in the Blueprint
-settings on the right-hand side. For example, you can adjust the color map, the brightness, which dimensions to show as
-an image and which to select from, and more.
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/dicom_mri/main.py).
 """
+
+DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
+DATASET_URL: Final = "https://storage.googleapis.com/rerun-example-datasets/dicom.zip"
 
 
 def extract_voxel_data(

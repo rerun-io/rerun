@@ -13,6 +13,15 @@ import rerun.blueprint as rrb
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
 
+DESCRIPTION = """
+# nuScenes
+
+Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
+
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/nuscenes/main.py).
+"""
+
 EXAMPLE_DIR: Final = pathlib.Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 
@@ -264,12 +273,18 @@ def main() -> None:
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
     blueprint = rrb.Vertical(
-        rrb.Spatial3DView(name="3D", origin="world"),
+        rrb.Horizontal(
+            rrb.Spatial3DView(name="3D", origin="world"),
+            rrb.TextDocumentView(origin="description", name="Description"),
+            column_shares=[3, 1],
+        ),
         rrb.Grid(*sensor_space_views),
-        row_shares=[3, 2],
+        row_shares=[4, 2],
     )
 
     rr.script_setup(args, "rerun_example_nuscenes", default_blueprint=blueprint)
+
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)
 
