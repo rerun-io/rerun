@@ -604,7 +604,7 @@ impl Viewport<'_, '_> {
                 let response = remove_button_ui(
                     re_ui,
                     ui,
-                    "Remove group and all its children from the space view",
+                    "Remove this entity and all its children from the space view",
                 );
                 if response.clicked() {
                     space_view
