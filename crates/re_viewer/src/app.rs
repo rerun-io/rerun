@@ -1261,6 +1261,8 @@ fn blueprint_persistence() -> BlueprintPersistence {
     use re_entity_db::StoreBundle;
 
     fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+        re_tracing::profile_function!();
+
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
         if !blueprint_path.exists() {
             return Ok(None);
@@ -1289,6 +1291,7 @@ fn blueprint_persistence() -> BlueprintPersistence {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn save_blueprint_to_disk(app_id: &ApplicationId, messages: &[LogMsg]) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
         // TODO(jleibs): Should we push this into a background thread? Blueprints should generally
