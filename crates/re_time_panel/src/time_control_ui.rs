@@ -39,7 +39,25 @@ impl TimeControlUi {
                             time_control.set_timeline(*timeline);
                         }
                     }
-                });
+                })
+                .response
+                .on_hover_ui(|ui| {
+                    ui.markdown_ui(
+                        egui::Id::new("timeline_selector_tooltip"),
+                        r"
+Select timeline.
+
+Each piece of logged data is associated with one or more timelines.
+
+The logging SDK always creates two timelines for you:
+* `log_tick` - a sequence timeline with the sequence number of the log call
+* `log_time` - a temporal timeline with the time of the log call
+
+You can also define your own timelines, e.g. for sensor time or camera frame number.
+"
+                        .trim(),
+                    );
+                })
         });
     }
 
