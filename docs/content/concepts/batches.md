@@ -1,6 +1,6 @@
 ---
 title: Batch Data
-order: 5
+order: 700
 ---
 
 Rerun has built-in support for batch data. Whenever you have a collection of things that all have the same type, rather

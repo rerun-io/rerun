@@ -1,6 +1,6 @@
 ---
 title: Blueprint
-order: 9
+order: 600
 ---
 
 ## Blueprints and recordings
@@ -21,8 +21,8 @@ for the viewer to display.
 ## Loose coupling
 
 The blueprint and the recording are only loosely coupled. Rerun uses the
-"application ID" to determine whether a blueprint and a recording should be used
-together, but they are not directly linked beyond that.
+[application ID](apps-and-recordings.md) to determine whether a blueprint and a
+recording should be used together, but they are not directly linked beyond that.
 
 This means that either can be changed independently of the other. Keeping the
 blueprint constant while changing the recording will allow you to compare
@@ -41,6 +41,14 @@ In general, if you can modify an aspect of how something looks through the
 viewer, you are actually modifying the blueprint. (Note that while there may be
 some exceptions to this rule at the moment, the intent is to eventually migrate
 all state to the blueprint.)
+
+## Current, default, and heuristics blueprints
+
+Blueprints may originate from multiple source.
+
+- The "current blueprint" for a given application ID is the one that is used by the viewer to display data at any given time. It is updated for each change made to the visualization within the viewer, and may be saved to a blueprint file at any time.
+- The "default blueprint" is a snapshot that is set or updated when a blueprint is received from code or loaded from a file. The current blueprint may be reset to default blueprint at any time by using the "reset" button in the blueprint panel's header.
+- The "heuristic blueprint" is an automatically-produced blueprint based on the recording data. When no default blueprint is available, the heuristic blueprint is used when resetting the current blueprint. It is also possible to reset to the heuristic blueprint from the selection panel when an application ID is selected.
 
 ## What is a blueprint
 
