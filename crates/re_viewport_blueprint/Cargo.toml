@@ -1,0 +1,54 @@
+[package]
+authors.workspace = true
+description = "Blueprint integration for the central viewport panel of the Rerun viewer."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_viewport_blueprint"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_data_store.workspace = true
+re_data_ui.workspace = true
+re_entity_db = { workspace = true, features = ["serde"] }
+re_log_types.workspace = true
+re_log.workspace = true
+re_query.workspace = true
+re_renderer = { workspace = true, default-features = false, features = [
+  "arrow",
+  "import-gltf",
+  "import-obj",
+  "serde",
+] }
+re_smart_channel.workspace = true
+re_space_view.workspace = true
+re_space_view_time_series.workspace = true
+re_tracing.workspace = true
+re_types.workspace = true
+re_types_blueprint.workspace = true
+re_types_core.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+
+ahash.workspace = true
+array-init.workspace = true
+arrow2.workspace = true
+bytemuck.workspace = true
+egui_tiles.workspace = true
+egui.workspace = true
+glam.workspace = true
+image = { workspace = true, default-features = false, features = ["png"] }
+itertools.workspace = true
+nohash-hasher.workspace = true
+once_cell.workspace = true
+rayon.workspace = true
+rmp-serde.workspace = true
+smallvec.workspace = true
