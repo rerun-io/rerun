@@ -6,6 +6,10 @@ thumbnail = "https://static.rerun.io/3d-line-mapping-revisited/be0a3b8ac08360368
 thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "3D Line Mapping Revisited".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 Human-made environments contain a lot of straight lines, which are currently not exploited by most mapping approaches. With their recent work "3D Line Mapping Revisited" Shaohui Liu et al. take steps towards changing that.
 

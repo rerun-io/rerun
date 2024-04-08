@@ -7,6 +7,11 @@ thumbnail_dimensions = [480, 480]
 -->
 
 
+This example is a visual walkthrough of the paper “Decoupling Human and Camera Motion from Videos in the Wild”.
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
+
 SLAHMR robustly tracks the motion of multiple moving people filmed with a moving camera and works well on “in-the-wild” videos. It’s a great showcase of how to build working computer vision systems by intelligently combining several single purpose models.
 
 https://vimeo.com/865974657?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6835

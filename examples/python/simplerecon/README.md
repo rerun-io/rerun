@@ -6,6 +6,11 @@ thumbnail = "https://static.rerun.io/simplecon/e0f234159cc0f934e6d4a26886b751579
 thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "SimpleRecon: 3D reconstruction without 3D convolutions".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
+
 
 SimpleRecon is a back-to-basics approach for 3D scene reconstruction from posed monocular images by Niantic Labs. It offers state-of-the-art depth accuracy and competitive 3D scene reconstruction which makes it perfect for resource-constrained environments.
 

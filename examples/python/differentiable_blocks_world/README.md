@@ -6,6 +6,10 @@ thumbnail = "https://static.rerun.io/differentiable-blocks/42f3a5481162a0e75f1c5
 thumbnail_dimensions = [480, 480]
 -->
 
+This example is a visual walkthrough of the paper "Differentiable Block Worlds".
+All the visualizations were created by editing the original source code to log data with the Rerun SDK.
+
+## Visual paper walkthrough
 
 Finding a textured mesh decomposition from a collection of posed images is a very challenging optimization problem. "Differentiable Block Worlds" by Tom Monnier et al. shows impressive results using differentiable rendering. Here we visualize how this optimization works using the Rerun SDK.
 
