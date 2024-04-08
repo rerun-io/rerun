@@ -12,6 +12,7 @@ use re_log_types::{
     LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
     Timeline,
 };
+use re_query2::PromiseResult;
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
@@ -208,6 +209,26 @@ impl EntityDb {
     #[inline]
     pub fn resolver(&self) -> &re_query2::PromiseResolver {
         &self.resolver
+    }
+
+    #[inline]
+    pub fn latest_at_archetype<A: re_types_core::Archetype>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> PromiseResult<A>
+    where
+        re_query_cache2::CachedLatestAtResults: re_query_cache2::ToArchetype<A>,
+    {
+        let results = self.query_caches2().latest_at(
+            self.store(),
+            query,
+            entity_path,
+            A::all_components().iter().cloned(), // no generics!
+        );
+
+        use re_query_cache2::ToArchetype as _;
+        results.to_archetype(self.resolver()).flatten()
     }
 
     #[inline]
