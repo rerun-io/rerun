@@ -16,7 +16,7 @@ This checks the different ways 1D arrays can be visualized.
 
 You should see:
 * a tensor view with 1D data
-* an image view view 1D data
+* an image view with a 1D image
 * a bar chart
 
 Bonus actions:
