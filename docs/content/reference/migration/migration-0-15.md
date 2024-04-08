@@ -10,7 +10,7 @@ What were instance keys?
 
 In Rerun, each entity can be a batch of _instances_. For instance, a point cloud can be one entity, and each point is an instance of that entity.
 An entity is made up of several components (e.g. position, color, …), and you may log these different components separately.
-For instance, this lets you update only the colors of a point cloud, keeping the same positions.
+For example, this lets you update only the colors of a point cloud, keeping the same positions.
 
 Instance keys were a way to assign identities to these instances so that you could update the components of a specific set of instances.
 This was a complicated and little used feature, that caused far more complexity in our code than it was worth.
