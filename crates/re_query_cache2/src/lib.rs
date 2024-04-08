@@ -6,7 +6,9 @@ mod latest_at;
 
 pub use self::cache::{CacheKey, Caches};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
-pub use self::latest_at::{CachedLatestAtComponentResults, CachedLatestAtResults};
+pub use self::latest_at::{
+    CachedLatestAtComponentResults, CachedLatestAtMonoResult, CachedLatestAtResults,
+};
 
 pub(crate) use self::latest_at::LatestAtCache;
 

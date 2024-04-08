@@ -162,21 +162,21 @@ pub fn instance_path_icon(
 /// timeline, then use the blueprint. Otherwise, use the recording.
 // TODO(jleibs): Ideally this wouldn't be necessary and we could make the assessment
 // directly from the entity_path.
-pub fn guess_query_and_store_for_selected_entity<'a>(
+pub fn guess_query_and_db_for_selected_entity<'a>(
     ctx: &'a ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> (re_data_store::LatestAtQuery, &'a re_data_store::DataStore) {
+) -> (re_data_store::LatestAtQuery, &'a re_entity_db::EntityDb) {
     if ctx.app_options.inspect_blueprint_timeline
         && ctx.store_context.blueprint.is_logged_entity(entity_path)
     {
         (
             ctx.blueprint_cfg.time_ctrl.read().current_query(),
-            ctx.store_context.blueprint.store(),
+            ctx.store_context.blueprint,
         )
     } else {
         (
             ctx.rec_cfg.time_ctrl.read().current_query(),
-            ctx.recording_store(),
+            ctx.recording(),
         )
     }
 }
@@ -184,9 +184,9 @@ pub fn guess_query_and_store_for_selected_entity<'a>(
 pub fn guess_instance_path_icon(
     ctx: &ViewerContext<'_>,
     instance_path: &InstancePath,
-) -> &'static icons::Icon {
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
-    instance_path_icon(&query.timeline(), store, instance_path)
+) -> &'static re_ui::icons::Icon {
+    let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+    instance_path_icon(&query.timeline(), db.store(), instance_path)
 }
 
 /// Show an instance id and make it selectable.

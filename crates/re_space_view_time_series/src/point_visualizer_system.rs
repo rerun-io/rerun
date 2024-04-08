@@ -253,8 +253,9 @@ impl SeriesPointSystem {
             let series_name = if let Some(override_name) = override_series_name {
                 Some(override_name)
             } else {
-                ctx.recording_store()
-                    .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+                // TODO(#5607): what should happen if the promise is still pending?
+                ctx.recording()
+                    .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
                     .map(|name| name.value.0)
             };
 
