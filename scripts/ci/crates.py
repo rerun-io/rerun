@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import os.path
-import re
 import shutil
 import subprocess
 import sys
@@ -527,22 +526,6 @@ class Target(Enum):
         return self.value
 
 
-# https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-SEMVER_RE = re.compile(
-    "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
-)
-
-
-def is_valid_version_string(version: str) -> bool:
-    """
-    Checks if `version` is a valid version string.
-
-    Our definition of "valid" is just whether or not it conforms to semver,
-    because the `semver` library is less strict than we need it to be.
-    """
-    return SEMVER_RE.fullmatch(version) is not None
-
-
 def get_release_version_from_git_branch() -> str:
     return git.Repo().active_branch.name.lstrip("release-")
 
@@ -568,8 +551,23 @@ def get_version(target: Target | None) -> VersionInfo:
     return current_version
 
 
+def is_valid_version_string(version: str) -> bool:
+    # remove metadata -> split into digits
+    parts = version.split("-")[0].split(".")
+
+    if len(parts) != 3:
+        return False
+
+    for part in parts:
+        if not part.isdigit():
+            return False
+
+    return True
+
+
 def check_git_branch_name() -> None:
     version = get_release_version_from_git_branch()
+
     if is_valid_version_string(version):
         print(f'"{version}" is a valid version string.')
     else:
