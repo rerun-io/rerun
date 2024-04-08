@@ -24,6 +24,5 @@ mod series_point;
 mod tensor;
 mod text_document;
 mod text_log;
-mod time_series_scalar;
 mod transform3d;
 mod view_coordinates;
