@@ -11,10 +11,10 @@ impl DataUi for IncludedSpaceView {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let space_view: SpaceViewId = self.0.into();
-        space_view.data_ui(ctx, ui, verbosity, query, store);
+        space_view.data_ui(ctx, ui, verbosity, query, db);
     }
 }
 
@@ -26,10 +26,10 @@ impl DataUi for SpaceViewMaximized {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let space_view: SpaceViewId = self.0.into();
-        space_view.data_ui(ctx, ui, verbosity, query, store);
+        space_view.data_ui(ctx, ui, verbosity, query, db);
     }
 }
 

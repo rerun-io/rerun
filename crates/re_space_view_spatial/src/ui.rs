@@ -496,41 +496,40 @@ pub fn picking(
         let is_depth_cloud = images
             .depth_cloud_entities
             .contains(&instance_path.entity_path.hash());
-        let picked_image_with_coords =
-            if hit.hit_type == PickingHitType::TexturedRect || is_depth_cloud {
-                let meaning = image_meaning_for_entity(
-                    &instance_path.entity_path,
-                    &query.latest_at_query(),
-                    store,
-                );
+        let picked_image_with_coords = if hit.hit_type == PickingHitType::TexturedRect
+            || is_depth_cloud
+        {
+            let meaning = image_meaning_for_entity(
+                &instance_path.entity_path,
+                &query.latest_at_query(),
+                store,
+            );
 
-                store
-                    .query_latest_component::<TensorData>(
-                        &instance_path.entity_path,
-                        &ctx.current_query(),
-                    )
-                    .and_then(|tensor| {
-                        // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
-                        // (the back-projection property may be true despite this not being a depth image!)
-                        if hit.hit_type != PickingHitType::TexturedRect
-                            && is_depth_cloud
-                            && meaning != TensorDataMeaning::Depth
-                        {
-                            None
-                        } else {
-                            let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id);
-                            tensor.image_height_width_channels().map(|[_, w, _]| {
-                                let coordinates = hit
-                                    .instance_path_hash
-                                    .instance_key
-                                    .to_2d_image_coordinate(w);
-                                (tensor_path_hash, tensor, meaning, coordinates)
-                            })
-                        }
-                    })
-            } else {
-                None
-            };
+            // TODO(#5607): what should happen if the promise is still pending?
+            ctx.recording()
+                .latest_at_component::<TensorData>(&instance_path.entity_path, &ctx.current_query())
+                .and_then(|tensor| {
+                    // If we're here because of back-projection, but this wasn't actually a depth image, drop out.
+                    // (the back-projection property may be true despite this not being a depth image!)
+                    if hit.hit_type != PickingHitType::TexturedRect
+                        && is_depth_cloud
+                        && meaning != TensorDataMeaning::Depth
+                    {
+                        None
+                    } else {
+                        let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id());
+                        tensor.image_height_width_channels().map(|[_, w, _]| {
+                            let coordinates = hit
+                                .instance_path_hash
+                                .instance_key
+                                .to_2d_image_coordinate(w);
+                            (tensor_path_hash, tensor, meaning, coordinates)
+                        })
+                    }
+                })
+        } else {
+            None
+        };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
             instance_path.instance_key = InstanceKey::SPLAT;
@@ -541,11 +540,10 @@ pub fn picking(
         response = if let Some((tensor_path_hash, tensor, meaning, coords)) =
             picked_image_with_coords
         {
-            let meter = store
-                .query_latest_component::<DepthMeter>(
-                    &instance_path.entity_path,
-                    &ctx.current_query(),
-                )
+            // TODO(#5607): what should happen if the promise is still pending?
+            let meter = ctx
+                .recording()
+                .latest_at_component::<DepthMeter>(&instance_path.entity_path, &ctx.current_query())
                 .map(|meter| meter.value.0);
 
             // TODO(jleibs): Querying this here feels weird. Would be nice to do this whole
@@ -589,12 +587,18 @@ pub fn picking(
                 item_ui::instance_path_button(
                     ctx,
                     &query.latest_at_query(),
-                    store,
+                    ctx.recording(),
                     ui,
                     Some(query.space_view_id),
                     &instance_path,
                 );
-                instance_path.data_ui(ctx, ui, UiVerbosity::Reduced, &ctx.current_query(), store);
+                instance_path.data_ui(
+                    ctx,
+                    ui,
+                    UiVerbosity::Reduced,
+                    &ctx.current_query(),
+                    ctx.recording(),
+                );
             })
         };
     }
@@ -675,7 +679,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.recording_store(),
+            ctx.recording(),
         );
     } else {
         // Show it all, like we do for any other thing we hover
@@ -684,7 +688,7 @@ fn image_hover_ui(
             ui,
             UiVerbosity::Small,
             &ctx.current_query(),
-            ctx.recording_store(),
+            ctx.recording(),
         );
     }
 

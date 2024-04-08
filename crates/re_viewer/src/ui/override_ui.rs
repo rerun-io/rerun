@@ -2,11 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
 
-use re_data_store::{DataStore, LatestAtQuery};
+use re_data_store::LatestAtQuery;
 use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataCell, DataRow, RowId, StoreKind};
-use re_query_cache::external::re_query::get_component_with_instances;
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
 use re_types_core::{
     components::{InstanceKey, VisualizerOverrides},
@@ -33,7 +32,6 @@ pub fn override_ui(
     // entity from the blueprint-inspector since it isn't "part" of a space-view to provide
     // the overrides.
     let query = ctx.current_query();
-    let store = ctx.recording_store();
 
     let query_result = ctx.lookup_query_result(space_view.id);
     let Some(data_result) = query_result
@@ -80,7 +78,7 @@ pub fn override_ui(
     add_new_override(
         ctx,
         &query,
-        store,
+        ctx.recording(),
         ui,
         &view_systems,
         &component_to_vis,
@@ -142,23 +140,39 @@ pub fn override_ui(
                             StoreKind::Blueprint => {
                                 let store = ctx.store_context.blueprint.store();
                                 let query = ctx.blueprint_query;
-                                get_component_with_instances(store, query, path, *component_name)
+                                ctx.store_context
+                                    .blueprint
+                                    .query_caches2()
+                                    .latest_at(store, query, entity_path, [*component_name])
+                                    .components
+                                    .get(component_name)
+                                    .cloned() /* arc */
                             }
                             StoreKind::Recording => {
-                                get_component_with_instances(store, &query, path, *component_name)
+                                ctx.recording()
+                                    .query_caches2()
+                                    .latest_at(
+                                        ctx.recording_store(),
+                                        &query,
+                                        entity_path,
+                                        [*component_name],
+                                    )
+                                    .components
+                                    .get(component_name)
+                                    .cloned() /* arc */
                             }
                         };
 
-                        if let Some((_, _, component_data)) = component_data {
+                        if let Some(results) = component_data {
                             ctx.component_ui_registry.edit_ui(
                                 ctx,
                                 ui,
                                 UiVerbosity::Small,
                                 &query,
-                                store,
+                                ctx.recording(),
                                 path,
                                 &overrides.individual_override_path,
-                                &component_data,
+                                &results,
                                 instance_key,
                             );
                         } else {
@@ -176,7 +190,7 @@ pub fn override_ui(
 pub fn add_new_override(
     ctx: &ViewerContext<'_>,
     query: &LatestAtQuery,
-    store: &DataStore,
+    db: &EntityDb,
     ui: &mut egui::Ui,
     view_systems: &re_viewer_context::VisualizerCollection,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
@@ -228,7 +242,8 @@ pub fn add_new_override(
                         let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
                         splat_cell.compute_size_bytes();
 
-                        let Some(mut initial_data) = store
+                        let Some(mut initial_data) = db
+                            .store()
                             .latest_at(query, &data_result.entity_path, *component, &components)
                             .and_then(|result| result.2[0].clone())
                             .and_then(|cell| {
@@ -243,7 +258,7 @@ pub fn add_new_override(
                                     sys.initial_override_value(
                                         ctx,
                                         query,
-                                        store,
+                                        db.store(),
                                         &data_result.entity_path,
                                         component,
                                     )
@@ -253,7 +268,7 @@ pub fn add_new_override(
                                 ctx.component_ui_registry.default_value(
                                     ctx,
                                     query,
-                                    store,
+                                    db,
                                     &data_result.entity_path,
                                     component,
                                 )

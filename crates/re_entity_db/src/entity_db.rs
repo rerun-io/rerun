@@ -118,6 +118,12 @@ pub struct EntityDb {
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
 
+    /// The active promise resolver for this DB.
+    resolver: re_query2::PromiseResolver,
+
+    /// Query caches for the data in [`Self::data_store`].
+    query_caches2: re_query_cache2::Caches,
+
     stats: IngestionStatistics,
 }
 
@@ -129,6 +135,7 @@ impl EntityDb {
             DataStoreConfig::default(),
         );
         let query_caches = re_query_cache::Caches::new(&data_store);
+        let query_caches2 = re_query_cache2::Caches::new(&data_store);
         Self {
             data_source: None,
             set_store_info: None,
@@ -139,6 +146,8 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             data_store,
             query_caches,
+            resolver: re_query2::PromiseResolver::default(),
+            query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -189,6 +198,59 @@ impl EntityDb {
     #[inline]
     pub fn query_caches(&self) -> &re_query_cache::Caches {
         &self.query_caches
+    }
+
+    #[inline]
+    pub fn query_caches2(&self) -> &re_query_cache2::Caches {
+        &self.query_caches2
+    }
+
+    #[inline]
+    pub fn resolver(&self) -> &re_query2::PromiseResolver {
+        &self.resolver
+    }
+
+    #[inline]
+    pub fn latest_at_component<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
+        self.query_caches2().latest_at_component::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    #[inline]
+    pub fn latest_at_component_quiet<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
+        self.query_caches2().latest_at_component_quiet::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    #[inline]
+    pub fn latest_at_component_at_closest_ancestor<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<(EntityPath, re_query_cache2::CachedLatestAtMonoResult<C>)> {
+        self.query_caches2()
+            .latest_at_component_at_closest_ancestor::<C>(
+                self.store(),
+                self.resolver(),
+                entity_path,
+                query,
+            )
     }
 
     #[inline]
@@ -369,6 +431,7 @@ impl EntityDb {
         let original_store_events = &[store_event];
         self.times_per_timeline.on_events(original_store_events);
         self.query_caches.on_events(original_store_events);
+        self.query_caches2.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
@@ -378,6 +441,7 @@ impl EntityDb {
         let new_store_events = self.on_clear_cascade(clear_cascade);
         self.times_per_timeline.on_events(&new_store_events);
         self.query_caches.on_events(&new_store_events);
+        self.query_caches2.on_events(&new_store_events);
         let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
@@ -534,11 +598,14 @@ impl EntityDb {
             tree,
             data_store: _,
             query_caches,
+            resolver: _,
+            query_caches2,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
+        query_caches2.on_events(store_events);
 
         let store_events = store_events.iter().collect_vec();
         let compacted = CompactedStoreEvents::new(&store_events);

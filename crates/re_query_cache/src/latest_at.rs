@@ -145,8 +145,8 @@ macro_rules! impl_query_archetype_latest_at {
         ) -> ::re_query::Result<()>
         where
             A: Archetype + 'a,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
             F: FnMut(
                 (
                     (TimeInt, RowId),

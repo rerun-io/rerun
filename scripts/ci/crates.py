@@ -47,7 +47,6 @@ CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 MAX_PUBLISH_WORKERS = 3
 
-
 R = Fore.RED
 G = Fore.GREEN
 B = Fore.BLUE
@@ -591,8 +590,7 @@ def main() -> None:
     cmds_parser = parser.add_subparsers(title="cmds", dest="cmd")
 
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
-    target_version_parser = version_parser.add_mutually_exclusive_group()
-    target_version_update_group = target_version_parser.add_mutually_exclusive_group()
+    target_version_update_group = version_parser.add_mutually_exclusive_group()
     target_version_update_group.add_argument(
         "--bump", type=Bump, choices=list(Bump), help="Bump version according to semver"
     )

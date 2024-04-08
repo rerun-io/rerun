@@ -2,7 +2,7 @@ use egui::{NumExt as _, Ui};
 
 use re_data_ui::{
     image_meaning_for_entity, item_ui,
-    item_ui::{guess_instance_path_icon, guess_query_and_store_for_selected_entity},
+    item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
     DataUi,
 };
 use re_entity_db::{
@@ -143,12 +143,12 @@ impl SelectionPanel {
 
                 if let Some(data_ui_item) = data_section_ui(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        let (query, store) = if let Some(entity_path) = item.entity_path() {
-                            guess_query_and_store_for_selected_entity(ctx, entity_path)
+                        let (query, db) = if let Some(entity_path) = item.entity_path() {
+                            guess_query_and_db_for_selected_entity(ctx, entity_path)
                         } else {
-                            (ctx.current_query(), ctx.recording_store())
+                            (ctx.current_query(), ctx.recording())
                         };
-                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, store);
+                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, db);
                     });
                 }
 
@@ -375,11 +375,11 @@ fn what_is_selected_ui(
                 ),
             );
 
-            let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+            let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
 
             ui.horizontal(|ui| {
                 ui.label("component of");
-                item_ui::entity_path_button(ctx, &query, store, ui, None, entity_path);
+                item_ui::entity_path_button(ctx, &query, db, ui, None, entity_path);
             });
 
             list_existing_data_blueprints(ui, ctx, &entity_path.clone().into(), viewport);
@@ -433,11 +433,11 @@ fn what_is_selected_ui(
             };
             if let Some(parent) = parent {
                 if !parent.is_root() {
-                    let (query, store) =
-                        guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+                    let (query, db) =
+                        guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
                     ui.horizontal(|ui| {
                         ui.label("Parent");
-                        item_ui::entity_path_parts_buttons(ctx, &query, store, ui, None, &parent);
+                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, &parent);
                     });
                 }
             }
@@ -470,7 +470,7 @@ fn what_is_selected_ui(
                 if let Some(parent) = parent {
                     if !parent.is_root() {
                         ui.horizontal(|ui| {
-                            let (query, store) = guess_query_and_store_for_selected_entity(
+                            let (query, db) = guess_query_and_db_for_selected_entity(
                                 ctx,
                                 &instance_path.entity_path,
                             );
@@ -479,7 +479,7 @@ fn what_is_selected_ui(
                             item_ui::entity_path_parts_buttons(
                                 ctx,
                                 &query,
-                                store,
+                                db,
                                 ui,
                                 Some(*space_view_id),
                                 &parent,
@@ -526,7 +526,7 @@ fn list_existing_data_blueprints(
     let space_views_with_path =
         blueprint.space_views_containing_entity_path(ctx, &instance_path.entity_path);
 
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, &instance_path.entity_path);
+    let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any space view)");
@@ -537,7 +537,7 @@ fn list_existing_data_blueprints(
                     item_ui::instance_path_button_to(
                         ctx,
                         &query,
-                        store,
+                        db,
                         ui,
                         Some(*space_view_id),
                         instance_path,
@@ -1235,9 +1235,9 @@ fn pinhole_props_ui(
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) {
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+    let (query, store) = guess_query_and_db_for_selected_entity(ctx, entity_path);
     if store
-        .query_latest_component::<PinholeProjection>(entity_path, &query)
+        .latest_at_component::<PinholeProjection>(entity_path, &query)
         .is_some()
     {
         ui.label("Image plane distance");
@@ -1266,15 +1266,15 @@ fn depth_props_ui(
 ) -> Option<()> {
     re_tracing::profile_function!();
 
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+    let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
 
-    let meaning = image_meaning_for_entity(entity_path, &query, store);
+    let meaning = image_meaning_for_entity(entity_path, &query, db.store());
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());
     }
-    let image_projection_ent_path = store
-        .query_latest_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
+    let image_projection_ent_path = db
+        .latest_at_component_at_closest_ancestor::<PinholeProjection>(entity_path, &query)?
         .0;
 
     let mut backproject_depth = *entity_props.backproject_depth;
@@ -1294,7 +1294,7 @@ fn depth_props_ui(
 
     if backproject_depth {
         ui.label("Pinhole");
-        item_ui::entity_path_button(ctx, &query, store, ui, None, &image_projection_ent_path)
+        item_ui::entity_path_button(ctx, &query, db, ui, None, &image_projection_ent_path)
             .on_hover_text(
                 "The entity path of the pinhole transform being used to do the backprojection.",
             );
@@ -1367,10 +1367,10 @@ fn transform3d_visualization_ui(
 ) {
     re_tracing::profile_function!();
 
-    let (query, store) = guess_query_and_store_for_selected_entity(ctx, entity_path);
+    let (query, store) = guess_query_and_db_for_selected_entity(ctx, entity_path);
 
     if store
-        .query_latest_component::<Transform3D>(entity_path, &query)
+        .latest_at_component::<Transform3D>(entity_path, &query)
         .is_none()
     {
         return;

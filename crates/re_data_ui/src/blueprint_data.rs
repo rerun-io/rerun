@@ -10,12 +10,12 @@ impl<T: BlueprintIdRegistry> DataUi for BlueprintId<T> {
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         entity_path_button_to(
             ctx,
             query,
-            store,
+            db,
             ui,
             None,
             &self.as_entity_path(),

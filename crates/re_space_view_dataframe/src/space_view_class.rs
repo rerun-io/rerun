@@ -86,7 +86,6 @@ impl SpaceViewClass for DataframeSpaceView {
             .cloned()
             .collect();
 
-        let store = ctx.recording_store();
         let latest_at_query = query.latest_at_query();
 
         let sorted_instance_paths: Vec<_>;
@@ -108,7 +107,12 @@ impl SpaceViewClass for DataframeSpaceView {
             sorted_instance_paths = sorted_entity_paths
                 .iter()
                 .flat_map(|entity_path| {
-                    sorted_instance_paths_for(entity_path, store, &query.timeline, &latest_at_query)
+                    sorted_instance_paths_for(
+                        entity_path,
+                        ctx.recording_store(),
+                        &query.timeline,
+                        &latest_at_query,
+                    )
                 })
                 .collect();
 
@@ -117,7 +121,7 @@ impl SpaceViewClass for DataframeSpaceView {
             sorted_components = sorted_entity_paths
                 .iter()
                 .flat_map(|entity_path| {
-                    store
+                    ctx.recording_store()
                         .all_components(&query.timeline, entity_path)
                         .unwrap_or_default()
                 })
@@ -148,32 +152,34 @@ impl SpaceViewClass for DataframeSpaceView {
             // of bounds" (aka cannot be joined to a primary component).
 
             row.col(|ui| {
-                instance_path_button(ctx, &latest_at_query, store, ui, None, instance);
+                instance_path_button(ctx, &latest_at_query, ctx.recording(), ui, None, instance);
             });
 
-            for comp in &sorted_components {
+            for component_name in &sorted_components {
                 row.col(|ui| {
                     // TODO(#4466): make it explicit if that value results
                     // from a splat joint.
 
-                    if let Some((_, _, comp_inst)) =
+                    let results = ctx.recording().query_caches2().latest_at(
+                        ctx.recording_store(),
+                        &latest_at_query,
+                        &instance.entity_path,
+                        [*component_name],
+                    );
+
+                    if let Some(results) =
                         // This is a duplicate of the one above, but this ok since this codes runs
                         // *only* for visible rows.
-                        get_component_with_instances(
-                            store,
-                            &latest_at_query,
-                            &instance.entity_path,
-                            *comp,
-                        )
+                        results.components.get(component_name)
                     {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
                             UiVerbosity::Small,
                             &latest_at_query,
-                            store,
+                            ctx.recording(),
                             &instance.entity_path,
-                            &comp_inst,
+                            results,
                             &instance.instance_key,
                         );
                     } else {

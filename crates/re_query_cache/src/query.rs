@@ -39,7 +39,7 @@ impl Caches {
     ) -> ::re_query::Result<()>
     where
         A: Archetype + 'a,
-        R1: Component + Send + Sync + 'static,
+        R1: Component,
         F: FnMut(((TimeInt, RowId), &[InstanceKey], &[R1])),
     {
         self.query_archetype_pov1_comp0::<A, R1, F>(store, query, entity_path, f)
@@ -60,8 +60,8 @@ macro_rules! impl_query_archetype {
         ) -> ::re_query::Result<()>
         where
             A: Archetype + 'a,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
             F: FnMut(
                 (
                     (TimeInt, RowId),
@@ -159,7 +159,7 @@ impl Caches {
     ) -> ::re_query::Result<()>
     where
         A: Archetype + 'a,
-        R1: Component + Send + Sync + 'static,
+        R1: Component,
         F: FnMut(((TimeInt, RowId), &[InstanceKey], &[R1])),
     {
         self.query_archetype_with_history_pov1_comp0::<A, R1, F>(
@@ -186,8 +186,8 @@ macro_rules! impl_query_archetype_with_history {
         ) -> ::re_query::Result<()>
         where
             A: Archetype + 'a,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
             F: FnMut(
                 (
                     (TimeInt, RowId),

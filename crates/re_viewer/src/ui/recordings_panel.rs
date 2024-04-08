@@ -202,8 +202,8 @@ fn app_and_its_recordings_ui(
             ctx,
             ui,
             UiVerbosity::Reduced,
-            &ctx.current_query(),  // unused
-            ctx.recording_store(), // unused
+            &ctx.current_query(), // unused
+            ctx.recording(),      // unused
         );
     });
 

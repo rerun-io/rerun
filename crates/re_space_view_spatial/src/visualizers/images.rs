@@ -558,11 +558,9 @@ impl ImageVisualizer {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let Some(intrinsics) = query_pinhole(
-            ctx.recording_store(),
-            &ctx.current_query(),
-            parent_pinhole_path,
-        ) else {
+        let Some(intrinsics) =
+            query_pinhole(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
+        else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 

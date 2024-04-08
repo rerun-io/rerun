@@ -2669,9 +2669,9 @@ dependencies = [
 
 [[package]]
 name = "indoc"
-version = "2.0.4"
+version = "2.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e186cfbae8084e513daff4240b4797e342f988cecda4fb6c939150f96315fd8"
+checksum = "b248f5224d1d606005e02c97f5aa4e88eeb230488bcc03bc9ca4d7991399f2b5"
 
 [[package]]
 name = "infer"
@@ -4379,7 +4379,9 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_query",
+ "re_query2",
  "re_query_cache",
+ "re_query_cache2",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -4543,6 +4545,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_query2"
+version = "0.15.0-alpha.5"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "document-features",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "rand",
+ "re_arrow2",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "serde",
+ "similar-asserts",
+ "smallvec",
+ "static_assertions",
+ "thiserror",
+ "unindent",
+]
+
+[[package]]
 name = "re_query_cache"
 version = "0.15.0-alpha.5"
 dependencies = [
@@ -4565,6 +4597,35 @@ dependencies = [
  "seq-macro",
  "similar-asserts",
  "static_assertions",
+ "web-time",
+]
+
+[[package]]
+name = "re_query_cache2"
+version = "0.15.0-alpha.5"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "indent",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "parking_lot",
+ "paste",
+ "rand",
+ "re_data_store",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query2",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "seq-macro",
+ "similar-asserts",
  "web-time",
 ]
 

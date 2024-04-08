@@ -206,7 +206,6 @@ impl VisualizerSystem for CamerasVisualizer {
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
-        let store = ctx.recording_store();
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
@@ -216,7 +215,9 @@ impl VisualizerSystem for CamerasVisualizer {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {
+            if let Some(pinhole) =
+                query_pinhole(ctx.recording(), &time_query, &data_result.entity_path)
+            {
                 let entity_highlight = query
                     .highlights
                     .entity_outline_mask(data_result.entity_path.hash());
@@ -227,11 +228,9 @@ impl VisualizerSystem for CamerasVisualizer {
                     &data_result.entity_path,
                     data_result.accumulated_properties(),
                     &pinhole,
-                    store
-                        .query_latest_component::<Transform3D>(
-                            &data_result.entity_path,
-                            &time_query,
-                        )
+                    // TODO(#5607): what should happen if the promise is still pending?
+                    ctx.recording()
+                        .latest_at_component::<Transform3D>(&data_result.entity_path, &time_query)
                         .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,

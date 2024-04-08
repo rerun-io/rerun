@@ -165,8 +165,8 @@ macro_rules! impl_query_archetype_range {
         ) -> ::re_query::Result<()>
         where
             A: Archetype + 'a,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
             F: FnMut(
                 std::ops::Range<usize>,
                 (
@@ -218,8 +218,8 @@ macro_rules! impl_query_archetype_range {
             ) -> crate::Result<u64>
             where
                 A: Archetype + 'a,
-                $($pov: Component + Send + Sync + 'static,)+
-                $($comp: Component + Send + Sync + 'static,)*
+                $($pov: Component,)+
+                $($comp: Component,)*
             {
                 re_tracing::profile_scope!("fill");
 
