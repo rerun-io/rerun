@@ -41,9 +41,9 @@ fn main() -> anyhow::Result<()> {
     // * `get` returns an option
     //
     // At this point we still don't know whether they are cached or not. That's the next step.
-    let points: &CachedLatestAtComponentResults = results.get_required::<MyPoint>()?;
-    let colors: &CachedLatestAtComponentResults = results.get_or_empty::<MyColor>();
-    let labels: &CachedLatestAtComponentResults = results.get_or_empty::<MyLabel>();
+    let points: &CachedLatestAtComponentResults = results.get_required(MyPoint::name())?;
+    let colors: &CachedLatestAtComponentResults = results.get_or_empty(MyColor::name());
+    let labels: &CachedLatestAtComponentResults = results.get_or_empty(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.

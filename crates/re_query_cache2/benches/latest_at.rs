@@ -296,8 +296,8 @@ fn query_and_visit_points(
             Points2D::all_components().iter().cloned(), // no generics!
         );
 
-        let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_or_empty::<Color>();
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_or_empty(Color::name());
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
@@ -347,8 +347,8 @@ fn query_and_visit_strings(
             Points2D::all_components().iter().cloned(), // no generics!
         );
 
-        let points = results.get_required::<Position2D>().unwrap();
-        let colors = results.get_or_empty::<Text>();
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_or_empty(Text::name());
 
         let points = points
             .iter_dense::<Position2D>(&resolver)
