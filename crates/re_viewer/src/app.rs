@@ -970,7 +970,7 @@ impl App {
 
             let store_id = msg.store_id();
 
-            if store_hub.is_active_blueprint(store_id) {
+            if store_hub.is_active_blueprint_for_any_app(store_id) {
                 // TODO(#5514): handle loading of active blueprints.
                 re_log::warn_once!("Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details.");
             }

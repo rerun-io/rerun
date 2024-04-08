@@ -38,8 +38,12 @@ pub struct StoreHub {
 
     active_rec_id: Option<StoreId>,
     active_application_id: Option<ApplicationId>,
-    default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
-    active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+
+    /// Once added, we never remove a key from this map.
+    /// Instead we clear the contents of [`AppBlueprints`].
+    app_blueprints: HashMap<ApplicationId, AppBlueprints>,
+
+    /// The contents of all the stores.
     store_bundle: StoreBundle,
 
     /// The [`StoreGeneration`] from when the [`EntityDb`] was last saved
@@ -47,6 +51,41 @@ pub struct StoreHub {
 
     /// The [`StoreGeneration`] from when the [`EntityDb`] was last garbage collected
     blueprint_last_gc: HashMap<StoreId, StoreGeneration>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct AppBlueprints {
+    /// The active blueprint is what the user sees and edits (if this is the active app).
+    ///
+    /// If there is no active blueprint, the default will be cloned and made active,
+    /// using a new [`StoreId`].
+    pub active: Option<StoreId>,
+
+    /// The default blueprint is usually the blueprint set by the SDK.
+    ///
+    /// Storing this lets users reset the active blueprint to the one sent by the SDK.
+    pub default: Option<StoreId>,
+}
+
+impl AppBlueprints {
+    fn iter(&self) -> impl Iterator<Item = &StoreId> {
+        let Self { active, default } = self;
+        active.iter().chain(default.iter())
+    }
+
+    fn retains(&mut self, mut keep: impl FnMut(&StoreId) -> bool) {
+        let Self { active, default } = self;
+        if let Some(active) = active {
+            if !keep(active) {
+                self.active = None;
+            }
+        }
+        if let Some(default) = default {
+            if !keep(default) {
+                self.default = None;
+            }
+        }
+    }
 }
 
 /// Load a blueprint from persisted storage, e.g. disk.
@@ -110,12 +149,15 @@ impl StoreHub {
         setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
     ) -> Self {
         re_tracing::profile_function!();
-        let mut default_blueprint_by_app_id = HashMap::new();
+        let mut blueprints_by_app_id = HashMap::new();
         let mut store_bundle = StoreBundle::default();
 
-        default_blueprint_by_app_id.insert(
+        blueprints_by_app_id.insert(
             Self::welcome_screen_app_id(),
-            Self::welcome_screen_blueprint_id(),
+            AppBlueprints {
+                active: None,
+                default: Some(Self::welcome_screen_blueprint_id()),
+            },
         );
 
         let welcome_screen_blueprint =
@@ -127,8 +169,7 @@ impl StoreHub {
 
             active_rec_id: None,
             active_application_id: None,
-            default_blueprint_by_app_id,
-            active_blueprint_by_app_id: Default::default(),
+            app_blueprints: blueprints_by_app_id,
             store_bundle,
 
             blueprint_last_save: Default::default(),
@@ -158,32 +199,38 @@ impl StoreHub {
 
         // Defensive coding: Check that default and active blueprints exists,
         // in case some of our book-keeping is broken.
-        if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id) {
-            if !self.store_bundle.contains(blueprint_id) {
-                self.default_blueprint_by_app_id.remove(&app_id);
+        for app_blueprints in self.app_blueprints.values_mut() {
+            if let Some(blueprint_id) = &app_blueprints.active {
+                if !self.store_bundle.contains(blueprint_id) {
+                    app_blueprints.active = None;
+                }
             }
-        }
-        if let Some(blueprint_id) = self.active_blueprint_by_app_id.get(&app_id) {
-            if !self.store_bundle.contains(blueprint_id) {
-                self.active_blueprint_by_app_id.remove(&app_id);
+            if let Some(blueprint_id) = &app_blueprints.default {
+                if !self.store_bundle.contains(blueprint_id) {
+                    app_blueprints.default = None;
+                }
             }
         }
 
-        // If there's no active blueprint for this app, try to make the current default one active.
-        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
-            if let Some(blueprint_id) = self.default_blueprint_by_app_id.get(&app_id).cloned() {
-                self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
-                    .unwrap_or_else(|err| {
-                        re_log::warn!("Failed to make blueprint active: {err}");
-                    });
+        {
+            // If there's no active blueprint for this app, try to make the current default one active.
+            let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+            if app_blueprints.active.is_none() {
+                if let Some(blueprint_id) = app_blueprints.default.clone() {
+                    self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
+                        .unwrap_or_else(|err| {
+                            re_log::warn!("Failed to make blueprint active: {err}");
+                        });
+                }
             }
         }
+
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
 
         // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
-        let active_blueprint_id = self
-            .active_blueprint_by_app_id
-            .entry(app_id.clone())
-            .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+        let active_blueprint_id = app_blueprints
+            .active
+            .get_or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
 
         // Get or create the blueprint:
         self.store_bundle.blueprint_entry(active_blueprint_id);
@@ -245,10 +292,9 @@ impl StoreHub {
                 }
             }
             StoreKind::Blueprint => {
-                self.active_blueprint_by_app_id
-                    .retain(|_, id| id != store_id);
-                self.default_blueprint_by_app_id
-                    .retain(|_, id| id != store_id);
+                for app_blueprints in self.app_blueprints.values_mut() {
+                    app_blueprints.retains(|id| id != store_id);
+                }
             }
         }
 
@@ -294,9 +340,8 @@ impl StoreHub {
     /// Change the active [`ApplicationId`]
     #[allow(clippy::needless_pass_by_value)]
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
-        // If we don't know of a blueprint for this `ApplicationId` yet,
-        // try to load one from the persisted store
-        if !self.active_blueprint_by_app_id.contains_key(&app_id) {
+        // If we don't know of this app id yet, try to load its persisted blueprints.
+        if !self.app_blueprints.contains_key(&app_id) {
             if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
                 re_log::warn!("Failed to load persisted blueprint: {err}");
             }
@@ -331,8 +376,8 @@ impl StoreHub {
             self.active_rec_id = None;
         }
 
-        self.default_blueprint_by_app_id.remove(app_id);
-        self.active_blueprint_by_app_id.remove(app_id);
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+        *app_blueprints = Default::default();
     }
 
     #[inline]
@@ -391,7 +436,9 @@ impl StoreHub {
     // Default blueprint
 
     pub fn default_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
-        self.default_blueprint_by_app_id.get(app_id)
+        self.app_blueprints
+            .get(app_id)
+            .and_then(|app_blueprints| app_blueprints.default.as_ref())
     }
 
     pub fn default_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
@@ -407,15 +454,17 @@ impl StoreHub {
         blueprint_id: &StoreId,
     ) {
         re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
-        self.default_blueprint_by_app_id
-            .insert(app_id.clone(), blueprint_id.clone());
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+        app_blueprints.default = Some(blueprint_id.clone());
     }
 
     /// Clear the current default blueprint
     pub fn clear_default_blueprint(&mut self) {
         if let Some(app_id) = &self.active_application_id {
-            if let Some(blueprint_id) = self.default_blueprint_by_app_id.remove(app_id) {
-                self.remove(&blueprint_id);
+            if let Some(app_blueprints) = self.app_blueprints.get_mut(app_id) {
+                if let Some(blueprint_id) = app_blueprints.default.take() {
+                    self.remove(&blueprint_id);
+                }
             }
         }
     }
@@ -430,7 +479,9 @@ impl StoreHub {
     }
 
     pub fn active_blueprint_id_for_app(&self, app_id: &ApplicationId) -> Option<&StoreId> {
-        self.active_blueprint_by_app_id.get(app_id)
+        self.app_blueprints
+            .get(app_id)
+            .and_then(|app_blueprints| app_blueprints.active.as_ref())
     }
 
     pub fn active_blueprint_for_app(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
@@ -462,25 +513,26 @@ impl StoreHub {
 
         self.store_bundle.insert(new_blueprint);
 
-        self.active_blueprint_by_app_id
-            .insert(app_id.clone(), new_id);
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+        app_blueprints.active = Some(new_id);
 
         Ok(())
     }
 
     /// Is the given blueprint id the active blueprint for any app id?
-    pub fn is_active_blueprint(&self, blueprint_id: &StoreId) -> bool {
-        self.active_blueprint_by_app_id
+    pub fn is_active_blueprint_for_any_app(&self, blueprint_id: &StoreId) -> bool {
+        self.app_blueprints
             .values()
-            .any(|id| id == blueprint_id)
+            .any(|app_blueprints| app_blueprints.active.as_ref() == Some(blueprint_id))
     }
 
     /// Clear the currently active blueprint
     pub fn clear_active_blueprint(&mut self) {
         if let Some(app_id) = &self.active_application_id {
-            if let Some(blueprint_id) = self.active_blueprint_by_app_id.remove(app_id) {
-                re_log::debug!("Clearing blueprint for {app_id}: {blueprint_id}");
-                self.remove(&blueprint_id);
+            if let Some(app_blueprints) = self.app_blueprints.get_mut(app_id) {
+                if let Some(blueprint_id) = app_blueprints.active.take() {
+                    self.remove(&blueprint_id);
+                }
             }
         }
     }
@@ -581,9 +633,9 @@ impl StoreHub {
         re_tracing::profile_function!();
         if app_options.blueprint_gc {
             for blueprint_id in self
-                .active_blueprint_by_app_id
+                .app_blueprints
                 .values()
-                .chain(self.default_blueprint_by_app_id.values())
+                .flat_map(|app_blueprints| app_blueprints.iter())
             {
                 if let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) {
                     if self.blueprint_last_gc.get(blueprint_id) == Some(&blueprint.generation()) {
@@ -614,7 +666,11 @@ impl StoreHub {
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
 
-        for (app_id, blueprint_id) in &self.active_blueprint_by_app_id {
+        for (app_id, app_blueprints) in &self.app_blueprints {
+            let Some(blueprint_id) = &app_blueprints.active else {
+                continue;
+            };
+
             let Some(blueprint) = self.store_bundle.get_mut(blueprint_id) else {
                 re_log::debug!("Failed to find blueprint {blueprint_id}.");
                 continue;
@@ -678,8 +734,10 @@ impl StoreHub {
                     "Activating new blueprint {} for {app_id}; loaded from disk",
                     store.store_id(),
                 );
-                self.active_blueprint_by_app_id
-                    .insert(app_id.clone(), store.store_id().clone());
+                self.app_blueprints
+                    .entry(app_id.clone())
+                    .or_default()
+                    .active = Some(store.store_id().clone());
                 self.blueprint_last_save
                     .insert(store.store_id().clone(), store.generation());
                 self.store_bundle.insert(store);
@@ -696,18 +754,15 @@ impl StoreHub {
     pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
         re_tracing::profile_function!();
 
-        // If we have an app-id, then use it to look up the blueprint.
-        let blueprint = self
-            .active_application_id
-            .as_ref()
-            .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
+        let active_blueprint = self
+            .active_blueprint_id()
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
-        let blueprint_stats = blueprint
+        let blueprint_stats = active_blueprint
             .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
             .unwrap_or_default();
 
-        let blueprint_config = blueprint
+        let blueprint_config = active_blueprint
             .map(|entity_db| entity_db.store().config().clone())
             .unwrap_or_default();
 
