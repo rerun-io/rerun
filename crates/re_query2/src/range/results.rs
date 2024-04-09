@@ -12,7 +12,7 @@ use crate::{Promise, PromiseResolver, PromiseResult};
 /// The data is neither deserialized, nor resolved/converted.
 /// It it the raw [`DataCell`]s, straight from our datastore.
 ///
-/// Use [`RangeResults::get`], [`RangeResults::get_required`] and [`RangeResults::get_optional`]
+/// Use [`RangeResults::get`], [`RangeResults::get_required`] and [`RangeResults::get_or_empty`]
 /// in order to access the raw results for each individual component.
 #[derive(Default, Debug, Clone)]
 pub struct RangeResults {
@@ -56,7 +56,7 @@ impl RangeResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_optional(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
+    pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component

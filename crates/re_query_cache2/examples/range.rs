@@ -37,13 +37,13 @@ fn main() -> anyhow::Result<()> {
 
     // Then, grab the results for each individual components.
     // * `get_required` returns an error if the component batch is missing
-    // * `get_optional` returns an empty set of results if the component if missing
+    // * `get_or_empty` returns an empty set of results if the component if missing
     // * `get` returns an option
     //
     // At this point we still don't know whether they are cached or not. That's the next step.
     let all_points: &CachedRangeComponentResults = results.get_required(MyPoint::name())?;
-    let all_colors: &CachedRangeComponentResults = results.get_optional(MyColor::name());
-    let all_labels: &CachedRangeComponentResults = results.get_optional(MyLabel::name());
+    let all_colors: &CachedRangeComponentResults = results.get_or_empty(MyColor::name());
+    let all_labels: &CachedRangeComponentResults = results.get_or_empty(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.

@@ -532,7 +532,7 @@ fn query_and_compare(
         let cached_all_points_indexed = cached_all_points.range_indexed(query.range());
 
         let cached_all_colors = cached
-            .get_optional(MyColor::name())
+            .get_or_empty(MyColor::name())
             .to_sparse::<MyColor>(&resolver);
         assert!(matches!(
             cached_all_colors.status(query.range()),
@@ -557,7 +557,7 @@ fn query_and_compare(
         let expected_all_points_indexed =
             izip!(expected_all_points_indices, expected_all_points_data);
 
-        let expected_all_colors = expected.get_optional(MyColor::name());
+        let expected_all_colors = expected.get_or_empty(MyColor::name());
         let expected_all_colors_indices = expected_all_colors.indices();
         let expected_all_colors_data = expected_all_colors
             .to_sparse::<MyColor>(&resolver)
