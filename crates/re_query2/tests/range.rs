@@ -68,7 +68,7 @@ fn simple_range() -> anyhow::Result<()> {
     );
 
     let all_points = results.get_required(MyPoint::name())?;
-    let all_colors = results.get_optional(MyColor::name());
+    let all_colors = results.get_or_empty(MyColor::name());
 
     let all_points = izip!(
         all_points.iter_indices(),
@@ -131,7 +131,7 @@ fn simple_range() -> anyhow::Result<()> {
     );
 
     let all_points = results.get_required(MyPoint::name())?;
-    let all_colors = results.get_optional(MyColor::name());
+    let all_colors = results.get_or_empty(MyColor::name());
 
     let all_points = izip!(
         all_points.iter_indices(),
@@ -313,7 +313,7 @@ fn static_range() -> anyhow::Result<()> {
     );
 
     let all_points = results.get_required(MyPoint::name())?;
-    let all_colors = results.get_optional(MyColor::name());
+    let all_colors = results.get_or_empty(MyColor::name());
 
     let all_points = izip!(
         all_points.iter_indices(),
@@ -363,7 +363,7 @@ fn static_range() -> anyhow::Result<()> {
     );
 
     let all_points = results.get_required(MyPoint::name())?;
-    let all_colors = results.get_optional(MyColor::name());
+    let all_colors = results.get_or_empty(MyColor::name());
 
     let all_points = izip!(
         all_points.iter_indices(),
@@ -434,7 +434,7 @@ fn static_range() -> anyhow::Result<()> {
     );
 
     let all_points = results.get_required(MyPoint::name())?;
-    let all_colors = results.get_optional(MyColor::name());
+    let all_colors = results.get_or_empty(MyColor::name());
 
     let all_points = izip!(
         all_points.iter_indices(),

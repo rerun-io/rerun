@@ -20,7 +20,7 @@ use crate::{ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseR
 /// The data is both deserialized and resolved/converted.
 ///
 /// Use [`CachedRangeResults::get`], [`CachedRangeResults::get_required`] and
-/// [`CachedRangeResults::get_optional`] in order to access the results for each individual component.
+/// [`CachedRangeResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
 pub struct CachedRangeResults {
     /// Raw results for each individual component.
@@ -75,7 +75,7 @@ impl CachedRangeResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_optional(
+    pub fn get_or_empty(
         &self,
         component_name: impl Into<ComponentName>,
     ) -> &CachedRangeComponentResults {
