@@ -89,6 +89,9 @@ def lint_line(
     if line == "":
         return None
 
+    if "\t" in line:
+        return "Found tab character: use spaces for indentation instead!"
+
     if prev_line is None:
         prev_line_stripped = ""
     else:

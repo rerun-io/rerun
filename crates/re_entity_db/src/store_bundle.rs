@@ -40,6 +40,10 @@ impl StoreBundle {
         Ok(slf)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.entity_dbs.is_empty()
+    }
+
     /// All loaded [`EntityDb`], both recordings and blueprints, in arbitrary order.
     pub fn entity_dbs(&self) -> impl Iterator<Item = &EntityDb> {
         self.entity_dbs.values()
@@ -78,7 +82,7 @@ impl StoreBundle {
     /// One is created if it doesn't already exist.
     pub fn entry(&mut self, id: &StoreId) -> &mut EntityDb {
         self.entity_dbs.entry(id.clone()).or_insert_with(|| {
-            re_log::debug!("Creating new store: {id}");
+            re_log::debug!("Creating new store: {id:?}");
             EntityDb::new(id.clone())
         })
     }
