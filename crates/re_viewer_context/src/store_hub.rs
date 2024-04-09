@@ -206,10 +206,12 @@ impl StoreHub {
 
         let app_id = self.active_app_id.clone();
 
-        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
-        if app_blueprints.active.is_none() {
-            // Try restoring:
-            self.load_persisted_blueprint(&app_id);
+        if app_id != Self::welcome_screen_app_id() {
+            // Try restoring from disk/persistence:
+            let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+            if app_blueprints.active.is_none() {
+                self.load_persisted_blueprint(&app_id);
+            }
         }
 
         let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
@@ -247,7 +249,7 @@ impl StoreHub {
 
         let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
 
-        // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
+        // Get the id of whatever blueprint is now active, falling back on the "app blueprint" if needed.
         let active_blueprint_id = app_blueprints
             .active
             .get_or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
@@ -331,6 +333,8 @@ impl StoreHub {
                 self.active_rec_id = None;
             }
         }
+
+        self.ensure_active_blueprint();
     }
 
     /// Only retain recordings that matches the predicate.
@@ -342,6 +346,8 @@ impl StoreHub {
     }
 
     /// Only retain recordings and blueprints that matches the predicate.
+    ///
+    /// Consider if you don't want to use [`Self::retain_recordings`] instead!
     fn retain_stores(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
         let stores_to_remove: Vec<StoreId> = self
             .store_bundle
@@ -396,6 +402,8 @@ impl StoreHub {
                 return;
             }
         }
+
+        self.ensure_active_blueprint();
     }
 
     /// Close this application and all its recordings.
@@ -408,8 +416,7 @@ impl StoreHub {
             self.active_rec_id = None;
         }
 
-        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
-        *app_blueprints = Default::default();
+        self.ensure_active_blueprint();
     }
 
     // ---------------------
@@ -485,7 +492,7 @@ impl StoreHub {
         app_blueprints.default = Some(blueprint_id.clone());
     }
 
-    /// Clear the current default blueprint
+    /// Clear the current default blueprint. This cannot be undone.
     pub fn clear_default_blueprint(&mut self) {
         if let Some(app_blueprints) = self.app_blueprints.get_mut(&self.active_app_id) {
             if let Some(blueprint_id) = app_blueprints.default.take() {
@@ -550,7 +557,7 @@ impl StoreHub {
             .any(|app_blueprints| app_blueprints.active.as_ref() == Some(blueprint_id))
     }
 
-    /// Clear the currently active blueprint
+    /// Clear the currently active blueprint. This cannot be undone.
     pub fn clear_active_blueprint(&mut self) {
         if let Some(app_blueprints) = self.app_blueprints.get_mut(&self.active_app_id) {
             if let Some(blueprint_id) = app_blueprints.active.take() {
@@ -611,6 +618,7 @@ impl StoreHub {
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
+            re_log::debug!("Removing empty store {store_id:?} to free up RAM");
             self.remove(&store_id);
             return;
         }
@@ -625,6 +633,7 @@ impl StoreHub {
         // log new things anyhow.
         let num_recordings = store_bundle.recordings().count();
         if store_size_before == store_size_after && num_recordings > 1 {
+            re_log::debug!("Removing oldest store {store_id:?} to free up RAM");
             self.remove(&store_id);
         }
 
@@ -683,7 +692,6 @@ impl StoreHub {
     }
 
     /// Persist any in-use blueprints to durable storage.
-    #[allow(clippy::unnecessary_wraps)]
     pub fn save_app_blueprints(&mut self) -> anyhow::Result<()> {
         let Some(saver) = &self.persistence.saver else {
             return Ok(());
