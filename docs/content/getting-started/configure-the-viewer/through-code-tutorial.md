@@ -7,7 +7,7 @@ This tutorial will walk you through using the
 [Blueprint APIs](../../howto/configure-viewer-through-code.md) to better control
 the layout and appearance of your data in the Rerun Viewer in Python.
 
-This walkthrough is based on the [stock charts](https://github.com/rerun-io/rerun/tree/main/examples/python/blueprint_stocks?speculative-link) example.
+This walkthrough is based on the [stock charts](https://github.com/rerun-io/rerun/tree/main/examples/python/blueprint_stocks) example.
 The main differences between this tutorial and the linked example are related to additional processing of
 command-line flags, which are omitted here for simplicity.
 
