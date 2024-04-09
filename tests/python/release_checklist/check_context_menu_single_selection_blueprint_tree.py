@@ -23,8 +23,8 @@ ITEM                       CONTEXT MENU CONTENT
 Viewport                   Expand all
                            Collapse all
 
-                           Add Container
-                           Add Space View
+                           Add container
+                           Add space view
 ------------------------------------------------------------------
 Container                  Hide (or Show, depending on visibility)
                            Remove
@@ -32,12 +32,12 @@ Container                  Hide (or Show, depending on visibility)
                            Expand all
                            Collapse all
 
-                           Add Container
-                           Add Space View
+                           Add container
+                           Add space view
 
-                           Move to new Container
+                           Move to new container
 ------------------------------------------------------------------
-Space View                 Hide (or Show, depending on visibility)
+Space view                 Hide (or Show, depending on visibility)
                            Remove
 
                            Expand all
@@ -45,20 +45,20 @@ Space View                 Hide (or Show, depending on visibility)
 
                            Clone
 
-                           Move to new Container
+                           Move to new container
 ------------------------------------------------------------------
-'group' Data Result        Hide (or Show, depending on visibility)
+'group' data result        Hide (or Show, depending on visibility)
                            Remove
 
                            Expand all
                            Collapse all
 
-                           Add to new Space View
+                           Add to new space view
 ------------------------------------------------------------------
-'boxes3d' Data Result      Hide (or Show, depending on visibility)
+'boxes3d' data result      Hide (or Show, depending on visibility)
                            Remove
 
-                           Add to new Space View
+                           Add to new space view
 ```
 
 """
