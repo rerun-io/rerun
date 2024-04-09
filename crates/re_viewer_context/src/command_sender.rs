@@ -34,6 +34,8 @@ pub enum SystemCommand {
     ActivateRecording(StoreId),
 
     /// Close a recording or blueprint (free its memory).
+    ///
+    /// If this is a blueprint, it may be saved to disk first.
     CloseStore(StoreId),
 
     /// Close all stores and show the welcome screen again.

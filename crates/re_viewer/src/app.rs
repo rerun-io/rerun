@@ -1278,6 +1278,7 @@ fn blueprint_persistence() -> BlueprintPersistence {
         if let Some(bundle) =
             crate::loading::load_blueprint_file(&blueprint_path, with_notifications)
         {
+            // Validate:
             for store in bundle.entity_dbs() {
                 if store.store_kind() == StoreKind::Blueprint
                     && !crate::blueprint::is_valid_blueprint(store)
@@ -1286,8 +1287,10 @@ fn blueprint_persistence() -> BlueprintPersistence {
                     return Ok(None);
                 }
             }
+
             Ok(Some(bundle))
         } else {
+            re_log::debug!("No blueprint found at {blueprint_path:?}");
             Ok(None)
         }
     }
@@ -1301,7 +1304,10 @@ fn blueprint_persistence() -> BlueprintPersistence {
         // be small & fast to save, but maybe not once we start adding big pieces of user data?
         crate::saving::encode_to_file(&blueprint_path, messages.iter())?;
 
-        re_log::debug!("Saved blueprint for {app_id} to {blueprint_path:?}");
+        re_log::debug!(
+            "Saved blueprint for {app_id} to {blueprint_path:?} ({} log messages)",
+            messages.len()
+        );
 
         Ok(())
     }

@@ -180,6 +180,47 @@ impl StoreHub {
     }
 
     // ---------------------
+
+    /// Ensure there is an active blueprint for the active application.
+    ///
+    /// Either load it, or clone the default blueprint.
+    fn ensure_active_blueprint(&mut self) {
+        // First some defensive coding: Check that default and active blueprints exists,
+        // in case some of our book-keeping is broken.
+        for app_blueprints in self.app_blueprints.values_mut() {
+            if let Some(blueprint_id) = &app_blueprints.active {
+                if !self.store_bundle.contains(blueprint_id) {
+                    app_blueprints.active = None;
+                }
+            }
+            if let Some(blueprint_id) = &app_blueprints.default {
+                if !self.store_bundle.contains(blueprint_id) {
+                    app_blueprints.default = None;
+                }
+            }
+        }
+
+        let app_id = self.active_app_id.clone();
+
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+        if app_blueprints.active.is_none() {
+            // Try restoring:
+            self.load_persisted_blueprint(&app_id);
+        }
+
+        let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+        if app_blueprints.active.is_none() {
+            // If there's no active blueprint for this app, try to make the current default one active.
+            if let Some(blueprint_id) = app_blueprints.default.clone() {
+                self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
+                    .unwrap_or_else(|err| {
+                        re_log::warn!("Failed to make blueprint active: {err}");
+                    });
+            }
+        }
+    }
+
+    // ---------------------
     // Accessors
 
     /// All the loaded recordings and blueprints.
@@ -198,33 +239,7 @@ impl StoreHub {
 
         let app_id = self.active_app_id.clone();
 
-        // Defensive coding: Check that default and active blueprints exists,
-        // in case some of our book-keeping is broken.
-        for app_blueprints in self.app_blueprints.values_mut() {
-            if let Some(blueprint_id) = &app_blueprints.active {
-                if !self.store_bundle.contains(blueprint_id) {
-                    app_blueprints.active = None;
-                }
-            }
-            if let Some(blueprint_id) = &app_blueprints.default {
-                if !self.store_bundle.contains(blueprint_id) {
-                    app_blueprints.default = None;
-                }
-            }
-        }
-
-        {
-            // If there's no active blueprint for this app, try to make the current default one active.
-            let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
-            if app_blueprints.active.is_none() {
-                if let Some(blueprint_id) = app_blueprints.default.clone() {
-                    self.set_cloned_blueprint_active_for_app(&app_id, &blueprint_id)
-                        .unwrap_or_else(|err| {
-                            re_log::warn!("Failed to make blueprint active: {err}");
-                        });
-                }
-            }
-        }
+        self.ensure_active_blueprint();
 
         let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
 
@@ -272,6 +287,11 @@ impl StoreHub {
     }
 
     pub fn remove(&mut self, store_id: &StoreId) {
+        // Save blueprints before maybe removing them:
+        if let Err(err) = self.save_app_blueprints() {
+            re_log::error!("Saving blueprints failed: {err}");
+        };
+
         let removed_store = self.store_bundle.remove(store_id);
 
         let Some(removed_store) = removed_store else {
@@ -329,8 +349,7 @@ impl StoreHub {
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_all_recordings(&mut self) {
         // Keep only the welcome screen:
-        self.store_bundle
-            .retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
+        self.retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
         self.active_rec_id = None;
         self.active_app_id = Self::welcome_screen_app_id();
     }
@@ -343,9 +362,7 @@ impl StoreHub {
     pub fn set_active_app(&mut self, app_id: ApplicationId) {
         // If we don't know of this app id yet, try to load its persisted blueprints.
         if !self.app_blueprints.contains_key(&app_id) {
-            if let Err(err) = self.try_to_load_persisted_blueprint(&app_id) {
-                re_log::warn!("Failed to load persisted blueprint: {err}");
-            }
+            self.load_persisted_blueprint(&app_id);
         }
 
         if self.active_app_id == app_id {
@@ -370,7 +387,7 @@ impl StoreHub {
 
     /// Close this application and all its recordings.
     pub fn close_app(&mut self, app_id: &ApplicationId) {
-        self.store_bundle.retain(|db| db.app_id() != Some(app_id));
+        self.retain(|db| db.app_id() != Some(app_id));
 
         if &self.active_app_id == app_id {
             self.active_app_id = Self::welcome_screen_app_id();
@@ -678,12 +695,20 @@ impl StoreHub {
                 // Save an empty blueprint file for this app.
                 // This is important for the case when the user has reset/cleared/deleted the active blueprint,
                 // in which case we want to over-write the old blueprint file.
+                re_log::debug!("Saving empty active blueprint for {app_id}");
                 let messages = [];
                 (saver)(app_id, &messages)?;
             }
         }
 
         Ok(())
+    }
+
+    fn load_persisted_blueprint(&mut self, app_id: &ApplicationId) {
+        self.try_to_load_persisted_blueprint(app_id)
+            .unwrap_or_else(|err| {
+                re_log::warn!("Failed to load persisted blueprint: {err}");
+            });
     }
 
     /// Try to load the persisted blueprint for the given `ApplicationId`.
@@ -697,6 +722,12 @@ impl StoreHub {
         };
 
         if let Some(mut bundle) = (loader)(app_id)? {
+            let app_blueprints = self.app_blueprints.entry(app_id.clone()).or_default();
+
+            if bundle.is_empty() {
+                re_log::debug!("Found empty blueprint file with no stores in it for {app_id}");
+            }
+
             for store in bundle.drain_entity_dbs() {
                 match store.store_kind() {
                     StoreKind::Recording => {
@@ -722,10 +753,7 @@ impl StoreHub {
                     "Activating new blueprint {} for {app_id}; loaded from disk",
                     store.store_id(),
                 );
-                self.app_blueprints
-                    .entry(app_id.clone())
-                    .or_default()
-                    .active = Some(store.store_id().clone());
+                app_blueprints.active = Some(store.store_id().clone());
                 self.blueprint_last_save
                     .insert(store.store_id().clone(), store.generation());
                 self.store_bundle.insert(store);
