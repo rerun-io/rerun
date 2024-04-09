@@ -44,7 +44,7 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </p>
 
 ## Getting started
-* **C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
+* **C++**: [Guide](https://www.rerun.io/docs/getting-started/quick-start/cpp)
 * **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
 * **Rust**: `cargo add rerun`
 
