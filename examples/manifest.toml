@@ -105,6 +105,7 @@ examples = [
   "ros_bridge",
   "urdf_loader",
   "vrs",
+  "revy",
   "tfrecord_loader",
   "eigen_opencv",
   "dicom_mri",
