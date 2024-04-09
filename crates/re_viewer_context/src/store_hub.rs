@@ -32,6 +32,10 @@ use crate::StoreContext;
 ///
 /// The default blueprint is usually the blueprint set by the SDK.
 /// This lets users reset the active blueprint to the one sent by the SDK.
+///
+/// We almost never free blueprints - we keep them in RAM even if we close an app,
+/// in case the user re-opens the same app.
+/// Blueprints are generally small, so this is fine.
 pub struct StoreHub {
     /// How we load and save blueprints.
     persistence: BlueprintPersistence,
@@ -329,7 +333,16 @@ impl StoreHub {
         }
     }
 
-    pub fn retain(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
+    /// Only retain recordings that matches the predicate.
+    pub fn retain_recordings(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
+        self.retain_stores(|db| match db.store_kind() {
+            StoreKind::Recording => should_retain(db),
+            StoreKind::Blueprint => true,
+        });
+    }
+
+    /// Only retain recordings and blueprints that matches the predicate.
+    fn retain_stores(&mut self, mut should_retain: impl FnMut(&EntityDb) -> bool) {
         let stores_to_remove: Vec<StoreId> = self
             .store_bundle
             .entity_dbs()
@@ -348,8 +361,8 @@ impl StoreHub {
 
     /// Remove all open recordings and applications, and go to the welcome page.
     pub fn clear_all_recordings(&mut self) {
-        // Keep only the welcome screen:
-        self.retain(|db| db.app_id() == Some(&Self::welcome_screen_app_id()));
+        // Note: we keep the blueprints around in case the user re-opens the same app.
+        self.retain_recordings(|_| false);
         self.active_rec_id = None;
         self.active_app_id = Self::welcome_screen_app_id();
     }
@@ -387,7 +400,8 @@ impl StoreHub {
 
     /// Close this application and all its recordings.
     pub fn close_app(&mut self, app_id: &ApplicationId) {
-        self.retain(|db| db.app_id() != Some(app_id));
+        // Note: we keep the blueprints around in case the user re-opens the same app.
+        self.retain_recordings(|db| db.app_id() != Some(app_id));
 
         if &self.active_app_id == app_id {
             self.active_app_id = Self::welcome_screen_app_id();
@@ -551,7 +565,7 @@ impl StoreHub {
     /// Cloned blueprints are the ones the user has edited,
     /// i.e. NOT sent from the SDK.
     pub fn clear_all_cloned_blueprints(&mut self) {
-        self.retain(|db| match db.store_kind() {
+        self.retain_stores(|db| match db.store_kind() {
             StoreKind::Recording => true,
             StoreKind::Blueprint => db.cloned_from().is_none(),
         });
@@ -559,7 +573,14 @@ impl StoreHub {
 
     /// Remove any empty [`EntityDb`]s from the hub
     pub fn purge_empty(&mut self) {
-        self.retain(|entity_db| !entity_db.is_empty());
+        self.retain_stores(|entity_db| {
+            if entity_db.is_empty() {
+                re_log::debug!("Removing empty store {:?}", entity_db.store_id());
+                false
+            } else {
+                true
+            }
+        });
     }
 
     /// Call [`EntityDb::purge_fraction_of_ram`] on every recording
@@ -618,11 +639,8 @@ impl StoreHub {
 
     /// Remove any recordings with a network source pointing at this `uri`.
     pub fn remove_recording_by_uri(&mut self, uri: &str) {
-        self.retain(|db| {
-            if db.store_kind() != StoreKind::Recording {
-                return true;
-            }
-
+        // Note: we keep the blueprints around in case the user re-opens the same app.
+        self.retain_recordings(|db| {
             let Some(data_source) = &db.data_source else {
                 // no data source, keep
                 return true;
