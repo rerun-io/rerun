@@ -572,8 +572,6 @@ def create_in_memory_blueprint(*, application_id: str, blueprint: BlueprintLike)
     blueprint_stream = RecordingStream(
         bindings.new_blueprint(
             application_id=application_id,
-            # Generate a new id every time so we don't append to overwrite previous blueprints.
-            blueprint_id=str(uuid.uuid4()),
             make_default=False,
             make_thread_default=False,
             default_enabled=True,
