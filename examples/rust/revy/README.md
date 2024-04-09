@@ -1,7 +1,7 @@
 <!--[metadata]
-title = "Revy"
+title = "Revy - Rerun integration for Bevy"
 source = "https://github.com/rerun-io/revy"
-tags = ["2D", "3D", "Integration", "Gamedev"]
+tags = ["2D", "3D", "Gamedev", "Bevy"]
 thumbnail = "https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
@@ -19,8 +19,8 @@ thumbnail_dimensions = [480, 480]
 
 Revy is a proof-of-concept time-travel debugger for the [Bevy](https://github.com/bevyengine/bevy) game engine, built using [Rerun](https://github.com/rerun-io/rerun).
 
-Revy works by snapshotting diffs of the Bevy database every frame that are then logged into the Rerun database.  
-This allows you to inspect and visualize the state of the engine at any point in time, either in real-time or after the fact.  
+Revy works by snapshotting diffs of the Bevy database every frame that are then logged into the Rerun database.\
+This allows you to inspect and visualize the state of the engine at any point in time, either in real-time or after the fact.\
 These recordings can then be shared to be replayed or e.g. attached to bug reports.
 
 For more information, check out the [Revy repository](https://github.com/rerun-io/revy).
@@ -48,5 +48,5 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
         revy::RerunPlugin { rec }
     })
     ```
-    This will start a Rerun Viewer in the background and stream the recording data to it.  
+    This will start a Rerun Viewer in the background and stream the recording data to it.\
     Check out the [`RecordingStreamBuilder`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html) docs for other options (saving to file, connecting to a remote viewer, etc).
