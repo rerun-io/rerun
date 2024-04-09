@@ -89,6 +89,8 @@ def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
     for pattern in root["workspace"]["members"]:
         for crate in [member for member in glob(pattern) if os.path.isdir(member)]:
             crate_path = Path(crate)
+            if not os.path.exists(crate_path / "Cargo.toml"):
+                continue
             manifest_text = (crate_path / "Cargo.toml").read_text()
             manifest: dict[str, Any] = tomlkit.parse(manifest_text)
             crates[manifest["package"]["name"]] = Crate(manifest, crate_path)
