@@ -27,10 +27,49 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
 
 ## Examples 
 
-|[Breakout](https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/breakout.rs)|[3D shapes](https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs)|[Alien Cake Addict](https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/alien_cake_addict.rs)|
-| :----------------------------------------------------------------: | :-------------------------------------------------------------: | :--------------------------------------------------------------: |
-| [*Live demo*](https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/breakout_014_001.rrd) | [*Live demo*](https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/3d_shapes_014_001.rrd)| [*Live demo*](https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/alien_014_001.rrd) |
-| <picture> <img src="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/full.png" alt=""> <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/480w.png"> <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/768w.png"> <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/1024w.png"> <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/1200w.png"> </picture> | <picture> <img src="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/full.png" alt=""> <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/480w.png"> <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/768w.png"> <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/1024w.png"> <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/1200w.png"> </picture>  | <picture> <img src="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/full.png" alt=""> <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/480w.png"> <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/768w.png"> <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/1024w.png"> <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/1200w.png"> </picture> |
+<table>
+  <thead>
+    <tr>
+      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/breakout.rs">Breakout</a></th>
+      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs">3D shapes</a></th>
+      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/alien_cake_addict.rs">Alien Cake Addict</a></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <a href="https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/breakout_014_001.rrd">Live demo</a>
+        <picture>
+          <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/1200w.png">
+          <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/1024w.png">
+          <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/768w.png">
+          <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/480w.png">
+          <img src="https://static.rerun.io/revy_breakout_title/a853af41115505212296813a0bef2373b105757b/full.png" alt="">
+        </picture>
+      </td>
+      <td>
+        <a href="https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/3d_shapes_014_001.rrd">Live demo</a>
+        <picture>
+          <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/1200w.png">
+          <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/1024w.png">
+          <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/768w.png">
+          <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/480w.png">
+          <img src="https://static.rerun.io/revy_3dshapes_title/964446d03f1792b60e394e8c495e6fe16273939a/full.png" alt="">
+        </picture>
+      </td>
+      <td>
+        <a href="https://app.rerun.io/version/0.14.1/index.html?url=https://storage.googleapis.com/rerun-example-datasets/revy/alien_014_001.rrd">Live demo</a>
+        <picture>
+          <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/1200w.png">
+          <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/1024w.png">
+          <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/768w.png">
+          <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/480w.png">
+          <img src="https://static.rerun.io/revy_alien_title/3e4ba4f3cfb728942ecb38ba3e613f3498dda3e2/full.png" alt="">
+        </picture>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## Usage
 
