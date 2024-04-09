@@ -1,6 +1,9 @@
 # Rerun changelog
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+
+
+## [0.15.0](https://github.com/rerun-io/rerun/compare/0.14.1...0.15.0) - Blueprints from Python - 2024-04-09
 The biggest news is the ability to create a _blueprint_ via the Python logging API:
 
 ```py
