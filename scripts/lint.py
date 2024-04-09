@@ -190,14 +190,14 @@ def lint_line(
 
     if not is_in_docstring:
         if m := re.search(
-            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("(\w*)',
+            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)',
             line,
         ) or re.search(
             r'(rr.script_setup)\(args, "(\w*)',
             line,
         ):
             app_id = m.group(2)
-            if not app_id.startswith("rerun_example_"):
+            if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
     # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.

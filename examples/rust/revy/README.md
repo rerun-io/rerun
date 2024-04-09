@@ -25,13 +25,13 @@ These recordings can then be shared to be replayed or e.g. attached to bug repor
 
 For more information, check out the [Revy repository](https://github.com/rerun-io/revy).
 
-## Examples 
+## Examples
 
 <table>
   <thead>
     <tr>
       <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/breakout.rs">Breakout</a></th>
-      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs">3D shapes</a></th>
+      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs">3D shapes</a></th> <!-- NOLINT -->
       <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/alien_cake_addict.rs">Alien Cake Addict</a></th>
     </tr>
   </thead>
