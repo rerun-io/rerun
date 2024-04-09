@@ -1,6 +1,6 @@
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
-use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
+use re_log_types::{FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
@@ -1251,7 +1251,7 @@ impl App {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn blueprint_loader() -> BlueprintPersistence {
+fn blueprint_persistence() -> BlueprintPersistence {
     // TODO(#2579): implement persistence for web
     BlueprintPersistence {
         loader: None,
@@ -1263,7 +1263,9 @@ fn blueprint_loader() -> BlueprintPersistence {
 fn blueprint_persistence() -> BlueprintPersistence {
     use re_entity_db::StoreBundle;
 
-    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+    fn load_blueprint_from_disk(
+        app_id: &re_log_types::ApplicationId,
+    ) -> anyhow::Result<Option<StoreBundle>> {
         re_tracing::profile_function!();
 
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
@@ -1296,7 +1298,10 @@ fn blueprint_persistence() -> BlueprintPersistence {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_blueprint_to_disk(app_id: &ApplicationId, messages: &[LogMsg]) -> anyhow::Result<()> {
+    fn save_blueprint_to_disk(
+        app_id: &re_log_types::ApplicationId,
+        messages: &[LogMsg],
+    ) -> anyhow::Result<()> {
         re_tracing::profile_function!();
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
 
