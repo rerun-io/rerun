@@ -3,7 +3,7 @@ Guidelines for UI design, covering GUI, CLI, documentation, log messages, etc
 
 ## Text
 #### Sentences
-Short, single-sentence text do NOT end in a period.
+Short, single-sentence text do NOT end in a period in the UI.
 
 Multi-sentence text ALWAYS ends in a period.
 
