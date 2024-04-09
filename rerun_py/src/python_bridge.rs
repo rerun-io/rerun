@@ -275,7 +275,6 @@ fn new_recording(
 #[pyfunction]
 #[pyo3(signature = (
     application_id,
-    blueprint_id=None,
     make_default=true,
     make_thread_default=true,
     default_enabled=true,
@@ -283,16 +282,13 @@ fn new_recording(
 fn new_blueprint(
     py: Python<'_>,
     application_id: String,
-    blueprint_id: Option<String>,
     make_default: bool,
     make_thread_default: bool,
     default_enabled: bool,
 ) -> PyResult<PyRecordingStream> {
-    let blueprint_id = if let Some(blueprint_id) = blueprint_id {
-        StoreId::from_string(StoreKind::Blueprint, blueprint_id)
-    } else {
-        default_store_id(py, StoreKind::Blueprint, &application_id)
-    };
+    // We don't currently support additive blueprints, so we should always be generating a new, unique
+    // blueprint id to avoid collisions.
+    let blueprint_id = StoreId::random(StoreKind::Blueprint);
 
     let mut batcher_config = re_log_types::DataTableBatcherConfig::from_env().unwrap_or_default();
     let on_release = |chunk| {
