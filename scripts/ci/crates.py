@@ -526,9 +526,13 @@ class Target(Enum):
         return self.value
 
 
+def get_release_version_from_git_branch() -> str:
+    return git.Repo().active_branch.name.lstrip("release-")
+
+
 def get_version(target: Target | None) -> VersionInfo:
     if target is Target.Git:
-        branch_name = git.Repo().active_branch.name.lstrip("release-")
+        branch_name = get_release_version_from_git_branch()
         try:
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
         except ValueError:
@@ -545,6 +549,29 @@ def get_version(target: Target | None) -> VersionInfo:
         current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
 
     return current_version
+
+
+def is_valid_version_string(version: str) -> bool:
+    # remove metadata -> split into digits
+    parts = version.split("-")[0].split(".")
+
+    if len(parts) != 3:
+        return False
+
+    for part in parts:
+        if not part.isdigit():
+            return False
+
+    return True
+
+
+def check_git_branch_name() -> None:
+    version = get_release_version_from_git_branch()
+
+    if is_valid_version_string(version):
+        print(f'"{version}" is a valid version string.')
+    else:
+        raise Exception(f'"{version}" is not a valid version string. See RELEASES.md for supported formats')
 
 
 def print_version(target: Target | None, finalize: bool = False, pre_id: bool = False) -> None:
@@ -592,6 +619,8 @@ def main() -> None:
     publish_parser.add_argument("--dry-run", action="store_true", help="Display the execution plan")
     publish_parser.add_argument("--allow-dirty", action="store_true", help="Allow uncommitted changes")
 
+    cmds_parser.add_parser("check-git-branch-name", help="Check if the git branch name uses the correct format")
+
     get_version_parser = cmds_parser.add_parser("get-version", help="Get the current crate version")
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
@@ -603,6 +632,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.cmd == "check-git-branch-name":
+        check_git_branch_name()
     if args.cmd == "get-version":
         print_version(args.target, args.finalize, args.pre_id)
     if args.cmd == "version":

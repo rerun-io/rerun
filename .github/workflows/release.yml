@@ -96,12 +96,14 @@ jobs:
         id: versioning
         shell: bash
         run: |
-
-          echo "release_version: $release_version"
+          echo Check that the release version matches expected format…
+          python3 scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
           #   `release-0.8.1-meta.N` -> `0.8.1`
           release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
+
+          echo "release_version: $release_version"
 
           echo Store version before the update, so we can later detect if it changed…
           previous=$(python3 scripts/ci/crates.py get-version)
