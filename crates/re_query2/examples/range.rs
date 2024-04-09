@@ -39,11 +39,11 @@ fn main() -> anyhow::Result<()> {
     // _component batch_ itself (that says nothing about its _instances_!).
     //
     // * `get_required` returns an error if the component batch is missing
-    // * `get_optional` returns an empty set of results if the component if missing
+    // * `get_or_empty` returns an empty set of results if the component if missing
     // * `get` returns an option
     let all_points: &RangeComponentResults = results.get_required(MyPoint::name())?;
-    let all_colors: &RangeComponentResults = results.get_optional(MyColor::name());
-    let all_labels: &RangeComponentResults = results.get_optional(MyLabel::name());
+    let all_colors: &RangeComponentResults = results.get_or_empty(MyColor::name());
+    let all_labels: &RangeComponentResults = results.get_or_empty(MyLabel::name());
 
     let all_indexed_points = izip!(
         all_points.iter_indices(),
