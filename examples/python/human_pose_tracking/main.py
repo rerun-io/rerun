@@ -29,11 +29,23 @@ The full source code for this example is available
 
 EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
+MODEL_DIR: Final = EXAMPLE_DIR / "model" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
+MODEL_URL_TEMPLATE: Final = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_{}/float16/latest/pose_landmarker_{}.task"
+)
 
 
-def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -> None:
-    mp_pose = mp.solutions.pose
+def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_count: int | None) -> None:
+    PoseLandmarker = mp.tasks.vision.PoseLandmarker
+
+    options = mp.tasks.vision.PoseLandmarkerOptions(
+        base_options=mp.tasks.BaseOptions(
+            model_asset_path=model_path,
+        ),
+        running_mode=mp.tasks.vision.RunningMode.VIDEO,
+        output_segmentation_masks=True,
+    )
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
@@ -42,8 +54,10 @@ def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -
         rr.AnnotationContext(
             rr.ClassDescription(
                 info=rr.AnnotationInfo(id=1, label="Person"),
-                keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
-                keypoint_connections=mp_pose.POSE_CONNECTIONS,
+                keypoint_annotations=[
+                    rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp.solutions.pose.PoseLandmark
+                ],
+                keypoint_connections=mp.solutions.pose.POSE_CONNECTIONS,
             )
         ),
         static=True,
@@ -61,35 +75,40 @@ def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -
     )
     rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
-    with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
+    with closing(VideoSource(video_path)) as video_source, PoseLandmarker.create_from_options(
+        options
+    ) as pose_landmarker:
         for idx, bgr_frame in enumerate(video_source.stream_bgr()):
             if max_frame_count is not None and idx >= max_frame_count:
                 break
 
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=bgr_frame.data)
             rgb = cv2.cvtColor(bgr_frame.data, cv2.COLOR_BGR2RGB)
             rr.set_time_seconds("time", bgr_frame.time)
             rr.set_time_sequence("frame_idx", bgr_frame.idx)
-            rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
 
-            results = pose.process(rgb)
+            results = pose_landmarker.detect_for_video(mp_image, int(bgr_frame.time * 1000))
             h, w, _ = rgb.shape
             landmark_positions_2d = read_landmark_positions_2d(results, w, h)
+
+            rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
             if landmark_positions_2d is not None:
                 rr.log(
                     "video/pose/points",
-                    rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark),
+                    rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp.solutions.pose.PoseLandmark),
                 )
 
             landmark_positions_3d = read_landmark_positions_3d(results)
             if landmark_positions_3d is not None:
                 rr.log(
                     "person/pose/points",
-                    rr.Points3D(landmark_positions_3d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark),
+                    rr.Points3D(landmark_positions_3d, class_ids=1, keypoint_ids=mp.solutions.pose.PoseLandmark),
                 )
 
-            segmentation_mask = results.segmentation_mask
-            if segmentation_mask is not None:
-                rr.log("video/mask", rr.SegmentationImage(segmentation_mask.astype(np.uint8)))
+            if results.segmentation_masks is not None:
+                segmentation_mask = results.segmentation_masks[0].numpy_view()
+                binary_segmentation_mask = segmentation_mask > 0.5
+                rr.log("video/mask", rr.SegmentationImage(binary_segmentation_mask.astype(np.uint8)))
 
 
 def read_landmark_positions_2d(
@@ -97,20 +116,22 @@ def read_landmark_positions_2d(
     image_width: int,
     image_height: int,
 ) -> npt.NDArray[np.float32] | None:
-    if results.pose_landmarks is None:
+    if results.pose_landmarks is None or len(results.pose_landmarks) == 0:
         return None
     else:
-        normalized_landmarks = [results.pose_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
+        pose_landmarks = results.pose_landmarks[0]
+        normalized_landmarks = [pose_landmarks[lm] for lm in mp.solutions.pose.PoseLandmark]
         return np.array([(image_width * lm.x, image_height * lm.y) for lm in normalized_landmarks])
 
 
 def read_landmark_positions_3d(
     results: Any,
 ) -> npt.NDArray[np.float32] | None:
-    if results.pose_landmarks is None:
+    if results.pose_landmarks is None or len(results.pose_landmarks) == 0:
         return None
     else:
-        landmarks = [results.pose_world_landmarks.landmark[lm] for lm in mp.solutions.pose.PoseLandmark]
+        pose_landmarks = results.pose_landmarks[0]
+        landmarks = [pose_landmarks[lm] for lm in mp.solutions.pose.PoseLandmark]
         return np.array([(lm.x, lm.y, lm.z) for lm in landmarks])
 
 
@@ -143,7 +164,7 @@ class VideoSource:
             yield VideoFrame(data=bgr, time=time_ms * 1e-3, idx=idx)
 
 
-def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
+def get_downloaded_video_path(dataset_dir: Path, video_name: str) -> str:
     video_file_name = f"{video_name}.mp4"
     destination_path = dataset_dir / video_file_name
     if destination_path.exists():
@@ -154,12 +175,30 @@ def get_downloaded_path(dataset_dir: Path, video_name: str) -> str:
 
     logging.info("Downloading video from %s to %s", source_path, destination_path)
     os.makedirs(dataset_dir.absolute(), exist_ok=True)
-    with requests.get(source_path, stream=True) as req:
+    download(source_path, destination_path)
+    return str(destination_path)
+
+
+def get_downloaded_model_path(model_dir: Path, model_name: str) -> str:
+    model_file_name = f"{model_name}.task"
+    destination_path = model_dir / model_file_name
+    if destination_path.exists():
+        logging.info("%s already exists. No need to download", destination_path)
+        return str(destination_path)
+
+    model_url = MODEL_URL_TEMPLATE.format(model_name, model_name)
+    logging.info("Downloading model from %s to %s", model_url, destination_path)
+    download(model_url, destination_path)
+    return str(destination_path)
+
+
+def download(url: str, destination_path: Path) -> None:
+    os.makedirs(destination_path.parent, exist_ok=True)
+    with requests.get(url, stream=True) as req:
         req.raise_for_status()
         with open(destination_path, "wb") as f:
             for chunk in req.iter_content(chunk_size=8192):
                 f.write(chunk)
-    return str(destination_path)
 
 
 def main() -> None:
@@ -178,6 +217,15 @@ def main() -> None:
     parser.add_argument("--dataset-dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video-path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
     parser.add_argument("--no-segment", action="store_true", help="Don't run person segmentation.")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="heavy",
+        choices=["lite", "full", "heavy"],
+        help="The mediapipe model to use (see https://developers.google.com/mediapipe/solutions/vision/pose_landmarker).",
+    )
+    parser.add_argument("--model-dir", type=Path, default=MODEL_DIR, help="Directory to save downloaded model to.")
+    parser.add_argument("--model-path", type=str, default="", help="Full path of mediapipe model. Overrides `--model`.")
     parser.add_argument(
         "--max-frame",
         type=int,
@@ -205,12 +253,15 @@ def main() -> None:
 
     video_path = args.video_path  # type: str
     if not video_path:
-        video_path = get_downloaded_path(args.dataset_dir, args.video)
+        video_path = get_downloaded_video_path(args.dataset_dir, args.video)
 
-    track_pose(video_path, segment=not args.no_segment, max_frame_count=args.max_frame)
+    model_path = args.model_path  # type: str
+    if not args.model_path:
+        model_path = get_downloaded_model_path(args.model_dir, args.model)
+
+    track_pose(video_path, model_path, segment=not args.no_segment, max_frame_count=args.max_frame)
 
     rr.script_teardown(args)
-
 
 if __name__ == "__main__":
     main()
