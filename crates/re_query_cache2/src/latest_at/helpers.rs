@@ -153,8 +153,10 @@ impl CachedLatestAtComponentResults {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
             }
+
             PromiseResult::Ready(data) => {
-                // TODO(#5303): Figure out we'd like to integrate clamping semantics into selection panel.
+                // TODO(#5303): Figure out if/how we'd like to integrate clamping semantics into the
+                // selection panel.
                 //
                 // For now, we simply always clamp, which is the closest to the legacy behavior that the UI
                 // expects.
@@ -171,6 +173,7 @@ impl CachedLatestAtComponentResults {
                     None
                 }
             }
+
             PromiseResult::Error(err) => {
                 re_log::log_once!(
                     level,
@@ -200,17 +203,29 @@ impl CachedLatestAtComponentResults {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
             }
-            PromiseResult::Ready(cell) if cell.as_arrow_ref().len() > index => {
-                Some(cell.as_arrow_ref().sliced(index, 1))
-            }
+
             PromiseResult::Ready(cell) => {
-                re_log::log_once!(
-                    level,
-                    "Couldn't get {component_name}: index not found (index: {index}, length: {})",
-                    cell.as_arrow_ref().len(),
-                );
-                None
+                let len = cell.num_instances() as usize;
+
+                // TODO(#5303): Figure out if/how we'd like to integrate clamping semantics into the
+                // selection panel.
+                //
+                // For now, we simply always clamp, which is the closest to the legacy behavior that the UI
+                // expects.
+                let index = usize::min(index, len.saturating_sub(1));
+
+                if len > index {
+                    Some(cell.as_arrow_ref().sliced(index, 1))
+                } else {
+                    re_log::log_once!(
+                        level,
+                        "Couldn't deserialize {component_name}: index not found (index: {index}, length: {})",
+                        len,
+                    );
+                    None
+                }
             }
+
             PromiseResult::Error(err) => {
                 re_log::log_once!(
                     level,
