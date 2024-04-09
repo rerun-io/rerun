@@ -15,7 +15,7 @@ impl ContextMenuAction for ShowAction {
             Item::Container(container_id) => {
                 !ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
-                    && ctx.viewport_blueprint.root_container != Some(*container_id)
+                    && ctx.viewport_blueprint.root_container != *container_id
             }
             Item::DataResult(space_view_id, instance_path) => {
                 data_result_visible(ctx, space_view_id, instance_path).is_some_and(|vis| !vis)
@@ -69,7 +69,7 @@ impl ContextMenuAction for HideAction {
             Item::Container(container_id) => {
                 ctx.viewport_blueprint
                     .is_contents_visible(&Contents::Container(*container_id))
-                    && ctx.viewport_blueprint.root_container != Some(*container_id)
+                    && ctx.viewport_blueprint.root_container != *container_id
             }
             Item::DataResult(space_view_id, instance_path) => {
                 data_result_visible(ctx, space_view_id, instance_path).unwrap_or(false)
