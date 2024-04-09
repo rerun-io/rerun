@@ -1,4 +1,4 @@
-name: Markdown spellcheck and link check
+name: Dead links check
 
 on:
   pull_request:
