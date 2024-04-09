@@ -22,6 +22,13 @@ import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 from tqdm import tqdm
 
+DESCRIPTION = """
+# RGBD
+Visualizes an example recording from [the NYUD dataset](https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html) with RGB and Depth channels.
+
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/rgbd).
+"""
+
 DEPTH_IMAGE_SCALING: Final = 1e4
 DATASET_DIR: Final = Path(os.path.dirname(__file__)) / "dataset"
 DATASET_URL_BASE: Final = "https://static.rerun.io/rgbd_dataset"
@@ -169,14 +176,21 @@ def main() -> None:
             rrb.Vertical(
                 # Put the origin for both 2D spaces where the pinhole is logged. Doing so allows them to understand how they're connected to the 3D space.
                 # This enables interactions like clicking on a point in the 3D space to show the corresponding point in the 2D spaces and vice versa.
-                rrb.Spatial2DView(name="Depth & RGB", origin="world/camera/image"),
-                rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),
+                rrb.Spatial2DView(name="RGB & Depth", origin="world/camera/image"),
+                rrb.Tabs(
+                    rrb.Spatial2DView(name="RGB", origin="world/camera/image", contents="world/camera/image/rgb"),
+                    rrb.Spatial2DView(name="Depth", origin="world/camera/image", contents="world/camera/image/depth"),
+                ),
+                rrb.TextDocumentView(name="Description", origin="/description"),
                 name="2D",
+                row_shares=[3, 3, 2],
             ),
             column_shares=[2, 1],
         ),
     )
     recording_path = ensure_recording_downloaded(args.recording)
+
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     log_nyud_data(
         recording_path=recording_path,

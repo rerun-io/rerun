@@ -45,8 +45,8 @@ impl DimensionMapping {
             },
 
             1 => DimensionMapping {
-                selectors: vec![DimensionSelector::new(0)],
-                width: None,
+                selectors: Default::default(),
+                width: Some(0),
                 height: None,
                 invert_width: false,
                 invert_height: false,

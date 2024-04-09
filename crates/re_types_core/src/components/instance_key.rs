@@ -22,6 +22,13 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: A unique numeric identifier for each individual instance within a batch.
+///
+/// Instance keys are automatically assigned by the `rerun` library and should not be set manually.
+///
+/// The instance key is just the index of the instance within the batch,
+/// i.e. the first point in a point cloud has `InstanceKey = 0`, the second `InstanceKey = 1`, and so on.
+///
+/// We plan to remove the `InstanceKey` component in the near future.
 #[derive(
     Clone, Debug, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, ::bytemuck::Pod, ::bytemuck::Zeroable,
 )]

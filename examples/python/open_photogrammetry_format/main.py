@@ -2,10 +2,6 @@
 """
 Load an Open Photogrammetry Format (OPF) project and display the cameras and point cloud.
 
-OPF specification: https://pix4d.github.io/opf-spec/index.html
-Dataset source: https://support.pix4d.com/hc/en-us/articles/360000235126-Example-projects-real-photogrammetry-data#OPF1
-pyopf: https://github.com/Pix4D/pyopf
-
 Requires Python 3.10 or higher because of [pyopf](https://pypi.org/project/pyopf/).
 """
 from __future__ import annotations
@@ -24,6 +20,20 @@ import tqdm
 from PIL import Image
 from pyopf.io import load
 from pyopf.resolve import resolve
+
+DESCRIPTION = """
+# Open Photogrammetry Format
+
+Visualizes an Open Photogrammetry Format (OPF) project, displaying the cameras and point cloud.
+
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/open_photogrammetry_format).
+
+### Links
+* [OPF specification](https://pix4d.github.io/opf-spec/index.html)
+* [Dataset source](https://support.pix4d.com/hc/en-us/articles/360000235126-Example-projects-real-photogrammetry-data#OPF1)
+* [pyopf](https://github.com/Pix4D/pyopf)
+"""
 
 
 @dataclass
@@ -227,6 +237,7 @@ def main() -> None:
 
     # display everything in Rerun
     rr.script_setup(args, "rerun_example_open_photogrammetry_format")
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
     project.log_point_cloud()
     project.log_calibrated_cameras(jpeg_quality=args.jpeg_quality)

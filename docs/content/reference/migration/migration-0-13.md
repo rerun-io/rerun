@@ -1,6 +1,6 @@
 ---
 title: Migrating from 0.12 to 0.13
-order: 11
+order: 130
 ---
 
 ## `TimeSeriesScalar` deprecated in favor of [Scalar](../types/archetypes/scalar.md) & [SeriesLine](../types/archetypes/series_line.md)/[SeriesPoint](../types/archetypes/series_point.md)

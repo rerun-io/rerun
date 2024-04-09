@@ -1,13 +1,12 @@
 <!--[metadata]
 title = "Detect and track objects"
 tags = ["2D", "Hugging face", "Object detection", "Object tracking", "OpenCV"]
-description = "Visualize object detection and segmentation using the Huggingface `transformers` library and CSRT from OpenCV."
 thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
 
-
+Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
 
 <picture data-inline-viewer="examples/detect_and_track_objects">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/480w.png">
@@ -17,28 +16,26 @@ channel = "release"
   <img src="https://static.rerun.io/detect_and_track_objects/59f5b97a8724f9037353409ab3d0b7cb47d1544b/full.png" alt="">
 </picture>
 
-Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
-
-# Used Rerun Types
+## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
-# Background
+## Background
 In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames.
 Additionally, the example showcases basic object detection and segmentation on a video using the Huggingface transformers library.
 
 
-# Logging and Visualizing with Rerun
+## Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
 
 
-## Timelines
+### Timelines
 For each processed video frame, all data sent to Rerun is associated with the [`timelines`](https://www.rerun.io/docs/concepts/timelines) `frame_idx`.
 
 ```python
 rr.set_time_sequence("frame", frame_idx)
 ```
 
-## Video
+### Video
 The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) to the `image` entity.
 
 ```python
@@ -58,7 +55,7 @@ rr.log(
 )
 ```
 
-## Segmentations
+### Segmentations
 The segmentation results is logged through a combination of two archetypes.
 The segmentation image itself is logged as an
 [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
@@ -86,10 +83,10 @@ rr.log(
 )
 ```
 
-## Detections
+### Detections
 The detections and tracked bounding boxes are visualized by logging the [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d) to Rerun.
 
-### Detections
+#### Detections
 ```python
 rr.log(
     "segmentation/detections/things",
@@ -111,7 +108,7 @@ rr.log(
     ),
 )
 ```
-### Tracked bounding boxes
+#### Tracked bounding boxes
 ```python
 rr.log(
     "segmentation/detections/background",
@@ -131,7 +128,7 @@ same color.
 Note that it is also possible to log multiple annotation contexts should different colors and / or labels be desired.
 The annotation context is resolved by seeking up the entity hierarchy.
 
-## Text Log
+### Text log
 Rerun integrates with the [Python logging module](https://docs.python.org/3/library/logging.html).
 Through the [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration) text at different importance level can be logged. After an initial setup that is described on the
 [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log#textlogintegration), statements
@@ -151,7 +148,7 @@ def main() -> None:
 ```
 In the viewer you can adjust the filter level and look at the messages time-synchronized with respect to other logged data.
 
-# Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

@@ -1325,12 +1325,13 @@ impl eframe::App for App {
         // Save the blueprints
         // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
-            match hub.gc_and_persist_app_blueprints(&self.state.app_options) {
-                Ok(f) => f,
-                Err(err) => {
-                    re_log::error!("Saving blueprints failed: {err}");
-                }
-            };
+            if self.state.app_options.blueprint_gc {
+                hub.gc_blueprints();
+            }
+
+            if let Err(err) = hub.save_app_blueprints() {
+                re_log::error!("Saving blueprints failed: {err}");
+            }
         } else {
             re_log::error!("Could not save blueprints: the store hub is not available");
         }
@@ -1430,7 +1431,9 @@ impl eframe::App for App {
         self.show_text_logs_as_notifications();
         self.receive_messages(&mut store_hub, egui_ctx);
 
-        store_hub.gc_blueprints(self.app_options());
+        if self.app_options().blueprint_gc {
+            store_hub.gc_blueprints();
+        }
 
         store_hub.purge_empty();
         self.state.cleanup(&store_hub);

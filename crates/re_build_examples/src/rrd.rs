@@ -27,7 +27,7 @@ impl Rrd {
         create_dir_all(&self.output_dir)?;
 
         let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
-        let examples = if self.examples.is_empty() {
+        let mut examples = if self.examples.is_empty() {
             self.channel.examples(workspace_root)?
         } else {
             Channel::Nightly
@@ -36,6 +36,8 @@ impl Rrd {
                 .filter(|example| self.examples.contains(&example.name))
                 .collect()
         };
+        examples.sort_by(|a, b| a.name.cmp(&b.name));
+
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()

@@ -16,6 +16,15 @@ from download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
 
+DESCRIPTION = """
+# ARKitScenes
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
+contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
+
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scenes).
+""".strip()
+
 Color = Tuple[float, float, float, float]
 
 # hack for now since dataset does not provide orientation information, only known after initial visual inspection
@@ -29,58 +38,6 @@ ORIENTATION = {
 }
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
-
-DESCRIPTION = """
-# ARKit Scenes
-This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
-contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
-
-## How it was made
-The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scenes/main.py).
-
-### Moving RGB-D camera
-To log a moving RGB-D camera we need to log four objects: the pinhole camera (intrinsics), the camera pose
-(extrinsics), the color image and the depth image.
-
-The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/types/archetypes/pinhole) is logged to
-[world/camera_lowres](recording://world/camera_lowres) to define the intrinsics of the camera. This
-determines how to go from the 3D camera frame to the 2D image plane. The extrinsics are logged as an
-[rr.Transform3D archetype](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the
-[same entity world/camera_lowres](recording://world/camera_lowres). Note that we could also log the extrinsics to
-`world/camera` and the intrinsics to `world/camera/image` instead. Here, we log both on the same entity path to keep
-the paths shorter.
-
-The RGB image is logged as an
-[rr.Image archetype](https://www.rerun.io/docs/reference/types/archetypes/image) to the
-[world/camera_lowres/rgb entity](recording://world/camera_lowres/rgb) as a child of the intrinsics + extrinsics
-entity described in the previous paragraph. Similarly the depth image is logged as an
-[rr.DepthImage archetype](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to
-[world/camera_lowres/depth](recording://world/camera_lowres/depth).
-
-### Ground-truth mesh
-The mesh is logged as an [rr.Mesh3D archetype](https://www.rerun.io/docs/reference/types/archetypes/mesh3d).
-In this case the mesh is composed of mesh vertices, indices (i.e., which vertices belong to the same face), and vertex
-colors. Given a `trimesh.Trimesh` the following call is used to log it to Rerun
-```python
-rr.log(
-    "world/mesh",
-    rr.Mesh3D(
-        vertex_positions=mesh.vertices,
-        vertex_colors=mesh.visual.vertex_colors,
-        indices=mesh.faces,
-    ),
-    static=True,
-)
-```
-Here, the mesh is logged to the [world/mesh entity](recording://world/mesh) and is marked as static, since it does not
-change in the context of this visualization.
-
-### 3D bounding boxes
-The bounding boxes around the furniture is visualized by logging the
-[rr.Boxes3D archetype](https://www.rerun.io/docs/reference/types/archetypes/boxes3d). In this example, each
-bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
-""".strip()
 
 LOWRES_POSED_ENTITY_PATH = "world/camera_lowres"
 HIGHRES_ENTITY_PATH = "world/camera_highres"
@@ -349,6 +306,7 @@ def main() -> None:
                 name="2D",
             ),
             rrb.TextDocumentView(name="Readme"),
+            row_shares=[2, 1],
         ),
     )
 

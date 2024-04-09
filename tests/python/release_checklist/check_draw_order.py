@@ -14,14 +14,14 @@ README = """
 This checks whether the draw order correctly determines the layering of 2D content.
 
 ### Action
-You should see a single 2D space view with the following features:
+You should see a single 2D view with the following elements overdrawing each other back to front:
 - Gray background image
-- On top of the background a green/red gradient image
-- On top of that a blue (slightly transparent) blue square
-- On top of the blue square a white square. *Nothing* is overlapping the white square!
-- Between the gradient and the blue square rectangle (Box2D)
-- Lines *behind* the rectangle
-- Regular raster of points *in front* of the rectangle (unbroken by the rectangle)
+- Green to red gradient image
+- Blue (slightly transparent) square
+- Red line strip (zig-zagging)
+- Black Rectangle (Box2D)
+- Raster of points (visibly overlaps the rectangle!)
+- White square
 """
 
 
@@ -33,7 +33,7 @@ def run_2d_layering() -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Large gray background.
-    img = np.full((512, 512), 64, dtype="uint8")
+    img = np.full((256, 512), 64, dtype="uint8")
     rr.log("2d_layering/background", rr.Image(img, draw_order=0.0))
 
     # Smaller gradient in the middle.
@@ -47,30 +47,27 @@ def run_2d_layering() -> None:
     img = np.full((192, 192, 3), (0, 0, 255), dtype="uint8")
     rr.log("2d_layering/middle_blue", rr.Image(img, draw_order=1.0))
 
-    # Small white on top.
-    img = np.full((128, 128), 255, dtype="uint8")
-    rr.log("2d_layering/top", rr.Image(img, draw_order=2.0))
-
-    # Rectangle in between the top and the middle.
-    rr.log(
-        "2d_layering/rect_between_top_and_middle",
-        rr.Boxes2D(array=[64, 64, 256, 256], draw_order=1.5, array_format=rr.Box2DFormat.XYWH),
-    )
-
-    # Lines behind the rectangle.
     rr.log(
         "2d_layering/lines_behind_rect",
-        rr.LineStrips2D([(i * 20, i % 2 * 100 + 100) for i in range(20)], draw_order=1.25),
+        rr.LineStrips2D([(i * 20, i % 2 * 100 + 70) for i in range(20)], draw_order=1.25, colors=0xFF0000FF),
     )
 
-    # And some points in front of the rectangle.
+    rr.log(
+        "2d_layering/rect_between_top_and_middle",
+        rr.Boxes2D(array=[64, 32, 256, 128], draw_order=1.5, array_format=rr.Box2DFormat.XYWH, colors=0),
+    )
+
     rr.log(
         "2d_layering/points_between_top_and_middle",
         rr.Points2D(
-            [(32.0 + int(i / 16) * 16.0, 64.0 + (i % 16) * 16.0) for i in range(16 * 16)],
+            [(32.0 + int(i / 16) * 16.0, 32.0 + (i % 16) * 16.0) for i in range(16 * 16)],
             draw_order=1.51,
         ),
     )
+
+    # Small white square on top.
+    img = np.full((128, 128), 255, dtype="uint8")
+    rr.log("2d_layering/top", rr.Image(img, draw_order=2.0))
 
 
 def run(args: Namespace) -> None:

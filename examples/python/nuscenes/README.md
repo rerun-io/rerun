@@ -1,12 +1,13 @@
 <!--[metadata]
 title = "nuScenes"
 tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
-description = "Visualize the nuScenes dataset including lidar, radar, images, and bounding boxes."
 thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 build_args = ["--seconds=5"]
 -->
+
+Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
 <picture data-inline-viewer="examples/nuscenes">
   <img src="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/full.png" alt="">
@@ -15,8 +16,6 @@ build_args = ["--seconds=5"]
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/1200w.png">
 </picture>
-
-Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
 ## Used Rerun types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://ref.rerun.io/docs/python/0.14.1/common/image_helpers/#rerun.ImageEncoded)<sup>*</sup>
@@ -38,26 +37,26 @@ First, pinhole cameras and sensor poses are initialized to offer a 3D view and c
 
 ```python
 rr.log(
-        f"world/ego_vehicle/{sensor_name}",
-        rr.Transform3D(
-            translation=calibrated_sensor["translation"],
-            rotation=rr.Quaternion(xyzw=rotation_xyzw),
-            from_parent=False,
-        ),
-        timeless=True,
-    )
+    f"world/ego_vehicle/{sensor_name}",
+    rr.Transform3D(
+        translation=calibrated_sensor["translation"],
+        rotation=rr.Quaternion(xyzw=rotation_xyzw),
+        from_parent=False,
+    ),
+    timeless=True,
+)
 ```
 
 ```python
 rr.log(
-            f"world/ego_vehicle/{sensor_name}",
-            rr.Pinhole(
-                image_from_camera=calibrated_sensor["camera_intrinsic"],
-                width=sample_data["width"],
-                height=sample_data["height"],
-            ),
-            timeless=True,
-        )
+    f"world/ego_vehicle/{sensor_name}",
+    rr.Pinhole(
+        image_from_camera=calibrated_sensor["camera_intrinsic"],
+        width=sample_data["width"],
+        height=sample_data["height"],
+    ),
+    timeless=True,
+)
 ```
 
 ### Timelines

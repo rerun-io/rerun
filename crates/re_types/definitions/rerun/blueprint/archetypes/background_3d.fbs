@@ -12,8 +12,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the background of the 3D space view.
 table Background3D (
-    "attr.rerun.scope": "blueprint",
-    "attr.docs.unreleased"
+    "attr.rerun.scope": "blueprint"
 ) {
     // --- Required ---
 

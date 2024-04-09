@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "URDF Loader"
+title = "URDF loader"
 source = "https://github.com/rerun-io/rerun-loader-python-example-urdf"
 tags = ["3D", "Mesh", "Loader"]
 thumbnail = "https://static.rerun.io/urdf_loader/9c04fbb376cd4f7498628a98593035c6da0f17fb/480w.png"
@@ -17,7 +17,7 @@ thumbnail_dimensions = [480, 480]
 
 ## Overview
 
-This is an example data-loader plugin that lets you view [URDF](https://wiki.ros.org/urdf) files. It uses the [external data loader mechanism](https://www.rerun.io/docs/howto/open-any-file#external-dataloaders) to add this capability to the Rerun viewer without modifying the viewer itself.
+This is an example data-loader plugin that lets you view [URDF](https://wiki.ros.org/urdf) files. It uses the [external data loader mechanism](https://www.rerun.io/docs/reference/data-loaders/overview#external-dataloaders) to add this capability to the Rerun viewer without modifying the viewer itself.
 
 This example is written in Python, and uses [urdf_parser_py](https://github.com/ros/urdf_parser_py/tree/ros2) to read the files. ROS package-relative paths support both ROS 1 and ROS 2-based resolving.
 

@@ -1,12 +1,13 @@
 <!--[metadata]
 title = "Open Photogrammetry Format"
 tags = ["2D", "3D", "Camera", "Photogrammetry"]
-description = "Displays a photogrammetrically reconstructed 3D point cloud loaded from an Open Photogrammetry Format (OPF) file."
 thumbnail = "https://static.rerun.io/open-photogrammetry-format/c9bec43a3a3abd725a55ee8eb527a4c0cb01979b/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 build_args = ["--jpeg-quality=50"]
 -->
+
+Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
 <picture data-inline-viewer="examples/open_photogrammetry_format">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/480w.png">
@@ -16,23 +17,20 @@ build_args = ["--jpeg-quality=50"]
   <img src="https://static.rerun.io/open_photogrammetry_format/603d5605f9670889bc8bce3365f16b831fce1eb1/full.png" alt="">
 </picture>
 
-
-Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
-
-# Used Rerun types
+## Used Rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole)
 
-# Background
+## Background
 
 This example loads an Open Photogrammetry Format (OPF) project and displays the cameras and point cloud data.
 OPF, which stands for 'open photogrammetry format,' is a file format used for photogrammetry data.
 It contains all the necessary information related to a reconstructed 3D model made with photogrammetry, including calibration, point clouds and dense reconstruction.
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## Timelines
+### Timelines
 
  For each processed frame, all data sent to Rerun is associated with specific time using [`timelines`](https://www.rerun.io/docs/concepts/timelines).
 
@@ -40,7 +38,7 @@ The visualizations in this example were created with the following Rerun code:
 rr.set_time_sequence("image", i)
 ```
 
-## Video
+### Video
 
 Pinhole camera is utilized for achieving a 3D view and camera perspective through the use of the [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole) and [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetypes.
 
@@ -67,7 +65,7 @@ The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/r
 rr.log("world/cameras/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
 ```
 
-## Point clouds
+### Point clouds
 
 Point clouds from the project are logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `world/points` entity.
 
@@ -76,7 +74,7 @@ rr.log("world/points", rr.Points3D(points.position, colors=points.color), timele
 ```
 
 
-# Run the code
+## Run the code
 
 
 > This example requires Python 3.10 or higher because of [`pyopf`](https://pypi.org/project/pyopf/).

@@ -11,7 +11,7 @@ Future releases will add support for the full scope of blueprint. See issues: [#
 
 ## Blueprint API overview
 
-All blueprint APIs are in the [`rerun.blueprint`](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/?speculative-link) namespace. In our python examples, we typically import this using the `rrb` alias:
+All blueprint APIs are in the [`rerun.blueprint`](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) namespace. In our python examples, we typically import this using the `rrb` alias:
 
 ```python
 import rerun.blueprint as rrb

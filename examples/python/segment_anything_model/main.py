@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-Example of using Rerun to log and visualize the output of segment-anything.
-
-See: [segment_anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
 
 Can be used to test mask-generation on one or more images. Images can be local file-paths
 or remote urls.
@@ -29,12 +27,19 @@ import cv2
 import numpy as np
 import requests
 import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 import torch
 import torchvision
 from cv2 import Mat
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from segment_anything.modeling import Sam
 from tqdm import tqdm
+
+DESCRIPTION = """
+Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model).
+""".strip()
 
 MODEL_DIR: Final = Path(os.path.dirname(__file__)) / "model"
 MODEL_URLS: Final = {
@@ -177,9 +182,21 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_segment_anything_model")
+    blueprint = rrb.Vertical(
+        rrb.Spatial2DView(name="Image and segmentation mask", origin="/image"),
+        rrb.Horizontal(
+            rrb.TextLogView(name="Log", origin="/logs"),
+            rrb.TextDocumentView(name="Description", origin="/description"),
+            column_shares=[2, 1],
+        ),
+        row_shares=[3, 1],
+    )
+
+    rr.script_setup(args, "rerun_example_segment_anything_model", default_blueprint=blueprint)
     logging.getLogger().addHandler(rr.LoggingHandler("logs"))
     logging.getLogger().setLevel(logging.INFO)
+
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     sam = create_sam(args.model, args.device)
 

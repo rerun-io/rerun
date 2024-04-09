@@ -1,9 +1,12 @@
 ---
 title: Blueprint
-order: 9
+order: 600
 ---
 
 ## Blueprints and recordings
+
+<!-- source: Rerun Design System/Documentation schematics -->
+<img src="https://static.rerun.io/6e2095a0ffa4f093deb59848b7c294581ded4678_blueprints_and_recordings.png" width="550px">
 
 When you are working with the Rerun viewer, there are two separate pieces that
 combine to produce what you see: the "recording" and the "blueprint."
@@ -21,8 +24,8 @@ for the viewer to display.
 ## Loose coupling
 
 The blueprint and the recording are only loosely coupled. Rerun uses the
-"application ID" to determine whether a blueprint and a recording should be used
-together, but they are not directly linked beyond that.
+[application ID](apps-and-recordings.md) to determine whether a blueprint and a
+recording should be used together, but they are not directly linked beyond that.
 
 This means that either can be changed independently of the other. Keeping the
 blueprint constant while changing the recording will allow you to compare
@@ -41,6 +44,17 @@ In general, if you can modify an aspect of how something looks through the
 viewer, you are actually modifying the blueprint. (Note that while there may be
 some exceptions to this rule at the moment, the intent is to eventually migrate
 all state to the blueprint.)
+
+## Current, default, and heuristics blueprints
+
+<!-- source: Rerun Design System/Documentation schematics -->
+<img src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px">
+
+Blueprints may originate from multiple sources.
+
+- The "current blueprint" for a given application ID is the one that is used by the viewer to display data at any given time. It is updated for each change made to the visualization within the viewer, and may be saved to a blueprint file at any time.
+- The "default blueprint" is a snapshot that is set or updated when a blueprint is received from code or loaded from a file. The current blueprint may be reset to default blueprint at any time by using the "reset" button in the blueprint panel's header.
+- The "heuristic blueprint" is an automatically-produced blueprint based on the recording data. When no default blueprint is available, the heuristic blueprint is used when resetting the current blueprint. It is also possible to reset to the heuristic blueprint in the selection panel after selecting an application.
 
 ## What is a blueprint
 

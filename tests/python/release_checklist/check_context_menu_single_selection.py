@@ -24,13 +24,13 @@ ITEM                      CONTEXT MENU CONTENT
 'group/' entity           Expand all
                           Collapse all
 
-                          Add to new Space View
+                          Add to new space view
 -------------------------------------------------
 Component                 <no action available>
 =================================================
 ```
 
-#### Tile Title UI
+#### Tile title UI
 
 - Multi-select the 3D space view and the Vertical container in the Blueprint tree.
 - Right-click on the 3D space view tab title:
@@ -50,12 +50,12 @@ space view (tab title)    Hide
 
                           Clone
 
-                          Move to new Container
+                          Move to new container
 =================================================
 ```
 
 
-#### Container Selection Panel child list
+#### Container selection panel child list
 
 - Select the Vertical container.
 - In the selection panel, right-click on the 3D space view, and check that:

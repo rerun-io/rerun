@@ -22,27 +22,7 @@ DESCRIPTION = """
 This example shows various plot types that you can create using Rerun. Common usecases for such plots would be logging
 losses or metrics over time, histograms, or general function plots.
 
-## How it was made
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/plots/main.py).
-
-### Bar charts
-The [bar chart](recording://bar_chart) is created by logging the [rr.BarChart archetype](https://www.rerun.io/docs/reference/types/archetypes/bar_chart).
-
-### Time series
-All other plots are created using the
-[rr.Scalar archetype](https://www.rerun.io/docs/reference/types/archetypes/scalar)
-archetype.
-Each plot is created by logging scalars at different time steps (i.e., the x-axis).
-Additionally, the plots are styled using the
-[rr.SeriesLine](https://www.rerun.io/docs/reference/types/archetypes/series_line) and
-[rr.SeriesPoint](https://www.rerun.io/docs/reference/types/archetypes/series_point)
-archetypes respectively.
-
-For the [parabola](recording://curves/parabola) the radius and color is changed over time,
-the other plots use static for their styling properties where possible.
-
-[sin](recording://trig/sin) and [cos](recording://trig/cos) are logged with the same parent entity (i.e.,
-`trig/{cos,sin}`) which will put them in the same view by default.
+The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/plots).
 """.strip()
 
 
@@ -136,7 +116,7 @@ def main() -> None:
                 rrb.TimeSeriesView(name="Classification", origin="/classification"),
             ),
             rrb.TextDocumentView(name="Description", origin="/description"),
-            column_shares=[2, 1],
+            column_shares=[3, 1],
         ),
         rrb.SelectionPanel(expanded=False),
         rrb.TimePanel(expanded=False),

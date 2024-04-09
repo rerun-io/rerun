@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "Raw mesh"
 tags = ["Mesh"]
-description = "Demonstrates logging of raw 3D mesh data with simple material properties."
 thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c32673909071cb40/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "release"
 -->
+
+Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
 
 <picture data-inline-viewer="examples/raw_mesh">
   <img src="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/full.png" alt="">
@@ -15,22 +16,20 @@ channel = "release"
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/1200w.png">
 </picture>
 
-Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
-
-# Used Rerun types
+## Used Rerun types
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d)
 
-# Background
+## Background
 Raw 3D mesh data refers to the basic geometric representation of a three-dimensional object, typically composed of interconnected triangles.
 These triangles collectively form the surface of the object, defining its shape and structure in a digital environment.
 Rerun was employed to visualize and manage this raw mesh data, along with its associated simple material properties and transform hierarchy.
 
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## 3D mesh data
+### 3D mesh data
 The raw 3D mesh data are logged as [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) objects, and includes details about vertex positions, colors, normals, texture coordinates, material properties, and face indices for an accurate reconstruction and visualization.
 
 ```python
@@ -59,7 +58,7 @@ rr.log(
 ```
 
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

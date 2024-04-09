@@ -1,12 +1,15 @@
 ---
 title: Events and Timelines
-order: 3
+order: 400
 ---
 
 ## Timelines
 
 Each piece of logged data is associated with one or more timelines.
-By default, each log is added to the `log_time` timeline, with a timestamp assigned by the SDK.
+
+The logging SDK always creates two timelines for you:
+* `log_tick` - a sequence timeline with the sequence number of the log call
+* `log_time` - a temporal timeline with the time of the log call
 
 You can use the _set time_ functions (Python reference: [set_time_sequence](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_sequence), [set_time_seconds](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds), [set_time_nanos](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_nanos)) to associate logs with other timestamps on other timelines. For example:
 

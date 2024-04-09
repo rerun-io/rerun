@@ -1,6 +1,6 @@
 //! Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
 //!
-//! See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+//! See <https://www.rerun.io/docs/reference/data-loaders/overviewers/overview> for more information.
 //!
 //! Usage:
 //! ```

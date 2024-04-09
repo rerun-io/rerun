@@ -454,7 +454,7 @@ extern void rr_recording_stream_log(
 /// This method blocks until either at least one `DataLoader` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+/// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 extern void rr_recording_stream_log_file_from_path(
     rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool static_,
     rr_error* error
@@ -467,7 +467,7 @@ extern void rr_recording_stream_log_file_from_path(
 /// This method blocks until either at least one `DataLoader` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+/// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
     bool static_, rr_error* error

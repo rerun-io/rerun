@@ -23,7 +23,7 @@ default = []
 
 ## Support for using Rerun's data-loaders directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/howto/open-any-file>
+## See our `log_file` example and <https://www.rerun.io/docs/reference/data-loaders/overview>
 ## for more information.
 data_loaders = ["dep:re_data_source", "dep:re_smart_channel"]
 

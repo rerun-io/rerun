@@ -23,7 +23,7 @@ ITEMS                               CONTEXT MENU CONTENT
                                     Expand all
                                     Collapse all
 
-                                    Move to new Container
+                                    Move to new container
 ----------------------------------------------------------
 + Vertical container                Hide all
                                     Remove
@@ -31,7 +31,7 @@ ITEMS                               CONTEXT MENU CONTENT
                                     Expand all
                                     Collapse all
 
-                                    Move to new Container
+                                    Move to new container
 ----------------------------------------------------------
 + Viewport                          Hide all
 
@@ -49,7 +49,7 @@ Space view + 'box2d' data result    Hide all
                                     Expand all
                                     Collapse all
 
-                                    Add to new Space View
+                                    Add to new space view
 ----------------------------------------------------------
 + some component                    Hide all
 

@@ -26,8 +26,15 @@ Start by opening your editor of choice and creating a new file called `dna_examp
 The first thing we need to do is to import `rerun` and initialize the SDK by calling [`rr.init`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init). This init call is required prior to using any of the global
 logging calls, and allows us to name our recording using an `ApplicationId`.
 
+We also import some other utilities we will use later in the example.
+
 ```python
 import rerun as rr
+
+from math import tau
+import numpy as np
+from rerun.utilities import build_color_spiral
+from rerun.utilities import bounce_lerp
 
 rr.init("rerun_example_dna_abacus")
 ```
@@ -65,30 +72,12 @@ And with that, we're ready to start sending out data:
 By default, the SDK will start a viewer in another process and automatically pipe the data through.
 There are other means of sending data to a viewer as we'll see at the end of this section, but for now this default will work great as we experiment.
 
----
-
-The following sections will require importing a few different things to your script.
-We will do so incrementally, but if you just want to update your imports once and call it a day, feel free to add the following to the top of your script:
-
-```python
-from math import tau
-import numpy as np
-from rerun.utilities import build_color_spiral
-from rerun.utilities import bounce_lerp
-```
-
----
-
 ## Logging our first points
 
 The core structure of our DNA looking shape can easily be described using two point clouds shaped like spirals.
 Add the following to your file:
 
 ```python
-# new imports
-from rerun.utilities import build_color_spiral
-from math import tau
-
 NUM_POINTS = 100
 
 # points and colors are both np.array((NUM_POINTS, 3))
@@ -166,10 +155,6 @@ rr.log(
 Which only leaves the beads:
 
 ```python
-# new imports
-import numpy as np
-from rerun.utilities import bounce_lerp
-
 offsets = np.random.rand(NUM_POINTS)
 beads = [bounce_lerp(points1[n], points2[n], offsets[n]) for n in range(NUM_POINTS)]
 colors = [[int(bounce_lerp(80, 230, offsets[n] * 2))] for n in range(NUM_POINTS)]
@@ -214,10 +199,8 @@ Rerun has rich support for time: whether you want concurrent or disjoint timelin
 Let's add our custom timeline:
 
 ```python
-# new imports
-from rerun.utilities import bounce_lerp
-
 time_offsets = np.random.rand(NUM_POINTS)
+
 for i in range(400):
     time = i * 0.01
     rr.set_time_seconds("stable_time", time)

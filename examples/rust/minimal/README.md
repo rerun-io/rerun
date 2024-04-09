@@ -14,7 +14,7 @@ thumbnail_dimensions = [480, 480]
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
-This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/rust).
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/quick-start/rust).
 
 ```bash
 cargo run --release

@@ -70,4 +70,4 @@ Demonstrates how to log:
 
 `cargo run -p dna`
 
-This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/logging-rust).
+This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/quick-start/rust).

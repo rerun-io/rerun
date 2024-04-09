@@ -1,11 +1,12 @@
 <!--[metadata]
 title = "Hand tracking and gesture recognition"
 tags = ["MediaPipe", "Keypoint detection", "2D", "3D"]
-description = "Use the MediaPipe Hand Landmark and Gesture Detection solution to track hand and recognize gestures in images, video, and camera stream.."
 thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d097e347af2a4b7c4649c7d994cc038c02c2f4/480w.png"
 thumbnail_dimensions = [480, 480]
 -->
 
+Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
+track hands and recognize gestures in images, video, and camera stream.
 
 <picture>
   <img src="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/full.png" alt="">
@@ -15,13 +16,10 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/gesture_detection/2a5a3ec83962623063297fd95de57062372d5db0/1200w.png">
 </picture>
 
-Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
-track hands and recognize gestures in images, video, and camera stream.
-
-# Used rerun types
+## Used rerun types
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips2D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips2d), [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
-# Background
+## Background
 The hand tracking and gesture recognition technology aims to give the ability of the devices to interpret hand movements and gestures as commands or inputs.
 At the core of this technology, a pre-trained machine-learning model analyses the visual input and identifies hand landmarks and hand gestures.
 The real applications of such technology vary, as hand movements and gestures can be used to control smart devices.
@@ -30,10 +28,10 @@ Human-Computer Interaction, Robotics, Gaming, and Augmented Reality are a few of
 In this example, the [MediaPipe](https://developers.google.com/mediapipe/) Gesture and Hand Landmark Detection solutions were utilized to detect and track hand landmarks and recognize gestures.
 Rerun was employed to visualize the output of the Mediapipe solution over time to make it easy to analyze the behavior.
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 The visualizations in this example were created with the following Rerun code.
 
-## Timelines
+### Timelines
 
 For each processed video frame, all data sent to Rerun is associated with the two [`timelines`](https://www.rerun.io/docs/concepts/timelines) `time` and `frame_idx`.
 
@@ -42,7 +40,7 @@ rr.set_time_sequence("frame_nr", frame_idx)
 rr.set_time_nanos("frame_time", frame_time_nano)
 ```
 
-## Video
+### Video
 The input video is logged as a sequence of [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) objects to the `Media/Video` entity.
 ```python
 rr.log(
@@ -51,7 +49,7 @@ rr.log(
 )
 ```
 
-## Hand landmark points
+### Hand landmark points
 Logging the hand landmarks involves specifying connections between the points, extracting pose landmark points and logging them to the Rerun SDK.
 The 2D points are visualized over the video and at a separate entity.
 Meanwhile, the 3D points allows the creation of a 3D model of the hand for a more comprehensive representation of the hand landmarks.
@@ -62,7 +60,7 @@ As for the 3D points, the logging process involves two steps. First, a static [`
 the keypoints. Defining these connections automatically renders lines between them. Mediapipe provides the `HAND_CONNECTIONS` variable which contains the list of `(from, to)` landmark indices that define the connections.
 Second, the actual keypoint positions are logged in 3D [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 
-### Label Mapping and Keypoint Connections
+#### Label mapping and keypoint connections
 
 ```python
 rr.log(
@@ -79,7 +77,7 @@ rr.log(
 rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, static=True)
 ```
 
-### 2D Points
+#### 2D points
 
 ```python
 # Log points to the image and Hand Entity
@@ -97,7 +95,7 @@ for log_key in ["Media/Connections", "Hand/Connections"]:
     )
 ```
 
-### 3D points
+#### 3D points
 
 ```python
 rr.log(
@@ -111,7 +109,7 @@ rr.log(
 )
 ```
 
-## Detection
+### Detection
 
 To showcase gesture recognition, an image of the corresponding gesture emoji is displayed within a `TextDocument` under the `Detection` entity.
 
@@ -123,7 +121,7 @@ rr.log(
 )
 ```
 
-# Run the Code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
 # Setup

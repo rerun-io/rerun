@@ -38,7 +38,6 @@ anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 double_the = re.compile(r"\bthe the\b")
 double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
-
 Frontmatter = Dict[str, Any]
 
 
@@ -191,14 +190,14 @@ def lint_line(
 
     if not is_in_docstring:
         if m := re.search(
-            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("(\w*)',
+            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)',
             line,
         ) or re.search(
             r'(rr.script_setup)\(args, "(\w*)',
             line,
         ):
             app_id = m.group(2)
-            if not app_id.startswith("rerun_example_"):
+            if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
     # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.
@@ -655,14 +654,26 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
-def lint_markdown(lines_in: list[str]) -> tuple[list[str], list[str]]:
+def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
     errors = []
     lines_out = []
 
+    in_example_readme = "/examples/python/" in filepath and filepath.endswith("README.md")
+
+    in_code_block = False
+    in_frontmatter = False
     for line_nr, line in enumerate(lines_in):
         line_nr = line_nr + 1
+
+        if line.startswith("```"):
+            in_code_block = not in_code_block
+
+        if line.startswith("<!--[metadata]"):
+            in_frontmatter = True
+        if in_frontmatter and line.startswith("-->"):
+            in_frontmatter = False
 
         # Check the casing on markdown headers
         if m := re.match(r"(\#+ )(.*)", line):
@@ -677,6 +688,13 @@ def lint_markdown(lines_in: list[str]) -> tuple[list[str], list[str]]:
             if new_title != m.group(1):
                 errors.append(f"{line_nr}: Titles should NOT be title cased. This should be '{new_title}'.")
                 line = f'title = "{new_title}"\n'
+
+        if in_example_readme and not in_code_block and not in_frontmatter:
+            # Check that <h1> is not used in example READMEs
+            if line.startswith("#") and not line.startswith("##"):
+                errors.append(
+                    f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
+                )
 
         lines_out.append(line)
 
@@ -749,13 +767,16 @@ def lint_frontmatter(filepath: str, content: str) -> list[str]:
     if not filepath.endswith(".md"):
         return errors
 
-    fm = load_frontmatter(content)
+    try:
+        fm = load_frontmatter(content)
+    except Exception as e:
+        errors.append(f"Error parsing frontmatter: {e}")
+        return errors
+
     if fm is None:
         return []
 
     errors += lint_example_description(filepath, fm)
-
-    # TODO(ab): check for missing fields (when descriptions are populated everywhere)
 
     return errors
 
@@ -819,7 +840,7 @@ class SourceFile:
         if line_nr is None:
             return f"{self.path}:{message}"
         else:
-            return f"{self.path}:{line_nr+1}: {message}"
+            return f"{self.path}:{line_nr + 1}: {message}"
 
 
 def lint_file(filepath: str, args: Any) -> int:
@@ -865,7 +886,7 @@ def lint_file(filepath: str, args: Any) -> int:
             source.rewrite(lines_out)
 
     if filepath.endswith(".md") and args.extra:
-        errors, lines_out = lint_markdown(source.lines)
+        errors, lines_out = lint_markdown(filepath, source.lines)
 
         for error in errors:
             print(source.error(error))

@@ -1,7 +1,10 @@
 # Rerun changelog
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
-The biggest news is the ability to create a _blueprint_ via the Python logging API:
+
+
+## [0.15.0](https://github.com/rerun-io/rerun/compare/0.14.1...0.15.0) - Blueprints from Python - 2024-04-**09**
+The biggest news is the ability to create a _blueprint_ via the Python logging API. Check out our [associated blog post](https://www.rerun.io/blog/blueprint-part-one) for more information.
 
 ```py
 import rerun.blueprint as rrb
@@ -46,15 +49,15 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 
 
 ### ✨ Overview & highlights
-- 🟦 Configure the layout and content of space views from Python [(docs)](https://www.rerun.io/docs/howto/configure-viewer-through-code?speculative-link)
-- 🖧 More powerful and flexible data loaders [(docs)](https://www.rerun.io/docs/reference/dataloaders?speculative-link)
+- 🟦 Configure the layout and content of space views from Python [(docs)](https://www.rerun.io/docs/howto/configure-viewer-through-code)
+- 🖧 More powerful and flexible data loaders [(docs)](https://www.rerun.io/docs/reference/data-loaders)
 - 🖵 Improved UI for managing recordings and applications
 - 💾 Save and load blueprint files in the viewer
 - 🎨 Configurable background color for 3D Space Views [#5443](https://github.com/rerun-io/rerun/pull/5443)
 - 💪 Linux ARM64 support [#5489](https://github.com/rerun-io/rerun/pull/5489) [#5503](https://github.com/rerun-io/rerun/pull/5503) [#5511](https://github.com/rerun-io/rerun/pull/5511)
 - 🖼️ Show examples in the welcome page
 - 🖱️ Improve context-menu when right-clicking items in the blueprint panel and streams tree
-- ❌ Remove `InstanceKey` from our logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395)
+- ❌ Remove `InstanceKey` from our logging APIs [#5395](https://github.com/rerun-io/rerun/pull/5395) ([migration guide](https://www.rerun.io/docs/reference/migration/migration-0-15))
 - ❌ Remove groups from blueprints panel [#5326](https://github.com/rerun-io/rerun/pull/5326)
 
 ### 🔎 Details
@@ -108,6 +111,7 @@ Blueprints are currently only supported in the Python API, with C++ and Rust sup
 - Entity path query now shows simple statistics and warns if nothing is displayed [#5693](https://github.com/rerun-io/rerun/pull/5693)
 - Go back to example page with browser Back-button [#5750](https://github.com/rerun-io/rerun/pull/5750)
 - On Web, implement navigating back/forward with mouse buttons [#5792](https://github.com/rerun-io/rerun/pull/5792)
+- Support displaying 1D tensors [#5837](https://github.com/rerun-io/rerun/pull/5837)
 
 #### 🧑‍🏫 Examples
 - New `incremental_logging` example [#5462](https://github.com/rerun-io/rerun/pull/5462)
@@ -206,7 +210,9 @@ This release is identical to 0.14.0 and merely fixes an issue in the build artif
 0.14.0 only contained binaries for Linux x64, this release has the full set for Linux x64, Windows x64, Mac x64 & Mac Arm64.
 
 ## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, quality of life improvements, bugfixes - 2024-02-28
+## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, quality of life improvements, bugfixes - 2024-02-28
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 Originally, we planned to do only a bugfix release, but we got an unexpected amount of goodies amassed already.
@@ -220,6 +226,7 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 - 🐛 Fixes regressions in Space View spawn heuristics from 0.13, and many more bugfixes.
 - 🧑‍🏫 Two new examples: [Gesture Recognition](https://github.com/rerun-io/rerun/tree/release-0.14.0/examples/python/gesture_detection) & [RRT* Pathfinding](https://github.com/rerun-io/rerun/tree/release-0.14.0/examples/python/rrt-star)
 
+### 🔎 Details
 ### 🔎 Details
 
 #### 🪵 Log API
@@ -288,6 +295,7 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 ## [0.13.0](https://github.com/rerun-io/rerun/compare/0.12.1...0.13.0) - Fast time series, improved layout editing & UI overrides - 2024-02-12
 
 ### ✨ Overview & highlights
+### ✨ Overview & highlights
 
 This release focuses on scalar time series -- both from a performance and UI perspectives.
 Check out our [associated blog post](https://www.rerun.io/blog/fast-plots) for more information.
@@ -324,6 +332,7 @@ As well as a lot of miscellaneous bug fixes and usability improvements: see deta
 
 Check out our [migration guide](https://www.rerun.io/docs/reference/migration/migration-0-13).
 
+### 🔎 Details
 ### 🔎 Details
 
 #### 🪵 Log API
@@ -459,10 +468,12 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Update egui_tiles to 0.7.2 [#5107](https://github.com/rerun-io/rerun/pull/5107)
 
 #### 🤷 Other
+#### 🤷 Other
 - Add `rerun --serve` and improve `--help` [#4834](https://github.com/rerun-io/rerun/pull/4834)
 - `rerun print`: print just summary, unless given `--verbose` [#5079](https://github.com/rerun-io/rerun/pull/5079)
 
 
+## [0.12.1](https://github.com/rerun-io/rerun/compare/0.12.0...0.12.1) - Data loader bug fixes - 2024-01-17
 ## [0.12.1](https://github.com/rerun-io/rerun/compare/0.12.0...0.12.1) - Data loader bug fixes - 2024-01-17
 
 #### 🌊 C++ API
@@ -481,6 +492,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - External loaders: remove warnings on duplicated binary on `$PATH` [#4833](https://github.com/rerun-io/rerun/pull/4833)
 
 #### 🤷 Other
+#### 🤷 Other
 - Include `Cargo.lock` in `rerun-cli` crate [#4750](https://github.com/rerun-io/rerun/pull/4750)
 - Replace `atty` dependency with `std::io::IsTerminal` [#4790](https://github.com/rerun-io/rerun/pull/4790) (thanks [@kpreid](https://github.com/kpreid)!)
 
@@ -488,7 +500,8 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 ## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0) - Data Loaders, Container-editing, Python-3.12 - 2024-01-09
 
 ### ✨ Overview & highlights
-- 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/howto/open-any-file).
+### ✨ Overview & highlights
+- 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/reference/data-loaders/overview).
 - 🕸️ More built-in examples are now available in the viewer.
 - 🐍 The Python SDK now works with Python-3.12.
 - 📘 Blueprint containers can now be selected and modified.
@@ -498,6 +511,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
  - There is no need for " quotes around path parts, instead we now use \ to escape special characters.
  - You need to escape any character that isn't alphabetical, numeric, ., -, or _.
 
+### 🔎 Details
 ### 🔎 Details
 
 #### 🌊 C++ API
@@ -621,6 +635,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Update Rust to 1.74.0 [#4390](https://github.com/rerun-io/rerun/pull/4390)
 
 #### 🤷 Other
+#### 🤷 Other
 - Use `:` instead of `.` as the entity:component separator in paths [#4471](https://github.com/rerun-io/rerun/pull/4471)
 - File-like entity paths [#4476](https://github.com/rerun-io/rerun/pull/4476)
 - Make the new container blueprints the default behavior [#4642](https://github.com/rerun-io/rerun/pull/4642)
@@ -628,6 +643,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 ## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0) - C++ improvements & better Visible History - 2023-11-28
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 - 🌊 C++ SDK improvements
@@ -649,6 +665,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 Special thanks to @dvad & @dangush for contributing!
 
+### 🔎 Details
 ### 🔎 Details
 
 #### 🌊 C++ SDK
@@ -714,6 +731,7 @@ Special thanks to @dvad & @dangush for contributing!
 ## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1) - 2023-11-02
 
 ### ✨ Overview & highlights
+### ✨ Overview & highlights
 This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 #### 🌊 C++ SDK
@@ -738,6 +756,7 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 
 ### ✨ Overview & highlights
+### ✨ Overview & highlights
 * The C++ SDK is finally here!
   ```cpp
   #include <rerun.hpp>
@@ -755,6 +774,7 @@ Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 * Add support for NV12-encoded images [#3541](https://github.com/rerun-io/rerun/pull/3541) (thanks [@zrezke](https://github.com/zrezke)!)
 * We now publish pre-built binaries for each release at <https://github.com/rerun-io/rerun/releases>
 
+### 🔎 Details
 ### 🔎 Details
 #### 🌊 C++ SDK
 - Has all the features of the Python and C++ SDK:s
@@ -824,6 +844,7 @@ Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 * Online demo: <https://app.rerun.io/version/0.9.1/>
 
 ### ✨ Overview & highlights
+### ✨ Overview & highlights
 - A bunch of bug fixes
 - Fix big performance regression when hovering images
 - The Rerun Viewer should now be visible to the system accessibility system
@@ -885,6 +906,7 @@ Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 * Online demo: <https://app.rerun.io/version/0.9.0/>
 
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 Rerun 0.9.0 is a big release, that introduces a brand new logging API.
 This API is code-generated from a common definition, meaning the Python and Rust SDKs are very similar now.
@@ -1059,6 +1081,7 @@ Other highlights:
 - Update to wgpu 0.17 [#2980](https://github.com/rerun-io/rerun/pull/2980)
 
 #### 🤷 Other
+#### 🤷 Other
 - Always protect at least one value on the timeline when running GC [#3357](https://github.com/rerun-io/rerun/pull/3357)
 
 
@@ -1114,6 +1137,7 @@ Other highlights:
 * Online demo: <https://demo.rerun.io/version/0.8.0/>
 
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
  - `log_pinhole` is now easier to use in simple cases and supports non-RDF camera coordinates. [#2614](https://github.com/rerun-io/rerun/pull/2614)
    - You only need to set focal length and optional principal point instead of setting the full 3x3 matrix.
@@ -1348,6 +1372,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 - Fix cpp formatter differences [#2773](https://github.com/rerun-io/rerun/pull/2773)
 
 #### 🤷 Other
+#### 🤷 Other
 - test_api: set different app_id based on what test is run [#2599](https://github.com/rerun-io/rerun/pull/2599)
 - Introduce `rerun compare` to check whether 2 rrd files are functionally equivalent [#2597](https://github.com/rerun-io/rerun/pull/2597)
 - Remove `files.exclude` in vscode settings [#2621](https://github.com/rerun-io/rerun/pull/2621)
@@ -1357,6 +1382,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 
 ## [0.7.0](https://github.com/rerun-io/rerun/compare/0.6.0...0.7.0) - improved transforms, better color mapping, bug & doc fixes - 2023-06-16
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 While we're working on significant updates around interfaces and customizability,
@@ -1449,6 +1475,7 @@ here's a smaller release packed with useful improvements 🎉
 
 ## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 - You can now show 3D objects in 2D views connected by Pinhole transforms [#2008](https://github.com/rerun-io/rerun/pull/2008)
@@ -1612,6 +1639,7 @@ here's a smaller release packed with useful improvements 🎉
 - Fix run all for new rust-cli target & add rerun-web alias for quick running of the web player [#2203](https://github.com/rerun-io/rerun/pull/2203)
 
 #### 🤷 Other
+#### 🤷 Other
 - Fix secret in dispatch_lint.yml [4848f98f2605a3caf9b7695273e0871efa2d44c8](https://github.com/rerun-io/rerun/commit/4848f98f2605a3caf9b7695273e0871efa2d44c8)
 - Only maintain a single manual-dispatch job for testing workflows [98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1](https://github.com/rerun-io/rerun/commit/98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1)
 - Add other build parametrizations to manual_dispatch.yml [dbdf275eaf17220d14811dc34b69b6a76e948e73](https://github.com/rerun-io/rerun/commit/dbdf275eaf17220d14811dc34b69b6a76e948e73)
@@ -1647,6 +1675,7 @@ here's a smaller release packed with useful improvements 🎉
 ## [0.5.1](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.5.0) - Patch Release - 2023-05-01
 
 ### ✨ Overview & highlights
+### ✨ Overview & highlights
 This Release fixes a few small bugs on top of the v0.5.0 release.
 
 ### In Detail
@@ -1659,6 +1688,7 @@ This Release fixes a few small bugs on top of the v0.5.0 release.
 
 ## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore! - 2023-04-20
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 This new release adds MVP support for embedding Rerun in Jupyter notebooks, and brings significant performance improvements across all layers of the stack.
@@ -1756,6 +1786,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Smooth out scroll wheel input for camera zooming [#1920](https://github.com/rerun-io/rerun/pull/1920)
 
 #### 🤷 Other Viewer improvements
+#### 🤷 Other Viewer improvements
 - Change `EntityPathHash` to be 64 bit [#1723](https://github.com/rerun-io/rerun/pull/1723)
 - Central `GpuReadback` handling for re_viewer, experimental space view screenshots [#1717](https://github.com/rerun-io/rerun/pull/1717)
 - Readback depth from GPU picking [#1752](https://github.com/rerun-io/rerun/pull/1752)
@@ -1817,6 +1848,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Optimize `generate_changelog.py` [#1912](https://github.com/rerun-io/rerun/pull/1912)
 
 #### 🤷 Other
+#### 🤷 Other
 - Fix videos for GitHub in `CHANGELOG.md` [af7d3b192157f942e35f64d3561a9a8dbcc18bfa](https://github.com/rerun-io/rerun/commit/af7d3b192157f942e35f64d3561a9a8dbcc18bfa)
 - Don't run 3rd party bench suites on CI [#1787](https://github.com/rerun-io/rerun/pull/1787)
 - Remove `TensorTrait` [#1819](https://github.com/rerun-io/rerun/pull/1819)
@@ -1831,6 +1863,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 
 https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
 
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 * Lower memory use [#1535](https://github.com/rerun-io/rerun/pull/1535)
@@ -1930,6 +1963,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Add radius boost for depth clouds on outline [#1713](https://github.com/rerun-io/rerun/pull/1713)
 
 #### 🤷 Other Viewer improvements
+#### 🤷 Other Viewer improvements
 - Fix web feature name in error messages [#1521](https://github.com/rerun-io/rerun/pull/1521)
 - Use outlines for mesh selections instead of highlight colors [#1540](https://github.com/rerun-io/rerun/pull/1540)
 - Implement outlines for line renderer & use them for select & hover of "line-like" primitives in Viewer [#1553](https://github.com/rerun-io/rerun/pull/1553)
@@ -1997,6 +2031,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Add a script that generates a changelog from recent PRs and their labels [#1718](https://github.com/rerun-io/rerun/pull/1718)
 
 #### 🤷 Other
+#### 🤷 Other
 - Clean up opencv_canny example slightly [b487e550dcb87225858dc6f76b791a25e938e75e](https://github.com/rerun-io/rerun/commit/b487e550dcb87225858dc6f76b791a25e938e75e)
 - Lint fixes [9901e7c6735356b1970ddabc926bc5378d82e057](https://github.com/rerun-io/rerun/commit/9901e7c6735356b1970ddabc926bc5378d82e057)
 
@@ -2007,6 +2042,7 @@ Remove potentially sensitive analytics, including path to rerun source code on p
 
 
 ## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0) - 2023-03-07
+### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 After a successful launch a couple of weeks ago, we're back with our second release!

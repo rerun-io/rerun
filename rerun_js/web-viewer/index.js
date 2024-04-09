@@ -121,7 +121,7 @@ export class WebViewer {
    * The same viewer instance may be started multiple times.
    */
   stop() {
-    if (this.#state !== "stopped") return;
+    if (this.#state === "stopped") return;
     this.#state = "stopped";
 
     this.#canvas?.remove();

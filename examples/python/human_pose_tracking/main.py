@@ -18,46 +18,18 @@ import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 
-EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
-DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
-DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
-
 DESCRIPTION = """
-# Human Pose Tracking
+# Human pose tracking
 This example uses Rerun to visualize the output of [MediaPipe](https://developers.google.com/mediapipe)-based tracking
 of a human pose in 2D and 3D.
 
-## How it was made
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
-
-### Input Video
-The input video is logged as a sequence of
-[rr.Image objects](https://www.rerun.io/docs/reference/types/archetypes/image) to the [video entity](recording://video).
-
-### Segmentation
-The [segmentation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
-image itself is logged as an
-[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
-contains the id for each pixel. The color is determined by the
-[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged with `rr.log(…, static=True` as it should apply to the whole sequence.
-
-### Skeletons
-The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a
-similar combination of two entities.
-
-First, a static
-[rr.ClassDescription](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged (note, that
-this is equivalent to logging an
-[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) as in the
-segmentation case). The class description contains the information which maps keypoint ids to labels and how to connect
-the keypoints to a skeleton.
-
-Second, the actual keypoint positions are logged in 2D
-nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
-[rr.Points3D](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking).
 """.strip()
+
+EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
+DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
+DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
 
 
 def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -> None:

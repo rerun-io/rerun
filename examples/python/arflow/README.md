@@ -6,6 +6,10 @@ thumbnail = "https://static.rerun.io/arflow/a6b509af10a42b3c7ad3909d44e972a3cb1a
 thumbnail_dimensions = [480, 480]
 -->
 
+This is an external project that uses Rerun as a core component.
+
+## External project presentation
+
 
 [Paper](https://doi.org/10.1145/3638550.3643617) | [BibTeX](#bibtex) | [Project Page](https://cake.wpi.edu/ARFlow/) | [Video](https://youtu.be/mml8YrCgfTk)
 

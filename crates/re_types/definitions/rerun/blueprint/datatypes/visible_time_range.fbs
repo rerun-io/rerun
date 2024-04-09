@@ -11,8 +11,7 @@ namespace rerun.blueprint.datatypes;
 
 /// Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
 enum VisibleTimeRangeBoundaryKind: byte (
-  "attr.rerun.scope": "blueprint",
-  "attr.docs.unreleased"
+  "attr.rerun.scope": "blueprint"
 ) {
   /// Boundary is a value relative to the time cursor.
   RelativeToTimeCursor,
@@ -26,8 +25,7 @@ enum VisibleTimeRangeBoundaryKind: byte (
 
 /// Type of boundary for visible history.
 struct VisibleTimeRangeBoundary (
-  "attr.rerun.scope": "blueprint",
-  "attr.docs.unreleased"
+  "attr.rerun.scope": "blueprint"
 ) {
   /// Type of the boundary.
   kind: rerun.blueprint.datatypes.VisibleTimeRangeBoundaryKind (order: 100);
@@ -39,8 +37,7 @@ struct VisibleTimeRangeBoundary (
 /// Visible time range bounds.
 struct VisibleTimeRange (
   "attr.rerun.scope": "blueprint",
-  "attr.rust.derive": "PartialEq, Eq",
-  "attr.docs.unreleased"
+  "attr.rust.derive": "PartialEq, Eq"
 ) {
   // TODO(andreas): Split this up into two separate components.
 

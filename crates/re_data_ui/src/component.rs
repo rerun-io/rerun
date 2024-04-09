@@ -100,7 +100,7 @@ impl DataUi for EntityLatestAtResults {
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {
-                        ui.label("Instance");
+                        ui.label("Index");
                     });
                     header.col(|ui| {
                         ui.label(self.component_name.short_name());
