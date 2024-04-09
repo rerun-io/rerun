@@ -94,7 +94,7 @@ def lint_line(
     else:
         prev_line_stripped = prev_line.strip()
 
-    if file_extension != "md" and line[-1].isspace():
+    if line[-1].isspace():
         return "Trailing whitespace"
 
     if "NOLINT" in line:
