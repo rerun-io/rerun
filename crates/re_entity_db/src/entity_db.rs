@@ -118,6 +118,12 @@ pub struct EntityDb {
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
 
+    /// The active promise resolver for this DB.
+    resolver: re_query2::PromiseResolver,
+
+    /// Query caches for the data in [`Self::data_store`].
+    query_caches2: re_query_cache2::Caches,
+
     stats: IngestionStatistics,
 }
 
@@ -129,6 +135,7 @@ impl EntityDb {
             DataStoreConfig::default(),
         );
         let query_caches = re_query_cache::Caches::new(&data_store);
+        let query_caches2 = re_query_cache2::Caches::new(&data_store);
         Self {
             data_source: None,
             set_store_info: None,
@@ -139,6 +146,8 @@ impl EntityDb {
             tree: crate::EntityTree::root(),
             data_store,
             query_caches,
+            resolver: re_query2::PromiseResolver::default(),
+            query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -192,6 +201,59 @@ impl EntityDb {
     }
 
     #[inline]
+    pub fn query_caches2(&self) -> &re_query_cache2::Caches {
+        &self.query_caches2
+    }
+
+    #[inline]
+    pub fn resolver(&self) -> &re_query2::PromiseResolver {
+        &self.resolver
+    }
+
+    #[inline]
+    pub fn latest_at_component<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
+        self.query_caches2().latest_at_component::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    #[inline]
+    pub fn latest_at_component_quiet<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
+        self.query_caches2().latest_at_component_quiet::<C>(
+            self.store(),
+            self.resolver(),
+            entity_path,
+            query,
+        )
+    }
+
+    #[inline]
+    pub fn latest_at_component_at_closest_ancestor<C: re_types_core::Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &re_data_store::LatestAtQuery,
+    ) -> Option<(EntityPath, re_query_cache2::CachedLatestAtMonoResult<C>)> {
+        self.query_caches2()
+            .latest_at_component_at_closest_ancestor::<C>(
+                self.store(),
+                self.resolver(),
+                entity_path,
+                query,
+            )
+    }
+
+    #[inline]
     pub fn store(&self) -> &DataStore {
         &self.data_store
     }
@@ -238,7 +300,7 @@ impl EntityDb {
     }
 
     pub fn num_rows(&self) -> usize {
-        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
+        self.data_store.num_static_rows() as usize + self.data_store.num_temporal_rows() as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
@@ -369,6 +431,7 @@ impl EntityDb {
         let original_store_events = &[store_event];
         self.times_per_timeline.on_events(original_store_events);
         self.query_caches.on_events(original_store_events);
+        self.query_caches2.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
@@ -378,6 +441,7 @@ impl EntityDb {
         let new_store_events = self.on_clear_cascade(clear_cascade);
         self.times_per_timeline.on_events(&new_store_events);
         self.query_caches.on_events(&new_store_events);
+        self.query_caches2.on_events(&new_store_events);
         let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
@@ -477,7 +541,6 @@ impl EntityDb {
 
         self.gc(&GarbageCollectionOptions {
             target: re_data_store::GarbageCollectionTarget::Everything,
-            gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
             dont_protect: [
@@ -500,7 +563,6 @@ impl EntityDb {
             target: re_data_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
-            gc_timeless: true,
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),
@@ -536,11 +598,14 @@ impl EntityDb {
             tree,
             data_store: _,
             query_caches,
+            resolver: _,
+            query_caches2,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
+        query_caches2.on_events(store_events);
 
         let store_events = store_events.iter().collect_vec();
         let compacted = CompactedStoreEvents::new(&store_events);

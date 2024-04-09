@@ -10,8 +10,8 @@ impl DataUi for re_entity_db::EntityPath {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
-        InstancePath::entity_splat(self.clone()).data_ui(ctx, ui, verbosity, query, store);
+        InstancePath::entity_splat(self.clone()).data_ui(ctx, ui, verbosity, query, db);
     }
 }

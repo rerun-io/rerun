@@ -71,7 +71,7 @@ pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 /// underlying type and likely point to shared, contiguous memory.
 ///
 /// Each cell in the column corresponds to a different row of the same column.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {
@@ -291,8 +291,8 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
-/// #         (Timeline::new_sequence("frame_nr"), frame_nr.into()),
-/// #         (Timeline::new_sequence("clock"), clock.into()),
+/// #         (Timeline::new_sequence("frame_nr"), frame_nr),
+/// #         (Timeline::new_sequence("clock"), clock),
 /// #     ])
 /// # };
 /// #
@@ -344,6 +344,8 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # assert_eq!(table_in, table_out);
 /// ```
+//
+// TODO(#5303): the Layout part will be outdated in the new key-less model
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataTable {
     /// Auto-generated `TUID`, uniquely identifying this batch of data and keeping track of the
@@ -477,9 +479,7 @@ impl DataTable {
         self.col_row_id.len() as _
     }
 
-    /// Fails if any row has:
-    /// - cells that aren't 0, 1 or `num_instances` long
-    /// - two or more cells share the same component type
+    /// Fails if any row has two or more cells share the same component type.
     #[inline]
     pub fn to_rows(&self) -> impl ExactSizeIterator<Item = DataReadResult<DataRow>> + '_ {
         let num_rows = self.num_rows() as usize;
@@ -504,7 +504,7 @@ impl DataTable {
                     col_timelines
                         .iter()
                         .filter_map(|(timeline, times)| {
-                            times[i].map(|time| (*timeline, time.into()))
+                            times[i].map(|time| (*timeline, crate::TimeInt::new_temporal(time)))
                         })
                         .collect::<BTreeMap<_, _>>(),
                 ),
@@ -519,10 +519,17 @@ impl DataTable {
     /// and returns the corresponding [`TimePoint`].
     #[inline]
     pub fn timepoint_max(&self) -> TimePoint {
-        let mut timepoint = TimePoint::timeless();
+        let mut timepoint = TimePoint::default();
         for (timeline, col_time) in &self.col_timelines {
-            if let Some(time) = col_time.iter().flatten().max().copied() {
-                timepoint.insert(*timeline, time.into());
+            let time = col_time
+                .iter()
+                .flatten()
+                .max()
+                .copied()
+                .map(crate::TimeInt::new_temporal);
+
+            if let Some(time) = time {
+                timepoint.insert(*timeline, time);
             }
         }
         timepoint
@@ -1316,15 +1323,12 @@ impl DataTable {
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
-            let tp = if timeless {
-                TimePoint::timeless()
-            } else {
-                TimePoint::from([
-                    (Timeline::log_time(), Time::now().into()),
-                    (Timeline::log_tick(), tick.into()),
-                    (Timeline::new_sequence("frame_nr"), frame_nr.into()),
-                ])
-            };
+            let mut tp = TimePoint::default();
+            if !timeless {
+                tp.insert(Timeline::log_time(), Time::now());
+                tp.insert(Timeline::log_tick(), tick);
+                tp.insert(Timeline::new_sequence("frame_nr"), frame_nr);
+            }
             tick += 1;
             tp
         };

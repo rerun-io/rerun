@@ -20,7 +20,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: Define the style properties for a line series in a chart.
     ///
-    /// This archetype only provides styling information and should be logged as timeless
+    /// This archetype only provides styling information and should be logged as static
     /// when possible. The underlying data needs to be logged to the same entity-path using
     /// the `Scalar` archetype.
     ///
@@ -43,13 +43,13 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Set up plot styling:
-    ///     // They are logged timeless as they don't change over time and apply to all timelines.
+    ///     // They are logged static as they don't change over time and apply to all timelines.
     ///     // Log two lines series under a shared root so that they show in the same plot by default.
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "trig/sin",
     ///         rerun::SeriesLine().with_color({255, 0, 0}).with_name("sin(0.01t)").with_width(2)
     ///     );
-    ///     rec.log_timeless(
+    ///     rec.log_static(
     ///         "trig/cos",
     ///         rerun::SeriesLine().with_color({0, 255, 0}).with_name("cos(0.01t)").with_width(4)
     ///     );

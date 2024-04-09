@@ -34,7 +34,7 @@ def log_image(path: str, height: int, width: int, color: tuple[int, int, int]) -
 
 
 def log_readme() -> None:
-    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
 
 def log_images() -> None:

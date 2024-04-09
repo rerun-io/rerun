@@ -74,7 +74,7 @@ fn hash_and_log(
 
     let entity_path = EntityPath::from_file_path(filepath);
     let entity_path = format!("{entity_path}/hashed").into();
-    let row = DataRow::from_archetype(RowId::new(), TimePoint::timeless(), entity_path, &doc)?;
+    let row = DataRow::from_archetype(RowId::new(), TimePoint::default(), entity_path, &doc)?;
 
     tx.send(row.into()).ok();
 

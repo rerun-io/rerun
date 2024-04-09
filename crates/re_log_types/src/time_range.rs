@@ -1,14 +1,14 @@
 use std::ops::RangeInclusive;
 
-use crate::{TimeInt, TimeReal};
+use crate::{NonMinI64, TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct TimeRange {
-    pub min: TimeInt,
-    pub max: TimeInt,
+    min: TimeInt,
+    max: TimeInt,
 }
 
 impl TimeRange {
@@ -24,18 +24,52 @@ impl TimeRange {
         max: TimeInt::MAX,
     };
 
+    /// Creates a new temporal [`TimeRange`].
+    ///
+    /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub fn new(min: TimeInt, max: TimeInt) -> Self {
+    pub fn new(min: impl TryInto<TimeInt>, max: impl TryInto<TimeInt>) -> Self {
+        let min = min.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
+        let max = max.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
         Self { min, max }
     }
 
+    /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub fn point(value: impl Into<TimeInt>) -> Self {
-        let value = value.into();
+    pub fn point(time: impl TryInto<TimeInt>) -> Self {
+        let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
         Self {
-            min: value,
-            max: value,
+            min: time,
+            max: time,
         }
+    }
+
+    #[inline]
+    pub fn min(&self) -> TimeInt {
+        self.min
+    }
+
+    #[inline]
+    pub fn max(&self) -> TimeInt {
+        self.max
+    }
+
+    /// Overwrites the start bound of the range.
+    ///
+    /// The resulting range is guaranteed to never include [`TimeInt::STATIC`].
+    #[inline]
+    pub fn set_min(&mut self, time: impl TryInto<TimeInt>) {
+        let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
+        self.min = time;
+    }
+
+    /// Overwrites the end bound of the range.
+    ///
+    /// The resulting range is guaranteed to never include [`TimeInt::STATIC`].
+    #[inline]
+    pub fn set_max(&mut self, time: impl TryInto<TimeInt>) {
+        let time = time.try_into().unwrap_or(TimeInt::MIN).max(TimeInt::MIN);
+        self.max = time;
     }
 
     /// The amount of time or sequences covered by this range.
@@ -46,7 +80,8 @@ impl TimeRange {
 
     #[inline]
     pub fn center(&self) -> TimeInt {
-        self.min + TimeInt::from((self.abs_length() / 2) as i64)
+        let center = NonMinI64::new((self.abs_length() / 2) as i64).unwrap_or(NonMinI64::MIN);
+        self.min + TimeInt::from(center)
     }
 
     #[inline]
@@ -72,18 +107,6 @@ impl re_types_core::SizeBytes for TimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
-    }
-}
-
-impl From<TimeRange> for RangeInclusive<TimeInt> {
-    fn from(range: TimeRange) -> RangeInclusive<TimeInt> {
-        range.min..=range.max
-    }
-}
-
-impl From<&TimeRange> for RangeInclusive<TimeInt> {
-    fn from(range: &TimeRange) -> RangeInclusive<TimeInt> {
-        range.min..=range.max
     }
 }
 
@@ -114,11 +137,6 @@ impl TimeRangeF {
             max: value,
         }
     }
-
-    // pub fn add(&mut self, value: TimeReal) {
-    //     self.min = self.min.min(value);
-    //     self.max = self.max.max(value);
-    // }
 
     /// Inclusive
     pub fn contains(&self, value: TimeReal) -> bool {

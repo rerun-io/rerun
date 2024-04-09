@@ -86,9 +86,9 @@ class GestureDetectorLogger:
                     keypoint_connections=mp.solutions.hands.HAND_CONNECTIONS,
                 )
             ),
-            timeless=True,
+            static=True,
         )
-        rr.log("hand3d", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, timeless=True)
+        rr.log("hand3d", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, static=True)
 
     @staticmethod
     def convert_landmarks_to_image_coordinates(

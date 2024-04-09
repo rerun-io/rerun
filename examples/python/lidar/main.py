@@ -52,7 +52,7 @@ def log_nuscenes_lidar(root_dir: pathlib.Path, dataset_version: str, scene_name:
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     first_sample = nusc.get("sample", scene["first_sample_token"])
     current_lidar_token = first_sample["data"]["LIDAR_TOP"]

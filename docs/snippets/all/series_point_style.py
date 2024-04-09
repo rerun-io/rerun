@@ -7,7 +7,7 @@ import rerun as rr
 rr.init("rerun_example_series_point_style", spawn=True)
 
 # Set up plot styling:
-# They are logged timeless as they don't change over time and apply to all timelines.
+# They are logged as static as they don't change over time and apply to all timelines.
 # Log two point series under a shared root so that they show in the same plot by default.
 rr.log(
     "trig/sin",
@@ -17,7 +17,7 @@ rr.log(
         marker="circle",
         marker_size=4,
     ),
-    timeless=True,
+    static=True,
 )
 rr.log(
     "trig/cos",
@@ -27,7 +27,7 @@ rr.log(
         marker="cross",
         marker_size=2,
     ),
-    timeless=True,
+    static=True,
 )
 
 # Log the data on a timeline called "step".

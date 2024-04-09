@@ -4351,6 +4351,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -4379,7 +4380,9 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_query",
+ "re_query2",
  "re_query_cache",
+ "re_query_cache2",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -4489,6 +4492,7 @@ dependencies = [
  "serde_bytes",
  "similar-asserts",
  "smallvec",
+ "static_assertions",
  "thiserror",
  "time",
  "typenum",
@@ -4542,6 +4546,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_query2"
+version = "0.16.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "document-features",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "rand",
+ "re_arrow2",
+ "re_data_store",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_tracing",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "serde",
+ "similar-asserts",
+ "smallvec",
+ "static_assertions",
+ "thiserror",
+ "unindent",
+]
+
+[[package]]
 name = "re_query_cache"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
@@ -4558,6 +4592,36 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
+ "re_tracing",
+ "re_types",
+ "re_types_core",
+ "seq-macro",
+ "similar-asserts",
+ "static_assertions",
+ "web-time",
+]
+
+[[package]]
+name = "re_query_cache2"
+version = "0.16.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "backtrace",
+ "criterion",
+ "indent",
+ "itertools 0.12.0",
+ "mimalloc",
+ "nohash-hasher",
+ "parking_lot",
+ "paste",
+ "rand",
+ "re_data_store",
+ "re_error",
+ "re_format",
+ "re_log",
+ "re_log_types",
+ "re_query2",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -4971,6 +5035,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_types_blueprint"
+version = "0.16.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "array-init",
+ "backtrace",
+ "bytemuck",
+ "document-features",
+ "once_cell",
+ "re_arrow2",
+ "re_error",
+ "re_string_interner",
+ "re_tracing",
+ "re_tuid",
+ "re_types",
+ "re_types_core",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "re_types_builder"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
@@ -5085,6 +5170,7 @@ dependencies = [
  "re_time_panel",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -5173,6 +5259,7 @@ dependencies = [
  "re_space_view_time_series",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",

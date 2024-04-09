@@ -407,10 +407,10 @@ impl SpaceViewBlueprint {
         let recursive_override_path =
             base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
+        // TODO(#5607): what should happen if the promise is still pending?
         let individual_properties = ctx
             .blueprint
-            .store()
-            .query_latest_component_quiet::<EntityPropertiesComponent>(
+            .latest_at_component_quiet::<EntityPropertiesComponent>(
                 &individual_override_path,
                 query,
             )
@@ -478,7 +478,7 @@ mod tests {
         let row = DataRow::from_cells1_sized(
             RowId::new(),
             path.clone(),
-            TimePoint::timeless(),
+            TimePoint::default(),
             1,
             DataCell::from([component]),
         )
@@ -500,8 +500,8 @@ mod tests {
             "parent/skip/child1".into(),
             "parent/skip/child2".into(),
         ] {
-            let row = DataRow::from_archetype(RowId::new(), TimePoint::timeless(), path, &points)
-                .unwrap();
+            let row =
+                DataRow::from_archetype(RowId::new(), TimePoint::default(), path, &points).unwrap();
             recording.add_data_row(row).ok();
         }
 
@@ -690,7 +690,7 @@ mod tests {
             for entity_path in &entity_paths {
                 let row = DataRow::from_component_batches(
                     RowId::new(),
-                    TimePoint::timeless(),
+                    TimePoint::default(),
                     entity_path.clone(),
                     [&[MyPoint::new(1.0, 2.0)] as _],
                 )
@@ -899,7 +899,7 @@ mod tests {
             let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
                 let row = DataRow::from_component_batches(
                     RowId::new(),
-                    TimePoint::timeless(),
+                    TimePoint::default(),
                     path.clone(),
                     std::iter::once(batch),
                 )

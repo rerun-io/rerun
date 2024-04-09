@@ -10,11 +10,11 @@ impl DataUi for Material {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let show_optional_albedo_factor = |ui: &mut egui::Ui| {
             if let Some(albedo_factor) = self.albedo_factor {
-                Color(albedo_factor).data_ui(ctx, ui, verbosity, query, store);
+                Color(albedo_factor).data_ui(ctx, ui, verbosity, query, db);
             } else {
                 ui.weak("(empty)");
             }

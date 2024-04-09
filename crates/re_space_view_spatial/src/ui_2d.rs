@@ -240,7 +240,6 @@ pub fn view_2d(
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
-    let store = ctx.recording_store();
 
     let scene_rect_accum = state.bounding_boxes.accumulated;
     let scene_rect_accum = egui::Rect::from_min_max(
@@ -258,7 +257,7 @@ pub fn view_2d(
     // For that we need to check if this is defined by a pinhole camera.
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
-    let pinhole = query_pinhole(store, &ctx.current_query(), query.space_origin);
+    let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
     let canvas_rect = pinhole
         .as_ref()
         .and_then(|p| p.resolution())

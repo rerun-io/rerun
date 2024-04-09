@@ -223,7 +223,7 @@ impl ImageVisualizer {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
         if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline,
+            &ctx.current_query().timeline(),
             ent_path,
             &Image::indicator().name(),
         ) {
@@ -320,7 +320,7 @@ impl ImageVisualizer {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
         if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline,
+            &ctx.current_query().timeline(),
             ent_path,
             &DepthImage::indicator().name(),
         ) {
@@ -465,7 +465,7 @@ impl ImageVisualizer {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
         if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline,
+            &ctx.current_query().timeline(),
             ent_path,
             &SegmentationImage::indicator().name(),
         ) {
@@ -558,11 +558,9 @@ impl ImageVisualizer {
     ) -> anyhow::Result<DepthCloud> {
         re_tracing::profile_function!();
 
-        let Some(intrinsics) = query_pinhole(
-            ctx.recording_store(),
-            &ctx.current_query(),
-            parent_pinhole_path,
-        ) else {
+        let Some(intrinsics) =
+            query_pinhole(ctx.recording(), &ctx.current_query(), parent_pinhole_path)
+        else {
             anyhow::bail!("Couldn't fetch pinhole intrinsics at {parent_pinhole_path:?}");
         };
 

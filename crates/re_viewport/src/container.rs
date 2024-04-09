@@ -14,9 +14,9 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::blueprint::components::GridColumns;
+use re_types_blueprint::blueprint::components::GridColumns;
 
-/// The native version of a [`crate::blueprint::archetypes::ContainerBlueprint`].
+/// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
 /// This represents a single container in the blueprint. On each frame, it is
 /// used to populate an [`egui_tiles::Container`]. Each child in `contents` can
@@ -46,7 +46,7 @@ impl ContainerBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let crate::blueprint::archetypes::ContainerBlueprint {
+        let re_types_blueprint::blueprint::archetypes::ContainerBlueprint {
             container_kind,
             display_name,
             contents,
@@ -68,7 +68,7 @@ impl ContainerBlueprint {
             })
             .ok()?;
 
-        let container_kind = container_kind.into();
+        let container_kind = crate::container_kind_to_egui(container_kind);
         let display_name = display_name.map(|v| v.0.to_string());
 
         let contents = contents
@@ -135,11 +135,13 @@ impl ContainerBlueprint {
 
         let contents: Vec<_> = contents.iter().map(|item| item.as_entity_path()).collect();
 
-        let mut arch = crate::blueprint::archetypes::ContainerBlueprint::new(*container_kind)
-            .with_contents(&contents)
-            .with_col_shares(col_shares.clone())
-            .with_row_shares(row_shares.clone())
-            .with_visible(*visible);
+        let container_kind = crate::container_kind_from_egui(*container_kind);
+        let mut arch =
+            re_types_blueprint::blueprint::archetypes::ContainerBlueprint::new(container_kind)
+                .with_contents(&contents)
+                .with_col_shares(col_shares.clone())
+                .with_row_shares(row_shares.clone())
+                .with_visible(*visible);
 
         // Note: it's important to _not_ clear the `Name` component if `display_name` is set to
         // `None`, as we call this function with `ContainerBlueprint` recreated from `egui_tiles`,

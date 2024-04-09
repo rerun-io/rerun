@@ -2,13 +2,11 @@ use std::collections::BTreeMap;
 
 use arrow2::Either;
 use re_log_types::{
-    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowIdVec, TableId, TimeRange, Timeline,
+    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowId, RowIdVec, TableId, TimeInt,
+    TimePoint, TimeRange, Timeline,
 };
 
-use crate::{
-    store::{IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner},
-    DataStore, IndexedBucket,
-};
+use crate::{store::IndexedBucketInner, DataStore, IndexedBucket};
 
 // ---
 
@@ -19,7 +17,6 @@ impl DataStore {
     ///
     /// Beware: this is extremely costly, don't use this in hot paths.
     pub fn to_rows(&self) -> re_log_types::DataReadResult<Vec<DataRow>> {
-        use re_log_types::RowId;
         re_tracing::profile_function!();
 
         let mut rows = ahash::HashMap::<RowId, DataRow>::default();
@@ -71,45 +68,46 @@ impl DataStore {
         &self,
         time_filter: Option<(Timeline, TimeRange)>,
     ) -> impl Iterator<Item = DataTable> + '_ {
-        let timeless = self.dump_timeless_tables();
+        let static_tables = self.dump_static_tables();
         let temporal = if let Some(time_filter) = time_filter {
             Either::Left(self.dump_temporal_tables_filtered(time_filter))
         } else {
             Either::Right(self.dump_temporal_tables())
         };
 
-        timeless.chain(temporal)
+        static_tables.chain(temporal)
     }
 
-    fn dump_timeless_tables(&self) -> impl Iterator<Item = DataTable> + '_ {
-        self.timeless_tables.values().map(|table| {
-            re_tracing::profile_scope!("timeless_table");
-
-            let PersistentIndexedTable {
-                ent_path,
-                cluster_key: _,
-                inner,
-            } = table;
-
-            let inner = &*inner.read();
-            let PersistentIndexedTableInner {
-                col_insert_id: _,
-                col_row_id,
-                col_num_instances,
-                columns,
-                is_sorted: _,
-            } = inner;
-
-            DataTable {
-                table_id: TableId::new(),
-                col_row_id: col_row_id.clone(),
-                col_timelines: Default::default(),
-                col_entity_path: std::iter::repeat_with(|| ent_path.clone())
-                    .take(inner.num_rows() as _)
-                    .collect(),
-                col_num_instances: col_num_instances.clone(),
-                columns: columns.clone().into_iter().collect(), // shallow
+    fn dump_static_tables(&self) -> impl Iterator<Item = DataTable> + '_ {
+        self.static_tables.values().map(|static_table| {
+            let mut cells_per_row_id: BTreeMap<RowId, Vec<_>> = Default::default();
+            for static_cell in static_table.cells.values() {
+                cells_per_row_id
+                    .entry(static_cell.row_id)
+                    .or_default()
+                    .push(static_cell.clone());
             }
+
+            let rows = cells_per_row_id
+                .into_iter()
+                .filter_map(|(row_id, static_cells)| {
+                    DataRow::from_cells(
+                        row_id,
+                        TimePoint::default(),
+                        static_table.entity_path.clone(),
+                        static_cells
+                            .iter()
+                            .map(|cell| cell.num_instances.0)
+                            .max()
+                            .unwrap_or_default(),
+                        static_cells
+                            .into_iter()
+                            .flat_map(|static_cell| [static_cell.cell, static_cell.cluster_key]),
+                    )
+                    .ok()
+                });
+
+            DataTable::from_rows(TableId::ZERO, rows)
         })
     }
 
@@ -145,7 +143,7 @@ impl DataStore {
                     col_row_id: col_row_id.clone(),
                     col_timelines: [(*timeline, col_time.iter().copied().map(Some).collect())]
                         .into(),
-                    col_entity_path: std::iter::repeat_with(|| table.ent_path.clone())
+                    col_entity_path: std::iter::repeat_with(|| table.entity_path.clone())
                         .take(col_row_id.len())
                         .collect(),
                     col_num_instances: col_num_instances.clone(),
@@ -213,7 +211,7 @@ impl DataStore {
                     )]
                     .into();
 
-                    let col_entity_path = std::iter::repeat_with(|| table.ent_path.clone())
+                    let col_entity_path = std::iter::repeat_with(|| table.entity_path.clone())
                         .take(col_row_id.len())
                         .collect();
 
@@ -248,6 +246,6 @@ fn filter_column<'a, T: 'a + Clone>(
     col_time
         .iter()
         .zip(column)
-        .filter(move |(time, _)| time_filter.contains((**time).into()))
+        .filter(move |(&time, _)| time_filter.contains(TimeInt::new_temporal(time)))
         .map(|(_, v)| v.clone())
 }

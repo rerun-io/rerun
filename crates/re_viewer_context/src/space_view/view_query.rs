@@ -311,19 +311,22 @@ impl DataResult {
             .and_then(|p| p.individual_properties.as_ref())
     }
 
-    pub fn lookup_override<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) -> Option<C> {
+    #[inline]
+    pub fn lookup_override<C: 'static + re_types::Component>(
+        &self,
+        ctx: &ViewerContext<'_>,
+    ) -> Option<C> {
         self.property_overrides
             .as_ref()
             .and_then(|p| p.resolved_component_overrides.get(&C::name()))
             .and_then(|OverridePath { store_kind, path }| match store_kind {
+                // TODO(#5607): what should happen if the promise is still pending?
                 StoreKind::Blueprint => ctx
-                    .store_context
-                    .blueprint
-                    .store()
-                    .query_latest_component::<C>(path, ctx.blueprint_query),
+                    .recording()
+                    .latest_at_component::<C>(path, ctx.blueprint_query),
                 StoreKind::Recording => ctx
-                    .recording_store()
-                    .query_latest_component::<C>(path, &ctx.current_query()),
+                    .recording()
+                    .latest_at_component::<C>(path, &ctx.current_query()),
             })
             .map(|c| c.value)
     }
@@ -442,6 +445,7 @@ impl<'s> ViewQuery<'s> {
     }
 
     /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
+    #[inline]
     pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
         self.per_visualizer_data_results
             .values()
@@ -449,16 +453,15 @@ impl<'s> ViewQuery<'s> {
     }
 
     /// Iterates over all entities of the [`ViewQuery`].
+    #[inline]
     pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
         self.iter_all_data_results()
             .map(|data_result| &data_result.entity_path)
             .unique()
     }
 
+    #[inline]
     pub fn latest_at_query(&self) -> LatestAtQuery {
-        LatestAtQuery {
-            timeline: self.timeline,
-            at: self.latest_at,
-        }
+        LatestAtQuery::new(self.timeline, self.latest_at)
     }
 }

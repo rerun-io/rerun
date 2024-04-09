@@ -35,7 +35,6 @@ pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
 pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
-pub use self::store_helpers::VersionedComponent;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
 pub use self::store_subscriber::{StoreSubscriber, StoreSubscriberHandle};
@@ -43,11 +42,8 @@ pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
     ClusterCellCache, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable,
+    StaticCell, StaticTable,
 };
-
-#[allow(unused_imports)] // only used with some sets of feature flags atm
-pub(crate) use self::store::PersistentIndexedTableInner;
 
 // Re-exports
 #[doc(no_inline)]

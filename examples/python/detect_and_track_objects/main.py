@@ -332,7 +332,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     class_descriptions = [
         rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
     ]
-    rr.log("/", rr.AnnotationContext(class_descriptions), timeless=True)
+    rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
 
     detector = Detector(coco_categories=coco_categories)
 
@@ -423,7 +423,7 @@ def main() -> None:
 
     setup_logging()
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     video_path: str = args.video_path
     if not video_path:

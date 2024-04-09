@@ -51,7 +51,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         let colors = vec![Color::from(0xffffffff); NUM_POINTS];
         let points = Points3D::new(positions).with_colors(colors);
         let mut timepoint = TimePoint::default();
-        timepoint.insert(timeline, TimeInt::from_seconds(0));
+        timepoint.insert(timeline, TimeInt::from_seconds(0.try_into().unwrap()));
         let data_row =
             DataRow::from_archetype(RowId::new(), timepoint, ent_path.clone(), &points).unwrap();
         store.insert_row(&data_row).unwrap();
@@ -60,7 +60,7 @@ fn bench_points(c: &mut criterion::Criterion) {
     let caches = Caches::new(&store);
 
     let latest_at = LatestAtQuery::latest(timeline);
-    let at = latest_at.at;
+    let at = latest_at.at();
     let latest_at = re_query_cache::AnyQuery::from(latest_at);
     let annotations = Annotations::missing();
 

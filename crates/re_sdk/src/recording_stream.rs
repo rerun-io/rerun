@@ -476,7 +476,7 @@ impl RecordingStreamBuilder {
     /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
     /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
     /// Once reached, the earliest logged data will be dropped.
-    /// Note that this means that timeless data may be dropped if logged early.
+    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
     ///
     /// ## Example
     ///
@@ -499,6 +499,8 @@ impl RecordingStreamBuilder {
     ///            true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    //
+    // # TODO(#5531): keep static data around.
     #[cfg(feature = "web_viewer")]
     pub fn serve(
         self,
@@ -860,7 +862,7 @@ impl RecordingStream {
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
     /// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
     ///
-    /// See also: [`Self::log_timeless`] for logging timeless data.
+    /// See also: [`Self::log_static`] for logging static data.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
@@ -885,7 +887,18 @@ impl RecordingStream {
         ent_path: impl Into<EntityPath>,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_timeless(ent_path, false, arch)
+        self.log_with_static(ent_path, false, arch)
+    }
+
+    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn log_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        arch: &impl AsComponents,
+    ) -> RecordingStreamResult<()> {
+        self.log_static(ent_path, arch)
     }
 
     /// Log data to Rerun.
@@ -893,8 +906,8 @@ impl RecordingStream {
     /// It can be used to log anything
     /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
     /// This is most often used for [`rerun::ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html) and
@@ -909,20 +922,32 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_timeless(
+    pub fn log_static(
         &self,
         ent_path: impl Into<EntityPath>,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_timeless(ent_path, true, arch)
+        self.log_with_static(ent_path, true, arch)
+    }
+
+    #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
+    #[doc(hidden)]
+    #[inline]
+    pub fn log_with_timeless(
+        &self,
+        ent_path: impl Into<EntityPath>,
+        static_: bool,
+        arch: &impl AsComponents,
+    ) -> RecordingStreamResult<()> {
+        self.log_with_static(ent_path, static_, arch)
     }
 
     /// Logs the contents of a [component bundle] into Rerun.
     ///
-    /// If `timeless` is set to `true`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
@@ -940,17 +965,17 @@ impl RecordingStream {
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
-    pub fn log_with_timeless(
+    pub fn log_with_static(
         &self,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         arch: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
             row_id,
             ent_path,
-            timeless,
+            static_,
             arch.as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
@@ -959,10 +984,10 @@ impl RecordingStream {
 
     /// Logs a set of [`ComponentBatch`]es into Rerun.
     ///
-    /// If `timeless` is set to `false`, all timestamp data associated with this message will be
+    /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
-    /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
-    /// into the past.
+    /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
+    /// any temporal data of the same type.
     ///
     /// Otherwise, the data will be timestamped automatically based on the [`RecordingStream`]'s
     /// internal clock.
@@ -983,18 +1008,18 @@ impl RecordingStream {
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
-        self.log_component_batches_impl(row_id, ent_path, timeless, comp_batches)
+        self.log_component_batches_impl(row_id, ent_path, static_, comp_batches)
     }
 
     fn log_component_batches_impl<'a>(
         &self,
         row_id: RowId,
         ent_path: impl Into<EntityPath>,
-        timeless: bool,
+        static_: bool,
         comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
@@ -1042,7 +1067,7 @@ impl RecordingStream {
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
-        let timepoint = TimePoint::timeless();
+        let timepoint = TimePoint::default();
 
         // TODO(#1893): unsplit splats once new data cells are in
         let splatted = if splatted.is_empty() {
@@ -1071,13 +1096,13 @@ impl RecordingStream {
         };
 
         if let Some(splatted) = splatted {
-            self.record_row(splatted, !timeless);
+            self.record_row(splatted, !static_);
         }
 
         // Always the primary component last so range-based queries will include the other data.
         // Since the primary component can't be splatted it must be in here, see(#1215).
         if let Some(instanced) = instanced {
-            self.record_row(instanced, !timeless);
+            self.record_row(instanced, !static_);
         }
 
         Ok(())
@@ -1096,9 +1121,9 @@ impl RecordingStream {
         &self,
         filepath: impl AsRef<std::path::Path>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None, entity_path_prefix, timeless)
+        self.log_file(filepath, None, entity_path_prefix, static_)
     }
 
     /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
@@ -1115,9 +1140,9 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: std::borrow::Cow<'_, [u8]>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents), entity_path_prefix, timeless)
+        self.log_file(filepath, Some(contents), entity_path_prefix, static_)
     }
 
     #[cfg(feature = "data_loaders")]
@@ -1126,7 +1151,7 @@ impl RecordingStream {
         filepath: impl AsRef<std::path::Path>,
         contents: Option<std::borrow::Cow<'_, [u8]>>,
         entity_path_prefix: Option<EntityPath>,
-        timeless: bool,
+        static_: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
             re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
@@ -1147,7 +1172,7 @@ impl RecordingStream {
             store_id: store_info.store_id,
             opened_store_id: None,
             entity_path_prefix,
-            timepoint: (!timeless).then(|| {
+            timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current
                     // thread…
@@ -1157,7 +1182,7 @@ impl RecordingStream {
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert(Timeline::log_tick(), tick.into());
+                    now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                     now
                 })
@@ -1383,9 +1408,6 @@ impl RecordingStream {
     #[inline]
     pub fn record_row(&self, mut row: DataRow, inject_time: bool) {
         let f = move |inner: &RecordingStreamInner| {
-            // TODO(#2074): Adding a timeline to something timeless would suddenly make it not
-            // timeless… so for now it cannot even have a tick :/
-            //
             // NOTE: We're incrementing the current tick still.
             let tick = inner
                 .tick
@@ -1395,7 +1417,7 @@ impl RecordingStream {
                 // thread…
                 let mut now = self.now();
                 // …and then also inject the current recording tick into it.
-                now.insert(Timeline::log_tick(), tick.into());
+                now.insert(Timeline::log_tick(), TimeInt::new_temporal(tick));
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, time) in now {
@@ -1858,7 +1880,10 @@ impl ThreadInfo {
 
     fn now(&self, rid: &StoreId) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(Timeline::log_time(), Time::now().into());
+        timepoint.insert(
+            Timeline::log_time(),
+            Time::now().try_into().unwrap_or(TimeInt::MIN),
+        );
         timepoint
     }
 
@@ -1938,10 +1963,22 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let sequence = sequence.into();
+            let sequence = if let Ok(seq) = TimeInt::try_from(sequence) {
+                seq
+            } else {
+                re_log::error!(
+                    illegal_value = sequence,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_sequence() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Sequence),
-                sequence.into().into(),
+                sequence,
             );
         };
 
@@ -1968,10 +2005,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let seconds = seconds.into();
+            let time = Time::from_seconds_since_epoch(seconds);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = seconds,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_seconds() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_seconds_since_epoch(seconds.into()).into(),
+                time,
             );
         };
 
@@ -1998,10 +2048,23 @@ impl RecordingStream {
     /// - [`Self::reset_time`]
     pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let f = move |inner: &RecordingStreamInner| {
+            let ns = ns.into();
+            let time = Time::from_ns_since_epoch(ns);
+            let time = if let Ok(time) = TimeInt::try_from(time) {
+                time
+            } else {
+                re_log::error!(
+                    illegal_value = ns,
+                    new_value = TimeInt::MIN.as_i64(),
+                    "set_time_nanos() called with illegal value - clamped to minimum legal value"
+                );
+                TimeInt::MIN
+            };
+
             ThreadInfo::set_thread_time(
                 &inner.info.store_id,
                 Timeline::new(timeline, TimeType::Time),
-                Time::from_ns_since_epoch(ns.into()).into(),
+                time,
             );
         };
 

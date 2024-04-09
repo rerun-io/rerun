@@ -523,8 +523,6 @@ impl Viewport<'_, '_> {
         space_view_visible: bool,
         projection_mode: bool,
     ) {
-        let store = ctx.recording_store();
-
         let entity_path = node_or_path.path();
 
         if projection_mode && entity_path == &space_view.space_origin {
@@ -662,7 +660,13 @@ impl Viewport<'_, '_> {
 
         let response = response.on_hover_ui(|ui| {
             let query = ctx.current_query();
-            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, &query, store, entity_path);
+            re_data_ui::item_ui::entity_hover_card_ui(
+                ui,
+                ctx,
+                &query,
+                ctx.recording(),
+                entity_path,
+            );
 
             if empty_origin {
                 ui.label(ctx.re_ui.warning_text(

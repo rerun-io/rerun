@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
 use re_data_store::DataStore;
-use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, RowId};
+use re_log_types::{build_frame_nr, DataCell, DataCellRow, DataRow, RowId, TimePoint};
 use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
@@ -18,7 +18,7 @@ fn simple_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -76,7 +76,7 @@ fn simple_query() {
 }
 
 #[test]
-fn timeless_query() {
+fn static_query() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
@@ -84,18 +84,24 @@ fn timeless_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
     let row = DataRow::from_cells1_sized(RowId::new(), ent_path, timepoint, 2, positions).unwrap();
     store.insert_row(&row).unwrap();
 
-    // Assign one of them a color with an explicit instance.. timelessly!
+    // Assign one of them a color with an explicit instance.. statically!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![Color::from_rgb(255, 0, 0)];
-    let row = DataRow::from_cells2_sized(RowId::new(), ent_path, [], 1, (color_instances, colors))
-        .unwrap();
+    let row = DataRow::from_cells2_sized(
+        RowId::new(),
+        ent_path,
+        TimePoint::default(),
+        1,
+        (color_instances, colors),
+    )
+    .unwrap();
     store.insert_row(&row).unwrap();
 
     // Retrieve the view
@@ -109,7 +115,7 @@ fn timeless_query() {
     // │ ---      ┆ ---       ┆ ---        │
     // │ u64      ┆ struct[2] ┆ u32        │
     // ╞══════════╪═══════════╪════════════╡
-    // │ 0        ┆ {1.0,2.0} ┆ null       │
+    // │ 0        ┆ {1.0,2.0} ┆ 4278190080 │
     // ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤
     // │ 1        ┆ {3.0,4.0} ┆ 4278190080 │
     // └──────────┴───────────┴────────────┘
@@ -128,8 +134,8 @@ fn timeless_query() {
             DataCell::from_native_sparse(colors)
         ]);
 
-        //eprintln!("{df:?}");
-        //eprintln!("{expected:?}");
+        // eprintln!("{arch_view:#?}");
+        // eprintln!("{expected:#?}");
 
         assert_eq!(
             &arch_view.to_data_cell_row_2::<Position2D, Color>().unwrap(),
@@ -147,7 +153,7 @@ fn no_instance_join_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with an implicit instance
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -211,7 +217,7 @@ fn missing_column_join_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with an implicit instance
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
@@ -266,7 +272,7 @@ fn splatted_query() {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     // Create some positions with implicit instances
     let positions = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];

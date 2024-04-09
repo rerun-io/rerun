@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4352fe16466a95828cd9724e094acee909480f96/1200w.png">
+  <img src="https://static.rerun.io/crates/5f7eac769a11df01603c06067c1ccbd55784a8c1/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/5f7eac769a11df01603c06067c1ccbd55784a8c1/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/5f7eac769a11df01603c06067c1ccbd55784a8c1/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/5f7eac769a11df01603c06067c1ccbd55784a8c1/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/5f7eac769a11df01603c06067c1ccbd55784a8c1/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -145,13 +145,14 @@ Update instructions:
 
 ### Application-level store
 
-| Crate           | Description                                                     |
-|-----------------|-----------------------------------------------------------------|
-| re_entity_db    | In-memory storage of Rerun entities                             |
-| re_query        | Querying data in the re_data_store                             |
-| re_query_cache  | Caching datastructures for re_query                             |
-| re_types        | The built-in Rerun data types, component types, and archetypes. |
-| re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
+| Crate                | Description                                                              |
+|----------------------|--------------------------------------------------------------------------|
+| re_entity_db         | In-memory storage of Rerun entities                                      |
+| re_query             | Querying data in the re_data_store                                       |
+| re_query_cache       | Caching datastructures for re_query                                      |
+| re_types             | The built-in Rerun data types, component types, and archetypes.          |
+| re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
+| re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
 
 
 ### Low-level store

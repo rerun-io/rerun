@@ -190,7 +190,7 @@ impl StoreDiff {
     }
 
     #[inline]
-    pub fn is_timeless(&self) -> bool {
+    pub fn is_static(&self) -> bool {
         self.times.is_empty()
     }
 
@@ -221,7 +221,7 @@ mod tests {
     use super::*;
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
-    /// in the store a the lowest level of detail.
+    /// in the store at the lowest level of detail.
     ///
     /// The counts represent numbers of rows: e.g. how many unique rows contain this entity path?
     #[derive(Default, Debug, PartialEq, Eq)]
@@ -231,7 +231,7 @@ mod tests {
         entity_paths: BTreeMap<EntityPath, i64>,
         component_names: BTreeMap<ComponentName, i64>,
         times: BTreeMap<TimeInt, i64>,
-        timeless: i64,
+        num_static: i64,
     }
 
     impl GlobalCounts {
@@ -241,7 +241,7 @@ mod tests {
             entity_paths: impl IntoIterator<Item = (EntityPath, i64)>, //
             component_names: impl IntoIterator<Item = (ComponentName, i64)>, //
             times: impl IntoIterator<Item = (TimeInt, i64)>, //
-            timeless: i64,
+            num_static: i64,
         ) -> Self {
             Self {
                 row_ids: row_ids.into_iter().collect(),
@@ -249,7 +249,7 @@ mod tests {
                 entity_paths: entity_paths.into_iter().collect(),
                 component_names: component_names.into_iter().collect(),
                 times: times.into_iter().collect(),
-                timeless,
+                num_static,
             }
         }
     }
@@ -269,8 +269,8 @@ mod tests {
                     *self.component_names.entry(*component_name).or_default() += delta;
                 }
 
-                if event.is_timeless() {
-                    self.timeless += delta;
+                if event.is_static() {
+                    self.num_static += delta;
                 } else {
                     for &(timeline, time) in &event.times {
                         *self.timelines.entry(timeline).or_default() += delta;
@@ -297,9 +297,9 @@ mod tests {
 
         let row_id1 = RowId::new();
         let timepoint1 = TimePoint::from_iter([
-            (timeline_frame, 42.into()),      //
-            (timeline_other, 666.into()),     //
-            (timeline_yet_another, 1.into()), //
+            (timeline_frame, 42),      //
+            (timeline_other, 666),     //
+            (timeline_yet_another, 1), //
         ]);
         let entity_path1: EntityPath = "entity_a".into();
         let row1 = DataRow::from_component_batches(
@@ -328,9 +328,9 @@ mod tests {
                     (InstanceKey::name(), 1), //
                 ],
                 [
-                    (42.into(), 1), //
-                    (666.into(), 1),
-                    (1.into(), 1),
+                    (42.try_into().unwrap(), 1), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 1),
                 ],
                 0,
             ),
@@ -339,8 +339,8 @@ mod tests {
 
         let row_id2 = RowId::new();
         let timepoint2 = TimePoint::from_iter([
-            (timeline_frame, 42.into()),      //
-            (timeline_yet_another, 1.into()), //
+            (timeline_frame, 42),      //
+            (timeline_yet_another, 1), //
         ]);
         let entity_path2: EntityPath = "entity_b".into();
         let row2 = {
@@ -380,9 +380,9 @@ mod tests {
                     (MyColor::name(), 1),     //
                 ],
                 [
-                    (42.into(), 2), //
-                    (666.into(), 1),
-                    (1.into(), 2),
+                    (42.try_into().unwrap(), 2), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 2),
                 ],
                 0,
             ),
@@ -390,7 +390,7 @@ mod tests {
         );
 
         let row_id3 = RowId::new();
-        let timepoint3 = TimePoint::timeless();
+        let timepoint3 = TimePoint::default();
         let row3 = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
@@ -429,9 +429,9 @@ mod tests {
                     (MyColor::name(), 2),     //
                 ],
                 [
-                    (42.into(), 2), //
-                    (666.into(), 1),
-                    (1.into(), 2),
+                    (42.try_into().unwrap(), 2), //
+                    (666.try_into().unwrap(), 1),
+                    (1.try_into().unwrap(), 2),
                 ],
                 1,
             ),
@@ -446,7 +446,7 @@ mod tests {
                 [
                     (row_id1, 0), //
                     (row_id2, 0),
-                    (row_id3, 0),
+                    (row_id3, 1), // static -- no gc
                 ],
                 [
                     (timeline_frame, 0),
@@ -455,19 +455,19 @@ mod tests {
                 ],
                 [
                     (entity_path1.clone(), 0), //
-                    (entity_path2.clone(), 0), //
+                    (entity_path2.clone(), 1), // static -- no gc
                 ],
                 [
-                    (InstanceKey::name(), 0), //
+                    (InstanceKey::name(), 1), // static -- no gc
                     (MyPoint::name(), 0),     //
-                    (MyColor::name(), 0),     //
+                    (MyColor::name(), 1),     // static -- no gc
                 ],
                 [
-                    (42.into(), 0), //
-                    (666.into(), 0),
-                    (1.into(), 0),
+                    (42.try_into().unwrap(), 0), //
+                    (666.try_into().unwrap(), 0),
+                    (1.try_into().unwrap(), 0),
                 ],
-                0,
+                1, // static -- no gc
             ),
             view,
         );
@@ -487,7 +487,7 @@ mod tests {
 
         let row1 = DataRow::from_component_batches(
             RowId::new(),
-            TimePoint::from_iter([(timeline_frame, 42.into())]),
+            TimePoint::from_iter([(timeline_frame, 42)]),
             "entity_a".into(),
             [&InstanceKey::from_iter(0..10) as _],
         )?;
@@ -504,7 +504,7 @@ mod tests {
 
         let row2 = DataRow::from_component_batches(
             RowId::new(),
-            TimePoint::from_iter([(timeline_frame, 42.into())]),
+            TimePoint::from_iter([(timeline_frame, 42)]),
             "entity_b".into(),
             [&[MyColor::from(0xAABBCCDD)] as _],
         )?;

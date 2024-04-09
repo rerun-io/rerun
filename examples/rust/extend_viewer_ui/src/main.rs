@@ -1,8 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_data_store, re_entity_db, re_log, re_log_types, re_memory, re_query,
-    re_types,
+    arrow2, eframe, egui, re_data_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -133,8 +132,7 @@ fn entity_ui(
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(mut components) = entity_db.store().all_components(&timeline, entity_path) {
-        components.sort(); // Make the order predicatable
+    if let Some(components) = entity_db.store().all_components(&timeline, entity_path) {
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, entity_db, timeline, entity_path, component);
@@ -154,20 +152,26 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_data_store::LatestAtQuery::latest(timeline);
 
-    if let Some((_, _, component)) = re_query::get_component_with_instances(
+    let results = entity_db.query_caches2().latest_at(
         entity_db.store(),
         &query,
         entity_path,
-        component_name,
-    ) {
+        [component_name],
+    );
+    let component = results
+        .components
+        .get(&component_name)
+        .and_then(|result| result.raw(entity_db.resolver(), component_name));
+
+    if let Some(data) = component {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 // Iterate over all the instances (e.g. all the points in the point cloud):
-                for instance_key in component.instance_keys() {
-                    if let Some(value) = component.lookup_arrow(&instance_key) {
-                        ui.label(format_arrow(&*value));
-                    }
+
+                let num_instances = data.len();
+                for i in 0..num_instances {
+                    ui.label(format_arrow(&*data.sliced(i, 1)));
                 }
             });
     };

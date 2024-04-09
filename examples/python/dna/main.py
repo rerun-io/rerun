@@ -24,7 +24,7 @@ The full source code for this example is available
 
 
 def log_data() -> None:
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     rr.set_time_seconds("stable_time", 0)
 

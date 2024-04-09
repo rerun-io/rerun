@@ -62,8 +62,10 @@ impl VisibleHistory {
     #[doc(hidden)]
     pub fn range_start_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::new_temporal(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+                cursor + TimeInt::new_temporal(value)
+            }
             VisibleHistoryBoundary::Infinite => TimeInt::MIN,
         }
     }
@@ -75,8 +77,10 @@ impl VisibleHistory {
     #[doc(hidden)]
     pub fn range_end_from_cursor(&self, cursor: TimeInt) -> TimeInt {
         match self.to {
-            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::new_temporal(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+                cursor + TimeInt::new_temporal(value)
+            }
             VisibleHistoryBoundary::Infinite => TimeInt::MAX,
         }
     }
@@ -124,8 +128,8 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
 
     let time_range = visible_history.time_range(*time);
 
-    if !history.enabled || time_range.min == time_range.max {
-        let latest_query = LatestAtQuery::new(*timeline, time_range.min);
+    if !history.enabled || time_range.min() == time_range.max() {
+        let latest_query = LatestAtQuery::new(*timeline, time_range.min());
         let latest = query_archetype::<A>(store, &latest_query, ent_path)?;
 
         Ok(itertools::Either::Left(std::iter::once(latest)))

@@ -49,11 +49,9 @@ fn timepoint(index: usize, time: f64) -> rerun::TimePoint {
     let timeline_time = rerun::Timeline::new_temporal("time");
     let timeline_frame = rerun::Timeline::new_sequence("frame");
     let time = rerun::Time::from_seconds_since_epoch(time);
-    [
-        (timeline_time, time.into()),
-        (timeline_frame, (index as i64).into()),
-    ]
-    .into()
+    rerun::TimePoint::default()
+        .with(timeline_time, time)
+        .with(timeline_frame, index as i64)
 }
 
 struct AnnotationsPerFrame<'a>(HashMap<usize, &'a objectron::FrameAnnotation>);
@@ -117,13 +115,13 @@ fn log_baseline_objects(
 
     for (id, bbox_half_size, transform, label) in boxes {
         let path = format!("world/annotations/box-{id}");
-        rec.log_timeless(
+        rec.log_static(
             path.clone(),
             &rerun::Boxes3D::from_half_sizes([bbox_half_size])
                 .with_labels([label])
                 .with_colors([rerun::Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_timeless(path, &rerun::Transform3D::new(transform))?;
+        rec.log_static(path, &rerun::Transform3D::new(transform))?;
     }
 
     Ok(())
@@ -333,7 +331,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let annotations = read_annotations(&store_info.path_annotations)?;
 
     // See https://github.com/google-research-datasets/Objectron/issues/39 for coordinate systems
-    rec.log_timeless("world", &rerun::ViewCoordinates::RUB)?;
+    rec.log_static("world", &rerun::ViewCoordinates::RUB)?;
 
     log_baseline_objects(rec, &annotations.objects)?;
 

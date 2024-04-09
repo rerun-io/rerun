@@ -13,13 +13,13 @@ rr.script_add_args(parser)
 args = parser.parse_args()
 rr.script_setup(args, "rerun_example_visible_history_playground")
 
-rr.log("bbox", rr.Boxes2D(centers=[50, 3.5], half_sizes=[50, 4.5], colors=[255, 0, 0]), timeless=True)
+rr.log("bbox", rr.Boxes2D(centers=[50, 3.5], half_sizes=[50, 4.5], colors=[255, 0, 0]), static=True)
 rr.log("transform", rr.Transform3D(translation=[0, 0, 0]))
-rr.log("some/nested/pinhole", rr.Pinhole(focal_length=3, width=3, height=3), timeless=True)
+rr.log("some/nested/pinhole", rr.Pinhole(focal_length=3, width=3, height=3), static=True)
 
-rr.log("3dworld/depthimage/pinhole", rr.Pinhole(focal_length=20, width=100, height=10), timeless=True)
-rr.log("3dworld/image", rr.Transform3D(translation=[0, 1, 0]), timeless=True)
-rr.log("3dworld/image/pinhole", rr.Pinhole(focal_length=20, width=100, height=10), timeless=True)
+rr.log("3dworld/depthimage/pinhole", rr.Pinhole(focal_length=20, width=100, height=10), static=True)
+rr.log("3dworld/image", rr.Transform3D(translation=[0, 1, 0]), static=True)
+rr.log("3dworld/image/pinhole", rr.Pinhole(focal_length=20, width=100, height=10), static=True)
 
 date_offset = int(datetime.datetime(year=2023, month=1, day=1).timestamp())
 

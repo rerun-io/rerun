@@ -95,7 +95,7 @@ fn log_messages() {
     let store_id = StoreId::random(StoreKind::Recording);
     let timeline = Timeline::new_sequence("frame_nr");
     let mut time_point = TimePoint::default();
-    time_point.insert(timeline, TimeInt::from(0));
+    time_point.insert(timeline, TimeInt::ZERO);
 
     {
         let used_bytes_start = live_bytes();
@@ -111,7 +111,7 @@ fn log_messages() {
             DataRow::from_cells1(
                 RowId::new(),
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
+                [build_frame_nr(TimeInt::ZERO)],
                 1,
                 build_some_positions2d(1),
             )
@@ -138,7 +138,7 @@ fn log_messages() {
             DataRow::from_cells1(
                 RowId::new(),
                 entity_path!("points"),
-                [build_frame_nr(0.into())],
+                [build_frame_nr(TimeInt::ZERO)],
                 NUM_POINTS as _,
                 build_some_positions2d(NUM_POINTS),
             )

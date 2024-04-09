@@ -553,9 +553,9 @@ impl TimePanel {
     ) {
         let tree_has_data_in_current_timeline = time_ctrl.tree_has_data_in_current_timeline(tree);
 
-        let store = match self.source {
-            TimePanelSource::Recording => ctx.recording_store(),
-            TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+        let db = match self.source {
+            TimePanelSource::Recording => ctx.recording(),
+            TimePanelSource::Blueprint => ctx.store_context.blueprint,
         };
 
         // The last part of the path component
@@ -632,7 +632,7 @@ impl TimePanel {
                 ui,
                 ctx,
                 &time_ctrl.current_query(),
-                store,
+                db,
                 &tree.path,
             );
         });
@@ -689,7 +689,7 @@ impl TimePanel {
                     &mut self.data_density_graph_painter,
                     ctx,
                     time_ctrl,
-                    store,
+                    db,
                     time_area_response,
                     time_area_painter,
                     ui,
@@ -807,16 +807,16 @@ impl TimePanel {
 
                     highlight_timeline_row(ui, ctx, time_area_painter, &item.to_item(), &row_rect);
 
-                    let store = match self.source {
-                        TimePanelSource::Recording => ctx.recording_store(),
-                        TimePanelSource::Blueprint => ctx.store_context.blueprint.store(),
+                    let db = match self.source {
+                        TimePanelSource::Recording => ctx.recording(),
+                        TimePanelSource::Blueprint => ctx.store_context.blueprint,
                     };
 
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,
                         ctx,
                         time_ctrl,
-                        store,
+                        db,
                         time_area_response,
                         time_area_painter,
                         ui,
@@ -980,8 +980,8 @@ fn paint_range_highlight(
     painter: &egui::Painter,
     rect: Rect,
 ) {
-    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min.into());
-    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max.into());
+    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min().into());
+    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max().into());
 
     if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
         let visible_history_area_rect =
@@ -1012,11 +1012,13 @@ fn help_button(ui: &mut egui::Ui) {
 
 /// A user can drag the time slider to between the timeless data and the first real data.
 ///
-/// The time interpolated there is really weird, as it goes from [`TimeInt::BEGINNING`]
+/// The time interpolated there is really weird, as it goes from [`TimeInt::MIN_TIME_PANEL`]
 /// (which is extremely long time ago) to whatever tim the user logged.
 /// So we do not want to display these times to the user.
 ///
 /// This functions returns `true` iff the given time is safe to show.
+//
+// TODO(#5264): remove time panel hack once we migrate to the new static UI
 fn is_time_safe_to_show(
     entity_db: &re_entity_db::EntityDb,
     timeline: &re_data_store::Timeline,
@@ -1029,15 +1031,17 @@ fn is_time_safe_to_show(
     if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
-                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000),
-                re_data_store::TimeType::Sequence => TimeInt::from_sequence(1_000),
+                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000.try_into().unwrap()),
+                re_data_store::TimeType::Sequence => {
+                    TimeInt::from_sequence(1_000.try_into().unwrap())
+                }
             };
 
-            return TimeInt::from(first_time) <= time + margin;
+            return TimeInt::new_temporal(first_time) <= time + margin;
         }
     }
 
-    TimeInt::BEGINNING < time
+    TimeInt::MIN_TIME_PANEL < time
 }
 
 fn current_time_ui(
@@ -1067,10 +1071,7 @@ fn initialize_time_ranges_ui(
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = if entity_db.num_timeless_messages() > 0 {
-        vec![TimeRange {
-            min: TimeInt::BEGINNING,
-            max: TimeInt::BEGINNING,
-        }]
+        vec![TimeRange::point(TimeInt::MIN_TIME_PANEL)]
     } else {
         Vec::new()
     };

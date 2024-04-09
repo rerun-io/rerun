@@ -1,7 +1,9 @@
-use re_data_ui::{add_to_registry, DataUi};
-use re_viewer_context::{ComponentUiRegistry, SpaceViewId, UiVerbosity, ViewerContext};
+use re_types_blueprint::blueprint::components::{IncludedSpaceView, SpaceViewMaximized};
+use re_viewer_context::{SpaceViewId, UiVerbosity, ViewerContext};
 
-use super::components::{IncludedSpaceView, SpaceViewMaximized};
+use crate::DataUi;
+
+// ---
 
 impl DataUi for IncludedSpaceView {
     #[allow(clippy::only_used_in_recursion)]
@@ -11,10 +13,10 @@ impl DataUi for IncludedSpaceView {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let space_view: SpaceViewId = self.0.into();
-        space_view.data_ui(ctx, ui, verbosity, query, store);
+        space_view.data_ui(ctx, ui, verbosity, query, db);
     }
 }
 
@@ -26,16 +28,9 @@ impl DataUi for SpaceViewMaximized {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_data_store::LatestAtQuery,
-        store: &re_data_store::DataStore,
+        db: &re_entity_db::EntityDb,
     ) {
         let space_view: SpaceViewId = self.0.into();
-        space_view.data_ui(ctx, ui, verbosity, query, store);
+        space_view.data_ui(ctx, ui, verbosity, query, db);
     }
-}
-
-pub fn register_ui_components(registry: &mut ComponentUiRegistry) {
-    re_tracing::profile_function!();
-
-    add_to_registry::<IncludedSpaceView>(registry);
-    add_to_registry::<SpaceViewMaximized>(registry);
 }

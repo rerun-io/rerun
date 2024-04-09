@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects").spawn()?;
 
     // Log an annotation context to assign a label and color to each class
-    rec.log_timeless(
+    rec.log_static(
         "/",
         &rerun::AnnotationContext::new([
             (1, "red", rerun::Rgba32::from_rgb(255, 0, 0)),

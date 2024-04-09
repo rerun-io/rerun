@@ -69,13 +69,13 @@ impl std::fmt::Debug for Caches {
         for (cache_key, caches_per_archetype) in &per_cache_key {
             let caches_per_archetype = caches_per_archetype.read();
             strings.push(format!(
-                "  [{cache_key:?} (pending_timeful={:?} pending_timeless={:?})]",
+                "  [{cache_key:?} (pending_temporal={:?} pending_timeless={:?})]",
                 caches_per_archetype
-                    .pending_timeful_invalidation
+                    .pending_temporal_invalidation
                     .map(|t| cache_key
                         .timeline
                         .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
-                caches_per_archetype.pending_timeless_invalidation,
+                caches_per_archetype.pending_static_invalidation,
             ));
             strings.push(indent::indent_all_by(
                 4,
@@ -141,7 +141,7 @@ pub struct CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    pending_timeful_invalidation: Option<TimeInt>,
+    pending_temporal_invalidation: Option<TimeInt>,
 
     /// If `true`, the timeless data associated with this cache has been asynchronously invalidated.
     ///
@@ -150,7 +150,7 @@ pub struct CachesPerArchetype {
     ///
     /// Invalidation is deferred to query time because it is far more efficient that way: the frame
     /// time effectively behaves as a natural micro-batching mechanism.
-    pending_timeless_invalidation: bool,
+    pending_static_invalidation: bool,
 }
 
 impl std::fmt::Debug for CachesPerArchetype {
@@ -158,8 +158,8 @@ impl std::fmt::Debug for CachesPerArchetype {
         let CachesPerArchetype {
             latest_at_per_archetype,
             range_per_archetype,
-            pending_timeful_invalidation: _,
-            pending_timeless_invalidation: _,
+            pending_temporal_invalidation: _,
+            pending_static_invalidation: _,
         } = self;
 
         let mut strings = Vec::new();
@@ -232,7 +232,7 @@ impl Caches {
             store.id(),
         );
 
-        let key = CacheKey::new(entity_path, query.timeline);
+        let key = CacheKey::new(entity_path, query.timeline());
 
         let cache = {
             let caches_per_archetype = Arc::clone(self.write().entry(key.clone()).or_default());
@@ -472,7 +472,7 @@ impl StoreSubscriber for Caches {
             #[derive(Default, Debug)]
             struct CompactedEvents {
                 timeless: HashSet<EntityPath>,
-                timeful: HashMap<CacheKey, TimeInt>,
+                temporal: HashMap<CacheKey, TimeInt>,
             }
 
             let mut compacted = CompactedEvents::default();
@@ -485,7 +485,7 @@ impl StoreSubscriber for Caches {
 
                 for &(timeline, time) in times {
                     let key = CacheKey::new(entity_path.clone(), timeline);
-                    let min_time = compacted.timeful.entry(key).or_insert(TimeInt::MAX);
+                    let min_time = compacted.temporal.entry(key).or_insert(TimeInt::MAX);
                     *min_time = TimeInt::min(*min_time, time);
                 }
             }
@@ -505,16 +505,16 @@ impl StoreSubscriber for Caches {
                 for entity_path in compacted.timeless {
                     for (key, caches_per_archetype) in caches.iter() {
                         if key.entity_path == entity_path {
-                            caches_per_archetype.write().pending_timeless_invalidation = true;
+                            caches_per_archetype.write().pending_static_invalidation = true;
                         }
                     }
                 }
             }
 
             {
-                re_tracing::profile_scope!("timeful");
+                re_tracing::profile_scope!("temporal");
 
-                for (key, time) in compacted.timeful {
+                for (key, time) in compacted.temporal {
                     if let Some(caches_per_archetype) = caches.get(&key) {
                         // NOTE: Do _NOT_ lock from within the if clause itself or the guard will live
                         // for the remainder of the if statement and hell will ensue.
@@ -522,11 +522,11 @@ impl StoreSubscriber for Caches {
                         // supposed to catch that but it doesn't, I don't know why.
                         let mut caches_per_archetype = caches_per_archetype.write();
                         if let Some(min_time) =
-                            caches_per_archetype.pending_timeful_invalidation.as_mut()
+                            caches_per_archetype.pending_temporal_invalidation.as_mut()
                         {
                             *min_time = TimeInt::min(*min_time, time);
                         } else {
-                            caches_per_archetype.pending_timeful_invalidation = Some(time);
+                            caches_per_archetype.pending_temporal_invalidation = Some(time);
                         }
                     }
                 }
@@ -543,24 +543,24 @@ impl CachesPerArchetype {
     ///
     /// Returns the number of bytes removed.
     fn handle_pending_invalidation(&mut self) -> u64 {
-        let pending_timeless_invalidation = self.pending_timeless_invalidation;
-        let pending_timeful_invalidation = self.pending_timeful_invalidation.is_some();
+        let pending_static_invalidation = self.pending_static_invalidation;
+        let pending_temporal_invalidation = self.pending_temporal_invalidation.is_some();
 
-        if !pending_timeless_invalidation && !pending_timeful_invalidation {
+        if !pending_static_invalidation && !pending_temporal_invalidation {
             return 0;
         }
 
         re_tracing::profile_function!();
 
-        let time_threshold = self.pending_timeful_invalidation.unwrap_or(TimeInt::MAX);
+        let time_threshold = self.pending_temporal_invalidation.unwrap_or(TimeInt::MAX);
 
-        self.pending_timeful_invalidation = None;
-        self.pending_timeless_invalidation = false;
+        self.pending_temporal_invalidation = None;
+        self.pending_static_invalidation = false;
 
         // Timeless being infinitely into the past, this effectively invalidates _everything_ with
         // the current coarse-grained / archetype-level caching strategy.
-        if pending_timeless_invalidation {
-            re_tracing::profile_scope!("timeless");
+        if pending_static_invalidation {
+            re_tracing::profile_scope!("static");
 
             let latest_at_removed_bytes = self
                 .latest_at_per_archetype
@@ -580,7 +580,7 @@ impl CachesPerArchetype {
             return latest_at_removed_bytes + range_removed_bytes;
         }
 
-        re_tracing::profile_scope!("timeful");
+        re_tracing::profile_scope!("temporal");
 
         let mut removed_bytes = 0u64;
 
@@ -734,9 +734,7 @@ impl CacheBucket {
 
     /// Iterate over the batches of the specified non-optional component.
     #[inline]
-    pub fn iter_component<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<impl Iterator<Item = &[C]>> {
+    pub fn iter_component<C: Component>(&self) -> Option<impl Iterator<Item = &[C]>> {
         let data = self
             .components
             .get(&C::name())
@@ -746,9 +744,7 @@ impl CacheBucket {
 
     /// Iterate over the batches of the specified optional component.
     #[inline]
-    pub fn iter_component_opt<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<impl Iterator<Item = &[Option<C>]>> {
+    pub fn iter_component_opt<C: Component>(&self) -> Option<impl Iterator<Item = &[Option<C>]>> {
         let data = self
             .components
             .get(&C::name())
@@ -757,6 +753,28 @@ impl CacheBucket {
     }
 
     // ---
+
+    /// Returns the index range that corresponds to the static data (if any).
+    ///
+    /// Use the returned range with one of the range iteration methods:
+    /// - [`Self::range_data_times`]
+    /// - [`Self::range_pov_instance_keys`]
+    /// - [`Self::range_component`]
+    /// - [`Self::range_component_opt`]
+    ///
+    /// Make sure that the bucket hasn't been modified in-between!
+    ///
+    /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
+    /// multiple times.
+    #[inline]
+    pub fn static_range(&self) -> Range<usize> {
+        static_assertions::const_assert_eq!(TimeInt::STATIC.as_i64(), i64::MIN);
+        let start_index = 0;
+        let end_index = self
+            .data_times
+            .partition_point(|(data_time, _)| data_time <= &TimeInt::STATIC);
+        start_index..end_index
+    }
 
     /// Returns the index range that corresponds to the specified `time_range`.
     ///
@@ -774,10 +792,10 @@ impl CacheBucket {
     pub fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
         let start_index = self
             .data_times
-            .partition_point(|(data_time, _)| data_time < &time_range.min);
+            .partition_point(|(data_time, _)| data_time < &time_range.min());
         let end_index = self
             .data_times
-            .partition_point(|(data_time, _)| data_time <= &time_range.max);
+            .partition_point(|(data_time, _)| data_time <= &time_range.max());
         start_index..end_index
     }
 
@@ -801,7 +819,7 @@ impl CacheBucket {
 
     /// Get the raw batches for the specified non-optional component.
     #[inline]
-    pub fn component<C: Component + Send + Sync + 'static>(&self) -> Option<&FlatVecDeque<C>> {
+    pub fn component<C: Component>(&self) -> Option<&FlatVecDeque<C>> {
         self.components
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<C>>())
@@ -809,7 +827,7 @@ impl CacheBucket {
 
     /// Range over the batches of the specified non-optional component.
     #[inline]
-    pub fn range_component<C: Component + Send + Sync + 'static>(
+    pub fn range_component<C: Component>(
         &self,
         entry_range: Range<usize>,
     ) -> Option<impl Iterator<Item = &[C]>> {
@@ -822,9 +840,7 @@ impl CacheBucket {
 
     /// Get the raw batches for the specified optional component.
     #[inline]
-    pub fn component_opt<C: Component + Send + Sync + 'static>(
-        &self,
-    ) -> Option<&FlatVecDeque<Option<C>>> {
+    pub fn component_opt<C: Component>(&self) -> Option<&FlatVecDeque<Option<C>>> {
         self.components
             .get(&C::name())
             .and_then(|data| data.as_any().downcast_ref::<FlatVecDeque<Option<C>>>())
@@ -832,7 +848,7 @@ impl CacheBucket {
 
     /// Range over the batches of the specified optional component.
     #[inline]
-    pub fn range_component_opt<C: Component + Send + Sync + 'static>(
+    pub fn range_component_opt<C: Component>(
         &self,
         entry_range: Range<usize>,
     ) -> Option<impl Iterator<Item = &[Option<C>]>> {
@@ -912,8 +928,8 @@ macro_rules! impl_insert {
         ) -> ::re_query::Result<u64>
         where
             A: Archetype,
-            $($pov: Component + Send + Sync + 'static,)+
-            $($comp: Component + Send + Sync + 'static,)*
+            $($pov: Component,)+
+            $($comp: Component,)*
         {
             // NOTE: not `profile_function!` because we want them merged together.
             re_tracing::profile_scope!("CacheBucket::insert", format!("arch={} pov={} comp={}", A::name(), $N, $M));
@@ -970,7 +986,7 @@ impl CacheBucket {
     ) -> ::re_query::Result<u64>
     where
         A: Archetype,
-        R1: Component + Send + Sync + 'static,
+        R1: Component,
     {
         self.insert_pov1_comp0::<A, R1>(query_time, arch_view)
     }
@@ -980,7 +996,7 @@ impl CacheBucket {
     });
 
     #[inline]
-    fn insert_component<A: Archetype, C: Component + Send + Sync + 'static>(
+    fn insert_component<A: Archetype, C: Component>(
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,
@@ -1019,7 +1035,7 @@ impl CacheBucket {
 
     /// This will insert an empty slice for a missing component (instead of N `None` values).
     #[inline]
-    fn insert_component_opt<A: Archetype, C: Component + Send + Sync + 'static>(
+    fn insert_component_opt<A: Archetype, C: Component>(
         &mut self,
         at: usize,
         arch_view: &ArchetypeView<A>,

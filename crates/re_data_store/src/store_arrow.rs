@@ -5,8 +5,9 @@ use nohash_hasher::IntMap;
 use re_log_types::{DataCellColumn, DataTable, DataTableResult, NumInstances, RowId, Timeline};
 use re_types_core::ComponentName;
 
-use crate::store::{
-    IndexedBucket, IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner,
+use crate::{
+    store::{IndexedBucket, IndexedBucketInner},
+    StaticTable,
 };
 
 // ---
@@ -53,7 +54,7 @@ impl IndexedBucket {
     }
 }
 
-impl PersistentIndexedTable {
+impl StaticTable {
     /// Serializes the entire table into an arrow payload and schema.
     ///
     /// Column order:
@@ -66,27 +67,59 @@ impl PersistentIndexedTable {
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
         re_tracing::profile_function!();
 
-        let Self {
-            ent_path: _,
-            cluster_key,
-            inner,
-        } = self;
+        // NOTE: cannot fail, the cluster key _has_ to be there by definition
+        let cluster_keys = &self.cells[&self.cluster_key];
 
-        let PersistentIndexedTableInner {
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
-            is_sorted: _,
-        } = &*inner.read();
+        let mut cells_per_row_id: BTreeMap<RowId, Vec<_>> = Default::default();
+        for static_cell in self.cells.values() {
+            cells_per_row_id
+                .entry(static_cell.row_id)
+                .or_default()
+                .push(static_cell.clone());
+        }
+        for cells in cells_per_row_id.values_mut() {
+            cells.push(cluster_keys.clone());
+        }
+
+        let col_insert_id = cells_per_row_id
+            .values()
+            .filter_map(|cells| cells.first().and_then(|cell| cell.insert_id))
+            .collect();
+
+        let col_row_id = cells_per_row_id.keys().copied().collect();
+
+        let col_num_instances = cells_per_row_id
+            .values()
+            .filter_map(|cells| cells.first().map(|cell| cell.num_instances))
+            .collect();
+
+        let component_names: Vec<_> = self
+            .cells
+            .values()
+            .map(|cell| cell.cell.component_name())
+            .collect();
+
+        let mut columns = IntMap::<ComponentName, DataCellColumn>::default();
+        for (_row_id, cells) in cells_per_row_id {
+            let cells: BTreeMap<_, _> = cells
+                .iter()
+                .map(|cell| (cell.cell.component_name(), &cell.cell))
+                .collect();
+            for component_name in &component_names {
+                columns
+                    .entry(*component_name)
+                    .or_default()
+                    .push_back(cells.get(component_name).cloned().cloned());
+            }
+        }
 
         serialize(
-            cluster_key,
+            &self.cluster_key,
             None,
-            col_insert_id,
-            col_row_id,
-            col_num_instances,
-            columns,
+            &col_insert_id,
+            &col_row_id,
+            &col_num_instances,
+            &columns,
         )
     }
 }

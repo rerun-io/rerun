@@ -37,8 +37,7 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let positions = build_some_positions2d(3);
     let colors = build_some_colors(3);
-    let row =
-        test_row!(ent_path @ [build_frame_nr(42.into())] => 3; [positions.clone(), colors.clone()]);
+    let row = test_row!(ent_path @ [build_frame_nr(42)] => 3; [positions.clone(), colors.clone()]);
     store.insert_row(&row).unwrap();
 
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
@@ -53,8 +52,6 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 
     let arch_view = arch_views.next().unwrap();
     assert!(arch_views.next().is_none());
-
-    // dbg!(arch_view);
 
     let actual_instance_keys = arch_view.iter_instance_keys().collect_vec();
     let actual_positions = arch_view

@@ -30,12 +30,12 @@ def log_clock(steps: int) -> None:
             0.0,
         )
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Y_UP, static=True)
 
     rr.log(
         "world/frame",
         rr.Boxes3D(half_sizes=[LENGTH_S, LENGTH_S, 1.0], centers=[0.0, 0.0, 0.0]),
-        timeless=True,
+        static=True,
     )
 
     for step in range(steps):

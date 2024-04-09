@@ -212,7 +212,7 @@ fn load_series(
             store,
             &query,
             entity_path,
-            |_timeless, entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
+            |entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
                 let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
                 // Allocate all points.
                 points = times.map(|time| PlotPoint {
@@ -282,8 +282,9 @@ fn load_series(
     let series_name = if let Some(override_name) = override_series_name {
         Some(override_name)
     } else {
-        ctx.recording_store()
-            .query_latest_component::<Name>(&data_result.entity_path, &ctx.current_query())
+        // TODO(#5607): what should happen if the promise is still pending?
+        ctx.recording()
+            .latest_at_component::<Name>(&data_result.entity_path, &ctx.current_query())
             .map(|name| name.value.0)
     };
 

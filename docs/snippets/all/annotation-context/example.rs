@@ -1,6 +1,6 @@
 // Annotation context with two classes, using two labeled classes, of which ones defines a color.
 MsgSender::new("masks") // Applies to all entities below "masks".
-    .with_timeless(true)
+    .with_static(true)
     .with_component(&[AnnotationContext {
         class_map: [
             ClassDescription {
@@ -28,7 +28,7 @@ MsgSender::new("masks") // Applies to all entities below "masks".
 
 // Annotation context with simple keypoints & keypoint connections.
 MsgSender::new("detections") // Applies to all entities below "detections".
-    .with_timeless(true)
+    .with_static(true)
     .with_component(&[AnnotationContext {
         class_map: std::iter::once((
             ClassId(0),

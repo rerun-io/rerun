@@ -10,12 +10,12 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 ///
 /// ```
 /// # use re_data_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint}};
+/// # use re_log_types::{Timeline, TimeInt, example_components::{MyColor, MyPoint}};
 /// # use re_types_core::Loggable as _;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::new_temporal(123));
 ///
 /// let (_, _, component) = re_query::get_component_with_instances(
 ///   &store,
@@ -45,7 +45,7 @@ pub fn get_component_with_instances(
     query: &LatestAtQuery,
     ent_path: &EntityPath,
     component: ComponentName,
-) -> Option<(Option<TimeInt>, RowId, ComponentWithInstances)> {
+) -> Option<(TimeInt, RowId, ComponentWithInstances)> {
     debug_assert_eq!(store.cluster_key(), InstanceKey::name());
 
     let components = [InstanceKey::name(), component];
@@ -69,16 +69,16 @@ pub fn get_component_with_instances(
 /// its _most recent component_.
 ///
 /// If you expect only one instance (e.g. for mono-components like `Transform` `Tensor`]
-/// and have no additional components you can use [`DataStore::query_latest_component`] instead.
+/// and have no additional components you can use `Caches::latest_at_component` instead.
 ///
 /// ```
 /// # use re_data_store::LatestAtQuery;
-/// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint, MyPoints}};
+/// # use re_log_types::{Timeline, TimeInt, example_components::{MyColor, MyPoint, MyPoints}};
 /// # use re_types_core::Component;
 /// # let store = re_query::__populate_example_store();
 ///
 /// let ent_path = "point";
-/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+/// let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), TimeInt::new_temporal(123));
 ///
 /// let arch_view = re_query::query_archetype::<MyPoints>(
 ///   &store,
@@ -131,7 +131,7 @@ pub fn query_archetype<A: Archetype>(
 
     // NOTE: Since this is a compound API that actually emits multiple queries, the data time of the
     // final result is the most recent data time among all of its components.
-    let mut max_data_time = data_times.iter().max().copied().unwrap_or(None);
+    let mut max_data_time = data_times.iter().max().copied().unwrap_or(TimeInt::STATIC);
     let row_id = row_ids.first().unwrap_or(&RowId::ZERO);
 
     let recommended_components = A::recommended_components();
@@ -143,7 +143,7 @@ pub fn query_archetype<A: Archetype>(
         .filter_map(|component| {
             get_component_with_instances(store, query, ent_path, *component).map(
                 |(data_time, _, component_result)| {
-                    max_data_time = Option::max(max_data_time, data_time);
+                    max_data_time = TimeInt::max(max_data_time, data_time);
                     component_result
                 },
             )
@@ -171,7 +171,7 @@ pub fn __populate_example_store() -> DataStore {
     );
 
     let ent_path = "point";
-    let timepoint = [build_frame_nr(123.into())];
+    let timepoint = [build_frame_nr(123)];
 
     let instances = vec![InstanceKey(42), InstanceKey(96)];
     let positions = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -214,7 +214,7 @@ fn simple_get_component() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123);
 
     let (_, _, component) =
         get_component_with_instances(&store, &query, &ent_path.into(), MyPoint::name()).unwrap();
@@ -245,7 +245,7 @@ fn simple_query_archetype() {
     let store = __populate_example_store();
 
     let ent_path = "point";
-    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123.into());
+    let query = LatestAtQuery::new(Timeline::new_sequence("frame_nr"), 123);
 
     let arch_view = query_archetype::<MyPoints>(&store, &query, &ent_path.into()).unwrap();
 

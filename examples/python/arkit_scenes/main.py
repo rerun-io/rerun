@@ -78,7 +78,7 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> None:
                 rotations=rr.Quaternion(xyzw=rot.as_quat()),
                 labels=label,
             ),
-            timeless=True,
+            static=True,
         )
 
 
@@ -170,7 +170,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     None
 
     """
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     video_id = recording_path.stem
     lowres_image_dir = recording_path / "lowres_wide"
@@ -199,7 +199,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
         timestamp = f"{round(float(timestamp), 3):.3f}"
         camera_from_world_dict[timestamp] = camera_from_world
 
-    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
@@ -212,7 +212,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             vertex_colors=mesh.visual.vertex_colors,
             indices=mesh.faces,
         ),
-        timeless=True,
+        static=True,
     )
 
     # load the obb annotations and log them in the world frame

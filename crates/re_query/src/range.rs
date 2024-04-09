@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 use re_data_store::{DataStore, LatestAtQuery, RangeQuery};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances};
@@ -85,7 +85,7 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
 
     // NOTE: This will return none for `TimeInt::Min`, i.e. range queries that start infinitely far
     // into the past don't have a latest-at state!
-    let query_time = query.range.min.as_i64().checked_sub(1).map(Into::into);
+    let query_time = TimeInt::try_from(query.range.min().as_i64().saturating_sub(1)).ok();
 
     let mut cwis_latest = None;
     if let Some(query_time) = query_time {
@@ -121,7 +121,7 @@ pub fn range_component_set<'a, A: Archetype + 'a, const N: usize>(
         // Consider e.g. what happens when one system queries for `range(10, 20)` while another
         // queries for `range(9, 20)`: the data at timestamp `10` would differ because of the
         // statefulness of range queries!
-        .map(move |cwis| (query_time, false, cwis))
+        .map(move |cwis| (query_time.unwrap_or(TimeInt::STATIC), false, cwis))
         .chain(store.range(query, ent_path, components).map(
             move |(data_time, row_id, mut cells)| {
                 // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed

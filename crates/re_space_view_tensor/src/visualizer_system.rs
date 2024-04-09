@@ -1,5 +1,5 @@
-use re_data_store::{LatestAtQuery, VersionedComponent};
-use re_entity_db::EntityPath;
+use re_data_store::LatestAtQuery;
+use re_entity_db::{external::re_query_cache2::CachedLatestAtMonoResult, EntityPath};
 use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{
@@ -31,12 +31,13 @@ impl VisualizerSystem for TensorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = ctx.recording_store();
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(tensor) = store
-                .query_latest_component::<TensorData>(&data_result.entity_path, &timeline_query)
+            // TODO(#5607): what should happen if the promise is still pending?
+            if let Some(tensor) = ctx
+                .recording()
+                .latest_at_component::<TensorData>(&data_result.entity_path, &timeline_query)
             {
                 self.load_tensor_entity(ctx, &data_result.entity_path, tensor);
             }
@@ -55,15 +56,16 @@ impl TensorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         ent_path: &EntityPath,
-        tensor: VersionedComponent<TensorData>,
+        tensor: CachedLatestAtMonoResult<TensorData>,
     ) {
+        let row_id = tensor.row_id();
         match ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor.row_id, tensor.value.0))
+            .entry(|c: &mut TensorDecodeCache| c.entry(row_id, tensor.value.0))
         {
             Ok(decoded_tensor) => {
                 self.tensors
-                    .insert(ent_path.clone(), (tensor.row_id, decoded_tensor));
+                    .insert(ent_path.clone(), (row_id, decoded_tensor));
             }
             Err(err) => {
                 re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");
