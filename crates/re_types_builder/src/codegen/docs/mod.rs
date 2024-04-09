@@ -193,16 +193,28 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         };
         putln!(page);
         putln!(page, "## Links");
+
+        let cpp_link = if object.is_enum() {
+            // Can't link to enums directly 🤷
+            format!(
+                "https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1{}.html",
+                object.kind.plural_snake_case()
+            )
+        } else {
+            // `_1` is doxygen's replacement for ':'
+            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
+            format!(
+                "https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html",
+                object.kind.plural_snake_case(),
+                object.name
+            )
+        };
+
         // In alphabetical order by language.
         putln!(
             page,
-            // `_1` is doxygen's replacement for ':'
-            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
-            " * 🌊 [C++ API docs for `{}`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html{})",
+            " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
             object.name,
-            object.kind.plural_snake_case(),
-            object.name,
-            speculative_marker,
         );
         putln!(
             page,
@@ -215,12 +227,11 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         );
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{})",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
             object.name,
-            speculative_marker
         );
     }
 

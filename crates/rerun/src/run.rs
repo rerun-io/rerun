@@ -168,7 +168,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/howto/open-any-file)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,

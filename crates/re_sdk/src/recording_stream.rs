@@ -1090,7 +1090,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_path(
         &self,
@@ -1108,7 +1108,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
     #[cfg(feature = "data_loaders")]
     pub fn log_file_from_contents(
         &self,

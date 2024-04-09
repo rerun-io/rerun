@@ -519,7 +519,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -540,7 +540,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
@@ -559,7 +559,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -589,7 +589,7 @@ namespace rerun {
         /// This method blocks until either at least one `DataLoader` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+        /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.

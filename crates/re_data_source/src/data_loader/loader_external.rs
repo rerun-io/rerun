@@ -102,7 +102,7 @@ pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathB
 ///
 /// Refer to our `external_data_loader` example for more information.
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/howto/open-any-file) on
+/// Checkout our [guide](https://www.rerun.io/docs/reference/data-loaders/overview) on
 /// how to implement external loaders.
 pub struct ExternalLoader;
 

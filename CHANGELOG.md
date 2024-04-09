@@ -1,7 +1,10 @@
 # Rerun changelog
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
-The biggest news is the ability to create a _blueprint_ via the Python logging API:
+
+
+## [0.15.0](https://github.com/rerun-io/rerun/compare/0.14.1...0.15.0) - Blueprints from Python - 2024-04-**09**
+The biggest news is the ability to create a _blueprint_ via the Python logging API. Check out our [associated blog post](https://www.rerun.io/blog/blueprint-part-one) for more information.
 
 ```py
 import rerun.blueprint as rrb
@@ -489,7 +492,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 ## [0.12.0](https://github.com/rerun-io/rerun/compare/0.11.0...0.12.0) - Data Loaders, Container-editing, Python-3.12 - 2024-01-09
 
 ### ✨ Overview & highlights
-- 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/howto/open-any-file).
+- 🌁 The Rerun Viewer now supports a plugin system for creating [arbitrary external data loaders](https://www.rerun.io/docs/reference/data-loaders/overview).
 - 🕸️ More built-in examples are now available in the viewer.
 - 🐍 The Python SDK now works with Python-3.12.
 - 📘 Blueprint containers can now be selected and modified.

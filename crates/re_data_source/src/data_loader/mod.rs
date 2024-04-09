@@ -152,7 +152,7 @@ impl DataLoaderSettings {
 ///
 /// ## Registering custom loaders
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/howto/open-any-file).
+/// Checkout our [guide](https://www.rerun.io/docs/reference/data-loaders/overview).
 ///
 /// ## Execution
 ///

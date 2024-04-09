@@ -7,7 +7,7 @@ The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
 ## Getting started
 
-Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) on how to use the Rerun C++ SDK.
+Read the [getting started guide](https://www.rerun.io/docs/getting-started/quick-start/cpp) on how to use the Rerun C++ SDK.
 
 ### Logging
 
