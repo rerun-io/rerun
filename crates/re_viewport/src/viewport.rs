@@ -191,7 +191,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let mut edited = false;
 
         // If the blueprint tree is empty/missing we need to auto-layout.
-        let tree = if blueprint.tree.is_empty() && !blueprint.space_views.is_empty() {
+        let tree = if blueprint.tree.is_empty() {
             edited = true;
             super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
