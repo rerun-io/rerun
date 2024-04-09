@@ -41,7 +41,10 @@
                     "kind": "lib"
                 }
             },
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun' (no args)",
@@ -60,7 +63,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun ../data.rrd'",
@@ -81,7 +87,10 @@
             "args": [
                 "../data.rrd"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun' colmap.rrd from url",
@@ -102,7 +111,10 @@
             "args": [
                 "https://demo.rerun.io/commit/0f89b62/examples/colmap/data.rrd"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'minimal' example",
@@ -121,7 +133,7 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "env": {
-                "RUST_LOG": "trace"
+                "RUST_LOG": "debug"
             }
         },
         {
@@ -139,7 +151,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'codegen'",
