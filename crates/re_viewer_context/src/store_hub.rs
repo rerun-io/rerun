@@ -323,6 +323,10 @@ impl StoreHub {
 
     /// Close this application and all its recordings.
     pub fn close_app(&mut self, app_id: &ApplicationId) {
+        if let Err(err) = self.save_app_blueprints() {
+            re_log::warn!("Failed to save blueprints: {err}");
+        }
+
         self.store_bundle.retain(|db| db.app_id() != Some(app_id));
 
         if self.active_application_id.as_ref() == Some(app_id) {
