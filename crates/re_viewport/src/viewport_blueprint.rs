@@ -11,19 +11,15 @@ use re_entity_db::EntityPath;
 use re_query::query_archetype;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
+use re_types_blueprint::blueprint::components::{
+    AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
+};
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier, SpaceViewId,
     SpaceViewSpawnHeuristics, ViewerContext,
 };
 
-use crate::{
-    blueprint::components::{
-        AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
-    },
-    container::ContainerBlueprint,
-    viewport::TreeAction,
-    VIEWPORT_PATH,
-};
+use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 
@@ -73,7 +69,7 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let crate::blueprint::archetypes::ViewportBlueprint {
+        let re_types_blueprint::blueprint::archetypes::ViewportBlueprint {
             root_container,
             maximized,
             auto_layout,

@@ -29,6 +29,9 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::OutOfTreeTransform3D>(&mut registry);
     add_to_registry::<re_types::components::ViewCoordinates>(&mut registry);
 
+    add_to_registry::<re_types_blueprint::blueprint::components::IncludedSpaceView>(&mut registry);
+    add_to_registry::<re_types_blueprint::blueprint::components::SpaceViewMaximized>(&mut registry);
+
     register_editors(&mut registry);
 
     registry

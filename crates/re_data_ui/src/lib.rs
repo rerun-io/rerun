@@ -11,6 +11,7 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 mod annotation_context;
 mod app_id;
 mod blueprint_data;
+mod blueprint_types;
 mod component;
 mod component_path;
 mod component_ui_registry;

@@ -66,6 +66,7 @@ re_time_panel = { path = "crates/re_time_panel", version = "=0.15.0-alpha.5", de
 re_tracing = { path = "crates/re_tracing", version = "=0.15.0-alpha.5", default-features = false }
 re_tuid = { path = "crates/re_tuid", version = "=0.15.0-alpha.5", default-features = false }
 re_types = { path = "crates/re_types", version = "=0.15.0-alpha.5", default-features = false }
+re_types_blueprint = { path = "crates/re_types_blueprint", version = "=0.15.0-alpha.5", default-features = false }
 re_types_builder = { path = "crates/re_types_builder", version = "=0.15.0-alpha.5", default-features = false }
 re_types_core = { path = "crates/re_types_core", version = "=0.15.0-alpha.5", default-features = false }
 re_ui = { path = "crates/re_ui", version = "=0.15.0-alpha.5", default-features = false }

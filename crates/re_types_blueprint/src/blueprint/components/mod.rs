@@ -4,7 +4,6 @@ mod auto_layout;
 mod auto_layout_ext;
 mod auto_space_views;
 mod container_kind;
-mod container_kind_ext;
 mod grid_columns;
 mod included_space_view;
 mod root_container;
