@@ -1107,6 +1107,10 @@ fn get_app_url() -> String {
 
     let build_info = re_build_info::build_info!();
 
+    // Note that it is important to us `app.rerun.io` directly here. The version hosted
+    // at `rerun.io/viewer` is not designed to be embedded in a notebook and interferes
+    // with the startup sequencing. Do not switch to `rerun.io/viewer` without considering
+    // the implications.
     if build_info.is_final() {
         format!("https://app.rerun.io/version/{}", build_info.version)
     } else if let Some(short_git_hash) = build_info.git_hash.get(..7) {
