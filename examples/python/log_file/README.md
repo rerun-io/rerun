@@ -5,7 +5,7 @@ thumbnail = "https://static.rerun.io/log_file/d86e525cce547cd2dde8e2d7619c01bd3b
 thumbnail_dimensions = [480, 480]
 -->
 
-Demonstrates how to log any file from the SDK using the [`DataLoader`](https://www.rerun.io/docs/howto/open-any-file) machinery.
+Demonstrates how to log any file from the SDK using the [`DataLoader`](https://www.rerun.io/docs/reference/data-loaders/overview) machinery.
 
 Usage:
 ```bash

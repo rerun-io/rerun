@@ -2,13 +2,14 @@
 """
 Demonstrates how to log any file from the SDK using the `DataLoader` machinery.
 
-See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
 
 Usage:
 ```
 python examples/python/log_file/main.py -- examples/assets
 ```
 """
+
 from __future__ import annotations
 
 import argparse
