@@ -1,11 +1,10 @@
 use std::collections::BTreeSet;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering::Relaxed;
 use std::{collections::BTreeMap, sync::Arc};
 
-use ahash::HashMap;
-
+use indexmap::IndexMap;
+use itertools::Itertools;
 use parking_lot::RwLock;
+
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
 use re_query2::Promise;
@@ -108,22 +107,44 @@ impl std::fmt::Debug for LatestAtCache {
 
         let mut strings = Vec::new();
 
-        let data_times_per_bucket: HashMap<_, _> = per_data_time
+        struct StatsPerBucket {
+            query_times: BTreeSet<TimeInt>,
+            data_time: TimeInt,
+            total_size_bytes: u64,
+        }
+
+        let mut buckets: IndexMap<_, _> = per_data_time
             .iter()
-            .map(|(time, bucket)| (Arc::as_ptr(bucket), *time))
+            .map(|(&data_time, bucket)| {
+                (
+                    Arc::as_ptr(bucket),
+                    StatsPerBucket {
+                        query_times: Default::default(),
+                        data_time,
+                        total_size_bytes: bucket.total_size_bytes(),
+                    },
+                )
+            })
             .collect();
 
-        for (query_time, bucket) in per_query_time {
-            let query_time = cache_key.timeline.typ().format_utc(*query_time);
-            let data_time = data_times_per_bucket.get(&Arc::as_ptr(bucket)).map_or_else(
-                || "MISSING?!".to_owned(),
-                |t| cache_key.timeline.typ().format_utc(*t),
-            );
+        for (&query_time, bucket) in per_query_time {
+            if let Some(bucket) = buckets.get_mut(&Arc::as_ptr(bucket)) {
+                bucket.query_times.insert(query_time);
+            }
+        }
+
+        for bucket in buckets.values() {
             strings.push(format!(
-                "query_time={query_time} -> data_time={data_time} ({})",
-                re_format::format_bytes(bucket.cached_heap_size_bytes.load(Relaxed) as _),
+                "query_times=[{}] -> data_time={:?} ({})",
+                bucket
+                    .query_times
+                    .iter()
+                    .map(|t| cache_key.timeline.typ().format_utc(*t))
+                    .collect_vec()
+                    .join(", "),
+                bucket.data_time.as_i64(),
+                re_format::format_bytes(bucket.total_size_bytes as _),
             ));
-            strings.push(indent::indent_all_by(2, format!("{bucket:?}")));
         }
 
         if strings.is_empty() {
@@ -218,7 +239,6 @@ impl LatestAtCache {
                 promise: Some(Promise::new(cell)),
                 cached_dense: Default::default(),
                 cached_sparse: Default::default(),
-                cached_heap_size_bytes: AtomicU64::new(0),
             });
 
             // Slowest path: this is a complete cache miss.

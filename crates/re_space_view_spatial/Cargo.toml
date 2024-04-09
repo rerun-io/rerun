@@ -25,6 +25,7 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
 re_query_cache.workspace = true
+re_query_cache2.workspace = true
 re_renderer = { workspace = true, features = [
   "import-gltf",
   "import-obj",
@@ -59,7 +60,3 @@ mimalloc.workspace = true
 
 [lib]
 bench = false
-
-[[bench]]
-name = "bench_points"
-harness = false

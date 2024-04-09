@@ -690,7 +690,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{:?}", ctx.recording.query_caches());
+                    let text = format!("{:?}", ctx.recording.query_caches2());
                     self.re_ui
                         .egui_ctx
                         .output_mut(|o| o.copied_text = text.clone());
@@ -1414,9 +1414,7 @@ impl eframe::App for App {
 
         // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
         // is opened.
-        let store_stats = self
-            .memory_panel_open
-            .then(|| store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled()));
+        let store_stats = self.memory_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
         self.memory_panel

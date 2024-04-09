@@ -1,9 +1,9 @@
 use itertools::Itertools as _;
-use re_query_cache::QueryError;
+use re_query_cache2::{PromiseResult, QueryError};
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
+    components::{Color, Name, Scalar, StrokeWidth},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -156,7 +156,8 @@ fn load_series(
     re_tracing::profile_function!();
 
     let store = ctx.recording_store();
-    let query_caches = ctx.recording().query_caches();
+    let query_caches2 = ctx.recording().query_caches2();
+    let resolver = ctx.recording().resolver();
 
     let annotation_info = annotations
         .resolved_class_description(None)
@@ -181,7 +182,7 @@ fn load_series(
         },
     };
 
-    let mut points = Vec::new();
+    let mut points;
 
     let time_range = determine_time_range(
         ctx,
@@ -196,83 +197,124 @@ fn load_series(
         let entity_path = &data_result.entity_path;
         let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-        // TODO(jleibs): need to do a "joined" archetype query
-        // The `Scalar` archetype queries for `MarkerShape` & `MarkerSize` in the point visualizer,
-        // and so it must do so here also.
-        // See https://github.com/rerun-io/rerun/pull/5029
-        query_caches.query_archetype_range_pov1_comp4::<
-            archetypes::Scalar,
-            Scalar,
-            Color,
-            StrokeWidth,
-            MarkerSize, // unused
-            MarkerShape, // unused
-            _,
-        >(
+        let results = query_caches2.range(
             store,
             &query,
             entity_path,
-            |entry_range, (times, _, scalars, colors, stroke_widths, _, _)| {
-                let times = times.range(entry_range.clone()).map(|(time, _)| time.as_i64());
-                // Allocate all points.
-                points = times.map(|time| PlotPoint {
-                    time,
-                    ..default_point.clone()
-                }).collect_vec();
+            [Scalar::name(), Color::name(), StrokeWidth::name()],
+        );
 
-                // Fill in values.
-                for (i, scalar) in scalars.range(entry_range.clone()).enumerate() {
-                    if scalar.len() > 1 {
-                        re_log::warn_once!("found a scalar batch in {entity_path:?} -- those have no effect");
-                    } else if scalar.is_empty() {
-                        points[i].attrs.kind = PlotSeriesKind::Clear;
-                    } else {
-                        points[i].value = scalar.first().map_or(0.0, |s| s.0);
-                    }
+        let all_scalars = results
+            .get_required(Scalar::name())?
+            .to_dense::<Scalar>(resolver);
+        let all_scalars_entry_range = all_scalars.entry_range(query.range());
+
+        if !matches!(
+            all_scalars.status(query.range()),
+            (PromiseResult::Ready(()), PromiseResult::Ready(()))
+        ) {
+            // TODO(#5607): what should happen if the promise is still pending?
+        }
+
+        // Allocate all points.
+        points = all_scalars
+            .range_indices(all_scalars_entry_range.clone())
+            .map(|(data_time, _)| PlotPoint {
+                time: data_time.as_i64(),
+                ..default_point.clone()
+            })
+            .collect_vec();
+
+        // Fill in values.
+        for (i, scalars) in all_scalars
+            .range_data(all_scalars_entry_range.clone())
+            .enumerate()
+        {
+            if scalars.len() > 1 {
+                re_log::warn_once!(
+                    "found a scalar batch in {entity_path:?} -- those have no effect"
+                );
+            } else if scalars.is_empty() {
+                points[i].attrs.kind = PlotSeriesKind::Clear;
+            } else {
+                points[i].value = scalars.first().map_or(0.0, |s| s.0);
+            }
+        }
+
+        // Make it as clear as possible to the optimizer that some parameters
+        // go completely unused as soon as overrides have been defined.
+
+        // Fill in colors -- if available _and_ not overridden.
+        if override_color.is_none() {
+            if let Some(all_colors) = results.get(Color::name()) {
+                let all_colors = all_colors.to_dense::<Color>(resolver);
+
+                if !matches!(
+                    all_colors.status(query.range()),
+                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                ) {
+                    // TODO(#5607): what should happen if the promise is still pending?
                 }
 
-                // Make it as clear as possible to the optimizer that some parameters
-                // go completely unused as soon as overrides have been defined.
+                let all_scalars_indexed = all_scalars
+                    .range_indices(all_scalars_entry_range.clone())
+                    .map(|index| (index, ()));
 
-                // Fill in colors -- if available _and_ not overridden.
-                if override_color.is_none() {
-                    if let Some(colors) = colors {
-                        for (i, color) in colors.range(entry_range.clone()).enumerate() {
-                            if i >= points.len() {
-                                re_log::debug_once!("more color attributes than points in {entity_path:?} -- this points to a bug in the query cache");
-                                break;
+                let all_frames = re_query_cache2::range_zip_1x1(
+                    all_scalars_indexed,
+                    all_colors.range_indexed(query.range()),
+                )
+                .enumerate();
+
+                for (i, (_index, _scalars, colors)) in all_frames {
+                    if let Some(color) = colors.and_then(|colors| {
+                        colors.first().map(|c| {
+                            let [r, g, b, a] = c.to_array();
+                            if a == 255 {
+                                // Common-case optimization
+                                re_renderer::Color32::from_rgb(r, g, b)
+                            } else {
+                                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
                             }
-                            if let Some(color) = color.first().copied().flatten().map(|c| {
-                                let [r,g,b,a] = c.to_array();
-                                if a == 255 {
-                                    // Common-case optimization
-                                    re_renderer::Color32::from_rgb(r, g, b)
-                                } else {
-                                    re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
-                                }
-                            }) {
-                                points[i].attrs.color = color;
-                            }
-                        }
+                        })
+                    }) {
+                        points[i].attrs.color = color;
                     }
                 }
+            }
+        }
 
-                // Fill in radii -- if available _and_ not overridden.
-                if override_stroke_width.is_none() {
-                    if let Some(stroke_widths) = stroke_widths {
-                        for (i, stroke_width) in stroke_widths.range(entry_range.clone()).enumerate() {
-                            if i >= stroke_widths.num_entries() {
-                                re_log::debug_once!("more stroke width attributes than points in {entity_path:?} -- this points to a bug in the query cache");
-                                break;
-                            }
-                            if let Some(stroke_width) = stroke_width.first().copied().flatten().map(|r| r.0) {
-                                points[i].attrs.marker_size = stroke_width;
-                            }
-                        }
+        // Fill in stroke widths -- if available _and_ not overridden.
+        if override_stroke_width.is_none() {
+            if let Some(all_stroke_widths) = results.get(StrokeWidth::name()) {
+                let all_stroke_widths = all_stroke_widths.to_dense::<StrokeWidth>(resolver);
+
+                if !matches!(
+                    all_stroke_widths.status(query.range()),
+                    (PromiseResult::Ready(()), PromiseResult::Ready(()))
+                ) {
+                    // TODO(#5607): what should happen if the promise is still pending?
+                }
+
+                let all_scalars_indexed = all_scalars
+                    .range_indices(all_scalars_entry_range.clone())
+                    .map(|index| (index, ()));
+
+                let all_frames = re_query_cache2::range_zip_1x1(
+                    all_scalars_indexed,
+                    all_stroke_widths.range_indexed(query.range()),
+                )
+                .enumerate();
+
+                for (i, (_index, _scalars, stroke_widths)) in all_frames {
+                    if let Some(stroke_width) =
+                        stroke_widths.and_then(|stroke_widths| stroke_widths.first().map(|r| r.0))
+                    {
+                        points[i].attrs.marker_size = stroke_width;
                     }
                 }
-            },
-        )?;
+            }
+        }
     }
 
     // Check for an explicit label if any.

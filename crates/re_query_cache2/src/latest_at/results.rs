@@ -1,7 +1,4 @@
-use std::sync::{
-    atomic::{AtomicU64, Ordering::Relaxed},
-    Arc, OnceLock,
-};
+use std::sync::{Arc, OnceLock};
 
 use nohash_hasher::IntMap;
 
@@ -133,8 +130,6 @@ pub struct CachedLatestAtComponentResults {
 
     /// The resolved, converted, deserialized sparse data.
     pub(crate) cached_sparse: OnceLock<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
-
-    pub(crate) cached_heap_size_bytes: AtomicU64,
 }
 
 impl CachedLatestAtComponentResults {
@@ -145,7 +140,6 @@ impl CachedLatestAtComponentResults {
             promise: None,
             cached_dense: OnceLock::new(),
             cached_sparse: OnceLock::new(),
-            cached_heap_size_bytes: AtomicU64::new(0),
         }
     }
 
@@ -157,12 +151,37 @@ impl CachedLatestAtComponentResults {
             _ => None,
         }
     }
+
+    #[inline]
+    pub fn num_values(&self) -> u64 {
+        self.cached_dense
+            .get()
+            .map_or(0u64, |cached| cached.dyn_num_values() as _)
+            + self
+                .cached_sparse
+                .get()
+                .map_or(0u64, |cached| cached.dyn_num_values() as _)
+    }
 }
 
 impl SizeBytes for CachedLatestAtComponentResults {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.cached_heap_size_bytes.load(Relaxed)
+        let Self {
+            index,
+            promise,
+            cached_dense,
+            cached_sparse,
+        } = self;
+
+        index.heap_size_bytes()
+            + promise.heap_size_bytes()
+            + cached_dense
+                .get()
+                .map_or(0, |data| data.dyn_total_size_bytes())
+            + cached_sparse
+                .get()
+                .map_or(0, |data| data.dyn_total_size_bytes())
     }
 }
 
@@ -173,14 +192,13 @@ impl std::fmt::Debug for CachedLatestAtComponentResults {
             promise: _,
             cached_dense: _,  // we can't, we don't know the type
             cached_sparse: _, // we can't, we don't know the type
-            cached_heap_size_bytes,
         } = self;
 
         f.write_fmt(format_args!(
             "[{:?}#{}] {}",
             index.0,
             index.1,
-            re_format::format_bytes(cached_heap_size_bytes.load(Relaxed) as _)
+            re_format::format_bytes(self.total_size_bytes() as _)
         ))
     }
 }
@@ -291,12 +309,9 @@ impl CachedLatestAtComponentResults {
             .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
         #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> =
-            self.cached_dense.get_or_init(move || {
-                self.cached_heap_size_bytes
-                    .fetch_add(data.total_size_bytes(), Relaxed);
-                Box::new(FlatVecDeque::from(data))
-            });
+        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
+            .cached_dense
+            .get_or_init(move || Box::new(FlatVecDeque::from(data)));
 
         downcast(&**cached)
     }
@@ -317,12 +332,9 @@ impl CachedLatestAtComponentResults {
             .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
         #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> =
-            self.cached_sparse.get_or_init(move || {
-                self.cached_heap_size_bytes
-                    .fetch_add(data.total_size_bytes(), Relaxed);
-                Box::new(FlatVecDeque::from(data))
-            });
+        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
+            .cached_sparse
+            .get_or_init(move || Box::new(FlatVecDeque::from(data)));
 
         downcast_opt(&**cached)
     }
