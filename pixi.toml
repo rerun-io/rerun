@@ -236,7 +236,10 @@ taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 
 [pypi-dependencies]
-nox = ">=2024.3.2" # the conda-forge package is (wrongly) tagged as platform-specific
+nox = ">=2024.3.2"     # the conda-forge package is (wrongly) tagged as platform-specific
+Pillow = "==10.0.0"    # For `thumbnails.py`
+requests = ">=2.31,<3" # For `thumbnails.py`
+tomlkit = ">=0.11.8"   # For `thumbnails.py`
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
