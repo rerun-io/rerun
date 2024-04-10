@@ -1,4 +1,4 @@
-name: Reusable Build JS
+name: Reusable Build rerun_js
 
 on:
   workflow_call:
@@ -22,15 +22,12 @@ env:
 
 jobs:
   build:
-    name: Build
+    name: Build rerun_js
     permissions:
       contents: "read"
       id-token: "write"
 
     runs-on: ubuntu-latest-16-cores
-
-    container:
-      image: rerunio/ci_docker:0.12.0
 
     steps:
       - uses: actions/checkout@v4
@@ -57,10 +54,10 @@ jobs:
         with:
           pixi-version: v0.18.0
 
-      - name: Install dependencies
+      - name: Install yarn dependencies
         shell: bash
         run: pixi run yarn --cwd rerun_js install
 
-      - name: Build package
+      - name: Build rerun_js package
         shell: bash
         run: pixi run yarn --cwd rerun_js workspaces run build

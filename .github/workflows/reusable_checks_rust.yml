@@ -38,8 +38,6 @@ jobs:
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -66,6 +64,9 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release -g
 
+      - name: install cargo cranky
+        run: cargo install --locked --quiet cargo-cranky
+
       - name: Rust checks & tests
         if: ${{ !inputs.ALL_CHECKS }}
         run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
@@ -79,8 +80,6 @@ jobs:
   rs-check-wasm:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -121,12 +120,21 @@ jobs:
   rs-cargo-deny:
     name: Cargo Deny
     runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "rs-cargo-deny"
+          save_cache: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Install cargo-deny
+        run: cargo install --locked --quiet cargo-deny
 
       - name: Cargo Deny
         shell: bash

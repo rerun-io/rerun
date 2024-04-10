@@ -84,19 +84,11 @@ jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one
       # PR introduces a new type and another PR changes the codegen.
       - uses: actions/checkout@v4
-
-      # So we can format the Python code
-      - name: Set up Python
-        shell: bash
-        run: |
-          pip install -r rerun_py/requirements-lint.txt
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
@@ -181,8 +173,6 @@ jobs:
   rs-check-wasm:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       - uses: actions/checkout@v4
 
@@ -258,10 +248,11 @@ jobs:
   rs-cargo-deny:
     name: Cargo Deny
     runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        run: cargo install --locked --quiet cargo-deny
 
       - name: Cargo Deny
         shell: bash
