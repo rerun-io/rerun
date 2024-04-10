@@ -34,7 +34,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Download Wheel Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel_artifact
