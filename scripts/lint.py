@@ -123,6 +123,7 @@ def lint_line(
             and not ellipsis_import.search(line)
             and not ellipsis_bare.search(line)
             and not ellipsis_reference.search(line)
+            and not (file_extension == "py" and line.strip().startswith("def"))
         ):
             return "Use … instead of ..."
 

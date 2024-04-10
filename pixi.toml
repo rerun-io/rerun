@@ -91,8 +91,7 @@ lint-codegen = "cargo run --package re_types_builder -- --check"
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
-lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
-lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
+
 lint-typos = "typos"
 
 # Toml tasks
@@ -108,6 +107,7 @@ ruff-fix = "ruff check --fix --config rerun_py/pyproject.toml ."
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = { depends_on = ["ruff-fix", "ruff-fmt"] }
 py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
+py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-build-release = "maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests"
@@ -215,7 +215,6 @@ cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
-just = ">=1.15.0"
 maturin = "1.5.1"
 mypy = "1.8.0"
 numpy = ">=1.23,<2"
