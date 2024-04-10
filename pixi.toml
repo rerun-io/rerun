@@ -144,6 +144,14 @@ search-index = "cargo run -p re_build_search_index --release --"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
+# Update the design_tokens.json used to style the GUI.
+# See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
+# To update the upstream `design_tokens.json`, modify
+# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
+download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json"
+
+# Update the results of `insta` snapshot regression tests
+rs-update-insta-tests = "cargo test && cargo insta review"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
