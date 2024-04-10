@@ -39,11 +39,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          just-version: 1.5
+          pixi-version: v0.16.1
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -58,15 +56,15 @@ jobs:
           pip install --upgrade pip
           pip install -r rerun_py/requirements-lint.txt
 
+      - name: Python format check
+        shell: bash
+        run: |
+          pixi run py-fmt-check
+
       - name: Lint Python
         shell: bash
         run: |
-          just py-lint
-
-      - name: Check requirements
-        shell: bash
-        run: |
-          just py-requirements
+          pixi run py-lint
 
   # ---------------------------------------------------------------------------
 
@@ -144,6 +142,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.16.1
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -156,9 +158,10 @@ jobs:
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
-        shell: bash
-        run: |
-          ./scripts/lint.py
+        run: pixi run lint-rerun
+
+      - name: Toml format check
+        run: pixi run toml-fmt-check
 
       # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
       # at least for the time being.

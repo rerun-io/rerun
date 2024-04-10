@@ -1,4 +1,5 @@
 """Module to download nuScenes minisplit."""
+
 from __future__ import annotations
 
 import os

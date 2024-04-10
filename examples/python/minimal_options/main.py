@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Demonstrates the most barebone usage of the Rerun SDK, with standard options."""
+
 from __future__ import annotations
 
 import argparse

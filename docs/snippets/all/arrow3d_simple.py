@@ -1,4 +1,5 @@
 """Log a batch of 3D arrows."""
+
 from math import tau
 
 import numpy as np

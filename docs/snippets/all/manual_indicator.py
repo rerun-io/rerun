@@ -1,4 +1,5 @@
 """Shows how to manually associate one or more indicator components with arbitrary data."""
+
 import rerun as rr
 
 rr.init("rerun_example_manual_indicator", spawn=True)

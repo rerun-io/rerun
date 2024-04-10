@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example applying simple object detection and tracking on a video."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,5 @@
 """Log a scalar over time."""
+
 import math
 
 import rerun as rr

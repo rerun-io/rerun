@@ -1,4 +1,5 @@
 """Log a batch of oriented bounding boxes."""
+
 import rerun as rr
 from rerun.datatypes import Angle, Quaternion, Rotation3D, RotationAxisAngle
 

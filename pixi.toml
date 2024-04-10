@@ -56,6 +56,12 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 # (this looks heavy but takes typically below 0.1s!)
 rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --debug"
 
+# Compile the web-viewer wasm and the cli.
+#
+# This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
+# (this looks heavy but takes typically below 0.1s!)
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -72,41 +78,59 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # (this looks heavy but takes typically below 0.1s!)
 rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --release -g"
 
-
 build-examples = "cargo run -q --locked -p re_build_examples --"
+
+# Code formatting for all languages.
+format = { depends_on = ["py-fmt", "cpp-fmt", "toml-fmt", "misc-fmt"] }
+fmt = { depends_on = ["format"] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-all
-lint-cpp-files = "clang-format --dry-run -Werror"
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
-lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
-lint-py-blackdoc = "blackdoc --check"
-lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
-lint-py-ruff = "ruff format --check --config rerun_py/pyproject.toml"
-lint-taplo = "taplo fmt --check --diff"
+
 lint-typos = "typos"
 
-misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
-misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
-ruff-fmt = "ruff format --config rerun_py/pyproject.toml ."
-ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
+# Toml tasks
+toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
 
+# Misc formatting tasks.
+misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
+misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
+
+# Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
+py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
+py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
+py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
+
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
+py-build-release = "maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests"
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
-py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
+py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only", depends_on = [
   "py-build",
 ] }
 
+# Python example utilities
+py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
+  "py-build",
+] }
+py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends_on = [
+  "rerun-build-web-cli",
+  "py-build",
+] }
+
+py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
+  "py-build",
+] }
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 # Build the documentation search index.
@@ -118,6 +142,14 @@ search-index = "cargo run -p re_build_search_index --release --"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
+# Update the design_tokens.json used to style the GUI.
+# See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
+# To update the upstream `design_tokens.json`, modify
+# https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
+download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json"
+
+# Update the results of `insta` snapshot regression tests
+rs-update-insta-tests = "cargo test && cargo insta review"
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
@@ -156,6 +188,7 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
+cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format -i"
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
@@ -175,21 +208,20 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
-blackdoc = "0.3.8"
-clang-tools = "16.0.6"       # clang-format
+clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
-just = ">=1.15.0"
 maturin = "1.5.1"
 mypy = "1.8.0"
 numpy = ">=1.23,<2"
 pip = ">=23"
 pyarrow = "14.0.2"
 pytest = ">=7"
-python = "=3.11"             # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.2.2"
+pytest-benchmark = ">=4.0.0,<4.1"
+python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
+ruff = "0.3.5"
 semver = ">=2.13,<2.14"
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
@@ -210,19 +242,7 @@ nox = ">=2024.3.2" # the conda-forge package is (wrongly) tagged as platform-spe
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 
-[feature.cpp.target.linux-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-arm64.dependencies]
+[feature.cpp.target.unix.dependencies]
 clang = "16.0.6"
 ninja = "1.11.1"
 c-compiler = "1.6.0.*"

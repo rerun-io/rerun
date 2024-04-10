@@ -1,13 +1,11 @@
 # https://github.com/tamasfe/taplo
 
-exclude = [
-  ".nox/**",
-  ".pixi/**",
-  "build/**",
-  "target/**",
-  "target_ra/**",
-  "target_wasm/**",
-  "venv/**",
+# As of writing, taplo is really slow to gather files, so we help it out a bit.
+include = [
+  "*.toml",
+  "crates/**/*.toml",
+  "examples/rust/**/*.toml",
+  "tests/rust/**/*.toml",
 ]
 
 [formatting]

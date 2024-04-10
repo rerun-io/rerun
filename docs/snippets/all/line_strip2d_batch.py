@@ -1,4 +1,5 @@
 """Log a batch of 2D line strips."""
+
 import rerun as rr
 
 rr.init("rerun_example_line_strip2d_batch", spawn=True)

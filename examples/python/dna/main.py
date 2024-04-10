@@ -4,6 +4,7 @@ The example from our Getting Started page.
 
 `examples/python/dna/main.py`
 """
+
 from __future__ import annotations
 
 import argparse

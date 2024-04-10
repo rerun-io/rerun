@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Pose solution to detect and track a human pose in video."""
+
 from __future__ import annotations
 
 import argparse

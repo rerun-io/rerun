@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Face detection and Face landmark detection solutions to track human faces in images and videos."""
+
 from __future__ import annotations
 
 import argparse

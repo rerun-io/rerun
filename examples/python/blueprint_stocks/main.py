@@ -4,6 +4,7 @@ A simple application that fetches stock data from Yahoo Finance and visualizes i
 
 The main focus of this example is using blueprints to control how the data is displayed in the viewer.
 """
+
 from __future__ import annotations
 
 import argparse

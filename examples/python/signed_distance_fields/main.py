@@ -25,6 +25,7 @@ Run:
 examples/python/signed_distance_fields/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse

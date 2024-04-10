@@ -65,36 +65,9 @@ Rerun is available as a package on PyPi and can be installed with `pip install r
 
 Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
-If you want to build from source, use the following instructions.
-
-### Mac/Linux
-
-First, a local virtual environment must be created and the necessary dependencies installed (this needs to be done only once):
-
-Linux/Mac:
-```sh
-just py-dev-env
-source venv/bin/activate
-```
-Windows (powershell):
-```ps1
-just py-dev-env
-.\venv\Scripts\Activate.ps1
-```
-
-
-Then, the SDK can be compiled and installed in the virtual environment using the following command:
-
-```sh
-just py-build
-```
-
-This needs to be repeated each time the Rust source code is updated, for example after updating your clone using `git pull`.
-
-Now you can run the python examples from the repository, given that you're still in the virtual environment.
-```sh
-python examples/python/minimal/main.py
-```
+If you want to build from source, you can do so easily in the pixi environment:
+* Run `pixi run py-build-release` to build SDK & viewer for python (or `pixi run py-build` for a debug build)
+* Then you can run examples from the repository, either by making the pixi shell active with  `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/main.py`
 
 ## Building and installing the Rerun C++ SDK
 
@@ -102,11 +75,11 @@ On Windows you have to have a system install of Visual Studio 2022 in order to c
 
 All other dependencies are downloaded by Pixi! You can run tests with:
 ```sh
-just cpp-test
+pixi run cpp-test
 ```
 and build all C++ artifacts with:
 ```sh
-just cpp-build-all
+pixi run cpp-build-all
 ```
 
 ## Building the docs

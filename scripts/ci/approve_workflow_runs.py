@@ -11,6 +11,7 @@ This is expected to be run by the `auto_approve.yml` GitHub workflow.
 Requires the following packages:
   pip install PyGithub==1.59.0 requests>=2.31,<3
 """
+
 from __future__ import annotations
 
 import argparse

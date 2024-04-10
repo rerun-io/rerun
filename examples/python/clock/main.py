@@ -4,6 +4,7 @@ An example showing usage of `log_arrow`.
 
 An analog clock is built with Rerun Arrow3D primitives.
 """
+
 from __future__ import annotations
 
 import argparse

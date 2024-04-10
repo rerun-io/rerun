@@ -14,6 +14,7 @@ python main.py https://raw.githubusercontent.com/facebookresearch/segment-anythi
 python main.py --device cuda --model vit_h /path/to/my_image.jpg
 ```
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,5 @@
 """Disconnect two spaces."""
+
 import rerun as rr
 
 rr.init("rerun_example_disconnected_space", spawn=True)

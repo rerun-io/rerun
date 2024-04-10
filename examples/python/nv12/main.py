@@ -8,6 +8,7 @@ pip install -r examples/python/nv12/requirements.txt
 python examples/python/nv12/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse

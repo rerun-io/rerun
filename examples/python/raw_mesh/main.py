@@ -8,6 +8,7 @@ Run:
 examples/python/raw_mesh/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse

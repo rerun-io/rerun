@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Demonstration of using rerun from multiple threads."""
+
 from __future__ import annotations
 
 import argparse

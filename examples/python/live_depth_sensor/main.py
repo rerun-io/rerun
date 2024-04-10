@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """A minimal example of streaming frames live from an Intel RealSense depth sensor."""
+
 from __future__ import annotations
 
 import argparse

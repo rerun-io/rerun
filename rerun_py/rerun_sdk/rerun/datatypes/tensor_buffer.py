@@ -93,9 +93,9 @@ class TensorBuffer(TensorBufferExt):
         The order of the channels is Y0, U0, Y1, V0.
     """
 
-    kind: Literal[
-        "u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"
-    ] = field(default="u8")
+    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12", "yuy2"] = (
+        field(default="u8")
+    )
     """
     Possible values:
 

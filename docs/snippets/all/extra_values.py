@@ -1,4 +1,5 @@
 """Log extra values with a Points2D."""
+
 import rerun as rr
 
 rr.init("rerun_example_extra_values", spawn=True)

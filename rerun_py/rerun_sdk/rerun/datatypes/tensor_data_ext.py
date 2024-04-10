@@ -16,8 +16,7 @@ from .._unions import build_dense_union
 class TorchTensorLike(Protocol):
     """Describes what is need from a Torch Tensor to be loggable to Rerun."""
 
-    def numpy(self, force: bool) -> npt.NDArray[Any]:
-        ...
+    def numpy(self, force: bool) -> npt.NDArray[Any]: ...
 
 
 if TYPE_CHECKING:

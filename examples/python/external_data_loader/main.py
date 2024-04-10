@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example of an executable data-loader plugin for the Rerun Viewer."""
+
 from __future__ import annotations
 
 import argparse
