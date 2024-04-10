@@ -72,8 +72,11 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # (this looks heavy but takes typically below 0.1s!)
 rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_build_web_viewer -- --release -g"
 
-
 build-examples = "cargo run -q --locked -p re_build_examples --"
+
+# Code formatting for all languages.
+format = { depends_on = ["py-fmt", "cpp-fmt", "toml-fmt", "misc-fmt"] }
+fmt = { depends_on = ["format"] }
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -86,16 +89,18 @@ lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 lint-py-blackdoc = "blackdoc --check"
 lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 lint-py-ruff = "ruff format --check --config rerun_py/pyproject.toml"
-lint-taplo = "taplo fmt --check --diff"
 lint-typos = "typos"
+
+# Toml tasks
+toml-lint = "taplo fmt --check --diff"
+toml-fmt = "taplo fmt"
 
 # Misc formatting tasks.
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
+
 ruff-fmt = "ruff format --config rerun_py/pyproject.toml ."
 ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
-toml-fmt = "taplo fmt"
-
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = { depends_on = ["ruff-fix", "ruff-fmt"] }
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
@@ -105,10 +110,10 @@ py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
+
 py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py", depends_on = [
   "py-build",
 ] }
-
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 # Build the documentation search index.
@@ -120,8 +125,6 @@ search-index = "cargo run -p re_build_search_index --release --"
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
-
-format = { depends_on = ["py-fmt", "cpp-fmt", "toml-fmt"] }
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
