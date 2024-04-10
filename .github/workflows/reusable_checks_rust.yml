@@ -64,6 +64,9 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release -g
 
+      - name: install cargo cranky
+        run: cargo install --locked --quiet cargo-cranky
+
       - name: Rust checks & tests
         if: ${{ !inputs.ALL_CHECKS }}
         run: ./scripts/ci/rust_checks.py --skip-check-individual-crates

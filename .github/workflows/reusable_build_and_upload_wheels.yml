@@ -90,6 +90,7 @@ jobs:
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
       COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Set runner and target based on platform
@@ -100,32 +101,38 @@ jobs:
             linux-arm64)
                 runner="buildjet-8vcpu-ubuntu-2204-arm"
                 target="aarch64-unknown-linux-gnu"
+                container="null"
                 compat="manylinux_2_31"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_31"
+              container="null"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
+              container="null"
               compat="manylinux_2_31"
               ;;
             macos-arm64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
+              container="null"
               compat="manylinux_2_31"
               ;;
             macos-x64)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
+              container="null"
               compat="manylinux_2_31"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
           echo "compat=$compat" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
@@ -137,6 +144,7 @@ jobs:
 
     runs-on: ${{ needs.set-config.outputs.RUNNER }}
     container:
+      image: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
       credentials:
         username: ${{ secrets.DOCKER_HUB_USER }}
         password: ${{ secrets.DOCKER_HUB_TOKEN }}
