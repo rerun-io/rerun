@@ -72,9 +72,9 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
     )
     rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
-    with closing(VideoSource(video_path)) as video_source, PoseLandmarker.create_from_options(
-        options
-    ) as pose_landmarker:
+    pose_landmarker = PoseLandmarker.create_from_options(options)
+
+    with closing(VideoSource(video_path)) as video_source:
         for idx, bgr_frame in enumerate(video_source.stream_bgr()):
             if max_frame_count is not None and idx >= max_frame_count:
                 break
