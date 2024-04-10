@@ -47,6 +47,10 @@ rerun = "rerun_bindings:main"
 
 # target-version = "py38"  # inferred from requires-python, see https://beta.ruff.rs/docs/settings/#target-version
 
+# Enable unsafe fixes to allow ruff to apply fixes that may change the behavior of the code.
+# This is needed because otherwise ruff will not be able to trim whitespaces in (codegened) docstrings.
+unsafe-fixes = true
+
 extend-exclude = [
   # Automatically generated test artifacts
   "venv/",
