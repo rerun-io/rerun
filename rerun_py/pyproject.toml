@@ -47,8 +47,6 @@ rerun = "rerun_bindings:main"
 
 # target-version = "py38"  # inferred from requires-python, see https://beta.ruff.rs/docs/settings/#target-version
 
-unsafe-fixes = true
-
 extend-exclude = [
   # Automatically generated test artifacts
   "venv/",
