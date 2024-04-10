@@ -9,7 +9,7 @@ import logging
 import math
 import os
 from pathlib import Path
-from typing import Final, Iterable
+from typing import Any, Final, Iterable, cast
 
 import cv2
 import mediapipe as mp
@@ -302,7 +302,7 @@ def download_file(url: str, path: Path) -> None:
             f.write(chunk)
 
 
-def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArray[np.uint8]:
+def resize_image(image: npt.NDArray[Any], max_dim: int | None) -> npt.NDArray[Any]:
     """Resize an image if it is larger than max_dim."""
     if max_dim is None:
         return image
