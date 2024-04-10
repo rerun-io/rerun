@@ -28,7 +28,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: nightly
-      ALL_CHECKS: true
+      CHANNEL: nightly
     secrets: inherit
 
   checks-python:

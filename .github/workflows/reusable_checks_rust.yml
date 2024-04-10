@@ -6,10 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      ALL_CHECKS:
+      CHANNEL:
         required: false
-        type: boolean
-        default: false
+        type: string # enum: 'nightly', 'main', or 'pr'
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_rust
@@ -68,11 +67,15 @@ jobs:
         run: cargo install --locked --quiet cargo-cranky
 
       - name: Rust checks & tests
-        if: ${{ !inputs.ALL_CHECKS }}
+        if: ${{ inputs.CHANNEL == 'pr' }}
+        run: ./scripts/ci/rust_checks.py --skip-check-individual-crates --skip-test
+
+      - name: Rust checks & tests
+        if: ${{ inputs.CHANNEL == 'main' }}
         run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
 
       - name: Rust all checks & tests
-        if: inputs.ALL_CHECKS
+        if: ${{ inputs.CHANNEL == 'nightly' }}
         run: ./scripts/ci/rust_checks.py
 
   # ---------------------------------------------------------------------------

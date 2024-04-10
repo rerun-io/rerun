@@ -26,6 +26,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: main
     secrets: inherit
 
   python_checks:
