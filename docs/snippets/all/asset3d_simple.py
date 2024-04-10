@@ -1,4 +1,5 @@
 """Log a simple 3D asset."""
+
 import sys
 
 import rerun as rr

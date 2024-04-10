@@ -11,6 +11,7 @@ When we encounter this file on import, we instead redirect to the
 real rerun module by adding it to the path and then, and then
 replacing our own module content with it.
 """
+
 from __future__ import annotations
 
 import pathlib

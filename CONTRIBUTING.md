@@ -113,7 +113,8 @@ cargo run -p rerun -- --help
 
 ## Tools
 
-We use the [`just`](https://github.com/casey/just) command runner tool for repository automation. See [here](https://github.com/casey/just#installation) for installation instructions. To see available automation, use `just --list`.
+We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions. To see available tasks, use `pixi task list`.
+# TODO(andreas): This doesn't list tasks from the different environments. Asked [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475) if there's a way to do that.
 
 We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) and specify our clippy lints in [`Cranky.toml`](Cranky.toml). Usage: `cargo cranky`.
 
@@ -124,12 +125,12 @@ Configure your editor to run `cargo fmt` on save. Also configure it to strip tra
 To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideally check approximately the same things as our CI.
 
 ### Linting
-Prior to pushing changes to a PR, at a minimum, you should always run `just fast-lint`. This is designed to run
+Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run
 in a few seconds and should catch the more trivial issues to avoid wasting CI time.
 
 ### Hooks
 We recommend adding the rerun pre-push hook to your local checkout, which among other-things will run
-`just fast-lint` for you.
+`pixi run fast-lint` for you.
 
 To install the hooks, simply copy them into the `.git/hooks` directory of your local checkout.
 ```

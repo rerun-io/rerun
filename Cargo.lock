@@ -1655,9 +1655,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e30fc4d40a8ef399a8debfbdae0462ca45912d81b9e81b24373337669e961201"
+checksum = "013480797931a2649e03069613ed35514569372d6f79df70fc3653ae18a75c6c"
 dependencies = [
  "egui",
  "egui_extras",
@@ -4624,6 +4624,7 @@ dependencies = [
  "re_query2",
  "re_tracing",
  "re_types",
+ "re_types_blueprint",
  "re_types_core",
  "seq-macro",
  "similar-asserts",

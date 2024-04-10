@@ -39,34 +39,15 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          just-version: 1.5
+          pixi-version: v0.18.0
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-lint.txt"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
+      - name: Python format check
+        run: pixi run py-fmt-check
 
       - name: Lint Python
-        shell: bash
-        run: |
-          just py-lint
-
-      - name: Check requirements
-        shell: bash
-        run: |
-          just py-requirements
+        run: pixi run py-lint
 
   # ---------------------------------------------------------------------------
 
@@ -101,8 +82,6 @@ jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -119,15 +98,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      # So we can format the Python code
-      - name: Set up Python
-        shell: bash
-        run: |
-          pip install -r rerun_py/requirements-lint.txt
-
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       - name: Codegen check
         shell: bash
@@ -144,6 +117,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.18.0
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -156,9 +133,10 @@ jobs:
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
-        shell: bash
-        run: |
-          ./scripts/lint.py
+        run: pixi run lint-rerun
+
+      - name: Toml format check
+        run: pixi run toml-fmt-check
 
       # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
       # at least for the time being.
@@ -208,7 +186,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check

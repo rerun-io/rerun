@@ -13,6 +13,7 @@ You can also run it manually if you want to update a specific release's assets:
 Requires the following packages:
   pip install google-cloud-storage PyGithub
 """
+
 from __future__ import annotations
 
 import argparse

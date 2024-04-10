@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Pose solution to detect and track a human pose in video."""
+
 from __future__ import annotations
 
 import argparse
@@ -132,7 +133,7 @@ def read_landmark_positions_3d(
 
 @dataclass
 class VideoFrame:
-    data: npt.NDArray[np.uint8]
+    data: cv2.typing.MatLike
     time: float
     idx: int
 

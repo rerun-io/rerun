@@ -7,6 +7,7 @@ Run:
 python3 examples/python/dicom/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse

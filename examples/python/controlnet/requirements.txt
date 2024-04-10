@@ -1,9 +1,8 @@
 accelerate
 opencv-python
 pillow
-diffusers
+diffusers==0.27.2
 numpy
-#TODO(#4704): clean that up when pytorch is available for 3.12
-torch ; python_version < "3.12"
+torch
 transformers
 rerun-sdk

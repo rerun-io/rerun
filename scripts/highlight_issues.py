@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Generate a list of GitHub issues that needs attention."""
+
 from __future__ import annotations
 
 import multiprocessing

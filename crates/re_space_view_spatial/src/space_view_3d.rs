@@ -407,7 +407,7 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
     let (archetype, blueprint_path) =
         query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
 
-    let Background3D { color, mut kind } = archetype.unwrap_or_default();
+    let Background3D { color, mut kind } = archetype.ok().flatten().unwrap_or_default();
 
     ctx.re_ui.grid_left_hand_label(ui, "Background");
 

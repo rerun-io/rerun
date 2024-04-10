@@ -1,4 +1,5 @@
 """Log some random points with color and radii."""
+
 import rerun as rr
 from numpy.random import default_rng
 

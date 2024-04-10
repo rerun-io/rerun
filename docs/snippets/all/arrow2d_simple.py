@@ -1,4 +1,5 @@
 """Log a batch of 2D arrows."""
+
 import rerun as rr
 
 rr.init("rerun_example_arrow2d", spawn=True)

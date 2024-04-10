@@ -8,6 +8,7 @@ pip install -r examples/python/template/requirements.txt
 python examples/python/template/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse

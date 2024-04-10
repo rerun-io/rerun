@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Face detection and Face landmark detection solutions to track human faces in images and videos."""
+
 from __future__ import annotations
 
 import argparse
@@ -301,7 +302,7 @@ def download_file(url: str, path: Path) -> None:
             f.write(chunk)
 
 
-def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArray[np.uint8]:
+def resize_image(image: cv2.typing.MatLike, max_dim: int | None) -> cv2.typing.MatLike:
     """Resize an image if it is larger than max_dim."""
     if max_dim is None:
         return image

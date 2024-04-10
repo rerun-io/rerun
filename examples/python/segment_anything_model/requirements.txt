@@ -3,7 +3,6 @@ numpy
 opencv-python
 requests>=2.31,<3
 rerun-sdk
-#TODO(#4704): clean that up when pytorch is available for 3.12
-torch ; python_version < "3.12"
-torchvision ; python_version < "3.12"
+torch
+torchvision
 tqdm

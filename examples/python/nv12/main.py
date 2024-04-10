@@ -8,6 +8,7 @@ pip install -r examples/python/nv12/requirements.txt
 python examples/python/nv12/main.py
 ```
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,12 +16,11 @@ import time
 
 import cv2
 import numpy as np
-import numpy.typing as npt
 import rerun as rr  # pip install rerun-sdk
 
 
-def bgr2nv12(bgr: npt.NDArray[np.uint8]) -> npt.NDArray[np.uint8]:
-    yuv: npt.NDArray[np.uint8] = cv2.cvtColor(bgr, cv2.COLOR_BGR2YUV_I420)
+def bgr2nv12(bgr: cv2.typing.MatLike) -> cv2.typing.MatLike:
+    yuv = cv2.cvtColor(bgr, cv2.COLOR_BGR2YUV_I420)
     uv_row_cnt = yuv.shape[0] // 3
     uv_plane = np.transpose(yuv[uv_row_cnt * 2 :].reshape(2, -1), [1, 0])
     yuv[uv_row_cnt * 2 :] = uv_plane.reshape(uv_row_cnt, -1)

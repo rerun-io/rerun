@@ -4,6 +4,7 @@ Load an Open Photogrammetry Format (OPF) project and display the cameras and poi
 
 Requires Python 3.10 or higher because of [pyopf](https://pypi.org/project/pyopf/).
 """
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,5 @@
 """Helper functions for converting streams to inline html."""
+
 from __future__ import annotations
 
 import base64

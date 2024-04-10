@@ -1,7 +1,9 @@
 use re_data_store::LatestAtQuery;
-use re_entity_db::EntityDb;
+use re_entity_db::{
+    external::re_query_cache2::{CachedLatestAtResults, PromiseResult, ToArchetype},
+    EntityDb,
+};
 use re_log_types::EntityPath;
-use re_query::query_archetype;
 use re_types::Archetype;
 use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId};
 
@@ -20,24 +22,27 @@ pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().short_name()))
 }
 
-pub fn query_space_view_sub_archetype<T: Archetype>(
+/// Returns `Ok(None)` if any of the required components are missing.
+pub fn query_space_view_sub_archetype<A: Archetype>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
     query: &LatestAtQuery,
-) -> (Result<T, re_query::QueryError>, EntityPath) {
-    let path = entity_path_for_space_view_sub_archetype::<T>(space_view_id, blueprint_db.tree());
-
-    (
-        query_archetype(blueprint_db.store(), query, &path).and_then(|arch| arch.to_archetype()),
-        path,
-    )
+) -> (PromiseResult<Option<A>>, EntityPath)
+where
+    CachedLatestAtResults: ToArchetype<A>,
+{
+    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    (blueprint_db.latest_at_archetype(&path, query), path)
 }
 
-pub fn query_space_view_sub_archetype_or_default<T: Archetype + Default>(
+pub fn query_space_view_sub_archetype_or_default<A: Archetype + Default>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
     query: &LatestAtQuery,
-) -> (T, EntityPath) {
+) -> (A, EntityPath)
+where
+    CachedLatestAtResults: ToArchetype<A>,
+{
     let (arch, path) = query_space_view_sub_archetype(space_view_id, blueprint_db, query);
-    (arch.unwrap_or_default(), path)
+    (arch.ok().flatten().unwrap_or_default(), path)
 }

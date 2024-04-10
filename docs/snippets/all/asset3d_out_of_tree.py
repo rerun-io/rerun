@@ -1,4 +1,5 @@
 """Log a simple 3D asset with an out-of-tree transform which will not affect its children."""
+
 import sys
 
 import numpy as np

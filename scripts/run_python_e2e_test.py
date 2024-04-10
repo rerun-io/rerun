@@ -10,6 +10,7 @@ This is an end-to-end test for testing:
 * TCP connection
 * Data store ingestion
 """
+
 from __future__ import annotations
 
 import argparse

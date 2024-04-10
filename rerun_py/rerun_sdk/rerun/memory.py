@@ -1,4 +1,5 @@
 """Helper functions for directly working with recordings."""
+
 from __future__ import annotations
 
 import base64

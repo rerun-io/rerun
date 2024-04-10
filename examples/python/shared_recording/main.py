@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Demonstrates how to use `RecordingId`s to build a single recording from multiple processes."""
+
 from __future__ import annotations
 
 import os

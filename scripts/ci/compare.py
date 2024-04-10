@@ -10,6 +10,7 @@ Use the script:
 
     python3 scripts/ci/compare.py --threshold=20 previous.json current.json
 """
+
 from __future__ import annotations
 
 import argparse

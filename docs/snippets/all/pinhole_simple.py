@@ -1,4 +1,5 @@
 """Log a pinhole and a random image."""
+
 import numpy as np
 import rerun as rr
 

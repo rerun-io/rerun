@@ -1,4 +1,5 @@
 """Log a simple colored triangle."""
+
 import rerun as rr
 
 rr.init("rerun_example_mesh3d", spawn=True)

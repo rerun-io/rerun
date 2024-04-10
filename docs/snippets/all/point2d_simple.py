@@ -1,4 +1,5 @@
 """Log some very simple points."""
+
 import rerun as rr
 
 rr.init("rerun_example_points2d", spawn=True)
