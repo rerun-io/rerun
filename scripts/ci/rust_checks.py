@@ -13,21 +13,21 @@ from glob import glob
 
 
 class Timing:
-    def __init__(self, cwd: str, start_time: float) -> None:
-        self.cwd = cwd
+    def __init__(self, command: str, start_time: float) -> None:
+        self.command = command
         self.duration = time.time() - start_time
 
 
 def run_cargo(command: str, args: str) -> Timing:
-    cwd = f"cargo {command} --quiet {args}"
-    print(f"Running '{cwd}'")
+    command = f"cargo {command} --quiet {args}"
+    print(f"> {command}")
     start = time.time()
-    result = subprocess.call(cwd, shell=True)
-
-    if result != 0:
+    result = subprocess.run(command, check=False, capture_output=True, text=True, shell=True)
+    if result.returncode != 0:
+        print(f"'{command}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}")
         sys.exit(result)
 
-    return Timing(cwd, start)
+    return Timing(command, start)
 
 
 def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
@@ -99,8 +99,9 @@ def main() -> None:
     # Print timings overview
     print("-----------------")
     print("Timings:")
+    timings.sort(key=lambda timing: timing.duration, reverse=True)
     for timing in timings:
-        print(f"{timing.duration:.2f}s \t {timing.cwd}")
+        print(f"{timing.duration:.2f}s \t {timing.command}")
 
 
 if __name__ == "__main__":
