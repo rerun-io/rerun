@@ -81,7 +81,7 @@ rr.log("video/mask", rr.SegmentationImage(binary_segmentation_mask.astype(np.uin
 ```
 
 ### Body pose points
-Logging the body pose as a skeleton involves specifying the connectivity of its keypoints (i.e., between pose landmarks), extracting the pose landmarks, and logging them as points to Rerun. In this example, both the 2D and 3D estimates from Mediapipe are visualized.
+Logging the body pose as a skeleton involves specifying the connectivity of its keypoints (i.e., pose landmarks), extracting the pose landmarks, and logging them as points to Rerun. In this example, both the 2D and 3D estimates from Mediapipe are visualized.
 
 The skeletons are logged through a combination of two archetypes. First, a timeless
 [`ClassDescription`](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged, that contains the information which maps keypoint ids to labels and how to connect
