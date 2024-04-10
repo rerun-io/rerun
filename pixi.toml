@@ -244,19 +244,7 @@ nox = ">=2024.3.2" # the conda-forge package is (wrongly) tagged as platform-spe
 patchelf = ">=0.17"
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 
-[feature.cpp.target.linux-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-64.dependencies]
-clang = "16.0.6"
-ninja = "1.11.1"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
-
-[feature.cpp.target.osx-arm64.dependencies]
+[feature.cpp.target.unix.dependencies]
 clang = "16.0.6"
 ninja = "1.11.1"
 c-compiler = "1.6.0.*"
