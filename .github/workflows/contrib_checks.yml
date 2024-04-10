@@ -259,6 +259,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install cargo-deny
+        run: cargo install --locked --quiet cargo-deny
+
       - name: Cargo Deny
         shell: bash
         id: expected_version
