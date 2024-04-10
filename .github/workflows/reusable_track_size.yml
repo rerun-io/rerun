@@ -153,7 +153,7 @@ jobs:
       - name: Create PR comment
         if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.1
+        uses: mshick/add-pr-comment@v2.8.2
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
