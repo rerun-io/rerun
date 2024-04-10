@@ -43,28 +43,11 @@ jobs:
         with:
           pixi-version: v0.16.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-lint.txt"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
-
       - name: Python format check
-        shell: bash
-        run: |
-          pixi run py-fmt-check
+        run: pixi run py-fmt-check
 
       - name: Lint Python
-        shell: bash
-        run: |
-          pixi run py-lint
+        run: pixi run py-lint
 
   # ---------------------------------------------------------------------------
 

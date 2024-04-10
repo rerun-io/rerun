@@ -1,4 +1,4 @@
-name: "Rust & toml Checks: Lints, Tests, Docs"
+name: "Rust Checks: Lints, Tests, Docs"
 
 on:
   workflow_call:
