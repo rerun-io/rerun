@@ -206,7 +206,7 @@ jobs:
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist/${{ needs.set-config.outputs.TARGET }}
