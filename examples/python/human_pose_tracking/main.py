@@ -36,8 +36,6 @@ MODEL_URL_TEMPLATE: Final = "https://storage.googleapis.com/mediapipe-models/pos
 
 
 def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_count: int | None) -> None:
-    PoseLandmarker = mp.tasks.vision.PoseLandmarker
-
     options = mp.tasks.vision.PoseLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(
             model_asset_path=model_path,
@@ -72,7 +70,7 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
     )
     rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, static=True)
 
-    pose_landmarker = PoseLandmarker.create_from_options(options)
+    pose_landmarker = mp.tasks.vision.PoseLandmarker.create_from_options(options)
 
     with closing(VideoSource(video_path)) as video_source:
         for idx, bgr_frame in enumerate(video_source.stream_bgr()):
