@@ -322,7 +322,8 @@ impl DataResult {
             .and_then(|OverridePath { store_kind, path }| match store_kind {
                 // TODO(#5607): what should happen if the promise is still pending?
                 StoreKind::Blueprint => ctx
-                    .recording()
+                    .store_context
+                    .blueprint
                     .latest_at_component::<C>(path, ctx.blueprint_query),
                 StoreKind::Recording => ctx
                     .recording()
