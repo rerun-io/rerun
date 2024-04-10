@@ -1,4 +1,4 @@
-name: Reusable Build Web
+name: Reusable Build and upload web viewer
 
 on:
   workflow_call:
@@ -29,7 +29,7 @@ env:
 
 jobs:
   rs-build-web-viewer:
-    name: Build Web (wasm32 + wasm-bindgen)
+    name: Build and upload web viewer
     permissions:
       contents: "read"
       id-token: "write"
@@ -75,7 +75,7 @@ jobs:
             --channel "${{ inputs.CHANNEL }}" \
             web_viewer/examples_manifest.json
 
-      - name: Upload web assets
+      - name: Upload web viewer
         uses: actions/upload-artifact@v3
         with:
           name: web_viewer

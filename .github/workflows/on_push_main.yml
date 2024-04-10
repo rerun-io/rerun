@@ -77,7 +77,7 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: "Build Web"
+    name: "Build and upload web viewer"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
