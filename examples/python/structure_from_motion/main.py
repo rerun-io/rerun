@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Example of using Rerun to log and visualize the output of COLMAP's sparse reconstruction."""
+
 from __future__ import annotations
 
 import io

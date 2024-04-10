@@ -8,6 +8,7 @@ You can add the `exclude from changelog` label to minor PRs that are not of inte
 
 Finally, copy-paste the output into `CHANGELOG.md` and add a high-level summary to the top.
 """
+
 from __future__ import annotations
 
 import argparse

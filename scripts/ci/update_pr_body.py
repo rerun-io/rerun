@@ -8,6 +8,7 @@ This is expected to be run by the `reusable_update_pr_body.yml` GitHub workflow.
 Requires the following packages:
   pip install Jinja2 PyGithub
 """
+
 from __future__ import annotations
 
 import argparse

@@ -22,6 +22,7 @@ python scripts/fetch_crashes.py --help
 ```
 
 """
+
 from __future__ import annotations
 
 import argparse

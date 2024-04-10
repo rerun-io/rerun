@@ -15,6 +15,7 @@ just py-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-s
 ```
 
 """
+
 from __future__ import annotations
 
 import argparse

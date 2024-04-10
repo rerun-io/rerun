@@ -4,6 +4,7 @@ Very simple example of capturing from a live camera.
 
 Runs the opencv canny edge detector on the image stream.
 """
+
 from __future__ import annotations
 
 import argparse

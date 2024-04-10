@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Shows how rerun can work with multiprocessing."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,4 +1,5 @@
 """Playground to test the visible history feature."""
+
 from __future__ import annotations
 
 import argparse

@@ -19,6 +19,7 @@ Use the script:
     # Publish all crates in topological order
     python3 scripts/ci/publish.py --token <CRATES_IO_TOKEN>
 """
+
 from __future__ import annotations
 
 import argparse

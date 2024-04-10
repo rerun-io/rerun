@@ -1,4 +1,5 @@
 """Log a single 3D Box."""
+
 import rerun as rr
 
 rr.init("rerun_example_box3d", spawn=True)

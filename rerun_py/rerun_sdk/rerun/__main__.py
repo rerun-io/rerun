@@ -1,4 +1,5 @@
 """See `python3 -m rerun --help`."""
+
 from __future__ import annotations
 
 import rerun_bindings as bindings

@@ -9,6 +9,7 @@ see the tracking issue: https://github.com/rerun-io/rerun/issues/1537
 NOTE: Unlike many of the other examples, this example requires a system installation of ROS
 in addition to the packages from requirements.txt.
 """
+
 from __future__ import annotations
 
 import argparse

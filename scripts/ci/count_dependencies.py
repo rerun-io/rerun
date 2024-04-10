@@ -19,6 +19,7 @@ For instance:
 
 So this script is more of a heurristic than an exact count.
 """
+
 from __future__ import annotations
 
 import argparse

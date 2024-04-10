@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Showcases how to incrementally log data belonging to the same archetype, and re-use some or all of it across frames."""
+
 from __future__ import annotations
 
 import argparse

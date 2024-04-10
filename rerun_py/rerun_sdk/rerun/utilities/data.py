@@ -1,4 +1,5 @@
 """Simple data to be used for Rerun demos."""
+
 from __future__ import annotations
 
 from collections import namedtuple

@@ -8,6 +8,7 @@ Example usage:
 * Run all tests: `examples/python/test_api/main.py`
 * Run specific test: `examples/python/test_api/main.py --test rects`
 """
+
 from __future__ import annotations
 
 import argparse

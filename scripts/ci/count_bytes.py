@@ -14,6 +14,7 @@ Use the script:
     python3 scripts/ci/count_bytes.py --format=github \
         "Wasm":web_viewer/re_viewer_bg.wasm
 """
+
 from __future__ import annotations
 
 import argparse

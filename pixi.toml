@@ -86,13 +86,11 @@ lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
 lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
-lint-py-blackdoc = "blackdoc --check"
 lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
-lint-py-ruff = "ruff format --check --config rerun_py/pyproject.toml"
 lint-typos = "typos"
 
 # Toml tasks
-toml-lint = "taplo fmt --check --diff"
+toml-fmt-check = "taplo fmt --check --diff"
 toml-fmt = "taplo fmt"
 
 # Misc formatting tasks.
@@ -100,9 +98,10 @@ misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 ruff-fmt = "ruff format --config rerun_py/pyproject.toml ."
-ruff-fix = "ruff --fix --config rerun_py/pyproject.toml ."
+ruff-fix = "ruff check --fix --config rerun_py/pyproject.toml ."
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = { depends_on = ["ruff-fix", "ruff-fmt"] }
+py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 
 # Run the Python tests.
@@ -183,7 +182,6 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
-blackdoc = "0.3.8"
 clang-tools = "16.0.6"       # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
@@ -197,7 +195,7 @@ pip = ">=23"
 pyarrow = "14.0.2"
 pytest = ">=7"
 python = "=3.11"             # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.2.2"
+ruff = "0.3.5"
 semver = ">=2.13,<2.14"
 typing_extensions = ">4.5"
 typos = ">=1.16.20"

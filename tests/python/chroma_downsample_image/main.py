@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Testing NV12 image encoding."""
+
 from __future__ import annotations
 
 import argparse

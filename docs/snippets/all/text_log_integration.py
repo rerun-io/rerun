@@ -1,4 +1,5 @@
 """Shows integration of Rerun's `TextLog` with the native logging interface."""
+
 import logging
 
 import rerun as rr

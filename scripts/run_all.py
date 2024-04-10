@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """Run all examples."""
+
 from __future__ import annotations
 
 import argparse

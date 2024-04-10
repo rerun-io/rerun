@@ -9,6 +9,7 @@ Install dependencies:
 Use the script:
     python3 scripts/ci/verify_wheels.py --help
 """
+
 from __future__ import annotations
 
 import argparse

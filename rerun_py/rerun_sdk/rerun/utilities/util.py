@@ -1,4 +1,5 @@
 """Simple utilities to be used for Rerun demos."""
+
 from __future__ import annotations
 
 from typing import Any

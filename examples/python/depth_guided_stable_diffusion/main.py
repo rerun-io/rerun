@@ -4,6 +4,7 @@ Example running Depth Guided Stable Diffusion 2.0.
 
 For more info see: https://github.com/Stability-AI/stablediffusion
 """
+
 from __future__ import annotations
 
 import argparse

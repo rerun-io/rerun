@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Shows how to implement custom archetypes and components."""
+
 from __future__ import annotations
 
 import argparse

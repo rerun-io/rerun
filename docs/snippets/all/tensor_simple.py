@@ -1,4 +1,5 @@
 """Create and log a tensor."""
+
 import numpy as np
 import rerun as rr
 

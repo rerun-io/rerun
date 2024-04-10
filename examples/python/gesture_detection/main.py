@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Use the MediaPipe Gesture detection and Gesture landmark detection solutions to track hands and recognize gestures in images and videos."""
+
 from __future__ import annotations
 
 import argparse

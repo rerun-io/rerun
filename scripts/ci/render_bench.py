@@ -20,6 +20,7 @@ Use the script:
       sizes \
       --output gs://rerun-builds/graphs
 """
+
 from __future__ import annotations
 
 import argparse

@@ -48,13 +48,11 @@ __all__ = [
 
 
 @overload
-def int_or_none(data: None) -> None:
-    ...
+def int_or_none(data: None) -> None: ...
 
 
 @overload
-def int_or_none(data: SupportsInt) -> int:
-    ...
+def int_or_none(data: SupportsInt) -> int: ...
 
 
 def int_or_none(data: SupportsInt | None) -> int | None:
@@ -64,13 +62,11 @@ def int_or_none(data: SupportsInt | None) -> int | None:
 
 
 @overload
-def float_or_none(data: None) -> None:
-    ...
+def float_or_none(data: None) -> None: ...
 
 
 @overload
-def float_or_none(data: SupportsFloat) -> float:
-    ...
+def float_or_none(data: SupportsFloat) -> float: ...
 
 
 def float_or_none(data: SupportsFloat | None) -> float | None:
@@ -80,13 +76,11 @@ def float_or_none(data: SupportsFloat | None) -> float | None:
 
 
 @overload
-def bool_or_none(data: None) -> None:
-    ...
+def bool_or_none(data: None) -> None: ...
 
 
 @overload
-def bool_or_none(data: bool) -> bool:
-    ...
+def bool_or_none(data: bool) -> bool: ...
 
 
 def bool_or_none(data: bool | None) -> bool | None:
@@ -96,13 +90,11 @@ def bool_or_none(data: bool | None) -> bool | None:
 
 
 @overload
-def str_or_none(data: None) -> None:
-    ...
+def str_or_none(data: None) -> None: ...
 
 
 @overload
-def str_or_none(data: str) -> str:
-    ...
+def str_or_none(data: str) -> str: ...
 
 
 def str_or_none(data: str | None) -> str | None:

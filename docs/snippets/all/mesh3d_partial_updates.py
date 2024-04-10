@@ -1,4 +1,5 @@
 """Log a simple colored triangle, then update its vertices' positions each frame."""
+
 import numpy as np
 import rerun as rr
 from rerun.components import Position3DBatch
