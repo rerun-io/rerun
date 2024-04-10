@@ -1,4 +1,4 @@
-name: Reusable Build and upload web viewer
+name: Reusable Build web viewer
 
 on:
   workflow_call:
@@ -29,7 +29,7 @@ env:
 
 jobs:
   rs-build-web-viewer:
-    name: Build and upload web viewer
+    name: Build web viewer
     permissions:
       contents: "read"
       id-token: "write"

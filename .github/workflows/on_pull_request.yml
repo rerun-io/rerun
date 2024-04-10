@@ -158,7 +158,7 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: "Build and upload web viewer"
+    name: "Build web viewer"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     uses: ./.github/workflows/reusable_build_web.yml
     with:
