@@ -12,6 +12,7 @@ from typing import Any, Final, Iterator
 
 import cv2
 import mediapipe as mp
+import mediapipe.python.solutions.pose as mp_pose
 import numpy as np
 import numpy.typing as npt
 import requests
@@ -31,9 +32,7 @@ EXAMPLE_DIR: Final = Path(os.path.dirname(__file__))
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 MODEL_DIR: Final = EXAMPLE_DIR / "model" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
-MODEL_URL_TEMPLATE: Final = (
-    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_{}/float16/latest/pose_landmarker_{}.task"
-)
+MODEL_URL_TEMPLATE: Final = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_{model_name}/float16/latest/pose_landmarker_{model_name}.task"
 
 
 def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_count: int | None) -> None:
@@ -54,10 +53,8 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
         rr.AnnotationContext(
             rr.ClassDescription(
                 info=rr.AnnotationInfo(id=1, label="Person"),
-                keypoint_annotations=[
-                    rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp.solutions.pose.PoseLandmark
-                ],
-                keypoint_connections=mp.solutions.pose.POSE_CONNECTIONS,
+                keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
+                keypoint_connections=mp_pose.POSE_CONNECTIONS,
             )
         ),
         static=True,
@@ -95,14 +92,14 @@ def track_pose(video_path: str, model_path: str, *, segment: bool, max_frame_cou
             if landmark_positions_2d is not None:
                 rr.log(
                     "video/pose/points",
-                    rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp.solutions.pose.PoseLandmark),
+                    rr.Points2D(landmark_positions_2d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark),
                 )
 
             landmark_positions_3d = read_landmark_positions_3d(results)
             if landmark_positions_3d is not None:
                 rr.log(
                     "person/pose/points",
-                    rr.Points3D(landmark_positions_3d, class_ids=1, keypoint_ids=mp.solutions.pose.PoseLandmark),
+                    rr.Points3D(landmark_positions_3d, class_ids=1, keypoint_ids=mp_pose.PoseLandmark),
                 )
 
             if results.segmentation_masks is not None:
@@ -120,7 +117,7 @@ def read_landmark_positions_2d(
         return None
     else:
         pose_landmarks = results.pose_landmarks[0]
-        normalized_landmarks = [pose_landmarks[lm] for lm in mp.solutions.pose.PoseLandmark]
+        normalized_landmarks = [pose_landmarks[lm] for lm in mp_pose.PoseLandmark]
         return np.array([(image_width * lm.x, image_height * lm.y) for lm in normalized_landmarks])
 
 
@@ -131,7 +128,7 @@ def read_landmark_positions_3d(
         return None
     else:
         pose_landmarks = results.pose_landmarks[0]
-        landmarks = [pose_landmarks[lm] for lm in mp.solutions.pose.PoseLandmark]
+        landmarks = [pose_landmarks[lm] for lm in mp_pose.PoseLandmark]
         return np.array([(lm.x, lm.y, lm.z) for lm in landmarks])
 
 
@@ -186,7 +183,7 @@ def get_downloaded_model_path(model_dir: Path, model_name: str) -> str:
         logging.info("%s already exists. No need to download", destination_path)
         return str(destination_path)
 
-    model_url = MODEL_URL_TEMPLATE.format(model_name, model_name)
+    model_url = MODEL_URL_TEMPLATE.format(model_name=model_name)
     logging.info("Downloading model from %s to %s", model_url, destination_path)
     download(model_url, destination_path)
     return str(destination_path)
@@ -262,6 +259,7 @@ def main() -> None:
     track_pose(video_path, model_path, segment=not args.no_segment, max_frame_count=args.max_frame)
 
     rr.script_teardown(args)
+
 
 if __name__ == "__main__":
     main()
