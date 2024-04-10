@@ -102,10 +102,8 @@ toml-fmt = "taplo fmt"
 misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
 misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
-ruff-fmt = "ruff format --config rerun_py/pyproject.toml ."
-ruff-fix = "ruff check --fix --config rerun_py/pyproject.toml ."
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
-py-fmt = { depends_on = ["ruff-fix", "ruff-fmt"] }
+py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
 py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
