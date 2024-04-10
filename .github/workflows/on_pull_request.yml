@@ -34,6 +34,7 @@ jobs:
         with:
           filters: |
             rust_changes:
+              - .github/**/*.yml # CI changes should always trigger all jobs
               - "**/*.rs"
               - "**/*.toml"
 
@@ -50,6 +51,7 @@ jobs:
         with:
           filters: |
             cpp_changes:
+              - .github/**/*.yml # CI changes should always trigger all jobs
               - '**/*.hpp'
               - '**/*.cpp'
               - '**/CMakeLists.txt'
@@ -68,6 +70,7 @@ jobs:
         with:
           filters: |
             python_changes:
+              - .github/**/*.yml # CI changes should always trigger all jobs
               - '**/*.py'
               - '**/requirements.txt'
               - '**/pyproject.toml'
@@ -85,6 +88,7 @@ jobs:
         with:
           filters: |
             docs_changes:
+              - .github/**/*.yml # CI changes should always trigger all jobs
               - 'docs/content/**/*.md'
               - 'examples/**/*.md'
               - 'examples/manifest.toml'
