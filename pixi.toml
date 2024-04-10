@@ -23,6 +23,10 @@ version = "0.1.0"                                                              #
 
 [environments]
 cpp = ["cpp"]
+examples = ["examples"]
+
+[system-requirements]
+macos = "11.0"  # needed for some reason otherwise fails to resolve mediapipe package
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -230,3 +234,25 @@ cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
+
+
+# EXAMPLES ENVIRONMENT
+
+[feature.examples]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+[feature.examples.tasks]
+py-ex-human-pose-tracking = "python examples/python/human_pose_tracking/main.py"
+#TODO: list all other examples here
+
+[feature.examples.dependencies]
+python = ">=3.8,<3.12"  # some example don't support python 3.12 yet
+
+# ALL deps of ALL examples should be listed here. In case of conflicts, the conflicting example should be moved to
+# another, dedicated environment other than `examples`.
+[feature.examples.pypi-dependencies]
+mediapipe = "==0.10.9"
+numpy = ">=1.23,<2"
+opencv-python = ">4.6"
+requests = ">=2.31,<3"
+rerun-sdk = { path = "rerun_py", editable = true }  #TODO: I dont know how to install from pypi if the user so desires
