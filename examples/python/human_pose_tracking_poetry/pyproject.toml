@@ -1,0 +1,14 @@
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+mediapipe = "0.10.9"
+numpy = "*"
+opencv-python = ">4.6"
+requests = ">=2.31,<3"
+rerun-sdk = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
