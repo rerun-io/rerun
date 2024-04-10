@@ -8,7 +8,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks
+  group: ${{ inputs.CONCURRENCY }}-checks_python
   cancel-in-progress: true
 
 env:
