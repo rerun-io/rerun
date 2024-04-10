@@ -69,6 +69,8 @@ jobs:
           filters: |
             python_changes:
               - '**/*.py'
+              - '**/requirements.txt'
+              - '**/pyproject.toml'
 
   docs-paths-filter:
     runs-on: ubuntu-latest
