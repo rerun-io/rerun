@@ -1,4 +1,4 @@
-name: "Rust & toml Checks: Lints, Tests, Docs"
+name: "Rust Checks: Lints, Tests, Docs"
 
 on:
   workflow_call:
@@ -57,7 +57,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       # We need to build the web viewer for `rust_checks.py` to succeed.
       # We build in release so that we can reuse the results for actual publishing, if necessary
@@ -108,7 +108,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       # We build in release so that we can reuse the results for actual publishing, if necessary
       - name: Build web-viewer (release)

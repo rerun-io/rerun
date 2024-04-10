@@ -117,7 +117,7 @@ def read_landmark_positions_3d(
 
 @dataclass
 class VideoFrame:
-    data: npt.NDArray[np.uint8]
+    data: cv2.typing.MatLike
     time: float
     idx: int
 

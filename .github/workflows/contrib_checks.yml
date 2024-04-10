@@ -37,7 +37,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -100,7 +100,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       - name: Codegen check
         shell: bash
@@ -211,7 +211,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -291,7 +291,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.18.0
 
       # TODO(emilk): make this work somehow. Right now this just results in
       # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)

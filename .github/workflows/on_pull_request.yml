@@ -55,6 +55,23 @@ jobs:
               - '**/CMakeLists.txt'
               - '**/*cmake'
 
+  python-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      python_changes: ${{ steps.filter.outputs.python_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            python_changes:
+              - '**/*.py'
+              - '**/requirements.txt'
+              - '**/pyproject.toml'
+
   docs-paths-filter:
     runs-on: ubuntu-latest
     outputs:
@@ -78,6 +95,16 @@ jobs:
     # Wait for the rust-paths-filter to be completed before starting.
     needs: rust-paths-filter
     uses: ./.github/workflows/reusable_checks_rust.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  python-checks:
+    name: "Python Checks"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.python-paths-filter.outputs.python_changes == 'true'
+    # Wait for the python-paths-filter to be completed before starting.
+    needs: python-paths-filter
+    uses: ./.github/workflows/reusable_checks_python.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit

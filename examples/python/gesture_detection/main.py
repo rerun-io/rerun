@@ -178,7 +178,7 @@ def download_file(url: str, path: Path) -> None:
             f.write(chunk)
 
 
-def resize_image(image: npt.NDArray[np.uint8], max_dim: int | None) -> npt.NDArray[np.uint8]:
+def resize_image(image: cv2.typing.MatLike, max_dim: int | None) -> cv2.typing.MatLike:
     """Resize an image if it is larger than max_dim."""
     if max_dim is None:
         return image
