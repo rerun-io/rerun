@@ -72,11 +72,7 @@ impl CachedLatestAtResults {
         if let Some(component) = self.components.get(&component_name) {
             Ok(component)
         } else {
-            Err(DeserializationError::MissingComponent {
-                component: component_name,
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            }
-            .into())
+            Err(QueryError::PrimaryNotFound(component_name))
         }
     }
 

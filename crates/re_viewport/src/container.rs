@@ -2,10 +2,9 @@ use ahash::HashMap;
 use egui_tiles::TileId;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::EntityDb;
+use re_entity_db::{external::re_query2::PromiseResult, EntityDb};
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
-use re_query::query_archetype;
 use re_types::blueprint::components::Visible;
 use re_types::components::Name;
 use re_types_core::archetypes::Clear;
@@ -55,18 +54,21 @@ impl ContainerBlueprint {
             active_tab,
             visible,
             grid_columns,
-        } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
-            .and_then(|arch| arch.to_archetype())
-            .map_err(|err| {
-                if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
-                    if cfg!(debug_assertions) {
-                        re_log::error!("Failed to load container blueprint: {err}.");
-                    } else {
-                        re_log::debug!("Failed to load container blueprint: {err}.");
-                    }
+        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
+            PromiseResult::Pending => {
+                // TODO(#5607): what should happen if the promise is still pending?
+                None
+            }
+            PromiseResult::Ready(arch) => arch,
+            PromiseResult::Error(err) => {
+                if cfg!(debug_assertions) {
+                    re_log::error!("Failed to load container blueprint: {err}.");
+                } else {
+                    re_log::debug!("Failed to load container blueprint: {err}.");
                 }
-            })
-            .ok()?;
+                None
+            }
+        }?;
 
         let container_kind = crate::container_kind_to_egui(container_kind);
         let display_name = display_name.map(|v| v.0.to_string());

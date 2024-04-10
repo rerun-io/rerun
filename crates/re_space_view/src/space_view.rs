@@ -1,11 +1,11 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
+use re_entity_db::external::re_query2::PromiseResult;
 
 use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathSubs, RowId};
-use re_query::query_archetype;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
     blueprint::components::{SpaceViewOrigin, Visible},
@@ -122,18 +122,21 @@ impl SpaceViewBlueprint {
             class_identifier,
             space_origin,
             visible,
-        } = query_archetype(blueprint_db.store(), query, &id.as_entity_path())
-            .and_then(|arch| arch.to_archetype())
-            .map_err(|err| {
-                if !matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
-                    if cfg!(debug_assertions) {
-                        re_log::error!("Failed to load SpaceView blueprint: {err}.");
-                    } else {
-                        re_log::debug!("Failed to load SpaceView blueprint: {err}.");
-                    }
+        } = match blueprint_db.latest_at_archetype(&id.as_entity_path(), query) {
+            PromiseResult::Pending => {
+                // TODO(#5607): what should happen if the promise is still pending?
+                None
+            }
+            PromiseResult::Ready(arch) => arch,
+            PromiseResult::Error(err) => {
+                if cfg!(debug_assertions) {
+                    re_log::error!("Failed to load SpaceView blueprint: {err}.");
+                } else {
+                    re_log::debug!("Failed to load SpaceView blueprint: {err}.");
                 }
-            })
-            .ok()?;
+                None
+            }
+        }?;
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();

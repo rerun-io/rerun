@@ -3,8 +3,8 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{
-    external::re_data_store::LatestAtQuery, EntityDb, EntityProperties, EntityPropertiesComponent,
-    EntityPropertyMap, EntityTree,
+    external::{re_data_store::LatestAtQuery, re_query2::PromiseResult},
+    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs,
@@ -105,15 +105,30 @@ impl SpaceViewContents {
             blueprint_archetypes::SpaceViewContents,
         >(id, blueprint_db, query);
 
-        let blueprint_archetypes::SpaceViewContents { query } = contents.unwrap_or_else(|err| {
-            re_log::warn_once!(
-                "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
-                id,
-                blueprint_entity_path,
-                err
-            );
-            Default::default()
-        });
+        let blueprint_archetypes::SpaceViewContents { query } = match contents {
+            PromiseResult::Pending => {
+                // TODO(#5607): what should happen if the promise is still pending?
+                Default::default()
+            }
+            PromiseResult::Ready(Some(arch)) => arch,
+            PromiseResult::Ready(None) => {
+                re_log::warn_once!(
+                    "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: not found",
+                    id,
+                    blueprint_entity_path,
+                );
+                Default::default()
+            }
+            PromiseResult::Error(err) => {
+                re_log::warn_once!(
+                    "Failed to load SpaceViewContents for {:?} from blueprint store at {:?}: {}",
+                    id,
+                    blueprint_entity_path,
+                    err
+                );
+                Default::default()
+            }
+        };
 
         let query = query.iter().map(|qe| qe.0.as_str());
 
