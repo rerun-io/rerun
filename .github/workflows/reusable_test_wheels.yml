@@ -17,6 +17,10 @@ on:
         required: false
         type: string
         default: ""
+      FAST:
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels
@@ -197,7 +201,7 @@ jobs:
         run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' }}
+        if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
         shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
@@ -206,7 +210,7 @@ jobs:
           RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' }}
+        if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
         shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…

@@ -26,6 +26,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: main
     secrets: inherit
 
   python_checks:
@@ -77,7 +78,7 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: "Build and upload web viewer"
+    name: "Build web viewer"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
@@ -290,6 +291,8 @@ jobs:
       PLATFORM: windows-x64
       WHEEL_ARTIFACT_NAME: windows-x64-wheel
     secrets: inherit
+
+  # --------------------------------------------------------------------------
 
   generate-pip-index:
     name: "Generate Pip Index"

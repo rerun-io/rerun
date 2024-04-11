@@ -102,8 +102,6 @@ jobs:
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       - uses: actions/checkout@v4
 
@@ -208,12 +206,6 @@ jobs:
         with:
           python-version: "3.8"
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          pip install gitignore_parser
-          pip install -r ./scripts/ci/requirements.txt
-
       - name: Rerun lints
         run: pixi run lint-rerun
 
@@ -223,17 +215,17 @@ jobs:
       - name: Check for too large files
         shell: bash
         run: |
-          ./scripts/ci/check_large_files.sh
+          pixi run ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
         shell: bash
         run: |
-          ./scripts/ci/check_requirements.py
+          pixi run ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
         shell: bash
         run: |
-          ./scripts/ci/thumbnails.py check
+          pixi run ./scripts/ci/thumbnails.py check
 
   spell-check:
     name: Spell Check
@@ -275,8 +267,6 @@ jobs:
   cpp-tests:
     name: C++ tests
     runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.12.0
     steps:
       - uses: actions/checkout@v4
 

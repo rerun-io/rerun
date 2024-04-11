@@ -28,7 +28,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: nightly
-      ALL_CHECKS: true
+      CHANNEL: nightly
     secrets: inherit
 
   checks-python:
@@ -39,7 +39,7 @@ jobs:
     secrets: inherit
 
   build-web:
-    name: "Build and upload web viewer"
+    name: "Build web viewer"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: nightly
@@ -63,6 +63,15 @@ jobs:
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pr"
+    secrets: inherit
+
+  run-notebook:
+    name: "Run Notebook"
+    needs: [build-wheel-linux]
+    uses: ./.github/workflows/reusable_run_notebook.yml
+    with:
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
 
   build-examples:

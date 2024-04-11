@@ -126,12 +126,6 @@ jobs:
         with:
           python-version: "3.8"
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          pip install gitignore_parser
-          pip install -r ./scripts/ci/requirements.txt
-
       - name: Rerun lints
         run: pixi run lint-rerun
 
@@ -143,7 +137,7 @@ jobs:
       # - name: Check for zombie TODOs
       #   shell: bash
       #   run: |
-      #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
+      #     pixi run ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for too large files
         shell: bash
@@ -153,12 +147,12 @@ jobs:
       - name: Check Python example requirements
         shell: bash
         run: |
-          ./scripts/ci/check_requirements.py
+          pixi run ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
         shell: bash
         run: |
-          ./scripts/ci/thumbnails.py check
+          pixi run ./scripts/ci/thumbnails.py check
 
   # ---------------------------------------------------------------------------
 
