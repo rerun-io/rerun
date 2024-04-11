@@ -68,7 +68,7 @@ RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_6
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.74.0 \
+    RUST_VERSION=1.76.0 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust

@@ -23,12 +23,12 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.74.0` once you are done.
+Make sure `cargo --version` prints `1.76.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.74.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
 ```
 
 Additionally, we use [cargo-cranky](https://github.com/ericseppanen/cargo-cranky) for defining which Clippy lints are active and [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) for linting crate versions.
