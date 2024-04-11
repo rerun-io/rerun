@@ -24,6 +24,8 @@ env:
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
 
+  RUSTC_WRAPPER: "sccache"
+
 permissions:
   contents: "read"
   id-token: "write"
@@ -71,8 +73,6 @@ jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one

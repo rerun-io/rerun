@@ -27,6 +27,8 @@ env:
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
 
+  RUSTC_WRAPPER: "sccache"
+
 permissions:
   contents: "read"
   id-token: "write"
@@ -37,8 +39,6 @@ jobs:
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -83,8 +83,6 @@ jobs:
   rs-check-wasm:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
         with:

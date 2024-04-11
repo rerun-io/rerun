@@ -34,6 +34,8 @@ env:
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
 
+  RUSTC_WRAPPER: "sccache"
+
 permissions:
   contents: "read"
   id-token: "write"
@@ -64,8 +66,6 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
     runs-on: ${{ matrix.runs_on }}
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
         with:
