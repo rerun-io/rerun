@@ -54,13 +54,13 @@ jobs:
           ref: ${{ inputs.release-commit }}
 
       - id: "auth"
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
+        uses: "google-github-actions/setup-gcloud@v2"
         with:
           version: ">= 363.0.0"
 
@@ -78,7 +78,7 @@ jobs:
 
       # built by `reusable_build_and_publish_wheels`
       - name: Download Wheel
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.wheel-artifact-name }}
           path: wheel
@@ -126,14 +126,14 @@ jobs:
             web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
-        uses: google-github-actions/upload-cloud-storage@v1
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
           parent: false
 
       - name: Upload app.rerun.io (commit)
-        uses: google-github-actions/upload-cloud-storage@v1
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "web_viewer"
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"

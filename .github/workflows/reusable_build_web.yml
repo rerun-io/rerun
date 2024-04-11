@@ -76,7 +76,7 @@ jobs:
             web_viewer/examples_manifest.json
 
       - name: Upload web viewer
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: web_viewer
           path: web_viewer
