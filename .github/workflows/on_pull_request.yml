@@ -37,6 +37,7 @@ jobs:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
+              - scripts/ci/*
               - '**/*.hpp'
               - '**/*.cpp'
               - '**/CMakeLists.txt'
@@ -58,6 +59,7 @@ jobs:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
+              - scripts/ci/*
               - 'docs/content/**/*.md'
               - 'examples/**/*.md'
               - 'examples/manifest.toml'
@@ -78,6 +80,7 @@ jobs:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
+              - scripts/ci/*
               - '**/*.py'
               - '**/requirements.txt'
               - '**/pyproject.toml'
@@ -98,6 +101,7 @@ jobs:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
+              - scripts/ci/*
               - "**/*.rs"
               - "**/*.toml"
 
@@ -117,6 +121,7 @@ jobs:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
+              - scripts/ci/*
               - "**/*.html"
               - "**/*.js"
               - "**/*.json"
