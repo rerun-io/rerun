@@ -151,6 +151,9 @@ download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens 
 # Update the results of `insta` snapshot regression tests
 rs-update-insta-tests = "cargo test && cargo insta review"
 
+# Upload image to gcloud storage.
+upload-image = "python scripts/upload_image.py"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
@@ -236,10 +239,12 @@ taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 
 [pypi-dependencies]
-nox = ">=2024.3.2"     # the conda-forge package is (wrongly) tagged as platform-specific
-Pillow = "==10.0.0"    # For `thumbnails.py`
-requests = ">=2.31,<3" # For `thumbnails.py`
-tomlkit = ">=0.11.8"   # For `thumbnails.py`
+cryptography = "==38.0.4"        # For `upload_image.py`
+google-cloud-storage = "==2.9.0" # For `upload_image.py`
+nox = ">=2024.3.2"               # the conda-forge package is (wrongly) tagged as platform-specific
+Pillow = "==10.0.0"              # For `thumbnails.py`
+requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
+tomlkit = ">=0.11.8"             # For `thumbnails.py`
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
