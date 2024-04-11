@@ -33,7 +33,9 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .with_arg("rerun_py/site/objects.inv")
         .with_arg("-")
         .parse_json::<SphinxObjectInv>()
-        .context("sphobjinv may not be installed, install rerun_py/requirements-doc.txt")?
+        .context(
+            "sphobjinv may not be installed, are you running in the py-docs pixi environment?",
+        )?
         .objects
         .into_values()
         .map(|o| (o.name.clone(), o))

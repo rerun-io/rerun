@@ -23,6 +23,7 @@ version = "0.1.0"                                                              #
 
 [environments]
 cpp = ["cpp"]
+py-docs = ["py-docs"]
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -150,6 +151,26 @@ download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens 
 
 # Update the results of `insta` snapshot regression tests
 rs-update-insta-tests = "cargo test && cargo insta review"
+
+
+[feature.py-docs.tasks]
+# Serve python docs locally
+py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
+
+[feature.py-docs.pypi-dependencies]
+griffe = "==0.39.0"
+# forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" }
+mkdocs-gen-files = "==0.5.0"
+mkdocs-literate-nav = "==0.6.1"
+mkdocs-material = "==9.4.7"
+mkdocs-material-extensions = "==1.3"
+mkdocstrings = "==0.23.0"
+mkdocstrings-python = "==1.7.3"
+mike = "==1.1.2"
+sphobjinv = "==2.3.1"
+typing_extensions = "==4.11.0"                                                                                                    # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
+
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
