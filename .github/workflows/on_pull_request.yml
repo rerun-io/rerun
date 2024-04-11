@@ -185,17 +185,6 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  track-sizes:
-    name: "Track Sizes"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [build-web]
-    uses: ./.github/workflows/reusable_track_size.yml
-    with:
-      CONCURRENCY: push-${{ github.ref_name }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      WITH_EXAMPLES: false # We don't build examples on each PR (too slow)
-    secrets: inherit
-
   save-pr-summary:
     name: "Save PR Summary"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
