@@ -65,6 +65,15 @@ jobs:
       MODE: "pr"
     secrets: inherit
 
+  run-notebook:
+    name: "Run Notebook"
+    needs: [build-wheel-linux]
+    uses: ./.github/workflows/reusable_run_notebook.yml
+    with:
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
+    secrets: inherit
+
   build-examples:
     name: "Build Examples"
     needs: [build-wheel-linux]

@@ -294,15 +294,6 @@ jobs:
 
   # --------------------------------------------------------------------------
 
-  run-notebook:
-    name: "Run Notebook"
-    needs: [build-wheel-linux-x64]
-    uses: ./.github/workflows/reusable_run_notebook.yml
-    with:
-      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
-      WHEEL_ARTIFACT_NAME: linux-x64-wheel
-    secrets: inherit
-
   generate-pip-index:
     name: "Generate Pip Index"
     needs:
