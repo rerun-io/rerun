@@ -1848,7 +1848,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Optimize `generate_changelog.py` [#1912](https://github.com/rerun-io/rerun/pull/1912)
 
 #### 🤷 Other
-#### 🤷 Other
 - Fix videos for GitHub in `CHANGELOG.md` [af7d3b192157f942e35f64d3561a9a8dbcc18bfa](https://github.com/rerun-io/rerun/commit/af7d3b192157f942e35f64d3561a9a8dbcc18bfa)
 - Don't run 3rd party bench suites on CI [#1787](https://github.com/rerun-io/rerun/pull/1787)
 - Remove `TensorTrait` [#1819](https://github.com/rerun-io/rerun/pull/1819)
