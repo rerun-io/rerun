@@ -5,13 +5,13 @@ Plot dashboard stress test.
 Usage:
 -----
 ```
-just py-plot-dashboard --help
+pixi run py-plot-dashboard --help
 ```
 
 Example:
 -------
 ```
-just py-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
+pixi run py-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 ```
 
 """
