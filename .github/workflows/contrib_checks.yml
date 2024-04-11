@@ -54,12 +54,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
-
       - name: Python format check
         shell: bash
         run: |

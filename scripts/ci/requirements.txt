@@ -1,5 +1,4 @@
 
--r ../../rerun_py/requirements-lint.txt
 -r ./requirements-crates.txt
 
 Jinja2==3.1.2
