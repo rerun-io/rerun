@@ -16,7 +16,6 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 * [ ] I have read and agree to [Contributor Guide](https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md) and the [Code of Conduct](https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md)
 * [ ] I've included a screenshot or gif (if applicable)
 * [ ] I have tested the web demo (if applicable):
-  * Using newly built examples: [rerun.io/viewer](https://rerun.io/viewer/pr/{{pr.number}})
   * Using examples from latest `main` build: [rerun.io/viewer](https://rerun.io/viewer/pr/{{pr.number}}?manifest_url=https://app.rerun.io/version/main/examples_manifest.json)
   * Using full set of examples from `nightly` build: [rerun.io/viewer](https://rerun.io/viewer/pr/{{pr.number}}?manifest_url=https://app.rerun.io/version/nightly/examples_manifest.json)
 * [ ] The PR title and labels are set such as to maximize their usefulness for the next release's CHANGELOG
