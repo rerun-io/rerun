@@ -76,7 +76,7 @@ def main() -> None:
     timings.append(run_cargo("fmt", "--all -- --check"))
 
     # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked --quiet cargo-cranky"))
+    timings.append(run_cargo("install", "--locked cargo-cranky"))
     timings.append(run_cargo("cranky", "--all-targets --all-features -- --deny warnings"))
 
     # Check a few important permutations of the feature flags for our `rerun` library:
@@ -87,7 +87,7 @@ def main() -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked --quiet cargo-deny"))
+    timings.append(run_cargo("install", "--locked cargo-deny"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
