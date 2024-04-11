@@ -227,6 +227,8 @@ torch = ">=2.0.1"
 
 
 [feature.wheel-test.tasks]
+# In the wheel-test environment we want to use the wheel-installed `rerun` binary on the path.
+# This overrides the `rerun` task from the default env which otherwise executes via cargo.
 rerun = "rerun"
 
 [dependencies]
