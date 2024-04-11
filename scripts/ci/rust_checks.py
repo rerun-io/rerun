@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -24,10 +25,9 @@ def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
     print(f"> {cmd_str}")
     start_time = time.time()
 
-    env = {
-        "RUSTFLAGS": "--deny warnings",
-        "RUSTDOCFLAGS": "--deny warnings --deny rustdoc::missing_crate_level_docs",
-    }
+    env = os.environ.copy()
+    env["RUSTFLAGS"] = "--deny warnings"
+    env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
 
     result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
     if result.returncode != 0:
