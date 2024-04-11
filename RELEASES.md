@@ -11,7 +11,7 @@ This document describes the current release and versioning strategy. This strate
 
 
 ## Release cadence
-New Rerun versions are released every four weeks. Sometimes we do out-of-schedule patch releases.
+New Rerun versions are released approximately once every month. Sometimes we do out-of-schedule patch releases.
 
 
 ## Library versioning and release cadence
@@ -28,6 +28,12 @@ This means we might add breaking changes in each new release.
 In rare cases we will do patch releases, e.g. `0.3.1`, when there is a critical bug fix. These patch releases will not contain any breaking changes.
 
 We sometimes do pre-releases. Then we use the versioning `0.2.0-alpha.0` etc.
+
+
+## Rust version policy
+Our Minimum Supported Rust Version (MSRV) is always _at least_ one minor release behind the latest Rust version, and ideally two releases.
+* This means users of our libraries aren't forced to update to the very latest Rust version
+* This lets us sometimes avoid new bugs in the newly released Rust compiler
 
 
 ## Data and communication versioning
