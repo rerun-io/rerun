@@ -31,4 +31,4 @@ Good: `Color 🔴`
 
 Bad: `Color: 🔴`
 
-<!-- TODO(emilk): remove this line -->
+<!-- TODO(emilk): remove this line, edit 2 -->
