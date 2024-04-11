@@ -1,6 +1,5 @@
 # Pip packages all developers need
 
--r ../rerun_py/requirements-build.txt
 -r ../rerun_py/requirements-lint.txt
 
 PyGithub==1.58.2 # for scripts/ci/generate_pr_summary.py and scripts/ci/update_pr_body.py

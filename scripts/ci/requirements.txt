@@ -1,5 +1,4 @@
 
--r ../../rerun_py/requirements-build.txt
 -r ../../rerun_py/requirements-lint.txt
 -r ./requirements-crates.txt
 

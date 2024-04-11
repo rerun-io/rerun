@@ -1,6 +1,0 @@
-attrs>=23.1.0
-maturin>=1.5.1
-semver
-wheel
-pytest
-torch>=2.0.1
