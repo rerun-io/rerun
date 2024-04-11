@@ -632,7 +632,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 #### 📦 Dependencies
 - Update egui and wgpu [#4111](https://github.com/rerun-io/rerun/pull/4111)
-- Update Rust to 1.74.0 [#4390](https://github.com/rerun-io/rerun/pull/4390)
+- Update Rust to 1.76.0 [#4390](https://github.com/rerun-io/rerun/pull/4390)
 
 #### 🤷 Other
 #### 🤷 Other

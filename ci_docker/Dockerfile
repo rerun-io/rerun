@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.12.0"
+LABEL version="0.13.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -68,7 +68,7 @@ RUN arch=$(if [ "$TARGETARCH" = "arm64" ]; then echo "aarch64"; else echo "x86_6
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.74.0 \
+    RUST_VERSION=1.76.0 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust
@@ -108,7 +108,7 @@ ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
 # Increment this to invalidate cache
-ENV CACHE_KEY=rerun_docker_v0.12.0
+ENV CACHE_KEY=rerun_docker_v0.13.0
 
 # See: https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
 RUN git config --system --add safe.directory '*'

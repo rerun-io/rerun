@@ -98,9 +98,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: clippy check re_viewer wasm32
-        shell: bash
-        run: ./scripts/clippy_wasm.sh
+      # NOTE: Fails with sccache -- refactor incoming in a follow-up PR.
+      # - name: clippy check re_viewer wasm32
+      #   shell: bash
+      #   run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
         uses: actions-rs/cargo@v1

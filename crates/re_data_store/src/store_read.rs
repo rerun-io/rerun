@@ -346,8 +346,7 @@ impl DataStore {
                 .get(&(entity_path_hash, query.timeline))
                 .map(|index| index.range(query.range, component_names_opt))
                 .into_iter()
-                .flatten()
-                .map(|(data_time, row_id, cells)| (data_time, row_id, cells)),
+                .flatten(),
         )
     }
 
