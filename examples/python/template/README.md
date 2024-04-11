@@ -11,7 +11,7 @@ Put a short description at the top, like this.
 
 <!--
 Place a screenshot in place of this comment
-Use `just upload --help` for instructions.
+Use `pixi run upload-image --help` for instructions.
 Make sure to also update the `thumbnail` section in the metadata.
 -->
 
