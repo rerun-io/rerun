@@ -156,13 +156,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cargo-deny
-        run: cargo install --locked --quiet cargo-deny
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.18.0
 
       - name: Cargo Deny
-        shell: bash
-        id: expected_version
-        run: ./scripts/ci/cargo_deny.sh
+        run: pixi run rs-cargo-deny
 
   cpp-formatting:
     name: C++ formatting check
