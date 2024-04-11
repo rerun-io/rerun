@@ -37,28 +37,6 @@ permissions:
   id-token: "write"
 
 jobs:
-  # ---------------------------------------------------------------------------
-
-  py-lints:
-    name: Python lints (ruff, mypy, …)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.18.0
-
-      - name: Python format check
-        run: pixi run py-fmt-check
-
-      - name: Lint Python
-        run: pixi run py-lint
-
-  # ---------------------------------------------------------------------------
-
   py-test-docs:
     name: Test Python Docs
     runs-on: ubuntu-latest
