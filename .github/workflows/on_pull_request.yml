@@ -34,6 +34,7 @@ jobs:
         with:
           filters: |
             cpp_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - '**/*.hpp'
@@ -54,6 +55,7 @@ jobs:
         with:
           filters: |
             docs_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - 'docs/content/**/*.md'
@@ -73,6 +75,7 @@ jobs:
         with:
           filters: |
             python_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - '**/*.py'
@@ -92,6 +95,7 @@ jobs:
         with:
           filters: |
             rust_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - "**/*.rs"
@@ -110,6 +114,7 @@ jobs:
         with:
           filters: |
             web_changes:
+              # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - "**/*.html"
