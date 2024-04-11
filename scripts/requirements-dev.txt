@@ -1,7 +1,6 @@
 # Pip packages all developers need
 
 -r ../rerun_py/requirements-build.txt
--r ../rerun_py/requirements-doc.txt
 -r ../rerun_py/requirements-lint.txt
 
 cryptography==38.0.4 # for scripts/upload_image.py
