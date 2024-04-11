@@ -212,7 +212,7 @@ jobs:
 
   update-docs:
     name: "Update Docs"
-    needs: [version]
+    needs: [version, publish-web]
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
