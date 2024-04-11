@@ -24,7 +24,12 @@ def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
     print(f"> {cmd_str}")
     start_time = time.time()
 
-    result = subprocess.run(args, check=False, capture_output=True, text=True)
+    env = {
+        "RUSTFLAGS": "--deny warnings",
+        "RUSTDOCFLAGS": "--deny warnings --deny rustdoc::missing_crate_level_docs",
+    }
+
+    result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"'{cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}")
         sys.exit(result.returncode)
