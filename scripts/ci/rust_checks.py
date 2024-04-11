@@ -82,9 +82,16 @@ def main() -> None:
 
     if args.skip_wasm_checks is not True:
         # Check viewer for wasm32
-        timings.append(run_cargo("cranky", "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings"))
+        timings.append(
+            run_cargo(
+                "cranky",
+                "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
+            )
+        )
         # Check re_renderer examples for wasm32.
-        timings.append(run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"))
+        timings.append(
+            run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples")
+        )
 
     # Since features are additive, check examples & crates individually unless opted out.
     if args.skip_check_individual_examples is not True:
