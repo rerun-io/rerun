@@ -165,23 +165,23 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pixi run pip uninstall rerun-sdk
-          pixi run pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run -e wheel-test pip uninstall rerun-sdk
+          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
         run: |
-          pixi run python -m rerun --version
-          pixi run which rerun
-          pixi run rerun --version
+          pixi run -e wheel-test python -m rerun --version
+          pixi run -e wheel-test which rerun
+          pixi run -e wheel-test rerun --version
 
       - name: Run unit tests
         shell: bash
-        run: cd rerun_py/tests && pixi run pytest -c ../pyproject.toml
+        run: cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test
         shell: bash
-        run: pixi run RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: pixi run -e wheel-test RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
         if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
@@ -190,7 +190,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          pixi run RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run -e wheel-test RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
@@ -199,4 +199,4 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          pixi run RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run -e wheel-test RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build

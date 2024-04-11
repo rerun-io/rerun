@@ -24,6 +24,7 @@ version = "0.1.0"                                                              #
 [environments]
 cpp = ["cpp"]
 py-docs = ["py-docs"]
+wheel-test = ["wheel-test"]
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -221,6 +222,12 @@ cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exe
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
+[feature.wheel-test.pypi-dependencies]
+torch = ">=2.0.1"
+
+
+[feature.wheel-test.tasks]
+rerun = "rerun"
 
 [dependencies]
 # IMPORTANT: do not add any dependencies here that may break CI. All dependencies should be available on all supported
