@@ -16,6 +16,10 @@
 
 Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
+* [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
+* [Read about what Rerun is and who it is for](https://www.rerun.io/docs/getting-started/what-is-rerun)
+
+### A short taste
 ```py
 import rerun as rr  # pip install rerun-sdk
 
