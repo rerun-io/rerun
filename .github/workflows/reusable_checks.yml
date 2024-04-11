@@ -21,8 +21,16 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
 
 permissions:
   contents: "read"
@@ -71,8 +79,6 @@ jobs:
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTC_WRAPPER: "sccache"
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one
