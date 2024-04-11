@@ -131,7 +131,8 @@ pub fn build(
             .current_dir(root_dir)
             .status()
             .context("Failed to build Wasm")?;
-        assert!(status.success(), "Failed to build Wasm");
+
+        anyhow::ensure!(status.success(), "Failed to build Wasm");
 
         eprintln!(
             "Web viewer .wasm built in {:.1}s\n",
@@ -201,12 +202,12 @@ pub fn build(
             .current_dir(root_dir)
             .output()
             .context("Failed to run wasm-opt, it may not be installed")?;
-        if !output.status.success() {
-            eprintln!(
-                "Failed to run wasm-opt:\n{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
+
+        anyhow::ensure!(
+            output.status.success(),
+            "Failed to run wasm-opt:\n{}",
+            String::from_utf8_lossy(&output.stderr),
+        );
 
         eprintln!(
             "Optimized wasm in {:.1}s\n",
