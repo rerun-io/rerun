@@ -147,39 +147,17 @@ jobs:
         with:
           pixi-version: v0.18.0
 
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "scripts/ci/requirements.txt"
-
-      # These should already be in the docker container, but run for good measure. A no-op install
-      # should be fast, and this way things don't break if we add new packages without rebuilding
-      # docker
-      - run: pip install -r scripts/ci/requirements.txt
-        shell: bash
-
       - name: Download Wheel
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
-        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-        shell: bash
-        run: |
-          pip install attrs>=23.1.0 'numpy>=1.23,<2' pillow pyarrow>=14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
-
       - name: Get version
         id: get-version
         shell: bash
         run: |
-          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          echo "wheel_version=$(pixi run scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -187,23 +165,23 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run pip uninstall rerun-sdk
+          pixi run pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
         run: |
-          python3 -m rerun --version
-          which rerun
-          rerun --version
+          pixi run python -m rerun --version
+          pixi run which rerun
+          pixi run rerun --version
 
       - name: Run unit tests
         shell: bash
-        run: cd rerun_py/tests && pytest -c ../pyproject.toml
+        run: cd rerun_py/tests && pixi run pytest -c ../pyproject.toml
 
       - name: Run e2e test
         shell: bash
-        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: pixi run RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
         if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
@@ -212,7 +190,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
@@ -221,4 +199,4 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
