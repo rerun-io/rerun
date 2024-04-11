@@ -1,6 +1,6 @@
 ---
 title: Get data into Rerun
-order: 3
+order: 4
 ---
 
 This section talks about how to get data out of your application into Rerun.

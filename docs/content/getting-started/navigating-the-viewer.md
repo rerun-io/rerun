@@ -1,6 +1,6 @@
 ---
 title: Navigating the viewer
-order: 4
+order: 5
 ---
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should

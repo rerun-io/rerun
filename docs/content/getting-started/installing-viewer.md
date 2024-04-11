@@ -1,6 +1,6 @@
 ---
 title: Installing Rerun
-order: 2
+order: 3
 ---
 
 ## Installing the SDK
