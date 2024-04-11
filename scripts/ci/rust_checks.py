@@ -20,7 +20,11 @@ class Timing:
 
 
 def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
-    args = ["cargo", cargo_cmd, "--quiet"] + cargo_args.split(" ")
+    args = ["cargo", cargo_cmd]
+    if cargo_cmd != "deny":
+        args.append("--quiet")
+    args += cargo_args.split(" ")
+
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str}")
     start_time = time.time()
@@ -59,6 +63,7 @@ def main() -> None:
         help="If true, don't check individual examples in /examples/rust/.",
         action="store_true",
     )
+    parser.add_argument("--skip-wasm-checks", help="If true, don't run explicit wasm32 checks.", action="store_true")
     parser.add_argument("--skip-docs", help="If true, don't run doc generation.", action="store_true")
     parser.add_argument("--skip-tests", help="If true, don't run tests.", action="store_true")
     args = parser.parse_args()
@@ -73,27 +78,60 @@ def main() -> None:
     timings.append(run_cargo("check", "--locked --all-features"))
 
     timings.append(run_cargo("fmt", "--all -- --check"))
+
+    # Installing is quite quick if it's already installed.
+    timings.append(run_cargo("install", "--locked cargo-cranky"))
     timings.append(run_cargo("cranky", "--all-targets --all-features -- --deny warnings"))
 
     # Check a few important permutations of the feature flags for our `rerun` library:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
     timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
-    # Since features are additive, check crates individually.
-    if args.skip_check_individual_examples is not True:
+    # Cargo deny
+    # Note: running just `cargo deny check` without a `--target` can result in
+    # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+    # Installing is quite quick if it's already installed.
+    timings.append(run_cargo("install", "--locked cargo-deny"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
+
+    if not args.skip_wasm_checks:
+        # Check viewer for wasm32
+        timings.append(
+            run_cargo(
+                "cranky",
+                "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
+            )
+        )
+        # Check re_renderer examples for wasm32.
+        timings.append(
+            run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples")
+        )
+
+    # Since features are additive, check examples & crates individually unless opted out.
+    if not args.skip_check_individual_examples:
         for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
             package_name = package_name_from_cargo_toml(cargo_toml_path)
             timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
             timings.append(run_cargo("check", f"--all-features -p {package_name}"))
 
-    if args.skip_check_individual_crates is not True:
+    if not args.skip_check_individual_crates:
         for cargo_toml_path in glob("./crates/**/Cargo.toml", recursive=True):
             package_name = package_name_from_cargo_toml(cargo_toml_path)
             timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
             timings.append(run_cargo("check", f"--all-features -p {package_name}"))
 
     # Doc tests
-    if args.skip_docs is not True:
+    if not args.skip_docs:
         # Full doc build takes prohibitively long (over 17min as of writing), so we skip it:
         # timings.append(run_cargo("doc", "--all-features"))
 
@@ -101,7 +139,7 @@ def main() -> None:
         timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
         timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
 
-    if args.skip_tests is not True:
+    if not args.skip_tests:
         # We first use `--no-run` to measure the time of compiling vs actually running
 
         # Just a normal `cargo test` should always work:
