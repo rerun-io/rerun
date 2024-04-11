@@ -93,4 +93,4 @@ jobs:
           pixi-version: v0.18.0
 
       - name: Cargo Deny
-        run: pixi rs-run cargo-deny
+        run: pixi run rs-cargo-deny
