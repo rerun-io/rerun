@@ -109,7 +109,7 @@ py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
-py-build-release = "maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests"
+py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml"
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.

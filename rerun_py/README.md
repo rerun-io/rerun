@@ -59,12 +59,16 @@ Note that SDK and Viewer can run on different machines!
 We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions.
 
 ```sh
-pixi run py-build-release
+pixi run py-build --release
 ```
-To build SDK & viewer for python (or `pixi run py-build` for a debug build).
+To build SDK & viewer for python (or `pixi run py-build` for a debug build) and install it in the pixi environment.
 
 You can then run examples from the repository, either by making the pixi shell active with `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/main.py`.
 
+Respectively, to build a wheel instead for manual install use:
+```sh
+pixi run py-wheel --release
+```
 
 Refer to [BUILD.md](../BUILD.md) for details on the various different build options of the Rerun Viewer and SDKs for all target languages.
 
