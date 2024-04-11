@@ -126,9 +126,7 @@ jobs:
         run: pixi run toml-fmt-check
 
       - name: Check for too large files
-        shell: bash
-        run: |
-          pixi run python ./scripts/ci/check_large_files.py
+        run: pixi run check-large-files
 
       - name: Check Python example requirements
         shell: bash

@@ -129,7 +129,7 @@ jobs:
       #     pixi run ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for too large files
-        run: pixi run python ./scripts/ci/check_large_files.py
+        run: pixi run check-large-files
 
       - name: Check Python example requirements
         run: pixi run ./scripts/ci/check_requirements.py
