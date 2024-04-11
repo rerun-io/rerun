@@ -121,7 +121,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   rs-cargo-deny:
-    name: Cargo Deny
+    name: cargo-deny
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

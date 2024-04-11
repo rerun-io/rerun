@@ -102,6 +102,9 @@ jobs:
           mkdir /tmp/compare/
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
+      - name: Install cargo-benchcmp
+        run: cargo install --quiet cargo-benchcmp
+
       - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
         shell: bash
