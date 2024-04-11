@@ -173,7 +173,6 @@ fn default_manifest_url() -> String {
     }
 
     let build_info = re_build_info::build_info!();
-    let short_sha = build_info.short_git_hash();
 
     if build_info.version.is_rc() || build_info.version.is_release() {
         // If this is versioned as a release or rc, always point to the versioned
@@ -182,19 +181,9 @@ fn default_manifest_url() -> String {
             "https://app.rerun.io/version/{version}/examples_manifest.json",
             version = build_info.version,
         )
-    } else if build_info.is_in_rerun_workspace {
-        // Otherwise, always point to `version/nightly` for rerun devs,
-        // because the current commit's manifest is unlikely to be uploaded to GCS.
-        // We could point to the main branch, but it's not always finished building, and so doesn't always work.
-        "https://app.rerun.io/version/nightly/examples_manifest.json".into()
-    } else if !short_sha.is_empty() {
-        // If we have a sha, try to point at it.
-        format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
     } else {
-        // If all else fails, point to the nightly branch
+        // We don't build examples on each PR, so we don't have much to point to except for the nightly examples
         // We could point to the main branch, but it's not always finished building, and so doesn't always work.
-        // TODO(#4729): this is better than nothing but still likely to have version
-        // compatibility issues.
         "https://app.rerun.io/version/nightly/examples_manifest.json".into()
     }
 }
