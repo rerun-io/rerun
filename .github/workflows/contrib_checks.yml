@@ -98,91 +98,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # First do our check with --locked to make sure `Cargo.lock` is up to date
-      - name: Check all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features
+      - name: install cargo cranky
+        run: cargo install --locked --quiet cargo-cranky
 
-      - name: Rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-
-      - name: Cranky
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --all-targets --all-features -- --deny warnings
-
-      # Check a few important permutations of the feature flags for our `rerun` library:
-      - name: Check rerun with `--no-default-features``
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features
-
-      - name: Check rerun with `--features sdk`
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features --features sdk
-
-      - name: Test doc-tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc --all-features
-
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --all-features --workspace
-
-      - name: cargo doc --document-private-items
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features --workspace
-
-      # Just a normal `cargo test` should always work:
-      - name: cargo test --all-targets
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-
-      # Full test of everything:
-      - name: cargo test --all-targets --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-targets --all-features
-
-  rs-check-wasm:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: clippy check re_viewer wasm32
-        shell: bash
-        run: ./scripts/clippy_wasm.sh
-
-      - name: Check re_renderer examples wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
-
-      - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          # We build in release so that we can reuse the results for actual publishing, if necessary
-          args: --locked -p re_build_web_viewer -- --release -g
+      - name: Rust checks & tests
+        run: pixi run rs-check --skip-check-individual-crates
 
   misc-rerun-lints:
     name: Rerun lints

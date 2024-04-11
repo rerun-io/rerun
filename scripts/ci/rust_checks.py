@@ -59,6 +59,7 @@ def main() -> None:
         help="If true, don't check individual examples in /examples/rust/.",
         action="store_true",
     )
+    parser.add_argument("--skip-wasm-checks", help="If true, don't run explicit wasm32 checks.", action="store_true")
     parser.add_argument("--skip-docs", help="If true, don't run doc generation.", action="store_true")
     parser.add_argument("--skip-tests", help="If true, don't run tests.", action="store_true")
     args = parser.parse_args()
@@ -79,7 +80,13 @@ def main() -> None:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
     timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
-    # Since features are additive, check crates individually.
+    if args.skip_wasm_checks is not True:
+        # Check viewer for wasm32
+        timings.append(run_cargo("cranky", "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings"))
+        # Check re_renderer examples for wasm32.
+        timings.append(run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"))
+
+    # Since features are additive, check examples & crates individually unless opted out.
     if args.skip_check_individual_examples is not True:
         for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
             package_name = package_name_from_cargo_toml(cargo_toml_path)

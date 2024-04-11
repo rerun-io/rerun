@@ -68,56 +68,15 @@ jobs:
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
-        run: ./scripts/ci/rust_checks.py --skip-check-individual-crates --skip-test
+        run: pixi run rs-check --skip-check-individual-crates --skip-test
 
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'main' }}
-        run: ./scripts/ci/rust_checks.py --skip-check-individual-crates
+        run: pixi run rs-check --skip-check-individual-crates
 
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
-        run: ./scripts/ci/rust_checks.py
-
-  # ---------------------------------------------------------------------------
-
-  rs-check-wasm:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-web"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-
-      # NOTE: Fails with sccache -- refactor incoming in a follow-up PR.
-      # - name: clippy check re_viewer wasm32
-      #   shell: bash
-      #   run: ./scripts/clippy_wasm.sh
-
-      - name: Check re_renderer examples wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.18.0
-
-      # We build in release so that we can reuse the results for actual publishing, if necessary
-      - name: Build web-viewer (release)
-        shell: bash
-        run: |
-          pixi run cargo run --locked -p re_build_web_viewer -- --release -g
+        run: pixi run rs-check
 
   # ---------------------------------------------------------------------------
 
