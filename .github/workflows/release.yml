@@ -210,20 +210,6 @@ jobs:
             --fill \
             --body-file pr-body.txt
 
-  update-docs:
-    name: "Update Docs"
-    needs: [version]
-    uses: ./.github/workflows/reusable_deploy_docs.yml
-    with:
-      CONCURRENCY: ${{ github.ref_name }}
-      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
-      CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
-      RELEASE_VERSION: ${{ needs.version.outputs.final }}
-      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
-    secrets: inherit
-
   publish-crates:
     name: "Publish Crates"
     needs: [version]
@@ -282,6 +268,21 @@ jobs:
     with:
       release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
+  update-docs:
+    name: "Update Docs"
+    # rerun.io deployment depends on all of web viewer, examples, snippets being built
+    needs: [version, publish-web]
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
+      RELEASE_VERSION: ${{ needs.version.outputs.final }}
+      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
   update-latest-branch:
