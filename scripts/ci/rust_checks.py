@@ -20,7 +20,11 @@ class Timing:
 
 
 def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
-    args = ["cargo", cargo_cmd, "--quiet"] + cargo_args.split(" ")
+    args = ["cargo", cargo_cmd]
+    if cargo_cmd != "deny":
+        args.append("--quiet")
+    args += cargo_args.split(" ")
+
     cmd_str = subprocess.list2cmdline(args)
     print(f"> {cmd_str}")
     start_time = time.time()
