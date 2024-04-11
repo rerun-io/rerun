@@ -277,7 +277,6 @@ google-cloud-storage = "==2.9.0" # For `upload_image.py`
 nox = ">=2024.3.2"               # the conda-forge package is (wrongly) tagged as platform-specific
 Pillow = "==10.0.0"              # For `thumbnails.py`
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
-tomlkit = ">=0.11.8"             # For `thumbnails.py`
 torch = ">=2.0.1"                # Needed by tests for integration with torch
 types-Deprecated = "==1.2.9.2"   # type hint stubs
 types-requests = ">=2.31,<3"     # type hint stubs
