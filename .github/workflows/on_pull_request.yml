@@ -208,16 +208,6 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  run-notebook:
-    name: "Run Notebook"
-    if: false # Save 2m30s on each
-    needs: [min-wheel-build]
-    uses: ./.github/workflows/reusable_run_notebook.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      WHEEL_ARTIFACT_NAME: linux-x64-wheel-fast
-    secrets: inherit
-
   save-pr-summary:
     name: "Save PR Summary"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
