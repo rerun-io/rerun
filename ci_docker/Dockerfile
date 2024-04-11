@@ -37,6 +37,10 @@ RUN set -eux; \
     sudo; \
     rm -rf /var/lib/apt/lists/*;
 
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
 # Install Rustup
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
