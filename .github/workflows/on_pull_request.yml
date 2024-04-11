@@ -193,6 +193,7 @@ jobs:
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      WITH_EXAMPLES: false # We don't build examples on each PR (too slow)
     secrets: inherit
 
   save-pr-summary:
