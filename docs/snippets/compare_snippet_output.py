@@ -68,7 +68,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
-        run(["just", "py-build", "--quiet"], env=build_env)
+        run(["pixi", "run", "py-build", "--quiet"], env=build_env)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")

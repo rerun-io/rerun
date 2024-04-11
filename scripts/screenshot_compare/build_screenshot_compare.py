@@ -91,7 +91,7 @@ def copy_static_assets(examples: list[Example]) -> None:
 
 def build_python_sdk() -> None:
     print("Building Python SDK…")
-    run(["just", "py-build", "--features", "web_viewer"])
+    run(["pixi", "run", "py-build", "--features", "web_viewer"])
 
 
 # ====================================================================================================
