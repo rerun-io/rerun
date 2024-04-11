@@ -63,7 +63,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk for Python…")
         start_time = time.time()
-        run(["just", "py-build", "--quiet"], env=build_env)
+        run(["pixi", "run", "py-build", "--quiet"], env=build_env)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
@@ -95,13 +95,17 @@ def main() -> None:
     # Running CMake in parallel causes failures during rerun_sdk & arrow build.
     # TODO(andreas): Tell cmake in a single command to build everything at once.
     if not args.no_cpp_build:
+        start_time = time.time()
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
             if "cpp" in arch_opt_out:
                 continue
             build(arch, "cpp", args)
+        elapsed = time.time() - start_time
+        print(f"C++ examples compiled and ran in {elapsed:.1f} seconds")
 
     with multiprocessing.Pool() as pool:
+        start_time = time.time()
         jobs = []
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
@@ -113,9 +117,12 @@ def main() -> None:
         print(f"Waiting for {len(jobs)} build jobs to finish…")
         for job in jobs:
             job.get()
+        elapsed = time.time() - start_time
+        print(f"Python and Rust examples ran in {elapsed:.1f} seconds")
 
     print("----------------------------------------------------------")
-    print(f"Comparing {len(archetypes)} archetypes…")
+    print(f"Comparing recordings for{len(archetypes)} archetypes…")
+    start_time = time.time()
 
     for arch in archetypes:
         print()
@@ -135,6 +142,9 @@ def main() -> None:
             if "cpp" not in arch_opt_out:
                 run_comparison(cpp_output_path, rust_output_path, args.full_dump)
 
+    print()
+    elapsed = time.time() - start_time
+    print(f"Comparisons ran in {elapsed:.1f} seconds")
     print()
     print("----------------------------------------------------------")
     print("All tests passed!")

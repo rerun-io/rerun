@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -13,21 +14,27 @@ from glob import glob
 
 
 class Timing:
-    def __init__(self, cwd: str, start_time: float) -> None:
-        self.cwd = cwd
-        self.duration = time.time() - start_time
+    def __init__(self, command: str, duration: float) -> None:
+        self.command = command
+        self.duration = duration
 
 
-def run_cargo(command: str, args: str) -> Timing:
-    cwd = f"cargo {command} --quiet {args}"
-    print(f"Running '{cwd}'")
-    start = time.time()
-    result = subprocess.call(cwd, shell=True)
+def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
+    args = ["cargo", cargo_cmd, "--quiet"] + cargo_args.split(" ")
+    cmd_str = subprocess.list2cmdline(args)
+    print(f"> {cmd_str}")
+    start_time = time.time()
 
-    if result != 0:
-        sys.exit(result)
+    env = os.environ.copy()
+    env["RUSTFLAGS"] = "--deny warnings"
+    env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
 
-    return Timing(cwd, start)
+    result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"'{cmd_str}' failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}")
+        sys.exit(result.returncode)
+
+    return Timing(cmd_str, time.time() - start_time)
 
 
 def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
@@ -58,6 +65,8 @@ def main() -> None:
 
     # ----------------------
 
+    # NOTE: a lot of these jobs use very little CPU, but we csannot parallelize them because they all take a lock on the `target` directory.
+
     timings = []
 
     # First check with --locked to make sure Cargo.lock is up to date.
@@ -87,20 +96,28 @@ def main() -> None:
     if args.skip_docs is not True:
         # Full doc build takes prohibitively long (over 17min as of writing), so we skip it:
         # timings.append(run_cargo("doc", "--all-features"))
+
+        # These take around 3m40s each on CI, but very useful for catching broken doclinks:
         timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
         timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
 
     if args.skip_tests is not True:
+        # We first use `--no-run` to measure the time of compiling vs actually running
+
         # Just a normal `cargo test` should always work:
+        timings.append(run_cargo("test", "--all-targets --no-run"))
         timings.append(run_cargo("test", "--all-targets"))
+
         # Full test of everything:
+        timings.append(run_cargo("test", "--all-targets --all-features --no-run"))
         timings.append(run_cargo("test", "--all-targets --all-features"))
 
     # Print timings overview
     print("-----------------")
     print("Timings:")
+    timings.sort(key=lambda timing: timing.duration, reverse=True)
     for timing in timings:
-        print(f"{timing.duration:.2f}s \t {timing.cwd}")
+        print(f"{timing.duration:.2f}s \t {timing.command}")
 
 
 if __name__ == "__main__":

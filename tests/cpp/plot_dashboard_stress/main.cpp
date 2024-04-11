@@ -2,12 +2,12 @@
 //
 // Usage:
 // ```text
-// just cpp-plot-dashboard --help
+// pixi run cpp-plot-dashboard --help
 // ```
 //
 // Example:
 // ```text
-// just cpp-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
+// pixi run cpp-plot-dashboard --num-plots 10 --num-series-per-plot 5 --num-points-per-series 5000 --freq 1000
 // ```
 
 #include <algorithm>
