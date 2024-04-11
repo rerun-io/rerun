@@ -96,7 +96,7 @@ jobs:
           entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
           entries+=("JS:web_viewer/re_viewer.js:kiB")
 
-          if [ -n ${{ inputs.PR_NUMBER }} ]; then
+          if [ -n ${{ inputs.WITH_EXAMPLES }} = "true" ]; then
             for file in example_data/*.rrd; do
               name=$(basename "$file")
               entries+=("$name:$file:MiB")
