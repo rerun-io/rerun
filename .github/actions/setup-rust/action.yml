@@ -1,7 +1,6 @@
 # This action sets up:
 # - The correct version of Rust based on the `rust-toolchain` file
 # - All components + targets specified in `rust-toolchain`
-# - Caching of dependencies via `Swatinem/rust-cache`
 # - Caching of individual compilation requests via `sccache` and GCS
 #   - Uses our own `rerun-io/sccache-action` which supports GCS
 #
@@ -52,17 +51,6 @@ runs:
       if: ${{ inputs.targets != '' }}
       run: rustup target add ${{ inputs.targets }}
       shell: bash
-
-    # Rust-cache will cache our dependencies, which is a large chunk of the build
-    # See: https://github.com/Swatinem/rust-cache
-    - name: Set up rust-cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        # Only save the cache when on the main branch.
-        # The cache is quite limited in size (~10 GB), and the
-        # individual rust-cache entries are as much as 2 GB.
-        save-if: ${{ inputs.save_cache && github.ref == 'refs/heads/main' }}
-        shared-key: ${{ inputs.cache_key }}
 
     - name: Set up sccache
       uses: rerun-io/sccache-action@v0.7.0

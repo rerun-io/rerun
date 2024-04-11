@@ -49,9 +49,6 @@ jobs:
         with:
           toolchain: 1.76.0
 
-      - name: Set up cargo cache
-        uses: Swatinem/rust-cache@v2
-
       - run: cargo build -p rerun
         shell: bash
 
