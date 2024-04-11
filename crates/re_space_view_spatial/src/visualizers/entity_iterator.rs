@@ -74,7 +74,7 @@ where
 
         let extra_history = query_visual_history(ctx, data_result);
 
-        match query_archetype_with_history::<A, N>(
+        let result = query_archetype_with_history::<A, N>(
             ctx.recording_store(),
             &query.timeline,
             &query.latest_at,
@@ -97,7 +97,8 @@ where
                 )?;
             }
             Ok(())
-        }) {
+        });
+        match result {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
             Err(err) => {
                 re_log::error_once!(

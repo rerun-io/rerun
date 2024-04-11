@@ -436,14 +436,8 @@ It can greatly improve performance (and readability) in such situations as it pr
             });
 
         if legend_visible.unwrap_or(true.into()).0 {
-            plot = plot.legend(
-                Legend::default().position(
-                    legend_corner
-                        .unwrap_or_default()
-                        .try_into()
-                        .unwrap_or(DEFAULT_LEGEND_CORNER),
-                ),
-            );
+            plot =
+                plot.legend(Legend::default().position(legend_corner.unwrap_or_default().into()));
         }
 
         if timeline.typ() == TimeType::Time {
