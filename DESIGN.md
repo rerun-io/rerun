@@ -30,5 +30,3 @@ We do not use a colon suffix for labels in front of a value.
 Good: `Color 🔴`
 
 Bad: `Color: 🔴`
-
-<!-- TODO(emilk): remove this line, edit 2 -->
