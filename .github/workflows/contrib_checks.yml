@@ -109,9 +109,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: install cargo cranky
-        run: cargo install --locked --quiet cargo-cranky
-
       - name: Rust checks & tests
         run: pixi run rs-check --skip-check-individual-crates
 

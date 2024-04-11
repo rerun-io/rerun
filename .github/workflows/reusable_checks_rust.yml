@@ -69,9 +69,6 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release -g
 
-      - name: install cargo cranky
-        run: cargo install --locked --quiet cargo-cranky
-
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: pixi run rs-check --skip-check-individual-crates --skip-wasm-checks --skip-test
