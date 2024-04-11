@@ -109,6 +109,7 @@ pub async fn serve(
 }
 
 async fn listen_for_new_clients(listener: TcpListener, options: ServerOptions, tx: Sender<LogMsg>) {
+    #[allow(clippy::infinite_loop)] // TODO(emilk): some way of aborting this loop
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {

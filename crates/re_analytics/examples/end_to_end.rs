@@ -4,7 +4,7 @@ use re_analytics::Event;
 use re_analytics::Properties;
 use re_analytics::{Analytics, AnalyticsEvent};
 
-fn main() {
+fn main() -> ! {
     re_log::setup_logging();
 
     let analytics = Analytics::new(Duration::from_secs(3)).unwrap();
