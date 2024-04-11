@@ -147,10 +147,7 @@ jobs:
         with:
           pixi-version: v0.18.0
 
-      # The pip-cache setup logic doesn't work in the ubuntu docker container
-      # That's probably fine since we bake these deps into the container already
       - name: Setup python
-        if: ${{ inputs.PLATFORM != 'linux-x64' }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
