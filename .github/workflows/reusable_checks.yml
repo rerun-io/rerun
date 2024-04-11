@@ -28,6 +28,10 @@ env:
   # Wrap every `rustc` invocation in `sccache`.
   RUSTC_WRAPPER: "sccache"
 
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
+
 permissions:
   contents: "read"
   id-token: "write"

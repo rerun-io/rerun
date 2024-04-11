@@ -63,6 +63,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.8"
+
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -80,6 +81,10 @@ env:
 
   # Wrap every `rustc` invocation in `sccache`.
   RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
 
 permissions:
   contents: "read"
