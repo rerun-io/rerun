@@ -80,7 +80,7 @@ def main() -> None:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
     timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
 
-    if args.skip_wasm_checks is not True:
+    if not args.skip_wasm_checks:
         # Check viewer for wasm32
         timings.append(
             run_cargo(
@@ -94,20 +94,20 @@ def main() -> None:
         )
 
     # Since features are additive, check examples & crates individually unless opted out.
-    if args.skip_check_individual_examples is not True:
+    if not args.skip_check_individual_examples:
         for cargo_toml_path in glob("./examples/rust/**/Cargo.toml", recursive=True):
             package_name = package_name_from_cargo_toml(cargo_toml_path)
             timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
             timings.append(run_cargo("check", f"--all-features -p {package_name}"))
 
-    if args.skip_check_individual_crates is not True:
+    if not args.skip_check_individual_crates:
         for cargo_toml_path in glob("./crates/**/Cargo.toml", recursive=True):
             package_name = package_name_from_cargo_toml(cargo_toml_path)
             timings.append(run_cargo("check", f"--no-default-features -p {package_name}"))
             timings.append(run_cargo("check", f"--all-features -p {package_name}"))
 
     # Doc tests
-    if args.skip_docs is not True:
+    if not args.skip_docs:
         # Full doc build takes prohibitively long (over 17min as of writing), so we skip it:
         # timings.append(run_cargo("doc", "--all-features"))
 
@@ -115,7 +115,7 @@ def main() -> None:
         timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
         timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
 
-    if args.skip_tests is not True:
+    if not args.skip_tests:
         # We first use `--no-run` to measure the time of compiling vs actually running
 
         # Just a normal `cargo test` should always work:
