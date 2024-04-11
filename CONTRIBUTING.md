@@ -113,7 +113,7 @@ cargo run -p rerun -- --help
 
 ## Tools
 
-We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. See [here](https://github.com/casey/just#installation) for installation instructions. To see available tasks, use `pixi task list`.
+We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
 # TODO(andreas): This doesn't list tasks from the different environments. Asked [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475) if there's a way to do that.
 
 We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) and specify our clippy lints in [`Cranky.toml`](Cranky.toml). Usage: `cargo cranky`.
