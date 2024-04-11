@@ -35,6 +35,8 @@ jobs:
           filters: |
             rust_changes:
               - .github/**/*.yml # CI changes should always trigger all jobs
+              - pixi.lock # maybe out build commands have changed
+              - pixi.toml # maybe out build commands have changed
               - "**/*.rs"
               - "**/*.toml"
 
@@ -52,6 +54,8 @@ jobs:
           filters: |
             cpp_changes:
               - .github/**/*.yml # CI changes should always trigger all jobs
+              - pixi.lock # maybe out build commands have changed
+              - pixi.toml # maybe out build commands have changed
               - '**/*.hpp'
               - '**/*.cpp'
               - '**/CMakeLists.txt'
@@ -71,6 +75,8 @@ jobs:
           filters: |
             python_changes:
               - .github/**/*.yml # CI changes should always trigger all jobs
+              - pixi.lock # maybe out build commands have changed
+              - pixi.toml # maybe out build commands have changed
               - '**/*.py'
               - '**/requirements.txt'
               - '**/pyproject.toml'
@@ -89,6 +95,8 @@ jobs:
           filters: |
             docs_changes:
               - .github/**/*.yml # CI changes should always trigger all jobs
+              - pixi.lock # maybe out build commands have changed
+              - pixi.toml # maybe out build commands have changed
               - 'docs/content/**/*.md'
               - 'examples/**/*.md'
               - 'examples/manifest.toml'
