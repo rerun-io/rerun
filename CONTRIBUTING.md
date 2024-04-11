@@ -122,7 +122,7 @@ We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our de
 
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
 
-To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideally check approximately the same things as our CI.
+Depending on the changes you made run `cargo test --all-targets --all-features`, `pixi run py-test` and `pixi run cpp-test` locally.
 
 ### Linting
 Prior to pushing changes to a PR, at a minimum, you should always run `pixi run fast-lint`. This is designed to run
