@@ -92,13 +92,21 @@ jobs:
         # using leading to random crashes: https://reviews.llvm.org/D148280
         run: sudo sysctl vm.mmap_rnd_bits=28
 
-      - name: Build and run C++ tests
+      - name: pixi run cpp-clean
         shell: bash
-        run: |
-          pixi run cpp-clean
-          ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
-          ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
-          ${{ matrix.additional_commands }}
+        run: pixi run cpp-clean
+
+      - name: pixi run cpp-build-all
+        shell: bash
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
+
+      - name: pixi run cpp-test
+        shell: bash
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
+
+      - name: additional_commands
+        shell: bash
+        run: ${{ matrix.additional_commands }}
 
   cpp-formatting:
     name: C++ formatting check
