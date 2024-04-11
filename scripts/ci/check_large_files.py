@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 import subprocess
 
@@ -30,5 +31,5 @@ for file_path in tracked_files:
             print(f"{file_path} is {actual_size} bytes (max allowed is {maximum_size} bytes)")
             result = 1
 
-print("checked {} files".format(len(tracked_files)))
+print(f"checked {len(tracked_files)} files")
 exit(result)
