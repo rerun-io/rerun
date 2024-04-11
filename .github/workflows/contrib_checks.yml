@@ -148,19 +148,6 @@ jobs:
       - name: Check spelling of entire workspace
         uses: crate-ci/typos@v1.18.0
 
-  rs-cargo-deny:
-    name: cargo-deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.18.0
-
-      - name: Cargo Deny
-        run: pixi run rs-cargo-deny
-
   cpp-formatting:
     name: C++ formatting check
     runs-on: ubuntu-latest

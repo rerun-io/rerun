@@ -77,20 +77,3 @@ jobs:
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
-
-  # ---------------------------------------------------------------------------
-
-  rs-cargo-deny:
-    name: cargo-deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.18.0
-
-      - name: Cargo Deny
-        run: pixi run rs-cargo-deny

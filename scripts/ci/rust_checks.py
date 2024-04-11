@@ -47,6 +47,7 @@ def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
     return package_name_result.group(1)
 
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run Rust checks and tests")
     parser.add_argument(
@@ -79,6 +80,22 @@ def main() -> None:
     # Check a few important permutations of the feature flags for our `rerun` library:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
     timings.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
+
+    # Cargo deny
+    # Note: running just `cargo deny check` without a `--target` can result in
+    # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+    timings.append(run_cargo("install", "--locked --quiet cargo-deny"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target i686-unknown-linux-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target wasm32-unknown-unknown check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-apple-darwin check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-pc-windows-msvc check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-gnu check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-linux-musl check"))
+    timings.append(run_cargo("deny", "--all-features --log-level error --target x86_64-unknown-redox check"))
 
     if not args.skip_wasm_checks:
         # Check viewer for wasm32
