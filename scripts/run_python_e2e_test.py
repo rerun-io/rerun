@@ -37,7 +37,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Building rerun-sdk…")
         start_time = time.time()
-        subprocess.Popen(["just", "py-build", "--quiet"], env=build_env).wait()
+        subprocess.Popen(["pixi", "run", "py-build", "--quiet"], env=build_env).wait()
         elapsed = time.time() - start_time
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
         print("")

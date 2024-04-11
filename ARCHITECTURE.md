@@ -104,7 +104,7 @@ FigJam document: https://www.figma.com/file/Umob8ztK1HmYKLUMSq8aPb/Crates-org
 Update instructions:
 1) Update the FigJam document
 2) Select all -> right-click -> Copy as PNG
-3) `just upload --name crates`
+3) `pixi run upload-image --name crates`
 4) Copy/paste the resulting HTML
 -->
 
