@@ -172,11 +172,11 @@ mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
 mkdocs-material = "==9.4.7"
 mkdocs-material-extensions = "==1.3"
-mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
 mkdocstrings = "==0.23.0"
 mkdocstrings-python = "==1.7.3"
 sphobjinv = "==2.3.1"
-typing_extensions = "==4.11.0"                                                                   # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
+typing_extensions = "==4.11.0"                                                                                                    # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
 
 
 [feature.cpp.tasks]
@@ -272,14 +272,16 @@ taplo = "=0.9.1"
 tomlkit = "0.12.3.*"
 
 [pypi-dependencies]
+colorama = "==0.4.6"             # For `crates.py`
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
-nox = ">=2024.3.2"               # the conda-forge package is (wrongly) tagged as platform-specific
+nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged as platform-specific
 Pillow = "==10.0.0"              # For `thumbnails.py`
+PyGithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 torch = ">=2.0.1"                # Needed by tests for integration with torch
-types-Deprecated = "==1.2.9.2"   # type hint stubs
-types-requests = ">=2.31,<3"     # type hint stubs
+types-Deprecated = "==1.2.9.2"   # Type hint stubs
+types-requests = ">=2.31,<3"     # Type hint stubs
 
 
 [target.linux-64.dependencies]

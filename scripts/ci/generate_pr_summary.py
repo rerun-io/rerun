@@ -5,9 +5,6 @@ This script combines the GitHub and google cloud storage APIs
 to find and link to the builds associated with a given PR.
 
 This is expected to be run by the `reusable_pr_summary.yml` GitHub workflow.
-
-Requires the following packages:
-  pip install google-cloud-storage Jinja2 PyGithub
 """
 
 from __future__ import annotations

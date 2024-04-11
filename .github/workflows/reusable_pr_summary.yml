@@ -31,10 +31,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          python-version: 3.11
+          pixi-version: v0.18.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -47,14 +46,10 @@ jobs:
         with:
           version: ">= 363.0.0"
 
-      - name: Install deps
-        shell: bash
-        run: pip install google-cloud-storage Jinja2 PyGithub
-
       - name: Render HTML template
         shell: bash
         run: |
-          python scripts/ci/generate_pr_summary.py \
+          pixi run python scripts/ci/generate_pr_summary.py \
           --github-token ${{secrets.GITHUB_TOKEN}} \
           --github-repository ${GITHUB_REPOSITORY} \
           --pr-number ${{ inputs.PR_NUMBER }} \

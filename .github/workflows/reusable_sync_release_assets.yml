@@ -35,14 +35,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          python-version: "3.11"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: pip install google-cloud-storage "PyGithub==1.59.0" "requests>=2.31,<3"
+          pixi-version: v0.18.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -58,7 +53,7 @@ jobs:
       - name: Sync release assets & build.rerun.io
         shell: bash
         run: |
-          python ./scripts/ci/sync_release_assets.py \
+          pixi run python ./scripts/ci/sync_release_assets.py \
             --github-release ${{ inputs.RELEASE_VERSION }} \
             --github-token ${{ secrets.GITHUB_TOKEN }} \
             --wait ${{ inputs.WAIT_TIME_SECS }} \

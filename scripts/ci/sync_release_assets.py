@@ -9,9 +9,6 @@ This is expected to be run by the release & pre-release workflows.
 
 You can also run it manually if you want to update a specific release's assets:
   python scripts/ci/sync_release_assets.py --github-release prerelease --github-token <token> --update
-
-Requires the following packages:
-  pip install google-cloud-storage PyGithub
 """
 
 from __future__ import annotations
