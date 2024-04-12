@@ -89,8 +89,8 @@ jobs:
         shell: bash
         run: |
           pixi run -e wheel-test python -m rerun --version
-          which rerun
-          rerun --version
+          pixi run -e wheel-test which rerun
+          pixi run -e wheel-test rerun --version
 
       - name: Run Python unit-tests
         shell: bash
