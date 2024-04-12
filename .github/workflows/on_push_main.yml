@@ -8,20 +8,24 @@ on:
   # Can be triggered manually from within the UI or using the GH CLI,
   # e.g. `gh workflow run on_push_main.yml --ref main`
   workflow_dispatch:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
 
 jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   cpp_checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       FULL: "true"
     secrets: inherit
 
@@ -29,7 +33,7 @@ jobs:
     name: Checks
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
     secrets: inherit
 
@@ -37,7 +41,7 @@ jobs:
     name: Checks
     uses: ./.github/workflows/reusable_checks_python.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   deploy-docs:
@@ -45,7 +49,7 @@ jobs:
     name: Deploy Docs
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PY_DOCS_VERSION_NAME: "main"
       CPP_DOCS_VERSION_NAME: "main"
       RS_DOCS_VERSION_NAME: "head"
@@ -56,7 +60,7 @@ jobs:
     name: "Build web viewer"
     uses: ./.github/workflows/reusable_build_web.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
     secrets: inherit
 
@@ -65,7 +69,7 @@ jobs:
     needs: [build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   build-examples:
@@ -73,7 +77,7 @@ jobs:
     needs: [build-wheel-linux-x64]
     uses: ./.github/workflows/reusable_build_examples.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
@@ -83,7 +87,7 @@ jobs:
     needs: [build-web, build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       WITH_EXAMPLES: true
     secrets: inherit
 
@@ -92,7 +96,7 @@ jobs:
     needs: [build-examples]
     uses: ./.github/workflows/reusable_upload_examples.yml
     with:
-      CONCURRENCY: push-${{ github.ref_name }}
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
@@ -103,7 +107,7 @@ jobs:
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: linux-x64
     secrets: inherit
 
@@ -115,7 +119,7 @@ jobs:
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: linux-x64
     secrets: inherit
 
@@ -127,7 +131,7 @@ jobs:
     name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pypi"
@@ -138,7 +142,7 @@ jobs:
     name: "Linux-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: push-linux-x64-${{ github.ref_name }}
+      CONCURRENCY: push-linux-x64-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
