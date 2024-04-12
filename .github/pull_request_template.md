@@ -24,3 +24,5 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 - [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
 - [Recent benchmark results](https://build.rerun.io/graphs/crates.html)
 - [Wasm size tracking](https://build.rerun.io/graphs/sizes.html)
+
+To run all checks from `main`, comment on the PR with `@rerun-bot full-check`.
