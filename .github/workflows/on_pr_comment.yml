@@ -25,3 +25,17 @@ jobs:
     needs: [parse-command]
     if: needs.parse-command.outputs.command == 'full-check'
     uses: ./.github/workflows/on_push_main.yml
+
+  notify-pr:
+    needs: [parse-command]
+    if: needs.parse-command.outputs.command == 'full-check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message-id: "pr-${{ github.event.issue.number }}-${{ github.run_id }}"
+          message: |
+            Started a full build: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
