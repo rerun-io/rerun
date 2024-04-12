@@ -63,7 +63,7 @@ def log_clock(steps: int) -> None:
         rr.log("world/hours_hand", rr.Arrows3D(vectors=point_h, colors=color_h, radii=WIDTH_H))
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="An example visualizing an analog clock is built with Rerun Arrow3D primitives."
     )
@@ -74,3 +74,7 @@ if __name__ == "__main__":
     rr.script_setup(args, "rerun_example_clock")
     log_clock(args.steps)
     rr.script_teardown(args)
+
+
+if __name__ == "__main__":
+    main()
