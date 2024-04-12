@@ -1,3 +1,9 @@
+# This workflow is triggered on any PR comment, and tries to find a `@rerun-bot` mention in it.
+# If the mention is a command, such as `@rerun-bot full-check`, then it runs the command.
+#
+# Available commands:
+#   full-check    Triggers a run of `on_push_main.yml` on the PR.
+
 name: "PR Comment"
 
 on:
@@ -87,6 +93,8 @@ jobs:
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
         with:
+          # We use `GITHUB_TOKEN` here so there is no chance that we'll trigger another run of this workflow.
+          # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message-id: "pr-${{ github.event.issue.number }}-${{ github.run_id }}"
           message: |
