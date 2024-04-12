@@ -1,6 +1,0 @@
-# Pip packages all developers need
-
-torch
-tqdm
-requests
-gitignore_parser  # handle .gitignore
