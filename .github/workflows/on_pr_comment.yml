@@ -81,10 +81,14 @@ jobs:
           # started a workflow in parallel with us on the same branch.
 
           echo "Fetching workflow run id…"
-          run_id=$(get_latest_workflow_run $workflow_name $ref_name $now | jq '.[0].databaseId')
+          run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
+          echo $run_info
+          run_id=$(echo $run_info | jq '.[0].databaseId')
           while [ -z $run_id ]
           do
-            run_id=$(get_latest_workflow_run $workflow_name $ref_name $now | jq '.[0].databaseId')
+            run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
+            echo $run_info
+            run_id=$(echo $run_info | jq '.[0].databaseId')
             sleep 1
           done
           echo "Workflow run: https://github.com/rerun-io/rerun/actions/runs/$run_id"
