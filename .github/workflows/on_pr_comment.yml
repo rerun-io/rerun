@@ -27,7 +27,7 @@ jobs:
           command=$(echo "${{ github.event.comment.body }}" | sed -n 's/.*@rerun-bot[[:space:]]\+\([a-zA-Z\-]*\).*/\1/p')
           echo "command=$command" >> "$GITHUB_OUTPUT"
 
-  trigger-main:
+  full-check:
     needs: [parse-command]
     if: needs.parse-command.outputs.command == 'full-check'
     runs-on: ubuntu-latest
