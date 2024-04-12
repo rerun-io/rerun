@@ -32,6 +32,9 @@ jobs:
     if: needs.parse-command.outputs.command == 'full-check'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Dispatch main workflow
         id: dispatch
         shell: bash
