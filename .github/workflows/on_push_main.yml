@@ -5,7 +5,9 @@ on:
     branches:
       - "main"
 
-  workflow_call:
+  # Can be triggered manually from within the UI or using the GH CLI,
+  # e.g. `gh workflow run on_push_main.yml --ref main`
+  workflow_dispatch:
 
 jobs:
   checks:
