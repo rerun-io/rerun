@@ -352,9 +352,7 @@ jobs:
 
   pre-release:
     name: Pre Release
-    concurrency:
-      group: push-${{ github.ref_name }}-prerelease
-      cancel-in-progress: true
+    concurrency: NIGHTLY
     needs:
       [
         build-rerun-cli-and-upload-linux-arm64,
