@@ -66,7 +66,7 @@ jobs:
             local ref_name=$2
             local inputs=$3
             # https://cli.github.com/manual/gh_workflow_run
-            echo $inputs | gh workflow run $workflow_name --ref "refs/heads/$ref_name"
+            echo $inputs | gh workflow run $workflow_name --ref "refs/heads/$ref_name" --json
           }
 
           workflow_name='on_push_main.yml'
