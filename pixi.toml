@@ -244,32 +244,34 @@ rerun = "rerun"
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
+binaryen = "117.*"                # for `wasm-opt`
 clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
+doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 maturin = "1.5.1"
 mypy = "1.8.0"
+ninja = "1.11.1"
 numpy = ">=1.23,<2"
+packaging = ">=24.0,<25"          # For `publish_wheels.py`
 pip = ">=23"
+prettier = "2.8.8.*"
 pyarrow = "14.0.2"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.3.5"
 semver = ">=2.13,<2.14"
+taplo = "=0.9.1"
+tomlkit = "0.12.3.*"
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
-ninja = "1.11.1"
-# Make sure to use a version that is compatible with
-# the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
-doxygen = "1.9.7.*"
-binaryen = "117.*"   # for `wasm-opt`
-prettier = "2.8.8.*"
-taplo = "=0.9.1"
-tomlkit = "0.12.3.*"
+colorama = ">=0.4.6,<0.5"
+aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
+jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
 
 [pypi-dependencies]
 colorama = "==0.4.6"             # For `crates.py`
