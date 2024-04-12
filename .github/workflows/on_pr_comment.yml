@@ -53,11 +53,11 @@ jobs:
             local created_after=$3
             echo $(
               # https://cli.github.com/manual/gh_run_list
+              # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
               gh run list \
                 --workflow $workflow_name \
                 --event workflow_dispatch \
                 --branch $ref_name \
-                # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
                 --created ">$created_after" \
                 --json databaseId
             )
@@ -83,14 +83,10 @@ jobs:
           # started a workflow in parallel with us on the same branch.
 
           echo "Fetching workflow run id…"
-          run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
-          echo $run_info
-          run_id=$(echo $run_info | jq -r '.[0].databaseId')
+          run_id=$(get_latest_workflow_run $workflow_name $ref_name $now | jq -r '.[0].databaseId')
           while [ -z $run_id ]
           do
-            run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
-            echo $run_info
-            run_id=$(echo $run_info | jq -r '.[0].databaseId')
+            run_id=$(get_latest_workflow_run $workflow_name $ref_name $now | jq -r '.[0].databaseId')
             sleep 1
           done
           echo "Workflow run: https://github.com/rerun-io/rerun/actions/runs/$run_id"
