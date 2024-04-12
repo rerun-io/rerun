@@ -71,7 +71,7 @@ jobs:
           }
 
           workflow_name='on_push_main.yml'
-          ref_name=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq '.headRefName')
+          ref_name=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq -r '.headRefName')
           now=$(date --utc --iso-8601=seconds)
 
           echo "Dispatching workflow $workflow_name on branch $ref_name"
@@ -85,12 +85,12 @@ jobs:
           echo "Fetching workflow run id…"
           run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
           echo $run_info
-          run_id=$(echo $run_info | jq '.[0].databaseId')
+          run_id=$(echo $run_info | jq -r '.[0].databaseId')
           while [ -z $run_id ]
           do
             run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
             echo $run_info
-            run_id=$(echo $run_info | jq '.[0].databaseId')
+            run_id=$(echo $run_info | jq -r '.[0].databaseId')
             sleep 1
           done
           echo "Workflow run: https://github.com/rerun-io/rerun/actions/runs/$run_id"
