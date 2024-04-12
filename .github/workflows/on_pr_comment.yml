@@ -53,11 +53,11 @@ jobs:
             local created_after=$3
             echo $(
               # https://cli.github.com/manual/gh_run_list
+              # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
               gh run list \
                 --workflow $workflow_name \
                 --event workflow_dispatch \
                 --branch $ref_name \
-                # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
                 --created ">$created_after" \
                 --json databaseId
             )
