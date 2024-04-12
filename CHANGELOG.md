@@ -3,7 +3,7 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
-## [0.15.1](https://github.com/rerun-io/rerun/compare/0.15.1...0.15.0) - Bug fix for notebooks - 2024-04-11
+## [0.15.1](https://github.com/rerun-io/rerun/compare/0.15.0...0.15.1) - Bug fix for notebooks - 2024-04-11
 - Fix timeout in notebooks by making the `app_url` correctly point to `app.rerun.io` [#5877](https://github.com/rerun-io/rerun/pull/5877)
 - CMake: Allow to call `find_package(rerun_sdk)` two or more times [#5886](https://github.com/rerun-io/rerun/pull/5886) (thanks [@traversaro](https://github.com/traversaro)!)
 
