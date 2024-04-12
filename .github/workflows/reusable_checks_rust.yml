@@ -60,7 +60,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
-          pixi-version: v0.18.0
+          pixi-version: v0.19.0
 
       # We need to build the web viewer for `rust_checks.py` to succeed.
       # We build in release so that we can reuse the results for actual publishing, if necessary
