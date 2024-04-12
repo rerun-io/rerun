@@ -79,9 +79,9 @@ jobs:
       - name: Install Python dependencies and wheel
         shell: bash
         run: |
-          pixi run pip uninstall rerun-sdk -y
-          pixi run pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
-          pixi run pip install rerun-sdk --no-index --find-links wheel
+          pixi run -e wheel-test pip uninstall rerun-sdk -y
+          pixi run -e wheel-test pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
+          pixi run -e wheel-test pip install rerun-sdk --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
