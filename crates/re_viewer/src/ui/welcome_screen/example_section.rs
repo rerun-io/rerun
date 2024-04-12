@@ -1,7 +1,7 @@
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
-use poll_promise::Promise;
 use itertools::Itertools as _;
+use poll_promise::Promise;
 
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
