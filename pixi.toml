@@ -21,10 +21,33 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+[system-requirements]
+macos = "11.0"  # needed for some reason otherwise fails to resolve mediapipe package
+libc = "2.31"
+
+
+# KEEP THESE TWO EMTPY
+# their content it simplicitly pulled in ALL environments
+[dependencies]
+[pypi-dependencies]
+
 [environments]
-cpp = ["cpp"]
-py-docs = ["py-docs"]
-wheel-test = ["wheel-test"]
+default = ["base"]
+cpp = ["cpp", "base"]
+py-docs = ["py-docs", "base"]
+wheel-test = ["wheel-test", "base"]
+
+# Get rerun from PyPI
+examples = ["examples-common", "rerun-py-pypi"]
+
+# Build rerun from the local repo
+examples-dev = ["examples-common", "rerun-py-dev"]
+
+# Does _not_ include rerun-sdk, must be installed explicitely with `pip install [https://]path/to/rerun-sdk.whl`
+examples-ci = ["examples-common"]
+examples-py38 = ["examples-common", "py38"]
+
+
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -230,7 +253,7 @@ torch = ">=2.0.1"
 # This overrides the `rerun` task from the default env which otherwise executes via cargo.
 rerun = "rerun"
 
-[dependencies]
+[feature.base.dependencies]
 # IMPORTANT: do not add any dependencies here that may break CI. All dependencies should be available on all supported
 # platforms (including linux-aarch64), or added conditionally.
 #
@@ -274,8 +297,7 @@ typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
 
-[pypi-dependencies]
-colorama = "==0.4.6"             # For `crates.py`
+[feature.base.pypi-dependencies]
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged as platform-specific
@@ -298,3 +320,42 @@ cxx-compiler = "1.6.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"
+
+
+
+# EXAMPLES ENVIRONMENT
+
+[feature.examples-common]
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+
+
+[feature.examples-common.dependencies]
+python = ">=3.8,<3.12"  # some example don't support python 3.12 yet
+
+# ALL deps of ALL examples should be listed here. In case of conflicts, the conflicting example should be moved to
+# another, dedicated environment other than `examples`.
+[feature.examples-common.pypi-dependencies]
+# ∆ always keep `editable = true` to avoid caching of the dependency list (which is dynamic)
+all_examples = { path = "examples/python/all_examples", editable = true }
+#redirect = { path = "examples/python/redirect", editable = true }
+
+[feature.rerun-py-dev.pypi-dependencies]
+rerun-sdk = { path = "rerun_py", editable = true }
+
+[feature.rerun-py-pypi.pypi-dependencies]
+rerun-sdk = "==0.15.0"  # How to keep that up to date?
+
+[feature.py38.dependencies]
+python = "=3.8"
+
+#[feature.py39.dependencies]
+#python = "=3.9"
+#
+#[feature.py310.dependencies]
+#python = "=3.10"
+#
+#[feature.py311.dependencies]
+#python = "=3.11"
+#
+#[feature.py312.dependencies]
+#python = "=3.12"
