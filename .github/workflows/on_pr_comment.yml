@@ -24,13 +24,65 @@ jobs:
   trigger-main:
     needs: [parse-command]
     if: needs.parse-command.outputs.command == 'full-check'
-    uses: ./.github/workflows/on_push_main.yml
-
-  notify-pr:
-    needs: [parse-command]
-    if: needs.parse-command.outputs.command == 'full-check'
     runs-on: ubuntu-latest
     steps:
+      - name: Dispatch main workflow
+        id: dispatch
+        shell: bash
+        env:
+          # NOTE: This uses `RERUN_BOT_TOKEN` instead of `GITHUB_TOKEN`,
+          # otherwise the recursive workflow protection prevents us from
+          # starting the `on_push_main` run.
+          # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          get_latest_workflow_run_id () {
+            local workflow_name=$1
+            local ref_name=$2
+            local created_after=$3
+            echo $(
+              # https://cli.github.com/manual/gh_run_list
+              gh run list \
+                --workflow $workflow_name \
+                --event workflow_dispatch \
+                --branch $ref_name \
+                # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
+                --created ">$created_after" \
+                --json databaseId \
+                --jq '.[0].databaseId'
+            )
+          }
+
+          dispatch_workflow () {
+            local workflow_name=$1
+            local ref_name=$2
+            # https://cli.github.com/manual/gh_workflow_run
+            gh workflow run $workflow_name --ref $ref_name
+          }
+
+          workflow_name='on_push_main.yml'
+          ref_name='${{ github.ref_name }}'
+          now=$(date --utc --iso-8601=seconds)
+
+          echo "Dispatching workflow $workflow_name on branch $ref_name"
+          dispatch_workflow $workflow_name $ref_name $input
+
+          # `gh workflow run` does NOT return the ID.
+          # In fact, it returns absolutely nothing: https://github.com/cli/cli/issues/4001
+          # Instead, we have to wait for the workflow to start, and hope that nobody has
+          # started a workflow in parallel with us on the same branch.
+
+          echo "Fetching workflow run id…"
+          run_id=$(get_latest_workflow_run_id $workflow_name $ref_name $now)
+          while [ -z $run_id ]
+          do
+            run_id=$(get_latest_workflow_run_id $workflow_name $ref_name $now)
+            sleep 1
+          done
+          echo "Workflow run: https://github.com/rerun-io/rerun/actions/runs/$run_id"
+
+          echo "workflow_run_url=https://github.com/rerun-io/rerun/actions/runs/$run_id" >> "$GITHUB_OUTPUT"
+
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
@@ -38,4 +90,4 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message-id: "pr-${{ github.event.issue.number }}-${{ github.run_id }}"
           message: |
-            Started a full build: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Started a full build: ${{ steps.dispatch.outputs.workflow_run_url }}
