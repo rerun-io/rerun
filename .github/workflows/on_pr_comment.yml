@@ -75,7 +75,7 @@ jobs:
           now=$(date --utc --iso-8601=seconds)
 
           echo "Dispatching workflow $workflow_name on branch $ref_name"
-          dispatch_workflow $workflow_name $ref_name $input
+          dispatch_workflow $workflow_name $ref_name $inputs
 
           # `gh workflow run` does NOT return the ID.
           # In fact, it returns absolutely nothing: https://github.com/cli/cli/issues/4001
