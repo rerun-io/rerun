@@ -1,5 +1,6 @@
 use egui::{NumExt as _, Ui};
 use ehttp::{fetch, Request};
+use itertools::Itertools as _;
 use poll_promise::Promise;
 
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
@@ -567,7 +568,7 @@ impl ExampleDescLayout {
                 // TODO(ab): use design tokens
                 ui.style_mut().spacing.button_padding = egui::vec2(4.0, 2.0);
                 ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 4.0);
-                for tag in &self.desc.tags {
+                for tag in self.desc.tags.iter().sorted() {
                     ui.add(
                         egui::Button::new(
                             egui::RichText::new(tag).text_style(re_ui::ReUi::welcome_screen_tag()),

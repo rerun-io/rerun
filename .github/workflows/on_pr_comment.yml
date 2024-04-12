@@ -45,7 +45,7 @@ jobs:
           # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
-          get_latest_workflow_run_id () {
+          get_latest_workflow_run () {
             local workflow_name=$1
             local ref_name=$2
             local created_after=$3
@@ -57,8 +57,7 @@ jobs:
                 --branch $ref_name \
                 # https://docs.github.com/en/search-github/getting-started-with-searching-on-github/understanding-the-search-syntax#query-for-dates
                 --created ">$created_after" \
-                --json databaseId \
-                --jq '.[0].databaseId'
+                --json databaseId
             )
           }
 
@@ -70,7 +69,7 @@ jobs:
           }
 
           workflow_name='on_push_main.yml'
-          ref_name=$(gh pr view ${{ github.event.issue.number }} --json headRefName --jq '.headRefName')
+          ref_name=$(gh pr view ${{ github.event.issue.number }} --json headRefName | jq '.headRefName')
           now=$(date --utc --iso-8601=seconds)
 
           echo "Dispatching workflow $workflow_name on branch $ref_name"
@@ -82,10 +81,14 @@ jobs:
           # started a workflow in parallel with us on the same branch.
 
           echo "Fetching workflow run id…"
-          run_id=$(get_latest_workflow_run_id $workflow_name $ref_name $now)
+          run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
+          echo $run_info
+          run_id=$(echo $run_info | jq '.[0].databaseId')
           while [ -z $run_id ]
           do
-            run_id=$(get_latest_workflow_run_id $workflow_name $ref_name $now)
+            run_info=$(get_latest_workflow_run $workflow_name $ref_name $now)
+            echo $run_info
+            run_id=$(echo $run_info | jq '.[0].databaseId')
             sleep 1
           done
           echo "Workflow run: https://github.com/rerun-io/rerun/actions/runs/$run_id"

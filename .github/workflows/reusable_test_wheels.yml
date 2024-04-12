@@ -168,7 +168,7 @@ jobs:
           pixi run -e wheel-test pip uninstall rerun-sdk
           pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
-      - name: Verify built wheel version
+      - name: Print wheel version
         shell: bash
         run: |
           pixi run -e wheel-test python -m rerun --version
