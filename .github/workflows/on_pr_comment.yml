@@ -67,7 +67,7 @@ jobs:
             local workflow_name=$1
             local ref_name=$2
             # https://cli.github.com/manual/gh_workflow_run
-            gh workflow run $workflow_name --ref $ref_name
+            gh workflow run $workflow_name --ref "refs/heads/$ref_name"
           }
 
           workflow_name='on_push_main.yml'
