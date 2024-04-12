@@ -70,7 +70,7 @@ jobs:
           }
 
           workflow_name='on_push_main.yml'
-          ref_name='${{ github.ref_name }}'
+          ref_name=$(gh pr view ${{ github.event.issue.number }} --json headRefName --jq '.headRefName')
           now=$(date --utc --iso-8601=seconds)
 
           echo "Dispatching workflow $workflow_name on branch $ref_name"
