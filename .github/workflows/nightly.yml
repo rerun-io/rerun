@@ -319,7 +319,6 @@ jobs:
       COMPARE_TO: main # We currently only run benches nightly, but we used to run them on main
     secrets: inherit
 
-
   # --------------------------------------------------------------------------
   # Release:
 
