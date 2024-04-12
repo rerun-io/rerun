@@ -29,12 +29,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Build web-viewer (release)
-        shell: bash
-        run: |
-          pixi run cargo run --locked -p re_build_web_viewer -- --release -g
+        run: pixi run cargo run --locked -p re_build_web_viewer -- --release -g
 
       - name: Publish
-        shell: bash
-        run: |
-          pixi run python -m pip install -r scripts/ci/requirements-crates.txt
-          pixi run python scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
+        run: pixi run python scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
