@@ -65,6 +65,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
+          environments: py-docs
 
       - name: Build via mkdocs
         run: pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
@@ -157,6 +158,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
+          environments: cpp
 
       # TODO(emilk): make this work somehow. Right now this just results in
       # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)

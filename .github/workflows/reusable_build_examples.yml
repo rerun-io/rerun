@@ -62,6 +62,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
+          environments: wheel-test
 
       - name: Download Wheel
         uses: actions/download-artifact@v4

@@ -55,6 +55,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
+          environments: wheel-test
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
