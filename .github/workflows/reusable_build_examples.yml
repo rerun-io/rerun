@@ -86,9 +86,9 @@ jobs:
       - name: Verify built wheel version
         shell: bash
         run: |
-          pixi run python3 -m rerun --version
-          pixi run which rerun
-          pixi run rerun --version
+          pixi run -e wheel-test python -m rerun --version
+          pixi run -e wheel-test which rerun
+          pixi run -e wheel-test rerun --version
 
       - name: Get sha
         id: get-sha
