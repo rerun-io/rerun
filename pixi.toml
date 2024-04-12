@@ -281,7 +281,6 @@ nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged a
 Pillow = "==10.0.0"              # For `thumbnails.py`
 PyGithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
-torch = ">=2.0.1"                # Needed by tests for integration with torch
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
 
