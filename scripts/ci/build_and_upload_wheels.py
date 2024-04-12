@@ -54,11 +54,6 @@ def detect_target() -> str:
     return f"{arch}-{os}"
 
 
-def detect_pixi() -> bool:
-    path = os.environ.get("PATH")
-    return path is not None and ".pixi/env/bin" in path
-
-
 class BuildMode(Enum):
     PYPI = "pypi"
     PR = "pr"
@@ -68,9 +63,6 @@ class BuildMode(Enum):
 
 
 def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
-    if detect_pixi():
-        raise Exception("the build script cannot be started in the pixi environment")
-
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
         run("pixi run cargo run --locked -p re_build_web_viewer -- --release -g")

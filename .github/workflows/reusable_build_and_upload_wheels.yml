@@ -200,7 +200,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          python3 scripts/ci/build_and_upload_wheels.py \
+          pixi run python scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
