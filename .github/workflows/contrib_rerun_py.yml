@@ -48,7 +48,7 @@ jobs:
     name: Build Wheels
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.13.0
+      image: rerunio/ci_docker:0.14.0
     steps:
       - uses: actions/checkout@v4
 
