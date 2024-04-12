@@ -63,7 +63,7 @@ cargo run -p dna
 
 Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`.
 
-Additionally, prebuilt dev wheels from head of main are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
+Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
 
 If you want to build from source, you can do so easily in the pixi environment:
 * Run `pixi run py-build --release` to build SDK & viewer for python (or `pixi run py-build` for a debug build)
