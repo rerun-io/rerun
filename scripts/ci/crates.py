@@ -3,21 +3,18 @@
 """
 Versioning and packaging.
 
-Install dependencies:
-    python3 -m pip install -r scripts/ci/requirements.txt
-
 Use the script:
-    python3 scripts/ci/crates.py --help
+    pixi run python scripts/ci/crates.py --help
 
     # Update crate versions to the next prerelease version,
     # e.g. `0.8.0` -> `0.8.0-alpha.0`, `0.8.0-alpha.0` -> `0.8.0-alpha.1`
-    python3 scripts/ci/crates.py version --bump prerelase --dry-run
+    pixi run python scripts/ci/crates.py version --bump prerelase --dry-run
 
     # Update crate versions to an exact version
-    python3 scripts/ci/crates.py version --exact 0.10.1 --dry-run
+    pixi run python scripts/ci/crates.py version --exact 0.10.1 --dry-run
 
     # Publish all crates in topological order
-    python3 scripts/ci/publish.py --token <CRATES_IO_TOKEN>
+    pixi run python scripts/ci/publish.py --token <CRATES_IO_TOKEN>
 """
 
 from __future__ import annotations

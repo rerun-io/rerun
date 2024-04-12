@@ -190,13 +190,6 @@ jobs:
         with:
           pixi-version: v0.19.0
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          rustup target add ${{ needs.set-config.outputs.TARGET }}
-          pip install -r rerun_py/requirements-build.txt
-          pip install google-cloud-storage==2.9.0
-
       - name: Get sha
         id: get-sha
         shell: bash
@@ -207,7 +200,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          python3 scripts/ci/build_and_upload_wheels.py \
+          pixi run python scripts/ci/build_and_upload_wheels.py \
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \

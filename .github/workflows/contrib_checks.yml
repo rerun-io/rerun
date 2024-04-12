@@ -49,26 +49,12 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.19.0
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
 
       - name: Python format check
-        shell: bash
-        run: |
-          pixi run py-fmt-check
+        run: pixi run py-fmt-check
 
       - name: Lint Python
-        shell: bash
-        run: |
-          pixi run py-lint
+        run: pixi run py-lint
 
   py-test-docs:
     name: Test Python Docs
@@ -81,9 +67,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Build via mkdocs
-        shell: bash
-        run: |
-          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
+        run: pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
@@ -121,11 +105,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.19.0
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
 
       - name: Rerun lints
         run: pixi run lint-rerun

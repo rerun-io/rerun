@@ -16,7 +16,6 @@ PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 @nox.session(python=PYTHON_VERSIONS)
 def tests(session: nox.Session) -> None:
     """Run the Python test suite."""
-    session.install("-r", "rerun_py/requirements-build.txt")
     session.install("./rerun_py")
     session.run("pixi", "run", "py-test", external=True)
 
@@ -39,7 +38,6 @@ def roundtrips(session: nox.Session) -> None:
 
     global roundtrip_cpp_built
 
-    session.install("-r", "rerun_py/requirements-build.txt")
     session.install("opencv-python")
     session.install("./rerun_py")
 

@@ -167,15 +167,14 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 [feature.py-docs.pypi-dependencies]
 griffe = "==0.39.0"
-# forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
-mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" }
+mike = "==1.1.2"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
 mkdocs-material = "==9.4.7"
 mkdocs-material-extensions = "==1.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
 mkdocstrings = "==0.23.0"
 mkdocstrings-python = "==1.7.3"
-mike = "==1.1.2"
 sphobjinv = "==2.3.1"
 typing_extensions = "==4.11.0"                                                                                                    # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
 
@@ -244,41 +243,48 @@ rerun = "rerun"
 #   `meilisearch`).
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
+aiohttp = ">=3.9.3,<3.10"         # For `zombie_todos.py`
 attrs = ">=23.1.0"
+binaryen = "117.*"                # for `wasm-opt`
 clang-tools = "16.0.6"            # clang-format
 cmake = "3.27.6"
+colorama = ">=0.4.6,<0.5"
+doxygen = "1.9.7.*"               # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
+jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
 maturin = "1.5.1"
 mypy = "1.8.0"
+ninja = "1.11.1"
 numpy = ">=1.23,<2"
+packaging = ">=24.0,<25"          # For `publish_wheels.py`
 pip = ">=23"
+prettier = "2.8.8.*"
 pyarrow = "14.0.2"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
 ruff = "0.3.5"
 semver = ">=2.13,<2.14"
+taplo = "=0.9.1"
+tomlkit = "0.12.3.*"
+tqdm = ">=4.66.2,<4.67"           # For displaying progress in various utility scripts.
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
-ninja = "1.11.1"
-# Make sure to use a version that is compatible with
-# the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
-doxygen = "1.9.7.*"
-binaryen = "117.*"   # for `wasm-opt`
-prettier = "2.8.8.*"
-taplo = "=0.9.1"
-tomlkit = "0.12.3.*"
 
 [pypi-dependencies]
+colorama = "==0.4.6"             # For `crates.py`
 cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
-nox = ">=2024.3.2"               # the conda-forge package is (wrongly) tagged as platform-specific
+nox = ">=2024.3.2"               # The conda-forge package is (wrongly) tagged as platform-specific
 Pillow = "==10.0.0"              # For `thumbnails.py`
+pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
-tomlkit = ">=0.11.8"             # For `thumbnails.py`
+types-Deprecated = "==1.2.9.2"   # Type hint stubs
+types-requests = ">=2.31,<3"     # Type hint stubs
+
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
