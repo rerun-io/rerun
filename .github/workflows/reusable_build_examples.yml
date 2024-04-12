@@ -72,7 +72,7 @@ jobs:
       - name: Install example dependencies
         shell: bash
         run: |
-          pixi run pip install \
+          pixi run -e wheel-test pip install \
             -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt \
             --no-input
 
