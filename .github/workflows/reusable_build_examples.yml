@@ -99,14 +99,14 @@ jobs:
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples rrd \
+          pixi run -e wheel-test build-examples rrd \
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
       - name: Build snippets
         shell: bash
         run: |
-          pixi run build-examples snippets \
+          pixi run -e wheel-test build-examples snippets \
             example_data/snippets
 
       - name: Upload assets
