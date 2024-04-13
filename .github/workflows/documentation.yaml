@@ -15,6 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Check https://github.com/lycheeverse/lychee on how to run locally.
       - name: Link Checker
         id: lychee
         uses: lycheeverse/lychee-action@v1.9.0
+        with:
+          fail: true
+          lycheeVersion: "0.14.3"
