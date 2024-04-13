@@ -39,8 +39,9 @@ exclude_path = [
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
   '.*?speculative-link',                                      # Skip speculative links
-  '%7B%7B%20[\.\w]+%20%7D%7D',                                # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{ \w+ }}'
+  '.github/workflows/.*.yml',                                 # Github action workflows cause issues on CI.
   '\$relpath\^',                                              # Relative paths as used by rerun_cpp's doc header.
+  '%7B%7B%20[\.\w]+%20%7D%7D',                                # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{ \w+ }}'
   '^https://github.com/rerun-io/rerun/pull/\.*',              # Ignore links to our own pull requests.
   'https://anaconda.org/conda-forge/arrow-cpp',               # Works but tends to time-out.
   'https://crates.io/crates/.*',                              # Avoid crates.io rate-limiting
@@ -50,5 +51,6 @@ exclude = [
   'https://fonts.gstatic.com/',                               # Font API entrypoint, not a link.
   'https://stackoverflow.com/.',                              # Stackoverflow links are no longer accessible from CI.
   'https://www.tensorflow.org/',                              # tensorflow.org apparently blocks CI.
+
   #'^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 ]
