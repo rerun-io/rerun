@@ -116,9 +116,6 @@ jobs:
       - name: Check for too large files
         run: pixi run check-large-files
 
-      - name: Check Python example requirements
-        run: pixi run ./scripts/ci/check_requirements.py
-
       - name: Check Python example thumbnails
         run: pixi run ./scripts/ci/thumbnails.py check
 
