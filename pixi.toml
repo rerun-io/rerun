@@ -136,11 +136,11 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 
 dev-tools = "cargo run -q --locked -p re_dev_tools --"
-build-examples = "pixi run dev-tools build-examples"
+build-examples = "cargo run -q --locked -p re_dev_tools -- build-examples"
 
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "pixi run dev-tools search-index"
+search-index = "cargo run -q --locked -p re_dev_tools -- search-index"
 
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
