@@ -5,7 +5,6 @@ build-backend = "hatchling.build"
 [project]
 name = "clock"
 version = "0.1.0"
-requires-python = ">=3.8"
 readme = "README.md"
 dependencies = [
   "numpy",

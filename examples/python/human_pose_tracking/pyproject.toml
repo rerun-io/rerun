@@ -21,4 +21,4 @@ dependencies = [
 human_pose_tracking = "human_pose_tracking:main"
 
 [tool.rerun-example]
-skip = true
+skip = false

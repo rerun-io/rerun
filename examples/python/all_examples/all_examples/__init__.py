@@ -9,6 +9,19 @@ import tomli
 from pyproject_metadata import StandardMetadata
 
 
+# def _relative(target: Path, origin: Path) -> Path:
+#     """Return target path relative to the origin, allowing for walking up.
+#
+#     From https://stackoverflow.com/a/71874881/229511
+#     Note: Path.relative_to(origin, walk_up=True) is only available in Python 3.12
+#     """
+#     try:
+#         return Path(target).resolve().relative_to(Path(origin).resolve())
+#     except ValueError as e:  # target does not start with origin
+#         # recursion with origin (eventually origin is root so try will succeed)
+#         return Path("..").joinpath(_relative(target, Path(origin).parent))
+
+
 @dataclass
 class RerunMetadata:
     """Extract Rerun example metadata from a pyproject.toml data.
@@ -52,24 +65,38 @@ class Example:
         self.rerun_metadata = RerunMetadata.from_pyproject(pyproject_data)
 
     def active(self) -> bool:
-        """Check that this example is active given its metadata and the current Python version."""
-        if self.rerun_metadata.skip:
-            return False
+        """Check that this example is active given its metadata but disregarding compatibility with the current Python
+        version.
+        """
+        return not self.rerun_metadata.skip
 
+    def compatible(self) -> bool:
+        """Check that this example is compatible with the current Python version."""
         requires_python = self.standard_metadata.requires_python
         if requires_python is not None:
-            if not requires_python.contains(platform.python_version()):
-                return False
+            return requires_python.contains(platform.python_version())
 
         return True
+
+    def environment_specifier(self) -> str:
+        """Returns an environment specifier as per the dependency specification."""
+        spec = ""
+        if self.standard_metadata.requires_python is not None:
+            spec += " ; "
+            spec += " and ".join(
+                f"python_version {v.operator} '{v.version}'" for v in self.standard_metadata.requires_python
+            )
+
+        return spec
 
 
 def active_examples() -> Iterable[Example]:
     """Iterator over all active examples."""
     example_dir = Path(__file__).parent.parent.parent
 
+    our_name = Path(__file__).parent.parent.name
     for example_path in example_dir.glob("*"):
-        if example_path.is_dir() and (example_path / "pyproject.toml").exists() and example_path.name != "run_all":
+        if example_path.is_dir() and (example_path / "pyproject.toml").exists() and example_path.name != our_name:
             example = Example(example_path.absolute())
 
             if example.active():
