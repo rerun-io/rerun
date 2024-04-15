@@ -81,20 +81,15 @@ def main() -> None:
 
 
 def run_example(example: str, extra_args: list[str]) -> None:
-    # sys.executable: the absolute path of the executable binary for the Python interpreter
-    python_executable = sys.executable
-    if python_executable is None:
-        python_executable = "python3"
-
     env = os.environ.copy()
     env["RERUN_STRICT"] = "1"
     env["RERUN_PANIC_ON_WARN"] = "1"
 
-    cmd = [python_executable, "-m", "rerun", "--port", str(PORT), "--test-receive"]
+    cmd = ["python", "-m", "rerun", "--port", str(PORT), "--test-receive"]
     rerun_process = subprocess.Popen(cmd, env=env)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
-    cmd = [python_executable, example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
+    cmd = ["python", example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
     python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")
