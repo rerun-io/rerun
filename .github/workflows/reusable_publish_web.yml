@@ -108,7 +108,7 @@ jobs:
       - name: Build web-viewer (release)
         shell: bash
         run: |
-          pixi -e wheel-test run cargo run --locked -p re_build_web_viewer -- --release -g
+          pixi -e wheel-test run rerun-build-web-release
 
       - name: Build examples
         shell: bash

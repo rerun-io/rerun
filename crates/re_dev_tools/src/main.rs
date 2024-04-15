@@ -2,11 +2,13 @@ use argh::FromArgs;
 
 mod build_examples;
 mod build_search_index;
+mod build_web_viewer;
 
 #[derive(FromArgs)]
 #[argh(subcommand)]
 enum Commands {
     BuildExamples(build_examples::Args),
+    BuildWebViewer(build_web_viewer::Args),
     SearchIndex(build_search_index::Args),
 }
 
@@ -23,5 +25,6 @@ fn main() -> anyhow::Result<()> {
     match args.cmd {
         Commands::BuildExamples(args) => build_examples::main(args),
         Commands::SearchIndex(args) => build_search_index::main(args),
+        Commands::BuildWebViewer(args) => build_web_viewer::main(args),
     }
 }
