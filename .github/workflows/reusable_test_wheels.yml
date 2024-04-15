@@ -23,7 +23,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-build-wheels
+  group: ${{ inputs.CONCURRENCY }}-test-wheels
   cancel-in-progress: true
 
 env:

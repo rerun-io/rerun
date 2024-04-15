@@ -79,7 +79,7 @@ jobs:
     name: "Linux-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
       WHEEL_ARTIFACT_NAME: linux-arm64-wheel
       MODE: "pypi"
@@ -90,7 +90,7 @@ jobs:
     name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
       MODE: "pypi"
@@ -101,7 +101,7 @@ jobs:
     name: "Macos-arm64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
       MODE: "pypi"
@@ -112,7 +112,7 @@ jobs:
     name: "Macos-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
       WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
       MODE: "pypi"
@@ -123,7 +123,7 @@ jobs:
     name: "Windows-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
       WHEEL_ARTIFACT_NAME: windows-x64-wheel
       MODE: "pypi"
@@ -137,7 +137,7 @@ jobs:
     name: "linux-arm64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
       WHEEL_ARTIFACT_NAME: linux-arm64-wheel
     secrets: inherit
@@ -147,7 +147,7 @@ jobs:
     name: "Linux-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
     secrets: inherit
@@ -157,7 +157,7 @@ jobs:
     name: "macos-arm64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
     secrets: inherit
@@ -167,7 +167,7 @@ jobs:
     name: "macos-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
       WHEEL_ARTIFACT_NAME: macos-x64-wheel
     secrets: inherit
@@ -177,7 +177,7 @@ jobs:
     name: "Windows-x64: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
       WHEEL_ARTIFACT_NAME: windows-x64-wheel
     secrets: inherit
@@ -190,7 +190,7 @@ jobs:
     name: "Linux-Arm64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
     secrets: inherit
 
@@ -199,7 +199,7 @@ jobs:
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
     secrets: inherit
 
@@ -208,7 +208,7 @@ jobs:
     name: "Mac-Intel: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
     secrets: inherit
 
@@ -217,7 +217,7 @@ jobs:
     name: "Mac-Arm64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
     secrets: inherit
 
@@ -226,7 +226,7 @@ jobs:
     name: "Windows-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
     secrets: inherit
 
@@ -239,7 +239,7 @@ jobs:
     name: "Linux-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-arm64
       PLATFORM: linux-arm64
     secrets: inherit
 
@@ -248,7 +248,7 @@ jobs:
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-linux-x64
       PLATFORM: linux-x64
     secrets: inherit
 
@@ -257,7 +257,7 @@ jobs:
     name: "Mac-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-x64
       PLATFORM: macos-x64
     secrets: inherit
 
@@ -266,7 +266,7 @@ jobs:
     name: "Mac-arm64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-macos-arm64
       PLATFORM: macos-arm64
     secrets: inherit
 
@@ -275,7 +275,7 @@ jobs:
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
-      CONCURRENCY: nightly
+      CONCURRENCY: nightly-windows-x64
       PLATFORM: windows-x64
     secrets: inherit
 
@@ -348,11 +348,13 @@ jobs:
         build-rerun_c-and-upload-windows-x64,
       ]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
+    with:
+      CONCURRENCY: nightly
     secrets: inherit
 
   pre-release:
     name: Pre Release
-    concurrency: NIGHTLY
+    concurrency: nightly
     needs:
       [
         build-rerun-cli-and-upload-linux-arm64,
