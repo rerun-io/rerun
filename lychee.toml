@@ -39,7 +39,7 @@ exclude_path = [
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
   '.*?speculative-link',                                      # Skip speculative links
-  '.github/workflows/.*.yml',                                 # Github action workflows cause issues on CI.
+  '.github/workflows/.*.yml',                                 # GitHub action workflows cause issues on CI.
   '\$relpath\^',                                              # Relative paths as used by rerun_cpp's doc header.
   '%7B%7B.+%7D%7D',                                           # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{.*}}'
   'https://crates.io/crates/.*',                              # Avoid crates.io rate-limiting
