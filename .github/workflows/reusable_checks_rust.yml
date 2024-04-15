@@ -80,3 +80,26 @@ jobs:
       - name: Rust all checks & tests
         if: ${{ inputs.CHANNEL == 'nightly' }}
         run: pixi run rs-check
+
+  # Run some basics tests on Mac and Windows
+  mac-windows-tests:
+    name: Test on macOS and Windows
+    if: ${{ inputs.CHANNEL == 'nightly' }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest-8-cores]
+        name: [macos, windows]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-${{ matrix.name }}"
+          save_cache: true
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: cargo test --all-targets --all-features
+        run: cargo test --all-targets --all-features
