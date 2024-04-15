@@ -151,3 +151,26 @@ jobs:
 
       - name: prettier --check
         run: pixi run misc-fmt-check
+
+  # ---------------------------------------------------------------------------
+
+  link-checker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore link checker cache
+        uses: actions/cache@v3
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+
+      # Check https://github.com/lycheeverse/lychee on how to run locally.
+      - name: Link Checker
+        id: lychee
+        uses: lycheeverse/lychee-action@v1.9.0
+        with:
+          fail: true
+          lycheeVersion: "0.14.3"
+          args: "--base . --cache --max-cache-age 1d ."
