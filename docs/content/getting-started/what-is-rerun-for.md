@@ -1,6 +1,6 @@
 ---
 title: What is Rerun for?
-order: 1
+order: 100
 ---
 
 Rerun is built to help you understand complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.

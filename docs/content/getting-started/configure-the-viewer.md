@@ -1,6 +1,6 @@
 ---
 title: Configure the viewer
-order: 6
+order: 600
 ---
 
 By default, the Rerun viewer uses heuristics to automatically determine an appropriate
