@@ -29,7 +29,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
 
@@ -49,9 +49,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
           pixi-version: v0.19.0
+          environments: py-docs
 
       - name: Build via mkdocs
         shell: bash
