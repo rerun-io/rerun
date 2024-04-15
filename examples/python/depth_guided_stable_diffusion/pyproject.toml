@@ -4,24 +4,24 @@ version = "0.1.0"
 # requires-python = "<3.12"
 readme = "README.md"
 dependencies = [
-    "accelerate",
-    "diffusers>=0.12.1,<=0.21",
-    "ftfy",
-    "numpy",
-    "packaging",
-    "pillow",
-    "requests>=2.31,<3",
-    "rerun-sdk",
-    "scipy",
-    "torch>1.13.0",
-    "transformers>=4.26.0"
+  "accelerate",
+  "diffusers>=0.12.1,<=0.21",
+  "ftfy",
+  "numpy",
+  "packaging",
+  "pillow",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "scipy",
+  "torch>1.13.0",
+  "transformers>=4.26.0"
 ]
 
 [project.scripts]
 depth_guided_stable_diffusion = "depth_guided_stable_diffusion.__main__:main"
 
-# [tool.rerun-example]
-# skip = false
+[tool.rerun-example]
+skip = true  # TODO(#5976): controlnet has conflicting dependencies
 
 [build-system]
 requires = ["hatchling"]
