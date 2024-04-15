@@ -229,7 +229,7 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 - 🔺 Built-in STL mesh support.
 - 🎥 First-person camera.
 - 🐛 Fixes regressions in Space View spawn heuristics from 0.13, and many more bugfixes.
-- 🧑‍🏫 Two new examples: [Gesture Recognition](https://github.com/rerun-io/rerun/tree/release-0.14.0/examples/python/gesture_detection) & [RRT* Pathfinding](https://github.com/rerun-io/rerun/tree/release-0.14.0/examples/python/rrt-star)
+- 🧑‍🏫 Two new examples: [Gesture Recognition](https://github.com/rerun-io/rerun/tree/0.14.0/examples/python/gesture_detection) & [RRT* Pathfinding](https://github.com/rerun-io/rerun/tree/0.14.0/examples/python/rrt-star)
 
 ### 🔎 Details
 ### 🔎 Details
