@@ -42,15 +42,18 @@ exclude = [
   '.github/workflows/.*.yml',                                 # Github action workflows cause issues on CI.
   '\$relpath\^',                                              # Relative paths as used by rerun_cpp's doc header.
   '%7B%7B.+%7D%7D',                                           # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{.*}}'
-  '^https://github.com/rerun-io/rerun/pull/\.*',              # Ignore links to our own pull requests.
-  'https://anaconda.org/conda-forge/arrow-cpp',               # Works but tends to time-out.
   'https://crates.io/crates/.*',                              # Avoid crates.io rate-limiting
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html', # Nyud links are down every now and then.
   'https://eigen.tuxfamily.org/',                             # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://fonts.googleapis.com/',                            # Font API entrypoint, not a link.
   'https://fonts.gstatic.com/',                               # Font API entrypoint, not a link.
+  'https://github.com/rerun-io/rerun/pull/\.*',               # Ignore links to our own pull requests.
   'https://stackoverflow.com/.',                              # Stackoverflow links are no longer accessible from CI.
   'https://www.tensorflow.org/',                              # tensorflow.org apparently blocks CI.
+
+  # Works but is really slow at times:
+  'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
+  'https://anaconda.org/conda-forge/arrow-cpp',
 
   #'^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
 ]
