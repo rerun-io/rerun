@@ -156,6 +156,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   link-checker:
+    name: Check links
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -47,7 +47,8 @@ exclude = [
   'https://eigen.tuxfamily.org/',                             # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
   'https://fonts.googleapis.com/',                            # Font API entrypoint, not a link.
   'https://fonts.gstatic.com/',                               # Font API entrypoint, not a link.
-  'https://github.com/rerun-io/rerun/pull/\.*',               # Ignore links to our own pull requests.
+  'https://github.com/rerun-io/rerun/pull/\.*',               # Ignore links to our own pull requests (typically in changelog).
+  'https://github.com/rerun-io/rerun/commit/\.*',             # Ignore links to our own commits (typically in changelog).
   'https://stackoverflow.com/.',                              # Stackoverflow links are no longer accessible from CI.
   'https://www.tensorflow.org/',                              # tensorflow.org apparently blocks CI.
 
