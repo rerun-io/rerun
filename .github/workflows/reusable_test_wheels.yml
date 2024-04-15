@@ -87,12 +87,12 @@ jobs:
               container="null"
               ;;
             macos-arm64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
               container="null"
               ;;
             macos-x64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="x86_64-apple-darwin"
               container="null"
               ;;
