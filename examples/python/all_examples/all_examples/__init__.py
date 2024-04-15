@@ -90,7 +90,7 @@ class Example:
     def environment_specifier(self) -> str:
         """Returns an environment specifier as per the dependency specification."""
 
-        def specifier_iterator(self) -> Iterable[str]:
+        def specifier_iterator() -> Iterable[str]:
             if self.standard_metadata.requires_python is not None:
                 for v in self.standard_metadata.requires_python:
                     yield f"python_version {v.operator} '{v.version}'"

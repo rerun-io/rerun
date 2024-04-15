@@ -14,6 +14,6 @@ dependencies = [
 [project.scripts]
 clock = "clock:main"
 
-#[tool.rerun-example]
+[tool.rerun-example]
 #skip = false
 extra-args = ["--steps=200"]
