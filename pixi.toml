@@ -82,7 +82,7 @@ rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run
 
 rs-check = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py"
 
-build-examples = "cargo run -q --locked -p re_build_examples --"
+build-examples = "cargo run -q --locked -p re_dev_tools -- build-examples"
 
 # Code formatting for all languages.
 format = { depends_on = ["py-fmt", "cpp-fmt", "toml-fmt", "misc-fmt"] }

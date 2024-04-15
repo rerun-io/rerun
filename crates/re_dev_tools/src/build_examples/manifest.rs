@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use re_build_tools::Environment;
 
-use crate::{Channel, Example};
+use super::{Channel, Example};
 
 /// Collect examples in the repository and produce a manifest file.
 ///

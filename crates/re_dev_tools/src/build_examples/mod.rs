@@ -10,24 +10,23 @@
 //! An example may also specify args to be run with via the frontmatter
 //! `build_args` string array.
 
-pub use re_build_examples::*;
+mod example;
+mod manifest;
+mod rrd;
+mod snippets;
+mod wait_for_output;
+
+use example::{Channel, Example};
+use wait_for_output::wait_for_output;
+
+// -----------------------------------------------------------------------------
 
 use argh::FromArgs;
 
-fn main() -> anyhow::Result<()> {
-    re_build_tools::set_output_cargo_build_instructions(false);
-
-    let args: Args = argh::from_env();
-    match args.cmd {
-        Cmd::Rrd(cmd) => cmd.run(),
-        Cmd::Manifest(cmd) => cmd.run(),
-        Cmd::Snippets(cmd) => cmd.run(),
-    }
-}
-
 /// Build examples and their manifest.
 #[derive(FromArgs)]
-struct Args {
+#[argh(subcommand, name = "build-examples")]
+pub struct Args {
     #[argh(subcommand)]
     cmd: Cmd,
 }
@@ -38,4 +37,14 @@ enum Cmd {
     Rrd(rrd::Rrd),
     Manifest(manifest::Manifest),
     Snippets(snippets::Snippets),
+}
+
+pub fn main(args: Args) -> anyhow::Result<()> {
+    re_build_tools::set_output_cargo_build_instructions(false);
+
+    match args.cmd {
+        Cmd::Rrd(cmd) => cmd.run(),
+        Cmd::Manifest(cmd) => cmd.run(),
+        Cmd::Snippets(cmd) => cmd.run(),
+    }
 }

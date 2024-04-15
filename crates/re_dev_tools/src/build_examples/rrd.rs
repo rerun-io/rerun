@@ -1,5 +1,4 @@
-use crate::wait_for_output;
-use crate::{Channel, Example};
+use super::{wait_for_output, Channel, Example};
 use indicatif::MultiProgress;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
