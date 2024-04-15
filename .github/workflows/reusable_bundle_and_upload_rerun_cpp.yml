@@ -3,6 +3,9 @@ name: Reusable C++ bundling and upload
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       PLATFORM_FILTER:
         required: false
         type: string
@@ -10,6 +13,10 @@ on:
         required: false
         type: string
         default: ""
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-bundle-and-upload-rerun-cpp
+  cancel-in-progress: true
 
 jobs:
   bundle-and-upload-rerun_cpp:
