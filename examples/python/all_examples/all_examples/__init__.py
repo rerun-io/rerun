@@ -34,7 +34,13 @@ class RerunMetadata:
     """
 
     skip: bool
+    """Skip this example entirely."""
+
     extra_args: list[str]
+    """Extra arguments to be passed to the example when running it."""
+
+    exclude_platform: list[str]
+    """Platform to be excluded (will emit `sys_platform` environment marker)."""
 
     @classmethod
     def from_pyproject(cls, pyproject_data: dict[str, Any]) -> RerunMetadata:
@@ -44,11 +50,14 @@ class RerunMetadata:
         extra_args = rerun_data.pop("extra-args", [])
         if isinstance(extra_args, str):
             extra_args = [extra_args]
+        exclude_platform = rerun_data.pop("exclude-platform", [])
+        if isinstance(exclude_platform, str):
+            exclude_platform = [exclude_platform]
 
         if not len(rerun_data) == 0:
             raise ValueError(f"Unsupported fields in the rerun-example metadata: {', '.join(rerun_data.keys())}")
 
-        return cls(skip=skip, extra_args=extra_args)
+        return cls(skip=skip, extra_args=extra_args, exclude_platform=exclude_platform)
 
 
 @dataclass
@@ -80,14 +89,19 @@ class Example:
 
     def environment_specifier(self) -> str:
         """Returns an environment specifier as per the dependency specification."""
-        spec = ""
-        if self.standard_metadata.requires_python is not None:
-            spec += " ; "
-            spec += " and ".join(
-                f"python_version {v.operator} '{v.version}'" for v in self.standard_metadata.requires_python
-            )
 
-        return spec
+        def specifier_iterator(self) -> Iterable[str]:
+            if self.standard_metadata.requires_python is not None:
+                for v in self.standard_metadata.requires_python:
+                    yield f"python_version {v.operator} '{v.version}'"
+            for pf in self.rerun_metadata.exclude_platform:
+                yield f"sys_platform != '{pf}'"
+
+        specifier = " and ".join(specifier_iterator())
+        if len(specifier) > 0:
+            specifier = " ; " + specifier
+
+        return specifier
 
 
 def active_examples() -> Iterable[Example]:
