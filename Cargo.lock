@@ -4197,48 +4197,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_build_examples"
-version = "0.16.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "argh",
- "indicatif",
- "rayon",
- "re_build_tools",
- "re_format",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
 name = "re_build_info"
 version = "0.16.0-alpha.1+dev"
-
-[[package]]
-name = "re_build_search_index"
-version = "0.16.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "argh",
- "camino",
- "cargo_metadata 0.18.1",
- "glob",
- "indicatif",
- "itertools 0.12.0",
- "rayon",
- "re_build_examples",
- "re_build_tools",
- "roxmltree",
- "rustdoc-json",
- "rustdoc-types",
- "serde",
- "serde_json",
- "serde_yaml",
- "toml",
- "ureq",
- "url",
-]
 
 [[package]]
 name = "re_build_tools"
@@ -4251,16 +4211,6 @@ dependencies = [
  "time",
  "unindent",
  "walkdir",
-]
-
-[[package]]
-name = "re_build_web_viewer"
-version = "0.16.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "cargo_metadata 0.18.1",
- "re_error",
- "wasm-bindgen-cli-support",
 ]
 
 [[package]]
@@ -4356,6 +4306,32 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rfd",
+]
+
+[[package]]
+name = "re_dev_tools"
+version = "0.16.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "argh",
+ "camino",
+ "cargo_metadata 0.18.1",
+ "glob",
+ "indicatif",
+ "itertools 0.12.0",
+ "rayon",
+ "re_build_tools",
+ "re_format",
+ "roxmltree",
+ "rustdoc-json",
+ "rustdoc-types",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "toml",
+ "ureq",
+ "url",
+ "wasm-bindgen-cli-support",
 ]
 
 [[package]]

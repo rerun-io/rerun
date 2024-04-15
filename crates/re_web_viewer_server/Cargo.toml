@@ -36,7 +36,7 @@ all-features = true
 ## For instance: when the CI builds the docs for all crates, it uses `--all-features`, which means
 ## it can build the docs for this crate without having to build the web-viewer first.
 ##
-## When not set, you must build the `.wasm` before building the crate, using `cargo run -p re_build_web_viewer`.
+## When not set, you must build the `.wasm` before building the crate, using `pixi run rerun-build-web-release`.
 __ci = []
 
 ## Enable telemetry using our analytics SDK.

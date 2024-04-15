@@ -1,21 +1,13 @@
-//! Build rerun example RRD files and manifest
-
-pub mod example;
-pub mod manifest;
-pub mod rrd;
-pub mod snippets;
-
 use std::io::stdout;
 use std::io::IsTerminal;
 use std::process::Command;
 use std::process::Output;
 use std::time::Duration;
 
-pub use example::{Channel, Example};
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
 
-fn wait_for_output(
+pub fn wait_for_output(
     mut cmd: Command,
     name: &str,
     progress: &MultiProgress,

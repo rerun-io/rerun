@@ -1,11 +1,6 @@
-use re_build_examples::example::ExamplesManifest;
-use re_build_examples::example::Language;
-use re_build_examples::Example;
+use crate::build_examples::{Example, ExamplesManifest, Language};
 
-use crate::ingest::DocumentData;
-use crate::ingest::DocumentKind;
-
-use super::Context;
+use super::{Context, DocumentData, DocumentKind};
 
 const LANGUAGES: &[Language] = &[Language::Python, Language::Rust, Language::Cpp];
 

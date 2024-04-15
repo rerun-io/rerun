@@ -11,7 +11,7 @@ use indicatif::MultiProgress;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
 
-use crate::wait_for_output;
+use super::wait_for_output;
 
 /// Collect code snippets from `docs/snippets` in the repository and run them to produce `.rrd` files.
 #[derive(argh::FromArgs)]

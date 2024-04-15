@@ -8,7 +8,7 @@ them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
   and the corresponding snippets in the docs (docs/snippets/*.rs)
-- The `rerun.io/viewer` examples, as built by the `re_build_examples` script.
+- The `rerun.io/viewer` examples, as built by the `re_dev_tools`/`build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
 option to show them in a browser.
@@ -146,7 +146,7 @@ def collect_snippets() -> Iterable[Example]:
 # ====================================================================================================
 # DEMO EXAMPLES
 #
-# We run the `build_examples` script and scrap the output "example_data" directory.
+# We run the `re_dev_tools`/`build_examples` script and scrap the output "example_data" directory.
 # ====================================================================================================
 
 
@@ -154,15 +154,15 @@ def build_examples() -> None:
     # fmt: off
     cmd = [
         "cargo", "run", "--locked",
-        "-p", "re_build_examples", "--",
-        "rrd", "example_data",
+        "-p", "re_dev_tools", "--",
+        "build-examples", "rrd", "example_data",
     ]
     run(cmd, cwd=RERUN_DIR)
 
     cmd = [
         "cargo", "run", "--locked",
-        "-p", "re_build_examples", "--",
-        "manifest", "example_data/examples_manifest.json",
+        "-p", "re_dev_tools", "--",
+        "build-examples", "manifest", "example_data/examples_manifest.json",
     ]
     run(cmd, cwd=RERUN_DIR)
     # fmt: on
