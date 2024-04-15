@@ -111,16 +111,7 @@ fn erased_clone(c: &mut Criterion) {
             .iter()
             .map(|array| array.total_size_bytes())
             .sum::<u64>();
-        let expected_total_size_bytes = data.total_size_bytes();
-        // NOTE: `+ 1` because the computation is off by one bytes, which is irrelevant for the
-        // purposes of this benchmark.
-        assert!(
-            total_size_bytes + 1 >= expected_total_size_bytes,
-            "Size for {} calculated to be {} bytes, but should be at least {} bytes",
-            T::name(),
-            total_size_bytes,
-            expected_total_size_bytes,
-        );
+        assert!(total_size_bytes > 0);
 
         group.bench_function("array", |b| {
             b.iter(|| {

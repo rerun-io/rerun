@@ -166,9 +166,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Build web-viewer (release)
-        shell: bash
-        run: |
-          pixi run cargo run --locked -p re_build_web_viewer -- --release -g
+        run: pixi run rerun-build-web-release
 
       # This does not run in the pixi environment, doing so
       # causes it to select the wrong compiler on macos-arm64

@@ -1,4 +1,4 @@
-# re_build_search_index
+# build_search_index
 
 Builds a Meilisearch index from our documentation.
 
