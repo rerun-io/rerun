@@ -87,8 +87,11 @@ jobs:
     if: ${{ inputs.CHANNEL == 'nightly' }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest-8-cores]
-        name: [macos, windows]
+        include:
+          - os: macos-latest
+            name: macos
+          - os: windows-latest-8-cores
+            name: windows
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
