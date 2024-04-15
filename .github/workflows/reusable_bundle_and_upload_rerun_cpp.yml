@@ -14,6 +14,10 @@ on:
         type: string
         default: ""
 
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-bundle-and-upload-rerun-cpp
+  cancel-in-progress: true
+
 jobs:
   bundle-and-upload-rerun_cpp:
     name: Bundle and upload rerun_cpp_sdk.zip
