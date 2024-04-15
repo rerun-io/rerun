@@ -110,6 +110,8 @@ Suggested citation format:
 }
 ```
 
+https://test.failure.com
+
 Please replace "insert version number" with the version of Rerun you used and "insert date of usage" with the date(s)
 you used the tool in your research.
 This citation format helps ensure that Rerun's development team receives appropriate credit for their work and
