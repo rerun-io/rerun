@@ -33,19 +33,22 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
+      - uses: prefix-dev/setup-pixi@v0.5.2
+        with:
+          pixi-version: v0.19.0
+          environments: wheel-test
+
       - name: Download Wheel Artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel_artifact
 
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
+      - name: Get version
+        id: get-version
         shell: bash
         run: |
-          pip install deprecated 'numpy>=1.23,<2' pillow>=9.5.0 pyarrow>=14.0.2 pytest==7.1.2
+          echo "wheel_version=$(pixi run -e wheel-test scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
       - name: Install downloaded wheel_artifact
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -53,17 +56,18 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip install rerun-sdk --no-index --find-links wheel_artifact
+          pixi run -e wheel-test pip uninstall rerun-sdk
+          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Install Deps
         shell: bash
         run: |
-          pip install -r examples/python/notebook/requirements.txt
+          pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
 
       - name: Create notebook
         shell: bash
         run: |
-          jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
+          pixi run -e wheel-test jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
 
       - id: "auth"
         uses: google-github-actions/auth@v2
