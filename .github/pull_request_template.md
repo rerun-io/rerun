@@ -21,7 +21,7 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 * [ ] The PR title and labels are set such as to maximize their usefulness for the next release's CHANGELOG
 * [ ] If applicable, add a new check to the [release checklist](https://github.com/rerun-io/rerun/blob/main/tests/python/release_checklist)!
 
-- [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
+- [PR Build Summary](https://build.rerun.io/pr/{{pr.number}})
 - [Recent benchmark results](https://build.rerun.io/graphs/crates.html)
 - [Wasm size tracking](https://build.rerun.io/graphs/sizes.html)
 

@@ -22,7 +22,7 @@ We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which mean
 
 All PR:s are merged with [`Squash and Merge`](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squash-and-merge-your-commits), meaning they all get squashed to just one commit on the `main` branch. This means you don't need to keep a clean commit history on your feature branches. In fact, it is preferable to add new commits to a branch rather than rebasing or squashing. For one, it makes it easier to track progress on a branch, but rebasing and force-pushing also discourages collaboration on a branch.
 
-Our CI will run benchmarks on each merged PR. The results can be found at <https://rerun-io.github.io/rerun/dev/bench/>.
+Our CI will [record various binary sizes](https://build.rerun.io/graphs/sizes.html) and run [some benchmarks](https://build.rerun.io/graphs/crates.html) on each merged PR.
 
 Pull requests from external contributors require approval for CI runs. This can be done manually, by clicking the `Approve and run` button:
 
