@@ -1,3 +1,7 @@
+//! Crate that combines several development utilities.
+//!
+//! To get an overview over all tools run `pixi run dev-tools --help`.
+
 use argh::FromArgs;
 
 mod build_examples;
