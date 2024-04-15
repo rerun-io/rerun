@@ -38,11 +38,11 @@ jobs:
           pixi-version: v0.19.0
           environments: wheel-test
 
-      - name: Download Wheel Artifact
+      - name: Download Wheel
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-          path: wheel_artifact
+          path: wheel
 
       - name: Get version
         id: get-version
@@ -50,7 +50,7 @@ jobs:
         run: |
           echo "wheel_version=$(pixi run -e wheel-test scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - name: Install downloaded wheel_artifact
+      - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
