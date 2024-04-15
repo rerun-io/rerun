@@ -48,7 +48,7 @@ jobs:
         id: get-version
         shell: bash
         run: |
-          echo "wheel_version=$(pixi run -e wheel-test scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"'
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -60,14 +60,10 @@ jobs:
           pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Install Deps
-        shell: bash
-        run: |
-          pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
+        run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt
 
       - name: Create notebook
-        shell: bash
-        run: |
-          pixi run -e wheel-test jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
+        run: pixi run -e wheel-test jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
 
       - id: "auth"
         uses: google-github-actions/auth@v2
