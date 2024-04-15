@@ -3,6 +3,9 @@ name: Reusable C++ bundling and upload
 on:
   workflow_call:
     inputs:
+      CONCURRENCY:
+        required: true
+        type: string
       PLATFORM_FILTER:
         required: false
         type: string

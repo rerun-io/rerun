@@ -66,5 +66,6 @@ jobs:
     needs: [linux-arm64, linux-x64, macos-x64, macos-arm64, windows-x64]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
+      CONCURRENCY: bundle-rerun-c-${{ github.ref_name }}
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
