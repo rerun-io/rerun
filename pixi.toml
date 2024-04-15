@@ -336,7 +336,7 @@ python = ">=3.8,<3.12"  # some example don't support python 3.12 yet
 # another, dedicated environment other than `examples`.
 [feature.examples-common.pypi-dependencies]
 # ∆ always keep `editable = true` to avoid caching of the dependency list (which is dynamic)
-all_examples = { path = "examples/python/all_examples", editable = true }
+#all_examples = { path = "examples/python/all_examples", editable = true }
 #redirect = { path = "examples/python/redirect", editable = true }
 
 [feature.rerun-py-dev.pypi-dependencies]
