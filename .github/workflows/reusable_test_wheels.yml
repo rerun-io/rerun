@@ -158,7 +158,7 @@ jobs:
         id: get-version
         shell: bash
         run: |
-          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"'
+          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
