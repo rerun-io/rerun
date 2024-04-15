@@ -1,5 +1,5 @@
-use crate::meili::SearchClient;
-use crate::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
+use super::meili::SearchClient;
+use super::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
 
 use std::io::stdin;
 use std::io::stdout;

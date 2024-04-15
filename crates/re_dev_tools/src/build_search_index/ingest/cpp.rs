@@ -10,7 +10,7 @@ use roxmltree::Descendants;
 use roxmltree::Document;
 use roxmltree::Node;
 
-use crate::util::CommandExt as _;
+use crate::build_search_index::util::CommandExt as _;
 
 use super::Context;
 use super::DocumentData;

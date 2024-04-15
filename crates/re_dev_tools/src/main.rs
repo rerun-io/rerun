@@ -1,12 +1,13 @@
 use argh::FromArgs;
 
 mod build_examples;
+mod build_search_index;
 
 #[derive(FromArgs)]
 #[argh(subcommand)]
 enum Commands {
     BuildExamples(build_examples::Args),
-    // TODO: etc.
+    SearchIndex(build_search_index::Args),
 }
 
 #[derive(FromArgs)]
@@ -21,5 +22,6 @@ fn main() -> anyhow::Result<()> {
 
     match args.cmd {
         Commands::BuildExamples(args) => build_examples::main(args),
+        Commands::SearchIndex(args) => build_search_index::main(args),
     }
 }

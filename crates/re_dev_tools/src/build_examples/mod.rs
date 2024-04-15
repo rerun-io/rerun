@@ -16,8 +16,10 @@ mod rrd;
 mod snippets;
 mod wait_for_output;
 
-use example::{Channel, Example};
+use example::Channel;
 use wait_for_output::wait_for_output;
+
+pub use example::{Example, ExamplesManifest, Language};
 
 // -----------------------------------------------------------------------------
 
