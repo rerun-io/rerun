@@ -1,13 +1,13 @@
-# `re_build_web_viewer`
+# `build_web_viewer`
 
 Binary and library for building the Rerun web viewer.
 
 This is also called by the `build.rs` of `re_web_viewer_server`.
 
-```
-cargo r -p re_build_web_viewer -- --debug
+```sh
+pixi run dev-tools -- build-web-viewer
 ```
 
-```
-cargo r -p re_build_web_viewer -- --release -g
+```sh
+pixi run dev-tools -- build-web-viewer --release -g
 ```

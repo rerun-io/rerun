@@ -11,8 +11,8 @@
     }
   ],
   "scripts": {
-    "build:wasm": "cargo run -p re_build_web_viewer -- --release -g --module -o rerun_js/web-viewer",
-    "build:wasm:debug": "cargo run -p re_build_web_viewer -- --debug --module -o rerun_js/web-viewer",
+    "build:wasm": "cargo run -p re_dev_tools -- build-web-viewer --release -g --module -o rerun_js/web-viewer",
+    "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --module -o rerun_js/web-viewer",
     "build:types": "tsc --noEmit && dts-buddy",
     "build": "npm run build:wasm && npm run build:types"
   },

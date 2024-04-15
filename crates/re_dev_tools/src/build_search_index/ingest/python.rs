@@ -5,11 +5,9 @@ use std::process::Command;
 use anyhow::Context as _;
 use serde::Deserialize;
 
-use crate::ingest::DocumentData;
-use crate::ingest::DocumentKind;
-use crate::util::CommandExt as _;
+use crate::build_search_index::util::CommandExt as _;
 
-use super::Context;
+use super::{Context, DocumentData, DocumentKind};
 
 const RERUN_SDK: &str = "rerun_sdk";
 
