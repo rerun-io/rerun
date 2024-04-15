@@ -3,8 +3,9 @@ use std::fmt::Write;
 use camino::Utf8PathBuf;
 
 use crate::{
-    codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
-    ObjectKind, Objects, Reporter, Type,
+    codegen::{autogen_warning, common::ExampleInfo},
+    objects::FieldKind,
+    CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter, Type,
 };
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -69,19 +70,25 @@ impl CodeGenerator for DocsCodeGenerator {
             (
                 ObjectKind::Archetype,
                 1,
-                "Archetypes are bundles of components",
+                "Archetypes are bundles of components. This page lists all built-in components.",
                 &archetypes,
             ),
             (
                 ObjectKind::Component,
                 2,
-                "Archetypes are bundles of components",
+                r"Components are the fundamental unit of logging in Rerun. This page lists all built-in components.
+
+An entity can only ever contain a a single array of any given component type.
+If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
+
+For more information on the relationship between **archetypes** and **components**, check out the concept page
+on [Entities and Components](../concepts/entity-component.md).",
                 &components,
             ),
             (
                 ObjectKind::Datatype,
                 3,
-                "Data types are the lowest layer of the data model hierarchy",
+                r"Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.",
                 &datatypes,
             ),
         ] {
@@ -101,8 +108,12 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
     write_frontmatter(&mut page, kind.plural_name(), Some(order));
     putln!(page);
+    // Can't put the autogen warning before the frontmatter, stuff breaks down then.
+    putln!(page, "<!-- {} -->", autogen_warning!());
+    putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
+
     if !objects.is_empty() {
         // First all non deprecated ones:
         putln!(page, "## Available {}", kind.plural_name().to_lowercase());

@@ -8,6 +8,7 @@ APIs and then visualized in the [Viewer](viewer.md).
 
 The top-level types are called [**archetypes**](types/archetypes.md) to differentiate them from the lower-level
 [**data types**](types/datatypes.md) that make up the individual [**components**](types/components.md).
+
 For more information on the relationship between **archetypes** and **components**, check out the concept page
 on [Entities and Components](../concepts/entity-component.md).
 
