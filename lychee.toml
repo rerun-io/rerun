@@ -1,0 +1,60 @@
+################################################################################
+# Config for the link checker lychee.
+#
+# Download & learn more at:
+# https://github.com/lycheeverse/lychee
+#
+# Example config:
+# https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
+#
+# Run `lychee . --dump` to list all found links that are being checked.
+################################################################################
+
+# Maximum number of concurrent link checks.
+# Workaround for "too many open files" error on MacOS, see https://github.com/lycheeverse/lychee/issues/1248
+max_concurrency = 32
+
+
+# URLs to check (supports regex). Has preference over all excludes.
+exclude_path = [
+  # Unfortunately lychee doesn't yet read .gitignore https://github.com/lycheeverse/lychee/issues/1331
+  # The following entries are there because of that:
+  "__pycache__",
+  "_deps/",
+  ".pixi",
+  "build",
+  "docs/python/",
+  "rerun_cpp/docs/html",
+  "rerun_cpp/docs/xml",
+  "rerun_py/site/",
+  "target_ra",
+  "target_wasm",
+  "target",
+  "rerun_cpp/tmp/",
+
+  # Actually ignored files beyond .gitignore
+  "scripts/screenshot_compare/assets/templates/",
+]
+
+# Exclude URLs and mail addresses from checking (supports regex).
+exclude = [
+  '.*?speculative-link',                                      # Skip speculative links
+  '.github/workflows/.*.yml',                                 # GitHub action workflows cause issues on CI.
+  '\$relpath\^',                                              # Relative paths as used by rerun_cpp's doc header.
+  '%7B%7B.+%7D%7D',                                           # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{.+}}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
+  'https://crates.io/crates/.*',                              # Avoid crates.io rate-limiting
+  'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html', # Nyud links are down every now and then.
+  'https://eigen.tuxfamily.org/',                             # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
+  'https://fonts.googleapis.com/',                            # Font API entrypoint, not a link.
+  'https://fonts.gstatic.com/',                               # Font API entrypoint, not a link.
+  'https://github.com/rerun-io/rerun/pull/\.*',               # Ignore links to our own pull requests (typically in changelog).
+  'https://github.com/rerun-io/rerun/commit/\.*',             # Ignore links to our own commits (typically in changelog).
+  'https://stackoverflow.com/.',                              # Stackoverflow links are no longer accessible from CI.
+  'https://www.tensorflow.org/',                              # tensorflow.org apparently blocks CI.
+
+  # Works but is really slow at times:
+  'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',
+  'https://anaconda.org/conda-forge/arrow-cpp',
+
+  #'^file:///',                                  # Ignore local file links. They need to be tested, but it's useful for external links we have to ping.
+]

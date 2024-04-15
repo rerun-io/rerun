@@ -11,9 +11,7 @@ thumbnail_dimensions = [480, 480]
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/1200w.png">
 </picture>
-
 
 ## Overview
 
