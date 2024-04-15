@@ -14,44 +14,44 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../concepts/entity-component.md).
 
 
-* [`AnnotationContext`](components/annotation_context.md)
-* [`Blob`](components/blob.md)
-* [`ClassId`](components/class_id.md)
-* [`ClearIsRecursive`](components/clear_is_recursive.md)
-* [`Color`](components/color.md)
-* [`DepthMeter`](components/depth_meter.md)
-* [`DisconnectedSpace`](components/disconnected_space.md)
-* [`DrawOrder`](components/draw_order.md)
-* [`HalfSizes2D`](components/half_sizes2d.md)
-* [`HalfSizes3D`](components/half_sizes3d.md)
-* [`InstanceKey`](components/instance_key.md)
-* [`KeypointId`](components/keypoint_id.md)
-* [`LineStrip2D`](components/line_strip2d.md)
-* [`LineStrip3D`](components/line_strip3d.md)
-* [`MarkerShape`](components/marker_shape.md)
-* [`MarkerSize`](components/marker_size.md)
-* [`Material`](components/material.md)
-* [`MediaType`](components/media_type.md)
-* [`MeshProperties`](components/mesh_properties.md)
-* [`Name`](components/name.md)
-* [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md)
-* [`PinholeProjection`](components/pinhole_projection.md)
-* [`Position2D`](components/position2d.md)
-* [`Position3D`](components/position3d.md)
-* [`Radius`](components/radius.md)
-* [`Range1D`](components/range1d.md)
-* [`Resolution`](components/resolution.md)
-* [`Rotation3D`](components/rotation3d.md)
-* [`Scalar`](components/scalar.md)
-* [`ScalarScattering`](components/scalar_scattering.md)
-* [`StrokeWidth`](components/stroke_width.md)
-* [`TensorData`](components/tensor_data.md)
-* [`Texcoord2D`](components/texcoord2d.md)
-* [`Text`](components/text.md)
-* [`TextLogLevel`](components/text_log_level.md)
-* [`Transform3D`](components/transform3d.md)
-* [`Vector2D`](components/vector2d.md)
-* [`Vector3D`](components/vector3d.md)
-* [`ViewCoordinates`](components/view_coordinates.md)
-* [`VisualizerOverrides`](components/visualizer_overrides.md)
+* [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
+* [`Blob`](components/blob.md): A binary blob of data.
+* [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.
+* [`ClearIsRecursive`](components/clear_is_recursive.md): Configures how a clear operation should behave - recursive or not.
+* [`Color`](components/color.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`DepthMeter`](components/depth_meter.md): A component indicating how long a meter is, expressed in native units.
+* [`DisconnectedSpace`](components/disconnected_space.md): Spatially disconnect this entity from its parent.
+* [`DrawOrder`](components/draw_order.md): Draw order used for the display order of 2D elements.
+* [`HalfSizes2D`](components/half_sizes2d.md): Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
+* [`HalfSizes3D`](components/half_sizes3d.md): Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
+* [`InstanceKey`](components/instance_key.md): A unique numeric identifier for each individual instance within a batch.
+* [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
+* [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
+* [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
+* [`MarkerShape`](components/marker_shape.md): Shape of a marker.
+* [`MarkerSize`](components/marker_size.md): Size of a marker in UI points.
+* [`Material`](components/material.md): Material properties of a mesh.
+* [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+* [`MeshProperties`](components/mesh_properties.md): Optional triangle indices for a mesh.
+* [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
+* [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.
+* [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
+* [`Position2D`](components/position2d.md): A position in 2D space.
+* [`Position3D`](components/position3d.md): A position in 3D space.
+* [`Radius`](components/radius.md): A Radius component.
+* [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
+* [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
+* [`Rotation3D`](components/rotation3d.md): A 3D rotation, represented either by a quaternion or a rotation around axis.
+* [`Scalar`](components/scalar.md): A double-precision scalar.
+* [`ScalarScattering`](components/scalar_scattering.md): If true, a scalar will be shown as individual point in a scatter plot.
+* [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
+* [`TensorData`](components/tensor_data.md): A multi-dimensional `Tensor` of data.
+* [`Texcoord2D`](components/texcoord2d.md): A 2D texture UV coordinate.
+* [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
+* [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
+* [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
+* [`Vector2D`](components/vector2d.md): A vector in 2D space.
+* [`Vector3D`](components/vector3d.md): A vector in 3D space.
+* [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`VisualizerOverrides`](components/visualizer_overrides.md): The name of a visualizer.
 

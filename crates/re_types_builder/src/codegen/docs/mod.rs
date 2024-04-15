@@ -153,10 +153,11 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
             putln!(
                 page,
-                "* {deprecation_note}[`{}`]({}/{}.md)",
+                "* {deprecation_note}[`{}`]({}/{}.md): {}",
                 object.name,
                 object.kind.plural_snake_case(),
-                object.snake_case_name()
+                object.snake_case_name(),
+                object.docs.first_line().unwrap_or_default(),
             );
         }
         putln!(page);

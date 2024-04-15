@@ -8,40 +8,40 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
-* [`Angle`](datatypes/angle.md)
-* [`AnnotationInfo`](datatypes/annotation_info.md)
-* [`Bool`](datatypes/bool.md)
-* [`ClassDescription`](datatypes/class_description.md)
-* [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md)
-* [`ClassId`](datatypes/class_id.md)
-* [`EntityPath`](datatypes/entity_path.md)
-* [`Float32`](datatypes/float32.md)
-* [`KeypointId`](datatypes/keypoint_id.md)
-* [`KeypointPair`](datatypes/keypoint_pair.md)
-* [`Mat3x3`](datatypes/mat3x3.md)
-* [`Mat4x4`](datatypes/mat4x4.md)
-* [`Material`](datatypes/material.md)
-* [`MeshProperties`](datatypes/mesh_properties.md)
-* [`Quaternion`](datatypes/quaternion.md)
-* [`Rgba32`](datatypes/rgba32.md)
-* [`Rotation3D`](datatypes/rotation3d.md)
-* [`RotationAxisAngle`](datatypes/rotation_axis_angle.md)
-* [`Scale3D`](datatypes/scale3d.md)
-* [`TensorBuffer`](datatypes/tensor_buffer.md)
-* [`TensorData`](datatypes/tensor_data.md)
-* [`TensorDimension`](datatypes/tensor_dimension.md)
-* [`TimeInt`](datatypes/time_int.md)
-* [`Transform3D`](datatypes/transform3d.md)
-* [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md)
-* [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md)
-* [`UInt32`](datatypes/uint32.md)
-* [`UInt64`](datatypes/uint64.md)
-* [`UVec2D`](datatypes/uvec2d.md)
-* [`UVec3D`](datatypes/uvec3d.md)
-* [`UVec4D`](datatypes/uvec4d.md)
-* [`Utf8`](datatypes/utf8.md)
-* [`Uuid`](datatypes/uuid.md)
-* [`Vec2D`](datatypes/vec2d.md)
-* [`Vec3D`](datatypes/vec3d.md)
-* [`Vec4D`](datatypes/vec4d.md)
+* [`Angle`](datatypes/angle.md): Angle in either radians or degrees.
+* [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
+* [`Bool`](datatypes/bool.md): A single boolean.
+* [`ClassDescription`](datatypes/class_description.md): The description of a semantic Class.
+* [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping class IDs to class descriptions.
+* [`ClassId`](datatypes/class_id.md): A 16-bit ID representing a type of semantic class.
+* [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `DataStore`.
+* [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
+* [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
+* [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two `Keypoints`.
+* [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.
+* [`Mat4x4`](datatypes/mat4x4.md): A 4x4 Matrix.
+* [`Material`](datatypes/material.md): Material properties of a mesh.
+* [`MeshProperties`](datatypes/mesh_properties.md): Optional triangle indices for a mesh.
+* [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
+* [`Rgba32`](datatypes/rgba32.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+* [`Rotation3D`](datatypes/rotation3d.md): A 3D rotation.
+* [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
+* [`Scale3D`](datatypes/scale3d.md): 3D scaling factor, part of a transform representation.
+* [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for a `Tensor`.
+* [`TensorData`](datatypes/tensor_data.md): A multi-dimensional `Tensor` of data.
+* [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
+* [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.
+* [`Transform3D`](datatypes/transform3d.md): Representation of a 3D affine transform.
+* [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md): Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+* [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md): Representation of an affine transform via separate translation, rotation & scale.
+* [`UInt32`](datatypes/uint32.md): A 32bit unsigned integer.
+* [`UInt64`](datatypes/uint64.md): A 64bit unsigned integer.
+* [`UVec2D`](datatypes/uvec2d.md): A uint32 vector in 2D space.
+* [`UVec3D`](datatypes/uvec3d.md): A uint32 vector in 3D space.
+* [`UVec4D`](datatypes/uvec4d.md): A uint vector in 4D space.
+* [`Utf8`](datatypes/utf8.md): A string of text, encoded as UTF-8.
+* [`Uuid`](datatypes/uuid.md): A 16-byte uuid.
+* [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
+* [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.
+* [`Vec4D`](datatypes/vec4d.md): A vector in 4D space.
 

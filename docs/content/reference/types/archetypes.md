@@ -9,45 +9,45 @@ Archetypes are bundles of components. This page lists all built-in components.
 
 ## Image & tensor
 
-* [`DepthImage`](archetypes/depth_image.md)
-* [`Image`](archetypes/image.md)
-* [`SegmentationImage`](archetypes/segmentation_image.md)
-* [`Tensor`](archetypes/tensor.md)
+* [`DepthImage`](archetypes/depth_image.md): A depth image.
+* [`Image`](archetypes/image.md): A monochrome or color image.
+* [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer class-ids.
+* [`Tensor`](archetypes/tensor.md): A generic n-dimensional Tensor.
 
 ## Plotting
 
-* [`BarChart`](archetypes/bar_chart.md)
-* [`Scalar`](archetypes/scalar.md)
-* [`SeriesLine`](archetypes/series_line.md)
-* [`SeriesPoint`](archetypes/series_point.md)
+* [`BarChart`](archetypes/bar_chart.md): A bar chart.
+* [`Scalar`](archetypes/scalar.md): Log a double-precision scalar.
+* [`SeriesLine`](archetypes/series_line.md): Define the style properties for a line series in a chart.
+* [`SeriesPoint`](archetypes/series_point.md): Define the style properties for a point series in a chart.
 
 ## Spatial 2D
 
-* [`Arrows2D`](archetypes/arrows2d.md)
-* [`Boxes2D`](archetypes/boxes2d.md)
-* [`LineStrips2D`](archetypes/line_strips2d.md)
-* [`Mesh3D`](archetypes/mesh3d.md)
-* [`Points2D`](archetypes/points2d.md)
+* [`Arrows2D`](archetypes/arrows2d.md): 2D arrows with optional colors, radii, labels, etc.
+* [`Boxes2D`](archetypes/boxes2d.md): 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
+* [`LineStrips2D`](archetypes/line_strips2d.md): 2D line strips with positions and optional colors, radii, labels, etc.
+* [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+* [`Points2D`](archetypes/points2d.md): A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 ## Spatial 3D
 
-* [`Arrows3D`](archetypes/arrows3d.md)
-* [`Asset3D`](archetypes/asset3d.md)
-* [`Boxes3D`](archetypes/boxes3d.md)
-* [`LineStrips3D`](archetypes/line_strips3d.md)
-* [`Pinhole`](archetypes/pinhole.md)
-* [`Points3D`](archetypes/points3d.md)
-* [`Transform3D`](archetypes/transform3d.md)
-* [`ViewCoordinates`](archetypes/view_coordinates.md)
+* [`Arrows3D`](archetypes/arrows3d.md): 3D arrows with optional colors, radii, labels, etc.
+* [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
+* [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
+* [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
+* [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
+* [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.
+* [`Transform3D`](archetypes/transform3d.md): A 3D transform.
+* [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 
 ## Text
 
-* [`TextDocument`](archetypes/text_document.md)
-* [`TextLog`](archetypes/text_log.md)
+* [`TextDocument`](archetypes/text_document.md): A text element intended to be displayed in its own text-box.
+* [`TextLog`](archetypes/text_log.md): A log entry in a text log, comprised of a text body and its log level.
 
 ## Other
 
-* [`AnnotationContext`](archetypes/annotation_context.md)
-* [`Clear`](archetypes/clear.md)
-* [`DisconnectedSpace`](archetypes/disconnected_space.md)
+* [`AnnotationContext`](archetypes/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
+* [`Clear`](archetypes/clear.md): Empties all the components of an entity.
+* [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
 

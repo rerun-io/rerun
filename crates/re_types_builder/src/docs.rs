@@ -70,6 +70,13 @@ impl Docs {
             .collect()
     }
 
+    /// Get the first line of the documentation untagged.
+    pub fn first_line(&self) -> Option<&str> {
+        self.lines_with_tag_matching(|t| t.is_empty())
+            .first()
+            .map(|&line| line)
+    }
+
     /// Get all doc lines that are untagged, or match the given tag.
     ///
     /// For instance, pass `"py"` to get all lines that are untagged or starta with `"\py"`.
