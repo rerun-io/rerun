@@ -12,8 +12,8 @@ enum Commands {
     SearchIndex(build_search_index::Args),
 }
 
+/// Various development tools for Rerun.
 #[derive(FromArgs)]
-/// Top-level command.
 struct TopLevel {
     #[argh(subcommand)]
     cmd: Commands,
