@@ -13,7 +13,6 @@ If you log the same component several times on an entity, the last value (or arr
 For more information on the relationship between **archetypes** and **components**, check out the concept page
 on [Entities and Components](../concepts/entity-component.md).
 
-## Available components
 
 * [`AnnotationContext`](components/annotation_context.md)
 * [`Blob`](components/blob.md)
@@ -55,3 +54,4 @@ on [Entities and Components](../concepts/entity-component.md).
 * [`Vector3D`](components/vector3d.md)
 * [`ViewCoordinates`](components/view_coordinates.md)
 * [`VisualizerOverrides`](components/visualizer_overrides.md)
+

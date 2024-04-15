@@ -6,3 +6,6 @@ namespace docs.attributes;
 /// Speculative links contain a `?speculative-link` query param. Any such links are ignored by linkinator,
 /// and we check for their absence as the first step in our release process.
 attribute "attr.docs.unreleased";
+
+/// Apply to an archetype to set its category used in the docs.
+attribute "attr.docs.category";

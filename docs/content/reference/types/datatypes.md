@@ -7,7 +7,6 @@ order: 3
 
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
-## Available datatypes
 
 * [`Angle`](datatypes/angle.md)
 * [`AnnotationInfo`](datatypes/annotation_info.md)
@@ -45,3 +44,4 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Vec2D`](datatypes/vec2d.md)
 * [`Vec3D`](datatypes/vec3d.md)
 * [`Vec4D`](datatypes/vec4d.md)
+

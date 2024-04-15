@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use camino::Utf8PathBuf;
+use itertools::Itertools;
 
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo},
@@ -114,36 +115,51 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     putln!(page, "{prelude}");
     putln!(page);
 
-    if !objects.is_empty() {
-        // First all non deprecated ones:
-        putln!(page, "## Available {}", kind.plural_name().to_lowercase());
+    let mut any_category = false;
+    for (category, objects) in &objects
+        .iter()
+        .sorted_by(|a, b| {
+            // Put other category last.
+            if a.doc_category().is_none() {
+                std::cmp::Ordering::Greater
+            } else if b.doc_category().is_none() {
+                std::cmp::Ordering::Less
+            } else {
+                a.doc_category().cmp(&b.doc_category())
+            }
+        })
+        .group_by(|o| o.doc_category())
+    {
+        if category.is_some() {
+            any_category = true;
+        }
+        if let Some(category) = category.or_else(|| {
+            if any_category {
+                Some("Other".to_owned())
+            } else {
+                None
+            }
+        }) {
+            putln!(page, "## {category}");
+        }
         putln!(page);
-        for object in objects.iter().filter(|o| o.deprecation_notice().is_none()) {
+
+        for object in objects.sorted_by_key(|object| &object.name) {
+            let deprecation_note = if object.deprecation_notice().is_some() {
+                "⚠️ _deprecated_ "
+            } else {
+                ""
+            };
+
             putln!(
                 page,
-                "* [`{}`]({}/{}.md)",
+                "* {deprecation_note}[`{}`]({}/{}.md)",
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             );
         }
-
-        // Then all deprecated ones:
-        if objects.iter().any(|o| o.deprecation_notice().is_some()) {
-            putln!(page);
-            putln!(page);
-            putln!(page, "## Deprecated {}", kind.plural_name().to_lowercase());
-            putln!(page);
-            for object in objects.iter().filter(|o| o.deprecation_notice().is_some()) {
-                putln!(
-                    page,
-                    "* [`{}`]({}/{}.md)",
-                    object.name,
-                    object.kind.plural_snake_case(),
-                    object.snake_case_name()
-                );
-            }
-        }
+        putln!(page);
     }
 
     page
