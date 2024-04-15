@@ -1,0 +1,19 @@
+[project]
+name = "minimal"
+version = "0.1.0"
+# requires-python = "<3.12"
+readme = "README.md"
+dependencies = [
+    "numpy",
+    "rerun-sdk"
+]
+
+[project.scripts]
+minimal = "minimal:main"
+
+# [tool.rerun-example]
+# skip = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

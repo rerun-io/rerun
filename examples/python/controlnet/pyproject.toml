@@ -1,0 +1,25 @@
+[project]
+name = "controlnet"
+version = "0.1.0"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+  "accelerate",
+  "opencv-python",
+  "pillow",
+  "diffusers==0.27.2",
+  "numpy",
+  "torch",
+  "transformers",
+  "rerun-sdk"
+]
+
+[project.scripts]
+controlnet = "controlnet:main"
+
+# [tool.rerun-example]
+# skip = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

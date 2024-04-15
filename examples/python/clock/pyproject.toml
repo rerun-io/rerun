@@ -16,4 +16,4 @@ clock = "clock:main"
 
 #[tool.rerun-example]
 #skip = false
-#extra-args = ["--help"]
+extra-args = ["--steps=200"]

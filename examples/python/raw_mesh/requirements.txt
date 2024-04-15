@@ -1,5 +1,0 @@
-numpy
-requests>=2.31,<3
-rerun-sdk
-trimesh==3.15.2
-pillow

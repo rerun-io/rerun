@@ -1,0 +1,18 @@
+[project]
+name = "multithreading"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "rerun-sdk"
+]
+
+[project.scripts]
+multithreading = "multithreading:main"
+
+# [tool.rerun-example]
+# skip = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

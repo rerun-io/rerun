@@ -1,0 +1,19 @@
+[project]
+name = "nv12"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "rerun-sdk>=0.10",
+  "opencv-python",
+  "numpy"
+]
+
+[project.scripts]
+nv12 = "nv12:main"
+
+# [tool.rerun-example]
+# skip = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
