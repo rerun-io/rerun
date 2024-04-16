@@ -114,6 +114,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(new_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(shutdown, m)?)?;
     m.add_function(wrap_pyfunction!(cleanup_if_forked_child, m)?)?;
+    m.add_function(wrap_pyfunction!(spawn, m)?)?;
 
     // recordings
     m.add_function(wrap_pyfunction!(get_application_id, m)?)?;
@@ -507,6 +508,26 @@ fn send_mem_sink_as_default_blueprint(
     } else {
         re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
     }
+}
+
+#[pyfunction]
+#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![]))]
+fn spawn(
+    port: u16,
+    memory_limit: String,
+    executable_name: String,
+    executable_path: Option<String>,
+    extra_args: Vec<String>,
+) -> PyResult<()> {
+    let spawn_opts = re_sdk::SpawnOptions {
+        port,
+        memory_limit,
+        executable_name,
+        executable_path,
+        extra_args,
+    };
+
+    re_sdk::spawn(&spawn_opts).map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
 #[pyfunction]
