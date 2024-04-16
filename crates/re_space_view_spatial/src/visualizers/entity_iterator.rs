@@ -3,7 +3,7 @@ use re_data_store::{LatestAtQuery, RangeQuery};
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_query::{ArchetypeView, QueryError};
-use re_query_cache2::{CachedResults, ExtraQueryHistory};
+use re_query_cache::{CachedResults, ExtraQueryHistory};
 use re_renderer::DepthOffset;
 use re_space_view::query_visual_history;
 use re_types::Archetype;
@@ -54,7 +54,7 @@ pub fn query_archetype_with_history<A: Archetype>(
     let time_range = visible_history.time_range(*time);
 
     let store = entity_db.store();
-    let caches = entity_db.query_caches2();
+    let caches = entity_db.query_caches();
 
     if !history.enabled || time_range.min() == time_range.max() {
         let latest_query = LatestAtQuery::new(*timeline, time_range.min());
