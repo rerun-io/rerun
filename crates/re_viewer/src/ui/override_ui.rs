@@ -142,7 +142,7 @@ pub fn override_ui(
                                 let query = ctx.blueprint_query;
                                 ctx.store_context
                                     .blueprint
-                                    .query_caches2()
+                                    .query_caches()
                                     .latest_at(store, query, entity_path, [*component_name])
                                     .components
                                     .get(component_name)
@@ -150,7 +150,7 @@ pub fn override_ui(
                             }
                             StoreKind::Recording => {
                                 ctx.recording()
-                                    .query_caches2()
+                                    .query_caches()
                                     .latest_at(
                                         ctx.recording_store(),
                                         &query,

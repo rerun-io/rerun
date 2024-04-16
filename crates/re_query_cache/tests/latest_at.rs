@@ -9,7 +9,7 @@ use re_log_types::{
     DataRow, EntityPath, RowId, TimePoint,
 };
 use re_query2::PromiseResolver;
-use re_query_cache2::Caches;
+use re_query_cache::Caches;
 use re_types::Archetype as _;
 use re_types_core::{components::InstanceKey, Loggable as _};
 
