@@ -116,9 +116,6 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
 
-    /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query_cache::Caches,
-
     /// The active promise resolver for this DB.
     resolver: re_query2::PromiseResolver,
 
@@ -135,7 +132,6 @@ impl EntityDb {
             InstanceKey::name(),
             DataStoreConfig::default(),
         );
-        let query_caches = re_query_cache::Caches::new(&data_store);
         let query_caches2 = re_query_cache2::Caches::new(&data_store);
         Self {
             data_source: None,
@@ -146,7 +142,6 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
-            query_caches,
             resolver: re_query2::PromiseResolver::default(),
             query_caches2,
             stats: IngestionStatistics::new(store_id),
@@ -194,11 +189,6 @@ impl EntityDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
-    }
-
-    #[inline]
-    pub fn query_caches(&self) -> &re_query_cache::Caches {
-        &self.query_caches
     }
 
     #[inline]
@@ -463,7 +453,6 @@ impl EntityDb {
         // and/or pending clears.
         let original_store_events = &[store_event];
         self.times_per_timeline.on_events(original_store_events);
-        self.query_caches.on_events(original_store_events);
         self.query_caches2.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
 
@@ -473,7 +462,6 @@ impl EntityDb {
         // notified of, again!
         let new_store_events = self.on_clear_cascade(clear_cascade);
         self.times_per_timeline.on_events(&new_store_events);
-        self.query_caches.on_events(&new_store_events);
         self.query_caches2.on_events(&new_store_events);
         let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
@@ -630,14 +618,12 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _,
-            query_caches,
             resolver: _,
             query_caches2,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
-        query_caches.on_events(store_events);
         query_caches2.on_events(store_events);
 
         let store_events = store_events.iter().collect_vec();

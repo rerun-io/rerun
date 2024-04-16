@@ -4352,7 +4352,6 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_query2",
- "re_query_cache",
  "re_query_cache2",
  "re_smart_channel",
  "re_tracing",
@@ -4544,32 +4543,6 @@ dependencies = [
  "static_assertions",
  "thiserror",
  "unindent",
-]
-
-[[package]]
-name = "re_query_cache"
-version = "0.16.0-alpha.1+dev"
-dependencies = [
- "ahash",
- "criterion",
- "indent",
- "itertools 0.12.0",
- "mimalloc",
- "parking_lot",
- "paste",
- "rand",
- "re_data_store",
- "re_format",
- "re_log",
- "re_log_types",
- "re_query",
- "re_tracing",
- "re_types",
- "re_types_core",
- "seq-macro",
- "similar-asserts",
- "static_assertions",
- "web-time",
 ]
 
 [[package]]
@@ -4814,7 +4787,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query_cache",
  "re_query_cache2",
  "re_renderer",
  "re_space_view",
@@ -4883,7 +4855,6 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query_cache",
  "re_query_cache2",
  "re_renderer",
  "re_tracing",
@@ -4905,7 +4876,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query_cache",
  "re_query_cache2",
  "re_renderer",
  "re_space_view",
@@ -5121,7 +5091,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query_cache",
  "re_query_cache2",
  "re_renderer",
  "re_smart_channel",
@@ -5183,7 +5152,6 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_query2",
- "re_query_cache",
  "re_query_cache2",
  "re_renderer",
  "re_smart_channel",
