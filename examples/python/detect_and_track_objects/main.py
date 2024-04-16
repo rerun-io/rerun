@@ -328,7 +328,7 @@ def update_trackers_with_detections(
 
 
 def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
-    with open(COCO_CATEGORIES_PATH) as f:
+    with open(COCO_CATEGORIES_PATH, encoding="utf8") as f:
         coco_categories = json.load(f)
     class_descriptions = [
         rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories
