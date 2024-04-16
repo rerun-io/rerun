@@ -106,7 +106,7 @@ misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
+py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
