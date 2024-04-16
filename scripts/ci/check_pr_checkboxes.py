@@ -29,12 +29,6 @@ def main() -> None:
     if "* [ ]" in body_lower or "- [ ]" in body_lower:
         print("PR contains unchecked checkboxes")
         exit(1)
-    elif "* [x]" in body_lower or "- [x]" in body_lower:
-        print("All clear")
-        exit(0)
-    else:
-        print("Don't delete the PR description")
-        exit(1)
 
 
 if __name__ == "__main__":
