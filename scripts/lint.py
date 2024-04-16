@@ -9,10 +9,10 @@ Adding "NOLINT" to any line makes the linter ignore that line.
 from __future__ import annotations
 
 import argparse
-from glob import glob
 import os
 import re
 import sys
+from glob import glob
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 
