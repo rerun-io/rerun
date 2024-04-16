@@ -1,10 +1,12 @@
 use std::fmt::Write;
 
 use camino::Utf8PathBuf;
+use itertools::Itertools;
 
 use crate::{
-    codegen::common::ExampleInfo, objects::FieldKind, CodeGenerator, GeneratedFiles, Object,
-    ObjectKind, Objects, Reporter, Type,
+    codegen::{autogen_warning, common::ExampleInfo},
+    objects::FieldKind,
+    CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter, Type,
 };
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -69,19 +71,25 @@ impl CodeGenerator for DocsCodeGenerator {
             (
                 ObjectKind::Archetype,
                 1,
-                "Archetypes are bundles of components",
+                "Archetypes are bundles of components. This page lists all built-in components.",
                 &archetypes,
             ),
             (
                 ObjectKind::Component,
                 2,
-                "Archetypes are bundles of components",
+                r"Components are the fundamental unit of logging in Rerun. This page lists all built-in components.
+
+An entity can only ever contain a single array of any given component type.
+If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
+
+For more information on the relationship between **archetypes** and **components**, check out the concept page
+on [Entities and Components](../../concepts/entity-component.md).",
                 &components,
             ),
             (
                 ObjectKind::Datatype,
                 3,
-                "Data types are the lowest layer of the data model hierarchy",
+                r"Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.",
                 &datatypes,
             ),
         ] {
@@ -101,38 +109,58 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
     write_frontmatter(&mut page, kind.plural_name(), Some(order));
     putln!(page);
+    // Can't put the autogen warning before the frontmatter, stuff breaks down then.
+    putln!(page, "<!-- {} -->", autogen_warning!());
+    putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
-    if !objects.is_empty() {
-        // First all non deprecated ones:
-        putln!(page, "## Available {}", kind.plural_name().to_lowercase());
+
+    let mut any_category = false;
+    for (category, objects) in &objects
+        .iter()
+        .sorted_by(|a, b| {
+            // Put other category last.
+            if a.doc_category().is_none() {
+                std::cmp::Ordering::Greater
+            } else if b.doc_category().is_none() {
+                std::cmp::Ordering::Less
+            } else {
+                a.doc_category().cmp(&b.doc_category())
+            }
+        })
+        .group_by(|o| o.doc_category())
+    {
+        if category.is_some() {
+            any_category = true;
+        }
+        if let Some(category) = category.or_else(|| {
+            if any_category {
+                Some("Other".to_owned())
+            } else {
+                None
+            }
+        }) {
+            putln!(page, "## {category}");
+        }
         putln!(page);
-        for object in objects.iter().filter(|o| o.deprecation_notice().is_none()) {
+
+        for object in objects.sorted_by_key(|object| &object.name) {
+            let deprecation_note = if object.deprecation_notice().is_some() {
+                "⚠️ _deprecated_ "
+            } else {
+                ""
+            };
+
             putln!(
                 page,
-                "* [`{}`]({}/{}.md)",
+                "* {deprecation_note}[`{}`]({}/{}.md): {}",
                 object.name,
                 object.kind.plural_snake_case(),
-                object.snake_case_name()
+                object.snake_case_name(),
+                object.docs.first_line().unwrap_or_default(),
             );
         }
-
-        // Then all deprecated ones:
-        if objects.iter().any(|o| o.deprecation_notice().is_some()) {
-            putln!(page);
-            putln!(page);
-            putln!(page, "## Deprecated {}", kind.plural_name().to_lowercase());
-            putln!(page);
-            for object in objects.iter().filter(|o| o.deprecation_notice().is_some()) {
-                putln!(
-                    page,
-                    "* [`{}`]({}/{}.md)",
-                    object.name,
-                    object.kind.plural_snake_case(),
-                    object.snake_case_name()
-                );
-            }
-        }
+        putln!(page);
     }
 
     page

@@ -523,6 +523,10 @@ impl Object {
         self.try_get_attr::<String>(crate::ATTR_RERUN_DEPRECATED)
     }
 
+    pub fn doc_category(&self) -> Option<String> {
+        self.try_get_attr::<String>(crate::ATTR_DOCS_CATEGORY)
+    }
+
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
         self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
