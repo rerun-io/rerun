@@ -2,7 +2,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use itertools::Itertools as _;
 
-use re_query_cache2::FlatVecDeque;
+use re_query_cache::FlatVecDeque;
 
 // ---
 

@@ -1,7 +1,7 @@
 use re_data_store::{RangeQuery, TimeRange};
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
-use re_query_cache2::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
+use re_query_cache::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -52,7 +52,7 @@ impl VisualizerSystem for TextLogSystem {
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = ctx.recording_store();
-        let query_caches2 = ctx.recording().query_caches2();
+        let query_caches = ctx.recording().query_caches();
         let resolver = ctx.recording().resolver();
 
         // We want everything, for all times:
@@ -61,7 +61,7 @@ impl VisualizerSystem for TextLogSystem {
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-            let results = query_caches2.range(
+            let results = query_caches.range(
                 store,
                 &query,
                 &data_result.entity_path,
@@ -134,16 +134,16 @@ impl VisualizerSystem for TextLogSystem {
 fn check_range<'a, C: Component>(
     query: &RangeQuery,
     results: &'a CachedRangeData<'a, C>,
-) -> re_query_cache2::Result<()> {
+) -> re_query_cache::Result<()> {
     let (front_status, back_status) = results.status(query.range());
     match front_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query_cache2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
     match back_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query_cache2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
 

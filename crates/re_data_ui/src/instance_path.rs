@@ -75,7 +75,7 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for component_name in normal_components {
-                    let results = db.query_caches2().latest_at(
+                    let results = db.query_caches().latest_at(
                         db.store(),
                         query,
                         entity_path,

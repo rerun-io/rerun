@@ -6,7 +6,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
-use re_query_cache2::{Caches, PromiseResolver, PromiseResult};
+use re_query_cache::{Caches, PromiseResolver, PromiseResult};
 use re_types::{components::InstanceKey, Archetype};
 use re_types_core::Loggable as _;
 

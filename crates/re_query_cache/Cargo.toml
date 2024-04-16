@@ -1,13 +1,12 @@
 [package]
-name = "re_query_cache2"
+name = "re_query_cache"
 authors.workspace = true
 description = "Temporary crate meant to replace re_query_cache"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-# TODO(cmc): Replace re_query with this crate. Never publish this one.
-publish = false
+publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true

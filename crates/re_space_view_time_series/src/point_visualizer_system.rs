@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_query_cache2::{PromiseResult, QueryError};
+use re_query_cache::{PromiseResult, QueryError};
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
@@ -101,7 +101,7 @@ impl SeriesPointSystem {
         re_tracing::profile_function!();
 
         let store = ctx.recording_store();
-        let query_caches2 = ctx.recording().query_caches2();
+        let query_caches = ctx.recording().query_caches();
         let resolver = ctx.recording().resolver();
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
@@ -152,7 +152,7 @@ impl SeriesPointSystem {
                 let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                let results = query_caches2.range(
+                let results = query_caches.range(
                     store,
                     &query,
                     entity_path,
@@ -215,7 +215,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query_cache2::range_zip_1x1(
+                        let all_frames = re_query_cache::range_zip_1x1(
                             all_scalars_indexed,
                             all_colors.range_indexed(query.range()),
                         )
@@ -255,7 +255,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query_cache2::range_zip_1x1(
+                        let all_frames = re_query_cache::range_zip_1x1(
                             all_scalars_indexed,
                             all_marker_sizes.range_indexed(query.range()),
                         )
@@ -287,7 +287,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query_cache2::range_zip_1x1(
+                        let all_frames = re_query_cache::range_zip_1x1(
                             all_scalars_indexed,
                             all_marker_shapes.range_indexed(query.range()),
                         )

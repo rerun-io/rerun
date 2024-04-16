@@ -152,7 +152,7 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_data_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db.query_caches2().latest_at(
+    let results = entity_db.query_caches().latest_at(
         entity_db.store(),
         &query,
         entity_path,

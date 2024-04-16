@@ -7,7 +7,7 @@ use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query_cache2::CachesStats;
+use re_query_cache::CachesStats;
 
 use crate::StoreContext;
 
@@ -715,7 +715,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches2().stats())
+            .map(|entity_db| entity_db.query_caches().stats())
             .unwrap_or_default();
 
         let recording_config = recording
