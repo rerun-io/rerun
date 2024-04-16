@@ -65,9 +65,10 @@ exclude = [
   '%7B%7D',               # Ignore links with string interpolation, escaped variant.
 
   # Local links that require further setup.
-  'http://127.0.0.1:',
+  'http://127.0.0.1',
   'http://localhost',
-  'recording:/',       # rrd recording link.
+  'recording:/',      # rrd recording link.
+  'ws:/',
 
   # Api endpoints.
   'https://fonts.googleapis.com/', # Font API entrypoint, not a link.
@@ -94,6 +95,10 @@ exclude = [
   '.github/workflows/.*.yml',    # GitHub action workflows cause issues on CI.
   'https://stackoverflow.com/.', # Stackoverflow links are no longer accessible from CI.
   'https://www.tensorflow.org/', # tensorflow.org apparently blocks CI.
+
+  # Need github login.
+  'https://github.com/rerun-io/landing',
+  'https://github.com/rerun-io/documentation',
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.
