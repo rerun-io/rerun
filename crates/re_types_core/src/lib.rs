@@ -28,18 +28,18 @@
 /// [`AsComponents::as_component_batches`], which describes how the bundle can be interpreted
 /// as a set of [`ComponentBatch`]es: arrays of components that are ready to be serialized.
 ///
-/// Have a look at our [Custom Data] example to learn more about handwritten bundles.
+/// Have a look at our [Custom Data Loader] example to learn more about handwritten bundles.
 ///
 /// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/re_types/definitions/rerun
-/// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
+/// [Custom Data Loader]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data_loader
 pub trait AsComponents {
     /// Exposes the object's contents as a set of [`ComponentBatch`]s.
     ///
     /// This is the main mechanism for easily extending builtin archetypes or even writing
     /// fully custom ones.
-    /// Have a look at our [Custom Data] example to learn more about extending archetypes.
+    /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
     ///
-    /// [Custom Data]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_data/src/main.rs
+    /// [Custom Data Loader]: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
     // depending on their presence (or lack thereof) at runtime anyway.
