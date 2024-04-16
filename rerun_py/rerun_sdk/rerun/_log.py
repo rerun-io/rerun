@@ -412,7 +412,7 @@ def log_file_from_contents(
     This method blocks until either at least one `DataLoader` starts
     streaming data in or all of them fail.
 
-    See <https://www.rerun.io/docs/howto/open-any-file> for more information.
+    See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
 
     Parameters
     ----------
