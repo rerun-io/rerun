@@ -4357,7 +4357,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_query2",
- "re_query_cache2",
+ "re_query_cache",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -4551,7 +4551,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_query_cache2"
+name = "re_query_cache"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
  "ahash",
@@ -4795,7 +4795,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query_cache2",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -4863,7 +4863,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query_cache2",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -4885,7 +4885,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query_cache2",
+ "re_query_cache",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5108,7 +5108,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query_cache2",
+ "re_query_cache",
  "re_renderer",
  "re_smart_channel",
  "re_space_view",
@@ -5169,7 +5169,7 @@ dependencies = [
  "re_log_types",
  "re_query",
  "re_query2",
- "re_query_cache2",
+ "re_query_cache",
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",

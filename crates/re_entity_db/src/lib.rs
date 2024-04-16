@@ -44,7 +44,7 @@ pub use editable_auto_value::EditableAutoValue;
 pub mod external {
     pub use re_data_store;
     pub use re_query2;
-    pub use re_query_cache2;
+    pub use re_query_cache;
 }
 
 // ----------------------------------------------------------------------------
