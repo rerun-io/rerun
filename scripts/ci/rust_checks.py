@@ -112,7 +112,7 @@ def main() -> None:
             run_cargo(
                 "cranky",
                 "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
-                clippy_conf="scripts/clippy_wasm",
+                clippy_conf="scripts/clippy_wasm", # Use scripts/clippy_wasm/clippy.toml
             )
         )
         # Check re_renderer examples for wasm32.
