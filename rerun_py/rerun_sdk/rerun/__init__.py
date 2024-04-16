@@ -576,3 +576,11 @@ def start_web_viewer_server(port: int = 0) -> None:
     """
 
     bindings.start_web_viewer_server(port)
+
+
+def main() -> int:
+    import os
+    import subprocess
+    import sys
+
+    return subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "rerun"), *sys.argv[1:]])
