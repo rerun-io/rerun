@@ -225,8 +225,8 @@ impl<'a, T> CachedRangeData<'a, T> {
     /// Returns the index range that corresponds to the specified `time_range`.
     ///
     /// Use the returned range with one of the range iteration methods:
-    /// - [`Self::indices`]
-    /// - [`Self::data`]
+    /// - [`Self::range_indices`]
+    /// - [`Self::range_data`]
     /// - [`Self::range_indexed`]
     ///
     /// Make sure that the bucket hasn't been modified in-between!
@@ -291,7 +291,7 @@ impl CachedRangeComponentResults {
                     None
                 } else {
                     // The lock is busy, but it is not held by the current thread.
-                    // Just block untils it gets released.
+                    // Just block until it gets released.
                     Some(self.0.write())
                 }
             })
@@ -511,7 +511,7 @@ impl CachedRangeComponentResults {
                     None
                 } else {
                     // The lock is busy, but it is not held by the current thread.
-                    // Just block untils it gets released.
+                    // Just block until it gets released.
                     Some(self.0.write())
                 }
             })
