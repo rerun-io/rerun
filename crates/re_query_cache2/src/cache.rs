@@ -1,10 +1,13 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use ahash::{HashMap, HashSet};
 use parking_lot::RwLock;
 
 use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
-use re_log_types::{EntityPath, StoreId, Timeline};
+use re_log_types::{EntityPath, StoreId, TimeRange, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{LatestAtCache, RangeCache};
@@ -63,7 +66,6 @@ impl CacheKey {
     }
 }
 
-#[derive(Debug)]
 pub struct Caches {
     /// The [`StoreId`] of the associated [`DataStore`].
     pub(crate) store_id: StoreId,
@@ -73,6 +75,54 @@ pub struct Caches {
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
+}
+
+impl std::fmt::Debug for Caches {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            store_id,
+            latest_at_per_cache_key,
+            range_per_cache_key,
+        } = self;
+
+        let mut strings = Vec::new();
+
+        strings.push(format!("[LatestAt @ {store_id}]"));
+        {
+            let latest_at_per_cache_key = latest_at_per_cache_key.read();
+            let latest_at_per_cache_key: BTreeMap<_, _> = latest_at_per_cache_key.iter().collect();
+
+            for (cache_key, cache) in &latest_at_per_cache_key {
+                let cache = cache.read();
+                strings.push(format!(
+                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
+                    cache.pending_invalidations.first().map(|&t| cache_key
+                        .timeline
+                        .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
+                ));
+                strings.push(indent::indent_all_by(4, format!("{cache:?}")));
+            }
+        }
+
+        strings.push(format!("[Range @ {store_id}]"));
+        {
+            let range_per_cache_key = range_per_cache_key.read();
+            let range_per_cache_key: BTreeMap<_, _> = range_per_cache_key.iter().collect();
+
+            for (cache_key, cache) in &range_per_cache_key {
+                let cache = cache.read();
+                strings.push(format!(
+                    "  [{cache_key:?} (pending_invalidation_min={:?})]",
+                    cache.pending_invalidation.map(|t| cache_key
+                        .timeline
+                        .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
+                ));
+                strings.push(indent::indent_all_by(4, format!("{cache:?}")));
+            }
+        }
+
+        f.write_str(&strings.join("\n").replace("\n\n", "\n"))
+    }
 }
 
 impl Caches {
