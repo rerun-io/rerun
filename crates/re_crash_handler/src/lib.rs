@@ -59,7 +59,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
         eprintln!(
             "\n\
-            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n\
+            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting \n\
             Report bugs: https://github.com/rerun-io/rerun/issues"
         );
 
@@ -129,9 +129,9 @@ fn install_signal_handler(build_info: BuildInfo) {
             write_to_stderr(signal_name);
             write_to_stderr("\n");
             write_to_stderr(
-                "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting\n",
+                "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting \n",
             );
-            write_to_stderr("Report bugs: https://github.com/rerun-io/rerun/issues\n");
+            write_to_stderr("Report bugs: https://github.com/rerun-io/rerun/issues \n");
             write_to_stderr("\n");
         }
 

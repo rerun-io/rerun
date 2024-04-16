@@ -19,7 +19,7 @@ class Timing:
         self.duration = duration
 
 
-def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
+def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Timing:
     args = ["cargo", cargo_cmd]
     if cargo_cmd != "deny":
         args.append("--quiet")
@@ -32,6 +32,10 @@ def run_cargo(cargo_cmd, cargo_args: str) -> Timing:
     env = os.environ.copy()
     env["RUSTFLAGS"] = "--deny warnings"
     env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
+    if clippy_conf is not None:
+        env["CLIPPY_CONF_DIR"] = (
+            f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
+        )
 
     result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
     if result.returncode != 0:
@@ -110,6 +114,7 @@ def main() -> None:
             run_cargo(
                 "cranky",
                 "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
+                clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
             )
         )
         # Check re_renderer examples for wasm32.

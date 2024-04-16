@@ -8,29 +8,46 @@
 # https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml
 #
 # Run `lychee . --dump` to list all found links that are being checked.
+#
+# Note that by default lychee will only check markdown and html files,
+# to check any other files you have to point to them explicitly, e.g.:
+# `lychee **/*.rs`
+# To make things worse, `exclude_path` is ignored for these globs,
+# so local runs with lots of gitignored files will be slow.
+# (https://github.com/lycheeverse/lychee/issues/1405)
+#
+# This unfortunately doesn't list anything for non-glob checks.
 ################################################################################
 
 # Maximum number of concurrent link checks.
 # Workaround for "too many open files" error on MacOS, see https://github.com/lycheeverse/lychee/issues/1248
 max_concurrency = 32
 
+# Check links inside `<code>` and `<pre>` blocks as well as Markdown code blocks.
+include_verbatim = true
 
-# URLs to check (supports regex). Has preference over all excludes.
+# Proceed for server connections considered insecure (invalid TLS).
+insecure = true
+
+# Exclude these filesystem paths from getting checked.
 exclude_path = [
   # Unfortunately lychee doesn't yet read .gitignore https://github.com/lycheeverse/lychee/issues/1331
   # The following entries are there because of that:
+  ".git",
   "__pycache__",
   "_deps/",
   ".pixi",
   "build",
   "docs/python/",
+  "rerun_cpp/_deps",
   "rerun_cpp/docs/html",
   "rerun_cpp/docs/xml",
+  "rerun_cpp/tmp/",
   "rerun_py/site/",
   "target_ra",
   "target_wasm",
   "target",
-  "rerun_cpp/tmp/",
+  "venv",
 
   # Actually ignored files beyond .gitignore
   "scripts/screenshot_compare/assets/templates/",
@@ -38,19 +55,60 @@ exclude_path = [
 
 # Exclude URLs and mail addresses from checking (supports regex).
 exclude = [
-  '.*?speculative-link',                                      # Skip speculative links
-  '.github/workflows/.*.yml',                                 # GitHub action workflows cause issues on CI.
-  '\$relpath\^',                                              # Relative paths as used by rerun_cpp's doc header.
-  '%7B%7B.+%7D%7D',                                           # Ignore things that look like links because of `href` but are actually replacement strings. The URL escaping is for '{{.+}}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
-  'https://crates.io/crates/.*',                              # Avoid crates.io rate-limiting
-  'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html', # Nyud links are down every now and then.
-  'https://eigen.tuxfamily.org/',                             # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
-  'https://fonts.googleapis.com/',                            # Font API entrypoint, not a link.
-  'https://fonts.gstatic.com/',                               # Font API entrypoint, not a link.
-  'https://github.com/rerun-io/rerun/pull/\.*',               # Ignore links to our own pull requests (typically in changelog).
-  'https://github.com/rerun-io/rerun/commit/\.*',             # Ignore links to our own commits (typically in changelog).
-  'https://stackoverflow.com/.',                              # Stackoverflow links are no longer accessible from CI.
-  'https://www.tensorflow.org/',                              # tensorflow.org apparently blocks CI.
+  # Skip speculative links
+  '.*?speculative-link',
+
+  # Strings with replacements.
+  '/__VIEWER_VERSION__/', # Replacement variable __VIEWER_VERSION__.
+  '/\$',                  # Replacement variable $.
+  '/GIT_HASH/',           # Replacement variable GIT_HASH.
+  '\{\}',                 # Ignore links with string interpolation.
+  '\$relpath\^',          # Relative paths as used by rerun_cpp's doc header.
+  '%7B.+%7D',             # Ignore strings that look like ready to use links but contain a replacement strings. The URL escaping is for '{.+}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
+  '%7B%7D',               # Ignore links with string interpolation, escaped variant.
+
+  # Local links that require further setup.
+  'http://127.0.0.1',
+  'http://localhost',
+  'recording:/',      # rrd recording link.
+  'ws:/',
+  're_viewer.js',     # Build artifact that html is linking to.
+
+  # Api endpoints.
+  'https://fonts.googleapis.com/', # Font API entrypoint, not a link.
+  'https://fonts.gstatic.com/',    # Font API entrypoint, not a link.
+  'https://tel.rerun.io/',         # Analytics endpoint.
+
+  # Avoid rate limiting.
+  'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
+  'https://github.com/rerun-io/rerun/commit/\.*', # Ignore links to our own commits (typically in changelog).
+  'https://github.com/rerun-io/rerun/pull/\.*',   # Ignore links to our own pull requests (typically in changelog).
+
+  # Intentionally faked links.
+  'file://foo',
+  'http://foo.com/',
+  'https://link.to',
+  'https://static.rerun.io/my_screenshot/',
+
+  # Link fragments and data links in examples.
+  'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
+  'https://static.rerun.io/rgbd_dataset',                      # Base data link for rgbd dataset.
+  'https://storage.googleapis.com/',                           # Storage API entrypoint, not a link.
+
+  # Not accessible from CI.
+  '.github/workflows/.*.yml',            # GitHub action workflows cause issues on CI.
+  'https://stackoverflow.com/.',         # Stackoverflow links are no longer accessible from CI.
+  'https://www.tensorflow.org/',         # tensorflow.org apparently blocks CI.
+  'https://9p.io/sys/doc/lexnames.html', # Works locally but on ci we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
+
+  # Need GitHub login.
+  'https://github.com/rerun-io/landing',
+  'https://github.com/rerun-io/documentation',
+
+  # Temporarily down or not accessible.
+  'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.
+  'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804
+  'https://github.com/rerun-io/rerun/releases/download/prerelease', # Pre-release downloads may go down while a pre-release updates or pre-release CI partially breaks.
 
   # Works but is really slow at times:
   'https://openaccess.thecvf.com/content/CVPR2023/html/Du_Learning_To_Render_Novel_Views_From_Wide-Baseline_Stereo_Pairs_CVPR_2023_paper.html',

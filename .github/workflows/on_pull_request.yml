@@ -99,6 +99,7 @@ jobs:
           filters: |
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - Cargo.lock
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - scripts/ci/*
@@ -119,6 +120,7 @@ jobs:
           filters: |
             web_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - Cargo.lock
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - scripts/ci/*

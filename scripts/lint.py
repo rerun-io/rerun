@@ -12,6 +12,7 @@ import argparse
 import os
 import re
 import sys
+from glob import glob
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 
@@ -959,6 +960,44 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
     return error_count
 
 
+def lint_example_requirements() -> int:
+    """Check that `examples/python/requirements.txt` contains all requirements from the subdirectories and is correctly sorted."""
+
+    failed = False
+
+    with open("examples/python/requirements.txt") as f:
+        lines = f.read().strip().splitlines()
+        sorted_lines = lines.copy()
+        sorted_lines.sort()
+        requirements = set(lines)
+
+    missing = []
+    for path in glob("examples/python/*/requirements.txt"):
+        line = f"-r {os.path.relpath(path, 'examples/python')}"
+        if line not in requirements:
+            missing.append(line)
+
+    if len(missing) != 0:
+        print("\n`examples/python/requirements.txt` is missing the following requirements:")
+        for line in missing:
+            print(line)
+        failed = True
+
+    if lines != sorted_lines:
+        print("\n`examples/python/requirements.txt` is not correctly sorted.")
+        failed = True
+
+    if failed:
+        print("\nHere is what `examples/python/requirements.txt` should contain:")
+        expected = glob("examples/python/*/requirements.txt")
+        expected.sort()
+        for path in expected:
+            print(f"-r {os.path.relpath(path, 'examples/python')}")
+        return 1
+
+    return 0
+
+
 def main() -> None:
     # Make sure we are bug free before we run:
     test_lint_line()
@@ -1061,6 +1100,8 @@ def main() -> None:
 
         # Since no files have been specified, we also run the global lints.
         num_errors += lint_crate_docs(should_ignore)
+
+    num_errors += lint_example_requirements()
 
     if num_errors == 0:
         print(f"{sys.argv[0]} finished without error")
