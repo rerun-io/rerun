@@ -205,7 +205,8 @@ def run_roundtrip_cpp(arch: str, release: bool) -> str:
 
     cmake_build(target_name, release)
 
-    cmd = [f"{cpp_build_dir}/tests/cpp/roundtrips/{target_name}", output_path]
+    extension = ".exe" if os.name == "nt" else ""
+    cmd = [f"{cpp_build_dir}/tests/cpp/roundtrips/{target_name}{extension}", output_path]
     run(cmd, env=roundtrip_env(), timeout=12000)
 
     return output_path
