@@ -7,7 +7,7 @@ use re_data_store::StoreGeneration;
 use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_query_cache::CachesStats;
+use re_query_cache2::CachesStats;
 
 use crate::StoreContext;
 
@@ -687,7 +687,7 @@ impl StoreHub {
     //
     // TODO(jleibs): We probably want stats for all recordings, not just
     // the active recording.
-    pub fn stats(&self, detailed_cache_stats: bool) -> StoreHubStats {
+    pub fn stats(&self) -> StoreHubStats {
         re_tracing::profile_function!();
 
         // If we have an app-id, then use it to look up the blueprint.
@@ -715,7 +715,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().stats(detailed_cache_stats))
+            .map(|entity_db| entity_db.query_caches2().stats())
             .unwrap_or_default();
 
         let recording_config = recording
