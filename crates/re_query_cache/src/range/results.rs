@@ -144,6 +144,8 @@ impl From<Arc<RwLock<CachedRangeComponentResultsInner>>> for CachedRangeComponen
     }
 }
 
+// TODO: I see no reason why we couldnt put the query range in there, simplifying the life of
+// downstream consumers.
 #[derive(Debug)]
 pub struct CachedRangeData<'a, T> {
     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's

@@ -30,7 +30,6 @@ impl IdentifiedViewSystem for Transform3DArrowsVisualizer {
     }
 }
 
-// TODO: we missed this one
 impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
         VisualizerQueryInfo::from_archetype::<re_types::archetypes::Transform3D>()

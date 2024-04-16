@@ -5,8 +5,8 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityPath, EntityProperties};
-use re_log_types::{EntityPathHash, RowId};
-use re_query::{ArchetypeView, QueryError};
+use re_log_types::{EntityPathHash, RowId, TimeInt};
+use re_query_cache::{range_zip_1x2, CachedResults};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
@@ -16,7 +16,7 @@ use re_types::{
     archetypes::{DepthImage, Image, SegmentationImage},
     components::{Color, DrawOrder, TensorData, ViewCoordinates},
     tensor_data::{DecodedTensor, TensorDataMeaning},
-    Archetype as _, ComponentNameSet,
+    Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, DefaultColor, IdentifiedViewSystem, SpaceViewClass,
@@ -33,7 +33,7 @@ use crate::{
     SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
-use super::{entity_iterator::process_archetype_views, SpatialViewVisualizerData};
+use super::SpatialViewVisualizerData;
 
 pub struct ViewerImage {
     /// Path to the image (note image instance ids would refer to pixels!)
@@ -64,8 +64,6 @@ fn to_textured_rect(
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
 ) -> Option<re_renderer::renderer::TexturedRect> {
-    re_tracing::profile_function!();
-
     let [height, width, _] = tensor.image_height_width_channels()?;
 
     let debug_name = ent_path.to_string();
@@ -149,10 +147,18 @@ impl Default for ImageVisualizer {
     }
 }
 
+struct ImageComponentData<'a> {
+    index: (TimeInt, RowId),
+
+    tensor: &'a TensorData,
+    color: Option<&'a Color>,
+    draw_order: Option<&'a DrawOrder>,
+}
+
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl ImageVisualizer {
     fn handle_image_layering(&mut self) {
-        re_tracing::profile_function!();
-
         // Rebuild the image list, grouped by "shared plane", identified with camera & draw order.
         let mut image_groups: BTreeMap<ImageGrouping, Vec<ViewerImage>> = BTreeMap::new();
         for image in self.images.drain(..) {
@@ -201,60 +207,50 @@ impl ImageVisualizer {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn process_image_arch_view(
+    fn process_image_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
-        arch_view: &ArchetypeView<Image>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        re_tracing::profile_function!();
-
-        // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(ent_path)
-            } else {
-                None
-            };
-
+        data: impl Iterator<Item = ImageComponentData<'a>>,
+    ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
         if !ctx.recording_store().entity_has_component(
             &ctx.current_query().timeline(),
-            ent_path,
+            entity_path,
             &Image::indicator().name(),
         ) {
-            return Ok(());
+            return;
         }
+
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path =
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
+                transforms.parent_pinhole(entity_path)
+            } else {
+                None
+            };
+
         // Unknown is currently interpreted as "Some Color" in most cases.
         // TODO(jleibs): Make this more explicit
         let meaning = TensorDataMeaning::Unknown;
 
-        // Instance ids of tensors refer to entries inside the tensor.
-        for (tensor, color, draw_order) in itertools::izip!(
-            arch_view.iter_required_component::<TensorData>()?,
-            arch_view.iter_optional_component::<Color>()?,
-            arch_view.iter_optional_component::<DrawOrder>()?
-        ) {
-            re_tracing::profile_scope!("loop_iter");
-
-            if !tensor.is_shaped_like_an_image() {
-                return Ok(());
+        for data in data {
+            if !data.tensor.is_shaped_like_an_image() {
+                continue;
             }
 
-            let tensor_data_row_id = arch_view.primary_row_id();
-
-            let tensor = match ctx
-                .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
-            {
+            let tensor_data_row_id = data.index.1;
+            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+                c.entry(tensor_data_row_id, data.tensor.0.clone())
+            }) {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {ent_path}: {err}"
+                        "Encountered problem decoding tensor at path {entity_path}: {err}"
                     );
                     continue;
                 }
@@ -264,11 +260,11 @@ impl ImageVisualizer {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
+                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
-                ent_path,
+                entity_path,
                 ent_context,
                 tensor_data_row_id,
                 &tensor,
@@ -284,90 +280,169 @@ impl ImageVisualizer {
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
-                        ent_path.hash(),
+                        entity_path.hash(),
                         Self::compute_bounding_box(&textured_rect),
                         ent_context.world_from_entity,
                     );
                 }
 
                 self.images.push(ViewerImage {
-                    ent_path: ent_path.clone(),
+                    ent_path: entity_path.clone(),
                     tensor,
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
                 });
             }
         }
-
-        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn process_depth_image_arch_view(
+    fn process_segmentation_image_data<'a>(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        transforms: &TransformContext,
+        ent_props: &EntityProperties,
+        entity_path: &EntityPath,
+        ent_context: &SpatialSceneEntityContext<'_>,
+        data: impl Iterator<Item = ImageComponentData<'a>>,
+    ) {
+        // If this isn't an image, return
+        // TODO(jleibs): The ArchetypeView should probably to this for us.
+        if !ctx.recording_store().entity_has_component(
+            &ctx.current_query().timeline(),
+            entity_path,
+            &SegmentationImage::indicator().name(),
+        ) {
+            return;
+        }
+
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path =
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
+                transforms.parent_pinhole(entity_path)
+            } else {
+                None
+            };
+
+        let meaning = TensorDataMeaning::ClassId;
+
+        for data in data {
+            if !data.tensor.is_shaped_like_an_image() {
+                continue;
+            }
+
+            let tensor_data_row_id = data.index.1;
+            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+                c.entry(tensor_data_row_id, data.tensor.0.clone())
+            }) {
+                Ok(tensor) => tensor,
+                Err(err) => {
+                    re_log::warn_once!(
+                        "Encountered problem decoding tensor at path {entity_path}: {err}"
+                    );
+                    continue;
+                }
+            };
+
+            let color = ent_context
+                .annotations
+                .resolved_class_description(None)
+                .annotation_info()
+                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
+
+            if let Some(textured_rect) = to_textured_rect(
+                ctx,
+                entity_path,
+                ent_context,
+                tensor_data_row_id,
+                &tensor,
+                meaning,
+                color.into(),
+            ) {
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto. This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
+                    self.data.add_bounding_box(
+                        entity_path.hash(),
+                        Self::compute_bounding_box(&textured_rect),
+                        ent_context.world_from_entity,
+                    );
+                }
+
+                self.images.push(ViewerImage {
+                    ent_path: entity_path.clone(),
+                    tensor,
+                    meaning,
+                    textured_rect,
+                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
+                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                });
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn process_depth_image_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
-        arch_view: &ArchetypeView<DepthImage>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        re_tracing::profile_function!();
-
+        data: impl Iterator<Item = ImageComponentData<'a>>,
+    ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
         if !ctx.recording_store().entity_has_component(
             &ctx.current_query().timeline(),
-            ent_path,
+            entity_path,
             &DepthImage::indicator().name(),
         ) {
-            return Ok(());
+            return;
         }
-        let meaning = TensorDataMeaning::Depth;
 
         // Parent pinhole should only be relevant to 3D views
         let parent_pinhole_path =
             if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(ent_path)
+                transforms.parent_pinhole(entity_path)
             } else {
                 None
             };
 
-        // Instance ids of tensors refer to entries inside the tensor.
-        for (tensor, color, draw_order) in itertools::izip!(
-            arch_view.iter_required_component::<TensorData>()?,
-            arch_view.iter_optional_component::<Color>()?,
-            arch_view.iter_optional_component::<DrawOrder>()?
-        ) {
+        let meaning = TensorDataMeaning::Depth;
+
+        for data in data {
             // NOTE: we ignore the `DepthMeter` component here because we get it from
             // `EntityProperties::depth_from_world_scale` instead, which is initialized to the
             // same value, but the user may have edited it.
-            re_tracing::profile_scope!("loop_iter");
 
-            if !tensor.is_shaped_like_an_image() {
-                return Ok(());
+            if !data.tensor.is_shaped_like_an_image() {
+                continue;
             }
 
-            let tensor_data_row_id = arch_view.primary_row_id();
-
-            let tensor = match ctx
-                .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
-            {
+            let tensor_data_row_id = data.index.1;
+            let tensor = match ctx.cache.entry(|c: &mut TensorDecodeCache| {
+                c.entry(tensor_data_row_id, data.tensor.0.clone())
+            }) {
                 Ok(tensor) => tensor,
                 Err(err) => {
                     re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {ent_path}: {err}"
+                        "Encountered problem decoding tensor at path {entity_path}: {err}"
                     );
                     continue;
                 }
             };
 
             if *ent_props.backproject_depth {
-                if let Some(parent_pinhole_path) = transforms.parent_pinhole(ent_path) {
+                if let Some(parent_pinhole_path) = transforms.parent_pinhole(entity_path) {
                     // NOTE: we don't pass in `world_from_obj` because this corresponds to the
                     // transform of the projection plane, which is of no use to us here.
                     // What we want are the extrinsics of the depth camera!
@@ -378,18 +453,18 @@ impl ImageVisualizer {
                         ent_props,
                         tensor_data_row_id,
                         &tensor,
-                        ent_path,
+                        entity_path,
                         parent_pinhole_path,
                     ) {
                         Ok(cloud) => {
                             self.data.add_bounding_box(
-                                ent_path.hash(),
+                                entity_path.hash(),
                                 cloud.world_space_bbox(),
                                 glam::Affine3A::IDENTITY,
                             );
-                            self.depth_cloud_entities.insert(ent_path.hash());
+                            self.depth_cloud_entities.insert(entity_path.hash());
                             depth_clouds.push(cloud);
-                            return Ok(());
+                            return;
                         }
                         Err(err) => {
                             re_log::warn_once!("{err}");
@@ -402,11 +477,11 @@ impl ImageVisualizer {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
+                .color(data.color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
-                ent_path,
+                entity_path,
                 ent_context,
                 tensor_data_row_id,
                 &tensor,
@@ -422,127 +497,22 @@ impl ImageVisualizer {
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.data.add_bounding_box(
-                        ent_path.hash(),
+                        entity_path.hash(),
                         Self::compute_bounding_box(&textured_rect),
                         ent_context.world_from_entity,
                     );
                 }
 
                 self.images.push(ViewerImage {
-                    ent_path: ent_path.clone(),
+                    ent_path: entity_path.clone(),
                     tensor,
                     meaning,
                     textured_rect,
                     parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
+                    draw_order: data.draw_order.copied().unwrap_or(DrawOrder::DEFAULT_IMAGE),
                 });
             }
         }
-
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn process_segmentation_image_arch_view(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        transforms: &TransformContext,
-        ent_props: &EntityProperties,
-        arch_view: &ArchetypeView<SegmentationImage>,
-        ent_path: &EntityPath,
-        ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        re_tracing::profile_function!();
-
-        // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path =
-            if ent_context.space_view_class_identifier == SpatialSpaceView3D::identifier() {
-                transforms.parent_pinhole(ent_path)
-            } else {
-                None
-            };
-
-        // If this isn't an image, return
-        // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.recording_store().entity_has_component(
-            &ctx.current_query().timeline(),
-            ent_path,
-            &SegmentationImage::indicator().name(),
-        ) {
-            return Ok(());
-        }
-
-        let meaning = TensorDataMeaning::ClassId;
-
-        // Instance ids of tensors refer to entries inside the tensor.
-        for (tensor, color, draw_order) in itertools::izip!(
-            arch_view.iter_required_component::<TensorData>()?,
-            arch_view.iter_optional_component::<Color>()?,
-            arch_view.iter_optional_component::<DrawOrder>()?
-        ) {
-            re_tracing::profile_scope!("loop_iter");
-
-            if !tensor.is_shaped_like_an_image() {
-                return Ok(());
-            }
-
-            let tensor_data_row_id = arch_view.primary_row_id();
-
-            let tensor = match ctx
-                .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
-            {
-                Ok(tensor) => tensor,
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Encountered problem decoding tensor at path {ent_path}: {err}"
-                    );
-                    continue;
-                }
-            };
-
-            let color = ent_context
-                .annotations
-                .resolved_class_description(None)
-                .annotation_info()
-                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
-
-            if let Some(textured_rect) = to_textured_rect(
-                ctx,
-                ent_path,
-                ent_context,
-                tensor_data_row_id,
-                &tensor,
-                meaning,
-                color.into(),
-            ) {
-                // Only update the bounding box if this is a 2D space view or
-                // the image_plane_distance is not auto. This is avoids a cyclic
-                // relationship where the image plane grows the bounds which in
-                // turn influence the size of the image plane.
-                // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_identifier == SpatialSpaceView2D::identifier()
-                    || !ent_props.pinhole_image_plane_distance.is_auto()
-                {
-                    self.data.add_bounding_box(
-                        ent_path.hash(),
-                        Self::compute_bounding_box(&textured_rect),
-                        ent_context.world_from_entity,
-                    );
-                }
-
-                self.images.push(ViewerImage {
-                    ent_path: ent_path.clone(),
-                    tensor,
-                    meaning,
-                    textured_rect,
-                    parent_pinhole: parent_pinhole_path.map(|p| p.hash()),
-                    draw_order: draw_order.unwrap_or(DrawOrder::DEFAULT_IMAGE),
-                });
-            }
-        }
-
-        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -729,67 +699,81 @@ impl VisualizerSystem for ImageVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut depth_clouds = Vec::new();
 
-        let transforms = view_ctx.get::<TransformContext>()?;
-
-        process_archetype_views::<ImageVisualizer, Image, { Image::NUM_COMPONENTS }, _>(
+        self.process_image_archetype::<Image, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_props, ent_view, ent_context| {
-                self.process_image_arch_view(
+            &mut depth_clouds,
+            |visualizer,
+             ctx,
+             _depth_clouds,
+             transforms,
+             entity_props,
+             entity_path,
+             spatial_ctx,
+             data| {
+                visualizer.process_image_data(
                     ctx,
                     transforms,
-                    ent_props,
-                    &ent_view,
-                    ent_path,
-                    ent_context,
-                )
+                    entity_props,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
             },
         )?;
 
-        process_archetype_views::<
-            ImageVisualizer,
-            SegmentationImage,
-            { SegmentationImage::NUM_COMPONENTS },
-            _,
-        >(
+        self.process_image_archetype::<SegmentationImage, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_props, ent_view, ent_context| {
-                self.process_segmentation_image_arch_view(
+            &mut depth_clouds,
+            |visualizer,
+             ctx,
+             _depth_clouds,
+             transforms,
+             entity_props,
+             entity_path,
+             spatial_ctx,
+             data| {
+                visualizer.process_segmentation_image_data(
                     ctx,
                     transforms,
-                    ent_props,
-                    &ent_view,
-                    ent_path,
-                    ent_context,
-                )
+                    entity_props,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
             },
         )?;
 
-        process_archetype_views::<ImageVisualizer, DepthImage, { DepthImage::NUM_COMPONENTS }, _>(
+        self.process_image_archetype::<DepthImage, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
-            view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_props, ent_view, ent_context| {
-                self.process_depth_image_arch_view(
+            &mut depth_clouds,
+            |visualizer,
+             ctx,
+             depth_clouds,
+             transforms,
+             entity_props,
+             entity_path,
+             spatial_ctx,
+             data| {
+                visualizer.process_depth_image_data(
                     ctx,
-                    &mut depth_clouds,
+                    depth_clouds,
                     transforms,
-                    ent_props,
-                    &ent_view,
-                    ent_path,
-                    ent_context,
-                )
+                    entity_props,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
             },
         )?;
 
@@ -837,5 +821,123 @@ impl VisualizerSystem for ImageVisualizer {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl ImageVisualizer {
+    fn process_image_archetype<A: Archetype, F>(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        view_query: &ViewQuery<'_>,
+        view_ctx: &ViewContextCollection,
+        depth_clouds: &mut Vec<DepthCloud>,
+        mut f: F,
+    ) -> Result<(), SpaceViewSystemExecutionError>
+    where
+        F: FnMut(
+            &mut ImageVisualizer,
+            &ViewerContext<'_>,
+            &mut Vec<DepthCloud>,
+            &TransformContext,
+            &EntityProperties,
+            &EntityPath,
+            &SpatialSceneEntityContext<'_>,
+            &mut dyn Iterator<Item = ImageComponentData<'_>>,
+        ),
+    {
+        let transforms = view_ctx.get::<TransformContext>()?;
+
+        super::entity_iterator::process_archetype::<ImageVisualizer, A, _>(
+            ctx,
+            view_query,
+            view_ctx,
+            view_ctx.get::<EntityDepthOffsets>()?.image,
+            |ctx, entity_path, entity_props, spatial_ctx, results| match results {
+                CachedResults::LatestAt(_query, results) => {
+                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+
+                    use crate::visualizers::CachedLatestAtResultsExt as _;
+
+                    let resolver = ctx.recording().resolver();
+
+                    let tensor = match results.get_dense::<TensorData>(resolver) {
+                        Some(Ok(tensors)) if !tensors.is_empty() => tensors.first().unwrap(),
+                        Some(Err(err)) => return Err(err.into()),
+                        _ => return Ok(()),
+                    };
+
+                    let colors = results.get_or_empty_dense(resolver)?;
+                    let draw_orders = results.get_or_empty_dense(resolver)?;
+
+                    let data = {
+                        ImageComponentData {
+                            index: results.compound_index,
+                            tensor,
+                            color: colors.first(),
+                            draw_order: draw_orders.first(),
+                        }
+                    };
+
+                    f(
+                        self,
+                        ctx,
+                        depth_clouds,
+                        transforms,
+                        entity_props,
+                        entity_path,
+                        spatial_ctx,
+                        &mut std::iter::once(data),
+                    );
+
+                    Ok(())
+                }
+
+                CachedResults::Range(_query, results) => {
+                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+
+                    use crate::visualizers::CachedRangeResultsExt as _;
+
+                    let resolver = ctx.recording().resolver();
+
+                    let tensors = match results.get_dense::<TensorData>(resolver, _query) {
+                        Some(Ok(tensors)) => tensors,
+                        Some(err @ Err(_)) => err?,
+                        _ => return Ok(()),
+                    };
+
+                    let colors = results.get_or_empty_dense(resolver, _query)?;
+                    let draw_orders = results.get_or_empty_dense(resolver, _query)?;
+
+                    let mut data = range_zip_1x2(
+                        tensors.range_indexed(_query.range()),
+                        draw_orders.range_indexed(_query.range()),
+                        colors.range_indexed(_query.range()),
+                    )
+                    .filter_map(|(&index, tensors, draw_orders, colors)| {
+                        tensors.first().map(|tensor| ImageComponentData {
+                            index,
+                            tensor,
+                            color: colors.and_then(|colors| colors.first()),
+                            draw_order: draw_orders.and_then(|draw_orders| draw_orders.first()),
+                        })
+                    });
+
+                    f(
+                        self,
+                        ctx,
+                        depth_clouds,
+                        transforms,
+                        entity_props,
+                        entity_path,
+                        spatial_ctx,
+                        &mut data,
+                    );
+
+                    Ok(())
+                }
+            },
+        )?;
+
+        Ok(())
     }
 }

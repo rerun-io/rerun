@@ -79,3 +79,27 @@ pub trait ToArchetype<A: re_types_core::Archetype> {
         resolver: &crate::PromiseResolver,
     ) -> crate::PromiseResult<crate::Result<A>>;
 }
+
+// ---
+
+use re_data_store::{LatestAtQuery, RangeQuery};
+
+#[derive(Debug)]
+pub enum Results {
+    LatestAt(LatestAtQuery, LatestAtResults),
+    Range(RangeQuery, RangeResults),
+}
+
+impl From<(LatestAtQuery, LatestAtResults)> for Results {
+    #[inline]
+    fn from((query, results): (LatestAtQuery, LatestAtResults)) -> Self {
+        Self::LatestAt(query, results)
+    }
+}
+
+impl From<(RangeQuery, RangeResults)> for Results {
+    #[inline]
+    fn from((query, results): (RangeQuery, RangeResults)) -> Self {
+        Self::Range(query, results)
+    }
+}

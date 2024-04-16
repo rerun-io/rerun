@@ -4,7 +4,7 @@ use re_query_cache::{
 };
 use re_types::Component;
 
-// ---
+// --- Cached ---
 
 pub trait CachedLatestAtResultsExt {
     fn get_dense<'a, C: Component>(
@@ -100,15 +100,11 @@ impl CachedRangeResultsExt for CachedRangeResults {
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status(query.range());
         match front_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 

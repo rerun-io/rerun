@@ -17,13 +17,15 @@ pub use self::range::{CachedRangeComponentResults, CachedRangeData, CachedRangeR
 pub(crate) use self::latest_at::LatestAtCache;
 pub(crate) use self::range::{CachedRangeComponentResultsInner, RangeCache};
 
+// TODO: move this shit over
 pub use re_query2::{
     clamped_zip::*, range_zip::*, ExtraQueryHistory, Promise, PromiseId, PromiseResolver,
     PromiseResult, QueryError, Result, ToArchetype, VisibleHistory, VisibleHistoryBoundary,
 };
 
 pub mod external {
-    pub use re_query2;
+    // TODO: remove this
+    // pub use re_query2;
 
     pub use paste;
     pub use seq_macro;

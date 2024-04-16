@@ -2,7 +2,7 @@ use ahash::HashMap;
 use egui_tiles::TileId;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query2::PromiseResult, EntityDb};
+use re_entity_db::{external::re_query_cache::PromiseResult, EntityDb};
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
 use re_types::blueprint::components::Visible;
@@ -59,7 +59,7 @@ impl ContainerBlueprint {
                 // TODO(#5607): what should happen if the promise is still pending?
                 None
             }
-            PromiseResult::Ready(arch) => arch,
+            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
             PromiseResult::Error(err) => {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load container blueprint: {err}.");
