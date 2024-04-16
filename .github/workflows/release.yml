@@ -274,6 +274,8 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
+  # Force-pushes `latest` and `docs-latest` to the contents of the release branch.
+  # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -302,6 +304,7 @@ jobs:
           git fetch
           git checkout ${{ github.ref_name }}
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
+          git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
   github-release:
     name: "GitHub Release"

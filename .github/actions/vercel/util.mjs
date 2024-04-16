@@ -4,23 +4,6 @@ import { appendFileSync } from "fs";
 import os from "os";
 
 /**
- * Log a message with level `INFO`
- *
- * @param {TemplateStringsArray} strings
- * @param {any[]} values
- */
-export function info(strings, ...values) {
-  let out = "";
-  for (let i = 0; i < strings.length; i++) {
-    out += strings[i];
-    if (i < values.length) {
-      out += values[i].toString();
-    }
-  }
-  console.info(out);
-}
-
-/**
  * Return a GitHub Actions input, returning `null` if it was not set.
  *
  * @param {string} name
@@ -50,8 +33,13 @@ export function getRequiredInput(name) {
  * @param {string} value
  */
 export function setOutput(key, value) {
+  const s = `${key}=${value}${os.EOL}`;
+  if (process.env["MANUAL_RUN"]) {
+    console.log(s);
+    return;
+  }
   const outputFile = /** @type {string} */ (process.env["GITHUB_OUTPUT"]);
-  appendFileSync(outputFile, `${key}=${value}${os.EOL}`);
+  appendFileSync(outputFile, s);
 }
 
 /**
