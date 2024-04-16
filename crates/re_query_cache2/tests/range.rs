@@ -414,11 +414,6 @@ fn invalidation() {
 // ```
 #[test]
 fn invalidation_of_future_optionals() {
-    // TODO(cmc): this test is coming back in the next PR.
-    if true {
-        return;
-    }
-
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
@@ -533,7 +528,7 @@ fn query_and_compare(
 
         let cached_all_colors = cached
             .get_or_empty(MyColor::name())
-            .to_sparse::<MyColor>(&resolver);
+            .to_dense::<MyColor>(&resolver);
         assert!(matches!(
             cached_all_colors.status(query.range()),
             (PromiseResult::Ready(()), PromiseResult::Ready(())),
@@ -560,7 +555,7 @@ fn query_and_compare(
         let expected_all_colors = expected.get_or_empty(MyColor::name());
         let expected_all_colors_indices = expected_all_colors.indices();
         let expected_all_colors_data = expected_all_colors
-            .to_sparse::<MyColor>(&resolver)
+            .to_dense::<MyColor>(&resolver)
             .into_iter()
             .map(|batch| batch.flatten().unwrap())
             .collect_vec();

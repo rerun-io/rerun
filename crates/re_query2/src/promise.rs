@@ -90,7 +90,7 @@ impl PromiseResolver {
 }
 
 /// The result of resolving a [`Promise`] through a [`PromiseResolver`].
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum PromiseResult<T> {
     /// The resolution process is still in progress.
     ///

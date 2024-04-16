@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use parking_lot::RwLock;
+
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, TimeRange};
 use re_query2::Promise;
@@ -121,7 +122,6 @@ impl std::fmt::Debug for RangeCache {
                 .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
             re_format::format_bytes(per_data_time.total_size_bytes() as _),
         ));
-        strings.push(indent::indent_all_by(2, format!("{per_data_time:?}")));
 
         if strings.is_empty() {
             return f.write_str("<empty>");
@@ -158,16 +158,29 @@ impl RangeCache {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         let RangeCache {
-            cache_key: _,
+            cache_key,
             per_data_time,
             pending_invalidation: _,
         } = self;
 
+        // No point in caching indicator components in range queries.
+        if cache_key.component_name.is_indicator_component() {
+            return per_data_time.clone();
+        }
+
+        use re_types_core::Loggable as _;
+        if cache_key.component_name == re_types_core::components::InstanceKey::name() {
+            return per_data_time.clone();
+        }
+
         let mut per_data_time = per_data_time.write();
 
-        if let Some(query_front) = per_data_time.compute_front_query(query) {
+        let query_front = per_data_time.compute_front_query(query);
+        if let Some(query_front) = query_front.as_ref() {
+            re_tracing::profile_scope!("front");
+
             for (data_time, row_id, mut cells) in
-                store.range(&query_front, entity_path, [component_name])
+                store.range(query_front, entity_path, [component_name])
             {
                 // Soundness:
                 // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
@@ -186,9 +199,13 @@ impl RangeCache {
             }
         }
 
-        if let Some(query_back) = per_data_time.compute_back_query(query) {
-            for (data_time, row_id, mut cells) in
-                store.range(&query_back, entity_path, [component_name])
+        if let Some(query_back) = per_data_time.compute_back_query(query, query_front.as_ref()) {
+            re_tracing::profile_scope!("back");
+
+            for (data_time, row_id, mut cells) in store
+                .range(&query_back, entity_path, [component_name])
+                // If there's static data to be found, the front query will take care of it already.
+                .filter(|(data_time, _, _)| !data_time.is_static())
             {
                 // Soundness:
                 // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
@@ -231,12 +248,23 @@ impl RangeCache {
 // ---
 
 impl CachedRangeComponentResultsInner {
+    #[inline]
+    pub fn num_values(&self) -> u64 {
+        self.cached_dense
+            .as_ref()
+            .map_or(0u64, |cached| cached.dyn_num_values() as _)
+            + self
+                .cached_sparse
+                .as_ref()
+                .map_or(0u64, |cached| cached.dyn_num_values() as _)
+    }
+
     /// Given a `query`, returns N reduced queries that are sufficient to fill the missing data
     /// on both the front & back sides of the cache.
     #[inline]
     pub fn compute_queries(&self, query: &RangeQuery) -> impl Iterator<Item = RangeQuery> {
         let front = self.compute_front_query(query);
-        let back = self.compute_back_query(query);
+        let back = self.compute_back_query(query, front.as_ref());
         front.into_iter().chain(back)
     }
 
@@ -247,7 +275,10 @@ impl CachedRangeComponentResultsInner {
         let mut reduced_query = query.clone();
 
         // If nothing has been cached already, then we just want to query everything.
-        if self.indices.is_empty() {
+        if self.indices.is_empty()
+            && self.promises_front.is_empty()
+            && self.promises_back.is_empty()
+        {
             return Some(reduced_query);
         }
 
@@ -284,7 +315,6 @@ impl CachedRangeComponentResultsInner {
                 reduced_query.range.max().as_i64(),
                 pending_front_min,
             ));
-            return Some(reduced_query);
         }
 
         if reduced_query.range.max() < reduced_query.range.min() {
@@ -297,12 +327,19 @@ impl CachedRangeComponentResultsInner {
     /// Given a `query`, returns a reduced query that is sufficient to fill the missing data
     /// on the back side of the cache, or `None` if all the necessary data is already
     /// cached.
-    pub fn compute_back_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
+    pub fn compute_back_query(
+        &self,
+        query: &RangeQuery,
+        query_front: Option<&RangeQuery>,
+    ) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
         // If nothing has been cached already, then the front query is already going to take care
         // of everything.
-        if self.indices.is_empty() {
+        if self.indices.is_empty()
+            && self.promises_front.is_empty()
+            && self.promises_back.is_empty()
+        {
             return None;
         }
 
@@ -316,7 +353,7 @@ impl CachedRangeComponentResultsInner {
             return None;
         }
 
-        // Otherwise, query for what's missing on the front-side of the cache, while making sure to
+        // Otherwise, query for what's missing on the back-side of the cache, while making sure to
         // take pending promises into account!
 
         let pending_back_max = self
@@ -339,7 +376,15 @@ impl CachedRangeComponentResultsInner {
                 reduced_query.range.min().as_i64(),
                 pending_back_max,
             ));
-            return Some(reduced_query);
+        }
+
+        // Back query should never overlap with the front query.
+        if let Some(query_front) = query_front {
+            let front_max_plus_one = query_front.range().max().as_i64().saturating_add(1);
+            let back_min = reduced_query.range().min().as_i64();
+            reduced_query
+                .range
+                .set_min(i64::max(back_min, front_max_plus_one));
         }
 
         if reduced_query.range.max() < reduced_query.range.min() {
