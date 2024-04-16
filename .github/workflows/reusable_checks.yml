@@ -176,5 +176,6 @@ jobs:
           fail: true
           lycheeVersion: "0.14.3"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
+          # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
-            --base . --cache --max-cache-age 1d . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --base . --cache --max-cache-age 1d . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
