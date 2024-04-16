@@ -46,6 +46,7 @@ ahash.workspace = true
 anyhow.workspace = true
 backtrace.workspace = true
 indent.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
