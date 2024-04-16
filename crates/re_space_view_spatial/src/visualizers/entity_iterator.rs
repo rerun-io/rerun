@@ -1,9 +1,12 @@
-use re_entity_db::EntityProperties;
-use re_log_types::{EntityPath, RowId, TimeInt};
-use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
+use itertools::Either;
+use re_data_store::{LatestAtQuery, RangeQuery};
+use re_entity_db::{EntityDb, EntityProperties};
+use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_query::{ArchetypeView, QueryError};
+use re_query_cache2::{CachedResults, ExtraQueryHistory};
 use re_renderer::DepthOffset;
 use re_space_view::query_visual_history;
-use re_types::{components::InstanceKey, Archetype, Component};
+use re_types::Archetype;
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext,
@@ -16,6 +19,150 @@ use crate::{
     },
     SpatialSpaceView3D,
 };
+
+// ---
+
+/// Clamp the latest value in `values` in order to reach a length of `clamped_len`.
+///
+/// Returns an empty iterator if values is empty.
+#[inline]
+pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
+    let Some(last) = values.last() else {
+        return Either::Left(std::iter::empty());
+    };
+
+    Either::Right(
+        values
+            .iter()
+            .chain(std::iter::repeat(last))
+            .take(clamped_len),
+    )
+}
+
+pub fn query_archetype_with_history<A: Archetype>(
+    entity_db: &EntityDb,
+    timeline: &Timeline,
+    time: &TimeInt,
+    history: &ExtraQueryHistory,
+    entity_path: &EntityPath,
+) -> CachedResults {
+    let visible_history = match timeline.typ() {
+        re_log_types::TimeType::Time => history.nanos,
+        re_log_types::TimeType::Sequence => history.sequences,
+    };
+
+    let time_range = visible_history.time_range(*time);
+
+    let store = entity_db.store();
+    let caches = entity_db.query_caches2();
+
+    if !history.enabled || time_range.min() == time_range.max() {
+        let latest_query = LatestAtQuery::new(*timeline, time_range.min());
+        let results = caches.latest_at(
+            store,
+            &latest_query,
+            entity_path,
+            A::all_components().iter().copied(),
+        );
+        (latest_query, results).into()
+    } else {
+        let range_query = RangeQuery::new(*timeline, time_range);
+        let results = caches.range(
+            store,
+            &range_query,
+            entity_path,
+            A::all_components().iter().copied(),
+        );
+        (range_query, results).into()
+    }
+}
+
+/// Iterates through all entity views for a given archetype.
+///
+/// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
+/// various useful information about an entity in the context of the current scene.
+pub fn process_archetype<System: IdentifiedViewSystem, A, F>(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+    view_ctx: &ViewContextCollection,
+    default_depth_offset: DepthOffset,
+    mut fun: F,
+) -> Result<(), SpaceViewSystemExecutionError>
+where
+    A: Archetype,
+    F: FnMut(
+        &ViewerContext<'_>,
+        &EntityPath,
+        &EntityProperties,
+        &SpatialSceneEntityContext<'_>,
+        &CachedResults,
+    ) -> Result<(), SpaceViewSystemExecutionError>,
+{
+    let transforms = view_ctx.get::<TransformContext>()?;
+    let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
+    let annotations = view_ctx.get::<AnnotationSceneContext>()?;
+    let counter = view_ctx.get::<PrimitiveCounter>()?;
+
+    for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
+        // The transform that considers pinholes only makes sense if this is a 3D space-view
+        let world_from_entity =
+            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
+                transforms.reference_from_entity(&data_result.entity_path)
+            } else {
+                transforms.reference_from_entity_ignoring_pinhole(
+                    &data_result.entity_path,
+                    ctx.recording(),
+                    &query.latest_at_query(),
+                )
+            };
+
+        let Some(world_from_entity) = world_from_entity else {
+            continue;
+        };
+        let entity_context = SpatialSceneEntityContext {
+            world_from_entity,
+            depth_offset: *depth_offsets
+                .per_entity
+                .get(&data_result.entity_path.hash())
+                .unwrap_or(&default_depth_offset),
+            annotations: annotations.0.find(&data_result.entity_path),
+            highlight: query
+                .highlights
+                .entity_outline_mask(data_result.entity_path.hash()),
+            space_view_class_identifier: view_ctx.space_view_class_identifier(),
+        };
+
+        let extra_history = query_visual_history(ctx, data_result);
+
+        let results = query_archetype_with_history::<A>(
+            ctx.recording(),
+            &query.timeline,
+            &query.latest_at,
+            &extra_history,
+            &data_result.entity_path,
+        );
+
+        // NOTE: We used to compute the number of primitives across the entire scene here, but that
+        // seems a bit excessive now that we have promises, as that would require resolving all
+        // promises across all entities right here right now.
+        // Also the count doesn't seem to be used for much anyhow.
+        //
+        // We'll see how things evolve.
+        _ = counter;
+
+        fun(
+            ctx,
+            &data_result.entity_path,
+            data_result.accumulated_properties(),
+            &entity_context,
+            &results,
+        )?;
+    }
+
+    Ok(())
+}
+
+// ---
 
 /// Iterates through all entity views for a given archetype.
 ///
@@ -73,8 +220,14 @@ where
         };
 
         let extra_history = query_visual_history(ctx, data_result);
+        // TODO(cmc): We need to use the type defined in the old crate interchangeably with the one
+        // defined in the new crate. They are exactly the same.
+        //
+        // This will be fixed in the next PR
+        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+        let extra_history = unsafe { std::mem::transmute(extra_history) };
 
-        let result = query_archetype_with_history::<A, N>(
+        let result = re_query::query_archetype_with_history::<A, N>(
             ctx.recording_store(),
             &query.timeline,
             &query.latest_at,
@@ -110,182 +263,4 @@ where
     }
 
     Ok(())
-}
-
-// ---
-
-use re_query_cache::external::{paste::paste, seq_macro::seq};
-
-macro_rules! impl_process_archetype {
-    (for N=$N:expr, M=$M:expr => povs=[$($pov:ident)+] comps=[$($comp:ident)*]) => { paste! {
-        #[doc = "Cached implementation of [`process_archetype_views] for `" $N "` point-of-view components"]
-        #[doc = "and `" $M "` optional components."]
-        #[allow(non_snake_case, dead_code)]
-        pub fn [<process_archetype_pov$N _comp$M>]<'a, S, A, $($pov,)+ $($comp,)* F>(
-            ctx: &ViewerContext<'_>,
-            query: &ViewQuery<'_>,
-            view_ctx: &ViewContextCollection,
-            default_depth_offset: DepthOffset,
-            mut f: F,
-        ) -> Result<(), SpaceViewSystemExecutionError>
-        where
-            S: IdentifiedViewSystem,
-            A: Archetype + 'a,
-            $($pov: Component,)+
-            $($comp: Component,)*
-            F: FnMut(
-                &ViewerContext<'_>,
-                &EntityPath,
-                &EntityProperties,
-                &SpatialSceneEntityContext<'_>,
-                (TimeInt, RowId),
-                &[InstanceKey],
-                $(&[$pov],)*
-                $(Option<&[Option<$comp>]>,)*
-            ) -> Result<(), SpaceViewSystemExecutionError>,
-        {
-            // NOTE: not `profile_function!` because we want them merged together.
-            re_tracing::profile_scope!(
-                "process_archetype",
-                format!("arch={} pov={} comp={}", A::name(), $N, $M)
-            );
-
-            let transforms = view_ctx.get::<TransformContext>()?;
-            let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
-            let annotations = view_ctx.get::<AnnotationSceneContext>()?;
-            let counter = view_ctx.get::<PrimitiveCounter>()?;
-
-            for data_result in query.iter_visible_data_results(ctx, S::identifier()) {
-                // The transform that considers pinholes only makes sense if this is a 3D space-view
-                let world_from_entity = if view_ctx.space_view_class_identifier() == SpatialSpaceView3D::identifier() {
-                    transforms.reference_from_entity(&data_result.entity_path)
-                } else {
-                    transforms.reference_from_entity_ignoring_pinhole(
-                        &data_result.entity_path,
-                        ctx.recording(),
-                        &query.latest_at_query(),
-                    )
-                };
-
-                let Some(world_from_entity) = world_from_entity else {
-                    continue;
-                };
-                let entity_context = SpatialSceneEntityContext {
-                    world_from_entity,
-                    depth_offset: *depth_offsets
-                        .per_entity
-                        .get(&data_result.entity_path.hash())
-                        .unwrap_or(&default_depth_offset),
-                    annotations: annotations.0.find(&data_result.entity_path),
-                    highlight: query
-                        .highlights
-                        .entity_outline_mask(data_result.entity_path.hash()),
-                    space_view_class_identifier: view_ctx.space_view_class_identifier(),
-                };
-
-                let extra_history = query_visual_history(ctx, data_result);
-
-                match ctx.recording().query_caches().[<query_archetype_with_history_pov$N _comp$M>]::<A, $($pov,)+ $($comp,)* _>(
-                    ctx.recording_store(),
-                    &query.timeline,
-                    &query.latest_at,
-                    &extra_history,
-                    &data_result.entity_path,
-                    |(t, keys, $($pov,)+ $($comp,)*)| {
-                        counter
-                            .num_primitives
-                            .fetch_add(keys.len(), std::sync::atomic::Ordering::Relaxed);
-
-                        if let Err(err) = f(
-                            ctx,
-                            &data_result.entity_path,
-                            data_result.accumulated_properties(),
-                            &entity_context,
-                            t,
-                            keys,
-                            $($pov,)+
-                            $($comp.as_deref(),)*
-                        ) {
-                            re_log::error_once!(
-                                "Unexpected error querying {:?}: {err}",
-                                &data_result.entity_path
-                            );
-                        };
-                    }
-                ) {
-                    Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
-                    Err(err) => {
-                        re_log::error_once!(
-                            "Unexpected error querying {:?}: {err}",
-                            &data_result.entity_path
-                        );
-                    }
-                }
-            }
-
-            Ok(())
-        } }
-    };
-
-    // TODO(cmc): Supporting N>1 generically is quite painful due to limitations in declarative macros,
-    // not that we care at the moment.
-    (for N=1, M=$M:expr) => {
-        seq!(COMP in 1..=$M {
-            impl_process_archetype!(for N=1, M=$M => povs=[R1] comps=[#(C~COMP)*]);
-        });
-    };
-}
-
-seq!(NUM_COMP in 0..10 {
-    impl_process_archetype!(for N=1, M=NUM_COMP);
-});
-
-/// Count the number of primary instances for a given archetype query that should be displayed.
-///
-/// Returned value might be conservative and some of the instances may not be displayable after all,
-/// e.g. due to invalid transformation etc.
-pub fn count_instances_in_archetype_views<
-    System: IdentifiedViewSystem,
-    A: Archetype,
-    const N: usize,
->(
-    ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
-) -> usize {
-    assert_eq!(A::all_components().len(), N);
-
-    // TODO(andreas): Use cached code path for this.
-    // This is right now a bit harder to do and requires knowing all queried components.
-    // The only thing we really want to pass here are the POV components.
-
-    re_tracing::profile_function!();
-
-    let mut num_instances = 0;
-
-    for data_result in query.iter_visible_data_results(ctx, System::identifier()) {
-        let extra_history = query_visual_history(ctx, data_result);
-
-        match query_archetype_with_history::<A, N>(
-            ctx.recording_store(),
-            &query.timeline,
-            &query.latest_at,
-            &extra_history,
-            &data_result.entity_path,
-        )
-        .map(|arch_views| {
-            for arch_view in arch_views {
-                num_instances += arch_view.num_instances();
-            }
-        }) {
-            Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
-            Err(err) => {
-                re_log::error_once!(
-                    "Unexpected error querying {:?}: {err}",
-                    &data_result.entity_path
-                );
-            }
-        }
-    }
-
-    num_instances
 }
