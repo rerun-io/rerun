@@ -33,7 +33,9 @@ def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Tim
     env["RUSTFLAGS"] = "--deny warnings"
     env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
     if clippy_conf is not None:
-        env["CLIPPY_CONF_DIR"] = f"{os.getcwd()}/{clippy_conf}"
+        env["CLIPPY_CONF_DIR"] = (
+            f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
+        )
 
     result = subprocess.run(args, env=env, check=False, capture_output=True, text=True)
     if result.returncode != 0:
