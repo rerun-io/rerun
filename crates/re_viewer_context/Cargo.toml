@@ -22,7 +22,9 @@ re_entity_db = { workspace = true, features = ["serde"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_query_cache.workspace = true
+re_query_cache2.workspace = true
 re_query.workspace = true
+re_query2.workspace = true
 re_renderer.workspace = true
 re_smart_channel.workspace = true
 re_string_interner.workspace = true
