@@ -11,7 +11,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](./docs/content/entity-component.md).
+on [Entities and Components](../../concepts/entity-component.md).
 
 
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
