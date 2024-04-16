@@ -7,20 +7,18 @@ rr.init("rerun_example_annotation_context_connections", spawn=True)
 
 rr.log(
     "/",
-    rr.AnnotationContext(
-        [
-            ClassDescription(
-                info=0,
-                keypoint_annotations=[
-                    (0, "zero", (255, 0, 0)),
-                    (1, "one", (0, 255, 0)),
-                    (2, "two", (0, 0, 255)),
-                    (3, "three", (255, 255, 0)),
-                ],
-                keypoint_connections=[(0, 2), (1, 2), (2, 3)],
-            )
-        ]
-    ),
+    rr.AnnotationContext([
+        ClassDescription(
+            info=0,
+            keypoint_annotations=[
+                (0, "zero", (255, 0, 0)),
+                (1, "one", (0, 255, 0)),
+                (2, "two", (0, 0, 255)),
+                (3, "three", (255, 255, 0)),
+            ],
+            keypoint_connections=[(0, 2), (1, 2), (2, 3)],
+        )
+    ]),
     static=True,
 )
 

@@ -91,23 +91,21 @@ class TranslationAndMat3x3Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "translation",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "mat3x3",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
-                        nullable=True,
-                        metadata={},
-                    ),
-                    pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
-                ]
-            ),
+            pa.struct([
+                pa.field(
+                    "translation",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                    nullable=True,
+                    metadata={},
+                ),
+                pa.field(
+                    "mat3x3",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
+                    nullable=True,
+                    metadata={},
+                ),
+                pa.field("from_parent", pa.bool_(), nullable=False, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

@@ -72,16 +72,14 @@ class MeshPropertiesType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "indices",
-                        pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
-                        nullable=True,
-                        metadata={},
-                    )
-                ]
-            ),
+            pa.struct([
+                pa.field(
+                    "indices",
+                    pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
+                    nullable=True,
+                    metadata={},
+                )
+            ]),
             self._TYPE_NAME,
         )
 

@@ -51,6 +51,11 @@ rerun = "rerun_bindings:main"
 # This is needed because otherwise ruff will not be able to trim whitespaces in (codegened) docstrings.
 unsafe-fixes = true
 
+# Allow preview lints to be enabled (like `PLW1514` to force `encoding` on open).
+preview = true
+# But we only want to opt-in to certain preview rules!
+lint.explicit-preview-rules = true
+
 extend-exclude = [
   # Automatically generated test artifacts
   "venv/",

@@ -68,12 +68,10 @@ class TensorDimensionType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field("size", pa.uint64(), nullable=False, metadata={}),
-                    pa.field("name", pa.utf8(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.struct([
+                pa.field("size", pa.uint64(), nullable=False, metadata={}),
+                pa.field("name", pa.utf8(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

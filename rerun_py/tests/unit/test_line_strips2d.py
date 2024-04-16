@@ -127,12 +127,10 @@ def test_line_strips2d() -> None:
 def test_line_segments2d(data: LineStrip2DArrayLike) -> None:
     arch = rr.LineStrips2D(data)
 
-    assert arch.strips == LineStrip2DBatch(
-        [
-            [[0, 0], [2, 1]],
-            [[4, -1], [6, 0]],
-        ]
-    )
+    assert arch.strips == LineStrip2DBatch([
+        [[0, 0], [2, 1]],
+        [[4, -1], [6, 0]],
+    ])
 
 
 def test_single_line_strip2d() -> None:
@@ -169,21 +167,17 @@ def test_line_strip2d_invalid_shapes() -> None:
     # not homogeneous numpy arrays
     with pytest.raises(ValueError):
         rr.LineStrips2D(
-            np.array(
-                [
-                    [[0, 0], (2, 1), [4, -1], (6, 0)],
-                    [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
-                ]
-            )
+            np.array([
+                [[0, 0], (2, 1), [4, -1], (6, 0)],
+                [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
+            ])
         )
     with pytest.raises(ValueError):
         rr.LineStrips2D(
-            np.array(
-                [
-                    [0, 0, 2, 1, 4, -1, 6, 0],
-                    [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
-                ]
-            ),
+            np.array([
+                [0, 0, 2, 1, 4, -1, 6, 0],
+                [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
+            ]),
         )
 
 
