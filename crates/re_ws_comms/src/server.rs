@@ -6,12 +6,13 @@
 //! In the future thing will be changed to a protocol where the clients can query
 //! for specific data based on e.g. time.
 
-use std::{collections::VecDeque, net::SocketAddr, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    net::{TcpListener, TcpStream},
+    sync::{atomic::AtomicUsize, Arc},
+};
 
-use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
-use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::{accept_async, tungstenite::Error};
 
 use re_log_types::LogMsg;
 use re_memory::MemoryLimit;
@@ -88,20 +89,19 @@ impl RerunServer {
     ///
     /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
-    pub async fn new(
-        bind_ip: String,
+    pub fn new(
+        bind_ip: &str,
         port: RerunServerPort,
         server_memory_limit: MemoryLimit,
     ) -> Result<Self, RerunServerError> {
         let bind_addr = format!("{bind_ip}:{port}");
 
-        let listener = match TcpListener::bind(&bind_addr).await {
+        let listener = match TcpListener::bind(bind_addr) {
             Ok(listener) => listener,
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
                 let bind_addr = format!("{bind_ip}:0");
 
-                TcpListener::bind(&bind_addr)
-                    .await
+                TcpListener::bind(bind_addr)
                     .map_err(|err| RerunServerError::BindFailed(RerunServerPort(0), err))?
             }
             Err(err) => return Err(RerunServerError::BindFailed(port, err)),
@@ -121,39 +121,41 @@ impl RerunServer {
         Ok(slf)
     }
 
-    /// Accept new connections
-    pub async fn listen(self, rx: ReceiveSet<LogMsg>) -> Result<(), RerunServerError> {
-        let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-        self.listen_with_graceful_shutdown(rx, shutdown_rx).await
+    /// Starts a thread that accepts new connections.
+    pub fn listen(self, rx: ReceiveSet<LogMsg>) -> Result<(), RerunServerError> {
+        // TODO:
+        //let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
+        self.listen_with_graceful_shutdown(rx) //, shutdown_rx)
     }
 
-    /// Accept new connections until we get a message on `shutdown_rx`
-    pub async fn listen_with_graceful_shutdown(
+    /// Starts a thread that accepts new connections and shuts down when `shutdown_rx` receives a message.
+    pub fn listen_with_graceful_shutdown(
         self,
         rx: ReceiveSet<LogMsg>,
-        mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+        //mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
     ) -> Result<(), RerunServerError> {
-        let history = Arc::new(Mutex::new(MessageQueue::new(self.server_memory_limit)));
+        let message_broadcaster =
+            Arc::new(ReceiveSetBroadcaster::new(rx, self.server_memory_limit));
 
-        let log_stream = to_broadcast_stream(rx, history.clone());
+        // TODO: handle shutdown. Maybe like so? https://stackoverflow.com/questions/56692961/graceful-exit-tcplistener-incoming
 
-        loop {
-            let (tcp_stream, _) = tokio::select! {
-                res = self.listener.accept() => res?,
-                _ = shutdown_rx.recv() => {
-                    re_log::debug!("Shutting down WebSocket server");
-                    return Ok(());
+        std::thread::Builder::new()
+            .name("rerun_ws_server: listener".to_owned())
+            .spawn(move || {
+                for tcp_stream in self.listener.incoming() {
+                    match tcp_stream {
+                        Ok(tcp_stream) => {
+                            handle_connection(message_broadcaster.clone(), tcp_stream);
+                        }
+                        Err(err) => {
+                            re_log::warn!("Error accepting WebSocket connection: {err}");
+                            break;
+                        }
+                    }
                 }
-            };
+            })?;
 
-            let peer = tcp_stream.peer_addr()?;
-            tokio::spawn(accept_connection(
-                log_stream.clone(),
-                peer,
-                tcp_stream,
-                history.clone(),
-            ));
-        }
+        Ok(())
     }
 
     /// Contains the `ws://` or `wss://` prefix.
@@ -162,18 +164,53 @@ impl RerunServer {
     }
 }
 
+fn handle_connection(message_broadcaster: Arc<ReceiveSetBroadcaster>, tcp_stream: TcpStream) {
+    if let Err(err) = std::thread::Builder::new()
+        .name("rerun_ws_server: connection".to_owned())
+        .spawn(move || {
+            let address = tcp_stream.peer_addr();
+            re_log::debug!("New WebSocket connection at {:?}", address);
+
+            let mut ws_stream = match tungstenite::accept(tcp_stream) {
+                Ok(ws_stream) => ws_stream,
+                Err(err) => {
+                    re_log::warn!("Error accepting WebSocket connection: {err}");
+                    return;
+                }
+            };
+
+            {
+                let (client_id, log_stream) = message_broadcaster.add_client();
+
+                while let Ok(msg) = log_stream.recv() {
+                    if let Err(err) = ws_stream.send(tungstenite::Message::Binary(msg.to_vec())) {
+                        re_log::warn!("Error sending message to WebSocket client: {err}");
+                        break;
+                    }
+                }
+
+                message_broadcaster.remove_client(client_id);
+            }
+
+            re_log::debug!("Closing WebSocket connection at {:?}", address);
+        })
+    {
+        re_log::error!("Failed to spawn thread for handling incoming WebSocket connection: {err}");
+    }
+}
+
 /// Sync handle for the [`RerunServer`]
 ///
 /// When dropped, the server will be shut down.
 pub struct RerunServerHandle {
     local_addr: std::net::SocketAddr,
-    shutdown_tx: tokio::sync::broadcast::Sender<()>,
+    //shutdown_tx: tokio::sync::broadcast::Sender<()>, // TODO:
 }
 
 impl Drop for RerunServerHandle {
     fn drop(&mut self) {
         re_log::info!("Shutting down Rerun server on {}", self.server_url());
-        self.shutdown_tx.send(()).ok();
+        //self.shutdown_tx.send(()).ok();
     }
 }
 
@@ -187,29 +224,17 @@ impl RerunServerHandle {
     /// The caller needs to ensure that there is a `tokio` runtime running.
     pub fn new(
         rerun_rx: ReceiveSet<LogMsg>,
-        bind_ip: String,
+        bind_ip: &str,
         requested_port: RerunServerPort,
         server_memory_limit: MemoryLimit,
     ) -> Result<Self, RerunServerError> {
-        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-
-        let rt = tokio::runtime::Handle::current();
-
-        let ws_server = rt.block_on(tokio::spawn(async move {
-            RerunServer::new(bind_ip, requested_port, server_memory_limit).await
-        }))??;
-
+        let ws_server = RerunServer::new(bind_ip, requested_port, server_memory_limit)?;
         let local_addr = ws_server.local_addr;
-
-        tokio::spawn(async move {
-            ws_server
-                .listen_with_graceful_shutdown(rerun_rx, shutdown_rx)
-                .await
-        });
+        ws_server.listen_with_graceful_shutdown(rerun_rx)?;
 
         Ok(Self {
             local_addr,
-            shutdown_tx,
+            //shutdown_tx,
         })
     }
 
@@ -219,103 +244,98 @@ impl RerunServerHandle {
     }
 }
 
-fn to_broadcast_stream(
-    log_rx: ReceiveSet<LogMsg>,
-    history: Arc<Mutex<MessageQueue>>,
-) -> tokio::sync::broadcast::Sender<Arc<[u8]>> {
-    let (tx, _) = tokio::sync::broadcast::channel(1024 * 1024);
-    let tx1 = tx.clone();
-    tokio::task::spawn_blocking(move || {
-        while let Ok(msg) = log_rx.recv() {
-            match msg.payload {
-                re_smart_channel::SmartMessagePayload::Msg(data) => {
-                    let bytes = crate::encode_log_msg(&data);
-                    let bytes: Arc<[u8]> = bytes.into();
-                    history.lock().push(bytes.clone());
-                    if let Err(tokio::sync::broadcast::error::SendError(_bytes)) = tx1.send(bytes) {
-                        // no receivers currently - that's fine!
-                    }
-                }
-                re_smart_channel::SmartMessagePayload::Quit(err) => {
-                    if let Some(err) = err {
-                        re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
-                    } else {
-                        re_log::debug!("Sender {} has left", msg.source);
-                    }
-                }
-            }
-        }
-    });
-    tx
+/// Broadcasts messages to all connected clients and stores a history of messages to resend to new clients.
+struct ReceiveSetBroadcaster {
+    inner: Arc<Mutex<ReceiveSetBroadcasterInnerState>>,
+    next_client_id: AtomicUsize,
 }
 
-async fn accept_connection(
-    log_stream: tokio::sync::broadcast::Sender<Arc<[u8]>>,
-    _peer: SocketAddr,
-    tcp_stream: TcpStream,
-    history: Arc<Mutex<MessageQueue>>,
-) {
-    // let span = re_log::span!(
-    //     re_log::Level::INFO,
-    //     "Connection",
-    //     peer = _peer.to_string().as_str()
-    // );
-    // let _enter = span.enter();
-
-    re_log::debug!("New WebSocket connection");
-
-    if let Err(err) = handle_connection(log_stream, tcp_stream, history).await {
-        match err {
-            Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
-            err => re_log::error!("Error processing connection: {err}"),
-        }
-    }
+/// Inner state of the [`ReceiveSetBroadcaster`], protected by a mutex.
+struct ReceiveSetBroadcasterInnerState {
+    /// Don't allow adding to the history while adding/removing clients.
+    /// This way, no messages history is lost!
+    history: MessageQueue,
+    clients: HashMap<usize, std::sync::mpsc::Sender<Arc<[u8]>>>,
 }
 
-async fn handle_connection(
-    log_stream: tokio::sync::broadcast::Sender<Arc<[u8]>>,
-    tcp_stream: TcpStream,
-    history: Arc<Mutex<MessageQueue>>,
-) -> tungstenite::Result<()> {
-    let ws_stream = accept_async(tcp_stream).await?;
-    let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+impl ReceiveSetBroadcaster {
+    fn new(log_rx: ReceiveSet<LogMsg>, server_memory_limit: MemoryLimit) -> Self {
+        let inner = Arc::new(Mutex::new(ReceiveSetBroadcasterInnerState {
+            history: MessageQueue::new(server_memory_limit),
+            clients: HashMap::new(),
+        }));
+        let inner_cpy = inner.clone();
 
-    {
-        // Re-sending packet history - this is not water tight, but better than nothing.
-        // TODO(emilk): water-proof resending of history + streaming of new stuff, without anything missed.
-        let history: MessageQueue = history.lock().clone();
-        for packet in history.messages {
-            ws_sender
-                .send(tungstenite::Message::Binary(packet.to_vec()))
-                .await?;
-        }
-    }
+        if let Err(err) = std::thread::Builder::new()
+            .name("rerun_ws_client_broadcaster".to_owned())
+            .spawn(move || {
+                while let Ok(msg) = log_rx.recv() {
+                    match msg.payload {
+                        re_smart_channel::SmartMessagePayload::Msg(data) => {
+                            let bytes = crate::encode_log_msg(&data);
+                            let bytes: Arc<[u8]> = bytes.into();
 
-    let mut log_rx = log_stream.subscribe();
-
-    loop {
-        tokio::select! {
-            ws_msg = ws_receiver.next() => {
-                match ws_msg {
-                    Some(Ok(msg)) => {
-                        re_log::debug!("Received message: {:?}", msg);
-                    }
-                    Some(Err(err)) => {
-                        re_log::warn!("Error message: {err}");
-                        break;
-                    }
-                    None => {
-                        break;
+                            {
+                                let mut inner = inner.lock();
+                                inner.history.push(bytes.clone());
+                                for client in inner.clients.values() {
+                                    if let Err(err) = client.send(bytes.clone()) {
+                                        re_log::warn!(
+                                            "Error sending message to web socket client: {err}"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        re_smart_channel::SmartMessagePayload::Quit(err) => {
+                            if let Some(err) = err {
+                                re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
+                            } else {
+                                re_log::debug!("Sender {} has left", msg.source);
+                            }
+                            return;
+                        }
                     }
                 }
-            }
-            data_msg = log_rx.recv() => {
-                let data_msg = data_msg.unwrap();
+            })
+        {
+            re_log::error!(
+                "Failed to spawn thread for broadcasting messages to websocket connections: {err}"
+            );
+        }
 
-                ws_sender.send(tungstenite::Message::Binary(data_msg.to_vec())).await?;
-            }
+        Self {
+            inner: inner_cpy,
+            next_client_id: AtomicUsize::new(0),
         }
     }
 
-    Ok(())
+    /// Adds a client to the broadcaster and replies all message history so far to it.
+    ///
+    /// Returns a client id that can be used to remove the client and a receive channel.
+    fn add_client(&self) -> (usize, std::sync::mpsc::Receiver<Arc<[u8]>>) {
+        let client_id = self
+            .next_client_id
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        {
+            let mut inner = self.inner.lock();
+
+            for msg in &inner.history.messages {
+                if let Err(err) = tx.send(msg.clone()) {
+                    re_log::warn!("Error sending message to web socket client: {err}");
+                }
+            }
+
+            inner.clients.insert(client_id, tx);
+        }
+        (client_id, rx)
+    }
+
+    /// Removes a client from the broadcaster that was previously added with [`Self::add_client`].
+    fn remove_client(&self, client_id: usize) {
+        let mut inner = self.inner.lock();
+        inner.clients.remove(&client_id);
+    }
 }

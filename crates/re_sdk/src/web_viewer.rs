@@ -45,7 +45,7 @@ impl WebViewerSink {
 
         let rerun_server = RerunServerHandle::new(
             re_smart_channel::ReceiveSet::new(vec![rerun_rx]),
-            bind_ip.to_owned(),
+            bind_ip,
             ws_port,
             server_memory_limit,
         )?;

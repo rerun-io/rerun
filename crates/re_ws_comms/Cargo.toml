@@ -20,16 +20,13 @@ all-features = true
 ## Enable the client (viewer-side).
 client = ["ewebsock"]
 
-## Enable the server.
 server = [
   "dep:futures-channel",
   "dep:futures-util",
   "dep:parking_lot",
   "dep:re_smart_channel",
-  "dep:tokio-tungstenite",
-  "dep:tokio",
   "tungstenite",
-]
+] ## Enable the server.
 
 ## Enable encryption using TLS support (`wss://`).
 tls = [
@@ -63,15 +60,4 @@ futures-util = { workspace = true, optional = true, default-features = false, fe
   "std",
 ] }
 parking_lot = { workspace = true, optional = true }
-tokio-tungstenite = { workspace = true, optional = true, features = [
-  "handshake",
-] }
-tokio = { workspace = true, optional = true, features = [
-  "io-std",
-  "macros",
-  "net",
-  "rt-multi-thread",
-  "sync",
-  "time",
-] }
 tungstenite = { workspace = true, optional = true, default-features = false }
