@@ -14,7 +14,7 @@ use pyo3::{
 };
 
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
-use rerun::{
+use re_sdk::{
     sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
     StoreId,
 };
@@ -91,43 +91,12 @@ fn global_web_viewer_server(
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
-#[pyfunction]
-fn main(py: Python<'_>) -> PyResult<u8> {
-    // We access argv ourselves instead of accepting as parameter, so that `main`'s signature is
-    // compatible with `[project.scripts]` in `pyproject.toml`.
-    let sys = py.import("sys")?;
-    let argv: Vec<String> = sys.getattr("argv")?.extract()?;
-
-    let build_info = re_build_info::build_info!();
-    let call_src = rerun::CallSource::Python(python_version(py));
-    tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            // Python catches SIGINT and waits for us to release the GIL before shutting down.
-            // That's no good, so we need to catch SIGINT ourselves and shut down:
-            tokio::spawn(async move {
-                tokio::signal::ctrl_c().await.unwrap();
-                eprintln!("Ctrl-C detected in rerun_py. Shutting down.");
-                #[allow(clippy::exit)]
-                std::process::exit(42);
-            });
-
-            rerun::run(build_info, call_src, argv).await
-        })
-        .map_err(|err| PyRuntimeError::new_err(re_error::format(err)))
-}
-
 /// The python module is called "rerun_bindings".
 #[pymodule]
 fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // NOTE: We do this here because some the inner init methods don't respond too kindly to being
     // called more than once.
     re_log::setup_logging();
-
-    // We always want main to be available
-    m.add_function(wrap_pyfunction!(main, m)?)?;
 
     // These two components are necessary for imports to work
     m.add_class::<PyMemorySinkStorage>()?;
@@ -369,7 +338,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 #[pyfunction]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
-        rerun::StoreKind::Recording,
+        re_sdk::StoreKind::Recording,
         recording.map(|rec| rec.0.clone()),
     )
     .map(PyRecordingStream)
@@ -378,13 +347,13 @@ fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordi
 /// Returns the currently active data recording in the global scope, if any.
 #[pyfunction]
 fn get_global_data_recording() -> Option<PyRecordingStream> {
-    RecordingStream::global(rerun::StoreKind::Recording).map(PyRecordingStream)
+    RecordingStream::global(re_sdk::StoreKind::Recording).map(PyRecordingStream)
 }
 
 /// Cleans up internal state if this is the child of a forked process.
 #[pyfunction]
 fn cleanup_if_forked_child() {
-    rerun::cleanup_if_forked_child();
+    re_sdk::cleanup_if_forked_child();
 }
 
 /// Replaces the currently active recording in the global scope with the specified one.
@@ -404,7 +373,7 @@ fn set_global_data_recording(
     // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_global(
-            rerun::StoreKind::Recording,
+            re_sdk::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream);
@@ -416,7 +385,7 @@ fn set_global_data_recording(
 /// Returns the currently active data recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_data_recording() -> Option<PyRecordingStream> {
-    RecordingStream::thread_local(rerun::StoreKind::Recording).map(PyRecordingStream)
+    RecordingStream::thread_local(re_sdk::StoreKind::Recording).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the thread-local scope with the specified one.
@@ -436,7 +405,7 @@ fn set_thread_local_data_recording(
     // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_thread_local(
-            rerun::StoreKind::Recording,
+            re_sdk::StoreKind::Recording,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream);
@@ -450,7 +419,7 @@ fn set_thread_local_data_recording(
 #[pyfunction]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
-        rerun::StoreKind::Blueprint,
+        re_sdk::StoreKind::Blueprint,
         overrides.map(|rec| rec.0.clone()),
     )
     .map(PyRecordingStream)
@@ -459,7 +428,7 @@ fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRe
 /// Returns the currently active blueprint recording in the global scope, if any.
 #[pyfunction]
 fn get_global_blueprint_recording() -> Option<PyRecordingStream> {
-    RecordingStream::global(rerun::StoreKind::Blueprint).map(PyRecordingStream)
+    RecordingStream::global(re_sdk::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the global scope with the specified one.
@@ -479,7 +448,7 @@ fn set_global_blueprint_recording(
     // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_global(
-            rerun::StoreKind::Blueprint,
+            re_sdk::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream);
@@ -491,7 +460,7 @@ fn set_global_blueprint_recording(
 /// Returns the currently active blueprint recording in the thread-local scope, if any.
 #[pyfunction]
 fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
-    RecordingStream::thread_local(rerun::StoreKind::Blueprint).map(PyRecordingStream)
+    RecordingStream::thread_local(re_sdk::StoreKind::Blueprint).map(PyRecordingStream)
 }
 
 /// Replaces the currently active recording in the thread-local scope with the specified one.
@@ -511,7 +480,7 @@ fn set_thread_local_blueprint_recording(
     // sorry.
     py.allow_threads(|| {
         let rec = RecordingStream::set_thread_local(
-            rerun::StoreKind::Blueprint,
+            re_sdk::StoreKind::Blueprint,
             recording.map(|rec| rec.0.clone()),
         )
         .map(PyRecordingStream);
@@ -529,7 +498,7 @@ fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
 
 /// Helper for forwarding the blueprint memory-sink representation to a given sink
 fn send_mem_sink_as_default_blueprint(
-    sink: &dyn rerun::sink::LogSink,
+    sink: &dyn re_sdk::sink::LogSink,
     default_blueprint: &PyMemorySinkStorage,
 ) {
     if let Some(id) = default_blueprint.inner.store_id() {
@@ -541,7 +510,7 @@ fn send_mem_sink_as_default_blueprint(
 }
 
 #[pyfunction]
-#[pyo3(signature = (addr = None, flush_timeout_sec=rerun::default_flush_timeout().unwrap().as_secs_f32(), default_blueprint = None, recording = None))]
+#[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().unwrap().as_secs_f32(), default_blueprint = None, recording = None))]
 fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
@@ -553,7 +522,7 @@ fn connect(
         return Ok(());
     };
 
-    if rerun::forced_sink_path().is_some() {
+    if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `connect()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
@@ -561,7 +530,7 @@ fn connect(
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        rerun::default_server_addr()
+        re_sdk::default_server_addr()
     };
 
     let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
@@ -571,7 +540,7 @@ fn connect(
     py.allow_threads(|| {
         // We create the sink manually so we can send the default blueprint
         // first before the rest of the current recording stream.
-        let sink = rerun::sink::TcpSink::new(addr, flush_timeout);
+        let sink = re_sdk::sink::TcpSink::new(addr, flush_timeout);
 
         if let Some(default_blueprint) = default_blueprint {
             send_mem_sink_as_default_blueprint(&sink, default_blueprint);
@@ -598,7 +567,7 @@ fn connect_blueprint(
     let addr = if let Some(addr) = addr {
         addr.parse()?
     } else {
-        rerun::default_server_addr()
+        re_sdk::default_server_addr()
     };
 
     if let Some(blueprint_id) = (*blueprint_stream).store_info().map(|info| info.store_id) {
@@ -639,7 +608,7 @@ fn save(
         return Ok(());
     };
 
-    if rerun::forced_sink_path().is_some() {
+    if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `save()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
@@ -649,7 +618,7 @@ fn save(
     py.allow_threads(|| {
         // We create the sink manually so we can send the default blueprint
         // first before the rest of the current recording stream.
-        let sink = rerun::sink::FileSink::new(path)
+        let sink = re_sdk::sink::FileSink::new(path)
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
         if let Some(default_blueprint) = default_blueprint {
@@ -707,7 +676,7 @@ fn stdout(
         return Ok(());
     };
 
-    if rerun::forced_sink_path().is_some() {
+    if re_sdk::forced_sink_path().is_some() {
         re_log::debug!("Ignored call to `stdout()` since _RERUN_TEST_FORCE_SAVE is set");
         return Ok(());
     }
@@ -715,12 +684,12 @@ fn stdout(
     // The call to stdout may internally flush.
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        let sink: Box<dyn rerun::sink::LogSink> = if std::io::stdout().is_terminal() {
+        let sink: Box<dyn re_sdk::sink::LogSink> = if std::io::stdout().is_terminal() {
             re_log::debug!("Ignored call to stdout() because stdout is a terminal");
-            Box::new(rerun::sink::BufferedSink::new())
+            Box::new(re_sdk::sink::BufferedSink::new())
         } else {
             Box::new(
-                rerun::sink::FileSink::stdout()
+                re_sdk::sink::FileSink::stdout()
                     .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             )
         };
@@ -830,7 +799,7 @@ fn serve(
             return Ok(());
         };
 
-        if rerun::forced_sink_path().is_some() {
+        if re_sdk::forced_sink_path().is_some() {
             re_log::debug!("Ignored call to `serve()` since _RERUN_TEST_FORCE_SAVE is set");
             return Ok(());
         }
@@ -840,7 +809,7 @@ fn serve(
 
         let _guard = enter_tokio_runtime();
 
-        let sink = rerun::web_viewer::new_sink(
+        let sink = re_sdk::web_viewer::new_sink(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
