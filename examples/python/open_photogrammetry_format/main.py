@@ -157,27 +157,21 @@ class OPFProject:
             # https://pix4d.github.io/opf-spec/specification/calibrated_cameras.html#calibrated-camera
             omega, phi, kappa = tuple(np.deg2rad(a) for a in calib_camera.orientation_deg)
             rot = (
-                np.array(
-                    [
-                        [1, 0, 0],
-                        [0, np.cos(omega), -np.sin(omega)],
-                        [0, np.sin(omega), np.cos(omega)],
-                    ]
-                )
-                @ np.array(
-                    [
-                        [np.cos(phi), 0, np.sin(phi)],
-                        [0, 1, 0],
-                        [-np.sin(phi), 0, np.cos(phi)],
-                    ]
-                )
-                @ np.array(
-                    [
-                        [np.cos(kappa), -np.sin(kappa), 0],
-                        [np.sin(kappa), np.cos(kappa), 0],
-                        [0, 0, 1],
-                    ]
-                )
+                np.array([
+                    [1, 0, 0],
+                    [0, np.cos(omega), -np.sin(omega)],
+                    [0, np.sin(omega), np.cos(omega)],
+                ])
+                @ np.array([
+                    [np.cos(phi), 0, np.sin(phi)],
+                    [0, 1, 0],
+                    [-np.sin(phi), 0, np.cos(phi)],
+                ])
+                @ np.array([
+                    [np.cos(kappa), -np.sin(kappa), 0],
+                    [np.sin(kappa), np.cos(kappa), 0],
+                    [0, 0, 1],
+                ])
             )
 
             rr.log(entity, rr.Transform3D(translation=calib_camera.position, mat3x3=rot))

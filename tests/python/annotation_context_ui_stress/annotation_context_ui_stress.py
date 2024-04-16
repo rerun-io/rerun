@@ -13,20 +13,18 @@ args = parser.parse_args()
 rr.script_setup(args, "rerun_example_annotation_context_ui_stress")
 
 
-annotation_context = rr.AnnotationContext(
-    [
-        ClassDescription(
-            info=(0, "class_info", (255, 0, 0)),
-            keypoint_annotations=[(i, f"keypoint {i}", (255, 255 - i, 0)) for i in range(100)],
-            keypoint_connections=[(i, 99 - i) for i in range(50)],
-        ),
-        ClassDescription(
-            info=(1, "another_class_info", (255, 0, 255)),
-            keypoint_annotations=[(i, f"keypoint {i}", (255, 255, i)) for i in range(100)],
-            keypoint_connections=[(0, 2), (1, 2), (2, 3)],
-        ),
-    ]
-)
+annotation_context = rr.AnnotationContext([
+    ClassDescription(
+        info=(0, "class_info", (255, 0, 0)),
+        keypoint_annotations=[(i, f"keypoint {i}", (255, 255 - i, 0)) for i in range(100)],
+        keypoint_connections=[(i, 99 - i) for i in range(50)],
+    ),
+    ClassDescription(
+        info=(1, "another_class_info", (255, 0, 255)),
+        keypoint_annotations=[(i, f"keypoint {i}", (255, 255, i)) for i in range(100)],
+        keypoint_connections=[(0, 2), (1, 2), (2, 3)],
+    ),
+])
 
 # log two of those to test multi-selection
 rr.log("annotation1", annotation_context)

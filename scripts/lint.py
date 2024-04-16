@@ -812,7 +812,7 @@ class SourceFile:
         """Rewrite the contents of the file."""
         if new_lines != self.lines:
             self.lines = new_lines
-            with open(self.path, "w") as f:
+            with open(self.path, "w", encoding="utf8") as f:
                 f.writelines(new_lines)
             self._update_content()
             print(f"{self.path} fixed.")
@@ -965,7 +965,7 @@ def lint_example_requirements() -> int:
 
     failed = False
 
-    with open("examples/python/requirements.txt") as f:
+    with open("examples/python/requirements.txt", encoding="utf8") as f:
         lines = f.read().strip().splitlines()
         sorted_lines = lines.copy()
         sorted_lines.sort()

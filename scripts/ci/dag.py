@@ -204,14 +204,12 @@ def main() -> None:
     #   Processed B at T+0.5
     #   Processed D at T+1
     # `A` and `C` may swap places.
-    dag = DAG(
-        {
-            "A": [],
-            "B": ["A"],
-            "C": [],
-            "D": ["A", "B", "C"],
-        }
-    )
+    dag = DAG({
+        "A": [],
+        "B": ["A"],
+        "C": [],
+        "D": ["A", "B", "C"],
+    })
 
     # `walk_parallel` can be called multiple times
     dag.walk_parallel(

@@ -66,13 +66,11 @@ class AngleType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.dense_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("Radians", pa.float32(), nullable=False, metadata={}),
-                    pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
-                ]
-            ),
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("Radians", pa.float32(), nullable=False, metadata={}),
+                pa.field("Degrees", pa.float32(), nullable=False, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

@@ -48,14 +48,12 @@ class VisibleTimeRangeBoundaryKindType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.sparse_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                    pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                    pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.sparse_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
+                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
+                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

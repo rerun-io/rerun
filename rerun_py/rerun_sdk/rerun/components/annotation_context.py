@@ -79,73 +79,59 @@ class AnnotationContextType(BaseExtensionType):
             pa.list_(
                 pa.field(
                     "item",
-                    pa.struct(
-                        [
-                            pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
-                            pa.field(
-                                "class_description",
-                                pa.struct(
-                                    [
-                                        pa.field(
-                                            "info",
-                                            pa.struct(
-                                                [
-                                                    pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                                    pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                                    pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                                ]
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "keypoint_annotations",
-                                            pa.list_(
-                                                pa.field(
-                                                    "item",
-                                                    pa.struct(
-                                                        [
-                                                            pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                                            pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                                            pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                                        ]
-                                                    ),
-                                                    nullable=False,
-                                                    metadata={},
-                                                )
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "keypoint_connections",
-                                            pa.list_(
-                                                pa.field(
-                                                    "item",
-                                                    pa.struct(
-                                                        [
-                                                            pa.field(
-                                                                "keypoint0", pa.uint16(), nullable=False, metadata={}
-                                                            ),
-                                                            pa.field(
-                                                                "keypoint1", pa.uint16(), nullable=False, metadata={}
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    nullable=False,
-                                                    metadata={},
-                                                )
-                                            ),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                    ]
+                    pa.struct([
+                        pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
+                        pa.field(
+                            "class_description",
+                            pa.struct([
+                                pa.field(
+                                    "info",
+                                    pa.struct([
+                                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
+                                    ]),
+                                    nullable=False,
+                                    metadata={},
                                 ),
-                                nullable=False,
-                                metadata={},
-                            ),
-                        ]
-                    ),
+                                pa.field(
+                                    "keypoint_annotations",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.struct([
+                                                pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                                                pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                                                pa.field("color", pa.uint32(), nullable=True, metadata={}),
+                                            ]),
+                                            nullable=False,
+                                            metadata={},
+                                        )
+                                    ),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field(
+                                    "keypoint_connections",
+                                    pa.list_(
+                                        pa.field(
+                                            "item",
+                                            pa.struct([
+                                                pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                                                pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                                            ]),
+                                            nullable=False,
+                                            metadata={},
+                                        )
+                                    ),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                            ]),
+                            nullable=False,
+                            metadata={},
+                        ),
+                    ]),
                     nullable=False,
                     metadata={},
                 )

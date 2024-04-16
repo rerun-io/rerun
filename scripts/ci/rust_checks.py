@@ -46,7 +46,7 @@ def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Tim
 
 
 def package_name_from_cargo_toml(cargo_toml_path: str) -> str:
-    with open(cargo_toml_path) as file:
+    with open(cargo_toml_path, encoding="utf8") as file:
         cargo_toml_contents = file.read()
     package_name_result = re.search(r'name\s+=\s"([\w\-_]+)"', cargo_toml_contents)
     if package_name_result is None:
