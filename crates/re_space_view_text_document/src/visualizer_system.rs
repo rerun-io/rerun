@@ -1,9 +1,6 @@
 use re_data_store::LatestAtQuery;
-use re_query::{query_archetype, QueryError};
-use re_types::{
-    archetypes::{self, TextDocument},
-    components,
-};
+use re_space_view::external::re_query2::PromiseResult;
+use re_types::{archetypes::TextDocument, components};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
     ViewerContext, VisualizerQueryInfo, VisualizerSystem,
@@ -37,39 +34,35 @@ impl VisualizerSystem for TextDocumentSystem {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let store = ctx.recording_store();
+        let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
-        let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
-
-        for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
-            // TODO(#3320): this match can go away once the issue is resolved
-            match query_archetype::<archetypes::TextDocument>(
-                store,
-                &timeline_query,
-                &data_result.entity_path,
-            ) {
-                Ok(arch_view) => {
-                    let bodies = arch_view.iter_required_component::<components::Text>()?;
-                    let media_types =
-                        arch_view.iter_optional_component::<components::MediaType>()?;
-
-                    for (body, media_type) in itertools::izip!(bodies, media_types) {
-                        let media_type = media_type.unwrap_or(components::MediaType::plain_text());
-                        self.text_entries
-                            .push(TextDocumentEntry { body, media_type });
-                    }
+        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+            let TextDocument { text, media_type } = match ctx
+                .recording()
+                .latest_at_archetype(&data_result.entity_path, &timeline_query)
+            {
+                PromiseResult::Pending | PromiseResult::Ready(None) => {
+                    // TODO(#5607): what should happen if the promise is still pending?
+                    continue;
                 }
-                Err(QueryError::PrimaryNotFound(_)) => {}
-                Err(err) => {
+                PromiseResult::Ready(Some(arch)) => arch,
+                PromiseResult::Error(err) => {
                     re_log::error_once!(
                         "Unexpected error querying {:?}: {err}",
                         &data_result.entity_path
                     );
+                    continue;
                 }
             };
+
+            let media_type = media_type.unwrap_or(components::MediaType::plain_text());
+            self.text_entries.push(TextDocumentEntry {
+                body: text,
+                media_type,
+            });
         }
 
         Ok(Vec::new())

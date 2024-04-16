@@ -1,8 +1,7 @@
 use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
-use re_entity_db::{EntityDb, EntityProperties};
+use re_entity_db::{external::re_query2::Results, EntityDb, EntityProperties};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_query::{ArchetypeView, QueryError};
 use re_query_cache::{CachedResults, ExtraQueryHistory};
 use re_renderer::DepthOffset;
 use re_space_view::query_visual_history;
@@ -38,6 +37,8 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
             .take(clamped_len),
     )
 }
+
+// --- Cached APIs ---
 
 pub fn query_archetype_with_history<A: Archetype>(
     entity_db: &EntityDb,
@@ -162,13 +163,55 @@ where
     Ok(())
 }
 
-// ---
+// --- Raw APIs ---
+//
+// TODO(#5974): these APIs only exist because of all the unsolved caching issues we have, including
+// the fact that we don't have any kind of garbage collection for caches.
+// We cannot be having multiple copies of each image or the overhead would be unmanageable.
 
-/// Iterates through all entity views for a given archetype.
+pub fn query_archetype_with_history_uncached<A: Archetype>(
+    entity_db: &EntityDb,
+    timeline: &Timeline,
+    time: &TimeInt,
+    history: &ExtraQueryHistory,
+    entity_path: &EntityPath,
+) -> Results {
+    let visible_history = match timeline.typ() {
+        re_log_types::TimeType::Time => history.nanos,
+        re_log_types::TimeType::Sequence => history.sequences,
+    };
+
+    let time_range = visible_history.time_range(*time);
+
+    let store = entity_db.store();
+
+    if !history.enabled || time_range.min() == time_range.max() {
+        let latest_query = LatestAtQuery::new(*timeline, time_range.min());
+        let results = re_query2::latest_at(
+            store,
+            &latest_query,
+            entity_path,
+            A::all_components().iter().copied(),
+        );
+        (latest_query, results).into()
+    } else {
+        let range_query = RangeQuery::new(*timeline, time_range);
+        let results = re_query2::range(
+            store,
+            &range_query,
+            entity_path,
+            A::all_components().iter().copied(),
+        );
+        (range_query, results).into()
+    }
+}
+
+/// Iterates through all entity views for a given archetype. Uncached.
 ///
-/// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
+/// The callback passed in gets passed along an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
-pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usize, F>(
+//
+pub fn process_archetype_uncached<System: IdentifiedViewSystem, A, F>(
     ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
@@ -176,14 +219,14 @@ pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usi
     mut fun: F,
 ) -> Result<(), SpaceViewSystemExecutionError>
 where
-    A: Archetype + 'a,
+    A: Archetype,
     F: FnMut(
         &ViewerContext<'_>,
         &EntityPath,
         &EntityProperties,
-        ArchetypeView<A>,
         &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError>,
+        &Results,
+    ) -> Result<(), SpaceViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;
     let depth_offsets = view_ctx.get::<EntityDepthOffsets>()?;
@@ -220,46 +263,30 @@ where
         };
 
         let extra_history = query_visual_history(ctx, data_result);
-        // TODO(cmc): We need to use the type defined in the old crate interchangeably with the one
-        // defined in the new crate. They are exactly the same.
-        //
-        // This will be fixed in the next PR
-        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-        let extra_history = unsafe { std::mem::transmute(extra_history) };
 
-        let result = re_query::query_archetype_with_history::<A, N>(
-            ctx.recording_store(),
+        let results = query_archetype_with_history_uncached::<A>(
+            ctx.recording(),
             &query.timeline,
             &query.latest_at,
             &extra_history,
             &data_result.entity_path,
-        )
-        .and_then(|arch_views| {
-            for arch_view in arch_views {
-                counter.num_primitives.fetch_add(
-                    arch_view.num_instances(),
-                    std::sync::atomic::Ordering::Relaxed,
-                );
+        );
 
-                fun(
-                    ctx,
-                    &data_result.entity_path,
-                    data_result.accumulated_properties(),
-                    arch_view,
-                    &entity_context,
-                )?;
-            }
-            Ok(())
-        });
-        match result {
-            Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
-            Err(err) => {
-                re_log::error_once!(
-                    "Unexpected error querying {:?}: {err}",
-                    &data_result.entity_path
-                );
-            }
-        }
+        // NOTE: We used to compute the number of primitives across the entire scene here, but that
+        // seems a bit excessive now that we have promises, as that would require resolving all
+        // promises across all entities right here right now.
+        // Also the count doesn't seem to be used for much anyhow.
+        //
+        // We'll see how things evolve.
+        _ = counter;
+
+        fun(
+            ctx,
+            &data_result.entity_path,
+            data_result.accumulated_properties(),
+            &entity_context,
+            &results,
+        )?;
     }
 
     Ok(())
