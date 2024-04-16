@@ -175,4 +175,6 @@ jobs:
         with:
           fail: true
           lycheeVersion: "0.14.3"
-          args: "--base . --cache --max-cache-age 1d ."
+          # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
+          args: |
+            --base . --cache --max-cache-age 1d . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/*.py" "**/*.yml"
