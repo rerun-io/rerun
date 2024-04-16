@@ -684,7 +684,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ClearPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    ctx.recording.query_caches().clear();
+                    ctx.recording.query_caches2().clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]

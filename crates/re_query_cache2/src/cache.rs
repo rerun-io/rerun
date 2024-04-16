@@ -134,6 +134,18 @@ impl Caches {
             range_per_cache_key: Default::default(),
         }
     }
+
+    #[inline]
+    pub fn clear(&self) {
+        let Self {
+            store_id: _,
+            latest_at_per_cache_key,
+            range_per_cache_key,
+        } = self;
+
+        latest_at_per_cache_key.write().clear();
+        range_per_cache_key.write().clear();
+    }
 }
 
 impl StoreSubscriber for Caches {
