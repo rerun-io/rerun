@@ -74,7 +74,7 @@ impl Docs {
     pub fn first_line(&self) -> Option<&str> {
         self.lines_with_tag_matching(|t| t.is_empty())
             .first()
-            .map(|&line| line)
+            .copied()
     }
 
     /// Get all doc lines that are untagged, or match the given tag.
