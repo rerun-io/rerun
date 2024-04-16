@@ -24,6 +24,7 @@ re_log_types.workspace = true
 re_data_store.workspace = true
 re_entity_db.workspace = true
 re_query.workspace = true
+re_query2.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 re_types.workspace = true
