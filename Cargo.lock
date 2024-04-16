@@ -4586,6 +4586,7 @@ dependencies = [
  "backtrace",
  "criterion",
  "indent",
+ "indexmap 2.1.0",
  "itertools 0.12.0",
  "mimalloc",
  "nohash-hasher",
