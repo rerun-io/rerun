@@ -79,6 +79,7 @@ impl Example {
 pub enum Language {
     Rust,
     Python,
+    #[allow(dead_code)]
     C,
     Cpp,
 }

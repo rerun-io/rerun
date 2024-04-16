@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use anyhow::Context;
 use url::Url;
 
-use crate::ingest::Document;
+use super::ingest::Document;
 
 pub fn connect(url: &str, master_key: &str) -> anyhow::Result<SearchClient> {
     SearchClient::connect(url, master_key)

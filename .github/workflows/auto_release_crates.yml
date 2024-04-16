@@ -33,7 +33,7 @@ jobs:
         id: versioning
         shell: bash
         run: |
-          crate_version=$(python3 scripts/ci/crates.py get-version)
+          crate_version=$(pixi run python scripts/ci/crates.py get-version)
           echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
 
       - name: Create pull request
