@@ -60,7 +60,3 @@ mimalloc.workspace = true
 
 [lib]
 bench = false
-
-[[bench]]
-name = "bench_points"
-harness = false
