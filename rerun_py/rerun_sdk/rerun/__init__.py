@@ -583,4 +583,10 @@ def main() -> int:
     import subprocess
     import sys
 
-    return subprocess.call([os.path.join(os.path.dirname(__file__), "..", "bin", "rerun"), *sys.argv[1:]])
+    if "RERUN_CLI_PATH" in os.environ:
+        print(f"Using overridden RERUN_CLI_PATH={os.environ['RERUN_CLI_PATH']}", file=sys.stderr)
+        target_path = os.environ["RERUN_CLI_PATH"]
+    else:
+        target_path = os.path.join(os.path.dirname(__file__), "..", "bin", "rerun")
+
+    return subprocess.call([target_path, *sys.argv[1:]])
