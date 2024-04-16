@@ -21,4 +21,5 @@ jobs:
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: "docs-latest"
           target: "production"
