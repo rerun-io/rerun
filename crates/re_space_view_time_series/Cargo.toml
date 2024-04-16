@@ -22,6 +22,7 @@ re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
 re_query_cache.workspace = true
+re_query_cache2.workspace = true
 re_renderer.workspace = true
 re_space_view.workspace = true
 re_tracing.workspace = true
