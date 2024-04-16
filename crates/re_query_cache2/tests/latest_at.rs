@@ -494,7 +494,7 @@ fn query_and_compare(
 
         let cached_colors = cached.get_or_empty(MyColor::name());
         let cached_color_data = cached_colors
-            .to_sparse::<MyColor>(&resolver)
+            .to_dense::<MyColor>(&resolver)
             .flatten()
             .unwrap();
 
@@ -513,7 +513,7 @@ fn query_and_compare(
 
         let expected_colors = expected.get_or_empty(MyColor::name());
         let expected_color_data = expected_colors
-            .to_sparse::<MyColor>(&resolver)
+            .to_dense::<MyColor>(&resolver)
             .flatten()
             .unwrap();
 

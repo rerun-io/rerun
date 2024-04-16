@@ -60,8 +60,8 @@ fn main() -> anyhow::Result<()> {
     //
     // Otherwise, this will trigger a deserialization and cache the result for next time.
     let all_points = all_points.to_dense::<MyPoint>(&resolver);
-    let all_colors = all_colors.to_sparse::<MyColor>(&resolver);
-    let all_labels = all_labels.to_sparse::<MyLabel>(&resolver);
+    let all_colors = all_colors.to_dense::<MyColor>(&resolver);
+    let all_labels = all_labels.to_dense::<MyLabel>(&resolver);
 
     // The cache might not have been able to resolve and deserialize the entire dataset across all
     // available timestamps.
@@ -95,12 +95,12 @@ fn main() -> anyhow::Result<()> {
     for ((data_time, row_id), points, colors, labels) in all_frames {
         let colors = colors.unwrap_or(&[]);
         let color_default_fn = || {
-            static DEFAULT: Option<MyColor> = Some(MyColor(0xFF00FFFF));
+            static DEFAULT: MyColor = MyColor(0xFF00FFFF);
             &DEFAULT
         };
 
-        let labels = labels.unwrap_or(&[]);
-        let label_default_fn = || &None;
+        let labels = labels.unwrap_or(&[]).iter().cloned().map(Some);
+        let label_default_fn = || None;
 
         // With the data now fully resolved/converted and deserialized, the joining logic can be
         // applied.

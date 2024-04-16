@@ -83,10 +83,7 @@ impl CachedRangeResults {
         if let Some(component) = self.components.get(&component_name) {
             component
         } else {
-            static EMPTY: OnceLock<CachedRangeComponentResults> = OnceLock::new();
-            EMPTY.get_or_init(|| {
-                Arc::new(RwLock::new(CachedRangeComponentResultsInner::empty())).into()
-            })
+            CachedRangeComponentResults::empty()
         }
     }
 }
@@ -103,7 +100,16 @@ impl CachedRangeResults {
 
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug, Clone)]
-pub struct CachedRangeComponentResults(Arc<RwLock<CachedRangeComponentResultsInner>>);
+pub struct CachedRangeComponentResults(pub(crate) Arc<RwLock<CachedRangeComponentResultsInner>>);
+
+impl CachedRangeComponentResults {
+    #[inline]
+    pub fn empty() -> &'static Self {
+        static EMPTY: OnceLock<CachedRangeComponentResults> = OnceLock::new();
+        EMPTY
+            .get_or_init(|| Arc::new(RwLock::new(CachedRangeComponentResultsInner::empty())).into())
+    }
+}
 
 impl re_types_core::SizeBytes for CachedRangeComponentResults {
     #[inline]
@@ -138,6 +144,7 @@ impl From<Arc<RwLock<CachedRangeComponentResultsInner>>> for CachedRangeComponen
     }
 }
 
+#[derive(Debug)]
 pub struct CachedRangeData<'a, T> {
     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
     // impossible to return an owned type in a `parking_lot` guard.
@@ -797,6 +804,10 @@ impl CachedRangeComponentResultsInner {
     /// No-op in release.
     #[inline]
     pub fn sanity_check(&self) {
+        if !cfg!(debug_assertions) {
+            return;
+        }
+
         let Self {
             indices,
             promises_front,
