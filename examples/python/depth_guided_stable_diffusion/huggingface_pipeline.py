@@ -71,7 +71,7 @@ def retrieve_latents(
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.preprocess
 def preprocess(image):
-    deprecation_message = "The preprocess method is deprecated and will be removed in diffusers 1.0.0. Please use VaeImageProcessor.preprocess(...) instead"
+    deprecation_message = "The preprocess method is deprecated and will be removed in diffusers 1.0.0. Please use VaeImageProcessor.preprocess(…) instead"
     deprecate("preprocess", "1.0.0", deprecation_message, standard_warn=False)
     if isinstance(image, torch.Tensor):
         return image
@@ -409,7 +409,7 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline, TextualInversionLoader
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.decode_latents
     def decode_latents(self, latents):
-        deprecation_message = "The decode_latents method is deprecated and will be removed in 1.0.0. Please use VaeImageProcessor.postprocess(...) instead"
+        deprecation_message = "The decode_latents method is deprecated and will be removed in 1.0.0. Please use VaeImageProcessor.postprocess(…) instead"
         deprecate("decode_latents", "1.0.0", deprecation_message, standard_warn=False)
 
         latents = 1 / self.vae.config.scaling_factor * latents
@@ -734,9 +734,9 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline, TextualInversionLoader
         >>> from diffusers import StableDiffusionDepth2ImgPipeline
 
         >>> pipe = StableDiffusionDepth2ImgPipeline.from_pretrained(
-        ...     "stabilityai/stable-diffusion-2-depth",
-        ...     torch_dtype=torch.float16,
-        ... )
+        …     "stabilityai/stable-diffusion-2-depth",
+        …     torch_dtype=torch.float16,
+        …   )
         >>> pipe.to("cuda")
 
 
@@ -849,7 +849,6 @@ class StableDiffusionDepth2ImgPipeline(DiffusionPipeline, TextualInversionLoader
         rr.log("diffusion/latents", rr.Tensor(latents, dim_names=["b", "c", "h", "w"]))
 
         # 8. Prepare extra step kwargs.
-        # TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
         # 9. Denoising loop
