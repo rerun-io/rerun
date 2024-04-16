@@ -101,7 +101,7 @@ exclude = [
   'https://www.tensorflow.org/',         # tensorflow.org apparently blocks CI.
   'https://9p.io/sys/doc/lexnames.html', # Works locally but on ci we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
 
-  # Need github login.
+  # Need GitHub login.
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',
 
