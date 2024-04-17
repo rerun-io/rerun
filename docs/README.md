@@ -20,7 +20,7 @@ The `rerun.io` docs are built from the contents of the `/docs` directory on the 
 
 Do not push directly to the `docs-latest` branch! To update the docs, either [create a Release](../RELEASES.md), or cherry-pick commits to the `docs-latest` branch _after_ they've been committed to `main`.
 
-⚠ Any changes made directly in the `docs-latest` branch will be lost the next time we create a release.
+⚠ Any commits which are not on `main` and were instead submitted directly to the `docs-latest` branch will be lost the next time we create a release, because the `docs-latest` branch is force-pushed during the release process.
 
 ## Special syntax
 
