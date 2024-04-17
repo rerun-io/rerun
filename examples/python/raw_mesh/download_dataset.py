@@ -93,7 +93,7 @@ def download_glb_sample(name: str) -> Path:
             resp = requests.get(url)
             resp.raise_for_status()
             os.makedirs(path.parent, exist_ok=True)
-            with open(path, "wb", encoding="utf8") as f:
+            with open(path, "wb") as f:
                 f.write(resp.content)
 
     name = name.lower()

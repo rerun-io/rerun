@@ -89,7 +89,7 @@ class Detector:
 
         self.is_thing_from_id: dict[int, bool] = {cat["id"]: bool(cat["isthing"]) for cat in coco_categories}
 
-    def detect_objects_to_track(self, rgb: npt.NDArray[np.uint8], frame_idx: int) -> list[Detection]:
+    def detect_objects_to_track(self, rgb: cv2.typing.MatLike, frame_idx: int) -> list[Detection]:
         logging.info("Looking for things to track on frame %d", frame_idx)
 
         logging.debug("Preprocess image for detection network")
@@ -172,23 +172,23 @@ class Tracker:
     next_tracking_id = 0
     MAX_TIMES_UNDETECTED = 2
 
-    def __init__(self, tracking_id: int, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
+    def __init__(self, tracking_id: int, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.tracking_id = tracking_id
         self.tracked = detection.scaled_to_fit_image(bgr)
         self.num_recent_undetected_frames = 0
 
-        self.tracker = cv2.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
 
     @classmethod
-    def create_new_tracker(cls, detection: Detection, bgr: npt.NDArray[np.uint8]) -> Tracker:
+    def create_new_tracker(cls, detection: Detection, bgr: cv2.typing.MatLike) -> Tracker:
         new_tracker = cls(cls.next_tracking_id, detection, bgr)
         cls.next_tracking_id += 1
         return new_tracker
 
-    def update(self, bgr: npt.NDArray[np.uint8]) -> None:
+    def update(self, bgr: cv2.typing.MatLike) -> None:
         if not self.is_tracking:
             return
         success, bbox_xywh = self.tracker.update(bgr)
@@ -216,10 +216,10 @@ class Tracker:
         else:
             rr.log(f"image/tracked/{self.tracking_id}", rr.Clear(recursive=False))  # TODO(#3381)
 
-    def update_with_detection(self, detection: Detection, bgr: npt.NDArray[np.uint8]) -> None:
+    def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
         self.tracked = detection.scaled_to_fit_image(bgr)
-        self.tracker = cv2.TrackerCSRT_create()
+        self.tracker = cv2.TrackerCSRT_create()  # type: ignore[attr-defined]
         bbox_xywh_rounded = [int(val) for val in self.tracked.bbox_xywh]
         self.tracker.init(bgr, bbox_xywh_rounded)
         self.log_tracked()
@@ -285,7 +285,7 @@ def update_trackers_with_detections(
     trackers: list[Tracker],
     detections: Sequence[Detection],
     label_strs: Sequence[str],
-    bgr: npt.NDArray[np.uint8],
+    bgr: cv2.typing.MatLike,
 ) -> list[Tracker]:
     """
     Tries to match detections to existing trackers and updates the trackers if they match.
