@@ -28,7 +28,9 @@ all-features = true
 
 [advisories]
 version = 2
-ignore = []
+ignore = [
+  "RUSTSEC-2023-0081", # TODO(#5998): unmaintained crate "safemem" pulled in by "cargo-run-wasm"
+]
 
 
 [bans]
