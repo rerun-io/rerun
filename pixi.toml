@@ -122,7 +122,7 @@ py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only
 ] }
 
 # Python example utilities
-py-run-all-examples = { cmd = "python scripts/run_all.py --skip-bCargo.tomluild", depends_on = [
+py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
   "py-build",
 ] }
 py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends_on = [
