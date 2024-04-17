@@ -38,6 +38,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   rs-build-web-viewer:
     name: Build web viewer
@@ -66,7 +70,6 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Build web-viewer (release)
-        shell: bash
         run: |
           if [ ${{ inputs.CHANNEL }} = "nightly" ]; then
             export DEFAULT_EXAMPLES_MANIFEST_URL="https://app.rerun.io/version/nightly/examples_manifest.json"
@@ -76,7 +79,6 @@ jobs:
       # We build a single manifest pointing to the `commit`
       # All the `pr`, `main`, release tag, etc. variants will always just point to the resolved commit
       - name: Build examples manifest
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           sha="$(echo $full_commit | cut -c1-7)"

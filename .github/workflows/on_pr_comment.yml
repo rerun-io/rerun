@@ -10,6 +10,10 @@ on:
   issue_comment:
     types: [created, edited]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   parse-command:
     if: |
@@ -21,7 +25,6 @@ jobs:
     steps:
       - name: Parse comment
         id: parse
-        shell: bash
         run: |
           # Parse `@rerun-bot <command>`
           command=$(echo "${{ github.event.comment.body }}" | sed -n 's/.*@rerun-bot[[:space:]]\+\([a-zA-Z\-]*\).*/\1/p')
@@ -37,7 +40,6 @@ jobs:
 
       - name: Dispatch main workflow
         id: dispatch
-        shell: bash
         env:
           # NOTE: This uses `RERUN_BOT_TOKEN` instead of `GITHUB_TOKEN`,
           # otherwise the recursive workflow protection prevents us from

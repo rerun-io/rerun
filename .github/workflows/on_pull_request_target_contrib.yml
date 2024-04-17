@@ -10,6 +10,10 @@ on:
       - opened
       - synchronize
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   pull-requests: "write" # Updates PR body
@@ -28,7 +32,6 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Update PR description
-        shell: bash
         run: |
           pixi run ./scripts/ci/update_pr_body.py \
             --github-token '${{ secrets.GITHUB_TOKEN }}' \

@@ -23,6 +23,10 @@ on:
         type: boolean
         required: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "write"
   id-token: "write"
@@ -37,12 +41,10 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build-web:
@@ -85,40 +87,34 @@ jobs:
           path: wheel
 
       - name: Install example dependencies
-        shell: bash
         run: |
           pixi run pip install \
             -r scripts/ci/requirements-examples-nightly.txt \
             --no-input
 
       - name: Install Python dependencies and wheel
-        shell: bash
         run: |
           pixi -e wheel-test run pip uninstall rerun-sdk -y
           pixi -e wheel-test run pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
           pixi -e wheel-test run pip install rerun-sdk --no-index --find-links wheel
 
       - name: Installed wheel version
-        shell: bash
         run: |
           pixi -e wheel-test run python -m rerun --version
           pixi -e wheel-test run which rerun
           pixi -e wheel-test run rerun --version
 
       - name: Build web-viewer (release)
-        shell: bash
         run: |
           pixi -e wheel-test run rerun-build-web-release
 
       - name: Build examples
-        shell: bash
         run: |
           pixi -e wheel-test run build-examples rrd \
             --channel "release" \
             web_viewer/examples
 
       - name: Build examples manifest
-        shell: bash
         run: |
           pixi -e wheel-test run build-examples manifest \
             --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
@@ -141,6 +137,5 @@ jobs:
 
       - name: Publish app.rerun.io
         if: inputs.update-latest
-        shell: bash
         run: |
           gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest

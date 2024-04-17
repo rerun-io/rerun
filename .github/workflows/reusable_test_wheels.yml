@@ -50,6 +50,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   id-token: "write"
@@ -67,7 +71,7 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
-        shell: bash
+
         # TODO(#5525): at least this target is broken, maybe others — we currently only use linux-x64 and windows-x64
         run: |
           case "${{ inputs.PLATFORM }}" in
@@ -118,7 +122,6 @@ jobs:
 
     steps:
       - name: Show context
-        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -156,28 +159,23 @@ jobs:
 
       - name: Get version
         id: get-version
-        shell: bash
-        run: |
-          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
+        run: pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
-        shell: bash
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk
           pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Print wheel version
-        shell: bash
         run: |
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
           pixi run -e wheel-test rerun --version
 
       - name: Run unit tests
-        shell: bash
         run: cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test

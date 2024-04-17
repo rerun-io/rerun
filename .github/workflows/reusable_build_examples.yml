@@ -37,6 +37,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   rs-build-examples:
     name: Build Examples
@@ -71,20 +75,17 @@ jobs:
           path: wheel
 
       - name: Install example dependencies
-        shell: bash
         run: |
           pixi run -e wheel-test pip install \
             -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt \
             --no-input
 
       - name: Install built wheel
-        shell: bash
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk -y
           pixi run -e wheel-test pip install rerun-sdk --no-index --find-links wheel
 
       - name: Print wheel version
-        shell: bash
         run: |
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
@@ -92,20 +93,17 @@ jobs:
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: Build examples
-        shell: bash
         run: |
           pixi run -e wheel-test build-examples rrd \
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
       - name: Build snippets
-        shell: bash
         run: |
           pixi run -e wheel-test build-examples snippets \
             example_data/snippets
