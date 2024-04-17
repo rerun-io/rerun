@@ -5267,8 +5267,6 @@ dependencies = [
  "bincode",
  "document-features",
  "ewebsock",
- "futures-channel",
- "futures-util",
  "parking_lot",
  "re_format",
  "re_log",
