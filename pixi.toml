@@ -37,6 +37,9 @@ codegen = "cargo --quiet run --package re_types_builder -- "
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer --"
 
+# Compile and the rerun viewer.
+rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
+
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -109,7 +112,9 @@ py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --c
 py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
-py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests --features allow-missing-rerun-cli"
+py-build = { cmd = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests --features allow-missing-rerun-cli", depends_on = [
+  "rerun-build",
+] }
 py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml --features pypi"
 
 # Run the Python tests.
