@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: write
   id-token: "write"
@@ -31,7 +35,6 @@ jobs:
 
       - name: Get bumped version
         id: versioning
-        shell: bash
         run: |
           crate_version=$(pixi run python scripts/ci/crates.py get-version)
           echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"

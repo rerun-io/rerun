@@ -7,6 +7,10 @@ on:
     # 12:15 UTC, every day
     - cron: "15 12 * * *"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   checks:
     name: Checks
@@ -52,7 +56,6 @@ jobs:
           toolchain: 1.76.0
 
       - run: cargo build -p rerun
-        shell: bash
 
   build-web:
     name: "Build web viewer"
@@ -374,7 +377,6 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Add SHORT_SHA env property with commit short sha
-        shell: bash
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       # First delete the old prerelease. If we don't do this, we don't get things like

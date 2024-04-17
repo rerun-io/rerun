@@ -8,6 +8,10 @@ concurrency:
   group: on-push-docs
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   redeploy-rerun-io:
     runs-on: ubuntu-latest

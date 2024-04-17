@@ -5,6 +5,10 @@ on:
   issue_comment:
     types: [created, edited]
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   actions: "write"
@@ -25,13 +29,11 @@ jobs:
           pixi-version: v0.18.0
 
       - name: Wait a few seconds
-        shell: bash
         run: |
           # Give GitHub a bit of time to synchronize everything
           sleep 5s
 
       - name: Approve workflow runs
-        shell: bash
         run: |
           pixi run python scripts/ci/approve_workflow_runs.py \
             --github-token "${{ secrets.GITHUB_TOKEN }}" \

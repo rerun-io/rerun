@@ -40,6 +40,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
 
@@ -73,7 +77,6 @@ jobs:
 
       - name: Get version
         id: get-version
-        shell: bash
         run: |
           echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
@@ -81,28 +84,23 @@ jobs:
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
-        shell: bash
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk
           pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
       - name: Print wheel version
-        shell: bash
         run: |
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
           pixi run -e wheel-test rerun --version
 
       - name: Run Python unit-tests
-        shell: bash
         run: pixi run -e wheel-test cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test
-        shell: bash
         run: pixi run -e wheel-test RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
-        shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
@@ -110,7 +108,6 @@ jobs:
           pixi run -e wheel-test RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
-        shell: bash
         # --release so we can inherit from some of the artifacts that maturin has just built before
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
@@ -126,7 +123,6 @@ jobs:
           key: structure-from-motion-dataset-structure-from-motion-fiat-v1
 
       - name: Generate Embedded RRD file
-        shell: bash
         # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
         run: |
           mkdir rrd

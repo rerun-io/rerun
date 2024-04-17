@@ -35,6 +35,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   id-token: "write"
