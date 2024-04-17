@@ -22,7 +22,6 @@ use re_smart_channel::ReceiveSet;
 
 use crate::{server_url, RerunServerError, RerunServerPort};
 
-#[derive(Clone)]
 struct MessageQueue {
     server_memory_limit: MemoryLimit,
     messages: VecDeque<Vec<u8>>,
