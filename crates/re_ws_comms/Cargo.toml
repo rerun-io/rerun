@@ -50,7 +50,6 @@ thiserror.workspace = true
 ewebsock = { workspace = true, optional = true }
 
 # Server:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 parking_lot = { workspace = true, optional = true }
 re_smart_channel = { workspace = true, optional = true }
 tungstenite = { workspace = true, optional = true, default-features = false }
