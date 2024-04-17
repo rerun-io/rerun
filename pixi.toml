@@ -110,7 +110,7 @@ py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 py-build = "RERUN_PY_DEV_BUILD=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
-py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml"
+py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml --features pypi"
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
@@ -122,7 +122,7 @@ py-bench = { cmd = "python -m pytest -c rerun_py/pyproject.toml --benchmark-only
 ] }
 
 # Python example utilities
-py-run-all-examples = { cmd = "python scripts/run_all.py --skip-build", depends_on = [
+py-run-all-examples = { cmd = "python scripts/run_all.py --skip-bCargo.tomluild", depends_on = [
   "py-build",
 ] }
 py-run-all-examples-web = { cmd = "python scripts/run_all.py --web --skip-build", depends_on = [
