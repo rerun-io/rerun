@@ -78,57 +78,49 @@ jobs:
         with:
           node-version: 18
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          python-version: 3.11
-
-      - name: Install deps
-        shell: bash
-        run: |
-          python3 -m pip install -r ./scripts/ci/requirements-crates.txt
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.16.1
+          pixi-version: v0.19.0
 
       - name: Update crate versions
         id: versioning
         shell: bash
         run: |
-
-          echo "release_version: $release_version"
+          echo Check that the release version matches expected format…
+          pixi run python scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
           #   `release-0.8.1-meta.N` -> `0.8.1`
-          release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
+          release_version=$(pixi run python scripts/ci/crates.py get-version --from git --finalize)
+
+          echo "release_version: $release_version"
 
           echo Store version before the update, so we can later detect if it changed…
-          previous=$(python3 scripts/ci/crates.py get-version)
+          previous=$(pixi run python scripts/ci/crates.py get-version)
 
           echo If the version minus prerelease/build metadata is not the same as the release version, then update it.…
-          if [ $(python3 scripts/ci/crates.py get-version --finalize) != $release_version ]; then
-            python3 scripts/ci/crates.py version --exact $release_version
+          if [ $(pixi run python scripts/ci/crates.py get-version --finalize) != $release_version ]; then
+            pixi run python scripts/ci/crates.py version --exact $release_version
           fi
 
           echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set…
           if [ ${{ inputs.release-type }} = "rc" ]; then
-            python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
+            pixi run python scripts/ci/crates.py version --bump prerelease --pre-id=rc
           fi
 
           echo If this is an 'alpha', set the version to whatever is in the git branch name.…
           if [ ${{ inputs.release-type }} = "alpha" ]; then
-            python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from git)
+            pixi run python scripts/ci/crates.py version --exact $(pixi run python scripts/ci/crates.py get-version --from git)
           fi
 
           echo If this is a 'final', set the version to the final release version…
           if [ ${{ inputs.release-type }} = "final" ]; then
-            python3 scripts/ci/crates.py version --exact $release_version
+            pixi run python scripts/ci/crates.py version --exact $release_version
           fi
 
           echo Store version after the update, and the expected "final" release version…
-          current=$(python3 scripts/ci/crates.py get-version)
-          final=$(python3 scripts/ci/crates.py get-version --finalize)
+          current=$(pixi run python scripts/ci/crates.py get-version)
+          final=$(pixi run python scripts/ci/crates.py get-version --finalize)
 
           echo Output everything for use in other steps…
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
@@ -182,7 +174,7 @@ jobs:
           - If this is an 'alpha' release, you can just merge the pull request.
           - Otherwise:
             - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, run the release workflow in 'release' mode
+            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
               - [ ] Sanity check the build artifacts:
                 - [ ] pip install: does it install and run?
@@ -192,6 +184,7 @@ jobs:
               - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
               merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
               - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
+              - [ ] Merge this PR
 
           - [ ] Tests
             - [ ] Windows
@@ -210,7 +203,7 @@ jobs:
 
   update-docs:
     name: "Update Docs"
-    needs: [version]
+    needs: [version, publish-web]
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
@@ -282,6 +275,8 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
+  # Force-pushes `latest` and `docs-latest` to the contents of the release branch.
+  # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -310,6 +305,7 @@ jobs:
           git fetch
           git checkout ${{ github.ref_name }}
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
+          git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
   github-release:
     name: "GitHub Release"
@@ -383,19 +379,9 @@ jobs:
         with:
           node-version: 18
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          python-version: 3.11
-
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.16.1
-
-      - name: Install dependencies
-        shell: bash
-        run: |
-          python3 -m pip install -r scripts/ci/requirements-crates.txt
+          pixi-version: v0.19.0
 
       - name: Commit new version
         shell: bash
@@ -407,9 +393,9 @@ jobs:
           git pull --rebase
 
           # bump version and commit it
-          python3 scripts/ci/crates.py version --bump auto
+          pixi run python scripts/ci/crates.py version --bump auto
           pixi run toml-fmt
-          version="$(python3 scripts/ci/crates.py get-version)"
+          version="$(pixi run python scripts/ci/crates.py get-version)"
 
           git commit -am "Bump versions to $version"
           git push

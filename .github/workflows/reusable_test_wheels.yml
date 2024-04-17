@@ -17,9 +17,13 @@ on:
         required: false
         type: string
         default: ""
+      FAST:
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-build-wheels
+  group: ${{ inputs.CONCURRENCY }}-test-wheels
   cancel-in-progress: true
 
 env:
@@ -35,8 +39,16 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
 
 permissions:
   contents: "read"
@@ -62,12 +74,12 @@ jobs:
             linux-arm64)
               runner="buildjet-8vcpu-ubuntu-2204-arm"
               target="aarch64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.12.0'"
+              container="'rerunio/ci_docker:0.14.0'"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'rerunio/ci_docker:0.12.0'"
+              container="'rerunio/ci_docker:0.14.0'"
               ;;
             windows-x64)
               runner="windows-latest-8-cores"
@@ -75,12 +87,12 @@ jobs:
               container="null"
               ;;
             macos-arm64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
               container="null"
               ;;
             macos-x64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="x86_64-apple-darwin"
               container="null"
               ;;
@@ -131,46 +143,22 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.16.1
-
-      # The pip-cache setup logic doesn't work in the ubuntu docker container
-      # That's probably fine since we bake these deps into the container already
-      - name: Setup python
-        if: ${{ inputs.PLATFORM != 'linux-x64' }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "scripts/ci/requirements.txt"
-
-      # These should already be in the docker container, but run for good measure. A no-op install
-      # should be fast, and this way things don't break if we add new packages without rebuilding
-      # docker
-      - run: pip install -r scripts/ci/requirements.txt
-        shell: bash
+          pixi-version: v0.19.0
+          environments: wheel-test
 
       - name: Download Wheel
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
-
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
-        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-        shell: bash
-        run: |
-          pip install attrs>=23.1.0 'numpy>=1.23,<2' pillow pyarrow>=14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
 
       - name: Get version
         id: get-version
         shell: bash
         run: |
-          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -178,38 +166,33 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run -e wheel-test pip uninstall rerun-sdk
+          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
-      - name: Verify built wheel version
+      - name: Print wheel version
         shell: bash
         run: |
-          python3 -m rerun --version
-          which rerun
-          rerun --version
+          pixi run -e wheel-test python -m rerun --version
+          pixi run -e wheel-test which rerun
+          pixi run -e wheel-test rerun --version
 
       - name: Run unit tests
         shell: bash
-        run: cd rerun_py/tests && pytest -c ../pyproject.toml
+        run: cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test
-        shell: bash
-        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: pixi run -e wheel-test RUST_LOG=debug python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' }}
-        shell: bash
+        if: ${{ !inputs.FAST }}
         # --release so we can inherit from some of the artifacts that maturin has just built before
-        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: |
-          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+        run: pixi run -e wheel-test RUST_LOG=debug python tests/roundtrips.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' }}
-        shell: bash
+        if: ${{ !inputs.FAST }}
         # --release so we can inherit from some of the artifacts that maturin has just built before
-        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: |
-          RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+        run: pixi run -e wheel-test RUST_LOG=debug python docs/snippets/compare_snippet_output.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build

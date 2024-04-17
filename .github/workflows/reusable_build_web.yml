@@ -1,4 +1,4 @@
-name: Reusable Build Web
+name: Reusable Build web viewer
 
 on:
   workflow_call:
@@ -27,17 +27,25 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
+
 jobs:
   rs-build-web-viewer:
-    name: Build Web (wasm32 + wasm-bindgen)
+    name: Build web viewer
     permissions:
       contents: "read"
       id-token: "write"
 
     runs-on: ubuntu-latest-16-cores
-
-    container:
-      image: rerunio/ci_docker:0.12.0
 
     steps:
       - uses: actions/checkout@v4
@@ -53,9 +61,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.19.0
 
       - name: Build web-viewer (release)
         shell: bash
@@ -63,7 +71,7 @@ jobs:
           if [ ${{ inputs.CHANNEL }} = "nightly" ]; then
             export DEFAULT_EXAMPLES_MANIFEST_URL="https://app.rerun.io/version/nightly/examples_manifest.json"
           fi
-          pixi run cargo run --locked -p re_build_web_viewer -- --release -g
+          pixi run rerun-build-web-release
 
       # We build a single manifest pointing to the `commit`
       # All the `pr`, `main`, release tag, etc. variants will always just point to the resolved commit
@@ -78,8 +86,8 @@ jobs:
             --channel "${{ inputs.CHANNEL }}" \
             web_viewer/examples_manifest.json
 
-      - name: Upload web assets
-        uses: actions/upload-artifact@v3
+      - name: Upload web viewer
+        uses: actions/upload-artifact@v4
         with:
           name: web_viewer
           path: web_viewer

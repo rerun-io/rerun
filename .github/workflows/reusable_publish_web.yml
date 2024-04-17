@@ -54,13 +54,13 @@ jobs:
           ref: ${{ inputs.release-commit }}
 
       - id: "auth"
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
+        uses: "google-github-actions/setup-gcloud@v2"
         with:
           version: ">= 363.0.0"
 
@@ -72,13 +72,14 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.16.1
+          pixi-version: v0.19.0
+          environments: wheel-test
 
       # built by `reusable_build_and_publish_wheels`
       - name: Download Wheel
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.wheel-artifact-name }}
           path: wheel
@@ -93,47 +94,46 @@ jobs:
       - name: Install Python dependencies and wheel
         shell: bash
         run: |
-          pixi run pip install -r scripts/ci/requirements.txt
-          pixi run pip uninstall rerun-sdk -y
-          pixi run pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
-          pixi run pip install rerun-sdk --no-index --find-links wheel
+          pixi -e wheel-test run pip uninstall rerun-sdk -y
+          pixi -e wheel-test run pip install deprecated '"numpy>=1.23,<2"' pyarrow>=14.0.2 pytest==7.1.2
+          pixi -e wheel-test run pip install rerun-sdk --no-index --find-links wheel
 
       - name: Installed wheel version
         shell: bash
         run: |
-          pixi run python3 -m rerun --version
-          pixi run which rerun
-          pixi run rerun --version
+          pixi -e wheel-test run python -m rerun --version
+          pixi -e wheel-test run which rerun
+          pixi -e wheel-test run rerun --version
 
       - name: Build web-viewer (release)
         shell: bash
         run: |
-          pixi run cargo run --locked -p re_build_web_viewer -- --release -g
+          pixi -e wheel-test run rerun-build-web-release
 
       - name: Build examples
         shell: bash
         run: |
-          pixi run build-examples rrd \
+          pixi -e wheel-test run build-examples rrd \
             --channel "release" \
             web_viewer/examples
 
       - name: Build examples manifest
         shell: bash
         run: |
-          pixi run build-examples manifest \
+          pixi -e wheel-test run build-examples manifest \
             --base-url "https://app.rerun.io/version/${{inputs.release-version}}" \
             --channel "release" \
             web_viewer/examples_manifest.json
 
       - name: Upload app.rerun.io (versioned)
-        uses: google-github-actions/upload-cloud-storage@v1
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
           parent: false
 
       - name: Upload app.rerun.io (commit)
-        uses: google-github-actions/upload-cloud-storage@v1
+        uses: google-github-actions/upload-cloud-storage@v2
         with:
           path: "web_viewer"
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"

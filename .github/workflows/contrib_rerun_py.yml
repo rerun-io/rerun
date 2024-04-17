@@ -17,6 +17,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.8"
+
   # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
   # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
@@ -28,6 +29,17 @@ env:
   # See https://github.com/ericseppanen/cargo-cranky/issues/8
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
+  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "false"
+
+  # Wrap every `rustc` invocation in `sccache`.
+  RUSTC_WRAPPER: "sccache"
+
+  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
+  # these incremental artifacts when running on CI.
+  CARGO_INCREMENTAL: "0"
+
 permissions:
   contents: "read"
 
@@ -36,19 +48,14 @@ jobs:
     name: Build Wheels
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.12.0
+      image: rerunio/ci_docker:0.14.0
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
+      - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.16.1
-
-      # These should already be in the docker container, but run for good measure. A no-op install
-      # should be fast, and this way things don't break if we add new packages without rebuilding
-      # docker
-      - run: pip install -r scripts/ci/requirements.txt
-        shell: bash
+          pixi-version: v0.19.0
+          environments: wheel-test
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
@@ -64,16 +71,6 @@ jobs:
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
 
-      # Test the wheel
-      - name: Install wheel dependencies
-        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-        # This needs to be a separate step for some reason or the following step fails
-        # TODO(jleibs): pull these deps from pyproject.toml
-        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-        shell: bash
-        run: |
-          pip install attrs>=23.1.0 'numpy>=1.23,<2' pillow pyarrow>=14.0.2 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
-
       - name: Get version
         id: get-version
         shell: bash
@@ -86,23 +83,23 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip uninstall rerun-sdk
-          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
+          pixi run -e wheel-test pip uninstall rerun-sdk
+          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
-      - name: Verify built wheel version
+      - name: Print wheel version
         shell: bash
         run: |
-          python3 -m rerun --version
-          which rerun
-          rerun --version
+          pixi run -e wheel-test python -m rerun --version
+          pixi run -e wheel-test which rerun
+          pixi run -e wheel-test rerun --version
 
       - name: Run Python unit-tests
         shell: bash
-        run: cd rerun_py/tests && pytest -c ../pyproject.toml
+        run: pixi run -e wheel-test cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test
         shell: bash
-        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: pixi run -e wheel-test RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
         shell: bash
@@ -110,7 +107,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run -e wheel-test RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
         shell: bash
@@ -118,7 +115,7 @@ jobs:
         # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
         run: |
-          RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+          pixi run -e wheel-test RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
       - name: Cache RRD dataset
         id: dataset
@@ -134,4 +131,4 @@ jobs:
         run: |
           mkdir rrd
           pip install -r examples/python/structure_from_motion/requirements.txt
-          python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+          pixi run -e wheel-test python examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
