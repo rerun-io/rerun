@@ -10,7 +10,10 @@ fn main() {
 
     // Fail if bin/rerun is missing and this isn't a maturin dev build
     if !is_tracked_env_var_set("RERUN_PY_DEV_BUILD") && !rerun_bin.exists() {
-        eprintln!("ERROR: Expected to find `rerun` at `{rerun_bin:?}`.");
-        std::process::exit(1);
+        eprintln!("WARNING: Expected to find `rerun` at `{rerun_bin:?}`.");
+        // TODO(jleibs): we would like to make this fail the build. However, this
+        // causes `cargo check` to fail. This really should be some kind of maturin
+        // check, but there isn't a way to do that yet.
+        //std::process::exit(1);
     }
 }
