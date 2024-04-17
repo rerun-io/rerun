@@ -14,6 +14,14 @@ The site documentation lives in Markdown files inside [`/content`](./content).
 
 The entry point to the documentation is [`/content/index.md`](./content/index.md).
 
+## Updating the docs
+
+The `rerun.io` docs are built from the contents of the `/docs` directory on the `docs-latest` branch. Any push to `docs-latest` will trigger an automatic redeploy of the website.
+
+Do not push directly to the `docs-latest` branch! To update the docs, either [create a Release](../RELEASES.md), or cherry-pick commits to the `docs-latest` branch _after_ they've been committed to `main`.
+
+⚠ Any changes made directly in the `docs-latest` branch will be lost the next time we create a release.
+
 ## Special syntax
 
 ### Frontmatter
