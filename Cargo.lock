@@ -5266,9 +5266,8 @@ dependencies = [
  "bincode",
  "document-features",
  "ewebsock",
- "futures-channel",
- "futures-util",
  "parking_lot",
+ "polling 2.8.0",
  "re_format",
  "re_log",
  "re_log_types",
@@ -5276,8 +5275,6 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "thiserror",
- "tokio",
- "tokio-tungstenite",
  "tungstenite",
 ]
 
@@ -6465,18 +6462,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
-]
-
-[[package]]
-name = "tokio-tungstenite"
-version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "212d5dcb2a1ce06d81107c3d0ffa3121fe974b73f068c8282cb1c32328113b6c"
-dependencies = [
- "futures-util",
- "log",
- "tokio",
- "tungstenite",
 ]
 
 [[package]]

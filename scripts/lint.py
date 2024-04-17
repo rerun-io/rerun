@@ -973,7 +973,8 @@ def lint_example_requirements() -> int:
 
     missing = []
     for path in glob("examples/python/*/requirements.txt"):
-        line = f"-r {os.path.relpath(path, 'examples/python')}"
+        path = str(os.path.relpath(path, "examples/python")).replace("\\", "/")
+        line = f"-r {path}"
         if line not in requirements:
             missing.append(line)
 
@@ -992,7 +993,8 @@ def lint_example_requirements() -> int:
         expected = glob("examples/python/*/requirements.txt")
         expected.sort()
         for path in expected:
-            print(f"-r {os.path.relpath(path, 'examples/python')}")
+            path = str(os.path.relpath(path, "examples/python")).replace("\\", "/")
+            print(f"-r {path}")
         return 1
 
     return 0

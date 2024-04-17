@@ -1,6 +1,6 @@
 use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServerHandle, WebViewerServerPort};
-use re_ws_comms::{RerunServerHandle, RerunServerPort};
+use re_ws_comms::{RerunServer, RerunServerPort};
 
 /// Failure to host a web viewer and/or Rerun server.
 #[derive(thiserror::Error, Debug)]
@@ -21,8 +21,8 @@ struct WebViewerSink {
     /// Sender to send messages to the [`re_ws_comms::RerunServer`]
     sender: re_smart_channel::Sender<LogMsg>,
 
-    /// Handle to keep the [`re_ws_comms::RerunServer`] alive
-    _rerun_server: RerunServerHandle,
+    /// Rerun websocket server.
+    _rerun_server: RerunServer,
 
     /// Handle to keep the [`re_web_viewer_server::WebViewerServer`] alive
     _webviewer_server: WebViewerServerHandle,
@@ -43,9 +43,9 @@ impl WebViewerSink {
             re_smart_channel::SmartChannelSource::Sdk,
         );
 
-        let rerun_server = RerunServerHandle::new(
+        let rerun_server = RerunServer::new(
             re_smart_channel::ReceiveSet::new(vec![rerun_rx]),
-            bind_ip.to_owned(),
+            bind_ip,
             ws_port,
             server_memory_limit,
         )?;
