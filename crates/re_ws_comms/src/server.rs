@@ -122,8 +122,6 @@ impl RerunServer {
         listener_socket.set_nonblocking(true)?;
 
         let poller = Arc::new(Poller::new()?);
-        let message_broadcaster =
-            Arc::new(ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit));
         let shutdown_flag = Arc::new(AtomicBool::new(false));
 
         let local_addr = listener_socket.local_addr()?;
@@ -136,7 +134,7 @@ impl RerunServer {
                 Self::listen_thread_func(
                     &poller,
                     &listener_socket,
-                    &message_broadcaster,
+                    ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit),
                     &shutdown_flag,
                 );
             })?;
@@ -164,7 +162,7 @@ impl RerunServer {
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
-        message_broadcaster: &Arc<ReceiveSetBroadcaster>,
+        message_broadcaster: ReceiveSetBroadcaster,
         shutdown_flag: &AtomicBool,
     ) {
         // Each socket in `poll::Poller` needs a "name".
@@ -190,41 +188,50 @@ impl RerunServer {
 
             for event in events.drain(..) {
                 if event.key == listener_poll_key {
-                    match listener_socket.accept() {
-                        Ok((tcp_stream, _)) => {
-                            let address = tcp_stream.peer_addr();
-
-                            // Keep the client simple, otherwise we need to do polling there as well.
-                            tcp_stream.set_nonblocking(false).ok();
-
-                            re_log::debug!("New WebSocket connection from {address:?}");
-
-                            match tungstenite::accept(tcp_stream) {
-                                Ok(ws_stream) => {
-                                    message_broadcaster.add_client(ws_stream);
-                                }
-                                Err(err) => {
-                                    re_log::warn!("Error accepting WebSocket connection: {err}");
-                                }
-                            };
-                        }
-
-                        Err(err) => {
-                            re_log::warn!("Error accepting WebSocket connection: {err}");
-                        }
-                    };
-
-                    // Set interest in the next readability event.
-                    if let Err(err) =
-                        poller.modify(listener_socket, Event::readable(listener_poll_key))
-                    {
-                        re_log::error!(
-                            "Error when polling listener socket for incoming connections: {err}"
-                        );
-                        return;
-                    }
+                    Self::accept_connection(
+                        listener_socket,
+                        &message_broadcaster,
+                        poller,
+                        listener_poll_key,
+                    );
                 }
             }
+        }
+    }
+
+    fn accept_connection(
+        listener_socket: &TcpListener,
+        message_broadcaster: &ReceiveSetBroadcaster,
+        poller: &Poller,
+        listener_poll_key: usize,
+    ) {
+        match listener_socket.accept() {
+            Ok((tcp_stream, _)) => {
+                let address = tcp_stream.peer_addr();
+
+                // Keep the client simple, otherwise we need to do polling there as well.
+                tcp_stream.set_nonblocking(false).ok();
+
+                re_log::debug!("New WebSocket connection from {address:?}");
+
+                match tungstenite::accept(tcp_stream) {
+                    Ok(ws_stream) => {
+                        message_broadcaster.add_client(ws_stream);
+                    }
+                    Err(err) => {
+                        re_log::warn!("Error accepting WebSocket connection: {err}");
+                    }
+                };
+            }
+
+            Err(err) => {
+                re_log::warn!("Error accepting WebSocket connection: {err}");
+            }
+        };
+
+        // Set interest in the next readability event.
+        if let Err(err) = poller.modify(listener_socket, Event::readable(listener_poll_key)) {
+            re_log::error!("Error when polling listener socket for incoming connections: {err}");
         }
     }
 
