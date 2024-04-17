@@ -4,58 +4,133 @@ order: 600
 description: How to embed Rerun in notebooks like Jupyter or Colab
 ---
 
-Starting with version 0.5.0, Rerun now has limited support for embedding the Rerun viewer directly within IPython-style
+Starting with version 0.15.1, Rerun has improved support for embedding the Rerun viewer directly within IPython-style
 notebooks. This makes it easy to iterate on API calls as well as to share data with others.
 
 Rerun has been tested with:
- - [Jupyter Notebook Classic](https://jupyter.org/)
- - [Jupyter Lab](https://jupyter.org/)
- - [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
- - [Google Colab](https://colab.research.google.com/)
+
+-   [Jupyter Notebook Classic](https://jupyter.org/)
+-   [Jupyter Lab](https://jupyter.org/)
+-   [VSCode](https://code.visualstudio.com/blogs/2021/08/05/notebooks)
+-   [Google Colab](https://colab.research.google.com/)
 
 ## Basic concept
 
-Rather than logging to a file or a remote server, you can also configure the Rerun SDK to store data in a local
-[MemoryRecording](https://ref.rerun.io/docs/python/stable/common/other_classes_and_functions/#rerun.MemoryRecording).
-
-This `MemoryRecording` can then used to produce an inline HTML snippet to be directly displayed in most notebook
-environments. The snippet includes an embedded copy of an RRD file and some javascript that loads that RRD file into an
-IFrame.
-
-Each cell in the notebook is fully isolated from the other cells and will only display the data from the source
-`MemoryRecording`.
+When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
+you send them to a sink such as via `rr.connect()` or `rr.save()`. When using Rerun in a notebook,
+rather than using the other sinks, you have the option to use a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
+This method takes any buffered messages and converts them into an HTML snipped including
+the inlined data along with an instance of the viewer in an iframe.
 
 ## The APIs
 
-In order to create a new `MemoryRecording`, you call:
-```python
-rec = rr.memory_recording()
-```
-This is similar to calling `rr.connect()` or `rr.save()` in that it configures the Rerun SDK to use this new
-recording as a target for future API calls.
+In order to output the current recording data to a notebook cell, call:
+[`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
 
-After logging data to the recording you can display it in a cell by calling the
-[show()](https://ref.rerun.io/docs/python/stable/common/other_classes_and_functions/#rerun.MemoryRecording.show) method
-on the `MemoryRecording`. The `show()` method also takes optional arguments for specifying the width and height of the IFrame. For example:
+For example:
+
 ```python
-rec.show(width=400, height=400)
+import rerun as rr
+from numpy.random import default_rng
+
+rr.init("rerun_example_notebook")
+
+rng = default_rng(12345)
+
+positions = rng.uniform(-5, 5, size=[10, 3])
+colors = rng.uniform(0, 255, size=[10, 3])
+radii = rng.uniform(0, 1, size=[10])
+
+rr.log("random", rr.Points3D(positions, colors=colors, radii=radii))
+
+rr.notebook_show()
 ```
 
-The `MemoryRecording` also implements `_repr_html_()` which means in most notebook environments, if it is the last
-expression returned in a cell it will display itself automatically, without the need to call `show()`.
+<picture>
+  <img src="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_example/e47920b7ca7988aba305d73b2aea2da7b81c93e3/1200w.png">
+</picture>
+
+This is similar to calling `rr.connect()` or `rr.save()` in that it configures the Rerun SDK to use
+this memory buffer as the sink for future logging calls.
+
+Note that the output cell is essentially a fixed snapshot of the
+current state of the recording at the time that `notebook_show()` is called. Rerun does not yet
+support live incremental streaming from the jupyter kernel into the embedded viewer.
+
+Messages will continue to be buffered incrementally, and each call to `notebook_show()` will
+display all messages that have been logged since the last call to `rr.init()`.
+
+If you wish to clear the current recording, you can call `rr.init()` again.
+
+The `notebook_show()` method also takes optional arguments for specifying the width and height of the IFrame. For example:
+
 ```python
-rec = rr.memory_recording()
-rr.log("img", my_image)
-rec
+rr.notebook_show(width=400, height=400)
 ```
+
+## Working with Blueprints
+
+[Blueprints](./configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
+parameter.
+
+For example
+
+```python
+blueprint = rrb.Blueprint(
+    rrb.Horizontal(
+        rrb.Spatial3DView(origin="/world"),
+        rrb.Spatial2DView(origin="/world/camera"),
+        column_shares=[2,1]),
+)
+
+rr.notebook_show(blueprint=blueprint)
+```
+
+Because blueprint types implement `_repr_html_`, you can also just end any cell with a blueprint
+object, and it will call `notebook_show()` behind the scenes.
+
+```python
+import numpy as np
+import rerun as rr
+import rerun.blueprint as rrb
+
+rr.init("rerun_example_image")
+rng = np.random.default_rng(12345)
+
+image1 = rng.uniform(0, 255, size=[24, 64, 3])
+image2 = rng.uniform(0, 255, size=[24, 64, 1])
+
+rr.log("image1", rr.Image(image1))
+rr.log("image2", rr.Image(image2))
+
+rrb.Vertical(
+    rrb.Spatial2DView(origin='/image1'),
+    rrb.Spatial2DView(origin='/image2')
+)
+```
+
+<picture>
+  <img src="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/notebook_blueprint_example/eb0663a9a8a0de8276390667a774acc1bc86148e/1200w.png">
+</picture>
+
 ## Some working examples
 
 To experiment with notebooks yourself, there are a few options.
+
 ### Running locally
 
 The GitHub repo includes a [notebook example](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook/cube.ipynb).
 
 If you have a local checkout of Rerun, you can:
+
 ```bash
 $ cd examples/python/notebook
 $ pip install -r requirements.txt
@@ -77,6 +152,7 @@ Because the Rerun viewer in the notebook is just an embedded HTML snippet it als
 tools like nbconvert.
 
 You can convert the notebook to HTML using the following command:
+
 ```bash
 $ jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb
 ```
