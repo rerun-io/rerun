@@ -197,7 +197,7 @@ impl RerunServer {
                             // Keep the client simple, otherwise we need to do polling there as well.
                             tcp_stream.set_nonblocking(false).ok();
 
-                            re_log::debug!("New WebSocket connection at {:?}", address);
+                            re_log::debug!("New WebSocket connection from {address:?}");
 
                             match tungstenite::accept(tcp_stream) {
                                 Ok(ws_stream) => {
@@ -205,7 +205,6 @@ impl RerunServer {
                                 }
                                 Err(err) => {
                                     re_log::warn!("Error accepting WebSocket connection: {err}");
-                                    return;
                                 }
                             };
                         }
