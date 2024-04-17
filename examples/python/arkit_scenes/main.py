@@ -44,7 +44,7 @@ HIGHRES_ENTITY_PATH = "world/camera_highres"
 
 
 def load_json(js_path: Path) -> dict[str, Any]:
-    with open(js_path) as f:
+    with open(js_path, encoding="utf8") as f:
         json_data: dict[str, Any] = json.load(f)
     return json_data
 

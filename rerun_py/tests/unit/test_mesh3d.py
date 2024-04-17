@@ -124,21 +124,17 @@ def test_nullable_albedo_factor() -> None:
     # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
     assert (
         len(
-            MaterialBatch(
-                [
-                    Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
-                ]
-            )
+            MaterialBatch([
+                Material(albedo_factor=[0xCC, 0x00, 0xCC, 0xFF]),
+            ])
         )
         == 1
     )
     assert (
         len(
-            MaterialBatch(
-                [
-                    Material(),
-                ]
-            )
+            MaterialBatch([
+                Material(),
+            ])
         )
         == 1
     )
@@ -148,12 +144,10 @@ def test_nullable_indices() -> None:
     # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
     assert (
         len(
-            MeshPropertiesBatch(
-                [
-                    MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
-                    MeshProperties(),
-                ]
-            )
+            MeshPropertiesBatch([
+                MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
+                MeshProperties(),
+            ])
         )
         == 2
     )

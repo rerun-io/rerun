@@ -87,7 +87,7 @@ def generate_pr_summary(github_token: str, github_repository: str, pr_number: in
     template_path = os.path.join(os.path.dirname(os.path.relpath(__file__)), "templates/pr_results_summary.html")
 
     # Render the Jinja template with the found_builds variable
-    with open(template_path) as f:
+    with open(template_path, encoding="utf8") as f:
         template = Template(f.read())
 
     buffer = io.BytesIO(template.render(found_builds=found_builds, pr_number=pr_number).encode("utf-8"))

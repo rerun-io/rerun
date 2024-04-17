@@ -51,6 +51,11 @@ rerun = "rerun:main"
 # This is needed because otherwise ruff will not be able to trim whitespaces in (codegened) docstrings.
 unsafe-fixes = true
 
+# Allow preview lints to be enabled (like `PLW1514` to force `encoding` on open).
+preview = true
+# But we only want to opt-in to certain preview rules!
+lint.explicit-preview-rules = true
+
 extend-exclude = [
   # Automatically generated test artifacts
   "venv/",
@@ -101,13 +106,18 @@ lint.ignore = [
 
 line-length = 120
 lint.select = [
-  "D",   # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
-  "E",   # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "F",   # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
-  "I",   # Isort
-  "TID", # flake8-tidy-imports
-  "W",   # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
-  "UP",  # pyupgrade (ensures idomatic code for supported python version)
+  "D",       # pydocstyle codes https://www.pydocstyle.org/en/latest/error_codes.html
+  "E",       # pycodestyle error codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "F",       # Flake8 error codes https://flake8.pycqa.org/en/latest/user/error-codes.html
+  "I",       # Isort
+  "TID",     # flake8-tidy-imports
+  "W",       # pycodestyle warning codes: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+  "UP",      # pyupgrade (ensures idomatic code for supported python version)
+  "PLW1514", # Force setting `encoding` for open calls. This is in order to prevent issues when opening utf8 files on windows where the default encoding may depend on the active locale. https://docs.astral.sh/ruff/rules/unspecified-encoding/
+]
+
+lint.unfixable = [
+  "PLW1514", # Automatic fix for `encoding` doesn't do what we want - it queries the locale for the preferred encoding which is exactly what we want to avoid.
 ]
 
 [tool.ruff.lint.per-file-ignores]

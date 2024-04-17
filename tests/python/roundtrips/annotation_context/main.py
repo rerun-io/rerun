@@ -11,16 +11,14 @@ from rerun.datatypes import ClassDescription
 
 
 def main() -> None:
-    annotation_context = rr.AnnotationContext(
-        [
-            (1, "hello"),
-            ClassDescription(
-                info=(2, "world", [3, 4, 5]),
-                keypoint_annotations=[(17, "head"), (42, "shoulders")],
-                keypoint_connections=[(1, 2), (3, 4)],
-            ),
-        ]
-    )
+    annotation_context = rr.AnnotationContext([
+        (1, "hello"),
+        ClassDescription(
+            info=(2, "world", [3, 4, 5]),
+            keypoint_annotations=[(17, "head"), (42, "shoulders")],
+            keypoint_connections=[(1, 2), (3, 4)],
+        ),
+    ])
 
     parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
     rr.script_add_args(parser)

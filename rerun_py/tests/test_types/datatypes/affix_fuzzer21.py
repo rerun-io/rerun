@@ -44,17 +44,15 @@ class AffixFuzzer21Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field("single_half", pa.float16(), nullable=False, metadata={}),
-                    pa.field(
-                        "many_halves",
-                        pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+            pa.struct([
+                pa.field("single_half", pa.float16(), nullable=False, metadata={}),
+                pa.field(
+                    "many_halves",
+                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 

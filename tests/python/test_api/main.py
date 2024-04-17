@@ -78,13 +78,11 @@ def run_segmentation() -> None:
 
     rr.log(
         "seg_test",
-        rr.AnnotationContext(
-            [
-                rr.AnnotationInfo(13, color=(255, 0, 0)),
-                (42, "label2", (0, 255, 0)),
-                rr.AnnotationInfo(99, label="label3"),
-            ]
-        ),
+        rr.AnnotationContext([
+            rr.AnnotationInfo(13, color=(255, 0, 0)),
+            (42, "label2", (0, 255, 0)),
+            rr.AnnotationInfo(99, label="label3"),
+        ]),
         static=False,
     )
     rr.log("logs/seg_test_log", rr.TextLog("label1 disappears and everything with label3 is now default colored again"))
