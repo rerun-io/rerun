@@ -327,6 +327,9 @@ impl ReceiveSetBroadcaster {
 
     /// Adds a websocket client to the broadcaster and replies all message history so far to it.
     fn add_client(&self, mut client: WebSocket<TcpStream>) {
+        // TODO(andreas): While it's great that we don't loose any messages while adding clients,
+        // the problem with this is that now we won't be able to keep the other clients fed, until this one is done!
+        // Meaning that if a new one connects, we stall the old connections until we have sent all messages to this one.
         let mut inner = self.inner.lock();
 
         for msg in &inner.history.messages {
