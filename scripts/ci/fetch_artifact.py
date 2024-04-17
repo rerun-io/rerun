@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import stat
+from pathlib import Path
 
 from google.cloud import storage
 
@@ -44,8 +46,13 @@ def main() -> None:
 
     os.makedirs(args.dest, exist_ok=True)
 
-    with open(os.path.join(args.dest, artifact_name), "wb") as f:
+    filename = os.path.join(args.dest, artifact_name)
+
+    with open(filename, "wb") as f:
         artifact.download_to_file(f)
+
+    file = Path(filename)
+    file.chmod(file.stat().st_mode | stat.S_IEXEC)
 
 
 if __name__ == "__main__":
