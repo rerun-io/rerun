@@ -174,7 +174,7 @@ jobs:
           - If this is an 'alpha' release, you can just merge the pull request.
           - Otherwise:
             - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, run the release workflow in 'release' mode
+            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
               - [ ] Sanity check the build artifacts:
                 - [ ] pip install: does it install and run?
@@ -184,6 +184,7 @@ jobs:
               - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
               merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
               - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
+              - [ ] Merge this PR
 
           - [ ] Tests
             - [ ] Windows
