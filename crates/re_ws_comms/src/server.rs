@@ -167,7 +167,11 @@ impl RerunServer {
         message_broadcaster: &Arc<ReceiveSetBroadcaster>,
         shutdown_flag: &AtomicBool,
     ) {
+        // Each socket in `poll::Poller` needs a "name".
+        // Doesn't matter much what we're using here, as long as it's not used for something else
+        // on the same poller.
         let listener_poll_key = 1;
+
         if let Err(err) = poller.add(listener_socket, Event::readable(listener_poll_key)) {
             re_log::error!("Error when polling listener socket for incoming connections: {err}");
             return;
