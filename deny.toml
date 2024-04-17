@@ -6,8 +6,10 @@
 # Install: `cargo install cargo-deny`
 # Check: `cargo deny check`.
 
+
 # Note: running just `cargo deny check` without a `--target` can result in
 # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+[graph]
 targets = [
   { triple = "aarch64-apple-darwin" },
   { triple = "i686-pc-windows-gnu" },
@@ -21,16 +23,17 @@ targets = [
   { triple = "x86_64-unknown-linux-musl" },
   { triple = "x86_64-unknown-redox" },
 ]
+all-features = true
+
 
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
+version = 2
 ignore = []
+
 
 [bans]
 multiple-versions = "deny"
-wildcards = "allow" # at least until https://github.com/EmbarkStudios/cargo-deny/issues/241 is fixed
+wildcards = "allow" # We use them for examples
 deny = [
   { name = "cgmath" },      # We use glam
   { name = "cmake" },       # Never again
@@ -69,11 +72,9 @@ skip-tree = [
 
 
 [licenses]
+version = 2
 private = { ignore = true }
-unlicensed = "deny"
-allow-osi-fsf-free = "neither"
-confidence-threshold = 0.92 # We want really high confidence when inferring licenses from text
-copyleft = "deny"
+confidence-threshold = 0.93 # We want really high confidence when inferring licenses from text
 allow = [
   "Apache-2.0 WITH LLVM-exception", # https://spdx.org/licenses/LLVM-exception.html
   "Apache-2.0",                     # https://tldrlegal.com/license/apache-license-2.0-(apache-2.0)
@@ -91,6 +92,7 @@ allow = [
   "Unicode-DFS-2016",               # https://spdx.org/licenses/Unicode-DFS-2016.html
   "Zlib",                           # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
 ]
+exceptions = []
 
 [[licenses.clarify]]
 name = "webpki"
@@ -102,6 +104,10 @@ name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
 
 [sources.allow-org]
 github = ["emilk", "rerun-io"]
