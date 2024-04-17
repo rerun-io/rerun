@@ -134,7 +134,7 @@ impl RerunServer {
                 Self::listen_thread_func(
                     &poller,
                     &listener_socket,
-                    ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit),
+                    &ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit),
                     &shutdown_flag,
                 );
             })?;
@@ -162,7 +162,7 @@ impl RerunServer {
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
-        message_broadcaster: ReceiveSetBroadcaster,
+        message_broadcaster: &ReceiveSetBroadcaster,
         shutdown_flag: &AtomicBool,
     ) {
         // Each socket in `poll::Poller` needs a "name".
@@ -190,7 +190,7 @@ impl RerunServer {
                 if event.key == listener_poll_key {
                     Self::accept_connection(
                         listener_socket,
-                        &message_broadcaster,
+                        message_broadcaster,
                         poller,
                         listener_poll_key,
                     );
@@ -264,10 +264,9 @@ impl Drop for RerunServer {
 /// Broadcasts messages to all connected clients and stores a history of messages to resend to new clients.
 ///
 /// This starts a thread which will close when the underlying `ReceiveSet` gets a quit message or looses all its connections.
-/// TODO(andreas): There should be a way to close this from the outside as well,
-/// so that on server shut down we're not left with a thread serving clients.
 struct ReceiveSetBroadcaster {
     inner: Arc<Mutex<ReceiveSetBroadcasterInnerState>>,
+    shutdown_on_next_recv: Arc<AtomicBool>,
 }
 
 /// Inner state of the [`ReceiveSetBroadcaster`], protected by a mutex.
@@ -279,51 +278,20 @@ struct ReceiveSetBroadcasterInnerState {
 }
 
 impl ReceiveSetBroadcaster {
-    fn new(log_rx: ReceiveSet<LogMsg>, server_memory_limit: MemoryLimit) -> Self {
+    pub fn new(log_rx: ReceiveSet<LogMsg>, server_memory_limit: MemoryLimit) -> Self {
         let inner = Arc::new(Mutex::new(ReceiveSetBroadcasterInnerState {
             history: MessageQueue::new(server_memory_limit),
             clients: Vec::new(),
         }));
-        let inner_cpy = inner.clone();
+        let shutdown = Arc::new(AtomicBool::new(false));
+
+        let inner_copy = inner.clone();
+        let shutdown_copy = shutdown.clone();
 
         if let Err(err) = std::thread::Builder::new()
             .name("rerun_ws_server: broadcaster".to_owned())
             .spawn(move || {
-                while let Ok(msg) = log_rx.recv() {
-                    match msg.payload {
-                        re_smart_channel::SmartMessagePayload::Msg(data) => {
-                            let msg = crate::encode_log_msg(&data);
-
-                            {
-                                let mut inner = inner.lock();
-
-                                // TODO(andreas): Should this be a parallel-for?
-                                inner.clients.retain_mut(|client| {
-                                    if let Err(err) =
-                                        client.send(tungstenite::Message::Binary(msg.clone()))
-                                    {
-                                        re_log::warn!(
-                                            "Error sending message to web socket client: {err}"
-                                        );
-                                        false
-                                    } else {
-                                        true
-                                    }
-                                });
-
-                                inner.history.push(msg);
-                            }
-                        }
-                        re_smart_channel::SmartMessagePayload::Quit(err) => {
-                            if let Some(err) = err {
-                                re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
-                            } else {
-                                re_log::debug!("Sender {} has left", msg.source);
-                            }
-                            return;
-                        }
-                    }
-                }
+                Self::broadcast_thread_func(&log_rx, &inner, &shutdown);
             })
         {
             re_log::error!(
@@ -331,11 +299,58 @@ impl ReceiveSetBroadcaster {
             );
         }
 
-        Self { inner: inner_cpy }
+        Self {
+            inner: inner_copy,
+            shutdown_on_next_recv: shutdown_copy,
+        }
+    }
+
+    fn broadcast_thread_func(
+        log_rx: &ReceiveSet<LogMsg>,
+        inner: &Mutex<ReceiveSetBroadcasterInnerState>,
+        shutdown: &AtomicBool,
+    ) {
+        while let Ok(msg) = log_rx.recv() {
+            if shutdown.load(std::sync::atomic::Ordering::Acquire) {
+                re_log::debug!("Shutting down broadcaster.");
+                break;
+            }
+
+            match msg.payload {
+                re_smart_channel::SmartMessagePayload::Msg(data) => {
+                    let msg = crate::encode_log_msg(&data);
+                    let mut inner = inner.lock();
+
+                    // TODO(andreas): Should this be a parallel-for?
+                    inner.clients.retain_mut(|client| {
+                        if let Err(err) = client.send(tungstenite::Message::Binary(msg.clone())) {
+                            re_log::warn!("Error sending message to web socket client: {err}");
+                            false
+                        } else {
+                            true
+                        }
+                    });
+
+                    inner.history.push(msg);
+                }
+                re_smart_channel::SmartMessagePayload::Quit(err) => {
+                    if let Some(err) = err {
+                        re_log::warn!("Sender {} has left unexpectedly: {err}", msg.source);
+                    } else {
+                        re_log::debug!("Sender {} has left", msg.source);
+                    }
+                }
+            }
+
+            if log_rx.is_empty() {
+                re_log::debug!("No more connections. Shutting down broadcaster.");
+                break;
+            }
+        }
     }
 
     /// Adds a websocket client to the broadcaster and replies all message history so far to it.
-    fn add_client(&self, mut client: WebSocket<TcpStream>) {
+    pub fn add_client(&self, mut client: WebSocket<TcpStream>) {
         // TODO(andreas): While it's great that we don't loose any messages while adding clients,
         // the problem with this is that now we won't be able to keep the other clients fed, until this one is done!
         // Meaning that if a new one connects, we stall the old connections until we have sent all messages to this one.
@@ -349,5 +364,16 @@ impl ReceiveSetBroadcaster {
         }
 
         inner.clients.push(client);
+    }
+}
+
+impl Drop for ReceiveSetBroadcaster {
+    fn drop(&mut self) {
+        // Close all connections and shut down the receive thread on the next message.
+        // This would only cause a dangling thread if the `ReceiveSet`'s channels are
+        // neither closing nor sending any more messages.
+        self.shutdown_on_next_recv
+            .store(true, std::sync::atomic::Ordering::Release);
+        self.inner.lock().clients.clear();
     }
 }

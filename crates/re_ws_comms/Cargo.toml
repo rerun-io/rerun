@@ -47,6 +47,6 @@ ewebsock = { workspace = true, optional = true }
 
 # Server:
 parking_lot = { workspace = true, optional = true }
+polling = { workspace = true, optional = true }
 re_smart_channel = { workspace = true, optional = true }
 tungstenite = { workspace = true, optional = true, default-features = false }
-polling = { workspace = true, optional = true }
