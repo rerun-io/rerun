@@ -1,4 +1,4 @@
-# This is used by `scripts/clippy_wasm.sh` so we can forbid some methods that are not available in wasm.
+# This is used by `scripts/rust_checks.py` wasm checks so we can forbid some methods that are not available in wasm.
 #
 # We cannot forbid all these methods in the main `clippy.toml` because of
 # https://github.com/rust-lang/rust-clippy/issues/10406

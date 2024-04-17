@@ -47,16 +47,14 @@ class AffixFuzzer22Type(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct(
-                [
-                    pa.field(
-                        "fixed_sized_native",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 4),
-                        nullable=False,
-                        metadata={},
-                    )
-                ]
-            ),
+            pa.struct([
+                pa.field(
+                    "fixed_sized_native",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 4),
+                    nullable=False,
+                    metadata={},
+                )
+            ]),
             self._TYPE_NAME,
         )
 

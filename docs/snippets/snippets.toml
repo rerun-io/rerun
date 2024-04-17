@@ -38,6 +38,9 @@ asset3d_out_of_tree = [ # float issues since calculation is done slightly differ
   "py",
   "rust",
 ]
+bar_chart = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
+  "py",
+]
 mesh3d_partial_updates = ["cpp", "py", "rust"] # float precision issues
 pinhole_simple = [ # TODO(#3206): examples use different RNGs
   "cpp",

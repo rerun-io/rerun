@@ -14,7 +14,7 @@ NEW_LINK_MARKER = "speculative-link"
 
 def check_file(file_path: str) -> list[str] | None:
     links = []
-    with open(file_path) as f:
+    with open(file_path, encoding="utf8") as f:
         content = f.read()
         for m in re.finditer(f"(https://.*){NEW_LINK_MARKER}", content):
             link = m.group(0)

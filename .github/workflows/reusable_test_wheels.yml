@@ -87,12 +87,12 @@ jobs:
               container="null"
               ;;
             macos-arm64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-xlarge" # This is an Arm vm, https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="aarch64-apple-darwin"
               container="null"
               ;;
             macos-x64)
-              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              runner="macos-13-large" # This is an Intel vm, see https://docs.github.com/en/actions/using-github-hosted-runners/about-larger-runners/about-larger-runners#about-macos-larger-runners
               target="x86_64-apple-darwin"
               container="null"
               ;;
@@ -158,7 +158,7 @@ jobs:
         id: get-version
         shell: bash
         run: |
-          echo "wheel_version=$(pixi run scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
@@ -181,23 +181,18 @@ jobs:
         run: cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
 
       - name: Run e2e test
-        shell: bash
-        run: pixi run -e wheel-test RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+        run: pixi run -e wheel-test RUST_LOG=debug python scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
       - name: Run tests/roundtrips.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
-        shell: bash
+        if: ${{ !inputs.FAST }}
         # --release so we can inherit from some of the artifacts that maturin has just built before
-        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: |
-          pixi run -e wheel-test RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+        run: pixi run -e wheel-test RUST_LOG=debug python tests/roundtrips.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build
 
       - name: Run docs/snippets/compare_snippet_output.py
-        if: ${{ inputs.PLATFORM != 'windows-x64' && !inputs.FAST }}
-        shell: bash
+        if: ${{ !inputs.FAST }}
         # --release so we can inherit from some of the artifacts that maturin has just built before
-        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: |
-          pixi run -e wheel-test RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
+        run: pixi run -e wheel-test RUST_LOG=debug python docs/snippets/compare_snippet_output.py --release --target ${{ needs.set-config.outputs.TARGET }} --no-py-build

@@ -134,8 +134,8 @@ expense of slower inference. This parameter will be modulated by `strength`.
                     rrb.Vertical(
                         rrb.TextLogView(name="Prompt", contents=["prompt/text", "prompt/text_negative"]),
                         rrb.Tabs(
-                            rrb.TensorView(name="Text embeddings", origin="prompt/text_embeddings"),
-                            rrb.TensorView(name="Unconditional embeddings", origin="prompt/uncond_embeddings"),
+                            rrb.TensorView(name="Prompt embeddings", origin="prompt/text_embeddings"),
+                            rrb.TensorView(name="Negative prompt embeddings", origin="prompt/negative_text_embeddings"),
                         ),
                         rrb.BarChartView(name="Prompt ids", origin="prompt/text_input"),
                         name="Prompt Inputs",

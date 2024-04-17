@@ -36,15 +36,13 @@ class Corner2DType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.sparse_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
-                    pa.field("RightTop", pa.null(), nullable=True, metadata={}),
-                    pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
-                    pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
-                ]
-            ),
+            pa.sparse_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("LeftTop", pa.null(), nullable=True, metadata={}),
+                pa.field("RightTop", pa.null(), nullable=True, metadata={}),
+                pa.field("LeftBottom", pa.null(), nullable=True, metadata={}),
+                pa.field("RightBottom", pa.null(), nullable=True, metadata={}),
+            ]),
             self._TYPE_NAME,
         )
 

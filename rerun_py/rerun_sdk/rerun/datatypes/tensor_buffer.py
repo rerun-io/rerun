@@ -188,95 +188,93 @@ class TensorBufferType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.dense_union(
-                [
-                    pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                    pa.field(
-                        "U8",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U16",
-                        pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U32",
-                        pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "U64",
-                        pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I8",
-                        pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I16",
-                        pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I32",
-                        pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "I64",
-                        pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F16",
-                        pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F32",
-                        pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "F64",
-                        pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "JPEG",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "NV12",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                    pa.field(
-                        "YUY2",
-                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                        nullable=False,
-                        metadata={},
-                    ),
-                ]
-            ),
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field(
+                    "U8",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U16",
+                    pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U32",
+                    pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "U64",
+                    pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I8",
+                    pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I16",
+                    pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I32",
+                    pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "I64",
+                    pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F16",
+                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F32",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "F64",
+                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "JPEG",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "NV12",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "YUY2",
+                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                    nullable=False,
+                    metadata={},
+                ),
+            ]),
             self._TYPE_NAME,
         )
 

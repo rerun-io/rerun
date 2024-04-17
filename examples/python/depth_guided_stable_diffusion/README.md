@@ -40,10 +40,10 @@ rr.log("prompt/uncond_input/ids", rr.Tensor(uncond_input.input_ids))
 ```
 
 ### Text embeddings
-Visualizing the text embeddings. The text embeddings are generated in response to the specific prompts used while the unconditional text embeddings represent a neutral or baseline state without specific input conditions.
+Visualizing the text embeddings (i.e., numerical representation of the input texts) from the prompt and negative prompt.
 ```python
-rr.log("prompt/text_embeddings", rr.Tensor(text_embeddings))
-rr.log("prompt/uncond_embeddings", rr.Tensor(uncond_embeddings))
+rr.log("prompt/text_embeddings", rr.Tensor(prompt_embeds))
+rr.log("prompt/negative_text_embeddings", rr.Tensor(negative_prompt_embeds))
 ```
 
 ### Depth map

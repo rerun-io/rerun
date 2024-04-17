@@ -268,13 +268,13 @@ def show_preview(lines: list[str]) -> None:
 
 
 def patch_file(filename: str, lines: list[str], key: str) -> None:
-    contents = open(filename).readlines()
+    contents = open(filename, encoding="utf8").readlines()
     start_line = next((i for i, line in enumerate(contents) if BEGIN_MARKER.format(key) in line), None)
     end_line = next((i for i, line in enumerate(contents) if END_MARKER.format(key) in line), None)
     if (start_line is None) or (end_line is None):
         raise Exception("Could not find the generated section in the file.")
     new_contents = contents[:start_line] + lines + contents[end_line + 1 :]
-    open(filename, "w").writelines(new_contents)
+    open(filename, "w", encoding="utf8").writelines(new_contents)
 
 
 ################################################################################

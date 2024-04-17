@@ -122,12 +122,10 @@ def test_point3d_single_color(data: Rgba32ArrayLike) -> None:
 def test_point3d_multiple_colors(data: Rgba32ArrayLike) -> None:
     pts = rr.Points3D(positions=np.zeros((5, 3)), colors=data)
 
-    assert pts.colors == ColorBatch(
-        [
-            Color([0, 128, 0, 255]),
-            Color([128, 0, 0, 255]),
-        ]
-    )
+    assert pts.colors == ColorBatch([
+        Color([0, 128, 0, 255]),
+        Color([128, 0, 0, 255]),
+    ])
 
 
 if __name__ == "__main__":

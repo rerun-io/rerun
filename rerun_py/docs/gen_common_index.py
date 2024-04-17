@@ -50,7 +50,7 @@ def all_archetypes() -> list[str]:
     pattern = r'"([^"]*)"'
 
     # Open the file for reading
-    with open(file_path) as file:
+    with open(file_path, encoding="utf8") as file:
         # Read the file line by line
         for line in file:
             # Use re.findall to find all quoted strings in the line

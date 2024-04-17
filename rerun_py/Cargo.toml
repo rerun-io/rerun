@@ -22,7 +22,7 @@ pypi = ["extension-module", "native_viewer", "web_viewer"]
 ## but we cannot enable it when building tests and benchmarks, so we
 ## must make it an opt-in feature.
 ## * <https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror>
-## * <https://pyo3.rs/latest/building_and_distribution.html#building-python-extension-modules>
+## * <https://pyo3.rs/main/building-and-distribution#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
 
 ## Support spawning a native Rerun viewer with `spawn()`.
