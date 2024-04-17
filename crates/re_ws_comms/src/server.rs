@@ -281,7 +281,7 @@ impl ReceiveSetBroadcaster {
         let inner_cpy = inner.clone();
 
         if let Err(err) = std::thread::Builder::new()
-            .name("rerun_ws_client_broadcaster".to_owned())
+            .name("rerun_ws_server: broadcaster".to_owned())
             .spawn(move || {
                 while let Ok(msg) = log_rx.recv() {
                     match msg.payload {
