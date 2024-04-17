@@ -284,6 +284,7 @@ pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `s
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
+opencv-python = ">4.6"           # For `compare_snippet_output.py`
 
 
 [target.linux-64.dependencies]
