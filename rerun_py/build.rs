@@ -5,7 +5,9 @@ fn main() {
     re_build_tools::export_build_info_vars_for_crate("rerun_py");
 
     // Fail if bin/rerun is missing and we haven't specified it's ok.
-    #[cfg(not(feature = "allow-missing-rerun-cli"))]
+    if re_build_tools::get_and_track_env_var("RERUN_BUILDING_WHEEL").unwrap_or_default() == "1"
+        && re_build_tools::get_and_track_env_var("RERUN_ALLOW_MISSING_BIN").unwrap_or_default()
+            != "1"
     {
         #[cfg(target_os = "windows")]
         let rerun_bin = std::env::current_dir()

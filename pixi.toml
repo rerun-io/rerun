@@ -112,7 +112,7 @@ py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --c
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
-py-build = { cmd = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests --features allow-missing-rerun-cli", depends_on = [
+py-build = { cmd = "RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build",
 ] }
 py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml --features pypi"
