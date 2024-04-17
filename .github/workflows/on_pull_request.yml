@@ -161,8 +161,14 @@ jobs:
       FULL: "true"
     secrets: inherit
 
-  # Build and test a single wheel to limit CI cost. We use linux-x64 because it's fast. linux-arm64 would also be a good
-  # choice, but reusable_test_wheels.yml is broken for that target (https://github.com/rerun-io/rerun/issues/5525)
+  min-cli-build:
+    name: "Minimum CLI Build"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux-x64
+    secrets: inherit
+
   min-wheel-build:
     name: "Minimum Wheel Build"
     needs: [python-paths-filter, rust-paths-filter]
@@ -175,6 +181,8 @@ jobs:
       WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
     secrets: inherit
 
+  # Build and test a single wheel to limit CI cost. We use linux-x64 because it's fast. linux-arm64 would also be a good
+  # choice, but reusable_test_wheels.yml is broken for that target (https://github.com/rerun-io/rerun/issues/5525)
   min-wheel-test:
     name: "Minimum Wheel Test"
     needs: [min-wheel-build, python-paths-filter, rust-paths-filter]
