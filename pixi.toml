@@ -161,7 +161,7 @@ upload-image = "python scripts/upload_image.py"
 # Check whether there's too large files in the repository.
 check-large-files = "python scripts/ci/check_large_files.py"
 
-fetch-artifact = "python scripts/fetch_artifact.py"
+fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
 [feature.py-docs.tasks]
 # Serve python docs locally
