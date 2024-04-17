@@ -31,7 +31,6 @@ import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 import torch
 import torchvision
-from cv2 import Mat
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from segment_anything.modeling import Sam
 from tqdm import tqdm
@@ -89,7 +88,7 @@ def create_sam(model: str, device: str) -> Sam:
     return sam.to(device=device)
 
 
-def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: Mat) -> None:
+def run_segmentation(mask_generator: SamAutomaticMaskGenerator, image: cv2.typing.MatLike) -> None:
     """Run segmentation on a single image."""
     rr.log("image", rr.Image(image))
 
@@ -137,7 +136,7 @@ def is_url(path: str) -> bool:
         return False
 
 
-def load_image(image_uri: str) -> Mat:
+def load_image(image_uri: str) -> cv2.typing.MatLike:
     """Conditionally download an image from URL or load it from disk."""
     logging.info(f"Loading: {image_uri}")
     if is_url(image_uri):

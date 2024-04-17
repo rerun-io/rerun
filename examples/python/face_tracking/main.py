@@ -14,7 +14,6 @@ from typing import Final, Iterable
 import cv2
 import mediapipe as mp
 import numpy as np
-import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
@@ -124,7 +123,7 @@ class FaceDetectorLogger:
             static=True,
         )
 
-    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
+    def detect_and_log(self, image: cv2.typing.MatLike, frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
@@ -230,7 +229,7 @@ class FaceLandmarkerLogger:
         # properly align the 3D face in the viewer
         rr.log("reconstruction", rr.ViewCoordinates.RDF, static=True)
 
-    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
+    def detect_and_log(self, image: cv2.typing.MatLike, frame_time_nano: int) -> None:
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
 
