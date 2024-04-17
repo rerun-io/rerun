@@ -114,8 +114,8 @@ impl ItemCollection {
                 .map(|(item, space_ctx)| {
                     (
                         resolve_mono_instance_path_item(
+                            ctx.recording(),
                             &ctx.current_query(),
-                            ctx.recording_store(),
                             &item,
                         ),
                         space_ctx,

@@ -148,6 +148,16 @@ impl LatestAtComponentResults {
         &self.index
     }
 
+    /// Returns the raw resolved data, if it's ready.
+    #[inline]
+    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<DataCell> {
+        if let Some(cell) = self.promise.as_ref() {
+            resolver.resolve(cell)
+        } else {
+            PromiseResult::Pending
+        }
+    }
+
     /// Returns the component data as a dense vector.
     ///
     /// Returns an error if the component is missing or cannot be deserialized.

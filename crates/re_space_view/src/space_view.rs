@@ -127,7 +127,7 @@ impl SpaceViewBlueprint {
                 // TODO(#5607): what should happen if the promise is still pending?
                 None
             }
-            PromiseResult::Ready(arch) => arch,
+            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
             PromiseResult::Error(err) => {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load SpaceView blueprint: {err}.");

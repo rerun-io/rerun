@@ -80,7 +80,7 @@ impl ViewportBlueprint {
                 // TODO(#5607): what should happen if the promise is still pending?
                 Default::default()
             }
-            PromiseResult::Ready(arch) => arch.unwrap_or_default(),
+            PromiseResult::Ready(arch) => arch.map_or_else(Default::default, |(_, arch)| arch),
             PromiseResult::Error(err) => {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load viewport blueprint: {err}.");

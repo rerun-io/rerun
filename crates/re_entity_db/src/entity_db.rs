@@ -207,7 +207,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> PromiseResult<Option<A>>
+    ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
         re_query_cache::CachedLatestAtResults: re_query_cache::ToArchetype<A>,
     {
@@ -229,7 +229,9 @@ impl EntityDb {
                 }
                 PromiseResult::Error(err)
             }
-            PromiseResult::Ready(arch) => PromiseResult::Ready(Some(arch)),
+            PromiseResult::Ready(arch) => {
+                PromiseResult::Ready(Some((results.compound_index, arch)))
+            }
         }
     }
 

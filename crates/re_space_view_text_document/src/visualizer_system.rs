@@ -48,7 +48,7 @@ impl VisualizerSystem for TextDocumentSystem {
                     // TODO(#5607): what should happen if the promise is still pending?
                     continue;
                 }
-                PromiseResult::Ready(Some(arch)) => arch,
+                PromiseResult::Ready(Some((_, arch))) => arch,
                 PromiseResult::Error(err) => {
                     re_log::error_once!(
                         "Unexpected error querying {:?}: {err}",
