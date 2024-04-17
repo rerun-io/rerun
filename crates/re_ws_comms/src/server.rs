@@ -122,10 +122,7 @@ impl RerunServer {
         // Therefore, we do the "correct thing" and use a non-blocking socket together with the `polling` library.
         listener_socket.set_nonblocking(true)?;
 
-        let listener_poll_key = 1;
         let poller = Arc::new(Poller::new()?);
-        poller.add(&listener_socket, Event::readable(listener_poll_key))?;
-
         let message_broadcaster =
             Arc::new(ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit));
         let shutdown_flag = Arc::new(AtomicBool::new(false));
@@ -140,7 +137,6 @@ impl RerunServer {
                 Self::listen_thread_func(
                     &poller,
                     &listener_socket,
-                    listener_poll_key,
                     &message_broadcaster,
                     &shutdown_flag,
                 );
@@ -169,10 +165,15 @@ impl RerunServer {
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
-        listener_poll_key: usize,
         message_broadcaster: &Arc<ReceiveSetBroadcaster>,
         shutdown_flag: &AtomicBool,
     ) {
+        let listener_poll_key = 1;
+        if let Err(err) = poller.add(listener_socket, Event::readable(listener_poll_key)) {
+            re_log::error!("Error when polling listener socket for incoming connections: {err}");
+            return;
+        }
+
         let mut events = Vec::new();
         loop {
             if let Err(err) = poller.wait(&mut events, None) {
@@ -189,6 +190,10 @@ impl RerunServer {
                     match listener_socket.accept() {
                         Ok((tcp_stream, _)) => {
                             let address = tcp_stream.peer_addr();
+
+                            // Keep the client simple, otherwise we need to do polling there as well.
+                            tcp_stream.set_nonblocking(false).ok();
+
                             re_log::debug!("New WebSocket connection at {:?}", address);
 
                             match tungstenite::accept(tcp_stream) {
@@ -206,6 +211,16 @@ impl RerunServer {
                             re_log::warn!("Error accepting WebSocket connection: {err}");
                         }
                     };
+
+                    // Set interest in the next readability event.
+                    if let Err(err) =
+                        poller.modify(listener_socket, Event::readable(listener_poll_key))
+                    {
+                        re_log::error!(
+                            "Error when polling listener socket for incoming connections: {err}"
+                        );
+                        return;
+                    }
                 }
             }
         }
