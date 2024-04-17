@@ -18,6 +18,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-bundle-and-upload-rerun-cpp
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   bundle-and-upload-rerun_cpp:
     name: Bundle and upload rerun_cpp_sdk.zip
@@ -49,17 +53,14 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install python gcs library
-        shell: bash
         run: |
           python3 -m pip install google-cloud-storage
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Bundle and upload rerun_cpp_sdk.zip"
-        shell: bash
         run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}

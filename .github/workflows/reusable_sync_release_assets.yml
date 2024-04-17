@@ -19,6 +19,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-sync-assets
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   sync-assets:
     name: Upload assets from build.rerun.io
@@ -51,7 +55,6 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Sync release assets & build.rerun.io
-        shell: bash
         run: |
           pixi run python ./scripts/ci/sync_release_assets.py \
             --github-release ${{ inputs.RELEASE_VERSION }} \

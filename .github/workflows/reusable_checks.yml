@@ -32,10 +32,13 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   id-token: "write"
-
 jobs:
   py-test-docs:
     name: Test Python Docs
@@ -77,7 +80,6 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Codegen check
-        shell: bash
         run: |
           pixi run codegen --force --check
 

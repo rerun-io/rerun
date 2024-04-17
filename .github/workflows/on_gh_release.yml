@@ -17,6 +17,10 @@ concurrency:
   group: "release-${{ github.event.release.tag_name }}"
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   # required for updating the release
   contents: write

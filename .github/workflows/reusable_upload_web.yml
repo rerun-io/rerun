@@ -31,6 +31,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-upload-web
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   upload-web:
     name: Upload web build to google cloud (wasm32 + wasm-bindgen)
@@ -60,7 +64,6 @@ jobs:
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"

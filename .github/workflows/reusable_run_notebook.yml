@@ -15,6 +15,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-run-notebook
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   run-notebook:
     name: Run notebook
@@ -46,7 +50,6 @@ jobs:
 
       - name: Get version
         id: get-version
-        shell: bash
         run: |
           pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
@@ -54,7 +57,6 @@ jobs:
         # Now install the wheel using a specific version and --no-index to guarantee we get the version from
         # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
         # find the dependencies to reinstall them.
-        shell: bash
         run: |
           pixi run -e wheel-test pip uninstall rerun-sdk
           pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
@@ -73,7 +75,6 @@ jobs:
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"

@@ -13,6 +13,10 @@ on:
         required: true
         type: boolean
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: write
   id-token: write
@@ -31,7 +35,6 @@ jobs:
 
       - name: Get context
         id: context
-        shell: bash
         run: |
           echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
@@ -60,7 +63,6 @@ jobs:
           path: example_data
 
       - name: Download base results
-        shell: bash
         run: |
           # Get base commit:
           # 1. From the index file
@@ -89,7 +91,6 @@ jobs:
 
       - name: Measure sizes
         id: measure
-        shell: bash
         run: |
           entries=()
 
@@ -145,7 +146,6 @@ jobs:
 
       - name: Create index file
         if: github.ref == 'refs/heads/main'
-        shell: bash
         run: |
           echo "${{ steps.context.outputs.short_sha }}" > "/tmp/index"
 
@@ -189,7 +189,6 @@ jobs:
 
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
-        shell: bash
         run: |
           python3 -m pip install google-cloud-storage==2.9.0
           scripts/ci/render_bench.py sizes \

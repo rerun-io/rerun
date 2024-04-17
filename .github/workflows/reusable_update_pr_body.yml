@@ -14,6 +14,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-pr-update-body
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   update-pr-body:
     name: Update PR body
@@ -36,7 +40,6 @@ jobs:
           pixi-version: v0.18.0
 
       - name: Update PR description
-        shell: bash
         run: |
           pixi run ./scripts/ci/update_pr_body.py \
             --github-token '${{ secrets.GITHUB_TOKEN }}' \
