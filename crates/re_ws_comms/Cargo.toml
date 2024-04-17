@@ -20,12 +20,8 @@ all-features = true
 ## Enable the client (viewer-side).
 client = ["ewebsock"]
 
-server = [
-  "dep:parking_lot",
-  "dep:re_smart_channel",
-  "tungstenite",
-  "polling",
-] ## Enable the server.
+## Enable the server.
+server = ["dep:parking_lot", "dep:re_smart_channel", "tungstenite", "polling"]
 
 ## Enable encryption using TLS support (`wss://`).
 tls = [
