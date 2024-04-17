@@ -7,7 +7,14 @@ fn main() {
     // Fail if bin/rerun is missing and we haven't specified it's ok.
     #[cfg(not(feature = "allow-missing-rerun-cli"))]
     {
+        #[cfg(target_os = "windows")]
+        let rerun_bin = std::env::current_dir()
+            .unwrap()
+            .join("rerun_sdk/bin/rerun.exe");
+
+        #[cfg(not(target_os = "windows"))]
         let rerun_bin = std::env::current_dir().unwrap().join("rerun_sdk/bin/rerun");
+
         if !rerun_bin.exists() {
             eprintln!("ERROR: Expected to find `rerun` at `{rerun_bin:?}`.");
             std::process::exit(1);
