@@ -171,7 +171,7 @@ jobs:
 
   min-wheel-build:
     name: "Minimum Wheel Build"
-    needs: [python-paths-filter, rust-paths-filter]
+    needs: [min-cli-build, python-paths-filter, rust-paths-filter]
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.python-paths-filter.outputs.python_changes == 'true' || needs.rust-paths-filter.outputs.rust_changes == 'true')
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
