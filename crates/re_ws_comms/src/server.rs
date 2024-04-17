@@ -9,10 +9,14 @@
 use std::{
     collections::{HashMap, VecDeque},
     net::{TcpListener, TcpStream},
-    sync::{atomic::AtomicUsize, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize},
+        Arc,
+    },
 };
 
 use parking_lot::Mutex;
+use polling::{Event, Poller};
 
 use re_log_types::LogMsg;
 use re_memory::MemoryLimit;
@@ -77,10 +81,14 @@ impl MessageQueue {
 }
 
 /// Websocket host for relaying [`LogMsg`]s to a web viewer.
+///
+/// When dropped, the server will be shut down.
 pub struct RerunServer {
-    server_memory_limit: MemoryLimit,
-    listener: TcpListener,
     local_addr: std::net::SocketAddr,
+
+    listener_join_handle: Option<std::thread::JoinHandle<()>>,
+    poller: Arc<Poller>,
+    shutdown_flag: Arc<AtomicBool>,
 }
 
 impl RerunServer {
@@ -89,14 +97,17 @@ impl RerunServer {
     ///
     /// A `bind_ip` of `"0.0.0.0"` is a good default.
     /// A port of 0 will let the OS choose a free port.
+    ///
+    /// Once created, the server will immediately start listening for connections.
     pub fn new(
+        rerun_rx: ReceiveSet<LogMsg>,
         bind_ip: &str,
         port: RerunServerPort,
         server_memory_limit: MemoryLimit,
     ) -> Result<Self, RerunServerError> {
         let bind_addr = format!("{bind_ip}:{port}");
 
-        let listener = match TcpListener::bind(bind_addr) {
+        let listener_socket = match TcpListener::bind(bind_addr) {
             Ok(listener) => listener,
             Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
                 let bind_addr = format!("{bind_ip}:0");
@@ -107,10 +118,41 @@ impl RerunServer {
             Err(err) => return Err(RerunServerError::BindFailed(port, err)),
         };
 
+        // Blocking listener socket seems much easier at first glance:
+        // No polling needed and as such no extra libraries!
+        // However, there is no portable way of stopping an `accept` call on a blocking socket.
+        // Therefore, we do the "correct thing" and use a non-blocking socket together with the `polling` library.
+        listener_socket.set_nonblocking(true)?;
+
+        let listener_poll_key = 1;
+        let poller = Arc::new(Poller::new()?);
+        poller.add(&listener_socket, Event::readable(listener_poll_key))?;
+
+        let message_broadcaster =
+            Arc::new(ReceiveSetBroadcaster::new(rerun_rx, server_memory_limit));
+        let shutdown_flag = Arc::new(AtomicBool::new(false));
+
+        let local_addr = listener_socket.local_addr()?;
+        let poller_copy = poller.clone();
+        let shutdown_flag_copy = shutdown_flag.clone();
+
+        let listener_join_handle = std::thread::Builder::new()
+            .name("rerun_ws_server: listener".to_owned())
+            .spawn(move || {
+                Self::listen_thread_func(
+                    &poller,
+                    &listener_socket,
+                    listener_poll_key,
+                    &message_broadcaster,
+                    &shutdown_flag,
+                );
+            })?;
+
         let slf = Self {
-            server_memory_limit,
-            local_addr: listener.local_addr()?,
-            listener,
+            local_addr,
+            poller: poller_copy,
+            listener_join_handle: Some(listener_join_handle),
+            shutdown_flag: shutdown_flag_copy,
         };
 
         re_log::info!(
@@ -121,126 +163,106 @@ impl RerunServer {
         Ok(slf)
     }
 
-    /// Starts a thread that accepts new connections.
-    pub fn listen(self, rx: ReceiveSet<LogMsg>) -> Result<(), RerunServerError> {
-        // TODO:
-        //let (_shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-        self.listen_with_graceful_shutdown(rx) //, shutdown_rx)
+    /// Contains the `ws://` or `wss://` prefix.
+    pub fn server_url(&self) -> String {
+        server_url(&self.local_addr)
     }
 
-    /// Starts a thread that accepts new connections and shuts down when `shutdown_rx` receives a message.
-    pub fn listen_with_graceful_shutdown(
-        self,
-        rx: ReceiveSet<LogMsg>,
-        //mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
-    ) -> Result<(), RerunServerError> {
-        let message_broadcaster =
-            Arc::new(ReceiveSetBroadcaster::new(rx, self.server_memory_limit));
+    fn listen_thread_func(
+        poller: &Poller,
+        listener_socket: &TcpListener,
+        listener_poll_key: usize,
+        message_broadcaster: &Arc<ReceiveSetBroadcaster>,
+        shutdown_flag: &AtomicBool,
+    ) {
+        let mut events = Vec::new();
+        loop {
+            if let Err(err) = poller.wait(&mut events, None) {
+                re_log::warn!("Error polling WebSocket server listener: {err}");
+            }
 
-        // TODO: handle shutdown. Maybe like so? https://stackoverflow.com/questions/56692961/graceful-exit-tcplistener-incoming
+            if shutdown_flag.load(std::sync::atomic::Ordering::Acquire) {
+                re_log::debug!("Stopping WebSocket server listener.");
+                break;
+            }
 
-        std::thread::Builder::new()
-            .name("rerun_ws_server: listener".to_owned())
-            .spawn(move || {
-                for tcp_stream in self.listener.incoming() {
-                    match tcp_stream {
-                        Ok(tcp_stream) => {
-                            handle_connection(message_broadcaster.clone(), tcp_stream);
-                        }
+            for event in events.drain(..) {
+                if event.key == listener_poll_key {
+                    let (tcp_stream, _) = match listener_socket.accept() {
+                        Ok(connection) => connection,
+
                         Err(err) => {
                             re_log::warn!("Error accepting WebSocket connection: {err}");
+                            continue;
+                        }
+                    };
+                    Self::handle_connection(message_broadcaster.clone(), tcp_stream);
+                }
+            }
+        }
+    }
+
+    fn handle_connection(message_broadcaster: Arc<ReceiveSetBroadcaster>, tcp_stream: TcpStream) {
+        if let Err(err) = std::thread::Builder::new()
+            .name("rerun_ws_server: connection".to_owned())
+            .spawn(move || {
+                let address = tcp_stream.peer_addr();
+                re_log::debug!("New WebSocket connection at {:?}", address);
+
+                let mut ws_stream = match tungstenite::accept(tcp_stream) {
+                    Ok(ws_stream) => ws_stream,
+                    Err(err) => {
+                        re_log::warn!("Error accepting WebSocket connection: {err}");
+                        return;
+                    }
+                };
+
+                {
+                    let (client_id, log_stream) = message_broadcaster.add_client();
+
+                    while let Ok(msg) = log_stream.recv() {
+                        if let Err(err) = ws_stream.send(tungstenite::Message::Binary(msg.to_vec()))
+                        {
+                            re_log::warn!("Error sending message to WebSocket client: {err}");
                             break;
                         }
                     }
-                }
-            })?;
 
-        Ok(())
+                    message_broadcaster.remove_client(client_id);
+                }
+
+                re_log::debug!("Closing WebSocket connection at {:?}", address);
+            })
+        {
+            re_log::error!(
+                "Failed to spawn thread for handling incoming WebSocket connection: {err}"
+            );
+        }
     }
 
-    /// Contains the `ws://` or `wss://` prefix.
-    pub fn server_url(&self) -> String {
-        server_url(&self.local_addr)
-    }
-}
+    fn stop_listener(&mut self) {
+        let Some(join_handle) = self.listener_join_handle.take() else {
+            return;
+        };
 
-fn handle_connection(message_broadcaster: Arc<ReceiveSetBroadcaster>, tcp_stream: TcpStream) {
-    if let Err(err) = std::thread::Builder::new()
-        .name("rerun_ws_server: connection".to_owned())
-        .spawn(move || {
-            let address = tcp_stream.peer_addr();
-            re_log::debug!("New WebSocket connection at {:?}", address);
+        self.shutdown_flag
+            .store(true, std::sync::atomic::Ordering::Release);
 
-            let mut ws_stream = match tungstenite::accept(tcp_stream) {
-                Ok(ws_stream) => ws_stream,
-                Err(err) => {
-                    re_log::warn!("Error accepting WebSocket connection: {err}");
-                    return;
-                }
-            };
+        if let Err(err) = self.poller.notify() {
+            re_log::warn!("Error notifying WebSocket server listener: {err}");
+            return;
+        }
 
-            {
-                let (client_id, log_stream) = message_broadcaster.add_client();
-
-                while let Ok(msg) = log_stream.recv() {
-                    if let Err(err) = ws_stream.send(tungstenite::Message::Binary(msg.to_vec())) {
-                        re_log::warn!("Error sending message to WebSocket client: {err}");
-                        break;
-                    }
-                }
-
-                message_broadcaster.remove_client(client_id);
-            }
-
-            re_log::debug!("Closing WebSocket connection at {:?}", address);
-        })
-    {
-        re_log::error!("Failed to spawn thread for handling incoming WebSocket connection: {err}");
+        if let Err(err) = join_handle.join() {
+            re_log::warn!("Error joining listener thread: {err:?}");
+        }
     }
 }
 
-/// Sync handle for the [`RerunServer`]
-///
-/// When dropped, the server will be shut down.
-pub struct RerunServerHandle {
-    local_addr: std::net::SocketAddr,
-    //shutdown_tx: tokio::sync::broadcast::Sender<()>, // TODO:
-}
-
-impl Drop for RerunServerHandle {
+impl Drop for RerunServer {
     fn drop(&mut self) {
         re_log::info!("Shutting down Rerun server on {}", self.server_url());
-        //self.shutdown_tx.send(()).ok();
-    }
-}
-
-impl RerunServerHandle {
-    /// Create new [`RerunServer`] to relay [`LogMsg`]s to a websocket.
-    /// Returns a [`RerunServerHandle`] that will shutdown the server when dropped.
-    ///
-    /// A `bind_ip` of `"0.0.0.0"` is a good default.
-    /// A port of 0 will let the OS choose a free port.
-    ///
-    /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(
-        rerun_rx: ReceiveSet<LogMsg>,
-        bind_ip: &str,
-        requested_port: RerunServerPort,
-        server_memory_limit: MemoryLimit,
-    ) -> Result<Self, RerunServerError> {
-        let ws_server = RerunServer::new(bind_ip, requested_port, server_memory_limit)?;
-        let local_addr = ws_server.local_addr;
-        ws_server.listen_with_graceful_shutdown(rerun_rx)?;
-
-        Ok(Self {
-            local_addr,
-            //shutdown_tx,
-        })
-    }
-
-    /// Contains the `ws://` or `wss://` prefix.
-    pub fn server_url(&self) -> String {
-        server_url(&self.local_addr)
+        self.stop_listener();
     }
 }
 

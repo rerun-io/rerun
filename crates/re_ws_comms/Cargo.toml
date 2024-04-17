@@ -24,6 +24,7 @@ server = [
   "dep:parking_lot",
   "dep:re_smart_channel",
   "tungstenite",
+  "polling",
 ] ## Enable the server.
 
 ## Enable encryption using TLS support (`wss://`).
@@ -53,3 +54,4 @@ ewebsock = { workspace = true, optional = true }
 parking_lot = { workspace = true, optional = true }
 re_smart_channel = { workspace = true, optional = true }
 tungstenite = { workspace = true, optional = true, default-features = false }
+polling = { workspace = true, optional = true }

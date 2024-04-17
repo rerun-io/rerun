@@ -724,13 +724,12 @@ async fn run_impl(
 
             // This is the server which the web viewer will talk to:
             let ws_server = re_ws_comms::RerunServer::new(
+                ReceiveSet::new(rx),
                 &args.bind,
                 args.ws_server_port,
                 server_memory_limit,
             )?;
             let _ws_server_url = ws_server.server_url();
-            let rx = ReceiveSet::new(rx);
-            ws_server.listen(rx)?;
 
             #[cfg(feature = "web_viewer")]
             {
@@ -752,8 +751,7 @@ async fn run_impl(
                 web_server_handle.await?.map_err(anyhow::Error::from)?;
             }
 
-            // TODO:
-            return Ok(()); //ws_server_handle.await?.map_err(anyhow::Error::from);
+            return Ok(());
         }
     } else {
         #[cfg(feature = "native_viewer")]

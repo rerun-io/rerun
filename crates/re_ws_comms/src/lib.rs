@@ -14,7 +14,7 @@ pub use client::viewer_to_server;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::{RerunServer, RerunServerHandle};
+pub use server::RerunServer;
 
 use re_log_types::LogMsg;
 

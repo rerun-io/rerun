@@ -5268,6 +5268,7 @@ dependencies = [
  "document-features",
  "ewebsock",
  "parking_lot",
+ "polling 2.8.0",
  "re_format",
  "re_log",
  "re_log_types",
