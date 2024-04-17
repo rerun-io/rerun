@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
@@ -46,14 +48,14 @@ impl Default for Points3DVisualizer {
 
 struct Points3DComponentData<'a> {
     // Point of views
-    positions: &'a [Position3D],
+    positions: Cow<'a, [Position3D]>,
 
     // Clamped to edge
-    colors: &'a [Color],
-    radii: &'a [Radius],
-    labels: &'a [Text],
-    keypoint_ids: &'a [KeypointId],
-    class_ids: &'a [ClassId],
+    colors: Cow<'a, [Color]>,
+    radii: Cow<'a, [Radius]>,
+    labels: Cow<'a, [Text]>,
+    keypoint_ids: Cow<'a, [KeypointId]>,
+    class_ids: Cow<'a, [ClassId]>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
@@ -110,15 +112,15 @@ impl Points3DVisualizer {
                 query.latest_at,
                 num_instances,
                 data.positions.iter().map(|p| p.0.into()),
-                data.keypoint_ids,
-                data.class_ids,
+                &data.keypoint_ids,
+                &data.class_ids,
                 &ent_context.annotations,
             );
 
-            let positions = bytemuck::cast_slice(data.positions);
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let positions = bytemuck::cast_slice(&data.positions);
+            let radii = process_radius_slice(entity_path, num_instances, &data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(entity_path, num_instances, &annotation_infos, &data.colors);
 
             {
                 let point_batch = point_builder
@@ -159,7 +161,7 @@ impl Points3DVisualizer {
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,
                     positions,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
                     ent_context.world_from_entity,
@@ -222,7 +224,7 @@ impl VisualizerSystem for Points3DVisualizer {
 
                     let positions = match results.get_dense::<Position3D>(resolver) {
                         Some(Ok(positions)) if !positions.is_empty() => positions,
-                        Some(err @ Err(_)) => err?,
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 
@@ -262,7 +264,7 @@ impl VisualizerSystem for Points3DVisualizer {
 
                     let positions = match results.get_dense::<Position3D>(resolver, _query) {
                         Some(Ok(positions)) => positions,
-                        Some(err @ Err(_)) => err?,
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 
@@ -293,12 +295,12 @@ impl VisualizerSystem for Points3DVisualizer {
                     .map(
                         |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
                             Points3DComponentData {
-                                positions,
-                                colors: colors.unwrap_or_default(),
-                                radii: radii.unwrap_or_default(),
-                                labels: labels.unwrap_or_default(),
-                                class_ids: class_ids.unwrap_or_default(),
-                                keypoint_ids: keypoint_ids.unwrap_or_default(),
+                                positions: positions.into(),
+                                colors: colors.unwrap_or_default().into(),
+                                radii: radii.unwrap_or_default().into(),
+                                labels: labels.unwrap_or_default().into(),
+                                class_ids: class_ids.unwrap_or_default().into(),
+                                keypoint_ids: keypoint_ids.unwrap_or_default().into(),
                             }
                         },
                     );

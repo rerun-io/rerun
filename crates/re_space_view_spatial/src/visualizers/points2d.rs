@@ -230,18 +230,18 @@ impl VisualizerSystem for Points2DVisualizer {
                     let resolver = ctx.recording().resolver();
 
                     let positions = match results.get_dense::<Position2D>(resolver) {
-                        Some(Ok(positions)) if !positions.is_empty() => positions,
-                        Some(err @ Err(_)) => err?,
+                        Some(Ok(positions)) if !positions.is_empty() => positions.as_ref(),
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 
                     point_builder.reserve(positions.len())?;
 
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                    let colors = results.get_or_empty_dense(resolver)?.as_ref();
+                    let radii = results.get_or_empty_dense(resolver)?.as_ref();
+                    let labels = results.get_or_empty_dense(resolver)?.as_ref();
+                    let class_ids = results.get_or_empty_dense(resolver)?.as_ref();
+                    let keypoint_ids = results.get_or_empty_dense(resolver)?.as_ref();
 
                     let data = Points2DComponentData {
                         positions,
@@ -271,7 +271,7 @@ impl VisualizerSystem for Points2DVisualizer {
 
                     let positions = match results.get_dense::<Position2D>(resolver, _query) {
                         Some(Ok(positions)) => positions,
-                        Some(err @ Err(_)) => err?,
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 

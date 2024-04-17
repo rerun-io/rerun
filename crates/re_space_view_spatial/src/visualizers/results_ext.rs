@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_data_store::RangeQuery;
 use re_log_types::{RowId, TimeInt};
 use re_query2::{PromiseResolver, PromiseResult};
@@ -11,12 +13,12 @@ pub trait CachedLatestAtResultsExt {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<&'a [C]>>;
+    ) -> Option<re_query_cache::Result<Cow<'a, [C]>>>;
 
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<&'a [C]>;
+    ) -> re_query_cache::Result<Cow<'a, [C]>>;
 }
 
 impl CachedLatestAtResultsExt for CachedLatestAtResults {
@@ -24,11 +26,11 @@ impl CachedLatestAtResultsExt for CachedLatestAtResults {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<&'a [C]>> {
+    ) -> Option<re_query_cache::Result<Cow<'a, [C]>>> {
         let results = self.get(C::name())?;
         // TODO(#5607): what should happen if the promise is still pending?
         Some(match results.to_dense(resolver).flatten() {
-            PromiseResult::Pending => Ok(&[]),
+            PromiseResult::Pending => Ok(Cow::Borrowed(&[])),
             PromiseResult::Error(err) => Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Ready(data) => Ok(data),
         })
@@ -38,11 +40,11 @@ impl CachedLatestAtResultsExt for CachedLatestAtResults {
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<&'a [C]> {
+    ) -> re_query_cache::Result<Cow<'a, [C]>> {
         let results = self.get_or_empty(C::name());
         // TODO(#5607): what should happen if the promise is still pending?
         match results.to_dense(resolver).flatten() {
-            PromiseResult::Pending => Ok(&[]),
+            PromiseResult::Pending => Ok(Cow::Borrowed(&[])),
             PromiseResult::Error(err) => Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Ready(data) => Ok(data),
         }

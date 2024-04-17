@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
     //
     // Otherwise, this will trigger a deserialization and cache the result for next time.
 
-    let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
+    let points = match points.to_dense::<MyPoint>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let colors = match colors.iter_dense::<MyColor>(&resolver).flatten() {
+    let colors = match colors.to_dense::<MyColor>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let labels = match labels.iter_sparse::<MyLabel>(&resolver).flatten() {
+    let labels = match labels.to_sparse::<MyLabel>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
@@ -99,10 +99,16 @@ fn main() -> anyhow::Result<()> {
         static DEFAULT: MyColor = MyColor(0xFF00FFFF);
         &DEFAULT
     };
-    let label_default_fn = || None;
+    let label_default_fn = || &None;
 
-    let results =
-        clamped_zip_1x2(points, colors, color_default_fn, labels, label_default_fn).collect_vec();
+    let results = clamped_zip_1x2(
+        points.as_ref(),
+        colors.as_ref(),
+        color_default_fn,
+        labels.as_ref(),
+        label_default_fn,
+    )
+    .collect_vec();
 
     eprintln!("results:\n{results:#?}");
 

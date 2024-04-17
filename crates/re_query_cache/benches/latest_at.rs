@@ -299,20 +299,14 @@ fn query_and_visit_points(
         let points = results.get_required(Position2D::name()).unwrap();
         let colors = results.get_or_empty(Color::name());
 
-        let points = points
-            .iter_dense::<Position2D>(&resolver)
-            .flatten()
-            .unwrap()
-            .copied();
+        let points = points.to_dense::<Position2D>(&resolver).flatten().unwrap();
 
-        let colors = colors
-            .iter_dense::<Color>(&resolver)
-            .flatten()
-            .unwrap()
-            .copied();
-        let color_default_fn = || Color::from(0xFF00FFFF);
+        let colors = colors.to_dense::<Color>(&resolver).flatten().unwrap();
+        let color_default = Color::from(0xFF00FFFF);
+        let color_default_fn = || &color_default;
 
-        for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
+        for (&point, &color) in clamped_zip_1x1(points.as_ref(), colors.as_ref(), color_default_fn)
+        {
             ret.push(SavePoint {
                 _pos: point,
                 _color: Some(color),
@@ -350,22 +344,15 @@ fn query_and_visit_strings(
         let points = results.get_required(Position2D::name()).unwrap();
         let colors = results.get_or_empty(Text::name());
 
-        let points = points
-            .iter_dense::<Position2D>(&resolver)
-            .flatten()
-            .unwrap()
-            .copied();
+        let points = points.to_dense::<Position2D>(&resolver).flatten().unwrap();
 
-        let labels = colors
-            .iter_dense::<Text>(&resolver)
-            .flatten()
-            .unwrap()
-            .cloned();
-        let label_default_fn = || Text(String::new().into());
+        let labels = colors.to_dense::<Text>(&resolver).flatten().unwrap();
+        let label_default = Text(String::new().into());
+        let label_default_fn = || &label_default;
 
-        for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {
+        for (_point, label) in clamped_zip_1x1(points.as_ref(), labels.as_ref(), label_default_fn) {
             strings.push(SaveString {
-                _label: Some(label),
+                _label: Some(label.clone()),
             });
         }
     }

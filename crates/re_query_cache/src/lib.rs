@@ -31,6 +31,30 @@ pub mod external {
 
 // ---
 
+#[inline]
+pub fn is_component_cacheable(component_name: re_types_core::ComponentName) -> bool {
+    use std::sync::OnceLock;
+
+    use re_types_core::{ComponentNameSet, Loggable as _};
+
+    static NEVER_CACHED: OnceLock<ComponentNameSet> = OnceLock::new();
+
+    let never_cached = NEVER_CACHED.get_or_init(|| {
+        ComponentNameSet::from([
+            // TODO(#5303): InstanceKeys are on their way out.
+            re_types::components::InstanceKey::name(), //
+            // TODO(#5974): TensorData is already in the ad-hoc JPEG cache.
+            re_types::components::TensorData::name(), //
+            // TODO(#5974): MeshProperties is already in the ad-hoc Mesh cache.
+            re_types::components::MeshProperties::name(), //
+        ])
+    });
+
+    !never_cached.contains(&component_name)
+}
+
+// ---
+
 use re_data_store::{LatestAtQuery, RangeQuery};
 
 #[derive(Debug)]

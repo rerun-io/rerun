@@ -143,7 +143,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                     let vertex_positions = match results.get_dense::<Position3D>(resolver) {
                         Some(Ok(positions)) if !positions.is_empty() => positions,
-                        Some(err @ Err(_)) => err?,
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 

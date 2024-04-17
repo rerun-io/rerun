@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_query_cache::{range_zip_1x6, CachedResults};
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
@@ -101,22 +103,22 @@ impl Arrows3DVisualizer {
                 query.latest_at,
                 num_instances,
                 data.vectors.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
-                data.class_ids,
+                &data.keypoint_ids,
+                &data.class_ids,
                 &ent_context.annotations,
             );
 
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let radii = process_radius_slice(entity_path, num_instances, &data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(entity_path, num_instances, &annotation_infos, &data.colors);
 
             if num_instances <= self.max_labels {
-                let origins = clamped(data.origins, num_instances);
+                let origins = clamped(&data.origins, num_instances);
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,
-                    data.vectors,
+                    &data.vectors,
                     origins,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
                     ent_context.world_from_entity,
@@ -132,9 +134,9 @@ impl Arrows3DVisualizer {
             let mut bounding_box = macaw::BoundingBox::nothing();
 
             let origins =
-                clamped(data.origins, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
+                clamped(&data.origins, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
             for (i, (vector, origin, radius, color)) in
-                itertools::izip!(data.vectors, origins, radii, colors).enumerate()
+                itertools::izip!(data.vectors.iter(), origins, radii, colors).enumerate()
             {
                 let vector: glam::Vec3 = vector.0.into();
                 let origin: glam::Vec3 = origin.0.into();
@@ -175,15 +177,15 @@ impl Arrows3DVisualizer {
 
 struct Arrows3DComponentData<'a> {
     // Point of views
-    vectors: &'a [Vector3D],
+    vectors: Cow<'a, [Vector3D]>,
 
     // Clamped to edge
-    origins: &'a [Position3D],
-    colors: &'a [Color],
-    radii: &'a [Radius],
-    labels: &'a [Text],
-    keypoint_ids: &'a [KeypointId],
-    class_ids: &'a [ClassId],
+    origins: Cow<'a, [Position3D]>,
+    colors: Cow<'a, [Color]>,
+    radii: Cow<'a, [Radius]>,
+    labels: Cow<'a, [Text]>,
+    keypoint_ids: Cow<'a, [KeypointId]>,
+    class_ids: Cow<'a, [ClassId]>,
 }
 
 impl IdentifiedViewSystem for Arrows3DVisualizer {
@@ -231,7 +233,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
                         let vectors = match results.get_dense::<Vector3D>(resolver) {
                             Some(Ok(vectors)) if !vectors.is_empty() => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 
@@ -273,7 +275,7 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
                         let vectors = match results.get_dense::<Vector3D>(resolver, _query) {
                             Some(Ok(vectors)) => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 
@@ -316,13 +318,13 @@ impl VisualizerSystem for Arrows3DVisualizer {
                                 keypoint_ids,
                             )| {
                                 Arrows3DComponentData {
-                                    vectors,
-                                    origins: origins.unwrap_or_default(),
-                                    colors: colors.unwrap_or_default(),
-                                    radii: radii.unwrap_or_default(),
-                                    labels: labels.unwrap_or_default(),
-                                    class_ids: class_ids.unwrap_or_default(),
-                                    keypoint_ids: keypoint_ids.unwrap_or_default(),
+                                    vectors: vectors.into(),
+                                    origins: origins.unwrap_or_default().into(),
+                                    colors: colors.unwrap_or_default().into(),
+                                    radii: radii.unwrap_or_default().into(),
+                                    labels: labels.unwrap_or_default().into(),
+                                    class_ids: class_ids.unwrap_or_default().into(),
+                                    keypoint_ids: keypoint_ids.unwrap_or_default().into(),
                                 }
                             },
                         );

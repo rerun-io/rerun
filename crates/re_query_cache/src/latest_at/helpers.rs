@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_data_store::{DataStore, LatestAtQuery};
 use re_log_types::{EntityPath, RowId, TimeInt};
 use re_types_core::Component;
@@ -12,7 +14,7 @@ impl CachedLatestAtComponentResults {
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn dense<C: Component>(&self, resolver: &PromiseResolver) -> Option<&[C]> {
+    pub fn dense<C: Component>(&self, resolver: &PromiseResolver) -> Option<Cow<'_, [C]>> {
         let component_name = C::name();
         let level = re_log::Level::Warn;
         match self.to_dense::<C>(resolver).flatten() {

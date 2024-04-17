@@ -1,4 +1,7 @@
-use std::sync::{Arc, OnceLock};
+use std::{
+    borrow::Cow,
+    sync::{Arc, OnceLock},
+};
 
 use nohash_hasher::IntMap;
 
@@ -229,17 +232,18 @@ impl CachedLatestAtComponentResults {
     pub fn to_dense<C: Component>(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<&[C]>> {
+    ) -> PromiseResult<crate::Result<Cow<'_, [C]>>> {
         if let Some(cell) = self.promise.as_ref() {
             resolver
                 .resolve(cell)
                 .map(|cell| self.downcast_dense::<C>(&cell))
         } else {
             // Manufactured empty result.
-            PromiseResult::Ready(Ok(&[]))
+            PromiseResult::Ready(Ok(Cow::Borrowed(&[])))
         }
     }
 
+    #[cfg(target_os = "TODO")]
     /// Iterates over the component data, assuming it is dense.
     ///
     /// Returns an error if the component is missing or cannot be deserialized.
@@ -265,17 +269,18 @@ impl CachedLatestAtComponentResults {
     pub fn to_sparse<C: Component>(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<&[Option<C>]>> {
+    ) -> PromiseResult<crate::Result<Cow<'_, [Option<C>]>>> {
         if let Some(cell) = self.promise.as_ref() {
             resolver
                 .resolve(cell)
                 .map(|cell| self.downcast_sparse::<C>(&cell))
         } else {
             // Manufactured empty result.
-            PromiseResult::Ready(Ok(&[]))
+            PromiseResult::Ready(Ok(Cow::Borrowed(&[])))
         }
     }
 
+    #[cfg(target_os = "TODO")]
     /// Iterates over the component data, assuming it is sparse.
     ///
     /// Returns an error if the component is missing or cannot be deserialized.
@@ -293,7 +298,7 @@ impl CachedLatestAtComponentResults {
 }
 
 impl CachedLatestAtComponentResults {
-    fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<&[C]> {
+    fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<Cow<'_, [C]>> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.
         //
@@ -308,15 +313,21 @@ impl CachedLatestAtComponentResults {
             .try_to_native::<C>()
             .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
-        #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
-            .cached_dense
-            .get_or_init(move || Box::new(FlatVecDeque::from(data)));
-
-        downcast(&**cached)
+        if crate::is_component_cacheable(C::name()) {
+            #[allow(clippy::borrowed_box)]
+            let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
+                .cached_dense
+                .get_or_init(move || Box::new(FlatVecDeque::from(data)));
+            downcast(&**cached)
+        } else {
+            Ok(Cow::Owned(data))
+        }
     }
 
-    fn downcast_sparse<C: Component>(&self, cell: &DataCell) -> crate::Result<&[Option<C>]> {
+    fn downcast_sparse<C: Component>(
+        &self,
+        cell: &DataCell,
+    ) -> crate::Result<Cow<'_, [Option<C>]>> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.
         //
@@ -331,16 +342,21 @@ impl CachedLatestAtComponentResults {
             .try_to_native_opt::<C>()
             .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
-        #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
-            .cached_sparse
-            .get_or_init(move || Box::new(FlatVecDeque::from(data)));
-
-        downcast_opt(&**cached)
+        if crate::is_component_cacheable(C::name()) {
+            #[allow(clippy::borrowed_box)]
+            let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
+                .cached_sparse
+                .get_or_init(move || Box::new(FlatVecDeque::from(data)));
+            downcast_opt(&**cached)
+        } else {
+            Ok(Cow::Owned(data))
+        }
     }
 }
 
-fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> crate::Result<&[C]> {
+fn downcast<C: Component>(
+    cached: &(dyn ErasedFlatVecDeque + Send + Sync),
+) -> crate::Result<Cow<'_, [C]>> {
     let cached = cached
         .as_any()
         .downcast_ref::<FlatVecDeque<C>>()
@@ -353,12 +369,12 @@ fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> cr
         return Err(anyhow::anyhow!("latest_at deque must be single entry").into());
     }
     // unwrap checked just above ^^^
-    Ok(cached.iter().next().unwrap())
+    Ok(Cow::Borrowed(cached.iter().next().unwrap()))
 }
 
 fn downcast_opt<C: Component>(
     cached: &(dyn ErasedFlatVecDeque + Send + Sync),
-) -> crate::Result<&[Option<C>]> {
+) -> crate::Result<Cow<'_, [Option<C>]>> {
     let cached = cached
         .as_any()
         .downcast_ref::<FlatVecDeque<Option<C>>>()
@@ -371,5 +387,5 @@ fn downcast_opt<C: Component>(
         return Err(anyhow::anyhow!("latest_at deque must be single entry").into());
     }
     // unwrap checked just above ^^^
-    Ok(cached.iter().next().unwrap())
+    Ok(Cow::Borrowed(cached.iter().next().unwrap()))
 }

@@ -211,8 +211,8 @@ impl VisualizerSystem for Lines2DVisualizer {
                     let resolver = ctx.recording().resolver();
 
                     let strips = match results.get_dense::<LineStrip2D>(resolver) {
-                        Some(Ok(strips)) if !strips.is_empty() => strips,
-                        Some(err @ Err(_)) => err?,
+                        Some(Ok(strips)) if !strips.is_empty() => strips.as_ref(),
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 
@@ -221,11 +221,11 @@ impl VisualizerSystem for Lines2DVisualizer {
                         strips.iter().map(|strip| strip.0.len()).sum::<usize>(),
                     )?;
 
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                    let colors = results.get_or_empty_dense(resolver)?.as_ref();
+                    let radii = results.get_or_empty_dense(resolver)?.as_ref();
+                    let labels = results.get_or_empty_dense(resolver)?.as_ref();
+                    let class_ids = results.get_or_empty_dense(resolver)?.as_ref();
+                    let keypoint_ids = results.get_or_empty_dense(resolver)?.as_ref();
 
                     let data = Lines2DComponentData {
                         strips,
@@ -256,7 +256,7 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                     let strips = match results.get_dense::<LineStrip2D>(resolver, _query) {
                         Some(Ok(strips)) => strips,
-                        Some(err @ Err(_)) => err?,
+                        Some(Err(err)) => return Err(err.into()),
                         _ => return Ok(()),
                     };
 

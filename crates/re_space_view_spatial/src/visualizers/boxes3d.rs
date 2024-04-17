@@ -213,8 +213,8 @@ impl VisualizerSystem for Boxes3DVisualizer {
                         let resolver = ctx.recording().resolver();
 
                         let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
-                            Some(Ok(vectors)) if !vectors.is_empty() => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Ok(half_sizes)) if !half_sizes.is_empty() => half_sizes.as_ref(),
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 
@@ -222,13 +222,13 @@ impl VisualizerSystem for Boxes3DVisualizer {
                         line_builder.reserve_strips(half_sizes.len() * 12)?;
                         line_builder.reserve_vertices(half_sizes.len() * 12 * 2)?;
 
-                        let centers = results.get_or_empty_dense(resolver)?;
-                        let rotations = results.get_or_empty_dense(resolver)?;
-                        let colors = results.get_or_empty_dense(resolver)?;
-                        let radii = results.get_or_empty_dense(resolver)?;
-                        let labels = results.get_or_empty_dense(resolver)?;
-                        let class_ids = results.get_or_empty_dense(resolver)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
+                        let centers = results.get_or_empty_dense(resolver)?.as_ref();
+                        let rotations = results.get_or_empty_dense(resolver)?.as_ref();
+                        let colors = results.get_or_empty_dense(resolver)?.as_ref();
+                        let radii = results.get_or_empty_dense(resolver)?.as_ref();
+                        let labels = results.get_or_empty_dense(resolver)?.as_ref();
+                        let class_ids = results.get_or_empty_dense(resolver)?.as_ref();
+                        let keypoint_ids = results.get_or_empty_dense(resolver)?.as_ref();
 
                         let data = Boxes3DComponentData {
                             half_sizes,
@@ -259,7 +259,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                         let half_sizes = match results.get_dense::<HalfSizes3D>(resolver, _query) {
                             Some(Ok(vectors)) => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 

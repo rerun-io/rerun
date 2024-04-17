@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_query_cache::{range_zip_1x6, CachedResults};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
@@ -99,22 +101,22 @@ impl Boxes2DVisualizer {
                 view_query.latest_at,
                 num_instances,
                 data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
-                data.class_ids,
+                &data.keypoint_ids,
+                &data.class_ids,
                 &ent_context.annotations,
             );
 
-            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let radii = process_radius_slice(entity_path, num_instances, &data.radii);
             let colors =
-                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
+                process_color_slice(entity_path, num_instances, &annotation_infos, &data.colors);
 
             if num_instances <= self.max_labels {
-                let centers = clamped(data.centers, num_instances);
+                let centers = clamped(&data.centers, num_instances);
                 self.data.ui_labels.extend(Self::process_labels(
                     entity_path,
-                    data.half_sizes,
+                    &data.half_sizes,
                     centers,
-                    data.labels,
+                    &data.labels,
                     &colors,
                     &annotation_infos,
                 ));
@@ -130,9 +132,9 @@ impl Boxes2DVisualizer {
             let mut bounding_box = macaw::BoundingBox::nothing();
 
             let centers =
-                clamped(data.centers, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
+                clamped(&data.centers, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
             for (i, (half_size, center, radius, color)) in
-                itertools::izip!(data.half_sizes, centers, radii, colors).enumerate()
+                itertools::izip!(data.half_sizes.iter(), centers, radii, colors).enumerate()
             {
                 let min = half_size.box_min(*center);
                 let max = half_size.box_max(*center);
@@ -168,15 +170,15 @@ impl Boxes2DVisualizer {
 
 struct Boxes2DComponentData<'a> {
     // Point of views
-    half_sizes: &'a [HalfSizes2D],
+    half_sizes: Cow<'a, [HalfSizes2D]>,
 
     // Clamped to edge
-    centers: &'a [Position2D],
-    colors: &'a [Color],
-    radii: &'a [Radius],
-    labels: &'a [Text],
-    keypoint_ids: &'a [KeypointId],
-    class_ids: &'a [ClassId],
+    centers: Cow<'a, [Position2D]>,
+    colors: Cow<'a, [Color]>,
+    radii: Cow<'a, [Radius]>,
+    labels: Cow<'a, [Text]>,
+    keypoint_ids: Cow<'a, [KeypointId]>,
+    class_ids: Cow<'a, [ClassId]>,
 }
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
@@ -223,8 +225,8 @@ impl VisualizerSystem for Boxes2DVisualizer {
                         let resolver = ctx.recording().resolver();
 
                         let half_sizes = match results.get_dense::<HalfSizes2D>(resolver) {
-                            Some(Ok(vectors)) if !vectors.is_empty() => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Ok(half_sizes)) if !half_sizes.is_empty() => half_sizes,
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 
@@ -267,7 +269,7 @@ impl VisualizerSystem for Boxes2DVisualizer {
 
                         let half_sizes = match results.get_dense::<HalfSizes2D>(resolver, _query) {
                             Some(Ok(vectors)) => vectors,
-                            Some(err @ Err(_)) => err?,
+                            Some(Err(err)) => return Err(err.into()),
                             _ => return Ok(()),
                         };
 
@@ -311,13 +313,13 @@ impl VisualizerSystem for Boxes2DVisualizer {
                                 keypoint_ids,
                             )| {
                                 Boxes2DComponentData {
-                                    half_sizes,
-                                    centers: centers.unwrap_or_default(),
-                                    colors: colors.unwrap_or_default(),
-                                    radii: radii.unwrap_or_default(),
-                                    labels: labels.unwrap_or_default(),
-                                    class_ids: class_ids.unwrap_or_default(),
-                                    keypoint_ids: keypoint_ids.unwrap_or_default(),
+                                    half_sizes: half_sizes.into(),
+                                    centers: centers.unwrap_or_default().into(),
+                                    colors: colors.unwrap_or_default().into(),
+                                    radii: radii.unwrap_or_default().into(),
+                                    labels: labels.unwrap_or_default().into(),
+                                    class_ids: class_ids.unwrap_or_default().into(),
+                                    keypoint_ids: keypoint_ids.unwrap_or_default().into(),
                                 }
                             },
                         );

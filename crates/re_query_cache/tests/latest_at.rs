@@ -520,7 +520,7 @@ fn query_and_compare(
         // eprintln!("{}", store.to_data_table().unwrap());
 
         similar_asserts::assert_eq!(expected.compound_index, cached.compound_index);
-        similar_asserts::assert_eq!(expected_point_data, cached_point_data);
-        similar_asserts::assert_eq!(expected_color_data, cached_color_data);
+        similar_asserts::assert_eq!(expected_point_data, cached_point_data.as_ref());
+        similar_asserts::assert_eq!(expected_color_data, cached_color_data.as_ref());
     }
 }
