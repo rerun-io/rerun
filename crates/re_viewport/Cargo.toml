@@ -21,7 +21,6 @@ re_data_ui.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_log_types.workspace = true
 re_log.workspace = true
-re_query.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
   "arrow",
   "import-gltf",
@@ -30,7 +29,6 @@ re_renderer = { workspace = true, default-features = false, features = [
 ] }
 re_smart_channel.workspace = true
 re_space_view.workspace = true
-re_space_view_time_series.workspace = true
 re_tracing.workspace = true
 re_types.workspace = true
 re_types_blueprint.workspace = true
@@ -39,9 +37,6 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
-array-init.workspace = true
-arrow2.workspace = true
-bytemuck.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 glam.workspace = true
@@ -50,5 +45,4 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 rayon.workspace = true
-rmp-serde.workspace = true
 smallvec.workspace = true
