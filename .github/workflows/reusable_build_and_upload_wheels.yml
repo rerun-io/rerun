@@ -201,8 +201,8 @@ jobs:
         run: |
           pixi run fetch-artifact \
           --commit-sha ${{ steps.get-sha.outputs.sha }} \
-          --artifact-name rerun-cli \
-          --platform-name ${{ inputs.PLATFORM }} \
+          --artifact rerun-cli \
+          --platform ${{ inputs.PLATFORM }} \
           --dest rerun_py/rerun_sdk/bin
 
       - name: Build
