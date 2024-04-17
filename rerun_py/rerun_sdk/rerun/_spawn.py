@@ -42,12 +42,10 @@ def _spawn_viewer(
 
     """
 
-    import rerun_bindings
-
     import os
-    import subprocess
-    import sys
     from time import sleep
+
+    import rerun_bindings
 
     # Let the spawned rerun process know it's just an app
     new_env = os.environ.copy()

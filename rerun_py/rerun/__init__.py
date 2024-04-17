@@ -18,8 +18,8 @@ inject it into the source tree.
 
 from __future__ import annotations
 
-import pathlib
 import os
+import pathlib
 import sys
 
 real_path = pathlib.Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
