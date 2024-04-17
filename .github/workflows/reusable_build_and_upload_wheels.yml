@@ -198,6 +198,7 @@ jobs:
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Download rerun-cli"
+        shell: bash
         run: |
           pixi run fetch-artifact \
           --commit-sha ${{ steps.get-sha.outputs.sha }} \
