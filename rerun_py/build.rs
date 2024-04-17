@@ -4,14 +4,8 @@ fn main() {
 
     re_build_tools::export_build_info_vars_for_crate("rerun_py");
 
-    // TODO(jleibs): Figure out how to do something like this.
-    // This currently breaks `cargo check` since we build with `--all-features`.
-    // Ideally we would enforce this from the maturin packaging side of
-    // things, but there does not appear to be a hook for doing that.
-    //
-    // Fail if bin/rerun is missing and we're building for pypi
-    /*
-    #[cfg(feature = "pypi")]
+    // Fail if bin/rerun is missing and we haven't specified it's ok.
+    #[cfg(not(feature = "allow-missing-rerun-cli"))]
     {
         let rerun_bin = std::env::current_dir().unwrap().join("rerun_sdk/bin/rerun");
         if !rerun_bin.exists() {
@@ -19,5 +13,4 @@ fn main() {
             std::process::exit(1);
         }
     }
-    */
 }

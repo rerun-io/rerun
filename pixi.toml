@@ -109,7 +109,7 @@ py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --c
 py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
-py-build = "RERUN_PY_DEV_BUILD=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
+py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests --features allow-missing-rerun-cli"
 py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml --features pypi"
 
 # Run the Python tests.

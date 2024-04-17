@@ -14,6 +14,13 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module"]
 
+## Allow building without a copy of the rerun CLI executable to be embedded
+## in the wheel. Only use this for dev builds.
+## This is structured as a positive feature so that `--all-features` does
+## allow us to build without the rerun CLI present as this is commonly
+## used when running checks.
+allow-missing-rerun-cli = []
+
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 pypi = ["extension-module", "web_viewer"]
