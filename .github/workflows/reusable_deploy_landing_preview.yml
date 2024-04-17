@@ -38,9 +38,10 @@ jobs:
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
       - name: Re-deploy rerun.io
-        id: deploy-vercel
-        uses: ./.github/actions/deploy-vercel
+        id: vercel
+        uses: ./.github/actions/vercel
         with:
+          command: "deploy"
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
@@ -57,4 +58,4 @@ jobs:
 
             | Commit  | Link  |
             | ------- | ----- |
-            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.deploy-vercel.outputs.vercel_preview_url }}/docs |
+            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
