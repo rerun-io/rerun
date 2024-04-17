@@ -248,9 +248,7 @@ impl RerunServer {
             return;
         }
 
-        if let Err(err) = join_handle.join() {
-            re_log::warn!("Error joining listener thread: {err:?}");
-        }
+        join_handle.join().ok();
     }
 }
 
