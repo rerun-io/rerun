@@ -7,16 +7,14 @@
 //! for specific data based on e.g. time.
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     net::{TcpListener, TcpStream},
-    sync::{
-        atomic::{AtomicBool, AtomicUsize},
-        Arc,
-    },
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use parking_lot::Mutex;
 use polling::{Event, Poller};
+use tungstenite::WebSocket;
 
 use re_log_types::LogMsg;
 use re_memory::MemoryLimit;
@@ -27,7 +25,7 @@ use crate::{server_url, RerunServerError, RerunServerPort};
 #[derive(Clone)]
 struct MessageQueue {
     server_memory_limit: MemoryLimit,
-    messages: VecDeque<Arc<[u8]>>,
+    messages: VecDeque<Vec<u8>>,
 }
 
 impl MessageQueue {
@@ -38,7 +36,7 @@ impl MessageQueue {
         }
     }
 
-    pub fn push(&mut self, msg: Arc<[u8]>) {
+    pub fn push(&mut self, msg: Vec<u8>) {
         self.gc_if_using_too_much_ram();
         self.messages.push_back(msg);
     }
@@ -188,55 +186,28 @@ impl RerunServer {
 
             for event in events.drain(..) {
                 if event.key == listener_poll_key {
-                    let (tcp_stream, _) = match listener_socket.accept() {
-                        Ok(connection) => connection,
+                    match listener_socket.accept() {
+                        Ok((tcp_stream, _)) => {
+                            let address = tcp_stream.peer_addr();
+                            re_log::debug!("New WebSocket connection at {:?}", address);
+
+                            match tungstenite::accept(tcp_stream) {
+                                Ok(ws_stream) => {
+                                    message_broadcaster.add_client(ws_stream);
+                                }
+                                Err(err) => {
+                                    re_log::warn!("Error accepting WebSocket connection: {err}");
+                                    return;
+                                }
+                            };
+                        }
 
                         Err(err) => {
                             re_log::warn!("Error accepting WebSocket connection: {err}");
-                            continue;
                         }
                     };
-                    Self::handle_connection(message_broadcaster.clone(), tcp_stream);
                 }
             }
-        }
-    }
-
-    fn handle_connection(message_broadcaster: Arc<ReceiveSetBroadcaster>, tcp_stream: TcpStream) {
-        if let Err(err) = std::thread::Builder::new()
-            .name("rerun_ws_server: connection".to_owned())
-            .spawn(move || {
-                let address = tcp_stream.peer_addr();
-                re_log::debug!("New WebSocket connection at {:?}", address);
-
-                let mut ws_stream = match tungstenite::accept(tcp_stream) {
-                    Ok(ws_stream) => ws_stream,
-                    Err(err) => {
-                        re_log::warn!("Error accepting WebSocket connection: {err}");
-                        return;
-                    }
-                };
-
-                {
-                    let (client_id, log_stream) = message_broadcaster.add_client();
-
-                    while let Ok(msg) = log_stream.recv() {
-                        if let Err(err) = ws_stream.send(tungstenite::Message::Binary(msg.to_vec()))
-                        {
-                            re_log::warn!("Error sending message to WebSocket client: {err}");
-                            break;
-                        }
-                    }
-
-                    message_broadcaster.remove_client(client_id);
-                }
-
-                re_log::debug!("Closing WebSocket connection at {:?}", address);
-            })
-        {
-            re_log::error!(
-                "Failed to spawn thread for handling incoming WebSocket connection: {err}"
-            );
         }
     }
 
@@ -267,9 +238,12 @@ impl Drop for RerunServer {
 }
 
 /// Broadcasts messages to all connected clients and stores a history of messages to resend to new clients.
+///
+/// This starts a thread which will close when the underlying `ReceiveSet` gets a quit message or looses all its connections.
+/// TODO(andreas): There should be a way to close this from the outside as well,
+/// so that on server shut down we're not left with a thread serving clients.
 struct ReceiveSetBroadcaster {
     inner: Arc<Mutex<ReceiveSetBroadcasterInnerState>>,
-    next_client_id: AtomicUsize,
 }
 
 /// Inner state of the [`ReceiveSetBroadcaster`], protected by a mutex.
@@ -277,14 +251,14 @@ struct ReceiveSetBroadcasterInnerState {
     /// Don't allow adding to the history while adding/removing clients.
     /// This way, no messages history is lost!
     history: MessageQueue,
-    clients: HashMap<usize, std::sync::mpsc::Sender<Arc<[u8]>>>,
+    clients: Vec<WebSocket<TcpStream>>,
 }
 
 impl ReceiveSetBroadcaster {
     fn new(log_rx: ReceiveSet<LogMsg>, server_memory_limit: MemoryLimit) -> Self {
         let inner = Arc::new(Mutex::new(ReceiveSetBroadcasterInnerState {
             history: MessageQueue::new(server_memory_limit),
-            clients: HashMap::new(),
+            clients: Vec::new(),
         }));
         let inner_cpy = inner.clone();
 
@@ -294,19 +268,26 @@ impl ReceiveSetBroadcaster {
                 while let Ok(msg) = log_rx.recv() {
                     match msg.payload {
                         re_smart_channel::SmartMessagePayload::Msg(data) => {
-                            let bytes = crate::encode_log_msg(&data);
-                            let bytes: Arc<[u8]> = bytes.into();
+                            let msg = crate::encode_log_msg(&data);
 
                             {
                                 let mut inner = inner.lock();
-                                inner.history.push(bytes.clone());
-                                for client in inner.clients.values() {
-                                    if let Err(err) = client.send(bytes.clone()) {
+
+                                // TODO(andreas): Should this be a parallel-for?
+                                inner.clients.retain_mut(|client| {
+                                    if let Err(err) =
+                                        client.send(tungstenite::Message::Binary(msg.clone()))
+                                    {
                                         re_log::warn!(
                                             "Error sending message to web socket client: {err}"
                                         );
+                                        false
+                                    } else {
+                                        true
                                     }
-                                }
+                                });
+
+                                inner.history.push(msg);
                             }
                         }
                         re_smart_channel::SmartMessagePayload::Quit(err) => {
@@ -326,38 +307,20 @@ impl ReceiveSetBroadcaster {
             );
         }
 
-        Self {
-            inner: inner_cpy,
-            next_client_id: AtomicUsize::new(0),
-        }
+        Self { inner: inner_cpy }
     }
 
-    /// Adds a client to the broadcaster and replies all message history so far to it.
-    ///
-    /// Returns a client id that can be used to remove the client and a receive channel.
-    fn add_client(&self) -> (usize, std::sync::mpsc::Receiver<Arc<[u8]>>) {
-        let client_id = self
-            .next_client_id
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let (tx, rx) = std::sync::mpsc::channel();
-
-        {
-            let mut inner = self.inner.lock();
-
-            for msg in &inner.history.messages {
-                if let Err(err) = tx.send(msg.clone()) {
-                    re_log::warn!("Error sending message to web socket client: {err}");
-                }
-            }
-
-            inner.clients.insert(client_id, tx);
-        }
-        (client_id, rx)
-    }
-
-    /// Removes a client from the broadcaster that was previously added with [`Self::add_client`].
-    fn remove_client(&self, client_id: usize) {
+    /// Adds a websocket client to the broadcaster and replies all message history so far to it.
+    fn add_client(&self, mut client: WebSocket<TcpStream>) {
         let mut inner = self.inner.lock();
-        inner.clients.remove(&client_id);
+
+        for msg in &inner.history.messages {
+            if let Err(err) = client.send(tungstenite::Message::Binary(msg.clone())) {
+                re_log::warn!("Error sending message to web socket client: {err}");
+                return;
+            }
+        }
+
+        inner.clients.push(client);
     }
 }
