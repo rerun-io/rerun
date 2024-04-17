@@ -7,4 +7,4 @@ rerun-sdk
 # See e.g. https://github.com/jupyter/notebook/issues/6721
 jupyter_client<8
 pyzmq<25
-tornado<=6.3.2
+tornado<=6.3.3
