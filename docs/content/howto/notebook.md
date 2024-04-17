@@ -16,10 +16,11 @@ Rerun has been tested with:
 
 ## Basic concept
 
-When using the Rerun logging APIs, the output is buffered in-memory until you send it to a sink.
-There is a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show), which takes any buffered messages, converts
-them into an embedded rrd file and emits an HTML snippet using the hosted rerun viewer that
-references the embedded data.
+When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
+you send them to a sink such as via `rr.connect()` or `rr.save()`. When using Rerun in a notebook,
+rather than using the other sinks, you have the option to use a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
+This method takes any buffered messages and converts them into an HTML snipped including
+the inlined data along with an instance of the viewer in an iframe.
 
 ## The APIs
 
