@@ -101,7 +101,7 @@ export class Project {
       envs.find((env) => env.key === key),
     );
     assert(env);
-    return await this.client.patch(
+    return this.client.patch(
       `v9/projects/${this.project.id}/env/${env.id}`,
       { gitBranch: null, key, target, type, value },
       { teamId: this.team.id },
@@ -120,7 +120,7 @@ export class Project {
    */
   async redeploy(deploymentId, name) {
     console.log(`redeploy ${name} (id: ${deploymentId})`);
-    return await this.client.post(
+    return this.client.post(
       `v13/deployments`,
       {
         deploymentId,
@@ -155,7 +155,7 @@ export class Project {
       body.env = env;
       body.build = { env };
     }
-    return await this.client.post(`v13/deployments`, body, {
+    return this.client.post(`v13/deployments`, body, {
       teamId: this.team.id,
       forceNew: "1",
     });
@@ -195,7 +195,7 @@ export class Client {
    */
   async get(endpoint, params, headers) {
     const url = this.url(endpoint, params);
-    return await fetch(url, {
+    return fetch(url, {
       headers: {
         Authorization: `Bearer ${this.token}`,
         ...headers,
@@ -215,7 +215,7 @@ export class Client {
    */
   async post(endpoint, body, params, headers) {
     const url = this.url(endpoint, params);
-    return await fetch(url, {
+    return fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.token}`,
@@ -238,7 +238,7 @@ export class Client {
    */
   async patch(endpoint, body, params, headers) {
     const url = this.url(endpoint, params);
-    return await fetch(url, {
+    return fetch(url, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${this.token}`,
