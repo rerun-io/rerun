@@ -230,20 +230,3 @@ jobs:
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
-
-  update-rerun-io-env:
-    runs-on: ubuntu-latest
-    if: inputs.UPDATE_LATEST
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
-
-      - name: Update Vercel env
-        uses: ./.github/actions/vercel
-        with:
-          command: "update-env"
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
-          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
-          release_version: ${{ inputs.RELEASE_VERSION }}
