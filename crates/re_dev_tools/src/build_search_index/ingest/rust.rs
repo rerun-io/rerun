@@ -41,6 +41,7 @@ pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
+        progress.println(progress.message());
         progress.set_message(pkg.name.clone());
 
         if exclude_crates.contains(&pkg.name) {

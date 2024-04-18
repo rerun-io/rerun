@@ -21,6 +21,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
         for example_name in &category.examples {
             for language in LANGUAGES.iter().copied() {
+                progress.println(progress.message());
                 progress.set_message(format!(
                     "{category_name}/{example_name}.{}",
                     language.extension()

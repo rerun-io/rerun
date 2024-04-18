@@ -13,6 +13,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             .with_extension("")
             .display()
             .to_string();
+        progress.println(progress.message());
         progress.set_message(path.clone());
         let url = format!("https://rerun.io/docs/{path}");
         let (frontmatter, body) = parse_docs_frontmatter(&entry)?;

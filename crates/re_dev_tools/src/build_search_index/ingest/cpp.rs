@@ -26,7 +26,9 @@ macro_rules! document {
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("cpp");
 
+    progress.println(progress.message());
     progress.set_message("doxygen");
+
     Command::new("doxygen")
         .with_arg("docs/Doxyfile")
         .with_cwd(ctx.workspace_root().join("rerun_cpp"))
