@@ -1,13 +1,10 @@
+use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::CommandExt as _;
+use anyhow::Context as _;
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::process::Command;
-
-use anyhow::Context as _;
-use serde::Deserialize;
-
-use crate::build_search_index::util::CommandExt as _;
-
-use super::{Context, DocumentData, DocumentKind};
 
 const RERUN_SDK: &str = "rerun_sdk";
 
@@ -50,9 +47,11 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
     // index each documented item
-    let _version = &ctx.rerun_pkg().version;
-    // let base_url = format!("https://ref.rerun.io/docs/python/{version}");
-    let base_url = "https://ref.rerun.io/docs/python/main";
+    let base_url = format!(
+        "https://ref.rerun.io/docs/python/{version}",
+        version = ctx.release_version()
+    );
+    // let base_url = "https://ref.rerun.io/docs/python/main";
     for (path, obj) in inv {
         ctx.push(DocumentData {
             kind: DocumentKind::Python,

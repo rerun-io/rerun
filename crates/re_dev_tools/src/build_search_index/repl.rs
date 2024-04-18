@@ -1,6 +1,6 @@
 use super::meili::SearchClient;
 use super::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
-
+use cargo_metadata::semver::Version;
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Write as _;
@@ -28,6 +28,10 @@ pub struct Repl {
     /// meilisearch master key (must support both read and write)
     #[argh(option, long = "master-key", default = "DEFAULT_KEY.into()")]
     meilisearch_master_key: String,
+
+    /// release version to use in URLs
+    #[argh(option, long = "release-version")]
+    release_version: Option<Version>,
 }
 
 impl Repl {
@@ -35,7 +39,7 @@ impl Repl {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
 
         if self.ingest {
-            let documents = ingest::run()?;
+            let documents = ingest::run(self.release_version.clone())?;
             client.index(&self.index_name, &documents)?;
         }
 
@@ -59,7 +63,7 @@ impl Repl {
         match line {
             "quit" | "q" | "" => return Ok(ControlFlow::Break(())),
             "reindex" => {
-                let documents = ingest::run()?;
+                let documents = ingest::run(self.release_version.clone())?;
                 search.index(&self.index_name, &documents)?;
             }
             _ => {

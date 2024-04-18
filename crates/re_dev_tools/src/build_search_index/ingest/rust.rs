@@ -77,7 +77,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     }
 
     let (tx, rx) = mpsc::channel();
-    let version = ctx.rerun_pkg().version.clone();
+    let version = ctx.release_version();
 
     ctx.finish_progress_bar(progress);
 
@@ -92,7 +92,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .collect::<Vec<_>>()
         .into_par_iter()
         .for_each(|(progress, krate)| {
-            let mut visitor = Visitor::new(progress, &version, &tx, &krate);
+            let mut visitor = Visitor::new(progress, version, &tx, &krate);
             visitor.visit_root();
             visitor.progress.finish_and_clear();
         });
@@ -371,9 +371,12 @@ impl<'a> Visitor<'a> {
     }
 }
 
-fn base_url(_version: &Version, krate: &Crate) -> String {
-    // format!("https://docs.rs/{krate_name}/{version}")
-    format!("https://docs.rs/{}/latest", krate.name())
+fn base_url(version: &Version, krate: &Crate) -> String {
+    format!(
+        "https://docs.rs/{krate_name}/{version}",
+        krate_name = krate.name()
+    )
+    // format!("https://docs.rs/{}/latest", krate.name())
 }
 
 fn document(path: String, url: String, docs: String) -> DocumentData {

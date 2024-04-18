@@ -14,6 +14,7 @@ mod python;
 mod cpp;
 
 use camino::Utf8Path;
+use cargo_metadata::semver::Version;
 use cargo_metadata::Package;
 use indicatif::MultiProgress;
 use indicatif::ProgressBar;
@@ -22,8 +23,8 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::time::Duration;
 
-pub fn run() -> anyhow::Result<Vec<Document>> {
-    let ctx = Context::new()?;
+pub fn run(release_version: Option<Version>) -> anyhow::Result<Vec<Document>> {
+    let ctx = Context::new(release_version)?;
     docs::ingest(&ctx)?;
     examples::ingest(&ctx)?;
     rust::ingest(&ctx)?;
@@ -37,15 +38,17 @@ struct Context {
     metadata: cargo_metadata::Metadata,
     id_gen: IdGen,
     documents: RefCell<Vec<Document>>,
+    release_version: Option<Version>,
 }
 
 impl Context {
-    fn new() -> anyhow::Result<Self> {
+    fn new(release_version: Option<Version>) -> anyhow::Result<Self> {
         Ok(Self {
             progress: MultiProgress::new(),
             metadata: re_build_tools::cargo_metadata()?,
             id_gen: IdGen::new(),
             documents: RefCell::new(Vec::new()),
+            release_version,
         })
     }
 
@@ -74,6 +77,12 @@ impl Context {
             .iter()
             .find(|pkg| pkg.name == "rerun")
             .unwrap()
+    }
+
+    fn release_version(&self) -> &Version {
+        self.release_version
+            .as_ref()
+            .unwrap_or_else(|| &self.rerun_pkg().version)
     }
 
     fn push(&self, data: DocumentData) {

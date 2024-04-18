@@ -1,4 +1,5 @@
 use super::{ingest, meili, DEFAULT_INDEX, DEFAULT_KEY, DEFAULT_URL};
+use cargo_metadata::semver::Version;
 
 /// Index documentation, examples, and API references for all languages
 #[derive(argh::FromArgs)]
@@ -15,6 +16,10 @@ pub struct Build {
     /// meilisearch master key (must support both read and write)
     #[argh(option, long = "master-key", default = "DEFAULT_KEY.into()")]
     meilisearch_master_key: String,
+
+    /// release version to use in URLs
+    #[argh(option, long = "release-version")]
+    release_version: Option<Version>,
 }
 
 impl Default for Build {
@@ -23,6 +28,7 @@ impl Default for Build {
             index_name: DEFAULT_INDEX.into(),
             meilisearch_url: DEFAULT_URL.into(),
             meilisearch_master_key: DEFAULT_KEY.into(),
+            release_version: None,
         }
     }
 }
@@ -30,7 +36,7 @@ impl Default for Build {
 impl Build {
     pub fn run(self) -> anyhow::Result<()> {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
-        let documents = ingest::run()?;
+        let documents = ingest::run(self.release_version)?;
         client.index(&self.index_name, &documents)?;
         Ok(())
     }
