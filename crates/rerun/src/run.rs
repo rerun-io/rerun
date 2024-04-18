@@ -636,7 +636,7 @@ async fn run_impl(
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
                 quiet: false,
             };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
+            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
             vec![rx]
         }
 

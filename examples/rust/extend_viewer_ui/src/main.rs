@@ -26,8 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "0.0.0.0",
         re_sdk_comms::DEFAULT_SERVER_PORT,
         Default::default(),
-    )
-    .await?;
+    )?;
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
