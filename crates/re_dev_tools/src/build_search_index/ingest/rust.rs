@@ -35,13 +35,17 @@ use std::sync::mpsc;
 /// - associated `fn`
 ///
 /// It will also walk through any `pub mod`, and correctly resolve `pub use mod::item` where `mod` is not `pub`.
-pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
+pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("rustdoc");
 
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
         progress.set_message(pkg.name.clone());
+
+        if exclude_crates.contains(&pkg.name) {
+            continue;
+        }
 
         let publish = match pkg.publish.as_deref() {
             Some([]) => false,      // explicitly set to `false`

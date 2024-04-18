@@ -20,23 +20,16 @@ pub struct Build {
     /// release version to use in URLs
     #[argh(option, long = "release-version")]
     release_version: Option<Version>,
-}
 
-impl Default for Build {
-    fn default() -> Self {
-        Self {
-            index_name: DEFAULT_INDEX.into(),
-            meilisearch_url: DEFAULT_URL.into(),
-            meilisearch_master_key: DEFAULT_KEY.into(),
-            release_version: None,
-        }
-    }
+    /// exclude one or more crates
+    #[argh(option, long = "exclude-crate")]
+    exclude_crates: Vec<String>,
 }
 
 impl Build {
     pub fn run(self) -> anyhow::Result<()> {
         let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
-        let documents = ingest::run(self.release_version)?;
+        let documents = ingest::run(self.release_version, &self.exclude_crates)?;
         client.index(&self.index_name, &documents)?;
         Ok(())
     }

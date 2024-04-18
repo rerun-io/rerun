@@ -23,11 +23,14 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::time::Duration;
 
-pub fn run(release_version: Option<Version>) -> anyhow::Result<Vec<Document>> {
+pub fn run(
+    release_version: Option<Version>,
+    exclude_crates: &[String],
+) -> anyhow::Result<Vec<Document>> {
     let ctx = Context::new(release_version)?;
     docs::ingest(&ctx)?;
     examples::ingest(&ctx)?;
-    rust::ingest(&ctx)?;
+    rust::ingest(&ctx, exclude_crates)?;
     python::ingest(&ctx)?;
     cpp::ingest(&ctx)?;
     Ok(ctx.finish())
