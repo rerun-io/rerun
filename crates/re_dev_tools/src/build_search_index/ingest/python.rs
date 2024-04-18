@@ -1,5 +1,6 @@
 use super::{Context, DocumentData, DocumentKind};
 use crate::build_search_index::util::CommandExt as _;
+use crate::build_search_index::util::ProgressBarExt as _;
 use anyhow::Context as _;
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -13,8 +14,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     // run `mkdocs` to generate documentation, which also produces a `objects.inv` file
     // this file contains every documented item and a URL to where it is documented
-    progress.println(progress.message());
-    progress.set_message("mkdocs build");
+    progress.set("mkdocs build", ctx.is_tty());
     Command::new("mkdocs")
         .with_arg("build")
         .with_arg("-f")
@@ -22,8 +22,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .output()?;
 
     // run `sphobjinv` to convert the `objects.inv` file into JSON, and fully resolve all links/names
-    progress.println(progress.message());
-    progress.set_message("sphobjinv convert");
+    progress.set("sphobjinv convert", ctx.is_tty());
     let inv: Inventory = Command::new("sphobjinv")
         .with_args(["convert", "json", "--expand"])
         .with_cwd(ctx.workspace_root())
@@ -40,8 +39,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     // run `griffe` to obtain an tree of the entire public module hierarchy in `rerun_sdk`
     // this dump is only used to obtain docstrings
-    progress.println(progress.message());
-    progress.set_message("griffe dump");
+    progress.set("griffe dump", ctx.is_tty());
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
         .parse_json()

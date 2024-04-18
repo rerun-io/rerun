@@ -1,6 +1,6 @@
-use crate::build_examples::{Example, ExamplesManifest, Language};
-
 use super::{Context, DocumentData, DocumentKind};
+use crate::build_examples::{Example, ExamplesManifest, Language};
+use crate::build_search_index::util::ProgressBarExt as _;
 
 const LANGUAGES: &[Language] = &[Language::Python, Language::Rust, Language::Cpp];
 
@@ -21,11 +21,10 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
         for example_name in &category.examples {
             for language in LANGUAGES.iter().copied() {
-                progress.println(progress.message());
-                progress.set_message(format!(
-                    "{category_name}/{example_name}.{}",
-                    language.extension()
-                ));
+                progress.set(
+                    format!("{category_name}/{example_name}.{}", language.extension()),
+                    ctx.is_tty(),
+                );
 
                 let Some(example) = Example::load(ctx.workspace_root(), example_name, language)?
                 else {

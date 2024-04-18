@@ -1,4 +1,5 @@
 use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::ProgressBarExt as _;
 use anyhow::Context as _;
 use cargo_metadata::semver::Version;
 use indicatif::ProgressBar;
@@ -41,8 +42,7 @@ pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
-        progress.println(progress.message());
-        progress.set_message(pkg.name.clone());
+        progress.set(pkg.name.clone(), ctx.is_tty());
 
         if exclude_crates.contains(&pkg.name) {
             continue;

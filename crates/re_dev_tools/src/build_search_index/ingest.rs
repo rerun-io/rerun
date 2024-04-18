@@ -21,6 +21,7 @@ use indicatif::ProgressBar;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::cell::RefCell;
+use std::io::IsTerminal;
 use std::time::Duration;
 
 pub fn run(
@@ -42,6 +43,7 @@ struct Context {
     id_gen: IdGen,
     documents: RefCell<Vec<Document>>,
     release_version: Option<Version>,
+    is_tty: bool,
 }
 
 impl Context {
@@ -52,7 +54,12 @@ impl Context {
             id_gen: IdGen::new(),
             documents: RefCell::new(Vec::new()),
             release_version,
+            is_tty: std::io::stdout().is_terminal(),
         })
+    }
+
+    fn is_tty(&self) -> bool {
+        self.is_tty
     }
 
     fn progress_bar(&self, prefix: impl Into<Cow<'static, str>>) -> ProgressBar {

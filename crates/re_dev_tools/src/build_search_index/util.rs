@@ -1,3 +1,5 @@
+use indicatif::ProgressBar;
+use std::borrow::Cow;
 use std::ffi::OsStr;
 use std::io;
 use std::path::Path;
@@ -129,5 +131,21 @@ impl CheckStatus for std::process::ExitStatus {
 impl CheckStatus for std::process::Output {
     fn check(&self) -> io::Result<()> {
         self.status.check()
+    }
+}
+
+pub trait ProgressBarExt {
+    fn set(&self, message: impl Into<Cow<'static, str>>, is_tty: bool);
+}
+
+impl ProgressBarExt for ProgressBar {
+    fn set(&self, message: impl Into<Cow<'static, str>>, is_tty: bool) {
+        if is_tty {
+            self.println(self.message());
+            self.set_message(message);
+        } else {
+            let message = message.into();
+            println!("{message}");
+        }
     }
 }
