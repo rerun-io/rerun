@@ -4351,7 +4351,6 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_smart_channel",
  "re_tracing",
@@ -4489,30 +4488,6 @@ dependencies = [
  "sysinfo",
  "wasm-bindgen",
  "web-time",
-]
-
-[[package]]
-name = "re_query"
-version = "0.16.0-alpha.1+dev"
-dependencies = [
- "backtrace",
- "criterion",
- "document-features",
- "itertools 0.12.0",
- "mimalloc",
- "rand",
- "re_arrow2",
- "re_data_store",
- "re_format",
- "re_log",
- "re_log_types",
- "re_tracing",
- "re_types",
- "re_types_core",
- "serde",
- "similar-asserts",
- "smallvec",
- "thiserror",
 ]
 
 [[package]]
@@ -4690,7 +4665,6 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_tracing",
  "re_types",
@@ -4728,7 +4702,6 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_renderer",
  "re_tracing",
@@ -4761,7 +4734,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_renderer",
  "re_space_view",
@@ -4809,7 +4781,6 @@ dependencies = [
  "itertools 0.12.0",
  "re_data_store",
  "re_log",
- "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -4850,7 +4821,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_renderer",
  "re_space_view",
@@ -5125,7 +5095,6 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query",
  "re_query2",
  "re_renderer",
  "re_smart_channel",

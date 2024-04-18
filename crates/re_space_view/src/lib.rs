@@ -35,7 +35,8 @@ pub mod external {
 
 use re_entity_db::external::re_data_store;
 
-/// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties of a concrete component.
+/// Utility for implementing [`re_viewer_context::VisualizerAdditionalApplicabilityFilter`] using on the properties
+/// of a concrete component.
 #[inline]
 pub fn diff_component_filter<T: re_types_core::Component>(
     event: &re_data_store::StoreEvent,
