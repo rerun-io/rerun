@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query2::{range_zip_1x5, CachedResults};
+use re_query::{range_zip_1x5, CachedResults};
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::LineStrips3D,
