@@ -8,7 +8,7 @@ use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
 use crate::{
-    CacheKey, CachedRangeComponentResults, CachedRangeComponentResultsInner, CachedRangeResults,
+    CacheKey, RangeComponentResults, RangeComponentResultsInner, RangeResults,
     Caches, Promise,
 };
 
@@ -17,7 +17,7 @@ use crate::{
 impl Caches {
     /// Queries for the given `component_names` using range semantics.
     ///
-    /// See [`CachedRangeResults`] for more information about how to handle the results.
+    /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn range(
@@ -26,10 +26,10 @@ impl Caches {
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
-    ) -> CachedRangeResults {
+    ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
-        let mut results = CachedRangeResults::default();
+        let mut results = RangeResults::default();
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
@@ -61,7 +61,7 @@ pub struct RangeCache {
     ///
     /// Query time is irrelevant for range queries.
     // TODO(#4810): bucketize
-    pub per_data_time: CachedRangeComponentResults,
+    pub per_data_time: RangeComponentResults,
 
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
     ///
@@ -78,7 +78,7 @@ impl RangeCache {
     pub fn new(cache_key: CacheKey) -> Self {
         Self {
             cache_key,
-            per_data_time: CachedRangeComponentResults::default(),
+            per_data_time: RangeComponentResults::default(),
             pending_invalidation: None,
         }
     }
@@ -153,7 +153,7 @@ impl RangeCache {
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> CachedRangeComponentResults {
+    ) -> RangeComponentResults {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         let RangeCache {
@@ -246,7 +246,7 @@ impl RangeCache {
 
 // ---
 
-impl CachedRangeComponentResultsInner {
+impl RangeComponentResultsInner {
     #[inline]
     pub fn num_values(&self) -> u64 {
         self.cached_dense

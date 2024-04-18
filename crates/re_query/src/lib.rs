@@ -20,12 +20,12 @@ pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::latest_at::{
-    CachedLatestAtComponentResults, CachedLatestAtMonoResult, CachedLatestAtResults,
+    LatestAtComponentResults, CachedLatestAtMonoResult, LatestAtResults,
 };
-pub use self::range::{CachedRangeComponentResults, CachedRangeData, CachedRangeResults};
+pub use self::range::{RangeComponentResults, CachedRangeData, RangeResults};
 
 pub(crate) use self::latest_at::LatestAtCache;
-pub(crate) use self::range::{CachedRangeComponentResultsInner, RangeCache};
+pub(crate) use self::range::{RangeComponentResultsInner, RangeCache};
 
 pub mod external {
     pub use paste;
@@ -102,21 +102,21 @@ pub trait ToArchetype<A: re_types_core::Archetype> {
 use re_data_store::{LatestAtQuery, RangeQuery};
 
 #[derive(Debug)]
-pub enum CachedResults {
-    LatestAt(LatestAtQuery, CachedLatestAtResults),
-    Range(RangeQuery, CachedRangeResults),
+pub enum Results {
+    LatestAt(LatestAtQuery, LatestAtResults),
+    Range(RangeQuery, RangeResults),
 }
 
-impl From<(LatestAtQuery, CachedLatestAtResults)> for CachedResults {
+impl From<(LatestAtQuery, LatestAtResults)> for Results {
     #[inline]
-    fn from((query, results): (LatestAtQuery, CachedLatestAtResults)) -> Self {
+    fn from((query, results): (LatestAtQuery, LatestAtResults)) -> Self {
         Self::LatestAt(query, results)
     }
 }
 
-impl From<(RangeQuery, CachedRangeResults)> for CachedResults {
+impl From<(RangeQuery, RangeResults)> for Results {
     #[inline]
-    fn from((query, results): (RangeQuery, CachedRangeResults)) -> Self {
+    fn from((query, results): (RangeQuery, RangeResults)) -> Self {
         Self::Range(query, results)
     }
 }

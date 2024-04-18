@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{
-    external::re_query::CachedLatestAtComponentResults, EntityDb, EntityPath,
+    external::re_query::LatestAtComponentResults, EntityDb, EntityPath,
 };
 use re_log_types::DataCell;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
@@ -42,7 +42,7 @@ type ComponentUiCallback = Box<
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
-            &CachedLatestAtComponentResults,
+            &LatestAtComponentResults,
             &InstanceKey,
         ) + Send
         + Sync,
@@ -57,7 +57,7 @@ type ComponentEditCallback = Box<
             &EntityDb,
             &EntityPath,
             &EntityPath,
-            &CachedLatestAtComponentResults,
+            &LatestAtComponentResults,
             &InstanceKey,
         ) + Send
         + Sync,
@@ -122,7 +122,7 @@ impl ComponentUiRegistry {
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
-        component: &CachedLatestAtComponentResults,
+        component: &LatestAtComponentResults,
         instance_key: &InstanceKey,
     ) {
         let Some(component_name) = component.component_name(db.resolver()) else {
@@ -165,7 +165,7 @@ impl ComponentUiRegistry {
         db: &EntityDb,
         entity_path: &EntityPath,
         override_path: &EntityPath,
-        component: &CachedLatestAtComponentResults,
+        component: &LatestAtComponentResults,
         instance_key: &InstanceKey,
     ) {
         let Some(component_name) = component.component_name(db.resolver()) else {

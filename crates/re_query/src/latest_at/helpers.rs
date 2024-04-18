@@ -3,11 +3,11 @@ use re_log_types::{EntityPath, RowId, TimeInt};
 use re_types_core::Component;
 use re_types_core::{external::arrow2::array::Array, ComponentName};
 
-use crate::{CachedLatestAtComponentResults, Caches, PromiseResolver, PromiseResult};
+use crate::{LatestAtComponentResults, Caches, PromiseResolver, PromiseResult};
 
 // ---
 
-impl CachedLatestAtComponentResults {
+impl LatestAtComponentResults {
     /// Returns the component data as a dense vector.
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.

@@ -19,15 +19,15 @@ use crate::{ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseR
 ///
 /// The data is both deserialized and resolved/converted.
 ///
-/// Use [`CachedRangeResults::get`], [`CachedRangeResults::get_required`] and
-/// [`CachedRangeResults::get_or_empty`] in order to access the results for each individual component.
+/// Use [`RangeResults::get`], [`RangeResults::get_required`] and
+/// [`RangeResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
-pub struct CachedRangeResults {
+pub struct RangeResults {
     /// Raw results for each individual component.
-    pub components: IntMap<ComponentName, CachedRangeComponentResults>,
+    pub components: IntMap<ComponentName, RangeComponentResults>,
 }
 
-impl Default for CachedRangeResults {
+impl Default for RangeResults {
     #[inline]
     fn default() -> Self {
         Self {
@@ -36,29 +36,29 @@ impl Default for CachedRangeResults {
     }
 }
 
-impl CachedRangeResults {
+impl RangeResults {
     #[inline]
     pub fn contains(&self, component_name: impl Into<ComponentName>) -> bool {
         self.components.contains_key(&component_name.into())
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> Option<&CachedRangeComponentResults> {
+    ) -> Option<&RangeComponentResults> {
         self.components.get(&component_name.into())
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
     pub fn get_required(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> crate::Result<&CachedRangeComponentResults> {
+    ) -> crate::Result<&RangeComponentResults> {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             Ok(component)
@@ -71,27 +71,27 @@ impl CachedRangeResults {
         }
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     ///
     /// Returns empty results if the component is not present.
     #[inline]
     pub fn get_or_empty(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> &CachedRangeComponentResults {
+    ) -> &RangeComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
         } else {
-            CachedRangeComponentResults::empty()
+            RangeComponentResults::empty()
         }
     }
 }
 
-impl CachedRangeResults {
+impl RangeResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component_name: ComponentName, cached: CachedRangeComponentResults) {
+    pub fn add(&mut self, component_name: ComponentName, cached: RangeComponentResults) {
         self.components.insert(component_name, cached);
     }
 }
@@ -100,18 +100,18 @@ impl CachedRangeResults {
 
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug, Clone)]
-pub struct CachedRangeComponentResults(pub(crate) Arc<RwLock<CachedRangeComponentResultsInner>>);
+pub struct RangeComponentResults(pub(crate) Arc<RwLock<RangeComponentResultsInner>>);
 
-impl CachedRangeComponentResults {
+impl RangeComponentResults {
     #[inline]
     pub fn empty() -> &'static Self {
-        static EMPTY: OnceLock<CachedRangeComponentResults> = OnceLock::new();
+        static EMPTY: OnceLock<RangeComponentResults> = OnceLock::new();
         EMPTY
-            .get_or_init(|| Arc::new(RwLock::new(CachedRangeComponentResultsInner::empty())).into())
+            .get_or_init(|| Arc::new(RwLock::new(RangeComponentResultsInner::empty())).into())
     }
 }
 
-impl re_types_core::SizeBytes for CachedRangeComponentResults {
+impl re_types_core::SizeBytes for RangeComponentResults {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: it's all on the heap past this point.
@@ -119,17 +119,17 @@ impl re_types_core::SizeBytes for CachedRangeComponentResults {
     }
 }
 
-impl Default for CachedRangeComponentResults {
+impl Default for RangeComponentResults {
     #[inline]
     fn default() -> Self {
         Self(Arc::new(RwLock::new(
-            CachedRangeComponentResultsInner::empty(),
+            RangeComponentResultsInner::empty(),
         )))
     }
 }
 
-impl std::ops::Deref for CachedRangeComponentResults {
-    type Target = RwLock<CachedRangeComponentResultsInner>;
+impl std::ops::Deref for RangeComponentResults {
+    type Target = RwLock<RangeComponentResultsInner>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -137,9 +137,9 @@ impl std::ops::Deref for CachedRangeComponentResults {
     }
 }
 
-impl From<Arc<RwLock<CachedRangeComponentResultsInner>>> for CachedRangeComponentResults {
+impl From<Arc<RwLock<RangeComponentResultsInner>>> for RangeComponentResults {
     #[inline]
-    fn from(results: Arc<RwLock<CachedRangeComponentResultsInner>>) -> Self {
+    fn from(results: Arc<RwLock<RangeComponentResultsInner>>) -> Self {
         Self(results)
     }
 }
@@ -257,7 +257,7 @@ impl<'a, T> CachedRangeData<'a, T> {
     }
 }
 
-impl CachedRangeComponentResults {
+impl RangeComponentResults {
     /// Returns the component data as a dense vector.
     ///
     /// Returns an error if the component is missing or cannot be deserialized.
@@ -696,7 +696,7 @@ impl CachedRangeComponentResults {
 // ---
 
 /// Lazily cached results for a particular component when using a cached range query.
-pub struct CachedRangeComponentResultsInner {
+pub struct RangeComponentResultsInner {
     pub(crate) indices: VecDeque<(TimeInt, RowId)>,
 
     /// All the pending promises that must resolved in order to fill the missing data on the
@@ -734,7 +734,7 @@ pub struct CachedRangeComponentResultsInner {
     pub(crate) cached_sparse: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
-impl SizeBytes for CachedRangeComponentResultsInner {
+impl SizeBytes for RangeComponentResultsInner {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -759,7 +759,7 @@ impl SizeBytes for CachedRangeComponentResultsInner {
     }
 }
 
-impl std::fmt::Debug for CachedRangeComponentResultsInner {
+impl std::fmt::Debug for RangeComponentResultsInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             indices,
@@ -789,7 +789,7 @@ impl std::fmt::Debug for CachedRangeComponentResultsInner {
     }
 }
 
-impl CachedRangeComponentResultsInner {
+impl RangeComponentResultsInner {
     #[inline]
     pub const fn empty() -> Self {
         Self {

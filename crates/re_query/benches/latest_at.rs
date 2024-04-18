@@ -7,7 +7,7 @@ use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
 use re_query::{clamped_zip_1x1, PromiseResolver};
-use re_query::{CachedLatestAtResults, Caches};
+use re_query::{LatestAtResults, Caches};
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
@@ -289,7 +289,7 @@ fn query_and_visit_points(
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for entity_path in paths {
-        let results: CachedLatestAtResults = caches.latest_at(
+        let results: LatestAtResults = caches.latest_at(
             store,
             &query,
             entity_path,
@@ -340,7 +340,7 @@ fn query_and_visit_strings(
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
     for entity_path in paths {
-        let results: CachedLatestAtResults = caches.latest_at(
+        let results: LatestAtResults = caches.latest_at(
             store,
             &query,
             entity_path,

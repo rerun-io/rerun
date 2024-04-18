@@ -10,14 +10,14 @@ use re_log_types::EntityPath;
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
-use crate::{CacheKey, CachedLatestAtComponentResults, CachedLatestAtResults, Caches, Promise};
+use crate::{CacheKey, LatestAtComponentResults, LatestAtResults, Caches, Promise};
 
 // ---
 
 impl Caches {
     /// Queries for the given `component_names` using latest-at semantics.
     ///
-    /// See [`CachedLatestAtResults`] for more information about how to handle the results.
+    /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
@@ -26,10 +26,10 @@ impl Caches {
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
-    ) -> CachedLatestAtResults {
+    ) -> LatestAtResults {
         re_tracing::profile_function!(entity_path.to_string());
 
-        let mut results = CachedLatestAtResults::default();
+        let mut results = LatestAtResults::default();
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
@@ -64,7 +64,7 @@ pub struct LatestAtCache {
     /// if there is any data available for the resulting _data_ time in [`Self::per_data_time`].
     //
     // NOTE: `Arc` so we can share buckets across query time & data time.
-    pub per_query_time: BTreeMap<TimeInt, Arc<CachedLatestAtComponentResults>>,
+    pub per_query_time: BTreeMap<TimeInt, Arc<LatestAtComponentResults>>,
 
     /// Organized by _data_ time.
     ///
@@ -72,7 +72,7 @@ pub struct LatestAtCache {
     /// can result in a data time of `T`.
     //
     // NOTE: `Arc` so we can share buckets across query time & data time.
-    pub per_data_time: BTreeMap<TimeInt, Arc<CachedLatestAtComponentResults>>,
+    pub per_data_time: BTreeMap<TimeInt, Arc<LatestAtComponentResults>>,
 
     /// These timestamps have been invalidated asynchronously.
     ///
@@ -183,7 +183,7 @@ impl LatestAtCache {
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
-    ) -> Option<Arc<CachedLatestAtComponentResults>> {
+    ) -> Option<Arc<LatestAtComponentResults>> {
         re_tracing::profile_scope!("latest_at", format!("{query:?}"));
 
         let LatestAtCache {
@@ -233,7 +233,7 @@ impl LatestAtCache {
                 return None;
             };
 
-            let bucket = Arc::new(CachedLatestAtComponentResults {
+            let bucket = Arc::new(LatestAtComponentResults {
                 index: (data_time, row_id),
                 promise: Some(Promise::new(cell)),
                 cached_dense: Default::default(),

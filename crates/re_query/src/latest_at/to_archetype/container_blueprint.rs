@@ -4,12 +4,12 @@
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 
-use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
+use crate::{LatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
 impl crate::ToArchetype<re_types_blueprint::blueprint::archetypes::ContainerBlueprint>
-    for CachedLatestAtResults
+    for LatestAtResults
 {
     #[inline]
     fn to_archetype(

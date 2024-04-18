@@ -7,7 +7,7 @@ use re_types::{
 };
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query::{clamped_zip_1x2, CachedLatestAtResults, PromiseResolver, PromiseResult};
+use re_query::{clamped_zip_1x2, LatestAtResults, PromiseResolver, PromiseResult};
 
 // ---
 
@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     //
     // They might or might not already be cached. We won't know for sure until we try to access
     // each individual component's data below.
-    let results: CachedLatestAtResults = caches.latest_at(
+    let results: LatestAtResults = caches.latest_at(
         &store,
         &query,
         &entity_path.into(),

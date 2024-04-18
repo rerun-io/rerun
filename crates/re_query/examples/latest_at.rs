@@ -5,7 +5,7 @@ use re_log_types::{build_frame_nr, DataRow, RowId, TimeType, Timeline};
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query::{
-    clamped_zip_1x2, CachedLatestAtComponentResults, CachedLatestAtResults, PromiseResolver,
+    clamped_zip_1x2, LatestAtComponentResults, LatestAtResults, PromiseResolver,
     PromiseResult,
 };
 
@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     //
     // They might or might not already be cached. We won't know for sure until we try to access
     // each individual component's data below.
-    let results: CachedLatestAtResults = caches.latest_at(
+    let results: LatestAtResults = caches.latest_at(
         &store,
         &query,
         &entity_path.into(),
@@ -41,9 +41,9 @@ fn main() -> anyhow::Result<()> {
     // * `get` returns an option
     //
     // At this point we still don't know whether they are cached or not. That's the next step.
-    let points: &CachedLatestAtComponentResults = results.get_required(MyPoint::name())?;
-    let colors: &CachedLatestAtComponentResults = results.get_or_empty(MyColor::name());
-    let labels: &CachedLatestAtComponentResults = results.get_or_empty(MyLabel::name());
+    let points: &LatestAtComponentResults = results.get_required(MyPoint::name())?;
+    let colors: &LatestAtComponentResults = results.get_or_empty(MyColor::name());
+    let labels: &LatestAtComponentResults = results.get_or_empty(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.
