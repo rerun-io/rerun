@@ -69,7 +69,8 @@ jobs:
             landing \
             --url "https://edge.meilisearch.com" \
             --master-key "${{ secrets.MEILISEARCH_TOKEN }}" \
-            --release-version "${{ needs.get-version.outputs.version }}"
+            --release-version "${{ needs.get-version.outputs.version }}" \
+            --exclude-crate "re_web_viewer_server"
 
   redeploy-rerun-io:
     runs-on: ubuntu-latest
