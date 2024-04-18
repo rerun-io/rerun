@@ -37,7 +37,7 @@ codegen = "cargo --quiet run --package re_types_builder -- "
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer --"
 
-# Compile and the rerun viewer.
+# Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer"
 
 # Compile and run the rerun viewer with --release.
@@ -112,9 +112,22 @@ py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --c
 py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
+# Build and install a development version of the rerun-sdk Python package.
+#
+# This only needs to be called when you have made changes that would impact the rust bindings of
+# the python package. The python code will be imported directly from the source folder and will
+# reflect changes immediately upon re-import.
 py-build = { cmd = "RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build",
 ] }
+
+# Build a wheel for the rerun-sdk Python package.
+#
+# The built wheel can be found in the `target/wheels` folder, and needs to be manually
+# installed via `pip install target/wheels/rerun_sdk-*.whl`.
+#
+# This is useful for testing of the packainge process or working with rerun in the
+# context of a separate venv. Otherwise, `py-build` will be faster and much more convenient.
 py-wheel = "maturin build --manifest-path rerun_py/Cargo.toml --features pypi"
 
 # Run the Python tests.
