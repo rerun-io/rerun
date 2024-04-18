@@ -163,10 +163,7 @@ jobs:
           targets: ${{ needs.set-config.outputs.TARGET }}
 
       - name: Build rerun_c (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
+        run: cargo build --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
 
       - name: Get sha
         id: get-sha

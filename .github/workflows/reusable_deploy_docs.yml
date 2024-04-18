@@ -148,10 +148,7 @@ jobs:
         run: rm -rf ./target/doc
 
       - name: cargo doc --document-private-items
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
+        run: cargo doc --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
 
       - name: Set up git author
         run: |
