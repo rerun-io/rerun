@@ -138,10 +138,6 @@ rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
 dev-tools = "cargo run -q --locked -p re_dev_tools --"
 build-examples = "cargo run -q --locked -p re_dev_tools -- build-examples"
 
-# Build the documentation search index.
-# See `pixi run search-index --help` for more information.
-search-index = "cargo run -q --locked -p re_dev_tools -- search-index"
-
 # Start a local meilisearch instance at `localhost:7700` with master key `test`.
 # This should only be used for testing the search index locally.
 # Files are stored in the `meilisearch` directory, so you can fully wipe it via `rm -rf meilisearch`.
@@ -162,12 +158,20 @@ upload-image = "python scripts/upload_image.py"
 check-large-files = "python scripts/ci/check_large_files.py"
 
 [feature.py-docs.tasks]
+# Build the documentation search index.
+# See `pixi run search-index --help` for more information.
+search-index = "cargo run -q --locked -p re_dev_tools -- search-index"
+
 # Serve python docs locally
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
+mkdocs = "mkdocs"
+
 [feature.py-docs.pypi-dependencies]
 griffe = "==0.39.0"
+click = "==7.0"
 mike = "==1.1.2"
+mkdocs = "==1.5.3"
 mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
 mkdocs-material = "==9.4.7"
