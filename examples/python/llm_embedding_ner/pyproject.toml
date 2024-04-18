@@ -1,14 +1,9 @@
 [project]
 name = "llm_embedding_ner"
 version = "0.1.0"
-requires-python = "<3.12"   # TODO(ab): remove when torch is umap-learn/numba is 3.12 compatible
+requires-python = "<3.12"                                           # TODO(ab): remove when torch is umap-learn/numba is 3.12 compatible
 readme = "README.md"
-dependencies = [
-  "rerun-sdk",
-  "torch",
-  "transformers",
-  "umap-learn"
-]
+dependencies = ["rerun-sdk", "torch", "transformers", "umap-learn"]
 
 [project.scripts]
 llm_embedding_ner = "llm_embedding_ner:main"

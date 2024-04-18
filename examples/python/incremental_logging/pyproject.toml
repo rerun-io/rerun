@@ -2,10 +2,7 @@
 name = "incremental_logging"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "numpy",
-  "rerun-sdk"
-]
+dependencies = ["numpy", "rerun-sdk"]
 
 [project.scripts]
 incremental_logging = "incremental_logging:main"

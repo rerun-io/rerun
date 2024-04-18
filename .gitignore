@@ -1,7 +1,7 @@
 .DS_Store
 
 # Codegen stuff:
-crates/re_types/source_hash.txt
+crates/re_types/source_hash.txt§
 crates/re_types_builder/source_hash.txt
 
 # C++ and CMake stuff:
@@ -27,6 +27,7 @@ _deps
 
 # Python virtual environment:
 **/venv*
+**/.venv*
 .python-version
 
 # Python build artifacts:

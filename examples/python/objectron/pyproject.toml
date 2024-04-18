@@ -8,7 +8,7 @@ dependencies = [
   "opencv-python>4.6",
   "requests>=2.31,<3",
   "rerun-sdk",
-  "scipy"
+  "scipy",
 ]
 
 [project.scripts]

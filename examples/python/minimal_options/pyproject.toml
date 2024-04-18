@@ -1,10 +1,7 @@
 [project]
 name = "minimal_options"
 version = "0.1.0"
-dependencies = [
-  "numpy",
-  "rerun-sdk"
-]
+dependencies = ["numpy", "rerun-sdk"]
 
 [project.scripts]
 minimal_options = "minimal_options:main"

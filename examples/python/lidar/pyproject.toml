@@ -4,11 +4,11 @@ version = "0.1.0"
 # requires-python = "<3.12"
 readme = "README.md"
 dependencies = [
-    "matplotlib>=3.8.2",
-    "numpy",
-    "nuscenes-devkit",
-    "requests",
-    "rerun-sdk"
+  "matplotlib",
+  "numpy",
+  "nuscenes-devkit",
+  "requests",
+  "rerun-sdk",
 ]
 
 [project.scripts]

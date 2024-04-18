@@ -7,7 +7,7 @@ dependencies = [
   "numpy",
   "requests>=2.31,<3",
   "rerun-sdk",
-  "tqdm"
+  "tqdm",
 ]
 
 [project.scripts]

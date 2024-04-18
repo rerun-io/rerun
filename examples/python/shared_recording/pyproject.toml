@@ -2,9 +2,7 @@
 name = "shared_recording"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "rerun-sdk"
-]
+dependencies = ["rerun-sdk"]
 
 [project.scripts]
 shared_recording = "shared_recording:main"

@@ -12,7 +12,7 @@ dependencies = [
   "rerun-sdk",
   "timm==0.9.11",
   "torch>=1.13.0",
-  "transformers"
+  "transformers",
 ]
 
 [project.scripts]

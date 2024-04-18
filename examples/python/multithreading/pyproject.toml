@@ -2,10 +2,7 @@
 name = "multithreading"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "numpy",
-  "rerun-sdk"
-]
+dependencies = ["numpy", "rerun-sdk"]
 
 [project.scripts]
 multithreading = "multithreading:main"

@@ -10,11 +10,14 @@ dependencies = [
   "rerun-sdk",
   "torch",
   "torchvision",
-  "tqdm"
+  "tqdm",
 ]
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.rerun-example]
+# skip = true
 
 [project.scripts]
 segment_anything_model = "segment_anything_model:main"

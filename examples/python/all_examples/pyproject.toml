@@ -1,9 +1,5 @@
 [build-system]
-requires = [
-  "hatchling",
-  "pyproject-metadata",
-  "tomli"
-]
+requires = ["hatchling", "pyproject-metadata", "tomli"]
 build-backend = "hatchling.build"
 
 [project]

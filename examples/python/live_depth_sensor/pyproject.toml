@@ -7,14 +7,14 @@ dependencies = [
   "numpy",
   "pyrealsense2-mac; sys_platform == 'darwin'",
   "pyrealsense2; sys_platform != 'darwin'",
-  "rerun-sdk"
+  "rerun-sdk",
 ]
 
 [project.scripts]
 live_depth_sensor = "live_depth_sensor:main"
 
 [tool.rerun-example]
-skip = true  # requires hardware
+skip = true # requires hardware
 
 [build-system]
 requires = ["hatchling"]

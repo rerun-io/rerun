@@ -3,11 +3,11 @@ name = "nuscenes_dataset"
 version = "0.1.0"
 readme = "README.md"
 dependencies = [
-  "matplotlib>=3.8.2",
+  "matplotlib",
   "numpy",
   "nuscenes-devkit",
   "requests",
-  "rerun-sdk"
+  "rerun-sdk",
 ]
 
 [project.scripts]

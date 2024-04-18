@@ -4,14 +4,14 @@ version = "0.1.0"
 # requires-python = "<3.12"
 readme = "README.md"
 dependencies = [
-    "matplotlib>=3.8.2",
-    "numpy",
-    "opencv-python",
-    "pandas",
-    "rerun-sdk",
-    "scipy",
-    "tqdm",
-    "trimesh"
+  "matplotlib",
+  "numpy",
+  "opencv-python",
+  "pandas",
+  "rerun-sdk",
+  "scipy",
+  "tqdm",
+  "trimesh",
 ]
 
 [project.scripts]
