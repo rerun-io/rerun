@@ -331,7 +331,7 @@ impl CallSource {
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
-pub async fn run<I, T>(
+pub fn run<I, T>(
     build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: I,
@@ -382,7 +382,7 @@ where
             Command::Reset => re_viewer::reset_viewer_persistence(),
         }
     } else {
-        run_impl(build_info, call_source, args).await
+        run_impl(build_info, call_source, args)
     };
 
     match res {
@@ -594,7 +594,7 @@ fn profiler(args: &Args) -> re_tracing::Profiler {
     profiler
 }
 
-async fn run_impl(
+fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
@@ -720,7 +720,6 @@ async fn run_impl(
                 args.ws_server_port,
                 server_memory_limit,
             )?;
-            let _ws_server_url = ws_server.server_url();
 
             #[cfg(feature = "web_viewer")]
             {
@@ -735,7 +734,7 @@ async fn run_impl(
                     args.web_viewer_port,
                     args.renderer,
                     open_browser,
-                    &_ws_server_url,
+                    &ws_server.server_url(),
                 )?
                 .block(); // dropping should stop the server
             }

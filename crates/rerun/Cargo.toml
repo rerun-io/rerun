@@ -43,7 +43,7 @@ analytics = [
 ]
 
 ## Integration with `clap`.
-clap = ["dep:clap", "dep:tokio"]
+clap = ["dep:clap"]
 
 ## Support for using Rerun's data-loaders directly from the SDK.
 ##
@@ -84,7 +84,6 @@ run = [
   "dep:re_log_encoding",
   "dep:re_sdk_comms",
   "dep:re_ws_comms",
-  "dep:tokio",
 ]
 
 ## Support for running a TCP server that listens to incoming log messages from a Rerun SDK.
@@ -143,12 +142,6 @@ rayon.workspace = true
 
 # Native, optional:
 clap = { workspace = true, optional = true, features = ["derive"] }
-tokio = { workspace = true, optional = true, features = [
-  "macros",
-  "rt-multi-thread",
-  "time",
-] }
-
 
 [build-dependencies]
 re_build_tools.workspace = true
