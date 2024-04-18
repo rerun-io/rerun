@@ -117,3 +117,34 @@ impl From<(RangeQuery, RangeResults)> for Results {
         Self::Range(query, results)
     }
 }
+
+// ---
+
+/// Returns `true` if the specified `component_name` can be cached.
+///
+/// Used internally to avoid unnecessarily caching components that are already cached in other
+/// places, for historical reasons.
+pub fn cacheable(component_name: re_types::ComponentName) -> bool {
+    use std::sync::OnceLock;
+    static NOT_CACHEABLE: OnceLock<re_types::ComponentNameSet> = OnceLock::new();
+
+    use re_types_core::Loggable as _;
+    let not_cacheable = NOT_CACHEABLE.get_or_init(|| {
+        [
+            // TODO(#5303): instance keys are on their way out anyhow.
+            re_types::components::InstanceKey::name(),
+            // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
+            // want yet another copy.
+            re_types::components::TensorData::name(),
+            // TODO(#5974): meshes are already cached in the ad-hoc mesh cache, we don't
+            // want yet another copy.
+            re_types::components::MeshProperties::name(),
+            // TODO(#5974): blobs are used for assets, which are themselves already cached in
+            // the ad-hoc mesh cache -- we don't want yet another copy.
+            re_types::components::Blob::name(),
+        ]
+        .into()
+    });
+
+    !not_cacheable.contains(&component_name)
+}
