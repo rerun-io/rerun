@@ -25,6 +25,10 @@ def main() -> int:
     else:
         target_path = os.path.join(os.path.dirname(__file__), "..", "bin", "rerun")
 
+    if not os.path.exists(target_path):
+        print(f"Error: Could not find rerun binary at {target_path}", file=sys.stderr)
+        return 1
+
     return subprocess.call([target_path, *sys.argv[1:]])
 
 
