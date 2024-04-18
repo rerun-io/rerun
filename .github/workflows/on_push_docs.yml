@@ -12,6 +12,10 @@ concurrency:
   group: on-push-docs
   cancel-in-progress: true
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 defaults:
   run:
     shell: bash
