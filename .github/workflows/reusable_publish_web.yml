@@ -127,6 +127,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
           parent: false
+          process_gcloudignore: false
 
       - name: Upload app.rerun.io (commit)
         uses: google-github-actions/upload-cloud-storage@v2
@@ -134,6 +135,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
+          process_gcloudignore: false
 
       - name: Publish app.rerun.io
         if: inputs.update-latest

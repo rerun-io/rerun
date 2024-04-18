@@ -143,6 +143,7 @@ jobs:
         with:
           path: /tmp/data.json
           destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
+          process_gcloudignore: false
 
       - name: Create index file
         if: github.ref == 'refs/heads/main'
@@ -155,6 +156,7 @@ jobs:
         with:
           path: /tmp/index
           destination: "rerun-builds/sizes"
+          process_gcloudignore: false
 
       - name: Create PR comment
         if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'

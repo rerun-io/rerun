@@ -75,6 +75,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}"
           parent: false
+          process_gcloudignore: false
 
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
@@ -83,6 +84,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
           parent: false
+          process_gcloudignore: false
 
       - name: "Upload web-viewer (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
@@ -91,6 +93,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
+          process_gcloudignore: false
 
       - name: "Upload web-viewer (prerelease)"
         if: github.ref == 'refs/heads/main'
@@ -99,6 +102,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/prerelease"
           parent: false
+          process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
 
@@ -109,6 +113,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/main"
           parent: false
+          process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
 
@@ -119,6 +124,7 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
           parent: false
+          process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
 
@@ -129,5 +135,6 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/nightly"
           parent: false
+          process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0

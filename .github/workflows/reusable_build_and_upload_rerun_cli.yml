@@ -197,6 +197,7 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
+          process_gcloudignore: false
 
       - name: "Upload rerun-cli (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
@@ -205,3 +206,4 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
+          process_gcloudignore: false
