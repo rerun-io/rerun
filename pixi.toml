@@ -183,7 +183,7 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 [feature.py-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-search-index = "cargo run -q --locked -p re_dev_tools -- search-index"
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
