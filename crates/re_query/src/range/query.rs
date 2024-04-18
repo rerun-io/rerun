@@ -33,12 +33,19 @@ impl Caches {
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
-            let cache = Arc::clone(
-                self.range_per_cache_key
-                    .write()
-                    .entry(key.clone())
-                    .or_insert_with(|| Arc::new(RwLock::new(RangeCache::new(key.clone())))),
-            );
+
+            let cache = if crate::cacheable(component_name) {
+                Arc::clone(
+                    self.range_per_cache_key
+                        .write()
+                        .entry(key.clone())
+                        .or_insert_with(|| Arc::new(RwLock::new(RangeCache::new(key.clone())))),
+                )
+            } else {
+                // If the component shouldn't be cached, simply instantiate a new cache for it.
+                // It will be dropped when the user is done with it.
+                Arc::new(RwLock::new(RangeCache::new(key.clone())))
+            };
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
