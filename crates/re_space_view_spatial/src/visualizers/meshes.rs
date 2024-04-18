@@ -1,10 +1,13 @@
+use itertools::Itertools as _;
 use re_entity_db::EntityPath;
-use re_query::{ArchetypeView, QueryError};
+use re_log_types::{RowId, TimeInt};
+use re_query_cache::{range_zip_1x7, CachedResults};
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        Color, InstanceKey, Material, MeshProperties, Position3D, TensorData, Texcoord2D, Vector3D,
+        ClassId, Color, InstanceKey, Material, MeshProperties, Position3D, TensorData, Texcoord2D,
+        Vector3D,
     },
 };
 use re_viewer_context::{
@@ -13,16 +16,16 @@ use re_viewer_context::{
     VisualizerSystem,
 };
 
-use super::{
-    entity_iterator::process_archetype_views, filter_visualizable_3d_entities,
-    SpatialViewVisualizerData,
-};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
 };
+
+use super::{entity_iterator::clamped, filter_visualizable_3d_entities, SpatialViewVisualizerData};
+
+// ---
 
 pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
 
@@ -34,116 +37,98 @@ impl Default for Mesh3DVisualizer {
     }
 }
 
+struct Mesh3DComponentData<'a> {
+    index: (TimeInt, RowId),
+
+    vertex_positions: &'a [Position3D],
+    vertex_normals: &'a [Vector3D],
+    vertex_colors: &'a [Color],
+    vertex_texcoords: &'a [Texcoord2D],
+
+    mesh_properties: Option<&'a MeshProperties>,
+    mesh_material: Option<&'a Material>,
+    albedo_texture: Option<&'a TensorData>,
+
+    class_ids: &'a [ClassId],
+}
+
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl Mesh3DVisualizer {
-    fn process_arch_view(
+    fn process_data<'a>(
         &mut self,
         ctx: &ViewerContext<'_>,
         instances: &mut Vec<MeshInstance>,
-        arch_view: &ArchetypeView<Mesh3D>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), QueryError> {
-        re_tracing::profile_function!();
+        data: impl Iterator<Item = Mesh3DComponentData<'a>>,
+    ) {
+        for data in data {
+            let primary_row_id = data.index.1;
+            let picking_instance_hash = re_entity_db::InstancePathHash::entity_splat(entity_path);
+            let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
 
-        let vertex_positions: Vec<_> = {
-            re_tracing::profile_scope!("vertex_positions");
-            arch_view.iter_required_component::<Position3D>()?.collect()
-        };
-        if vertex_positions.is_empty() {
-            return Ok(());
-        }
+            let mesh = ctx.cache.entry(|c: &mut MeshCache| {
+                let key = MeshCacheKey {
+                    versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
+                    media_type: None,
+                };
 
-        let mesh = {
-            re_tracing::profile_scope!("collect");
-            // NOTE:
-            // - Per-vertex properties are joined using the cluster key as usual.
-            // - Per-mesh properties are just treated as a "global var", essentially.
-            Mesh3D {
-                vertex_positions,
-                vertex_normals: if arch_view.has_component::<Vector3D>() {
-                    re_tracing::profile_scope!("vertex_normals");
-                    Some(
-                        arch_view
-                            .iter_optional_component::<Vector3D>()?
-                            .map(|comp| comp.unwrap_or(Vector3D::ZERO))
-                            .collect(),
-                    )
-                } else {
-                    None
-                },
-                vertex_colors: if arch_view.has_component::<Color>() {
-                    re_tracing::profile_scope!("vertex_colors");
-                    let fallback = Color::new(0xFFFFFFFF);
-                    Some(
-                        arch_view
-                            .iter_optional_component::<Color>()?
-                            .map(|comp| comp.unwrap_or(fallback))
-                            .collect(),
-                    )
-                } else {
-                    None
-                },
-                vertex_texcoords: if arch_view.has_component::<Texcoord2D>() {
-                    re_tracing::profile_scope!("vertex_texcoords");
-                    Some(
-                        arch_view
-                            .iter_optional_component::<Texcoord2D>()?
-                            .map(|comp| comp.unwrap_or(Texcoord2D::ZERO))
-                            .collect(),
-                    )
-                } else {
-                    None
-                },
-                mesh_properties: arch_view.raw_optional_mono_component::<MeshProperties>()?,
-                mesh_material: arch_view.raw_optional_mono_component::<Material>()?,
-                albedo_texture: arch_view.raw_optional_mono_component::<TensorData>()?,
-                class_ids: None,
-            }
-        };
+                let vertex_normals = clamped(data.vertex_normals, data.vertex_positions.len())
+                    .copied()
+                    .collect_vec();
+                let vertex_colors = clamped(data.vertex_colors, data.vertex_positions.len())
+                    .copied()
+                    .collect_vec();
+                let vertex_texcoords = clamped(data.vertex_texcoords, data.vertex_positions.len())
+                    .copied()
+                    .collect_vec();
 
-        let primary_row_id = arch_view.primary_row_id();
-        let picking_instance_hash = re_entity_db::InstancePathHash::entity_splat(ent_path);
-        let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
+                c.entry(
+                    &entity_path.to_string(),
+                    key.clone(),
+                    AnyMesh::Mesh {
+                        mesh: &Mesh3D {
+                            vertex_positions: data.vertex_positions.to_owned(),
+                            mesh_properties: data.mesh_properties.cloned(),
+                            vertex_normals: (!vertex_normals.is_empty()).then_some(vertex_normals),
+                            vertex_colors: (!vertex_colors.is_empty()).then_some(vertex_colors),
+                            vertex_texcoords: (!vertex_texcoords.is_empty())
+                                .then_some(vertex_texcoords),
+                            mesh_material: data.mesh_material.cloned(),
+                            albedo_texture: data.albedo_texture.cloned(),
+                            class_ids: (!data.class_ids.is_empty())
+                                .then(|| data.class_ids.to_owned()),
+                        },
+                        texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
+                    },
+                    ctx.render_ctx,
+                )
+            });
 
-        let mesh = ctx.cache.entry(|c: &mut MeshCache| {
-            let key = MeshCacheKey {
-                versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                media_type: None,
+            if let Some(mesh) = mesh {
+                instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
+                    let entity_from_mesh = mesh_instance.world_from_mesh;
+                    let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
+
+                    MeshInstance {
+                        gpu_mesh: mesh_instance.gpu_mesh.clone(),
+                        world_from_mesh,
+                        outline_mask_ids,
+                        picking_layer_id: picking_layer_id_from_instance_path_hash(
+                            picking_instance_hash,
+                        ),
+                        ..Default::default()
+                    }
+                }));
+
+                self.0.add_bounding_box(
+                    entity_path.hash(),
+                    mesh.bbox(),
+                    ent_context.world_from_entity,
+                );
             };
-            c.entry(
-                &ent_path.to_string(),
-                key.clone(),
-                AnyMesh::Mesh {
-                    mesh: &mesh,
-                    texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
-                },
-                ctx.render_ctx,
-            )
-        });
-
-        if let Some(mesh) = mesh {
-            re_tracing::profile_scope!("mesh instances");
-
-            instances.extend(mesh.mesh_instances.iter().map(move |mesh_instance| {
-                let entity_from_mesh = mesh_instance.world_from_mesh;
-                let world_from_mesh = ent_context.world_from_entity * entity_from_mesh;
-
-                MeshInstance {
-                    gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                    world_from_mesh,
-                    outline_mask_ids,
-                    picking_layer_id: picking_layer_id_from_instance_path_hash(
-                        picking_instance_hash,
-                    ),
-                    ..Default::default()
-                }
-            }));
-
-            self.0
-                .add_bounding_box(ent_path.hash(), mesh.bbox(), ent_context.world_from_entity);
-        };
-
-        Ok(())
+        }
     }
 }
 
@@ -170,18 +155,128 @@ impl VisualizerSystem for Mesh3DVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let mut instances = Vec::new();
 
-        process_archetype_views::<Mesh3DVisualizer, Mesh3D, { Mesh3D::NUM_COMPONENTS }, _>(
+        super::entity_iterator::process_archetype::<Mesh3DVisualizer, Mesh3D, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(ctx, &mut instances, &arch_view, ent_path, ent_context)
+            |ctx, entity_path, _entity_props, spatial_ctx, results| match results {
+                CachedResults::LatestAt(_query, results) => {
+                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+
+                    use crate::visualizers::CachedLatestAtResultsExt as _;
+
+                    let resolver = ctx.recording().resolver();
+
+                    let vertex_positions = match results.get_dense::<Position3D>(resolver) {
+                        Some(Ok(positions)) if !positions.is_empty() => positions,
+                        Some(err @ Err(_)) => err?,
+                        _ => return Ok(()),
+                    };
+
+                    let vertex_normals = results.get_or_empty_dense(resolver)?;
+                    let vertex_colors = results.get_or_empty_dense(resolver)?;
+                    let vertex_texcoords = results.get_or_empty_dense(resolver)?;
+                    let mesh_properties = results.get_or_empty_dense(resolver)?;
+                    let mesh_materials = results.get_or_empty_dense(resolver)?;
+                    let albedo_textures = results.get_or_empty_dense(resolver)?;
+                    let class_ids = results.get_or_empty_dense(resolver)?;
+
+                    let data = {
+                        // NOTE:
+                        // - Per-vertex properties are joined using the cluster key as usual.
+                        // - Per-mesh properties are just treated as a "global var", essentially.
+                        Mesh3DComponentData {
+                            index: results.compound_index,
+
+                            vertex_positions,
+                            vertex_normals,
+                            vertex_colors,
+                            vertex_texcoords,
+
+                            mesh_properties: mesh_properties.first(),
+                            mesh_material: mesh_materials.first(),
+                            albedo_texture: albedo_textures.first(),
+
+                            class_ids,
+                        }
+                    };
+
+                    self.process_data(
+                        ctx,
+                        &mut instances,
+                        entity_path,
+                        spatial_ctx,
+                        std::iter::once(data),
+                    );
+                    Ok(())
+                }
+
+                CachedResults::Range(_query, results) => {
+                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+
+                    use crate::visualizers::CachedRangeResultsExt as _;
+
+                    let resolver = ctx.recording().resolver();
+
+                    let vertex_positions = match results.get_dense::<Position3D>(resolver, _query) {
+                        Some(Ok(positions)) => positions,
+                        Some(err @ Err(_)) => err?,
+                        _ => return Ok(()),
+                    };
+
+                    let vertex_normals = results.get_or_empty_dense(resolver, _query)?;
+                    let vertex_colors = results.get_or_empty_dense(resolver, _query)?;
+                    let vertex_texcoords = results.get_or_empty_dense(resolver, _query)?;
+                    let mesh_properties = results.get_or_empty_dense(resolver, _query)?;
+                    let mesh_materials = results.get_or_empty_dense(resolver, _query)?;
+                    let albedo_textures = results.get_or_empty_dense(resolver, _query)?;
+                    let class_ids = results.get_or_empty_dense(resolver, _query)?;
+
+                    let data = range_zip_1x7(
+                        vertex_positions.range_indexed(_query.range()),
+                        vertex_normals.range_indexed(_query.range()),
+                        vertex_colors.range_indexed(_query.range()),
+                        vertex_texcoords.range_indexed(_query.range()),
+                        mesh_properties.range_indexed(_query.range()),
+                        mesh_materials.range_indexed(_query.range()),
+                        albedo_textures.range_indexed(_query.range()),
+                        class_ids.range_indexed(_query.range()),
+                    )
+                    .map(
+                        |(
+                            &index,
+                            vertex_positions,
+                            vertex_normals,
+                            vertex_colors,
+                            vertex_texcoords,
+                            mesh_properties,
+                            mesh_material,
+                            albedo_texture,
+                            class_ids,
+                        )| {
+                            Mesh3DComponentData {
+                                index,
+                                vertex_positions,
+                                vertex_normals: vertex_normals.unwrap_or_default(),
+                                vertex_colors: vertex_colors.unwrap_or_default(),
+                                vertex_texcoords: vertex_texcoords.unwrap_or_default(),
+                                mesh_properties: mesh_properties.and_then(|v| v.first()),
+                                mesh_material: mesh_material.and_then(|v| v.first()),
+                                albedo_texture: albedo_texture.and_then(|v| v.first()),
+                                class_ids: class_ids.unwrap_or_default(),
+                            }
+                        },
+                    );
+
+                    self.process_data(ctx, &mut instances, entity_path, spatial_ctx, data);
+                    Ok(())
+                }
             },
         )?;
 

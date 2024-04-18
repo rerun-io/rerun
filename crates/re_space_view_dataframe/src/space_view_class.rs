@@ -6,7 +6,7 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Timeline};
-use re_query::get_component_with_instances;
+use re_types_core::components::InstanceKey;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
@@ -243,9 +243,12 @@ fn sorted_instance_paths_for<'a>(
         .into_iter()
         .filter(|comp| !comp.is_indicator_component())
         .flat_map(|comp| {
-            get_component_with_instances(store, latest_at_query, entity_path, comp)
-                .map(|(_, _, comp_inst)| comp_inst.instance_keys())
-                .unwrap_or_default()
+            let num_instances = store
+                .latest_at(latest_at_query, entity_path, comp, &[comp])
+                .map_or(0, |(_, _, cells)| {
+                    cells[0].as_ref().map_or(0, |cell| cell.num_instances())
+                });
+            (0..num_instances).map(|i| InstanceKey(i as _))
         })
         .filter(|instance_key| !instance_key.is_splat())
         .collect::<BTreeSet<_>>() // dedup and sort
