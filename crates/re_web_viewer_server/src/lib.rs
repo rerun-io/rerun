@@ -252,12 +252,23 @@ impl WebViewerServerInner {
             }
         };
 
-        request.respond(
-            tiny_http::Response::from_data(bytes).with_header(
-                tiny_http::Header::from_str(&format!("Content-Type: {mime}"))
-                    // Both `mime` and the header are hardcoded, so shouldn't be able to fail depending on user input.
-                    .expect("Invalid http header"),
-            ),
-        )
+        let mut response = tiny_http::Response::from_data(bytes).with_header(
+            tiny_http::Header::from_str(&format!("Content-Type: {mime}"))
+                // Both `mime` and the header are hardcoded, so shouldn't be able to fail depending on user input.
+                .expect("Invalid http header"),
+        );
+
+        // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them...).
+        // Unfortunately `Transfer-Encoding: chunked` means that no size is transmitted.
+        // We work around this by adding a custom header with the size that web_viewer/index.html understands.
+        if path.ends_with(".wasm") {
+            if let Ok(header) =
+                tiny_http::Header::from_str(&format!("rerun-wasm-size: {}", bytes.len()))
+            {
+                response.add_header(header);
+            }
+        }
+
+        request.respond(response)
     }
 }

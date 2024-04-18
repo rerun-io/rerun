@@ -267,8 +267,12 @@
           // Use the uncompressed size
           var content_length;
           var content_multiplier = 1;
-          // If the content is gzip encoded, try to get the uncompressed size.
-          if (response.headers.get("content-encoding") == "gzip") {
+          // If our custom size header is set, use that (see `re_web_viewer_server` crate)
+          var custom_size_header = response.headers.get("rerun-wasm-size");
+          if (custom_size_header != null) {
+            content_length = custom_size_header;
+          } else if (response.headers.get("content-encoding") == "gzip") {
+            // If the content is gzip encoded, try to get the uncompressed size.
             content_length = response.headers.get(
               "x-goog-meta-uncompressed-size",
             );
