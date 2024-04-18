@@ -12,7 +12,7 @@ use re_log_types::{
     LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
     Timeline,
 };
-use re_query2::PromiseResult;
+use re_query_cache::PromiseResult;
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
@@ -117,7 +117,7 @@ pub struct EntityDb {
     data_store: DataStore,
 
     /// The active promise resolver for this DB.
-    resolver: re_query2::PromiseResolver,
+    resolver: re_query_cache::PromiseResolver,
 
     /// Query caches for the data in [`Self::data_store`].
     query_caches: re_query_cache::Caches,
@@ -142,7 +142,7 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
-            resolver: re_query2::PromiseResolver::default(),
+            resolver: re_query_cache::PromiseResolver::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -197,7 +197,7 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn resolver(&self) -> &re_query2::PromiseResolver {
+    pub fn resolver(&self) -> &re_query_cache::PromiseResolver {
         &self.resolver
     }
 
@@ -207,7 +207,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> PromiseResult<Option<A>>
+    ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
         re_query_cache::CachedLatestAtResults: re_query_cache::ToArchetype<A>,
     {
@@ -229,7 +229,9 @@ impl EntityDb {
                 }
                 PromiseResult::Error(err)
             }
-            PromiseResult::Ready(arch) => PromiseResult::Ready(Some(arch)),
+            PromiseResult::Ready(arch) => {
+                PromiseResult::Ready(Some((results.compound_index, arch)))
+            }
         }
     }
 

@@ -1418,6 +1418,7 @@ version = "0.16.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
+ "re_query2",
  "re_sdk_comms",
  "re_viewer",
 ]
@@ -4308,7 +4309,6 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_query",
- "re_query2",
  "re_query_cache",
  "re_smart_channel",
  "re_tracing",
@@ -4683,7 +4683,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query2",
+ "re_query_cache",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -4721,8 +4721,10 @@ dependencies = [
  "re_entity_db",
  "re_log_types",
  "re_query",
+ "re_query_cache",
  "re_renderer",
  "re_tracing",
+ "re_types_core",
  "re_ui",
  "re_viewer_context",
 ]
@@ -5116,7 +5118,6 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_query",
- "re_query2",
  "re_query_cache",
  "re_renderer",
  "re_smart_channel",

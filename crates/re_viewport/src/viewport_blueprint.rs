@@ -4,10 +4,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use re_entity_db::external::re_query2::PromiseResult;
 use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
+use re_entity_db::external::re_query_cache::PromiseResult;
 use re_entity_db::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
@@ -80,7 +80,7 @@ impl ViewportBlueprint {
                 // TODO(#5607): what should happen if the promise is still pending?
                 Default::default()
             }
-            PromiseResult::Ready(arch) => arch.unwrap_or_default(),
+            PromiseResult::Ready(arch) => arch.map_or_else(Default::default, |(_, arch)| arch),
             PromiseResult::Error(err) => {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load viewport blueprint: {err}.");

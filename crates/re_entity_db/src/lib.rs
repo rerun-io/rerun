@@ -34,7 +34,7 @@ pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
-pub use re_query2::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
+pub use re_query_cache::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 
 #[cfg(feature = "serde")]
 pub use blueprint::components::EntityPropertiesComponent;
@@ -43,7 +43,6 @@ pub use editable_auto_value::EditableAutoValue;
 
 pub mod external {
     pub use re_data_store;
-    pub use re_query2;
     pub use re_query_cache;
 }
 
