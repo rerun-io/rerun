@@ -21,7 +21,7 @@ class MetadataHook(MetadataHookInterface):
 
         # create a path-based dependency for all of our examples
         dependencies = [
-            f"{example.name} @ {example.path.absolute()} {example.environment_specifier()}"
+            f"{example.name} @ file://{example.path.absolute()} {example.environment_specifier()}"
             for example in active_examples()
         ]
 
