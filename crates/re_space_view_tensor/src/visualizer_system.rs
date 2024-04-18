@@ -1,5 +1,5 @@
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query2::CachedLatestAtMonoResult, EntityPath};
+use re_entity_db::{external::re_query::CachedLatestAtMonoResult, EntityPath};
 use re_log_types::RowId;
 use re_types::{archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor};
 use re_viewer_context::{

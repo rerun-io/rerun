@@ -7,7 +7,7 @@ use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
-use re_entity_db::external::re_query2::PromiseResult;
+use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;

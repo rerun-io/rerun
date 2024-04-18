@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query2::{range_zip_1x5, CachedResults};
+use re_query::{range_zip_1x5, Results};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
@@ -222,10 +222,10 @@ impl VisualizerSystem for Points2DVisualizer {
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| match results {
-                CachedResults::LatestAt(_query, results) => {
+                Results::LatestAt(_query, results) => {
                     re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
 
-                    use crate::visualizers::CachedLatestAtResultsExt as _;
+                    use crate::visualizers::LatestAtResultsExt as _;
 
                     let resolver = ctx.recording().resolver();
 
@@ -262,10 +262,10 @@ impl VisualizerSystem for Points2DVisualizer {
                     )
                 }
 
-                CachedResults::Range(_query, results) => {
+                Results::Range(_query, results) => {
                     re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
 
-                    use crate::visualizers::CachedRangeResultsExt as _;
+                    use crate::visualizers::RangeResultsExt as _;
 
                     let resolver = ctx.recording().resolver();
 

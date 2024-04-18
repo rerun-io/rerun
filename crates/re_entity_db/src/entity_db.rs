@@ -12,7 +12,7 @@ use re_log_types::{
     LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
     Timeline,
 };
-use re_query2::PromiseResult;
+use re_query::PromiseResult;
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
@@ -117,10 +117,10 @@ pub struct EntityDb {
     data_store: DataStore,
 
     /// The active promise resolver for this DB.
-    resolver: re_query2::PromiseResolver,
+    resolver: re_query::PromiseResolver,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query2::Caches,
+    query_caches: re_query::Caches,
 
     stats: IngestionStatistics,
 }
@@ -132,7 +132,7 @@ impl EntityDb {
             InstanceKey::name(),
             DataStoreConfig::default(),
         );
-        let query_caches = re_query2::Caches::new(&data_store);
+        let query_caches = re_query::Caches::new(&data_store);
         Self {
             data_source: None,
             set_store_info: None,
@@ -142,7 +142,7 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
-            resolver: re_query2::PromiseResolver::default(),
+            resolver: re_query::PromiseResolver::default(),
             query_caches,
             stats: IngestionStatistics::new(store_id),
         }
@@ -192,12 +192,12 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query2::Caches {
+    pub fn query_caches(&self) -> &re_query::Caches {
         &self.query_caches
     }
 
     #[inline]
-    pub fn resolver(&self) -> &re_query2::PromiseResolver {
+    pub fn resolver(&self) -> &re_query::PromiseResolver {
         &self.resolver
     }
 
@@ -209,7 +209,7 @@ impl EntityDb {
         query: &re_data_store::LatestAtQuery,
     ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
-        re_query2::CachedLatestAtResults: re_query2::ToArchetype<A>,
+        re_query::LatestAtResults: re_query::ToArchetype<A>,
     {
         let results = self.query_caches().latest_at(
             self.store(),
@@ -218,12 +218,12 @@ impl EntityDb {
             A::all_components().iter().cloned(), // no generics!
         );
 
-        use re_query2::ToArchetype as _;
+        use re_query::ToArchetype as _;
         match results.to_archetype(self.resolver()).flatten() {
             PromiseResult::Pending => PromiseResult::Pending,
             PromiseResult::Error(err) => {
-                if let Some(err) = err.downcast_ref::<re_query2::QueryError>() {
-                    if matches!(err, re_query2::QueryError::PrimaryNotFound(_)) {
+                if let Some(err) = err.downcast_ref::<re_query::QueryError>() {
+                    if matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
                         return PromiseResult::Ready(None);
                     }
                 }
@@ -240,7 +240,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query2::CachedLatestAtMonoResult<C>> {
+    ) -> Option<re_query::CachedLatestAtMonoResult<C>> {
         self.query_caches().latest_at_component::<C>(
             self.store(),
             self.resolver(),
@@ -254,7 +254,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query2::CachedLatestAtMonoResult<C>> {
+    ) -> Option<re_query::CachedLatestAtMonoResult<C>> {
         self.query_caches().latest_at_component_quiet::<C>(
             self.store(),
             self.resolver(),
@@ -268,7 +268,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<(EntityPath, re_query2::CachedLatestAtMonoResult<C>)> {
+    ) -> Option<(EntityPath, re_query::CachedLatestAtMonoResult<C>)> {
         self.query_caches()
             .latest_at_component_at_closest_ancestor::<C>(
                 self.store(),
