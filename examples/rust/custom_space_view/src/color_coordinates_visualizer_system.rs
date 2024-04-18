@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
     re_log_types::EntityPath,
-    re_query_cache, re_renderer,
+    re_query2, re_renderer,
     re_types::{
         self,
         components::{Color, InstanceKey},
@@ -38,7 +38,7 @@ impl re_types::Archetype for ColorArchetype {
     }
 }
 
-impl re_query2::ToArchetype<ColorArchetype> for re_query_cache::CachedLatestAtResults {
+impl re_query2::ToArchetype<ColorArchetype> for re_query2::CachedLatestAtResults {
     #[inline]
     fn to_archetype(
         &self,
@@ -70,7 +70,7 @@ impl VisualizerSystem for InstanceColorSystem {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.
 
-            let results = re_query2::latest_at(
+            let results = ctx.recording().query_caches().latest_at(
                 ctx.recording_store(),
                 &ctx.current_query(),
                 &data_result.entity_path,

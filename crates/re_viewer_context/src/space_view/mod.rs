@@ -49,7 +49,7 @@ pub enum SpaceViewSystemExecutionError {
     QueryError(#[from] re_query::QueryError),
 
     #[error(transparent)]
-    QueryError2(#[from] re_query_cache::QueryError),
+    QueryError2(#[from] re_query2::QueryError),
 
     #[error(transparent)]
     DeserializationError(#[from] re_types::DeserializationError),

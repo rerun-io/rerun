@@ -1,4 +1,4 @@
-//! Generates code in `re_query_cache` so that cached results can easily be converted to
+//! Generates code in `re_query2` so that cached results can easily be converted to
 //! ready-to-use archetypes.
 //!
 //! That code needs to be generated directly in the caching crates as it needs access to the cached
@@ -34,8 +34,7 @@ fn generate_mod(
     objects: &Objects,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
-    let generated_path =
-        Utf8PathBuf::from("crates/re_query_cache/src/latest_at/to_archetype/mod.rs");
+    let generated_path = Utf8PathBuf::from("crates/re_query2/src/latest_at/to_archetype/mod.rs");
 
     let mut code = String::new();
     code.push_str(&format!("// {}\n\n", crate::codegen::autogen_warning!()));
@@ -62,15 +61,14 @@ fn generate_impls(
     objects: &Objects,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
-    let generated_path = Utf8PathBuf::from("crates/re_query_cache/src/latest_at/to_archetype");
+    let generated_path = Utf8PathBuf::from("crates/re_query2/src/latest_at/to_archetype");
 
     let quoted_imports = quote! {
         use std::sync::Arc;
 
-        use re_query2::{PromiseResolver, PromiseResult};
         use re_types_core::{Archetype, Loggable as _};
 
-        use crate::CachedLatestAtResults;
+        use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
     };
 
     for obj in objects.ordered_objects(Some(ObjectKind::Archetype)) {
