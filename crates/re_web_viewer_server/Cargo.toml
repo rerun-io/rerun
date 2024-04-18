@@ -30,6 +30,8 @@ all-features = true
 
 
 [features]
+default = ["sync"]
+
 ## ONLY FOR CI!
 ##
 ## When set, the crate builds despite the `.wasm` being missing, but will panic at runtime.
@@ -42,6 +44,9 @@ __ci = []
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Enable `WebViewerServerHandle` for use without an async runtime.
+sync = ["pollster"]
+
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
@@ -50,14 +55,8 @@ document-features.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 thiserror.workspace = true
-tokio = { workspace = true, default-features = false, features = [
-  "macros",
-  "rt-multi-thread",
-] }
-
-# Only needed for main.rs:
-clap = { workspace = true, features = ["derive"] }
-webbrowser.workspace = true
+futures-channel.workspace = true                  # Used for server shutdown signaling. Picked this one because it's already used by hyper.
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }

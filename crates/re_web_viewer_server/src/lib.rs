@@ -17,6 +17,11 @@ use std::{
 use futures_util::future;
 use hyper::{server::conn::AddrIncoming, service::Service, Body, Request, Response};
 
+#[cfg(feature = "sync")]
+mod sync;
+#[cfg(feature = "sync")]
+pub use sync::WebViewerServerHandle;
+
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
 #[cfg(not(feature = "__ci"))]
@@ -33,6 +38,7 @@ mod data {
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
@@ -40,11 +46,12 @@ pub enum WebViewerServerError {
     #[error("Failed to bind to port {0} for HTTP: {1}")]
     BindFailed(WebViewerServerPort, hyper::Error),
 
-    #[error("Failed to join web viewer server task: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
-
     #[error("Failed to serve web viewer: {0}")]
     ServeFailed(hyper::Error),
+
+    #[cfg(feature = "sync")]
+    #[error("Failed to spawn web viewer thread: {0}")]
+    ThreadSpawnFailed(#[from] std::io::Error),
 }
 
 struct Svc {
@@ -229,11 +236,11 @@ impl WebViewerServer {
 
     pub async fn serve_with_graceful_shutdown(
         self,
-        mut shutdown_rx: tokio::sync::broadcast::Receiver<()>,
+        shutdown_rx: futures_channel::oneshot::Receiver<()>,
     ) -> Result<(), WebViewerServerError> {
         self.server
             .with_graceful_shutdown(async {
-                shutdown_rx.recv().await.ok();
+                shutdown_rx.await.ok();
             })
             .await
             .map_err(WebViewerServerError::ServeFailed)?;
@@ -246,57 +253,7 @@ impl WebViewerServer {
     }
 }
 
-/// Sync handle for the [`WebViewerServer`]
-///
-/// When dropped, the server will be shut down.
-pub struct WebViewerServerHandle {
-    local_addr: std::net::SocketAddr,
-    shutdown_tx: tokio::sync::broadcast::Sender<()>,
-}
-
-impl Drop for WebViewerServerHandle {
-    fn drop(&mut self) {
-        re_log::info!("Shutting down web server on {}", self.server_url());
-        self.shutdown_tx.send(()).ok();
-    }
-}
-
-impl WebViewerServerHandle {
-    /// Create new [`WebViewerServer`] to host the Rerun Web Viewer on a specified port.
-    /// Returns a [`WebViewerServerHandle`] that will shutdown the server when dropped.
-    ///
-    /// A port of 0 will let the OS choose a free port.
-    ///
-    /// The caller needs to ensure that there is a `tokio` runtime running.
-    pub fn new(
-        bind_ip: &str,
-        requested_port: WebViewerServerPort,
-    ) -> Result<Self, WebViewerServerError> {
-        let (shutdown_tx, shutdown_rx) = tokio::sync::broadcast::channel(1);
-
-        let web_server = WebViewerServer::new(bind_ip, requested_port)?;
-
-        let local_addr = web_server.server.local_addr();
-
-        tokio::spawn(async move { web_server.serve_with_graceful_shutdown(shutdown_rx).await });
-
-        let slf = Self {
-            local_addr,
-            shutdown_tx,
-        };
-
-        re_log::info!("Started web server on {}", slf.server_url());
-
-        Ok(slf)
-    }
-
-    /// Includes `http://` prefix
-    pub fn server_url(&self) -> String {
-        server_url(&self.local_addr)
-    }
-}
-
-fn server_url(local_addr: &SocketAddr) -> String {
+pub(crate) fn server_url(local_addr: &SocketAddr) -> String {
     if local_addr.ip().is_unspecified() {
         // "0.0.0.0"
         format!("http://localhost:{}", local_addr.port())

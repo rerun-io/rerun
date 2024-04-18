@@ -116,7 +116,7 @@ jobs:
 
       - name: Cache RRD dataset
         id: dataset
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: examples/python/structure_from_motion/dataset/
           # TODO(jleibs): Derive this key from the invocation below

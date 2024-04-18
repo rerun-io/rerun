@@ -104,6 +104,7 @@ jobs:
         with:
           path: /tmp/${{ env.SHORT_SHA }}
           destination: "rerun-builds/benches/"
+          process_gcloudignore: false
 
       - name: Download comparison bench from GCS
         if: ${{ inputs.COMPARE_TO != '' }}
@@ -124,6 +125,7 @@ jobs:
         with:
           path: /tmp/bench_results.txt
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/"
+          process_gcloudignore: false
 
       - name: "Copy bench to named file"
         if: ${{ inputs.BENCH_NAME != '' }}
@@ -136,6 +138,7 @@ jobs:
         with:
           path: /tmp/${{ inputs.BENCH_NAME }}
           destination: "rerun-builds/benches/"
+          process_gcloudignore: false
 
       - name: Alert on regression
         # https://github.com/benchmark-action/github-action-benchmark

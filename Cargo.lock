@@ -5225,15 +5225,14 @@ dependencies = [
 name = "re_web_viewer_server"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
- "clap",
  "document-features",
+ "futures-channel",
  "futures-util",
  "hyper",
+ "pollster",
  "re_analytics",
  "re_log",
  "thiserror",
- "tokio",
- "webbrowser",
 ]
 
 [[package]]
