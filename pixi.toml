@@ -22,7 +22,7 @@ repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
 [system-requirements]
-macos = "11.0"  # needed for some reason otherwise fails to resolve mediapipe package
+macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
 libc = "2.31"
 
 
@@ -38,15 +38,15 @@ py-docs = ["py-docs", "base"]
 wheel-test = ["wheel-test", "base"]
 
 # Get rerun from PyPI
-examples = ["examples-common", "rerun-py-pypi"]
+examples = ["examples-common", "rerun-py-pypi", "py311"]
+
 
 # Build rerun from the local repo
-examples-dev = ["examples-common", "rerun-py-dev"]
+examples-dev = ["examples-common", "rerun-py-dev", "py311"]
 
 # Does _not_ include rerun-sdk, must be installed explicitely with `pip install [https://]path/to/rerun-sdk.whl`
 examples-ci = ["examples-common"]
 examples-py38 = ["examples-common", "py38"]
-
 
 
 [tasks]
@@ -323,7 +323,6 @@ cxx-compiler = "1.6.0.*"
 vs2022_win-64 = "19.37.32822"
 
 
-
 # EXAMPLES ENVIRONMENT
 
 [feature.examples-common]
@@ -331,7 +330,7 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 
 
 [feature.examples-common.dependencies]
-python = ">=3.8,<3.12"  # some example don't support python 3.12 yet
+python = ">=3.8,<3.12" # some example don't support python 3.12 yet
 
 # ALL deps of ALL examples should be listed here. In case of conflicts, the conflicting example should be moved to
 # another, dedicated environment other than `examples`.
@@ -340,11 +339,44 @@ python = ">=3.8,<3.12"  # some example don't support python 3.12 yet
 #all_examples = { path = "examples/python/all_examples", editable = true }
 #redirect = { path = "examples/python/redirect", editable = true }
 
+##arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
+#blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
+#blueprint = { path = "examples/python/blueprint", editable = true }
+#clock = { path = "examples/python/clock", editable = true }
+##controlnet = { path = "examples/python/controlnet", editable = true }
+#detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
+#dicom_mri = { path = "examples/python/dicom_mri", editable = true }
+#dna = { path = "examples/python/dna", editable = true }
+#face_tracking = { path = "examples/python/face_tracking", editable = true }
+#gesture_detection = { path = "examples/python/gesture_detection", editable = true }
+#human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+#incremental_logging = { path = "examples/python/incremental_logging", editable = true }
+#lidar = { path = "examples/python/lidar", editable = true }
+#live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
+#llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
+##log_file = { path = "examples/python/log_file", editable = true }
+##minimal_options = { path = "examples/python/minimal_options", editable = true }
+##minimal = { path = "examples/python/minimal", editable = true }
+##multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
+##multithreading = { path = "examples/python/multithreading", editable = true }
+##nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
+##nv12 = { path = "examples/python/nv12", editable = true }
+##objectron = { path = "examples/python/objectron", editable = true }
+##open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
+##plots = { path = "examples/python/plots", editable = true }
+##raw_mesh = { path = "examples/python/raw_mesh", editable = true }
+##rgbd = { path = "examples/python/rgbd", editable = true }
+##rrt_star = { path = "examples/python/rrt_star", editable = true }
+##shared_recording = { path = "examples/python/shared_recording", editable = true }
+##stdio = { path = "examples/python/stdio", editable = true }
+##structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
+
+
 [feature.rerun-py-dev.pypi-dependencies]
 rerun-sdk = { path = "rerun_py", editable = true }
 
 [feature.rerun-py-pypi.pypi-dependencies]
-rerun-sdk = "==0.15.0"  # How to keep that up to date?
+rerun-sdk = "==0.15.0" # How to keep that up to date?
 
 [feature.py38.dependencies]
 python = "=3.8"
@@ -355,8 +387,8 @@ python = "=3.8"
 #[feature.py310.dependencies]
 #python = "=3.10"
 #
-#[feature.py311.dependencies]
-#python = "=3.11"
+[feature.py311.dependencies]
+python = "=3.11"
 #
 #[feature.py312.dependencies]
 #python = "=3.12"
