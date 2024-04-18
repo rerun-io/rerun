@@ -84,10 +84,9 @@ fn flush_garbage_queue() {
 
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server(
-) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
-    static WEB_HANDLE: OnceCell<
-        parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>,
-    > = OnceCell::new();
+) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
+    static WEB_HANDLE: OnceCell<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
+        OnceCell::new();
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
@@ -1125,7 +1124,7 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
 
         let _guard = enter_tokio_runtime();
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServerHandle::new("0.0.0.0", WebViewerServerPort(port))
+            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
                 .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",
