@@ -10,9 +10,17 @@ use lib::{build, default_build_dir, Profile, Target};
 #[argh(subcommand, name = "build-web-viewer")]
 pub struct Args {
     /// compile for release and run wasm-opt.
+    ///
+    /// Mutually exclusive with `--debug`.
     /// NOTE: --release also removes debug symbols which are otherwise useful for in-browser profiling.
     #[argh(switch)]
     release: bool,
+
+    /// compile for debug and don't run wasm-opt.
+    ///
+    /// Mutually exclusive with `--release`.
+    #[argh(switch)]
+    debug: bool,
 
     /// keep debug symbols, even in release builds.
     /// This gives better callstacks on panics, and also allows for in-browser profiling of the Wasm.
@@ -29,11 +37,16 @@ pub struct Args {
 }
 
 pub fn main(args: Args) -> anyhow::Result<()> {
-    let profile = if args.release {
+    let profile = if args.release && !args.debug {
         Profile::Release
-    } else {
+    } else if !args.release && args.debug {
         Profile::Debug
+    } else {
+        return Err(anyhow::anyhow!(
+            "Exactly one of --release or --debug must be set"
+        ));
     };
+
     let target = if args.module {
         Target::Module
     } else {

@@ -129,7 +129,7 @@ misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
 
 # Run first ruff fix, then ruff format, order is important see also https://twitter.com/charliermarsh/status/1717229721954799727
 py-fmt = "ruff check --fix --config rerun_py/pyproject.toml . && ruff format --config rerun_py/pyproject.toml ."
-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
+py-fmt-check = "ruff check --config rerun_py/pyproject.toml . && ruff format --check --config rerun_py/pyproject.toml"
 py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
@@ -171,7 +171,6 @@ search-index = "cargo run -q --locked -p re_dev_tools -- search-index"
 meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisearch/dumps/ --snapshot-dir=./meilisearch/snapshots/ --env=development --no-analytics --experimental-reduce-indexing-memory-usage --master-key=test"
 
 # Update the design_tokens.json used to style the GUI.
-# See https://rerun-design-guidelines.netlify.app/tokens for their meanings.
 # To update the upstream `design_tokens.json`, modify
 # https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts and push to main.
 download-design-tokens = "curl --fail https://rerun-docs.netlify.app/api/tokens | jq > crates/re_ui/data/design_tokens.json"
@@ -196,7 +195,7 @@ mkdocs-gen-files = "==0.5.0"
 mkdocs-literate-nav = "==0.6.1"
 mkdocs-material = "==9.4.7"
 mkdocs-material-extensions = "==1.3"
-mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409bmkdocs = "==1.5.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects ==1.5.3
 mkdocstrings = "==0.23.0"
 mkdocstrings-python = "==1.7.3"
 sphobjinv = "==2.3.1"
@@ -259,7 +258,7 @@ rerun = "rerun"
 # platforms (including linux-aarch64), or added conditionally.
 #
 # Hints:
-# - To check a given package, go to https://prefix.dev/channels/conda-forge/packages/XXXX. It should support Windows,
+# - To check a given package, go to the package on https://prefix.dev/channels/conda-forge/. It should support Windows,
 #   x86_64 and aarch64 macOS architectures, and x86_64 and aarch64 Linux architectures.
 # - Some pure Python packages may wrongly be tagged as platform-specific. In this case, use `[pypi-dependencies]`
 #   instead (e.g. `nox`).
@@ -307,6 +306,7 @@ pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `s
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
+opencv-python = ">4.6"           # For `compare_snippet_output.py`
 
 
 [target.linux-64.dependencies]

@@ -14,7 +14,7 @@ pub use client::viewer_to_server;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
-pub use server::{RerunServer, RerunServerHandle};
+pub use server::RerunServer;
 
 use re_log_types::LogMsg;
 
@@ -41,12 +41,8 @@ pub enum RerunServerError {
     InvalidMessage(#[from] bincode::Error),
 
     #[cfg(feature = "server")]
-    #[error("Failed to join web viewer server task: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
-
-    #[cfg(feature = "server")]
-    #[error("Tokio error: {0}")]
-    TokioIoError(#[from] tokio::io::Error),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

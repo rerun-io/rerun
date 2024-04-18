@@ -129,14 +129,12 @@ def compare(
                     change = f"{change_pct:+.2f}%"
                 else:
                     change = f"{format_num(current - previous)} {unit}"
-                rows.append(
-                    (
-                        name,
-                        f"{format_num(previous)} {unit}",
-                        f"{format_num(current)} {unit}",
-                        change,
-                    )
-                )
+                rows.append((
+                    name,
+                    f"{format_num(previous)} {unit}",
+                    f"{format_num(current)} {unit}",
+                    change,
+                ))
         elif "current" in entry:
             value = entry["current"]["value"]
             unit = entry["current"]["unit"]

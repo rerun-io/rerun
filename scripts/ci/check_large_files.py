@@ -24,7 +24,7 @@ for file_path in tracked_files:
     if actual_size >= maximum_size:
         allow_list_path = os.path.join(script_path, "check_large_files_allow_list.txt")
 
-        with open(allow_list_path) as allow_list_file:
+        with open(allow_list_path, encoding="utf8") as allow_list_file:
             allow_list = allow_list_file.read().splitlines()
 
         if file_path not in allow_list:

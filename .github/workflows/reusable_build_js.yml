@@ -31,6 +31,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     name: Build rerun_js
@@ -66,9 +70,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Install yarn dependencies
-        shell: bash
         run: pixi run yarn --cwd rerun_js install
 
       - name: Build rerun_js package
-        shell: bash
         run: pixi run yarn --cwd rerun_js workspaces run build

@@ -16,6 +16,10 @@ concurrency:
   group: ${{ github.ref_name }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions: # wants to push commits and create a PR
   contents: write
   id-token: write
@@ -84,7 +88,6 @@ jobs:
 
       - name: Update crate versions
         id: versioning
-        shell: bash
         run: |
           echo Check that the release version matches expected format…
           pixi run python scripts/ci/crates.py check-git-branch-name
@@ -128,23 +131,20 @@ jobs:
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
       - name: Update JS package versions
-        shell: bash
         run: |
           pixi run node rerun_js/scripts/version.mjs "${{ steps.versioning.outputs.current }}"
 
       - name: Update rerun_c version
-        shell: bash
+
         # Configuring CMake is enough to change the version on rerun.h!
         run: |
           cmake -B build -S .
 
       - run: pixi run toml-fmt
-        shell: bash
 
       - name: Commit new version
         id: commit
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
-        shell: bash
         run: |
           git pull
           git config --global user.name "rerun-bot"
@@ -156,7 +156,6 @@ jobs:
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
-        shell: bash
         run: |
           set +e
           pr=$(gh pr view --json headRefName 2>/dev/null || echo "{}")
@@ -174,7 +173,7 @@ jobs:
           - If this is an 'alpha' release, you can just merge the pull request.
           - Otherwise:
             - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, run the release workflow in 'release' mode
+            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
               - [ ] Sanity check the build artifacts:
                 - [ ] pip install: does it install and run?
@@ -184,6 +183,7 @@ jobs:
               - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
               merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
               - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
+              - [ ] Merge this PR
 
           - [ ] Tests
             - [ ] Windows
@@ -274,6 +274,8 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
+  # Force-pushes `latest` and `docs-latest` to the contents of the release branch.
+  # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -297,11 +299,11 @@ jobs:
           ref: ${{ needs.version.outputs.release-commit }}
 
       - name: Update latest branch
-        shell: bash
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
           git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/latest
+          git push --force origin refs/heads/${{ github.ref_name }}:refs/heads/docs-latest
 
   github-release:
     name: "GitHub Release"
@@ -380,7 +382,6 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Commit new version
-        shell: bash
         run: |
           # checkout + pull changes
           git config --global user.name "rerun-bot"
@@ -420,7 +421,6 @@ jobs:
       - name: Create comment
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
-        shell: bash
         run: |
           pr_number=$(gh pr view --json number | jq '.number')
           echo "pr_number: $pr_number"

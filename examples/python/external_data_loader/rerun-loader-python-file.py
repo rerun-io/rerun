@@ -74,7 +74,7 @@ def main() -> None:
     else:
         entity_path = args.filepath
 
-    with open(args.filepath) as file:
+    with open(args.filepath, encoding="utf8") as file:
         body = file.read()
         text = f"""## Some Python code\n```python\n{body}\n```\n"""
         rr.log(

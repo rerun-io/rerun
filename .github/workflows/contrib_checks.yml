@@ -36,6 +36,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
 
@@ -84,9 +88,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Codegen check
-        shell: bash
-        run: |
-          pixi run codegen --force --check
+        run: pixi run codegen --force --check
 
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
@@ -116,15 +118,8 @@ jobs:
       - name: Check for too large files
         run: pixi run check-large-files
 
-      - name: Check Python example requirements
-        shell: bash
-        run: |
-          pixi run ./scripts/ci/check_requirements.py
-
       - name: Check Python example thumbnails
-        shell: bash
-        run: |
-          pixi run ./scripts/ci/thumbnails.py check
+        run: pixi run ./scripts/ci/thumbnails.py check
 
   spell-check:
     name: Spell Check
@@ -164,14 +159,12 @@ jobs:
       # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)
       # 😭
       # - name: Build and run C++ tests with clang++
-      #   shell: bash
       #   run: |
       #     pixi run cpp-clean
       #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-build-all
       #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-test
 
       - name: Build and run C++ tests with g++
-        shell: bash
         run: |
           pixi run cpp-clean
           RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all

@@ -15,6 +15,10 @@ concurrency:
   group: ${{ inputs.concurrency }}-publish-js
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "write"
   id-token: "write"
@@ -29,12 +33,10 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
-        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
-        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build:
@@ -68,6 +70,5 @@ jobs:
       - name: Publish packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        shell: bash
         run: |
           pixi run node rerun_js/scripts/publish.mjs

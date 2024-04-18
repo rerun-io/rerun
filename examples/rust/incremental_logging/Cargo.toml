@@ -11,5 +11,4 @@ rerun = { path = "../../../crates/rerun", features = ["web_viewer", "clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
-glam = "0.22"
 rand = "0.8"

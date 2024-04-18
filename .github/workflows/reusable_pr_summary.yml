@@ -14,6 +14,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-pr-summary
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   pr-summary:
     name: Create HTML summary for PR
@@ -47,7 +51,6 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Render HTML template
-        shell: bash
         run: |
           pixi run python scripts/ci/generate_pr_summary.py \
           --github-token ${{secrets.GITHUB_TOKEN}} \

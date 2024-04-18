@@ -258,7 +258,7 @@ def render_html(title: str, benchmarks: Benchmarks) -> str:
             "data": data,
         }
 
-    with open(os.path.join(SCRIPT_PATH, "templates/benchmark.html")) as template_file:
+    with open(os.path.join(SCRIPT_PATH, "templates/benchmark.html"), encoding="utf8") as template_file:
         html = template_file.read()
         html = html.replace("%%TITLE%%", title)
         # double encode to escape the data as a single string

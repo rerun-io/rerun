@@ -15,6 +15,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-pip-index
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   pr-summary:
     name: Create a Pip Index file
@@ -48,11 +52,9 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install deps
-        shell: bash
         run: pip install google-cloud-storage Jinja2
 
       - name: Render pip index and upload to gcloud
-        shell: bash
         run: |
           full_commit="${{ inputs.COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) }}"
           commit=$(echo $full_commit | cut -c1-7)

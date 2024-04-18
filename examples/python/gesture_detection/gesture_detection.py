@@ -13,7 +13,6 @@ from typing import Final, Iterable
 import cv2
 import mediapipe as mp
 import numpy as np
-import numpy.typing as npt
 import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
@@ -101,7 +100,7 @@ class GestureDetectorLogger:
     def convert_landmarks_to_3d(hand_landmarks: list[list[NormalizedLandmark]]) -> list[tuple[float, float, float]]:
         return [(lm.x, lm.y, lm.z) for hand_landmark in hand_landmarks for lm in hand_landmark]
 
-    def detect_and_log(self, image: npt.NDArray[np.uint8], frame_time_nano: int) -> None:
+    def detect_and_log(self, image: cv2.typing.MatLike, frame_time_nano: int) -> None:
         # Recognize gestures in the image
         height, width, _ = image.shape
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)

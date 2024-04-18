@@ -65,6 +65,10 @@ env:
   # these incremental artifacts when running on CI.
   CARGO_INCREMENTAL: "0"
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "read"
   id-token: "write"
@@ -81,7 +85,6 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
-        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux-arm64)
@@ -135,7 +138,6 @@ jobs:
 
     steps:
       - name: Show context
-        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -168,7 +170,6 @@ jobs:
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"

@@ -14,6 +14,10 @@ concurrency:
   group: ${{ inputs.CONCURRENCY }}-deploy-landing-preview
   cancel-in-progress: true
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: "write"
   id-token: "write"
@@ -32,15 +36,15 @@ jobs:
 
       - name: Get sha
         id: get-sha
-        shell: bash
         run: |
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
       - name: Re-deploy rerun.io
-        id: deploy-vercel
-        uses: ./.github/actions/deploy-vercel
+        id: vercel
+        uses: ./.github/actions/vercel
         with:
+          command: "deploy"
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
@@ -57,4 +61,4 @@ jobs:
 
             | Commit  | Link  |
             | ------- | ----- |
-            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.deploy-vercel.outputs.vercel_preview_url }}/docs |
+            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
