@@ -8,4 +8,4 @@ publish = false
 
 [dependencies]
 rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
-tokio = "1.0"
+tokio = { version = "1.24", features = ["rt-multi-thread"] }
