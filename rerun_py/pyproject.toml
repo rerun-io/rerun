@@ -40,7 +40,7 @@ homepage = "https://www.rerun.io"
 repository = "https://github.com/rerun-io/rerun"
 
 [project.scripts]
-rerun = "rerun_bindings:main"
+rerun = "rerun_cli.__main__:main"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
@@ -139,10 +139,18 @@ required-imports = ["from __future__ import annotations"]
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth"]
+# Even though both `rerun` and `rerun.exe` are here, only one will be included since
+# they both should not be fetched in CI when running the build.
+# Files missing from this list is not a packaging failure.
+include = ["rerun_sdk.pth", "rerun_sdk/bin/rerun", "rerun_sdk/bin/rerun.exe"]
 locked = true
 name = "rerun_bindings"
-python-packages = ["rerun_sdk/rerun"]
+python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]
+
+# Setting this to 1 causes lets the build.rs script know we are building a wheel,
+# which will cause it to check for the existence of the `rerun` binary.
+config = ["env.RERUN_BUILDING_WHEEL=\"1\""]
+
 
 [tool.pytest.ini_options]
 # These conform to Python's Warning Filter syntax:
