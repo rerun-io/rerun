@@ -21,7 +21,6 @@ re_data_ui.workspace = true
 re_entity_db = { workspace = true, features = ["serde"] }
 re_log_types.workspace = true
 re_log.workspace = true
-re_query.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
   "arrow",
   "import-gltf",
