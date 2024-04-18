@@ -85,3 +85,4 @@ jobs:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/notebooks"
           parent: false
+          process_gcloudignore: false

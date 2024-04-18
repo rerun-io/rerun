@@ -180,6 +180,7 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
+          process_gcloudignore: false
 
       - name: "Upload rerun_c (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
@@ -188,3 +189,4 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
+          process_gcloudignore: false
