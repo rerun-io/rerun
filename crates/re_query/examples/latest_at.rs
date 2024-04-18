@@ -4,7 +4,7 @@ use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, DataRow, RowId, TimeType, Timeline};
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query2::{
+use re_query::{
     clamped_zip_1x2, CachedLatestAtComponentResults, CachedLatestAtResults, PromiseResolver,
     PromiseResult,
 };
@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    let caches = re_query2::Caches::new(&store);
+    let caches = re_query::Caches::new(&store);
 
     // First, get the results for this query.
     //

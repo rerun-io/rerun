@@ -2,7 +2,7 @@
 
 use egui::NumExt as _;
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query2::CachedLatestAtComponentResults, EntityDb};
+use re_entity_db::{external::re_query::CachedLatestAtComponentResults, EntityDb};
 use re_log_types::EntityPath;
 use re_types::{
     components::{

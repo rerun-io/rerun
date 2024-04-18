@@ -1,4 +1,4 @@
-// This file was generated using `cargo r -p re_query2 --all-features --bin range_zip`.
+// This file was generated using `cargo r -p re_query --all-features --bin range_zip`.
 // DO NOT EDIT.
 
 // ---

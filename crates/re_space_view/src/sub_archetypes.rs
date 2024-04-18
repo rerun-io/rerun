@@ -1,6 +1,6 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::{
-    external::re_query2::{CachedLatestAtResults, PromiseResult, ToArchetype},
+    external::re_query::{CachedLatestAtResults, PromiseResult, ToArchetype},
     EntityDb,
 };
 use re_log_types::EntityPath;

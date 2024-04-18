@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_query2::{PromiseResult, QueryError};
+use re_query::{PromiseResult, QueryError};
 use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
@@ -215,7 +215,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query2::range_zip_1x1(
+                        let all_frames = re_query::range_zip_1x1(
                             all_scalars_indexed,
                             all_colors.range_indexed(query.range()),
                         )
@@ -255,7 +255,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query2::range_zip_1x1(
+                        let all_frames = re_query::range_zip_1x1(
                             all_scalars_indexed,
                             all_marker_sizes.range_indexed(query.range()),
                         )
@@ -287,7 +287,7 @@ impl SeriesPointSystem {
                             .range_indices(all_scalars_entry_range.clone())
                             .map(|index| (index, ()));
 
-                        let all_frames = re_query2::range_zip_1x1(
+                        let all_frames = re_query::range_zip_1x1(
                             all_scalars_indexed,
                             all_marker_shapes.range_indexed(query.range()),
                         )

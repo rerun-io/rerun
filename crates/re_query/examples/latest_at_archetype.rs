@@ -7,7 +7,7 @@ use re_types::{
 };
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query2::{clamped_zip_1x2, CachedLatestAtResults, PromiseResolver, PromiseResult};
+use re_query::{clamped_zip_1x2, CachedLatestAtResults, PromiseResolver, PromiseResult};
 
 // ---
 
@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    let caches = re_query2::Caches::new(&store);
+    let caches = re_query::Caches::new(&store);
 
     // First, get the results for this query.
     //
@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()> {
 
     // Then make use of the `ToArchetype` helper trait in order to query, resolve, deserialize and
     // cache an entire archetype all at once.
-    use re_query2::ToArchetype as _;
+    use re_query::ToArchetype as _;
 
     let arch: Points2D = match results.to_archetype(&resolver).flatten() {
         PromiseResult::Pending => {

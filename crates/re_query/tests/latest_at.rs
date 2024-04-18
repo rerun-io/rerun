@@ -8,8 +8,8 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimeInt, TimePoint,
 };
-use re_query2::Caches;
-use re_query2::PromiseResolver;
+use re_query::Caches;
+use re_query::PromiseResolver;
 use re_types::Archetype as _;
 use re_types_core::{components::InstanceKey, Loggable as _};
 

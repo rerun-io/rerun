@@ -30,7 +30,7 @@ re_int_histogram.workspace = true
 re_log.workspace = true
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
-re_query2 = { workspace = true, features = ["to_archetype"] }
+re_query = { workspace = true, features = ["to_archetype"] }
 re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true

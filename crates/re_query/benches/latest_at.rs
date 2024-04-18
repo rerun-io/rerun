@@ -6,8 +6,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
-use re_query2::{clamped_zip_1x1, PromiseResolver};
-use re_query2::{CachedLatestAtResults, Caches};
+use re_query::{clamped_zip_1x1, PromiseResolver};
+use re_query::{CachedLatestAtResults, Caches};
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
