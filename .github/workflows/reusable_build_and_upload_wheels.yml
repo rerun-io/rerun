@@ -195,8 +195,16 @@ jobs:
       - name: Get sha
         id: get-sha
         run: |
-          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha) }}"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: "Download rerun-cli"
+        run: |
+          pixi run fetch-artifact \
+          --commit-sha ${{ steps.get-sha.outputs.sha }} \
+          --artifact rerun-cli \
+          --platform ${{ inputs.PLATFORM }} \
+          --dest rerun_py/rerun_sdk/bin
 
       - name: Build
         run: |

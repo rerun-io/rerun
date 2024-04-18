@@ -453,7 +453,7 @@ impl RecordingStreamBuilder {
             return self.connect_opts(connect_addr, flush_timeout);
         }
 
-        spawn(opts)?;
+        crate::spawn(opts)?;
 
         self.connect_opts(connect_addr, flush_timeout)
     }
@@ -1621,7 +1621,7 @@ impl RecordingStream {
             return Ok(());
         }
 
-        spawn(opts)?;
+        crate::spawn(opts)?;
 
         self.connect_opts(opts.connect_addr(), flush_timeout);
 
@@ -1805,37 +1805,6 @@ impl fmt::Debug for RecordingStream {
             None => write!(f, "RecordingStream {{ disabled }}"),
         }
     }
-}
-
-/// Helper to deduplicate spawn logic across [`RecordingStreamBuilder`] & [`RecordingStream`].
-fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
-    use std::{net::TcpStream, time::Duration};
-
-    let connect_addr = opts.connect_addr();
-
-    // TODO(#4019): application-level handshake
-    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
-        re_log::info!(
-            addr = %opts.listen_addr(),
-            "A process is already listening at this address. Trying to connect instead."
-        );
-    } else {
-        crate::spawn(opts)?;
-
-        // Give the newly spawned Rerun Viewer some time to bind.
-        //
-        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
-        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
-        // For that reason we use an extra loop.
-        for _ in 0..5 {
-            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(100));
-        }
-    }
-
-    Ok(())
 }
 
 // --- Stateful time ---

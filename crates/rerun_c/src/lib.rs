@@ -98,6 +98,8 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
+        spawn_opts.wait_for_bind = true;
+
         if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
