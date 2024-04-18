@@ -5,7 +5,7 @@ use clap::Subcommand;
 use itertools::Itertools;
 
 use re_data_source::DataSource;
-use re_log_types::{DataTable, LogMsg, PythonVersion, SetStoreInfo};
+use re_log_types::{DataTable, LogMsg, SetStoreInfo};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
@@ -295,21 +295,15 @@ enum AnalyticsCommands {
 }
 
 /// Where are we calling [`run`] from?
-#[derive(Clone, Debug, PartialEq, Eq)]
+// TODO(jleibs): Maybe remove call-source all together.
+// However, this context of spawn vs direct CLI-invocation still seems
+// useful for analytics. We just need to capture the data some other way.
 pub enum CallSource {
     /// Called from a command-line-input (the terminal).
     Cli,
-
-    /// Called from the Rerun Python SDK.
-    Python(PythonVersion),
 }
 
 impl CallSource {
-    #[allow(dead_code)]
-    fn is_python(&self) -> bool {
-        matches!(self, Self::Python(_))
-    }
-
     #[cfg(feature = "native_viewer")]
     fn app_env(&self) -> re_viewer::AppEnvironment {
         match self {
@@ -317,9 +311,6 @@ impl CallSource {
                 rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
                 llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
             },
-            CallSource::Python(python_version) => {
-                re_viewer::AppEnvironment::PythonSdk(python_version.clone())
-            }
         }
     }
 }
@@ -643,9 +634,7 @@ async fn run_impl(
         {
             let server_options = re_sdk_comms::ServerOptions {
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-
-                // `rerun.spawn()` doesn't need to log that a connection has been made
-                quiet: call_source.is_python(),
+                quiet: false,
             };
             let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
             vec![rx]
