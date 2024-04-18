@@ -13,8 +13,58 @@ defaults:
     shell: bash
 
 jobs:
+  # Get latest release version from crates.io
+  # This excludes any prerelease builds, e.g. `0.15.0-alpha.1` or `rc` or similar.
+  # We get it from crates.io because it's the strongest indicator of the latest
+  # fully released version we have available, and there is no better way to retrieve
+  # that in the context of this branch, because we don't want to rely on the contents
+  # of a local `Cargo.toml` or the git branch name.
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.versioning.outputs.crate_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.5.2
+        with:
+          pixi-version: v0.19.0
+
+      - name: Get version
+        id: versioning
+        run: |
+          crate_version=$(pixi run python scripts/ci/crates.py get-version --from=cratesio --skip-prerelease)
+          echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
+
+  build-search-index:
+    runs-on: ubuntu-latest
+    needs: [get-version]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - uses: prefix-dev/setup-pixi@v0.5.2
+        with:
+          pixi-version: v0.19.0
+
+      - name: Build search index
+        run: |
+          pixi run search-index build \
+            landing \
+            --url "https://edge.meilisearch.com" \
+            --master-key "${{ secrets.MEILISEARCH_TOKEN }}" \
+            --release-version "${{ needs.get-version.outputs.version }}"
+
   redeploy-rerun-io:
     runs-on: ubuntu-latest
+    needs: [get-version]
     steps:
       - uses: actions/checkout@v4
 
@@ -22,8 +72,9 @@ jobs:
         uses: ./.github/actions/vercel
         with:
           command: "deploy"
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
-          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          vercel_token: "${{ secrets.VERCEL_TOKEN }}"
+          vercel_team_name: "${{ vars.VERCEL_TEAM_NAME }}"
+          vercel_project_name: "${{ vars.VERCEL_PROJECT_NAME }}"
           release_commit: "docs-latest"
+          release_version: "${{ needs.get-version.outputs.version }}"
           target: "production"
