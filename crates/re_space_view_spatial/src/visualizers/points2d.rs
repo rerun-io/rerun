@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache::{range_zip_1x5, CachedResults};
+use re_query2::{range_zip_1x5, CachedResults};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,

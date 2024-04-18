@@ -199,7 +199,7 @@ pub fn resolve_mono_instance_path(
                 [component],
             );
             if let Some(results) = results.get(component) {
-                if let re_query_cache::PromiseResult::Ready(cell) =
+                if let re_query2::PromiseResult::Ready(cell) =
                     results.resolved(entity_db.resolver())
                 {
                     if cell.num_instances() > 1 {

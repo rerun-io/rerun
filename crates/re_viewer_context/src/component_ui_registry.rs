@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{
-    external::re_query_cache::CachedLatestAtComponentResults, EntityDb, EntityPath,
+    external::re_query2::CachedLatestAtComponentResults, EntityDb, EntityPath,
 };
 use re_log_types::DataCell;
 use re_types::{components::InstanceKey, ComponentName, Loggable as _};
