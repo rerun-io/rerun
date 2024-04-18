@@ -8,9 +8,7 @@ use crate::{LatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
-impl crate::ToArchetype<re_types::blueprint::archetypes::SpaceViewContents>
-    for LatestAtResults
-{
+impl crate::ToArchetype<re_types::blueprint::archetypes::SpaceViewContents> for LatestAtResults {
     #[inline]
     fn to_archetype(
         &self,
