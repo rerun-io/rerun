@@ -2622,7 +2622,6 @@ version = "0.16.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
  "rand",
  "rerun",
 ]
@@ -2983,7 +2982,6 @@ version = "0.16.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
  "rerun",
 ]
 
@@ -4263,7 +4261,6 @@ dependencies = [
  "parking_lot",
  "rand",
  "re_arrow2",
- "re_error",
  "re_format",
  "re_log",
  "re_log_types",
@@ -4295,7 +4292,6 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_tracing",
@@ -4740,7 +4736,6 @@ dependencies = [
 name = "re_space_view"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
- "ahash",
  "egui",
  "itertools 0.12.0",
  "nohash-hasher",
@@ -4788,7 +4783,6 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_tracing",
- "re_types",
  "re_ui",
  "re_viewer_context",
 ]
@@ -4809,7 +4803,6 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
- "parking_lot",
  "rayon",
  "re_data_store",
  "re_data_ui",
@@ -4902,7 +4895,6 @@ dependencies = [
  "egui",
  "egui_plot",
  "itertools 0.12.0",
- "parking_lot",
  "rayon",
  "re_data_store",
  "re_format",
@@ -5014,21 +5006,13 @@ dependencies = [
 name = "re_types_blueprint"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "array-init",
- "backtrace",
  "bytemuck",
- "document-features",
  "once_cell",
  "re_arrow2",
- "re_error",
- "re_string_interner",
  "re_tracing",
- "re_tuid",
  "re_types",
  "re_types_core",
- "smallvec",
- "thiserror",
 ]
 
 [[package]]
@@ -5212,8 +5196,6 @@ name = "re_viewport"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "array-init",
- "bytemuck",
  "egui",
  "egui_tiles",
  "glam",
@@ -5222,24 +5204,20 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "rayon",
- "re_arrow2",
  "re_data_store",
  "re_data_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_space_view",
- "re_space_view_time_series",
  "re_tracing",
  "re_types",
  "re_types_blueprint",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
- "rmp-serde",
  "smallvec",
 ]
 
@@ -5385,7 +5363,6 @@ version = "0.16.0-alpha.1+dev"
 dependencies = [
  "document-features",
  "mimalloc",
- "rayon",
  "re_build_info",
  "re_build_tools",
  "re_error",

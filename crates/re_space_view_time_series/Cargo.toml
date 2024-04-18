@@ -32,5 +32,4 @@ re_viewer_context.workspace = true
 egui.workspace = true
 egui_plot.workspace = true
 itertools.workspace = true
-parking_lot.workspace = true
 rayon.workspace = true
