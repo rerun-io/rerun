@@ -521,6 +521,7 @@ fn spawn(
 ) -> PyResult<()> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
+        wait_for_bind: true,
         memory_limit,
         executable_name,
         executable_path,
