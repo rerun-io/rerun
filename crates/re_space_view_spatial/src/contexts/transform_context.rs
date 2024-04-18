@@ -310,7 +310,7 @@ fn get_cached_pinhole(
         .latest_at_archetype::<re_types::archetypes::Pinhole>(entity_path, query)
         .ok()
         .flatten()
-        .map(|arch| {
+        .map(|(_, arch)| {
             (
                 arch.image_from_camera,
                 arch.camera_xyz.unwrap_or(ViewCoordinates::RDF),

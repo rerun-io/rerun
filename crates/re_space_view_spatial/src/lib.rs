@@ -53,8 +53,7 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 ///
-/// TODO(andreas): It should be possible to convert [`re_query::ArchetypeView`] to its corresponding Archetype for situations like this.
-/// TODO(andreas): This is duplicated into `re_viewport`
+// TODO(andreas): This is duplicated into `re_viewport`
 fn query_pinhole(
     entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
