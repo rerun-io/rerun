@@ -38,7 +38,7 @@ impl re_types::Archetype for ColorArchetype {
     }
 }
 
-impl re_query::ToArchetype<ColorArchetype> for re_query::CachedLatestAtResults {
+impl re_query::ToArchetype<ColorArchetype> for re_query::LatestAtResults {
     #[inline]
     fn to_archetype(
         &self,

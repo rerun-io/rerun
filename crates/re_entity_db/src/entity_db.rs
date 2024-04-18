@@ -209,7 +209,7 @@ impl EntityDb {
         query: &re_data_store::LatestAtQuery,
     ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
-        re_query::CachedLatestAtResults: re_query::ToArchetype<A>,
+        re_query::LatestAtResults: re_query::ToArchetype<A>,
     {
         let results = self.query_caches().latest_at(
             self.store(),

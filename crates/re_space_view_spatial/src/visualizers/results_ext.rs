@@ -1,12 +1,12 @@
 use re_data_store::RangeQuery;
 use re_query::{
-    CachedLatestAtResults, CachedRangeData, CachedRangeResults, PromiseResolver, PromiseResult,
+    LatestAtResults, CachedRangeData, RangeResults, PromiseResolver, PromiseResult,
 };
 use re_types::Component;
 
 // --- Cached ---
 
-pub trait CachedLatestAtResultsExt {
+pub trait LatestAtResultsExt {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
@@ -18,7 +18,7 @@ pub trait CachedLatestAtResultsExt {
     ) -> re_query::Result<&'a [C]>;
 }
 
-impl CachedLatestAtResultsExt for CachedLatestAtResults {
+impl LatestAtResultsExt for LatestAtResults {
     #[inline]
     fn get_dense<'a, C: Component>(
         &'a self,
@@ -48,7 +48,7 @@ impl CachedLatestAtResultsExt for CachedLatestAtResults {
     }
 }
 
-pub trait CachedRangeResultsExt {
+pub trait RangeResultsExt {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
@@ -62,7 +62,7 @@ pub trait CachedRangeResultsExt {
     ) -> re_query::Result<CachedRangeData<'a, C>>;
 }
 
-impl CachedRangeResultsExt for CachedRangeResults {
+impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_dense<'a, C: Component>(
         &'a self,
