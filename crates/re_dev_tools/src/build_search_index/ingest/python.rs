@@ -30,7 +30,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .with_arg("-")
         .parse_json::<SphinxObjectInv>()
         .context(
-            "sphobjinv may not be installed, are you running in the py-docs pixi environment?",
+            "sphobjinv may not be installed, try running `pixi run pip install -r rerun_py/requirements-doc.txt`",
         )?
         .objects
         .into_values()
@@ -43,7 +43,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
         .parse_json()
-        .context("either griffe or rerun_sdk is not installed")?;
+        .context("either griffe or rerun_sdk is not installed, try running `pixi run pip install -r rerun_py/requirements-doc.txt` and building the SDK")?;
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
