@@ -3,10 +3,6 @@ name: "Push Docs"
 on:
   push:
     branches: [docs-latest]
-  pull_request:
-    types:
-      - opened
-      - synchronize
 
 concurrency:
   group: on-push-docs
@@ -45,7 +41,7 @@ jobs:
           echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"
 
   build-search-index:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     needs: [get-version]
     steps:
       - uses: actions/checkout@v4
