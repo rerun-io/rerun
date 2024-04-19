@@ -12,5 +12,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true

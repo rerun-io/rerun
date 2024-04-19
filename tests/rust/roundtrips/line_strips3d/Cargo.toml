@@ -6,6 +6,9 @@ publish = false
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../../crates/rerun", features = ["clap"] }
