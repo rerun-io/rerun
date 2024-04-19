@@ -46,7 +46,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
+    name: Rust lints (fmt, check, clippy, tests, doc)
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
