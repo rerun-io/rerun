@@ -20,8 +20,9 @@ import requests
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 import torch
-from .huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 from PIL import Image
+
+from .huggingface_pipeline import StableDiffusionDepth2ImgPipeline
 
 EXAMPLE_DIR: Final = Path(__file__).parent.parent
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"

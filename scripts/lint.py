@@ -12,7 +12,6 @@ import argparse
 import os
 import re
 import sys
-from glob import glob
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 

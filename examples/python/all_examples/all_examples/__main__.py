@@ -23,7 +23,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     # `list` command
-    list_parser = subparsers.add_parser("list", help="List all examples")
+    subparsers.add_parser("list", help="List all examples")
 
     args = parser.parse_args()
     if args.command == "list":

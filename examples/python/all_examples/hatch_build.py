@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 
 sys.path.append(str(Path(__file__).parent))
@@ -11,7 +12,8 @@ from all_examples import active_examples
 
 class MetadataHook(MetadataHookInterface):
     def update(self, metadata: dict) -> None:
-        """Use our very own package to list the examples we depend on.
+        """
+        Use our very own package to list the examples we depend on.
 
         IMPORTANT: Do not print to stdout/stderr in his function, as it will end up being parsed. Use this command to
         check the output:

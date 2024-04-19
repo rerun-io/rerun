@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import platform
-from dataclasses import field, dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Any
+from typing import Any, Iterable
 
 import tomli
 from pyproject_metadata import StandardMetadata
-
 
 # def _relative(target: Path, origin: Path) -> Path:
 #     """Return target path relative to the origin, allowing for walking up.
@@ -24,7 +23,8 @@ from pyproject_metadata import StandardMetadata
 
 @dataclass
 class RerunMetadata:
-    """Extract Rerun example metadata from a pyproject.toml data.
+    """
+    Extract Rerun example metadata from a pyproject.toml data.
 
     Expected format in the pyproject.toml:
 
@@ -74,9 +74,8 @@ class Example:
         self.rerun_metadata = RerunMetadata.from_pyproject(pyproject_data)
 
     def active(self) -> bool:
-        """Check that this example is active given its metadata but disregarding compatibility with the current Python
-        version.
-        """
+        """Check that this example is active given its metadata but disregarding compatibility with the current Python version."""
+
         return not self.rerun_metadata.skip
 
     def compatible(self) -> bool:
