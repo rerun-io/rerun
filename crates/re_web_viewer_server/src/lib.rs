@@ -94,6 +94,7 @@ impl Service<Request<Body>> for Svc {
 
     #[cfg(any(disable_web_viewer_server, feature = "__ci"))]
     fn call(&mut self, _req: Request<Body>) -> Self::Future {
+        #[cfg(feature = "analytics")]
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
