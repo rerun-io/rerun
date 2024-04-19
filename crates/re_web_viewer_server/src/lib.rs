@@ -99,7 +99,7 @@ impl Service<Request<Body>> for Svc {
         }
 
         // panic! is not enough in hyper (since it uses catch_unwind) - that only kills this thread. We want to quit.
-        eprintln!("web_server compiled with '--cfg disable_web_viewer_server' or `--feauture __ci` can't serve requests.");
+        eprintln!("web_server compiled with '--cfg disable_web_viewer_server' or `--feature __ci` can't serve requests.");
         std::process::abort();
     }
 
