@@ -271,14 +271,14 @@ impl VisualizerSystem for Arrows3DVisualizer {
 
                         let resolver = ctx.recording().resolver();
 
-                        let vectors = match results.get_dense::<Vector3D>(resolver, _query) {
+                        let vectors = match results.get_dense::<Vector3D>(resolver) {
                             Some(Ok(vectors)) => vectors,
                             Some(err @ Err(_)) => err?,
                             _ => return Ok(()),
                         };
 
                         let num_vectors = vectors
-                            .range_indexed(_query.range())
+                            .range_indexed()
                             .map(|(_, vectors)| vectors.len())
                             .sum::<usize>();
                         if num_vectors == 0 {
@@ -288,21 +288,21 @@ impl VisualizerSystem for Arrows3DVisualizer {
                         line_builder.reserve_strips(num_vectors)?;
                         line_builder.reserve_vertices(num_vectors * 2)?;
 
-                        let origins = results.get_or_empty_dense(resolver, _query)?;
-                        let colors = results.get_or_empty_dense(resolver, _query)?;
-                        let radii = results.get_or_empty_dense(resolver, _query)?;
-                        let labels = results.get_or_empty_dense(resolver, _query)?;
-                        let class_ids = results.get_or_empty_dense(resolver, _query)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver, _query)?;
+                        let origins = results.get_or_empty_dense(resolver)?;
+                        let colors = results.get_or_empty_dense(resolver)?;
+                        let radii = results.get_or_empty_dense(resolver)?;
+                        let labels = results.get_or_empty_dense(resolver)?;
+                        let class_ids = results.get_or_empty_dense(resolver)?;
+                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
                         let data = range_zip_1x6(
-                            vectors.range_indexed(_query.range()),
-                            origins.range_indexed(_query.range()),
-                            colors.range_indexed(_query.range()),
-                            radii.range_indexed(_query.range()),
-                            labels.range_indexed(_query.range()),
-                            class_ids.range_indexed(_query.range()),
-                            keypoint_ids.range_indexed(_query.range()),
+                            vectors.range_indexed(),
+                            origins.range_indexed(),
+                            colors.range_indexed(),
+                            radii.range_indexed(),
+                            labels.range_indexed(),
+                            class_ids.range_indexed(),
+                            keypoint_ids.range_indexed(),
                         )
                         .map(
                             |(

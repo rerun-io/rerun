@@ -254,14 +254,14 @@ impl VisualizerSystem for Lines2DVisualizer {
 
                     let resolver = ctx.recording().resolver();
 
-                    let strips = match results.get_dense::<LineStrip2D>(resolver, _query) {
+                    let strips = match results.get_dense::<LineStrip2D>(resolver) {
                         Some(Ok(strips)) => strips,
                         Some(err @ Err(_)) => err?,
                         _ => return Ok(()),
                     };
 
                     let num_strips = strips
-                        .range_indexed(_query.range())
+                        .range_indexed()
                         .map(|(_, strips)| strips.len())
                         .sum::<usize>();
                     if num_strips == 0 {
@@ -270,24 +270,24 @@ impl VisualizerSystem for Lines2DVisualizer {
                     line_builder.reserve_strips(num_strips)?;
 
                     let num_vertices = strips
-                        .range_indexed(_query.range())
+                        .range_indexed()
                         .map(|(_, strips)| strips.iter().map(|strip| strip.0.len()).sum::<usize>())
                         .sum::<usize>();
                     line_builder.reserve_vertices(num_vertices)?;
 
-                    let colors = results.get_or_empty_dense(resolver, _query)?;
-                    let radii = results.get_or_empty_dense(resolver, _query)?;
-                    let labels = results.get_or_empty_dense(resolver, _query)?;
-                    let class_ids = results.get_or_empty_dense(resolver, _query)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver, _query)?;
+                    let colors = results.get_or_empty_dense(resolver)?;
+                    let radii = results.get_or_empty_dense(resolver)?;
+                    let labels = results.get_or_empty_dense(resolver)?;
+                    let class_ids = results.get_or_empty_dense(resolver)?;
+                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
                     let data = range_zip_1x5(
-                        strips.range_indexed(_query.range()),
-                        colors.range_indexed(_query.range()),
-                        radii.range_indexed(_query.range()),
-                        labels.range_indexed(_query.range()),
-                        class_ids.range_indexed(_query.range()),
-                        keypoint_ids.range_indexed(_query.range()),
+                        strips.range_indexed(),
+                        colors.range_indexed(),
+                        radii.range_indexed(),
+                        labels.range_indexed(),
+                        class_ids.range_indexed(),
+                        keypoint_ids.range_indexed(),
                     )
                     .map(
                         |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
