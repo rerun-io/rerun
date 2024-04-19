@@ -24,7 +24,7 @@ pub use sync::WebViewerServerHandle;
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-#[cfg(not(feature = "__ci"))]
+#[cfg(any(not(disable_web_viewer_server), not(feature = "__ci")))]
 mod data {
     #![allow(clippy::large_include_file)]
 
@@ -92,18 +92,18 @@ impl Service<Request<Body>> for Svc {
         Ok(()).into()
     }
 
-    #[cfg(feature = "__ci")]
+    #[cfg(any(disable_web_viewer_server, feature = "__ci"))]
     fn call(&mut self, _req: Request<Body>) -> Self::Future {
         if false {
             self.on_serve_wasm(); // to silence warning about the function being unused
         }
 
         // panic! is not enough in hyper (since it uses catch_unwind) - that only kills this thread. We want to quit.
-        eprintln!("web_server compiled with '__ci' feature (or `--all-features`). DON'T DO THAT! It's only for the CI!");
+        eprintln!("web_server compiled with '--cfg disable_web_viewer_server' or `--feauture __ci` can't serve requests.");
         std::process::abort();
     }
 
-    #[cfg(not(feature = "__ci"))]
+    #[cfg(any(not(disable_web_viewer_server), not(feature = "__ci")))]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let response = Response::builder();
 
