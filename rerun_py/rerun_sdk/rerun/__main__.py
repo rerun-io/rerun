@@ -15,6 +15,18 @@ import sys
 from rerun import unregister_shutdown
 
 
+def exe_suffix() -> str:
+    if sys.platform.startswith("win"):
+        return ".exe"
+    return ""
+
+
+def add_exe_suffix(path: str) -> str:
+    if not path.endswith(exe_suffix()):
+        return path + exe_suffix()
+    return path
+
+
 def main() -> int:
     # Importing of the rerun module registers a shutdown hook that we know we don't
     # need when running the CLI directly. We can safely unregister it.
@@ -24,6 +36,8 @@ def main() -> int:
         target_path = os.environ["RERUN_CLI_PATH"]
     else:
         target_path = os.path.join(os.path.dirname(__file__), "..", "bin", "rerun")
+
+    target_path = add_exe_suffix(target_path)
 
     if not os.path.exists(target_path):
         print(f"Error: Could not find rerun binary at {target_path}", file=sys.stderr)
