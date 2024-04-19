@@ -326,7 +326,6 @@ platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
 [feature.examples-common.system-requirements]
 macos = "12.0" # needed for scipy
 
-
 [feature.examples-common.dependencies]
 python = "=3.11"
 
@@ -334,10 +333,6 @@ python = "=3.11"
 # ALL deps of ALL examples should be listed here. In case of conflicts, the conflicting example should be moved to
 # another, dedicated environment other than `examples`.
 [feature.examples-common.pypi-dependencies]
-# TODO: including the meta-project is currently not possible due to TBC
-# ∆ always keep `editable = true` to avoid caching of the dependency list (which is dynamic)
-#all_examples = { path = "examples/python/all_examples", editable = true }
-
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
@@ -369,6 +364,9 @@ shared_recording = { path = "examples/python/shared_recording", editable = true 
 signed_distance_fields = { path = "examples/python/signed_distance_fields", editable = true }
 stdio = { path = "examples/python/stdio", editable = true }
 structure_from_motion = { path = "examples/python/structure_from_motion", editable = true }
+
+# Force pixi to depend on this (fake) rerun-sdk package, as this one can be overridden with `py-build`
+rerun-sdk = { path = "examples/python/_empty_rerun_sdk" }
 
 # TODO(ab): reactivate these examples when they no-longer trigger the pixi perma-lock-invalidate bug
 #nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }

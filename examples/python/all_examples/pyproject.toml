@@ -11,7 +11,7 @@ dynamic = ["dependencies"]
 
 
 [project.scripts]
-run_all = "all_examples.__main__:main"
+all_examples = "all_examples.__main__:main"
 
 
 [tool.hatch.metadata.hooks.custom]
@@ -19,3 +19,6 @@ path = "hatch_build.py"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.rerun-example]
+skip = true
