@@ -24,7 +24,7 @@ pub use sync::WebViewerServerHandle;
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-#[cfg(any(not(disable_web_viewer_server), not(feature = "__ci")))]
+#[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
 mod data {
     #![allow(clippy::large_include_file)]
 
@@ -103,7 +103,7 @@ impl Service<Request<Body>> for Svc {
         std::process::abort();
     }
 
-    #[cfg(any(not(disable_web_viewer_server), not(feature = "__ci")))]
+    #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let response = Response::builder();
 
