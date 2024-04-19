@@ -5184,8 +5184,6 @@ name = "re_web_viewer_server"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
  "document-features",
- "futures-channel",
- "futures-util",
  "re_analytics",
  "re_log",
  "thiserror",

@@ -46,10 +46,8 @@ analytics = ["dep:re_analytics"]
 re_log = { workspace = true, features = ["setup"] }
 
 document-features.workspace = true
-futures-util.workspace = true
 tiny_http.workspace = true
 thiserror.workspace = true
-futures-channel.workspace = true   # Used for server shutdown signaling. Picked this one because it's already used by hyper.
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
