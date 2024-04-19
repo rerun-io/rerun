@@ -287,7 +287,6 @@ future_incompatible = "warn"
 nonstandard_style = "warn"
 rust_2018_idioms = "warn"
 rust_2021_prelude_collisions = "warn"
-rustdoc = "warn"
 missing_crate_level_docs = "warn"
 semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
@@ -299,6 +298,8 @@ unused_lifetimes = "warn"
 trivial_casts = "allow"
 unused_qualifications = "allow"
 
+[workspace.lints.rustdoc]
+all = "warn"
 
 # See also clippy.toml
 [workspace.lints.clippy]
