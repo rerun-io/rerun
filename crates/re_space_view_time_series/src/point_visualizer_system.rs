@@ -162,10 +162,10 @@ impl SeriesPointSystem {
                 let all_scalars = results
                     .get_required(Scalar::name())?
                     .to_dense::<Scalar>(resolver);
-                let all_scalars_entry_range = all_scalars.entry_range(query.range());
+                let all_scalars_entry_range = all_scalars.entry_range();
 
                 if !matches!(
-                    all_scalars.status(query.range()),
+                    all_scalars.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
                 ) {
                     // TODO(#5607): what should happen if the promise is still pending?
@@ -205,7 +205,7 @@ impl SeriesPointSystem {
                         let all_colors = all_colors.to_dense::<Color>(resolver);
 
                         if !matches!(
-                            all_colors.status(query.range()),
+                            all_colors.status(),
                             (PromiseResult::Ready(()), PromiseResult::Ready(()))
                         ) {
                             // TODO(#5607): what should happen if the promise is still pending?
@@ -217,7 +217,7 @@ impl SeriesPointSystem {
 
                         let all_frames = re_query_cache2::range_zip_1x1(
                             all_scalars_indexed,
-                            all_colors.range_indexed(query.range()),
+                            all_colors.range_indexed(),
                         )
                         .enumerate();
 
@@ -245,7 +245,7 @@ impl SeriesPointSystem {
                         let all_marker_sizes = all_marker_sizes.to_dense::<MarkerSize>(resolver);
 
                         if !matches!(
-                            all_marker_sizes.status(query.range()),
+                            all_marker_sizes.status(),
                             (PromiseResult::Ready(()), PromiseResult::Ready(()))
                         ) {
                             // TODO(#5607): what should happen if the promise is still pending?
@@ -257,7 +257,7 @@ impl SeriesPointSystem {
 
                         let all_frames = re_query_cache2::range_zip_1x1(
                             all_scalars_indexed,
-                            all_marker_sizes.range_indexed(query.range()),
+                            all_marker_sizes.range_indexed(),
                         )
                         .enumerate();
 
@@ -277,7 +277,7 @@ impl SeriesPointSystem {
                         let all_marker_shapes = all_marker_shapes.to_dense::<MarkerShape>(resolver);
 
                         if !matches!(
-                            all_marker_shapes.status(query.range()),
+                            all_marker_shapes.status(),
                             (PromiseResult::Ready(()), PromiseResult::Ready(()))
                         ) {
                             // TODO(#5607): what should happen if the promise is still pending?
@@ -289,7 +289,7 @@ impl SeriesPointSystem {
 
                         let all_frames = re_query_cache2::range_zip_1x1(
                             all_scalars_indexed,
-                            all_marker_shapes.range_indexed(query.range()),
+                            all_marker_shapes.range_indexed(),
                         )
                         .enumerate();
 
