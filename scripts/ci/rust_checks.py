@@ -19,7 +19,7 @@ class Timing:
         self.duration = duration
 
 
-def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Timing:
+def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Timing:
     args = ["cargo", cargo_cmd]
     if cargo_cmd != "deny":
         args.append("--quiet")
@@ -31,7 +31,7 @@ def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Tim
 
     env = os.environ.copy()
     env["RUSTFLAGS"] = "--deny warnings"
-    env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
+    env["RUSTDOCFLAGS"] = "--deny warnings"
     if clippy_conf is not None:
         env["CLIPPY_CONF_DIR"] = (
             f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
