@@ -43,7 +43,7 @@ fn simple_query() {
     {
         let expected_compound_index = (TimeInt::new_temporal(123), colors_row_id);
         let expected_points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let expected_colors = vec![MyColor::from_rgb(255, 0, 0), MyColor::from_rgb(255, 0, 0)];
+        let expected_colors = vec![MyColor::from_rgb(255, 0, 0)];
 
         let query = re_data_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
         query_and_compare(
