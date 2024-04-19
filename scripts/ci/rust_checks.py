@@ -83,9 +83,7 @@ def main() -> None:
 
     timings.append(run_cargo("fmt", "--all -- --check"))
 
-    # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked cargo-cranky"))
-    timings.append(run_cargo("cranky", "--all-targets --all-features -- --deny warnings"))
+    timings.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
 
     # Check a few important permutations of the feature flags for our `rerun` library:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
@@ -112,7 +110,7 @@ def main() -> None:
         # Check viewer for wasm32
         timings.append(
             run_cargo(
-                "cranky",
+                "clippy",
                 "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
                 clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
             )
