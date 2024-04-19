@@ -71,15 +71,15 @@ fn main() -> anyhow::Result<()> {
     // E.g. it is possible that the front-side of the range is still waiting for pending data while
     // the back-side has been fully loaded.
     assert!(matches!(
-        all_points.status(query.range()),
+        all_points.status(),
         (PromiseResult::Ready(()), PromiseResult::Ready(()))
     ));
 
     // Zip the results together using a stateful time-based join.
     let all_frames = range_zip_1x2(
-        all_points.range_indexed(query.range()),
-        all_colors.range_indexed(query.range()),
-        all_labels.range_indexed(query.range()),
+        all_points.range_indexed(),
+        all_colors.range_indexed(),
+        all_labels.range_indexed(),
     );
 
     // Then comes the time to resolve/convert and deserialize the data, _for each timestamp_.

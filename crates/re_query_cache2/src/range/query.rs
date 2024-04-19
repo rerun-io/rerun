@@ -4,13 +4,12 @@ use parking_lot::RwLock;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, TimeRange};
-use re_query2::Promise;
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
 use crate::{
     CacheKey, CachedRangeComponentResults, CachedRangeComponentResultsInner, CachedRangeResults,
-    Caches,
+    Caches, Promise,
 };
 
 // ---
@@ -30,10 +29,11 @@ impl Caches {
     ) -> CachedRangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
-        let mut results = CachedRangeResults::default();
+        let mut results = CachedRangeResults::new(query.clone());
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+
             let cache = Arc::clone(
                 self.range_per_cache_key
                     .write()
@@ -158,20 +158,10 @@ impl RangeCache {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         let RangeCache {
-            cache_key,
+            cache_key: _,
             per_data_time,
             pending_invalidation: _,
         } = self;
-
-        // No point in caching indicator components in range queries.
-        if cache_key.component_name.is_indicator_component() {
-            return per_data_time.clone();
-        }
-
-        use re_types_core::Loggable as _;
-        if cache_key.component_name == re_types_core::components::InstanceKey::name() {
-            return per_data_time.clone();
-        }
 
         let mut per_data_time = per_data_time.write();
 
@@ -225,7 +215,7 @@ impl RangeCache {
         per_data_time.sanity_check();
         drop(per_data_time);
 
-        self.per_data_time.clone()
+        self.per_data_time.clone_at(query.range())
     }
 
     pub fn handle_pending_invalidation(&mut self) {
