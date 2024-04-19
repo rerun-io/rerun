@@ -28,7 +28,7 @@ impl Caches {
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
-        let mut results = RangeResults::default();
+        let mut results = RangeResults::new(query.clone());
 
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
@@ -220,7 +220,7 @@ impl RangeCache {
         per_data_time.sanity_check();
         drop(per_data_time);
 
-        self.per_data_time.clone()
+        self.per_data_time.clone_at(query.range())
     }
 
     pub fn handle_pending_invalidation(&mut self) {

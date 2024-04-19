@@ -8,6 +8,7 @@ use std::{
 use nohash_hasher::IntMap;
 
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use re_data_store::RangeQuery;
 use re_log_types::{RowId, TimeInt, TimeRange};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
@@ -23,20 +24,19 @@ use crate::{ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseR
 /// [`RangeResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
 pub struct RangeResults {
-    /// Raw results for each individual component.
+    pub query: RangeQuery,
     pub components: IntMap<ComponentName, RangeComponentResults>,
 }
 
-impl Default for RangeResults {
+impl RangeResults {
     #[inline]
-    fn default() -> Self {
+    pub(crate) fn new(query: RangeQuery) -> Self {
         Self {
+            query,
             components: Default::default(),
         }
     }
-}
 
-impl RangeResults {
     #[inline]
     pub fn contains(&self, component_name: impl Into<ComponentName>) -> bool {
         self.components.contains_key(&component_name.into())
@@ -44,10 +44,7 @@ impl RangeResults {
 
     /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     #[inline]
-    pub fn get(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&RangeComponentResults> {
+    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&RangeComponentResults> {
         self.components.get(&component_name.into())
     }
 
@@ -75,10 +72,7 @@ impl RangeResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_or_empty(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> &RangeComponentResults {
+    pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
@@ -99,15 +93,33 @@ impl RangeResults {
 // ---
 
 /// Lazily cached results for a particular component when using a cached range query.
-#[derive(Debug, Clone)]
-pub struct RangeComponentResults(pub(crate) Arc<RwLock<RangeComponentResultsInner>>);
+#[derive(Debug)]
+pub struct RangeComponentResults {
+    /// The [`TimeRange`] of the query that was used in order to retrieve these results in the
+    /// first place.
+    ///
+    /// The "original" copy in the cache just stores [`TimeRange::EMPTY`]. It's meaningless.
+    pub(crate) time_range: TimeRange,
+
+    pub(crate) inner: Arc<RwLock<RangeComponentResultsInner>>,
+}
+
+impl RangeComponentResults {
+    /// Clones the results while making sure to stamp them with the [`TimeRange`] of the associated query.
+    #[inline]
+    pub(crate) fn clone_at(&self, time_range: TimeRange) -> Self {
+        Self {
+            time_range,
+            inner: self.inner.clone(),
+        }
+    }
+}
 
 impl RangeComponentResults {
     #[inline]
     pub fn empty() -> &'static Self {
         static EMPTY: OnceLock<RangeComponentResults> = OnceLock::new();
-        EMPTY
-            .get_or_init(|| Arc::new(RwLock::new(RangeComponentResultsInner::empty())).into())
+        EMPTY.get_or_init(RangeComponentResults::default)
     }
 }
 
@@ -115,16 +127,17 @@ impl re_types_core::SizeBytes for RangeComponentResults {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: it's all on the heap past this point.
-        self.0.read_recursive().total_size_bytes()
+        self.inner.read_recursive().total_size_bytes()
     }
 }
 
 impl Default for RangeComponentResults {
     #[inline]
     fn default() -> Self {
-        Self(Arc::new(RwLock::new(
-            RangeComponentResultsInner::empty(),
-        )))
+        Self {
+            time_range: TimeRange::EMPTY,
+            inner: Arc::new(RwLock::new(RangeComponentResultsInner::empty())),
+        }
     }
 }
 
@@ -133,19 +146,10 @@ impl std::ops::Deref for RangeComponentResults {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.inner
     }
 }
 
-impl From<Arc<RwLock<RangeComponentResultsInner>>> for RangeComponentResults {
-    #[inline]
-    fn from(results: Arc<RwLock<RangeComponentResultsInner>>) -> Self {
-        Self(results)
-    }
-}
-
-// TODO: I see no reason why we couldnt put the query range in there, simplifying the life of
-// downstream consumers.
 #[derive(Debug)]
 pub struct CachedRangeData<'a, T> {
     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
@@ -154,8 +158,9 @@ pub struct CachedRangeData<'a, T> {
     indices: MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>,
     data: MappedRwLockReadGuard<'a, FlatVecDeque<T>>,
 
-    front_status: (TimeInt, PromiseResult<()>),
-    back_status: (TimeInt, PromiseResult<()>),
+    time_range: TimeRange,
+    front_status: PromiseResult<()>,
+    back_status: PromiseResult<()>,
 
     /// Keeps track of reentrancy counts for the current thread.
     ///
@@ -178,22 +183,8 @@ impl<'a, T> CachedRangeData<'a, T> {
     /// E.g. it is possible that the front-side of the range is still waiting for pending data while
     /// the back-side has been fully loaded.
     #[inline]
-    pub fn status(&self, time_range: TimeRange) -> (PromiseResult<()>, PromiseResult<()>) {
-        let (front_time, front_status) = &self.front_status;
-        let front_status = if *front_time >= time_range.min() {
-            front_status.clone()
-        } else {
-            PromiseResult::Ready(())
-        };
-
-        let (back_time, back_status) = &self.back_status;
-        let back_status = if *back_time <= time_range.min() {
-            back_status.clone()
-        } else {
-            PromiseResult::Ready(())
-        };
-
-        (front_status, back_status)
+    pub fn status(&self) -> (PromiseResult<()>, PromiseResult<()>) {
+        (self.front_status.clone(), self.back_status.clone())
     }
 
     #[inline]
@@ -213,11 +204,8 @@ impl<'a, T> CachedRangeData<'a, T> {
     ///
     /// Useful for time-based joins (`range_zip`).
     #[inline]
-    pub fn range_indexed(
-        &self,
-        time_range: TimeRange,
-    ) -> impl Iterator<Item = (&(TimeInt, RowId), &[T])> {
-        let entry_range = self.entry_range(time_range);
+    pub fn range_indexed(&self) -> impl Iterator<Item = (&(TimeInt, RowId), &[T])> {
+        let entry_range = self.entry_range();
         itertools::izip!(
             self.range_indices(entry_range.clone()),
             self.range_data(entry_range)
@@ -236,7 +224,7 @@ impl<'a, T> CachedRangeData<'a, T> {
     /// This is `O(2*log(n))`, so make sure to clone the returned range rather than calling this
     /// multiple times.
     #[inline]
-    pub fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
+    pub fn entry_range(&self) -> Range<usize> {
         // If there's any static data cached, make sure to look for it explicitly.
         //
         // Remember: time ranges can never contain `TimeInt::STATIC`.
@@ -247,10 +235,10 @@ impl<'a, T> CachedRangeData<'a, T> {
         };
 
         let start_index = self.indices.partition_point(|(data_time, _)| {
-            *data_time < TimeInt::min(time_range.min(), static_override)
+            *data_time < TimeInt::min(self.time_range.min(), static_override)
         });
         let end_index = self.indices.partition_point(|(data_time, _)| {
-            *data_time <= TimeInt::min(time_range.max(), static_override)
+            *data_time <= TimeInt::min(self.time_range.max(), static_override)
         });
 
         start_index..end_index
@@ -278,7 +266,7 @@ impl RangeComponentResults {
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
-        let mut results = if let Some(results) = self.0.try_write() {
+        let mut results = if let Some(results) = self.inner.try_write() {
             // The lock was free to grab, nothing else to worry about.
             Some(results)
         } else {
@@ -294,7 +282,7 @@ impl RangeComponentResults {
                 } else {
                     // The lock is busy, but it is not held by the current thread.
                     // Just block until it gets released.
-                    Some(self.0.write())
+                    Some(self.inner.write())
                 }
             })
         };
@@ -444,14 +432,28 @@ impl RangeComponentResults {
             self.read_recursive()
         };
 
-        let front_status = results.front_status.clone();
-        let back_status = results.back_status.clone();
+        let front_status = {
+            let (front_time, front_status) = &results.front_status;
+            if *front_time <= self.time_range.min() {
+                front_status.clone()
+            } else {
+                PromiseResult::Ready(())
+            }
+        };
+        let back_status = {
+            let (back_time, back_status) = &results.back_status;
+            if self.time_range.max() <= *back_time {
+                back_status.clone()
+            } else {
+                PromiseResult::Ready(())
+            }
+        };
 
         // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
         // impossible to return an owned type in a `parking_lot` guard.
         // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
         let indices = RwLockReadGuard::map(results, |results| &results.indices);
-        let data = RwLockReadGuard::map(self.0.read_recursive(), |results| {
+        let data = RwLockReadGuard::map(self.inner.read_recursive(), |results| {
             // Unwraps: the data is created when entering this function -- we know it's there
             // and we know its type.
             results
@@ -466,6 +468,7 @@ impl RangeComponentResults {
         CachedRangeData {
             indices,
             data,
+            time_range: self.time_range,
             front_status,
             back_status,
             reentering: &REENTERING,
@@ -498,7 +501,7 @@ impl RangeComponentResults {
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
-        let mut results = if let Some(results) = self.0.try_write() {
+        let mut results = if let Some(results) = self.inner.try_write() {
             // The lock was free to grab, nothing else to worry about.
             Some(results)
         } else {
@@ -514,7 +517,7 @@ impl RangeComponentResults {
                 } else {
                     // The lock is busy, but it is not held by the current thread.
                     // Just block until it gets released.
-                    Some(self.0.write())
+                    Some(self.inner.write())
                 }
             })
         };
@@ -664,14 +667,28 @@ impl RangeComponentResults {
             self.read_recursive()
         };
 
-        let front_status = results.front_status.clone();
-        let back_status = results.back_status.clone();
+        let front_status = {
+            let (front_time, front_status) = &results.front_status;
+            if *front_time <= self.time_range.min() {
+                front_status.clone()
+            } else {
+                PromiseResult::Ready(())
+            }
+        };
+        let back_status = {
+            let (back_time, back_status) = &results.back_status;
+            if self.time_range.max() <= *back_time {
+                back_status.clone()
+            } else {
+                PromiseResult::Ready(())
+            }
+        };
 
         // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
         // impossible to return an owned type in a `parking_lot` guard.
         // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
         let indices = RwLockReadGuard::map(results, |results| &results.indices);
-        let data = RwLockReadGuard::map(self.0.read_recursive(), |results| {
+        let data = RwLockReadGuard::map(self.inner.read_recursive(), |results| {
             // Unwraps: the data is created when entering this function -- we know it's there
             // and we know its type.
             results
@@ -686,6 +703,7 @@ impl RangeComponentResults {
         CachedRangeData {
             indices,
             data,
+            time_range: self.time_range,
             front_status,
             back_status,
             reentering: &REENTERING,

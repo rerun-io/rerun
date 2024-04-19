@@ -525,19 +525,19 @@ fn query_and_compare(
             .unwrap()
             .to_dense::<MyPoint>(&resolver);
         assert!(matches!(
-            cached_all_points.status(query.range()),
+            cached_all_points.status(),
             (PromiseResult::Ready(()), PromiseResult::Ready(())),
         ));
-        let cached_all_points_indexed = cached_all_points.range_indexed(query.range());
+        let cached_all_points_indexed = cached_all_points.range_indexed();
 
         let cached_all_colors = cached
             .get_or_empty(MyColor::name())
             .to_dense::<MyColor>(&resolver);
         assert!(matches!(
-            cached_all_colors.status(query.range()),
+            cached_all_colors.status(),
             (PromiseResult::Ready(()), PromiseResult::Ready(())),
         ));
-        let cached_all_colors_indexed = cached_all_colors.range_indexed(query.range());
+        let cached_all_colors_indexed = cached_all_colors.range_indexed();
 
         // let expected = re_query::range(
         //     store,
