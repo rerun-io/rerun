@@ -214,7 +214,7 @@ impl WebViewerServerInner {
         }
     }
 
-    #[cfg(feature = "__ci")] // TODO: test
+    #[cfg(feature = "__ci")]
     #[allow(clippy::needless_pass_by_value)]
     fn send_response(&self, _request: tiny_http::Request) -> Result<(), std::io::Error> {
         if false {
