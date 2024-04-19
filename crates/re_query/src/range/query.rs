@@ -8,8 +8,7 @@ use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
 use crate::{
-    CacheKey, RangeComponentResults, RangeComponentResultsInner, RangeResults,
-    Caches, Promise,
+    CacheKey, Caches, Promise, RangeComponentResults, RangeComponentResultsInner, RangeResults,
 };
 
 // ---
@@ -164,20 +163,10 @@ impl RangeCache {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
         let RangeCache {
-            cache_key,
+            cache_key: _,
             per_data_time,
             pending_invalidation: _,
         } = self;
-
-        // No point in caching indicator components in range queries.
-        if cache_key.component_name.is_indicator_component() {
-            return per_data_time.clone();
-        }
-
-        use re_types_core::Loggable as _;
-        if cache_key.component_name == re_types_core::components::InstanceKey::name() {
-            return per_data_time.clone();
-        }
 
         let mut per_data_time = per_data_time.write();
 

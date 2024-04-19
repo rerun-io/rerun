@@ -19,13 +19,11 @@ pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistor
 pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
-pub use self::latest_at::{
-    LatestAtComponentResults, CachedLatestAtMonoResult, LatestAtResults,
-};
-pub use self::range::{RangeComponentResults, CachedRangeData, RangeResults};
+pub use self::latest_at::{CachedLatestAtMonoResult, LatestAtComponentResults, LatestAtResults};
+pub use self::range::{CachedRangeData, RangeComponentResults, RangeResults};
 
 pub(crate) use self::latest_at::LatestAtCache;
-pub(crate) use self::range::{RangeComponentResultsInner, RangeCache};
+pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
 
 pub mod external {
     pub use paste;
@@ -149,5 +147,5 @@ pub fn cacheable(component_name: re_types::ComponentName) -> bool {
         .into()
     });
 
-    !not_cacheable.contains(&component_name)
+    !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
 }
