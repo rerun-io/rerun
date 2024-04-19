@@ -26,12 +26,12 @@ use std::time::Duration;
 
 pub fn run(
     release_version: Option<Version>,
-    _exclude_crates: &[String],
+    exclude_crates: &[String],
 ) -> anyhow::Result<Vec<Document>> {
     let ctx = Context::new(release_version)?;
     docs::ingest(&ctx)?;
     examples::ingest(&ctx)?;
-    // rust::ingest(&ctx, exclude_crates)?;
+    rust::ingest(&ctx, exclude_crates)?;
     python::ingest(&ctx)?;
     cpp::ingest(&ctx)?;
     Ok(ctx.finish())
