@@ -189,6 +189,7 @@ search-index = "cargo run --locked -p re_dev_tools -- search-index"
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 mkdocs = "mkdocs"
+griffe = "griffe"
 
 [feature.py-docs.pypi-dependencies]
 griffe = "==0.39.0"

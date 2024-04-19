@@ -63,6 +63,12 @@ jobs:
         with:
           pixi-version: v0.19.0
 
+      # Install latest release version of the Rerun SDK
+      # We don't actually want to build it, because then we'd be installing the dev version.
+      - name: Install rerun-sdk
+        run: |
+          pixi run python -m pip install rerun-sdk==${{ needs.get-version.outputs.version }}
+
       - name: Build search index
         env:
           RUSTFLAGS: "--cfg disable_web_viewer_server"
