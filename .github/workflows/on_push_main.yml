@@ -100,7 +100,7 @@ jobs:
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
-  # TODO(emilk): build and test one additional platorm, picked at random
+  # TODO(emilk): build and test one additional platform, picked at random
 
   build-rerun_c-and-upload-linux-x64:
     needs: [checks]
@@ -112,7 +112,7 @@ jobs:
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
-  # TODO(emilk): build and test one additional platorm, picked at random
+  # TODO(emilk): build and test one additional platform, picked at random
 
   build-rerun-cli-and-upload-linux-x64:
     needs: [checks]
@@ -124,10 +124,10 @@ jobs:
     secrets: inherit
 
   # -----------------------------------------------------------------------------------
-  # TODO(emilk): build and test one additional platorm, picked at random
+  # TODO(emilk): build and test one additional platform, picked at random
 
   build-wheel-linux-x64:
-    needs: [checks]
+    needs: [checks, build-rerun-cli-and-upload-linux-x64]
     name: "Linux-x64: Build & Upload Wheels"
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:

@@ -12,11 +12,11 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "native_viewer"]
+default = ["extension-module"]
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "native_viewer", "web_viewer"]
+pypi = ["extension-module", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -25,29 +25,24 @@ pypi = ["extension-module", "native_viewer", "web_viewer"]
 ## * <https://pyo3.rs/main/building-and-distribution#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
 
-## Support spawning a native Rerun viewer with `spawn()`.
-native_viewer = ["rerun/native_viewer"]
-
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
 ## Enabling this adds quite a bit to the compile time and binary size,
 ## since it requires compiling and bundling the viewer as wasm.
-web_viewer = ["rerun/web_viewer", "dep:re_web_viewer_server", "dep:re_ws_comms"]
+web_viewer = [
+  "re_sdk/web_viewer",
+  "dep:re_web_viewer_server",
+  "dep:re_ws_comms",
+]
 
 
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
-re_log.workspace = true
+re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_memory.workspace = true
-rerun = { workspace = true, features = [
-  "analytics",
-  "data_loaders",
-  "run",
-  "server",
-  "sdk",
-] }
+re_sdk = { workspace = true, features = ["data_loaders"] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 

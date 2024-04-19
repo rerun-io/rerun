@@ -18,6 +18,10 @@ pub struct SpawnOptions {
     /// Defaults to `9876`.
     pub port: u16,
 
+    /// If `true`, the call to [`spawn`] will block until the Rerun Viewer
+    /// has successfully bound to the port.
+    pub wait_for_bind: bool,
+
     /// An upper limit on how much memory the Rerun Viewer should use.
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
@@ -49,6 +53,7 @@ impl Default for SpawnOptions {
     fn default() -> Self {
         Self {
             port: crate::default_server_addr().port(),
+            wait_for_bind: false,
             memory_limit: "75%".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
@@ -250,6 +255,20 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         .args(opts.extra_args.clone())
         .spawn()
         .map_err(map_err)?;
+
+    if opts.wait_for_bind {
+        // Give the newly spawned Rerun Viewer some time to bind.
+        //
+        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        // For that reason we use an extra loop.
+        for _ in 0..5 {
+            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;

@@ -32,5 +32,5 @@ if "RERUN_CLI_PATH" not in os.environ:
 
 sys.path.insert(0, str(real_path))
 
-del sys.modules["rerun"]
-sys.modules["rerun"] = __import__("rerun")
+del sys.modules["rerun_cli"]
+sys.modules["rerun_cli"] = __import__("rerun_cli")
