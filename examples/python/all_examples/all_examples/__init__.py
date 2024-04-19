@@ -3,7 +3,7 @@ from __future__ import annotations
 import platform
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
 import tomli
 from pyproject_metadata import StandardMetadata
@@ -67,7 +67,7 @@ class Example:
     standard_metadata: StandardMetadata = field(init=False)
     rerun_metadata: RerunMetadata = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.name = self.path.name
         pyproject_data = tomli.loads(Path(self.path / "pyproject.toml").read_text())
         self.standard_metadata = StandardMetadata.from_pyproject(pyproject_data, self.path)
@@ -82,7 +82,7 @@ class Example:
         """Check that this example is compatible with the current Python version."""
         requires_python = self.standard_metadata.requires_python
         if requires_python is not None:
-            return requires_python.contains(platform.python_version())
+            return cast(bool, requires_python.contains(platform.python_version()))
 
         return True
 

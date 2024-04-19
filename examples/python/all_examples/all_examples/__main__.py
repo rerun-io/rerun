@@ -8,7 +8,7 @@ from . import active_examples
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
 
 
-def cmd_list(args):
+def cmd_list() -> None:
     examples = active_examples()
 
     for example in sorted(examples, key=lambda e: e.name):
@@ -18,16 +18,16 @@ def cmd_list(args):
         print(f'{example.name} = {{ path = "{rel_path}", editable = true }} ')
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(prog="all_examples", description="Meta-project to enumerate all Python example")
     subparsers = parser.add_subparsers(dest="command")
 
     # `list` command
-    subparsers.add_parser("list", help="List all examples")
+    subparsers.add_parser("list", help="List all examples in format suitable for pixi.toml")
 
     args = parser.parse_args()
     if args.command == "list":
-        cmd_list(args)
+        cmd_list()
     else:
         parser.print_help()
 

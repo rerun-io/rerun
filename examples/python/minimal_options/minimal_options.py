@@ -9,7 +9,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Demonstrates the most barebone usage of the Rerun SDK, with standard options."
     )

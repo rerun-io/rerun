@@ -19,7 +19,7 @@ import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 from tqdm import tqdm
 
-from .read_write_model import Camera, read_model
+from .read_write_model import Camera, read_model  # type: ignore[attr-defined]
 
 DESCRIPTION = """
 # Sparse reconstruction by COLMAP

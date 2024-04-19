@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 from hatchling.metadata.plugin.interface import MetadataHookInterface
 
@@ -10,8 +11,8 @@ sys.path.append(str(Path(__file__).parent))
 from all_examples import active_examples
 
 
-class MetadataHook(MetadataHookInterface):
-    def update(self, metadata: dict) -> None:
+class MetadataHook(MetadataHookInterface):  # type: ignore[misc]
+    def update(self, metadata: dict[str, Any]) -> None:
         """
         Use our very own package to list the examples we depend on.
 

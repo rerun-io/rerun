@@ -18,7 +18,7 @@ from pathlib import Path
 import rerun as rr  # pip install rerun-sdk
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Demonstrates how to log any file from the SDK using the `DataLoader` machinery."
     )

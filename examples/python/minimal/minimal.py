@@ -9,7 +9,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 
 
-def main():
+def main() -> None:
     # sanity-check since all other example scripts take arguments:
     assert len(sys.argv) == 1, f"{sys.argv[0]} does not take any arguments"
 

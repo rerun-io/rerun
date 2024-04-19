@@ -22,7 +22,7 @@ import rerun.blueprint as rrb
 import torch
 from PIL import Image
 
-from .huggingface_pipeline import StableDiffusionDepth2ImgPipeline
+from .huggingface_pipeline import StableDiffusionDepth2ImgPipeline  # type: ignore[attr-defined]
 
 EXAMPLE_DIR: Final = Path(__file__).parent.parent
 DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
