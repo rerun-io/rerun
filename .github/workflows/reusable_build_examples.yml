@@ -76,9 +76,8 @@ jobs:
 
       - name: Install example dependencies
         run: |
-          pixi run -e wheel-test pip install \
-            -r scripts/ci/requirements-examples-${{ inputs.CHANNEL }}.txt \
-            --no-input
+          pixi run -e wheel-test build-examples install \
+            --channel ${{ inputs.CHANNEL }}
 
       - name: Install built wheel
         run: |
