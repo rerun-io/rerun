@@ -11,6 +11,7 @@ use anyhow::Context;
 pub struct Example {
     pub name: String,
     pub title: String,
+    pub dir: PathBuf,
     pub description: String,
     pub tags: Vec<String>,
     pub thumbnail_url: String,
@@ -60,14 +61,16 @@ impl Example {
         else {
             anyhow::bail!("example {name:?} has no frontmatter");
         };
+        let script_path = dir.join(language.entrypoint_path(&dir, name)?);
         Ok(Some(Example {
             name: name.to_owned(),
             title: readme.title,
+            dir,
             description: readme.description,
             tags: readme.tags,
             thumbnail_url: readme.thumbnail,
             thumbnail_dimensions: readme.thumbnail_dimensions,
-            script_path: dir.join(language.entrypoint_path(&dir, name)?),
+            script_path,
             script_args: readme.build_args,
             readme_body: body,
             language,
@@ -272,6 +275,7 @@ impl Channel {
                 examples.push(Example {
                     name,
                     title: readme.title,
+                    dir,
                     description: readme.description,
                     tags: readme.tags,
                     thumbnail_url: readme.thumbnail,
