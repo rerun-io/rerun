@@ -26,8 +26,8 @@ macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe pac
 libc = "2.31"
 
 
-# KEEP THESE TWO EMTPY
-# their content it simplicitly pulled in ALL environments
+# These should be kept empty as their content is pulled in every single environment. For the "standard" stuff,
+# dependencies are listed in the `base` feature instead.
 [dependencies]
 [pypi-dependencies]
 
@@ -37,6 +37,7 @@ cpp = ["cpp", "base"]
 py-docs = ["py-docs", "base"]
 wheel-test = ["wheel-test", "base"]
 
+# Example environment (WIP)
 examples = ["examples-common", "maturin-build"]
 
 
@@ -339,9 +340,7 @@ cxx-compiler = "1.6.0.*"
 vs2022_win-64 = "19.37.32822"
 
 
-
-
-# EXAMPLES ENVIRONMENT
+# EXAMPLES ENVIRONMENT (WIP)
 
 [feature.examples-common]
 platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
@@ -352,9 +351,6 @@ macos = "12.0" # needed for scipy
 [feature.examples-common.dependencies]
 python = "=3.11"
 
-
-# ALL deps of ALL examples should be listed here. In case of conflicts, the conflicting example should be moved to
-# another, dedicated environment other than `examples`.
 [feature.examples-common.pypi-dependencies]
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
