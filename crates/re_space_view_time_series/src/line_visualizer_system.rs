@@ -207,10 +207,10 @@ fn load_series(
         let all_scalars = results
             .get_required(Scalar::name())?
             .to_dense::<Scalar>(resolver);
-        let all_scalars_entry_range = all_scalars.entry_range(query.range());
+        let all_scalars_entry_range = all_scalars.entry_range();
 
         if !matches!(
-            all_scalars.status(query.range()),
+            all_scalars.status(),
             (PromiseResult::Ready(()), PromiseResult::Ready(()))
         ) {
             // TODO(#5607): what should happen if the promise is still pending?
@@ -250,7 +250,7 @@ fn load_series(
                 let all_colors = all_colors.to_dense::<Color>(resolver);
 
                 if !matches!(
-                    all_colors.status(query.range()),
+                    all_colors.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
                 ) {
                     // TODO(#5607): what should happen if the promise is still pending?
@@ -260,11 +260,9 @@ fn load_series(
                     .range_indices(all_scalars_entry_range.clone())
                     .map(|index| (index, ()));
 
-                let all_frames = re_query::range_zip_1x1(
-                    all_scalars_indexed,
-                    all_colors.range_indexed(query.range()),
-                )
-                .enumerate();
+                let all_frames =
+                    re_query::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                        .enumerate();
 
                 for (i, (_index, _scalars, colors)) in all_frames {
                     if let Some(color) = colors.and_then(|colors| {
@@ -290,7 +288,7 @@ fn load_series(
                 let all_stroke_widths = all_stroke_widths.to_dense::<StrokeWidth>(resolver);
 
                 if !matches!(
-                    all_stroke_widths.status(query.range()),
+                    all_stroke_widths.status(),
                     (PromiseResult::Ready(()), PromiseResult::Ready(()))
                 ) {
                     // TODO(#5607): what should happen if the promise is still pending?
@@ -300,11 +298,9 @@ fn load_series(
                     .range_indices(all_scalars_entry_range.clone())
                     .map(|index| (index, ()));
 
-                let all_frames = re_query::range_zip_1x1(
-                    all_scalars_indexed,
-                    all_stroke_widths.range_indexed(query.range()),
-                )
-                .enumerate();
+                let all_frames =
+                    re_query::range_zip_1x1(all_scalars_indexed, all_stroke_widths.range_indexed())
+                        .enumerate();
 
                 for (i, (_index, _scalars, stroke_widths)) in all_frames {
                     if let Some(stroke_width) =

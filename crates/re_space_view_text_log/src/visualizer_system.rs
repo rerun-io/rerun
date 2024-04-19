@@ -1,4 +1,4 @@
-use re_data_store::{RangeQuery, TimeRange};
+use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
 use re_query::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
@@ -74,22 +74,22 @@ impl VisualizerSystem for TextLogSystem {
                 };
                 all_bodies.to_dense::<Text>(resolver)
             };
-            check_range(&query, &all_bodies)?;
+            check_range(&all_bodies)?;
 
             let all_levels = results
                 .get_or_empty(TextLogLevel::name())
                 .to_dense::<TextLogLevel>(resolver);
-            check_range(&query, &all_levels)?;
+            check_range(&all_levels)?;
 
             let all_colors = results
                 .get_or_empty(Color::name())
                 .to_dense::<Color>(resolver);
-            check_range(&query, &all_colors)?;
+            check_range(&all_colors)?;
 
             let all_frames = range_zip_1x2(
-                all_bodies.range_indexed(query.range()),
-                all_levels.range_indexed(query.range()),
-                all_colors.range_indexed(query.range()),
+                all_bodies.range_indexed(),
+                all_levels.range_indexed(),
+                all_colors.range_indexed(),
             );
 
             for (&(data_time, row_id), bodies, levels, colors) in all_frames {
@@ -131,11 +131,8 @@ impl VisualizerSystem for TextLogSystem {
 
 // TODO(#5607): what should happen if the promise is still pending?
 #[inline]
-fn check_range<'a, C: Component>(
-    query: &RangeQuery,
-    results: &'a CachedRangeData<'a, C>,
-) -> re_query::Result<()> {
-    let (front_status, back_status) = results.status(query.range());
+fn check_range<'a, C: Component>(results: &'a CachedRangeData<'a, C>) -> re_query::Result<()> {
+    let (front_status, back_status) = results.status();
     match front_status {
         PromiseResult::Pending => return Ok(()),
         PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
