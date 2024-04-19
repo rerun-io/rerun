@@ -146,5 +146,5 @@ pub fn cacheable(component_name: re_types::ComponentName) -> bool {
         .into()
     });
 
-    !not_cacheable.contains(&component_name)
+    !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
 }
