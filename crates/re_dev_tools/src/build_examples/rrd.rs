@@ -77,7 +77,7 @@ impl Example {
         let rrd_path = output_dir.join(&self.name).with_extension("rrd");
 
         let mut cmd = Command::new("python3");
-        cmd.arg(self.script_path);
+        cmd.arg("-m").arg(&self.name);
         cmd.arg("--save").arg(&rrd_path);
         cmd.args(self.script_args);
 

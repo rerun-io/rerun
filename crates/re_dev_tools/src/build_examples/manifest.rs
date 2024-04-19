@@ -11,7 +11,10 @@ use super::{Channel, Example};
 #[derive(argh::FromArgs)]
 #[argh(subcommand, name = "manifest")]
 pub struct Manifest {
-    #[argh(positional, description = "output path for the manifest file")]
+    #[argh(
+        positional,
+        description = "output path for the manifest file (must not exist)"
+    )]
     output_path: PathBuf,
 
     #[argh(
@@ -84,7 +87,7 @@ impl ManifestEntry {
             source_url: format!(
                 "{base_source_url}/examples/{}/{name}/{}",
                 example.language.examples_dir().to_string_lossy(),
-                example.language.entrypoint_path().to_string_lossy()
+                example.script_path.to_string_lossy(),
             ),
             name,
         }
