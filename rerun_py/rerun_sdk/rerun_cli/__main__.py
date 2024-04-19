@@ -24,7 +24,7 @@ def main() -> int:
         print(f"Using overridden RERUN_CLI_PATH={os.environ['RERUN_CLI_PATH']}", file=sys.stderr)
         target_path = os.environ["RERUN_CLI_PATH"]
     else:
-        target_path = os.path.join(os.path.dirname(__file__), "..", "bin", "rerun")
+        target_path = os.path.join(os.path.dirname(__file__), "rerun")
 
     target_path = add_exe_suffix(target_path)
 

@@ -204,7 +204,7 @@ jobs:
           --commit-sha ${{ steps.get-sha.outputs.sha }} \
           --artifact rerun-cli \
           --platform ${{ inputs.PLATFORM }} \
-          --dest rerun_py/rerun_sdk/bin
+          --dest rerun_py/rerun_sdk/rerun_cli
 
       - name: Build
         run: |
