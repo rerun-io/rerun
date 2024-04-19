@@ -257,14 +257,14 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                         let resolver = ctx.recording().resolver();
 
-                        let half_sizes = match results.get_dense::<HalfSizes3D>(resolver, _query) {
+                        let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
                             Some(Ok(vectors)) => vectors,
                             Some(err @ Err(_)) => err?,
                             _ => return Ok(()),
                         };
 
                         let num_boxes = half_sizes
-                            .range_indexed(_query.range())
+                            .range_indexed()
                             .map(|(_, vectors)| vectors.len())
                             .sum::<usize>();
                         if num_boxes == 0 {
@@ -275,23 +275,23 @@ impl VisualizerSystem for Boxes3DVisualizer {
                         line_builder.reserve_strips(num_boxes * 12)?;
                         line_builder.reserve_vertices(num_boxes * 12 * 2)?;
 
-                        let centers = results.get_or_empty_dense(resolver, _query)?;
-                        let rotations = results.get_or_empty_dense(resolver, _query)?;
-                        let colors = results.get_or_empty_dense(resolver, _query)?;
-                        let radii = results.get_or_empty_dense(resolver, _query)?;
-                        let labels = results.get_or_empty_dense(resolver, _query)?;
-                        let class_ids = results.get_or_empty_dense(resolver, _query)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver, _query)?;
+                        let centers = results.get_or_empty_dense(resolver)?;
+                        let rotations = results.get_or_empty_dense(resolver)?;
+                        let colors = results.get_or_empty_dense(resolver)?;
+                        let radii = results.get_or_empty_dense(resolver)?;
+                        let labels = results.get_or_empty_dense(resolver)?;
+                        let class_ids = results.get_or_empty_dense(resolver)?;
+                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
                         let data = range_zip_1x7(
-                            half_sizes.range_indexed(_query.range()),
-                            centers.range_indexed(_query.range()),
-                            rotations.range_indexed(_query.range()),
-                            colors.range_indexed(_query.range()),
-                            radii.range_indexed(_query.range()),
-                            labels.range_indexed(_query.range()),
-                            class_ids.range_indexed(_query.range()),
-                            keypoint_ids.range_indexed(_query.range()),
+                            half_sizes.range_indexed(),
+                            centers.range_indexed(),
+                            rotations.range_indexed(),
+                            colors.range_indexed(),
+                            radii.range_indexed(),
+                            labels.range_indexed(),
+                            class_ids.range_indexed(),
+                            keypoint_ids.range_indexed(),
                         )
                         .map(
                             |(

@@ -260,14 +260,14 @@ impl VisualizerSystem for Points3DVisualizer {
 
                     let resolver = ctx.recording().resolver();
 
-                    let positions = match results.get_dense::<Position3D>(resolver, _query) {
+                    let positions = match results.get_dense::<Position3D>(resolver) {
                         Some(Ok(positions)) => positions,
                         Some(err @ Err(_)) => err?,
                         _ => return Ok(()),
                     };
 
                     let num_positions = positions
-                        .range_indexed(_query.range())
+                        .range_indexed()
                         .map(|(_, positions)| positions.len())
                         .sum::<usize>();
                     if num_positions == 0 {
@@ -276,19 +276,19 @@ impl VisualizerSystem for Points3DVisualizer {
 
                     point_builder.reserve(num_positions)?;
 
-                    let colors = results.get_or_empty_dense(resolver, _query)?;
-                    let radii = results.get_or_empty_dense(resolver, _query)?;
-                    let labels = results.get_or_empty_dense(resolver, _query)?;
-                    let class_ids = results.get_or_empty_dense(resolver, _query)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver, _query)?;
+                    let colors = results.get_or_empty_dense(resolver)?;
+                    let radii = results.get_or_empty_dense(resolver)?;
+                    let labels = results.get_or_empty_dense(resolver)?;
+                    let class_ids = results.get_or_empty_dense(resolver)?;
+                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
                     let data = range_zip_1x5(
-                        positions.range_indexed(_query.range()),
-                        colors.range_indexed(_query.range()),
-                        radii.range_indexed(_query.range()),
-                        labels.range_indexed(_query.range()),
-                        class_ids.range_indexed(_query.range()),
-                        keypoint_ids.range_indexed(_query.range()),
+                        positions.range_indexed(),
+                        colors.range_indexed(),
+                        radii.range_indexed(),
+                        labels.range_indexed(),
+                        class_ids.range_indexed(),
+                        keypoint_ids.range_indexed(),
                     )
                     .map(
                         |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {

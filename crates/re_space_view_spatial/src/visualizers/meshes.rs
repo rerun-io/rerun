@@ -224,29 +224,29 @@ impl VisualizerSystem for Mesh3DVisualizer {
 
                     let resolver = ctx.recording().resolver();
 
-                    let vertex_positions = match results.get_dense::<Position3D>(resolver, _query) {
+                    let vertex_positions = match results.get_dense::<Position3D>(resolver) {
                         Some(Ok(positions)) => positions,
                         Some(err @ Err(_)) => err?,
                         _ => return Ok(()),
                     };
 
-                    let vertex_normals = results.get_or_empty_dense(resolver, _query)?;
-                    let vertex_colors = results.get_or_empty_dense(resolver, _query)?;
-                    let vertex_texcoords = results.get_or_empty_dense(resolver, _query)?;
-                    let mesh_properties = results.get_or_empty_dense(resolver, _query)?;
-                    let mesh_materials = results.get_or_empty_dense(resolver, _query)?;
-                    let albedo_textures = results.get_or_empty_dense(resolver, _query)?;
-                    let class_ids = results.get_or_empty_dense(resolver, _query)?;
+                    let vertex_normals = results.get_or_empty_dense(resolver)?;
+                    let vertex_colors = results.get_or_empty_dense(resolver)?;
+                    let vertex_texcoords = results.get_or_empty_dense(resolver)?;
+                    let mesh_properties = results.get_or_empty_dense(resolver)?;
+                    let mesh_materials = results.get_or_empty_dense(resolver)?;
+                    let albedo_textures = results.get_or_empty_dense(resolver)?;
+                    let class_ids = results.get_or_empty_dense(resolver)?;
 
                     let data = range_zip_1x7(
-                        vertex_positions.range_indexed(_query.range()),
-                        vertex_normals.range_indexed(_query.range()),
-                        vertex_colors.range_indexed(_query.range()),
-                        vertex_texcoords.range_indexed(_query.range()),
-                        mesh_properties.range_indexed(_query.range()),
-                        mesh_materials.range_indexed(_query.range()),
-                        albedo_textures.range_indexed(_query.range()),
-                        class_ids.range_indexed(_query.range()),
+                        vertex_positions.range_indexed(),
+                        vertex_normals.range_indexed(),
+                        vertex_colors.range_indexed(),
+                        vertex_texcoords.range_indexed(),
+                        mesh_properties.range_indexed(),
+                        mesh_materials.range_indexed(),
+                        albedo_textures.range_indexed(),
+                        class_ids.range_indexed(),
                     )
                     .map(
                         |(

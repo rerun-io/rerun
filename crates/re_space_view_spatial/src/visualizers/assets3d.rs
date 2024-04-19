@@ -183,19 +183,19 @@ impl VisualizerSystem for Asset3DVisualizer {
 
                     let resolver = ctx.recording().resolver();
 
-                    let blobs = match results.get_dense::<Blob>(resolver, _query) {
+                    let blobs = match results.get_dense::<Blob>(resolver) {
                         Some(Ok(blobs)) => blobs,
                         Some(err @ Err(_)) => err?,
                         _ => return Ok(()),
                     };
 
-                    let media_types = results.get_or_empty_dense(resolver, _query)?;
-                    let transforms = results.get_or_empty_dense(resolver, _query)?;
+                    let media_types = results.get_or_empty_dense(resolver)?;
+                    let transforms = results.get_or_empty_dense(resolver)?;
 
                     let data = range_zip_1x2(
-                        blobs.range_indexed(_query.range()),
-                        media_types.range_indexed(_query.range()),
-                        transforms.range_indexed(_query.range()),
+                        blobs.range_indexed(),
+                        media_types.range_indexed(),
+                        transforms.range_indexed(),
                     )
                     .filter_map(|(&index, blobs, media_types, transforms)| {
                         blobs.first().map(|blob| Asset3DComponentData {

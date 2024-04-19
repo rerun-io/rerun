@@ -899,19 +899,19 @@ impl ImageVisualizer {
 
                     let resolver = ctx.recording().resolver();
 
-                    let tensors = match results.get_dense::<TensorData>(resolver, _query) {
+                    let tensors = match results.get_dense::<TensorData>(resolver) {
                         Some(Ok(tensors)) => tensors,
                         Some(err @ Err(_)) => err?,
                         _ => return Ok(()),
                     };
 
-                    let colors = results.get_or_empty_dense(resolver, _query)?;
-                    let draw_orders = results.get_or_empty_dense(resolver, _query)?;
+                    let colors = results.get_or_empty_dense(resolver)?;
+                    let draw_orders = results.get_or_empty_dense(resolver)?;
 
                     let mut data = range_zip_1x2(
-                        tensors.range_indexed(_query.range()),
-                        draw_orders.range_indexed(_query.range()),
-                        colors.range_indexed(_query.range()),
+                        tensors.range_indexed(),
+                        draw_orders.range_indexed(),
+                        colors.range_indexed(),
                     )
                     .filter_map(|(&index, tensors, draw_orders, colors)| {
                         tensors.first().map(|tensor| ImageComponentData {
