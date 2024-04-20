@@ -30,6 +30,8 @@ all-features = true
 version = 2
 ignore = [
   "RUSTSEC-2023-0081", # TODO(#5998): unmaintained crate "safemem" pulled in by "cargo-run-wasm"
+  "RUSTSEC-2024-0336", # TODO(#6050): needs updating of ewebsock at least
+
 ]
 
 
