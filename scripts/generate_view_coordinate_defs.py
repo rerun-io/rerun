@@ -184,7 +184,7 @@ CPP_ARCHETYPE_EXTENSION_FILE = "rerun_cpp/src/rerun/archetypes/view_coordinates_
 
 
 def cpp_arch_decl(coords: ViewCoordinates) -> str:
-    return f"static const rerun::archetypes::ViewCoordinates {coords.name};\n"
+    return f"RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates {coords.name};\n"
 
 
 def gen_cpp_arch_decl() -> list[str]:
@@ -225,7 +225,7 @@ CPP_COMPONENT_EXTENSION_FILE = "rerun_cpp/src/rerun/components/view_coordinates_
 
 
 def cpp_cmp_decl(coords: ViewCoordinates) -> str:
-    return f"static const rerun::components::ViewCoordinates {coords.name};\n"
+    return f"RERUN_SDK_EXPORT static const rerun::components::ViewCoordinates {coords.name};\n"
 
 
 def gen_cpp_cmp_decl() -> list[str]:

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "mat3x3.hpp"
 #include "vec3d.hpp"
@@ -41,7 +42,7 @@ namespace rerun::datatypes {
         ///
         /// Applying this transform does not alter an entity's transformation.
         /// It has all optional fields set to `std::nullopt`.
-        static const TranslationAndMat3x3 IDENTITY;
+        RERUN_SDK_EXPORT static const TranslationAndMat3x3 IDENTITY;
 
         /// Creates a new 3D transform from translation/matrix.
         ///

@@ -26,6 +26,14 @@ function(rerun_strict_warning_settings target)
         # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
 
+        if(BUILD_SHARED_LIBS)
+            # If we are building as shared libs, we are going to have to disable the C4251
+            # warning, as it would trigger for any datatype derived from a STL class
+            # See also https://github.com/protocolbuffers/protobuf/blob/v26.1/cmake/README.md#notes-on-compiler-warnings
+            # We need also to make it public, otherwise downstream code will be flooded by c4251 warnings
+            target_compile_options(${target} PUBLIC /wd4251)
+        endif()
+
         # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
         # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
         if(CMAKE_COMPILE_WARNING_AS_ERROR)
@@ -144,7 +152,19 @@ FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
     GIT_TAG "master"
 )
+
+# Loguru does not support being build with BUILD_SHARED_LIBS=ON on Windows
+# so we always compile it with BUILD_SHARED_LIBS=OFF on Windows
+if(MSVC AND BUILD_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS_RERUN_SDK ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
 FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
+
+if(MSVC AND BUILD_SHARED_LIBS_RERUN_SDK)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_RERUN_SDK})
+endif()
 
 # Set any loguru compile-time flags before calling MakeAvailable()
 # Stacktraces are not yet supported on Windows.

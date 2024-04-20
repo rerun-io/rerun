@@ -7,7 +7,19 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
     GIT_TAG v3.4.0
 )
+
+# To avoid that tests to not pass on Windows with BUILD_SHARED_LIBS=ON
+# because the loader can't find Catch2.dll, we always compile Catch2 as static
+if(WIN32 AND BUILD_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS_RERUN_SDK ${BUILD_SHARED_LIBS})
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
 FetchContent_MakeAvailable(Catch2)
+
+if(WIN32 AND BUILD_SHARED_LIBS_RERUN_SDK)
+    set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_RERUN_SDK})
+endif()
 
 file(GLOB_RECURSE rerun_sdk_tests_SRC CONFIGURE_DEPENDS
     "*.hpp"

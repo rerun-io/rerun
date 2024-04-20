@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "vec4d.hpp"
 
@@ -35,7 +36,7 @@ namespace rerun::datatypes {
       public:
         // Extensions to generated type defined in 'mat4x4_ext.cpp'
 
-        static const Mat4x4 IDENTITY;
+        RERUN_SDK_EXPORT static const Mat4x4 IDENTITY;
 
         /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
         Mat4x4(const Vec4D (&columns)[4])

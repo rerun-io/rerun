@@ -1,5 +1,10 @@
 #include "rotation3d.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -12,7 +17,7 @@ namespace rerun {
 
             // <CODEGEN_COPY_TO_HEADER>
 
-            static const Rotation3D IDENTITY;
+            RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
 
             // </CODEGEN_COPY_TO_HEADER>
         };

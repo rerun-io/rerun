@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/rotation3d.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -18,7 +19,7 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'rotation3d_ext.cpp'
 
-        static const Rotation3D IDENTITY;
+        RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
 
         /// Construct Rotation3d from Quaternion.
         Rotation3D(datatypes::Quaternion quaternion) : repr{quaternion} {}
