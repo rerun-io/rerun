@@ -41,7 +41,6 @@ wheel-test = ["wheel-test", "base"]
 examples = ["examples-common", "maturin-build"]
 
 
-
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
