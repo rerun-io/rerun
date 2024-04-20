@@ -23,7 +23,7 @@ This example demonstrates the ability to read and visualize LiDAR data from the 
 The scenes in this dataset encompass data collected from a comprehensive suite of sensors on autonomous vehicles, including 6 cameras, 1 LIDAR, 5 RADAR, GPS and IMU sensors.
 
 
-It's important to note that in this example, only the LiDAR data is visualized. For a more extensive example including other sensors and annotations check out the [nuScenes example](https://www.rerun.io/examples/real-data/nuscenes).
+It's important to note that in this example, only the LiDAR data is visualized. For a more extensive example including other sensors and annotations check out the [nuScenes example](https://www.rerun.io/examples/robotics/nuscenes).
 
 ## Logging and visualizing with Rerun
 
