@@ -215,6 +215,7 @@ mkdocstrings = "==0.23.0"
 mkdocstrings-python = "==1.7.3"
 sphobjinv = "==2.3.1"
 typing_extensions = "==4.11.0"                                                                                                    # uncaptured dep for mkdocstrings (https://github.com/mkdocstrings/mkdocstrings/issues/548)
+setuptools = "*"                                                                                                                  # apparently mike needs pkg_resources, which is part of setuptools
 
 
 [feature.cpp.tasks]
@@ -261,6 +262,7 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
 [feature.wheel-test.pypi-dependencies]
 torch = ">=2.0.1"
+pip = ">=23"
 
 
 [feature.wheel-test.tasks]
