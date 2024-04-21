@@ -138,15 +138,15 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/human_pose_tracking/requirements.txt
+pip install -e examples/python/human_pose_tracking
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/human_pose_tracking/main.py # run the example
+python -m human_pose_tracking # run the example
 ```
 
 If you wish to customize it for various videos, adjust the maximum frames, or explore additional features, use the CLI with the `--help` option for guidance:
 
 ```bash
-python examples/python/human_pose_tracking/main.py --help
+python -m human_pose_tracking --help
 ```

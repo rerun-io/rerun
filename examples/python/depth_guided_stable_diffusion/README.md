@@ -92,15 +92,15 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/depth_guided_stable_diffusion/requirements.txt
+pip install -e examples/python/depth_guided_stable_diffusion
 ```
 
 To run this example use
 ```bash
-python examples/python/depth_guided_stable_diffusion/main.py
+python -m depth_guided_stable_diffusion
 ```
 
 You can specify your own image and prompts using
 ```bash
-python examples/python/depth_guided_stable_diffusion/main.py [--img-path IMG_PATH] [--depth-map-path DEPTH_MAP_PATH] [--prompt PROMPT]
+python -m depth_guided_stable_diffusion [--img-path IMG_PATH] [--depth-map-path DEPTH_MAP_PATH] [--prompt PROMPT]
 `````

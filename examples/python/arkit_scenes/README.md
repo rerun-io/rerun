@@ -130,11 +130,11 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/arkit_scenes/requirements.txt
+pip install -e examples/python/arkit_scenes
 ```
 
 To run this example use
 ```bash
-python examples/python/arkit_scenes/main.py
+python -m airkit_scenes
 ```
 

@@ -49,15 +49,15 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/dicom_mri/requirements.txt
+pip install -e examples/python/dicom_mri
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/dicom_mri/main.py # run the example
+python -m dicom_mri # run the example
 ```
 
 If you wish to customize it, explore additional features, or save it, use the CLI with the `--help` option for guidance:
 
 ```bash
-python examples/python/dicom_mri/main.py --help
+python -m dicom_mri --help
 ```

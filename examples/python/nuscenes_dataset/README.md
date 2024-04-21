@@ -143,13 +143,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/nuscenes/requirements.txt
+pip install -e examples/python/nuscenes
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/nuscenes/main.py # run the example
+python -m nuscenes # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/nuscenes/main.py --help
+python -m nuscenes --help
 ```

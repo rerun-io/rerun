@@ -24,6 +24,6 @@ Make sure to also update the `thumbnail` section in the metadata.
 ## Run the code
 
 ```bash
-pip install -r examples/python/template/requirements.txt
-python examples/python/template/main.py
+pip install -e examples/python/template
+python -m template
 ```

@@ -87,17 +87,17 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/llm_embedding_ner/requirements.txt
+pip install -e examples/python/llm_embedding_ner
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/llm_embedding_ner/main.py # run the example
+python -m llm_embedding_ner # run the example
 ```
 You can specify your own text using:
 ```bash
-python examples/python/llm_embedding_ner/main.py [--text TEXT]
+python -m llm_embedding_ner [--text TEXT]
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/llm_embedding_ner/main.py --help
+python -m llm_embedding_ner --help
 ```
