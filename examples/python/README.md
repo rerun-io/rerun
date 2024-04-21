@@ -7,27 +7,37 @@ Read more about our examples at <https://www.rerun.io/examples>.
 First install the Rerun Python SDK with `pip install rerun-sdk` or via [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock).
 
 > Note: Make sure your SDK version matches the code in the examples.
-For example, if your SDK version is `0.4.0`, check out the matching tag
-for this repository by running `git checkout v0.4.0`.
+For example, if your SDK version is `0.15.1`, check out the matching tag
+for this repository by running `git checkout v0.15.1`.
 
-## Dependencies
-Each example comes with its own set of dependencies listed in a `requirements.txt` file. For example, to install dependencies and run the toy `minimal` example (which doesn't need to download any data) run:
+## Installing the example
+Each example is packaged as a regular Python package, with a `pyproject.toml` file specifying its required dependencies. To run an example, it must first be installed.
 
-```sh
-pip install -r examples/python/minimal/requirements.txt
-python examples/python/minimal/main.py
-```
-
-You can also install all dependencies needed to run all examples with:
+For example, to install dependencies and run the toy `minimal` example (which doesn't need to download any data) run:
 
 ```sh
-pip install -r examples/python/requirements.txt
+pip install -e examples/python/minimal
 ```
+
+**Note**: it is import to install example in editable mode, which is done using the `-e` flag (short for `--editable`).
+
+Once installed, the example can be run as a regular python module:
+
+```shell
+python -m minimal
+```
+
+Examples also declare console script, so they can also be run directly:
+
+```shell
+minimal
+```
+
 
 ## Running the examples
 By default, the examples spawn a Rerun Viewer and stream log data to it.
 
-For most examples you can instead save the log data to an `.rrd` file using `examples/python/plots/main.py --save data.rrd`. You can then view that `.rrd` file with `rerun data.rrd`.
+For most examples you can instead save the log data to an `.rrd` file using `plots --save data.rrd`. You can then view that `.rrd` file with `rerun data.rrd`.
 
 (`rerun` is an alias for `python -m rerun`).
 
