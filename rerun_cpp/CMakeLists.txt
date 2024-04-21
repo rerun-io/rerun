@@ -116,34 +116,28 @@ endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
-# This code is required by to support BUILD_SHARED_LIBS=ON on Windows
-# Differently from Linux/macOS, by default Windows does not support
-# exporting all symbols of a shared library, and instead requires
-# annotating manually each class that needs to be exported
-# The WINDOWS_EXPORT_ALL_SYMBOLS PROPERTY (set in the next line)
-# simply the process of having shared library on Windows, by emulating
-# in CMake the behaviour of Linux/macOS. However, it does not cover
-# static variables.
 if(MSVC AND BUILD_SHARED_LIBS)
+    # This code is required by to support BUILD_SHARED_LIBS=ON on Windows
+    # Differently from Linux/macOS, by default Windows does not support
+    # exporting all symbols of a shared library, and instead requires
+    # annotating manually each class that needs to be exported
+    # The WINDOWS_EXPORT_ALL_SYMBOLS PROPERTY (set in the next line)
+    # simply the process of having shared library on Windows, by emulating
+    # in CMake the behaviour of Linux/macOS. However, it does not cover
+    # static variables.
     set_property(TARGET rerun_sdk PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    # For exporting static variables in shared libraries in Windows, it
+    # is not possible to just use WINDOWS_EXPORT_ALL_SYMBOLS, we need instead
+    # to manually annotate with the appropriate storage-class attributes
+    # all static variables. The easiest way to do so is use GenerateExportHeader
+    # module to generate a rerun_sdk_export.hpp header file that define the RERUN_SDK_EXPORT
+    # macro, and add that macro to all static variables. The RERUN_SDK_EXPORT is defined
+    # in src/rerun/rerun_sdk_export.hpp . The definition of the macro changes depending
+    # of whether the library is compiled as static or shared, so for shared builds we
+    # set the RERUN_SDK_COMPILED_AS_SHARED_LIBRARY to let the header know if the build
+    # is a shared library one
+    target_compile_definitions(rerun_sdk PUBLIC RERUN_SDK_COMPILED_AS_SHARED_LIBRARY)
 endif()
-# For exporting static variables in shared libraries in Windows, it
-# is not possible to just use WINDOWS_EXPORT_ALL_SYMBOLS, we need instead
-# to manually annotate with the appropriate storage-class attributes
-# all static variables. The easiest way to do so is use GenerateExportHeader
-# module to generate a rerun_sdk_export.hpp header file that define the RERUN_SDK_EXPORT
-# macro, and add that macro to all static variables. As RERUN_SDK_EXPORT is added in the
-# C++ source code, we need to make sure that this macro is also defined in Linux/macOS builds,
-# so the use of generate_export_header is present even if MSVC AND BUILD_SHARED_LIBS is OFF
-include(GenerateExportHeader)
-generate_export_header(rerun_sdk EXPORT_FILE_NAME rerun_sdk_export.hpp)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdk_export.hpp" DESTINATION include/rerun)
-
-# Make sure that "rerun_sdk_export.hpp" includes work fine
-target_include_directories(rerun_sdk PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
-# This is to make "../rerun_sdk_export.hpp" includes work
-target_include_directories(rerun_sdk PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/this_directory_does_not_exist>)
-
 
 # -----------------------------------------------------------------------------
 # Installation.
