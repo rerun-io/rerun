@@ -155,7 +155,6 @@ jobs:
   # ---------------------------------------------------------------------------
 
   link-checker:
-    if: false
     name: Check links
     runs-on: ubuntu-latest
     steps:
