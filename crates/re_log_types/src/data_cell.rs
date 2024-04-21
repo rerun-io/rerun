@@ -585,7 +585,7 @@ impl std::fmt::Display for DataCell {
             "DataCell({})",
             re_format::format_bytes(self.inner.size_bytes as _)
         ))?;
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             // NOTE: wrap in a ListArray so that it looks more cell-like (i.e. single row)
             [&*self.to_arrow_monolist()],
             [self.component_name()],

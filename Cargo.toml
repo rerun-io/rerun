@@ -39,6 +39,7 @@ re_dev_tools = { path = "crates/re_dev_tools", version = "=0.16.0-alpha.1", defa
 re_entity_db = { path = "crates/re_entity_db", version = "=0.16.0-alpha.1", default-features = false }
 re_error = { path = "crates/re_error", version = "=0.16.0-alpha.1", default-features = false }
 re_format = { path = "crates/re_format", version = "=0.16.0-alpha.1", default-features = false }
+re_format_arrow = { path = "crates/re_format_arrow", version = "=0.16.0-alpha.1", default-features = false }
 re_int_histogram = { path = "crates/re_int_histogram", version = "=0.16.0-alpha.1", default-features = false }
 re_log = { path = "crates/re_log", version = "=0.16.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/re_log_encoding", version = "=0.16.0-alpha.1", default-features = false }
