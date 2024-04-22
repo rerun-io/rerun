@@ -25,7 +25,8 @@ deadlock_detection = ["parking_lot/deadlock_detection"]
 
 [dependencies]
 # Rerun dependencies:
-re_format = { workspace = true, features = ["arrow"] }
+re_format.workspace = true
+re_format_arrow.workspace = true
 re_log_types.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_tracing.workspace = true
