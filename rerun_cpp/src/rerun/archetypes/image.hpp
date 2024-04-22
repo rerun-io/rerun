@@ -19,13 +19,17 @@
 namespace rerun::archetypes {
     /// **Archetype**: A monochrome or color image.
     ///
-    /// The shape of the `TensorData` must be mappable to:
+    /// The order of dimensions in the underlying `TensorData` follows the typical
+    /// row-major, interleaved-pixel image format. Additionally, Rerun orders the
+    /// `TensorDimension`s within the shape description from outer-most to inner-most.
+    ///
+    /// As such, the shape of the `TensorData` must be mappable to:
     /// - A `HxW` tensor, treated as a grayscale image.
     /// - A `HxWx3` tensor, treated as an RGB image.
     /// - A `HxWx4` tensor, treated as an RGBA image.
     ///
     /// Leading and trailing unit-dimensions are ignored, so that
-    /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
+    /// `1x480x640x3x1` is treated as a `480x640x3` RGB image.
     ///
     /// Rerun also supports compressed image encoded as JPEG, N12, and YUY2.
     /// Using these formats can save a lot of bandwidth and memory.
