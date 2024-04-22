@@ -140,6 +140,9 @@ pub trait ProgressBarExt {
 
 impl ProgressBarExt for ProgressBar {
     fn set(&self, message: impl Into<Cow<'static, str>>, is_tty: bool) {
+        // `indicatif` doesn't print _anything_ when stdout is not a tty,
+        // which makes it harder to diagnose issues on CI.
+        // https://github.com/console-rs/indicatif/issues/87
         if is_tty {
             self.println(self.message());
             self.set_message(message);
