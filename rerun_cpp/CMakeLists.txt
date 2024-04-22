@@ -123,7 +123,7 @@ if(MSVC AND BUILD_SHARED_LIBS)
     # annotating manually each class that needs to be exported
     # The WINDOWS_EXPORT_ALL_SYMBOLS PROPERTY (set in the next line)
     # simply the process of having shared library on Windows, by emulating
-    # in CMake the behaviour of Linux/macOS. However, it does not cover
+    # in CMake the behavior of Linux/macOS. However, it does not cover
     # static variables.
     set_property(TARGET rerun_sdk PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     # For exporting static variables in shared libraries in Windows, it
