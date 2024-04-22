@@ -34,13 +34,16 @@ all-features = true
 [features]
 default = ["sync"]
 
-## ONLY FOR CI!
+## This crate requires `web_viewer` to be built. You must build the `.wasm` before building the crate, using `pixi run rerun-build-web-release`.
 ##
+## If for some reason you need to build this crate _without_ the `web_viewer` being built, and you do not actually need to run it,
+## then you can set either `--cfg disable_web_viewer_server` via the `RUSTFLAGS` env var, or `--features __ci` before building this crate.
 ## When set, the crate builds despite the `.wasm` being missing, but will panic at runtime.
 ## For instance: when the CI builds the docs for all crates, it uses `--all-features`, which means
 ## it can build the docs for this crate without having to build the web-viewer first.
-##
-## When not set, you must build the `.wasm` before building the crate, using `pixi run rerun-build-web-release`.
+## We support `--feature __ci`, because it's more convenient to use via `cargo`,
+## and also `--cfg disable_web_viewer_server`, because it allows us to disable the web viewer server on
+## CI without propagating the `__ci` feature throughout the entire set of crates that depend on it.
 __ci = []
 
 ## Enable telemetry using our analytics SDK.
