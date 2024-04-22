@@ -64,6 +64,11 @@ jobs:
 
       - name: Build search index
         env:
+          # Here we disable:
+          # - All warnings - nightly toolchain has a different set of warnings enabled by default.
+          #   We already test with `-D warnings` elsewhere, and the output is really noisy with the nightly warnings.
+          # - The web viewer server - we don't want to waste time building the web viewer,
+          #   because it is not actually going to run
           RUSTFLAGS: "-Awarnings --cfg disable_web_viewer_server"
         run: |
           # Install latest release version of the Rerun SDK
