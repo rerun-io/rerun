@@ -17,9 +17,6 @@ dependencies = [
 [project.scripts]
 arkit_scenes = "arkit_scenes.__main__:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

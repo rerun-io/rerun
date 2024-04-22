@@ -13,9 +13,6 @@ dependencies = [
 [project.scripts]
 nuscenes_dataset = "nuscenes_dataset.__main__:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

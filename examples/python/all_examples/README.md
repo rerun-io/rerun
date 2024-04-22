@@ -27,3 +27,22 @@ The dynamic dependency list is achieved in `hatch_build.py`, which is registered
 ## List examples
 
 Running `python -m all_examples list` prints a list of all examples, suitable for copy-pasting to the `pixi.toml` file.
+
+## Configuration
+
+`all_examples` can be configured via the `[tool.rerun-example]` table from the `pyproject.toml` file. It currently supports the following parameters:
+
+```toml
+[tool.rerun-example]
+# always ignore this example
+skip = true
+
+# specify extra arguments when running this example (not yet used)
+extra-args = "--dataset hello_world"  # may also be a list
+
+# specify platform(s) incompatible with this example
+# will be translated into a `sys_platform` environment marker
+exclude-platform = "darwin"  # may also be a list
+```
+
+In addition, `all_examples` reads the `requires-python` setting from the `[project]` table (if any), and translate it to `python_version` environment marker.

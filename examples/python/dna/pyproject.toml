@@ -8,9 +8,6 @@ dependencies = ["numpy", "rerun-sdk", "scipy"]
 [project.scripts]
 dna = "dna:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

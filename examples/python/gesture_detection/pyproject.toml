@@ -16,9 +16,6 @@ dependencies = [
 [project.scripts]
 gesture_detection = "gesture_detection:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

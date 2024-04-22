@@ -7,9 +7,6 @@ dependencies = ["numpy", "rerun-sdk"]
 [project.scripts]
 blueprint = "blueprint:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

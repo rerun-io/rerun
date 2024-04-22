@@ -7,9 +7,6 @@ dependencies = ["rerun-sdk"]
 [project.scripts]
 multiprocess_logging = "multiprocess_logging:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

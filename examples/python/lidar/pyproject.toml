@@ -14,9 +14,6 @@ dependencies = [
 [project.scripts]
 lidar = "lidar.__main__:main"
 
-# [tool.rerun-example]
-# skip = false
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

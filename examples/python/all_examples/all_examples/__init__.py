@@ -8,6 +8,7 @@ from typing import Any, Iterable, cast
 import tomli
 from pyproject_metadata import StandardMetadata
 
+
 # def _relative(target: Path, origin: Path) -> Path:
 #     """Return target path relative to the origin, allowing for walking up.
 #
@@ -31,6 +32,7 @@ class RerunMetadata:
         [tool.rerun-example]
         skip = true
         extra-args = "--help"  # may also be a list
+        exclude-platform = "darwin"  # may also be a list
     """
 
     skip: bool
