@@ -3,6 +3,7 @@
 #![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
+#![allow(clippy::cloned_instead_of_copied)]
 
 use crate::CachedLatestAtResults;
 use re_query2::{PromiseResolver, PromiseResult};

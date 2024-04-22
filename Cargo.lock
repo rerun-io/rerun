@@ -4262,6 +4262,7 @@ dependencies = [
  "rand",
  "re_arrow2",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -4376,8 +4377,14 @@ dependencies = [
 name = "re_format"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
- "comfy-table",
  "num-traits",
+]
+
+[[package]]
+name = "re_format_arrow"
+version = "0.16.0-alpha.1+dev"
+dependencies = [
+ "comfy-table",
  "re_arrow2",
  "re_tuid",
  "re_types_core",
@@ -4454,6 +4461,7 @@ dependencies = [
  "num-traits",
  "re_arrow2",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_string_interner",
  "re_tracing",
@@ -4505,6 +4513,7 @@ dependencies = [
  "re_arrow2",
  "re_data_store",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -4532,6 +4541,7 @@ dependencies = [
  "re_arrow2",
  "re_data_store",
  "re_format",
+ "re_format_arrow",
  "re_log",
  "re_log_types",
  "re_tracing",
@@ -5780,9 +5790,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.21.10"
+version = "0.21.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d5a6813c0759e4609cd494e8e725babae6a2ca7b62a5536a13daaec6fcb7ba"
+checksum = "7fecbfb7b1444f477b345853b1fce097a2c6fb637b2bfb87e6bc5db0f043fae4"
 dependencies = [
  "log",
  "ring",

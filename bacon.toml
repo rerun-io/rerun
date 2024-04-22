@@ -1,14 +1,14 @@
 # This is a configuration file for the bacon tool
 # More info at https://github.com/Canop/bacon
 
-default_job = "cranky"
+default_job = "clippy"
 
 [jobs]
 
-[jobs.cranky]
+[jobs.clippy]
 command = [
   "cargo",
-  "cranky",
+  "clippy",
   "--all-targets",
   "--all-features",
   "--color=always",
@@ -19,7 +19,7 @@ watch = ["tests", "benches", "examples"]
 [jobs.wasm]
 command = [
   "cargo",
-  "cranky",
+  "clippy",
   "-p=re_viewer",
   "--target=wasm32-unknown-unknown",
   "--target-dir=target_wasm",
@@ -77,7 +77,7 @@ need_stdout = true
 # should go in your personal prefs.toml file instead.
 [keybindings]
 i = "job:initial"
-c = "job:cranky"
+c = "job:clippy"
 d = "job:doc-open"
 t = "job:test"
 r = "job:run"

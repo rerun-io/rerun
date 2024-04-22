@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[lints]
+workspace = true
+
 [dependencies]
 re_format.workspace = true
 rerun = { workspace = true, features = ["sdk", "image"] }

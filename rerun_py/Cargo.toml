@@ -6,6 +6,9 @@ publish = false
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [lib]
 crate-type = ["cdylib"]
 name = "rerun_bindings" # name of the .so library that the Python module will import

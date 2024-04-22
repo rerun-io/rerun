@@ -24,6 +24,8 @@ include = [
   "web_viewer/sw.js",
 ]
 
+[lints]
+workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

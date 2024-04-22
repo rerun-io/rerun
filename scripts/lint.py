@@ -613,6 +613,21 @@ def test_lint_workspace_deps() -> None:
 # -----------------------------------------------------------------------------
 
 
+workspace_lints = re.compile(r"\[lints\]\nworkspace\s*=\s*true")
+
+
+def lint_workspace_lints(cargo_file_content: str) -> str | None:
+    """Checks that a non-example cargo file has a lints section that sets workspace to true."""
+
+    if workspace_lints.search(cargo_file_content):
+        return None
+    else:
+        return "Non-example cargo files should have a [lints] section with workspace = true"
+
+
+# -----------------------------------------------------------------------------
+
+
 def fix_header_casing(s: str) -> str:
     allowed_title_words = [
         "Apache",
@@ -908,6 +923,13 @@ def lint_file(filepath: str, args: Any) -> int:
 
         if args.fix:
             source.rewrite(lines_out)
+
+    if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
+        error = lint_workspace_lints(source.content)
+
+        if error is not None:
+            print(source.error(error))
+            num_errors += 1
 
     # Markdown-specific lints
     if filepath.endswith(".md"):
