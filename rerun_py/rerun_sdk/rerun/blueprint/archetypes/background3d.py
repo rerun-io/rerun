@@ -39,7 +39,7 @@ class Background3D(Background3DExt, Archetype):
         metadata={"component": "required"},
         converter=blueprint_components.Background3DKindBatch._required,  # type: ignore[misc]
     )
-    # The type of the background. Defaults to DirectionalGradient
+    # The type of the background. Defaults to Background3DKind.GradientDark.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

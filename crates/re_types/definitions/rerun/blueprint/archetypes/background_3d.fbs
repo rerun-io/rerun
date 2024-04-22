@@ -16,7 +16,7 @@ table Background3D (
 ) {
     // --- Required ---
 
-    /// The type of the background. Defaults to DirectionalGradient
+    /// The type of the background. Defaults to Background3DKind.GradientDark.
     kind: rerun.blueprint.components.Background3DKind ("attr.rerun.component_required", order: 1000);
 
     // --- Optional ---

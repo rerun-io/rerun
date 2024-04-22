@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from .._baseclasses import AsComponents
 from ..datatypes import EntityPathLike, Rgba32Like, Utf8Like
+from . import archetypes as blueprint_archetypes
+from . import components as blueprint_components
 from .api import SpaceView, SpaceViewContentsLike
-from .archetypes import Background3D
 
 
 class BarChartView(SpaceView):
@@ -72,7 +73,10 @@ class Spatial3DView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         # TODO(andreas): codegen everything that comes below:
-        background: Rgba32Like | Background3D | None = None,
+        background: blueprint_components.Background3DKindLike
+        | Rgba32Like
+        | blueprint_archetypes.Background3D
+        | None = None,
     ):
         """
         Construct a blueprint for a new spatial 3D view.
@@ -95,7 +99,9 @@ class Spatial3DView(SpaceView):
         # TODO(andreas): codegen creation of the properties dict
         if background is not None:
             properties["Background3D"] = (
-                background if isinstance(background, Background3D) else Background3D(background)
+                background
+                if isinstance(background, blueprint_archetypes.Background3D)
+                else blueprint_archetypes.Background3D(background)
             )
 
         super().__init__(class_identifier="3D", origin=origin, contents=contents, name=name, properties=properties)
