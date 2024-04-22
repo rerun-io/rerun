@@ -105,6 +105,9 @@ exclude = [
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',
 
+  # Needs authentication
+  'https://edge.meilisearch.com',
+
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.
   'https://eigen.tuxfamily.org/',                                   # Website down https://gitlab.com/libeigen/eigen/-/issues/2804

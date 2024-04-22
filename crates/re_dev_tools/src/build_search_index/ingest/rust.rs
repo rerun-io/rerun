@@ -1,4 +1,5 @@
 use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::ProgressBarExt as _;
 use anyhow::Context as _;
 use cargo_metadata::semver::Version;
 use indicatif::ProgressBar;
@@ -35,13 +36,17 @@ use std::sync::mpsc;
 /// - associated `fn`
 ///
 /// It will also walk through any `pub mod`, and correctly resolve `pub use mod::item` where `mod` is not `pub`.
-pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
+pub fn ingest(ctx: &Context, exclude_crates: &[String]) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("rustdoc");
 
     let mut crates = Vec::new();
 
     for pkg in ctx.metadata.workspace_packages() {
-        progress.set_message(pkg.name.clone());
+        progress.set(pkg.name.clone(), ctx.is_tty());
+
+        if exclude_crates.contains(&pkg.name) {
+            continue;
+        }
 
         let publish = match pkg.publish.as_deref() {
             Some([]) => false,      // explicitly set to `false`
@@ -77,7 +82,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     }
 
     let (tx, rx) = mpsc::channel();
-    let version = ctx.rerun_pkg().version.clone();
+    let version = ctx.release_version();
 
     ctx.finish_progress_bar(progress);
 
@@ -92,7 +97,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .collect::<Vec<_>>()
         .into_par_iter()
         .for_each(|(progress, krate)| {
-            let mut visitor = Visitor::new(progress, &version, &tx, &krate);
+            let mut visitor = Visitor::new(progress, version, &tx, &krate);
             visitor.visit_root();
             visitor.progress.finish_and_clear();
         });
@@ -371,9 +376,12 @@ impl<'a> Visitor<'a> {
     }
 }
 
-fn base_url(_version: &Version, krate: &Crate) -> String {
-    // format!("https://docs.rs/{krate_name}/{version}")
-    format!("https://docs.rs/{}/latest", krate.name())
+fn base_url(version: &Version, krate: &Crate) -> String {
+    format!(
+        "https://docs.rs/{krate_name}/{version}",
+        krate_name = krate.name()
+    )
+    // format!("https://docs.rs/{}/latest", krate.name())
 }
 
 fn document(path: String, url: String, docs: String) -> DocumentData {
