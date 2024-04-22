@@ -24,6 +24,7 @@ pub use sync::WebViewerServerHandle;
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
+// See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg:
 #[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
 mod data {
     #![allow(clippy::large_include_file)]
