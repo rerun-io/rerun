@@ -13,11 +13,6 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 
-#[cfg(feature = "sync")]
-mod sync;
-#[cfg(feature = "sync")]
-pub use sync::WebViewerServerHandle;
-
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
 // See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg:
