@@ -51,9 +51,11 @@ web-time.workspace = true
 
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen", "testing"] }
+re_format.workspace = true
 
 anyhow.workspace = true
 criterion.workspace = true
+insta.workspace = true
 mimalloc.workspace = true
 rand.workspace = true
 similar-asserts.workspace = true
