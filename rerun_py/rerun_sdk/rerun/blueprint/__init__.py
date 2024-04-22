@@ -38,6 +38,12 @@ from .api import (
     SpaceView,
     TimePanel,
 )
+from .archetypes import (
+    Background3D,
+)
+from .components import (
+    Background3DKind,
+)
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .space_views import (
     BarChartView,
