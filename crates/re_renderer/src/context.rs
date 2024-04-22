@@ -53,7 +53,7 @@ pub struct RenderContext {
     /// Today, when using wgpu-core (== native & webgl) this is equal to the current [`ActiveFrameContext::frame_index`]
     /// since the content timeline is in sync with the device timeline,
     /// meaning everything done on [`wgpu::Device`] happens right away.
-    /// On WebGPU however, the `content timeline`` may be arbitrarily behind the `device timeline`!
+    /// On WebGPU however, the `content timeline` may be arbitrarily behind the `device timeline`!
     /// See <https://www.w3.org/TR/webgpu/#programming-model-timelines>.
     frame_index_for_uncaptured_errors: Arc<AtomicU64>,
 
