@@ -49,13 +49,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/lidar/requirements.txt
+pip install -e examples/python/lidar
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/lidar/main.py # run the example
+python -m lidar # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/lidar/main.py --help
+python -m lidar --help
 ```

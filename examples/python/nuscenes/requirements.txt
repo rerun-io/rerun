@@ -1,5 +1,0 @@
-matplotlib>=3.8.2
-numpy
-nuscenes-devkit
-requests
-rerun-sdk

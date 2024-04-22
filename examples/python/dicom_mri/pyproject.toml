@@ -1,0 +1,20 @@
+[project]
+name = "dicom_mri"
+version = "0.1.0"
+# requires-python = "<3.12"
+readme = "README.md"
+dependencies = [
+  "dicom_numpy==0.6.2",
+  "numpy",
+  "pydicom==2.3.0",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "types-requests>=2.31,<3",
+]
+
+[project.scripts]
+dicom_mri = "dicom_mri:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

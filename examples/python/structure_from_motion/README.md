@@ -106,13 +106,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/structure_from_motion/requirements.txt
+pip install -e examples/python/structure_from_motion
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/structure_from_motion/main.py # run the example
+python -m structure_from_motion # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/structure_from_motion/main.py --help
+python -m structure_from_motion --help
 ```

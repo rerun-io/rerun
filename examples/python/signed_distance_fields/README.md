@@ -80,17 +80,17 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/signed_distance_fields/requirements.txt
+pip install -e examples/python/signed_distance_fields
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/signed_distance_fields/main.py # run the example
+python -m signed_distance_fields # run the example
 ```
 You can specify the mesh:
 ```bash
-python examples/python/signed_distance_fields/main.py --mesh {lantern,avocado,buggy,brain_stem}
+python -m signed_distance_fields --mesh {lantern,avocado,buggy,brain_stem}
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/signed_distance_fields/main.py --help
+python -m signed_distance_fields --help
 ```

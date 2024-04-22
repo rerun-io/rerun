@@ -89,13 +89,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/open_photogrammetry_format/requirements.txt
+pip install -e examples/python/open_photogrammetry_format
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/open_photogrammetry_format/main.py # run the example
+python -m open_photogrammetry_format # run the example
 ```
 If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/open_photogrammetry_format/main.py --help
+python -m open_photogrammetry_format --help
 ```

@@ -1,0 +1,12 @@
+[project]
+name = "stdio"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+stdio = "stdio:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,27 @@
+[project]
+name = "segment_anything_model"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
+  "numpy",
+  "opencv-python",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "torch",
+  "torchvision",
+  "tqdm",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.rerun-example]
+# skip = true
+
+[project.scripts]
+segment_anything_model = "segment_anything_model:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

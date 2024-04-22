@@ -65,13 +65,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/live_camera_edge_detection/requirements.txt
+pip install -e examples/python/live_camera_edge_detection
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/live_camera_edge_detection/main.py # run the example
+python -m live_camera_edge_detection # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/live_camera_edge_detection/main.py --help
+python -m live_camera_edge_detection --help
 ```

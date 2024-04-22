@@ -44,7 +44,7 @@ pub struct BatcherHooks {
     #[allow(clippy::type_complexity)]
     pub on_insert: Option<Arc<dyn Fn(&[DataRow]) + Send + Sync>>,
 
-    /// Callback to be run when an Arrow Chunk` goes out of scope.
+    /// Callback to be run when an Arrow Chunk goes out of scope.
     ///
     /// See [`crate::ArrowChunkReleaseCallback`] for more information.
     pub on_release: Option<crate::ArrowChunkReleaseCallback>,

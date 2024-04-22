@@ -1,0 +1,22 @@
+[project]
+name = "arkit_scenes"
+version = "0.1.0"
+# requires-python = "<3.12"
+readme = "README.md"
+dependencies = [
+  "matplotlib",
+  "numpy",
+  "opencv-python",
+  "pandas",
+  "rerun-sdk",
+  "scipy",
+  "tqdm",
+  "trimesh",
+]
+
+[project.scripts]
+arkit_scenes = "arkit_scenes.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

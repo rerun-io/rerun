@@ -1,0 +1,26 @@
+[project]
+name = "detect_and_track_objects"
+version = "0.1.0"
+# requires-python = "<3.12"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "opencv-contrib-python>4.6",
+  "opencv-python>4.6",
+  "pillow",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "timm==0.9.11",
+  "torch>=1.13.0",
+  "transformers",
+]
+
+[project.scripts]
+detect_and_track_objects = "detect_and_track_objects:main"
+
+[tool.rerun-example]
+extra-args = "--max-frame=10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

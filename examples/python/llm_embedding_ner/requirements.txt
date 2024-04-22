@@ -1,4 +1,0 @@
-rerun-sdk
-torch
-transformers
-umap-learn

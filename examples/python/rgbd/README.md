@@ -74,17 +74,17 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/rgbd/requirements.txt
+pip install -e examples/python/rgbd
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/rgbd/main.py # run the example
+python -m rgbd # run the example
 ```
 You can specify the recording:
 ```bash
-python examples/python/rgbd/main.py --recording {cafe,basements,studies,office_kitchens,playroooms}
+python -m rgbd --recording {cafe,basements,studies,office_kitchens,playroooms}
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/rgbd/main.py --help
+python -m rgbd --help
 ```

@@ -1,3 +1,0 @@
-rerun-sdk>=0.10
-opencv-python
-numpy
