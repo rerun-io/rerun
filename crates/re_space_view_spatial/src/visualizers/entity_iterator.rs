@@ -118,7 +118,7 @@ use re_query_cache::external::{paste::paste, seq_macro::seq};
 
 macro_rules! impl_process_archetype {
     (for N=$N:expr, M=$M:expr => povs=[$($pov:ident)+] comps=[$($comp:ident)*]) => { paste! {
-        #[doc = "Cached implementation of [`process_archetype_views] for `" $N "` point-of-view components"]
+        #[doc = "Cached implementation of [`process_archetype_views`] for `" $N "` point-of-view components"]
         #[doc = "and `" $M "` optional components."]
         #[allow(non_snake_case, dead_code)]
         pub fn [<process_archetype_pov$N _comp$M>]<'a, S, A, $($pov,)+ $($comp,)* F>(
