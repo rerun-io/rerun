@@ -32,7 +32,7 @@ impl Install {
         cmd.arg("-m").arg("pip").arg("install");
 
         for example in &examples {
-            cmd.arg(&example.dir);
+            cmd.arg("-e").arg(&example.dir);
         }
 
         let progress = MultiProgress::new();
