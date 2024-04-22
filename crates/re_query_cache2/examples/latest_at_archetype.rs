@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         &store,
         &query,
         &entity_path.into(),
-        Points2D::all_components().iter().cloned(), // no generics!
+        Points2D::all_components().iter().copied(), // no generics!
     );
 
     // Then make use of the `ToArchetype` helper trait in order to query, resolve, deserialize and

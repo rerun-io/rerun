@@ -116,8 +116,6 @@ cargo run -p rerun -- --help
 We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
 # TODO(andreas): This doesn't list tasks from the different environments. Asked [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475) if there's a way to do that.
 
-We use [cargo cranky](https://github.com/ericseppanen/cargo-cranky) and specify our clippy lints in [`Cranky.toml`](Cranky.toml). Usage: `cargo cranky`.
-
 We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.
 
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
@@ -143,7 +141,7 @@ git config core.hooksPath hooks
 ```
 
 ### Optional
-You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo cranky` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
+You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo clippy` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
 
 You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-compilation (e.g. when switching branches). You can control the size of the cache with `export SCCACHE_CACHE_SIZE="256G"`.
 

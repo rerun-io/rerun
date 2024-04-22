@@ -223,6 +223,6 @@ fn test_tuid() {
     let num = 100_000;
     let ids: Vec<Tuid> = (0..num).map(|_| Tuid::new()).collect();
     assert!(is_sorted(&ids));
-    assert_eq!(ids.iter().cloned().collect::<HashSet::<Tuid>>().len(), num);
-    assert_eq!(ids.iter().cloned().collect::<BTreeSet::<Tuid>>().len(), num);
+    assert_eq!(ids.iter().copied().collect::<HashSet::<Tuid>>().len(), num);
+    assert_eq!(ids.iter().copied().collect::<BTreeSet::<Tuid>>().len(), num);
 }

@@ -46,7 +46,7 @@ pub fn override_ui(
     let active_overrides: BTreeSet<ComponentName> = data_result
         .property_overrides
         .as_ref()
-        .map(|props| props.resolved_component_overrides.keys().cloned().collect())
+        .map(|props| props.resolved_component_overrides.keys().copied().collect())
         .unwrap_or_default();
 
     let view_systems = ctx
@@ -347,7 +347,7 @@ pub fn override_visualizer_ui(
             return;
         };
 
-        let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().cloned().collect();
+        let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
 
         add_new_visualizer(
             ctx,

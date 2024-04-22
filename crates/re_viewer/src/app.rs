@@ -1450,7 +1450,7 @@ impl eframe::App for App {
                 .filter_map(|db| db.app_id())
                 .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
                 .collect();
-            if let Some(app_id) = apps.first().cloned() {
+            if let Some(app_id) = apps.first().copied() {
                 store_hub.set_active_app(app_id.clone());
             } else {
                 store_hub.set_active_app(StoreHub::welcome_screen_app_id());
