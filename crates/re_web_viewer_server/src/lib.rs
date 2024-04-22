@@ -107,7 +107,8 @@ impl WebViewerServer {
     ///
     /// [`WebViewerServerPort::AUTO`] will tell the OS choose any free port.
     ///
-    /// The server will immediately start listening for incoming connections.
+    /// The server will immediately start listening for incoming connections
+    /// and stop doing so when the returned [`WebViewerServer`] is dropped.
     ///
     /// ## Example
     /// ``` no_run
@@ -164,8 +165,10 @@ impl WebViewerServer {
         format!("http://{local_addr}")
     }
 
-    /// Blocks execution until the server is shut down from the outside.
-    pub fn block_until_shutdown(mut self) {
+    /// Blocks execution as long as the server is running.
+    ///
+    /// There's no way of shutting the server down from the outside right now.
+    pub fn block(mut self) {
         if let Some(thread_handle) = self.thread_handle.take() {
             thread_handle.join().ok();
         }

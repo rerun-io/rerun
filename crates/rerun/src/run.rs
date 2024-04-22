@@ -662,7 +662,7 @@ async fn run_impl(
                     true,
                     &rerun_server_ws_url,
                 )?
-                .block_until_shutdown();
+                .block();
 
                 return Ok(());
             }
@@ -737,7 +737,7 @@ async fn run_impl(
                     open_browser,
                     &_ws_server_url,
                 )?
-                .block_until_shutdown();
+                .block(); // dropping should stop the server
             }
 
             return Ok(());
