@@ -133,7 +133,7 @@ py-lint = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 # the python package. The python code will be imported directly from the source folder and will
 # reflect changes immediately upon re-import.
 # Note:
-# - pip (which is called by maturin develop) doesn't recognise conda/pixi envs as venv, and thus complains if
+# - pip (which is called by maturin develop) doesn't recognize conda/pixi envs as venv, and thus complains if
 #   configured to not install outside venv (which is a good practice). PIP_REQUIRE_VIRTUALENV=0 disables this check.
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
