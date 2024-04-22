@@ -10,7 +10,11 @@
   />
 
   <head>
-    <link rel="icon" href="favicon.svg" />
+    <!-- Partially following this favicon guide, ignoring Android & Apple Touch: -->
+    <!-- https://dev.to/masakudamatsu/favicon-nightmare-how-to-maintain-sanity-3al7 -->
+    <link rel="icon" href="favicon.ico" sizes="48x48" />
+    <link rel="icon" href="favicon.svg" sizes="any" type="image/svg+xml" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -248,7 +252,7 @@
 
         const status_element = document.getElementById("status");
         function progress({ loaded, total_bytes }) {
-          if (total_bytes != null) {
+          if (total_bytes != null && total_bytes > 0) {
             status_element.innerHTML =
               Math.round(Math.min((loaded / total_bytes) * 100, 100)) + "%";
           } else {
@@ -267,8 +271,12 @@
           // Use the uncompressed size
           var content_length;
           var content_multiplier = 1;
-          // If the content is gzip encoded, try to get the uncompressed size.
-          if (response.headers.get("content-encoding") == "gzip") {
+          // If our custom size header is set, use that (see `re_web_viewer_server` crate)
+          var custom_size_header = response.headers.get("rerun-final-length");
+          if (custom_size_header != null) {
+            content_length = custom_size_header;
+          } else if (response.headers.get("content-encoding") == "gzip") {
+            // If the content is gzip encoded, try to get the uncompressed size.
             content_length = response.headers.get(
               "x-goog-meta-uncompressed-size",
             );

@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -21,7 +24,3 @@ arrow2.workspace = true
 comfy-table.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true # tuid serialization
-
-
-[lints]
-workspace = true

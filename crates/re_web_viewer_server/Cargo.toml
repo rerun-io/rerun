@@ -18,6 +18,7 @@ include = [
 
   # Matches the files in crates/re_web_viewer_server/src/lib.rs
   "web_viewer/favicon.svg",
+  "web_viewer/favicon.ico",
   "web_viewer/index.html",
   "web_viewer/re_viewer_bg.wasm",
   "web_viewer/re_viewer.js",
@@ -32,8 +33,6 @@ all-features = true
 
 
 [features]
-default = ["sync"]
-
 ## This crate requires `web_viewer` to be built. You must build the `.wasm` before building the crate, using `pixi run rerun-build-web-release`.
 ##
 ## If for some reason you need to build this crate _without_ the `web_viewer` being built, and you do not actually need to run it,
@@ -49,19 +48,12 @@ __ci = []
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
-## Enable `WebViewerServerHandle` for use without an async runtime.
-sync = ["pollster"]
-
-
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 
 document-features.workspace = true
-futures-util.workspace = true
-hyper = { workspace = true, features = ["full"] }
+tiny_http.workspace = true
 thiserror.workspace = true
-futures-channel.workspace = true                  # Used for server shutdown signaling. Picked this one because it's already used by hyper.
 
 # Optional dependencies:
 re_analytics = { workspace = true, optional = true }
-pollster = { workspace = true, optional = true }

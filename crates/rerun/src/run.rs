@@ -655,14 +655,16 @@ async fn run_impl(
             if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                return host_web_viewer(
-                    args.bind.clone(),
+                host_web_viewer(
+                    &args.bind,
                     args.web_viewer_port,
                     args.renderer,
                     true,
-                    rerun_server_ws_url,
-                )
-                .await;
+                    &rerun_server_ws_url,
+                )?
+                .block();
+
+                return Ok(());
             }
         }
 
@@ -728,16 +730,14 @@ async fn run_impl(
                 let open_browser = args.web_viewer;
 
                 // This is the server that serves the Wasm+HTML:
-                let web_server_handle = tokio::spawn(host_web_viewer(
-                    args.bind.clone(),
+                host_web_viewer(
+                    &args.bind,
                     args.web_viewer_port,
                     args.renderer,
                     open_browser,
-                    _ws_server_url,
-                ));
-
-                // Wait for both servers to shutdown.
-                web_server_handle.await?.map_err(anyhow::Error::from)?;
+                    &_ws_server_url,
+                )?
+                .block(); // dropping should stop the server
             }
 
             return Ok(());

@@ -1,5 +1,5 @@
 use re_log_types::LogMsg;
-use re_web_viewer_server::{WebViewerServerHandle, WebViewerServerPort};
+use re_web_viewer_server::{WebViewerServer, WebViewerServerPort};
 use re_ws_comms::{RerunServer, RerunServerPort};
 
 /// Failure to host a web viewer and/or Rerun server.
@@ -24,8 +24,8 @@ struct WebViewerSink {
     /// Rerun websocket server.
     _rerun_server: RerunServer,
 
-    /// Handle to keep the [`re_web_viewer_server::WebViewerServer`] alive
-    _webviewer_server: WebViewerServerHandle,
+    /// The http server serving wasm & html.
+    _webviewer_server: WebViewerServer,
 }
 
 impl WebViewerSink {
@@ -49,7 +49,7 @@ impl WebViewerSink {
             ws_port,
             server_memory_limit,
         )?;
-        let webviewer_server = WebViewerServerHandle::new(bind_ip, web_port)?;
+        let webviewer_server = WebViewerServer::new(bind_ip, web_port)?;
 
         let http_web_viewer_url = webviewer_server.server_url();
         let ws_server_url = rerun_server.server_url();
@@ -68,7 +68,7 @@ impl WebViewerSink {
     }
 }
 
-/// Async helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
+/// Helper to spawn an instance of the [`re_web_viewer_server::WebViewerServer`].
 /// This serves the HTTP+Wasm+JS files that make up the web-viewer.
 ///
 /// Optionally opens a browser with the web-viewer and connects to the provided `target_url`.
@@ -76,16 +76,15 @@ impl WebViewerSink {
 ///
 /// Note: this does not include the websocket server.
 #[cfg(feature = "web_viewer")]
-pub async fn host_web_viewer(
-    bind_ip: String,
+pub fn host_web_viewer(
+    bind_ip: &str,
     web_port: WebViewerServerPort,
     force_wgpu_backend: Option<String>,
     open_browser: bool,
-    source_url: String,
-) -> anyhow::Result<()> {
-    let web_server = re_web_viewer_server::WebViewerServer::new(&bind_ip, web_port)?;
+    source_url: &str,
+) -> anyhow::Result<re_web_viewer_server::WebViewerServer> {
+    let web_server = re_web_viewer_server::WebViewerServer::new(bind_ip, web_port)?;
     let http_web_viewer_url = web_server.server_url();
-    let web_server_handle = web_server.serve();
 
     let mut viewer_url = format!("{http_web_viewer_url}?url={source_url}");
     if let Some(force_graphics) = force_wgpu_backend {
@@ -97,7 +96,7 @@ pub async fn host_web_viewer(
         webbrowser::open(&viewer_url).ok();
     }
 
-    web_server_handle.await.map_err(anyhow::Error::msg)
+    Ok(web_server)
 }
 
 impl crate::sink::LogSink for WebViewerSink {
