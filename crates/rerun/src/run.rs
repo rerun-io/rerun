@@ -714,7 +714,7 @@ fn run_impl(
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
             // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::RerunServer::new(
+            let _ws_server = re_ws_comms::RerunServer::new(
                 ReceiveSet::new(rx),
                 &args.bind,
                 args.ws_server_port,
@@ -734,7 +734,7 @@ fn run_impl(
                     args.web_viewer_port,
                     args.renderer,
                     open_browser,
-                    &ws_server.server_url(),
+                    &_ws_server.server_url(),
                 )?
                 .block(); // dropping should stop the server
             }
