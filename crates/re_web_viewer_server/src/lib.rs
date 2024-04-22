@@ -37,10 +37,6 @@ pub enum WebViewerServerError {
 
     #[error("Failed to create server at address {0}: {1}")]
     CreateServerFailed(String, Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[cfg(feature = "sync")]
-    #[error("Failed to spawn web viewer thread: {0}")]
-    ThreadSpawnFailed(#[from] std::io::Error),
 }
 
 // ----------------------------------------------------------------------------

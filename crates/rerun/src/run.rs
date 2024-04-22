@@ -331,7 +331,7 @@ impl CallSource {
 //
 // It would be nice to use [`std::process::ExitCode`] here but
 // then there's no good way to get back at the exit code from python
-pub async fn run<I, T>(
+pub fn run<I, T>(
     build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: I,
@@ -382,7 +382,7 @@ where
             Command::Reset => re_viewer::reset_viewer_persistence(),
         }
     } else {
-        run_impl(build_info, call_source, args).await
+        run_impl(build_info, call_source, args)
     };
 
     match res {
@@ -594,7 +594,7 @@ fn profiler(args: &Args) -> re_tracing::Profiler {
     profiler
 }
 
-async fn run_impl(
+fn run_impl(
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
     args: Args,
@@ -636,7 +636,7 @@ async fn run_impl(
                 max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
                 quiet: false,
             };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options).await?;
+            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
             vec![rx]
         }
 
@@ -714,13 +714,12 @@ async fn run_impl(
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
             // This is the server which the web viewer will talk to:
-            let ws_server = re_ws_comms::RerunServer::new(
+            let _ws_server = re_ws_comms::RerunServer::new(
                 ReceiveSet::new(rx),
                 &args.bind,
                 args.ws_server_port,
                 server_memory_limit,
             )?;
-            let _ws_server_url = ws_server.server_url();
 
             #[cfg(feature = "web_viewer")]
             {
@@ -735,7 +734,7 @@ async fn run_impl(
                     args.web_viewer_port,
                     args.renderer,
                     open_browser,
-                    &_ws_server_url,
+                    &_ws_server.server_url(),
                 )?
                 .block(); // dropping should stop the server
             }

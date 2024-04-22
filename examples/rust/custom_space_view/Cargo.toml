@@ -21,6 +21,3 @@ re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
 
 # mimalloc is a much faster allocator:
 mimalloc = "0.1"
-
-# We need tokio for re_sdk_comms:
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }

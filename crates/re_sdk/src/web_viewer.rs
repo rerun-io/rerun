@@ -122,8 +122,6 @@ impl crate::sink::LogSink for WebViewerSink {
 /// NOTE: you can not connect one `Session` to another.
 ///
 /// This function returns immediately.
-///
-/// The caller needs to ensure that there is a `tokio` runtime running.
 #[must_use = "the sink must be kept around to keep the servers running"]
 pub fn new_sink(
     open_browser: bool,

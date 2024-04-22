@@ -87,16 +87,15 @@ pub struct RerunArgs {
 #[doc(hidden)]
 #[derive(Default)]
 pub struct ServeGuard {
-    tokio_rt: Option<tokio::runtime::Runtime>,
+    block_on_drop: bool,
 }
 
 impl Drop for ServeGuard {
     fn drop(&mut self) {
-        if let Some(tokio_rt) = self.tokio_rt.take() {
+        if self.block_on_drop {
             eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
-            tokio_rt.block_on(async {
-                tokio::time::sleep(std::time::Duration::from_secs(u64::MAX)).await;
-            });
+            // TODO(andreas): It would be a lot better if we had a handle to the web server and could call `block_until_shutdown` on it.
+            std::thread::sleep(std::time::Duration::from_secs(u64::MAX));
         }
     }
 }
@@ -129,26 +128,8 @@ impl RerunArgs {
 
             #[cfg(feature = "web_viewer")]
             RerunBehavior::Serve => {
-                let mut tokio_rt = None;
-
-                // Get the Tokio runtime for the current thread, or create one if there isn't any.
-                // If we do create one, we'll have to make sure it both outlives and gets
-                // polled to completion as we return from this method!
-                let tokio_rt_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                    handle
-                } else {
-                    tokio_rt
-                        .get_or_insert(tokio::runtime::Runtime::new()?)
-                        .handle()
-                        .clone()
-                };
-
                 let server_memory_limit = re_memory::MemoryLimit::parse(&self.server_memory_limit)
                     .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
-
-                // Creating the actual web sink and associated servers will require the current
-                // thread to be in a Tokio context.
-                let _tokio_rt_guard = tokio_rt_handle.enter();
 
                 let open_browser = true;
                 let rec = RecordingStreamBuilder::new(application_id).serve(
@@ -159,9 +140,10 @@ impl RerunArgs {
                     open_browser,
                 )?;
 
-                // If we had to create a Tokio runtime from scratch, make sure it outlives this
-                // method and gets polled to completion.
-                let sleep_guard = ServeGuard { tokio_rt };
+                // Ensure the server stays alive until the end of the program.
+                let sleep_guard = ServeGuard {
+                    block_on_drop: true,
+                };
 
                 Ok((rec, sleep_guard))
             }

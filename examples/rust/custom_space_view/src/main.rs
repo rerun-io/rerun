@@ -12,8 +12,7 @@ mod color_coordinates_visualizer_system;
 static GLOBAL: re_memory::AccountingAllocator<mimalloc::MiMalloc> =
     re_memory::AccountingAllocator::new(mimalloc::MiMalloc);
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Direct calls using the `log` crate to stderr. Control with `RUST_LOG=debug` etc.
     re_log::setup_logging();
 
@@ -27,8 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "0.0.0.0",
         re_sdk_comms::DEFAULT_SERVER_PORT,
         Default::default(),
-    )
-    .await?;
+    )?;
 
     let startup_options = re_viewer::StartupOptions::default();
 

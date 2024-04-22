@@ -1420,7 +1420,6 @@ dependencies = [
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
- "tokio",
 ]
 
 [[package]]
@@ -1973,7 +1972,6 @@ dependencies = [
  "re_crash_handler",
  "re_sdk_comms",
  "re_viewer",
- "tokio",
 ]
 
 [[package]]
@@ -3096,7 +3094,6 @@ name = "minimal_serve"
 version = "0.16.0-alpha.1+dev"
 dependencies = [
  "rerun",
- "tokio",
 ]
 
 [[package]]
@@ -4686,7 +4683,6 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -5318,7 +5314,6 @@ dependencies = [
  "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",
- "tokio",
 ]
 
 [[package]]
@@ -5333,7 +5328,6 @@ dependencies = [
  "re_log",
  "re_memory",
  "rerun",
- "tokio",
 ]
 
 [[package]]
@@ -5380,7 +5374,6 @@ dependencies = [
  "re_sdk",
  "re_web_viewer_server",
  "re_ws_comms",
- "tokio",
  "uuid",
 ]
 
@@ -6386,35 +6379,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b450e3ba06251ec4fc76917dafeaf55805ffb26dbf7d5500bfb9511ce63a0d1f"
 dependencies = [
  "ahash",
-]
-
-[[package]]
-name = "tokio"
-version = "1.28.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa32867d44e6f2ce3385e89dceb990188b8bb0fb25b0cf576647a6f98ac5105"
-dependencies = [
- "autocfg",
- "bytes",
- "libc",
- "mio",
- "num_cpus",
- "pin-project-lite",
- "signal-hook-registry",
- "socket2",
- "tokio-macros",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "tokio-macros"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.48",
 ]
 
 [[package]]

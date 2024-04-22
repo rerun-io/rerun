@@ -166,10 +166,6 @@ pub mod external {
     #[cfg(not(target_arch = "wasm32"))]
     pub use clap;
 
-    #[cfg(feature = "run")]
-    #[cfg(not(target_arch = "wasm32"))]
-    pub use tokio;
-
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
 

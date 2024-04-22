@@ -7,20 +7,18 @@
 //! ```
 
 use rerun::{
-    external::{anyhow, re_build_info, re_data_source, re_log, tokio},
+    external::{anyhow, re_build_info, re_data_source, re_log},
     log::{DataRow, RowId},
     EntityPath, TimePoint,
 };
 
-#[tokio::main]
-async fn main() -> anyhow::Result<std::process::ExitCode> {
+fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_logging();
 
     re_data_source::register_custom_data_loader(HashLoader);
 
     let build_info = re_build_info::build_info!();
     rerun::run(build_info, rerun::CallSource::Cli, std::env::args())
-        .await
         .map(std::process::ExitCode::from)
 }
 
