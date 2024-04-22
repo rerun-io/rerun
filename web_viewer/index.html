@@ -268,7 +268,7 @@
           var content_length;
           var content_multiplier = 1;
           // If our custom size header is set, use that (see `re_web_viewer_server` crate)
-          var custom_size_header = response.headers.get("rerun-wasm-size");
+          var custom_size_header = response.headers.get("rerun-final-length");
           if (custom_size_header != null) {
             content_length = custom_size_header;
           } else if (response.headers.get("content-encoding") == "gzip") {

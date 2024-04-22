@@ -251,6 +251,8 @@ impl WebViewerServerInner {
             }
         };
 
+        // TODO(#6061): Wasm should be compressed.
+
         let mut response = tiny_http::Response::from_data(bytes).with_header(
             tiny_http::Header::from_str(&format!("Content-Type: {mime}"))
                 // Both `mime` and the header are hardcoded, so shouldn't be able to fail depending on user input.
@@ -258,14 +260,14 @@ impl WebViewerServerInner {
         );
 
         // The wasm files are pretty large, so they'll be sent chunked (ideally we'd gzip them...).
+        // (tiny_http will do so automatically if the data is above a certain threshold.
+        // It is configurable, but we don't know all the implications of that.)
         // Unfortunately `Transfer-Encoding: chunked` means that no size is transmitted.
         // We work around this by adding a custom header with the size that web_viewer/index.html understands.
-        if path.ends_with(".wasm") {
-            if let Ok(header) =
-                tiny_http::Header::from_str(&format!("rerun-wasm-size: {}", bytes.len()))
-            {
-                response.add_header(header);
-            }
+        if let Ok(header) =
+            tiny_http::Header::from_str(&format!("rerun-final-length: {}", bytes.len()))
+        {
+            response.add_header(header);
         }
 
         request.respond(response)
