@@ -279,7 +279,7 @@ fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePo
             store,
             &query,
             entity_path,
-            Points2D::all_components().iter().cloned(), // no generics!
+            Points2D::all_components().iter().copied(), // no generics!
         );
 
         let points = results.get_required(Position2D::name()).unwrap();
@@ -321,7 +321,7 @@ fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveS
             store,
             &query,
             entity_path,
-            Points2D::all_components().iter().cloned(), // no generics!
+            Points2D::all_components().iter().copied(), // no generics!
         );
 
         let points = results.get_required(Position2D::name()).unwrap();

@@ -616,7 +616,7 @@ impl ExampleDescLayout {
                     }
                 }
 
-                if let Some(Some(size)) = self.rrd_byte_size_promise.ready().cloned() {
+                if let Some(Some(size)) = self.rrd_byte_size_promise.ready().copied() {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.label(egui::RichText::new(re_format::format_bytes(size as f64)).weak());
                     });

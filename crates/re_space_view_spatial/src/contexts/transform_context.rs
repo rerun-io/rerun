@@ -322,7 +322,7 @@ fn get_cached_pinhole(
             entity_path,
             |(_, _, image_from_camera, _resolution, camera_xyz)|  {
                 result = image_from_camera.first().map(|image_from_camera|
-                (*image_from_camera, camera_xyz.and_then(|c| c.first()).cloned().flatten().unwrap_or(ViewCoordinates::RDF)));
+                (*image_from_camera, camera_xyz.and_then(|c| c.first()).copied().flatten().unwrap_or(ViewCoordinates::RDF)));
             }
         )
         .ok();

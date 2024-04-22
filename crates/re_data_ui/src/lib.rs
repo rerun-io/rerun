@@ -47,7 +47,7 @@ pub fn ui_visible_components<'a>(
 ) -> Vec<ComponentName> {
     let mut components: Vec<ComponentName> = iter
         .into_iter()
-        .cloned()
+        .copied()
         .filter(is_component_visible_in_ui)
         .collect();
 

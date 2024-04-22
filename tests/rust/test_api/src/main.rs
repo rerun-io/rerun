@@ -488,7 +488,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     use clap::ValueEnum as _;
     let tests: HashSet<Demo> = args.test.as_ref().map_or_else(
         || Demo::value_variants().iter().copied().collect(),
-        |tests| tests.iter().cloned().collect(),
+        |tests| tests.iter().copied().collect(),
     );
 
     for test in tests {

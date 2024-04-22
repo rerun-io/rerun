@@ -1,6 +1,6 @@
-use std::path::Path;
-
 use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::ProgressBarExt as _;
+use std::path::Path;
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("docs");
@@ -13,7 +13,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             .with_extension("")
             .display()
             .to_string();
-        progress.set_message(path.clone());
+        progress.set(path.clone(), ctx.is_tty());
         let url = format!("https://rerun.io/docs/{path}");
         let (frontmatter, body) = parse_docs_frontmatter(&entry)?;
 

@@ -19,7 +19,7 @@ class Timing:
         self.duration = duration
 
 
-def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Timing:
+def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -> Timing:
     args = ["cargo", cargo_cmd]
     if cargo_cmd != "deny":
         args.append("--quiet")
@@ -31,7 +31,7 @@ def run_cargo(cargo_cmd, cargo_args: str, clippy_conf: str | None = None) -> Tim
 
     env = os.environ.copy()
     env["RUSTFLAGS"] = "--deny warnings"
-    env["RUSTDOCFLAGS"] = "--deny warnings --deny rustdoc::missing_crate_level_docs"
+    env["RUSTDOCFLAGS"] = "--deny warnings"
     if clippy_conf is not None:
         env["CLIPPY_CONF_DIR"] = (
             f"{os.getcwd()}/{clippy_conf}"  # Clippy has issues finding this directory on CI when we're not using an absolute path here.
@@ -83,9 +83,7 @@ def main() -> None:
 
     timings.append(run_cargo("fmt", "--all -- --check"))
 
-    # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked cargo-cranky"))
-    timings.append(run_cargo("cranky", "--all-targets --all-features -- --deny warnings"))
+    timings.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
 
     # Check a few important permutations of the feature flags for our `rerun` library:
     timings.append(run_cargo("check", "-p rerun --no-default-features"))
@@ -112,7 +110,7 @@ def main() -> None:
         # Check viewer for wasm32
         timings.append(
             run_cargo(
-                "cranky",
+                "clippy",
                 "--all-features --target wasm32-unknown-unknown --target-dir target_wasm -p re_viewer -- --deny warnings",
                 clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
             )

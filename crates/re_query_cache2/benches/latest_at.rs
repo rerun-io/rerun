@@ -293,7 +293,7 @@ fn query_and_visit_points(
             store,
             &query,
             entity_path,
-            Points2D::all_components().iter().cloned(), // no generics!
+            Points2D::all_components().iter().copied(), // no generics!
         );
 
         let points = results.get_required(Position2D::name()).unwrap();
@@ -344,7 +344,7 @@ fn query_and_visit_strings(
             store,
             &query,
             entity_path,
-            Points2D::all_components().iter().cloned(), // no generics!
+            Points2D::all_components().iter().copied(), // no generics!
         );
 
         let points = results.get_required(Position2D::name()).unwrap();

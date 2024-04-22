@@ -95,6 +95,7 @@ fn generate_impls(
         code.push_str("#![allow(unused_imports)]\n");
         code.push_str("#![allow(unused_parens)]\n");
         code.push_str("#![allow(clippy::clone_on_copy)]\n");
+        code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
         if obj.deprecation_notice().is_some() {
             code.push_str("#![allow(deprecated)]\n");
         }

@@ -145,7 +145,7 @@ impl std::fmt::Display for IndexedBucket {
             re_log::error_once!("couldn't display indexed bucket: {err}");
             std::fmt::Error
         })?;
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             columns.columns(),
             schema.fields.iter().map(|field| field.name.as_str()),
         )
@@ -177,7 +177,7 @@ impl std::fmt::Display for StaticTable {
             re_log::error_once!("couldn't display static table: {err}");
             std::fmt::Error
         })?;
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             columns.columns(),
             schema.fields.iter().map(|field| field.name.as_str()),
         )

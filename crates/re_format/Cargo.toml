@@ -12,22 +12,13 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
 
-[features]
-default = []
-
-# Add support for formatting arrow tables.
-"arrow" = ["dep:arrow2", "dep:comfy-table", "dep:re_tuid", "dep:re_types_core"]
-
-
 [dependencies]
 num-traits.workspace = true
-
-# TODO(emilk): remove these high-level dependencies, or split this crate into two.
-arrow2 = { workspace = true, optional = true }
-comfy-table = { workspace = true, optional = true }
-re_tuid = { workspace = true, optional = true }
-re_types_core = { workspace = true, optional = true } # tuid serialization
+# Do NOT add any complex dependencies here. Keep this crate lightweight!

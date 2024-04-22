@@ -31,7 +31,7 @@ impl ContextMenuAction for AddEntitiesToNewSpaceViewAction {
             .map(|entry| entry.identifier)
             .collect::<IntSet<SpaceViewClassIdentifier>>()
             .difference(&recommended_space_view_classes)
-            .cloned()
+            .copied()
             .collect();
 
         ui.menu_button("Add to new space view", |ui| {

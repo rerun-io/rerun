@@ -64,7 +64,7 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
             Some(entity_highlight) => entity_highlight
                 .instances
                 .get(&instance_key)
-                .cloned()
+                .copied()
                 .unwrap_or_default()
                 .max(entity_highlight.overall),
             None => InteractionHighlight::default(),
@@ -82,7 +82,7 @@ impl SpaceViewOutlineMasks {
     pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
         self.instances
             .get(&instance_key)
-            .cloned()
+            .copied()
             .unwrap_or_default()
             .with_fallback_to(self.overall)
     }

@@ -804,7 +804,7 @@ pub enum FieldKind {
 pub enum Type {
     /// This is the unit type, used for `enum` variants.
     ///
-    /// In `arrow`, this corresponds to the `null` type`.
+    /// In `arrow`, this corresponds to the `null` type.
     ///
     /// In rust this would be `()`, and in C++ this would be `void`.
     Unit,

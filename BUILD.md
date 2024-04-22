@@ -31,14 +31,6 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
 ```
 
-Additionally, we use [cargo-cranky](https://github.com/ericseppanen/cargo-cranky) for defining which Clippy lints are active and [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) for linting crate versions.
-You don't need to install these for building, but it's highly recommended when contributing changes to
-Rust code.
-```sh
-cargo install cargo-cranky
-cargo install --locked cargo-deny
-```
-
 ## Building and running the viewer
 
 Use this command for building and running the viewer:

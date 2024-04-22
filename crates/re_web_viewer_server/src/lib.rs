@@ -20,7 +20,8 @@ pub use sync::WebViewerServerHandle;
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-#[cfg(not(feature = "__ci"))]
+// See `Cargo.toml` docs for the `__ci` feature for more information about the `disable_web_viewer_server` cfg:
+#[cfg(not(any(disable_web_viewer_server, feature = "__ci")))]
 mod data {
     #![allow(clippy::large_include_file)]
 
@@ -42,8 +43,6 @@ pub enum WebViewerServerError {
     #[error("Failed to create server at address {0}: {1}")]
     CreateServerFailed(String, Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    // #[error("Failed to serve web viewer: {0}")]
-    // ServeFailed(hyper::Error),
     #[cfg(feature = "sync")]
     #[error("Failed to spawn web viewer thread: {0}")]
     ThreadSpawnFailed(#[from] std::io::Error),
