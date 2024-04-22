@@ -234,10 +234,7 @@ impl WebViewerServerInner {
         let (mime, bytes) = match path {
             "/" | "/index.html" => ("text/html", data::INDEX_HTML),
             "/favicon.svg" => ("image/svg+xml", data::FAVICON),
-            "/favicon.ico" => {
-                // We don't have a favicon.ico.
-                return request.respond(tiny_http::Response::empty(404));
-            }
+            "/favicon.ico" => ("image/x-icon", data::FAVICON),
             "/sw.js" => ("text/javascript", data::SW_JS),
             "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
             "/re_viewer_bg.wasm" => {
