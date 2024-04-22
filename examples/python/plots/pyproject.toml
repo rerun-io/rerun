@@ -1,0 +1,13 @@
+[project]
+name = "plots"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["numpy", "rerun-sdk"]
+
+[project.scripts]
+plots = "plots:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,19 @@
+[project]
+name = "rgbd"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "opencv-python>4.6",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "tqdm",
+]
+
+[project.scripts]
+rgbd = "rgbd:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,8 +1,0 @@
-accelerate
-opencv-python
-pillow
-diffusers==0.27.2
-numpy
-torch
-transformers
-rerun-sdk

@@ -57,13 +57,9 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/minimal/requirements.txt
+pip install -e examples/python/minimal
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/minimal/main.py # run the example
-```
-If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
-```bash
-python examples/python/minimal/main.py --help
+python -m minimal # run the example
 ```

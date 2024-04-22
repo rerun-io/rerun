@@ -1,0 +1,19 @@
+[project]
+name = "objectron"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "betterproto[compiler]",
+  "numpy",
+  "opencv-python>4.6",
+  "requests>=2.31,<3",
+  "rerun-sdk",
+  "scipy",
+]
+
+[project.scripts]
+objectron = "objectron.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

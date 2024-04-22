@@ -1,0 +1,12 @@
+[project]
+name = "log_file"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+log_file = "log_file:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

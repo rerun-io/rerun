@@ -16,5 +16,5 @@ thumbnail_dimensions = [480, 298]
 Demonstrates how to log data to standard output with the Rerun SDK, and then visualize it from standard input with the Rerun Viewer.
 
 ```bash
-echo 'hello from stdin!' | python main.py | rerun -
+echo 'hello from stdin!' | python stdio.py | rerun -
 ```

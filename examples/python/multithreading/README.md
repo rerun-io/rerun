@@ -59,13 +59,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/multithreading/requirements.txt
+pip install -e examples/python/multithreading
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/multithreading/main.py # run the example
+python -m multithreading # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/multithreading/main.py --help
+python -m multithreading --help
 ```

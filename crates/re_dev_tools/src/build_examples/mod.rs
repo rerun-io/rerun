@@ -11,6 +11,7 @@
 //! `build_args` string array.
 
 mod example;
+mod install;
 mod manifest;
 mod rrd;
 mod snippets;
@@ -36,6 +37,7 @@ pub struct Args {
 #[derive(FromArgs)]
 #[argh(subcommand)]
 enum Cmd {
+    Install(install::Install),
     Rrd(rrd::Rrd),
     Manifest(manifest::Manifest),
     Snippets(snippets::Snippets),
@@ -45,6 +47,7 @@ pub fn main(args: Args) -> anyhow::Result<()> {
     re_build_tools::set_output_cargo_build_instructions(false);
 
     match args.cmd {
+        Cmd::Install(cmd) => cmd.run(),
         Cmd::Rrd(cmd) => cmd.run(),
         Cmd::Manifest(cmd) => cmd.run(),
         Cmd::Snippets(cmd) => cmd.run(),

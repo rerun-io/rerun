@@ -160,15 +160,15 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/detect_and_track_objects/requirements.txt
+pip install -e examples/python/detect_and_track_objects
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/detect_and_track_objects/main.py # run the example
+python -m detect_and_track_objects # run the example
 ```
 
 If you wish to customize it for various videos, adjust the maximum frames, explore additional features, or save it use the CLI with the `--help` option for guidance:
 
 ```bash
-python examples/python/detect_and_track_objects/main.py --help
+python -m detect_and_track_objects --help
 ```

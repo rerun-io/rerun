@@ -1,0 +1,21 @@
+[project]
+name = "live_depth_sensor"
+version = "0.1.0"
+requires-python = "<3.11"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "pyrealsense2-mac; sys_platform == 'darwin'",
+  "pyrealsense2; sys_platform != 'darwin'",
+  "rerun-sdk",
+]
+
+[project.scripts]
+live_depth_sensor = "live_depth_sensor:main"
+
+[tool.rerun-example]
+skip = true # requires hardware
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
