@@ -22,8 +22,7 @@ env:
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
   RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  RUSTDOCFLAGS: --deny warnings
 
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
   # See: https://github.com/marketplace/actions/sccache-action
@@ -91,7 +90,7 @@ jobs:
         run: pixi run codegen --force --check
 
   rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
+    name: Rust lints (fmt, check, clippy, tests, doc)
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4

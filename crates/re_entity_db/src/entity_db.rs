@@ -225,7 +225,7 @@ impl EntityDb {
             self.store(),
             query,
             entity_path,
-            A::all_components().iter().cloned(), // no generics!
+            A::all_components().iter().copied(), // no generics!
         );
 
         use re_query_cache2::ToArchetype as _;

@@ -636,7 +636,7 @@ impl std::fmt::Display for DataRow {
             )?;
         }
 
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             self.cells.iter().map(|cell| cell.to_arrow_monolist()),
             self.cells.iter().map(|cell| cell.component_name()),
         )

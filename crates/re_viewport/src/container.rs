@@ -194,7 +194,7 @@ impl ContainerBlueprint {
         let contents = container
             .children()
             .filter_map(|child_id| {
-                tile_to_contents.get(child_id).cloned().or_else(|| {
+                tile_to_contents.get(child_id).copied().or_else(|| {
                     re_log::warn_once!("Missing child when building container.");
                     None
                 })
@@ -203,7 +203,7 @@ impl ContainerBlueprint {
 
         match container {
             egui_tiles::Container::Tabs(tab) => {
-                let active_tab = tab.active.and_then(|id| tile_to_contents.get(&id).cloned());
+                let active_tab = tab.active.and_then(|id| tile_to_contents.get(&id).copied());
 
                 Self {
                     id: container_id,

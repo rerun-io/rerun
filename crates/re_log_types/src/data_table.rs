@@ -1091,7 +1091,7 @@ impl std::fmt::Display for DataTable {
             std::fmt::Error
         })?;
         writeln!(f, "DataTable({}):", self.table_id)?;
-        re_format::arrow::format_table(
+        re_format_arrow::format_table(
             columns.columns(),
             schema.fields.iter().map(|field| field.name.as_str()),
         )

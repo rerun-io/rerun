@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         &store,
         &query,
         &entity_path.into(),
-        MyPoints::all_components().iter().cloned(), // no generics!
+        MyPoints::all_components().iter().copied(), // no generics!
     );
 
     // Then, grab the results for each individual components.
