@@ -181,6 +181,8 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
+# Before running this, install `rerun_py/requirements-doc.txt`.
+# TODO(#6060): Put this in an environment and remove the requirements file.
 search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
