@@ -158,11 +158,14 @@ impl std::ops::Deref for CachedRangeComponentResults {
 
 #[derive(Debug)]
 pub struct CachedRangeData<'a, T> {
+    // NOTE: Options so we can represent an empty result without having to somehow conjure a mutex
+    // guard out of thin air.
+    //
     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
     // impossible to return an owned type in a `parking_lot` guard.
     // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
-    indices: MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>,
-    data: MappedRwLockReadGuard<'a, FlatVecDeque<T>>,
+    indices: Option<MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>>,
+    data: Option<MappedRwLockReadGuard<'a, FlatVecDeque<T>>>,
 
     time_range: TimeRange,
     front_status: PromiseResult<()>,
@@ -198,12 +201,18 @@ impl<'a, T> CachedRangeData<'a, T> {
         &self,
         entry_range: Range<usize>,
     ) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        self.indices.range(entry_range)
+        match self.indices.as_ref() {
+            Some(indices) => itertools::Either::Left(indices.range(entry_range)),
+            None => itertools::Either::Right(std::iter::empty()),
+        }
     }
 
     #[inline]
     pub fn range_data(&self, entry_range: Range<usize>) -> impl Iterator<Item = &[T]> {
-        self.data.range(entry_range)
+        match self.data.as_ref() {
+            Some(indices) => itertools::Either::Left(indices.range(entry_range)),
+            None => itertools::Either::Right(std::iter::empty()),
+        }
     }
 
     /// Range both the indices and data by zipping them together.
@@ -231,19 +240,23 @@ impl<'a, T> CachedRangeData<'a, T> {
     /// multiple times.
     #[inline]
     pub fn entry_range(&self) -> Range<usize> {
+        let Some(indices) = self.indices.as_ref() else {
+            return 0..0;
+        };
+
         // If there's any static data cached, make sure to look for it explicitly.
         //
-        // Remember: time ranges can never contain `TimeInt::STATIC`.
-        let static_override = if matches!(self.indices.front(), Some((TimeInt::STATIC, _))) {
+        // Remember: `TimeRange`s can never contain `TimeInt::STATIC`.
+        let static_override = if matches!(indices.front(), Some((TimeInt::STATIC, _))) {
             TimeInt::STATIC
         } else {
             TimeInt::MAX
         };
 
-        let start_index = self.indices.partition_point(|(data_time, _)| {
+        let start_index = indices.partition_point(|(data_time, _)| {
             *data_time < TimeInt::min(self.time_range.min(), static_override)
         });
-        let end_index = self.indices.partition_point(|(data_time, _)| {
+        let end_index = indices.partition_point(|(data_time, _)| {
             *data_time <= TimeInt::min(self.time_range.max(), static_override)
         });
 
@@ -271,6 +284,17 @@ impl CachedRangeComponentResults {
         }
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
+
+        if self.time_range == TimeRange::EMPTY {
+            return CachedRangeData {
+                indices: None,
+                data: None,
+                time_range: TimeRange::EMPTY,
+                front_status: PromiseResult::Ready(()),
+                back_status: PromiseResult::Ready(()),
+                reentering: &REENTERING,
+            };
+        }
 
         let mut results = if let Some(results) = self.inner.try_write() {
             // The lock was free to grab, nothing else to worry about.
@@ -472,8 +496,8 @@ impl CachedRangeComponentResults {
         });
 
         CachedRangeData {
-            indices,
-            data,
+            indices: Some(indices),
+            data: Some(data),
             time_range: self.time_range,
             front_status,
             back_status,
@@ -506,6 +530,17 @@ impl CachedRangeComponentResults {
         }
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
+
+        if self.time_range == TimeRange::EMPTY {
+            return CachedRangeData {
+                indices: None,
+                data: None,
+                time_range: TimeRange::EMPTY,
+                front_status: PromiseResult::Ready(()),
+                back_status: PromiseResult::Ready(()),
+                reentering: &REENTERING,
+            };
+        }
 
         let mut results = if let Some(results) = self.inner.try_write() {
             // The lock was free to grab, nothing else to worry about.
@@ -707,8 +742,8 @@ impl CachedRangeComponentResults {
         });
 
         CachedRangeData {
-            indices,
-            data,
+            indices: Some(indices),
+            data: Some(data),
             time_range: self.time_range,
             front_status,
             back_status,
