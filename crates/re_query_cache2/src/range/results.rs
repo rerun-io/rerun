@@ -324,127 +324,123 @@ impl CachedRangeComponentResults {
                 results.cached_dense = Some(Box::new(FlatVecDeque::<C>::new()));
             }
 
-            if results.cached_sparse.is_some() {
-                re_log::error!(
-                    "a component cannot be both dense and sparse -- try `to_sparse()` instead"
-                );
-            } else {
-                if !results.promises_front.is_empty() {
-                    let mut resolved_indices = Vec::with_capacity(results.promises_front.len());
-                    let mut resolved_data = Vec::with_capacity(results.promises_front.len());
+            if !results.promises_front.is_empty() {
+                let mut resolved_indices = Vec::with_capacity(results.promises_front.len());
+                let mut resolved_data = Vec::with_capacity(results.promises_front.len());
 
-                    // Pop the promises from the end so that if we encounter one that has yet to be
-                    // resolved, we can stop right there and know we have a contiguous range of data
-                    // available up to that point in time.
-                    while let Some(((data_time, row_id), promise)) = results.promises_front.pop() {
-                        let data = match resolver.resolve(&promise) {
-                            PromiseResult::Pending => {
-                                results.front_status = (data_time, PromiseResult::Pending);
-                                break;
-                            }
-                            PromiseResult::Error(err) => {
-                                results.front_status = (data_time, PromiseResult::Error(err));
-                                break;
-                            }
-                            PromiseResult::Ready(cell) => {
-                                results.front_status = (data_time, PromiseResult::Ready(()));
-                                match cell.try_to_native::<C>().map_err(|err| {
-                                    DeserializationError::DataCellError(err.to_string())
-                                }) {
-                                    Ok(data) => data,
-                                    Err(err) => {
-                                        re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
-                                        continue;
-                                    }
+                // Pop the promises from the end so that if we encounter one that has yet to be
+                // resolved, we can stop right there and know we have a contiguous range of data
+                // available up to that point in time.
+                while let Some(((data_time, row_id), promise)) = results.promises_front.pop() {
+                    let data = match resolver.resolve(&promise) {
+                        PromiseResult::Pending => {
+                            results.front_status = (data_time, PromiseResult::Pending);
+                            break;
+                        }
+                        PromiseResult::Error(err) => {
+                            results.front_status = (data_time, PromiseResult::Error(err));
+                            break;
+                        }
+                        PromiseResult::Ready(cell) => {
+                            results.front_status = (data_time, PromiseResult::Ready(()));
+                            match cell
+                                .try_to_native::<C>()
+                                .map_err(|err| DeserializationError::DataCellError(err.to_string()))
+                            {
+                                Ok(data) => data,
+                                Err(err) => {
+                                    re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
+                                    continue;
                                 }
                             }
-                        };
+                        }
+                    };
 
-                        resolved_indices.push((data_time, row_id));
-                        resolved_data.push(data);
-                    }
-
-                    // We resolved the promises in reversed order, so reverse the results back.
-                    resolved_indices.reverse();
-                    resolved_data.reverse();
-
-                    let results_indices = std::mem::take(&mut results.indices);
-                    results.indices = resolved_indices
-                        .into_iter()
-                        .chain(results_indices)
-                        .collect();
-
-                    let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                    // Unwraps: the data is created when entering this function -- we know it's there
-                    // and we know its type.
-                    let cached_dense = results
-                        .cached_dense
-                        .as_mut()
-                        .unwrap()
-                        .as_any_mut()
-                        .downcast_mut::<FlatVecDeque<C>>()
-                        .unwrap();
-                    cached_dense.push_front_deque(resolved_data);
+                    resolved_indices.push((data_time, row_id));
+                    resolved_data.push(data);
                 }
 
-                if !results.promises_back.is_empty() {
-                    let mut resolved_indices = Vec::with_capacity(results.promises_back.len());
-                    let mut resolved_data = Vec::with_capacity(results.promises_back.len());
+                // We resolved the promises in reversed order, so reverse the results back.
+                resolved_indices.reverse();
+                resolved_data.reverse();
 
-                    // Reverse the promises first so we can pop() from the back. See below why.
-                    results.promises_back.reverse();
+                let results_indices = std::mem::take(&mut results.indices);
+                results.indices = resolved_indices
+                    .into_iter()
+                    .chain(results_indices)
+                    .collect();
 
-                    // Pop the promises from the end so that if we encounter one that has yet to be
-                    // resolved, we can stop right there and know we have a contiguous range of data
-                    // available up to that point in time.
-                    while let Some(((data_time, index), promise)) = results.promises_back.pop() {
-                        let data = match resolver.resolve(&promise) {
-                            PromiseResult::Pending => {
-                                results.back_status = (data_time, PromiseResult::Pending);
-                                break;
-                            }
-                            PromiseResult::Error(err) => {
-                                results.back_status = (data_time, PromiseResult::Error(err));
-                                break;
-                            }
-                            PromiseResult::Ready(cell) => {
-                                results.front_status = (data_time, PromiseResult::Ready(()));
-                                match cell.try_to_native::<C>().map_err(|err| {
-                                    DeserializationError::DataCellError(err.to_string())
-                                }) {
-                                    Ok(data) => data,
-                                    Err(err) => {
-                                        re_log::error!(%err, "data deserialization failed -- skipping");
-                                        continue;
-                                    }
-                                }
-                            }
-                        };
-
-                        resolved_indices.push((data_time, index));
-                        resolved_data.push(data);
-                    }
-
-                    // Reverse our reversal and give the promises back to their rightful owner.
-                    results.promises_back.reverse();
-
-                    results.indices.extend(resolved_indices);
-
-                    let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                    // Unwraps: the data is created when entering this function -- we know it's there
-                    // and we know its type.
-                    let cached_dense = results
-                        .cached_dense
-                        .as_mut()
-                        .unwrap()
-                        .as_any_mut()
-                        .downcast_mut::<FlatVecDeque<C>>()
-                        .unwrap();
-                    cached_dense.push_back_deque(resolved_data);
-                }
-
-                results.sanity_check();
+                let resolved_data = FlatVecDeque::from_vecs(resolved_data);
+                // Unwraps: the data is created when entering this function -- we know it's there
+                // and we know its type.
+                let cached_dense = results
+                    .cached_dense
+                    .as_mut()
+                    .unwrap()
+                    .as_any_mut()
+                    .downcast_mut::<FlatVecDeque<C>>()
+                    .unwrap();
+                cached_dense.push_front_deque(resolved_data);
             }
+
+            if !results.promises_back.is_empty() {
+                let mut resolved_indices = Vec::with_capacity(results.promises_back.len());
+                let mut resolved_data = Vec::with_capacity(results.promises_back.len());
+
+                // Reverse the promises first so we can pop() from the back. See below why.
+                results.promises_back.reverse();
+
+                // Pop the promises from the end so that if we encounter one that has yet to be
+                // resolved, we can stop right there and know we have a contiguous range of data
+                // available up to that point in time.
+                while let Some(((data_time, index), promise)) = results.promises_back.pop() {
+                    let data = match resolver.resolve(&promise) {
+                        PromiseResult::Pending => {
+                            results.back_status = (data_time, PromiseResult::Pending);
+                            break;
+                        }
+                        PromiseResult::Error(err) => {
+                            results.back_status = (data_time, PromiseResult::Error(err));
+                            break;
+                        }
+                        PromiseResult::Ready(cell) => {
+                            results.front_status = (data_time, PromiseResult::Ready(()));
+                            match cell
+                                .try_to_native::<C>()
+                                .map_err(|err| DeserializationError::DataCellError(err.to_string()))
+                            {
+                                Ok(data) => data,
+                                Err(err) => {
+                                    re_log::error!(%err, "data deserialization failed -- skipping");
+                                    continue;
+                                }
+                            }
+                        }
+                    };
+
+                    resolved_indices.push((data_time, index));
+                    resolved_data.push(data);
+                }
+
+                // Reverse our reversal and give the promises back to their rightful owner.
+                results.promises_back.reverse();
+
+                results.indices.extend(resolved_indices);
+
+                let resolved_data = FlatVecDeque::from_vecs(resolved_data);
+                // Unwraps: the data is created when entering this function -- we know it's there
+                // and we know its type.
+                let cached_dense = results
+                    .cached_dense
+                    .as_mut()
+                    .unwrap()
+                    .as_any_mut()
+                    .downcast_mut::<FlatVecDeque<C>>()
+                    .unwrap();
+                cached_dense.push_back_deque(resolved_data);
+            }
+
+            results.sanity_check();
         }
 
         // --- Step 2: fetch cached data (read lock) ---
@@ -504,252 +500,6 @@ impl CachedRangeComponentResults {
             reentering: &REENTERING,
         }
     }
-
-    /// Returns the component data as a sparse vector.
-    ///
-    /// Returns an error if the component is missing or cannot be deserialized.
-    ///
-    /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
-    /// deserializing the data into a single one, if you don't need the extra flexibility.
-    //
-    // TODO(cmc): this is _almost_ a byte-for-byte copy of the `to_dense` case but those few bits
-    // that differ cannot be sanely abstracted over with today's Rust…
-    #[inline]
-    pub fn to_sparse<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> CachedRangeData<'_, Option<C>> {
-        // --- Step 1: try and upsert pending data (write lock) ---
-
-        thread_local! {
-            /// Keeps track of reentrancy counts for the current thread.
-            ///
-            /// Used to detect and prevent potential deadlocks when using the cached APIs in work-stealing
-            /// environments such as Rayon.
-            static REENTERING: RefCell<u32> = const { RefCell::new(0) };
-        }
-
-        REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
-
-        if self.time_range == TimeRange::EMPTY {
-            return CachedRangeData {
-                indices: None,
-                data: None,
-                time_range: TimeRange::EMPTY,
-                front_status: PromiseResult::Ready(()),
-                back_status: PromiseResult::Ready(()),
-                reentering: &REENTERING,
-            };
-        }
-
-        let mut results = if let Some(results) = self.inner.try_write() {
-            // The lock was free to grab, nothing else to worry about.
-            Some(results)
-        } else {
-            REENTERING.with_borrow_mut(|reentering| {
-                if *reentering > 1 {
-                    // The lock is busy, and at least one of the lock holders is the current thread from a
-                    // previous stack frame.
-                    //
-                    // Return `None` so that we skip straight to the read-only part of the operation.
-                    // All the data will be there already, since the previous stack frame already
-                    // took care of upserting it.
-                    None
-                } else {
-                    // The lock is busy, but it is not held by the current thread.
-                    // Just block until it gets released.
-                    Some(self.inner.write())
-                }
-            })
-        };
-
-        if let Some(results) = &mut results {
-            // NOTE: This is just a lazy initialization of the underlying deque, because we
-            // just now finally know the expected type!
-            if results.cached_sparse.is_none() {
-                results.cached_sparse = Some(Box::new(FlatVecDeque::<Option<C>>::new()));
-            }
-
-            if results.cached_dense.is_some() {
-                re_log::error!(
-                    "a component cannot be both dense and sparse -- try `to_dense()` instead"
-                );
-            } else {
-                if !results.promises_front.is_empty() {
-                    let mut resolved_indices = Vec::with_capacity(results.promises_front.len());
-                    let mut resolved_data = Vec::with_capacity(results.promises_front.len());
-
-                    // Pop the promises from the end so that if we encounter one that has yet to be
-                    // resolved, we can stop right there and know we have a contiguous range of data
-                    // available up to that point in time.
-                    while let Some(((data_time, row_id), promise)) = results.promises_front.pop() {
-                        let data = match resolver.resolve(&promise) {
-                            PromiseResult::Pending => {
-                                results.front_status = (data_time, PromiseResult::Pending);
-                                break;
-                            }
-                            PromiseResult::Error(err) => {
-                                results.front_status = (data_time, PromiseResult::Error(err));
-                                break;
-                            }
-                            PromiseResult::Ready(cell) => {
-                                results.front_status = (data_time, PromiseResult::Ready(()));
-                                match cell.try_to_native_opt::<C>().map_err(|err| {
-                                    DeserializationError::DataCellError(err.to_string())
-                                }) {
-                                    Ok(data) => data,
-                                    Err(err) => {
-                                        re_log::error!(%err, component=%C::name(), "data deserialization failed -- skipping");
-                                        continue;
-                                    }
-                                }
-                            }
-                        };
-
-                        resolved_indices.push((data_time, row_id));
-                        resolved_data.push(data);
-                    }
-
-                    // We resolved the promises in reversed order, so reverse the results back.
-                    resolved_indices.reverse();
-                    resolved_data.reverse();
-
-                    let results_indices = std::mem::take(&mut results.indices);
-                    results.indices = resolved_indices
-                        .into_iter()
-                        .chain(results_indices)
-                        .collect();
-
-                    let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                    // Unwraps: the data is created when entering this function -- we know it's there
-                    // and we know its type.
-                    let cached_sparse = results
-                        .cached_sparse
-                        .as_mut()
-                        .unwrap()
-                        .as_any_mut()
-                        .downcast_mut::<FlatVecDeque<Option<C>>>()
-                        .unwrap();
-                    cached_sparse.push_front_deque(resolved_data);
-                }
-
-                if !results.promises_back.is_empty() {
-                    let mut resolved_indices = Vec::with_capacity(results.promises_back.len());
-                    let mut resolved_data = Vec::with_capacity(results.promises_back.len());
-
-                    // Reverse the promises first so we can pop() from the back. See below why.
-                    results.promises_back.reverse();
-
-                    // Pop the promises from the end so that if we encounter one that has yet to be
-                    // resolved, we can stop right there and know we have a contiguous range of data
-                    // available up to that point in time.
-                    while let Some(((data_time, index), promise)) = results.promises_back.pop() {
-                        let data = match resolver.resolve(&promise) {
-                            PromiseResult::Pending => {
-                                results.back_status = (data_time, PromiseResult::Pending);
-                                break;
-                            }
-                            PromiseResult::Error(err) => {
-                                results.back_status = (data_time, PromiseResult::Error(err));
-                                break;
-                            }
-                            PromiseResult::Ready(cell) => {
-                                results.front_status = (data_time, PromiseResult::Ready(()));
-                                match cell.try_to_native_opt::<C>().map_err(|err| {
-                                    DeserializationError::DataCellError(err.to_string())
-                                }) {
-                                    Ok(data) => data,
-                                    Err(err) => {
-                                        re_log::error!(%err, "data deserialization failed -- skipping");
-                                        continue;
-                                    }
-                                }
-                            }
-                        };
-
-                        resolved_indices.push((data_time, index));
-                        resolved_data.push(data);
-                    }
-
-                    // Reverse our reversal and give the promises back to their rightful owner.
-                    results.promises_back.reverse();
-
-                    results.indices.extend(resolved_indices);
-
-                    let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                    // Unwraps: the data is created when entering this function -- we know it's there
-                    // and we know its type.
-                    let cached_sparse = results
-                        .cached_sparse
-                        .as_mut()
-                        .unwrap()
-                        .as_any_mut()
-                        .downcast_mut::<FlatVecDeque<Option<C>>>()
-                        .unwrap();
-                    cached_sparse.push_back_deque(resolved_data);
-                }
-
-                results.sanity_check();
-            }
-        }
-
-        // --- Step 2: fetch cached data (read lock) ---
-
-        let results = if let Some(results) = results {
-            RwLockWriteGuard::downgrade(results)
-        } else {
-            // # Multithreading semantics
-            //
-            // We need the reentrant lock because query contexts (i.e. space views) generally run on a
-            // work-stealing thread-pool and might swap a task on one thread with another task on the
-            // same thread, where both tasks happen to query the same exact data (e.g. cloned space views).
-            //
-            // See `REENTERING` comments above for more details.
-            self.read_recursive()
-        };
-
-        let front_status = {
-            let (front_time, front_status) = &results.front_status;
-            if *front_time <= self.time_range.min() {
-                front_status.clone()
-            } else {
-                PromiseResult::Ready(())
-            }
-        };
-        let back_status = {
-            let (back_time, back_status) = &results.back_status;
-            if self.time_range.max() <= *back_time {
-                back_status.clone()
-            } else {
-                PromiseResult::Ready(())
-            }
-        };
-
-        // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
-        // impossible to return an owned type in a `parking_lot` guard.
-        // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
-        let indices = RwLockReadGuard::map(results, |results| &results.indices);
-        let data = RwLockReadGuard::map(self.inner.read_recursive(), |results| {
-            // Unwraps: the data is created when entering this function -- we know it's there
-            // and we know its type.
-            results
-                .cached_sparse
-                .as_ref()
-                .unwrap()
-                .as_any()
-                .downcast_ref::<FlatVecDeque<Option<C>>>()
-                .unwrap()
-        });
-
-        CachedRangeData {
-            indices: Some(indices),
-            data: Some(data),
-            time_range: self.time_range,
-            front_status,
-            back_status,
-            reentering: &REENTERING,
-        }
-    }
 }
 
 // ---
@@ -780,17 +530,7 @@ pub struct CachedRangeComponentResultsInner {
     ///
     /// This has to be option because we have no way of initializing the underlying trait object
     /// until we know what the actual native type that the caller expects is.
-    ///
-    /// Once `cached_dense` has been initialized, it is an error to try and use the sparse methods.
     pub(crate) cached_dense: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
-
-    /// The resolved, converted, deserialized sparse data.
-    ///
-    /// This has to be option because we have no way of initializing the underlying trait object
-    /// until we know what the actual native type that the caller expects is.
-    ///
-    /// Once `cached_sparse` has been initialized, it is an error to try and use the dense methods.
-    pub(crate) cached_sparse: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
 impl SizeBytes for CachedRangeComponentResultsInner {
@@ -803,16 +543,12 @@ impl SizeBytes for CachedRangeComponentResultsInner {
             front_status: _,
             back_status: _,
             cached_dense,
-            cached_sparse,
         } = self;
 
         indices.heap_size_bytes()
             + promises_front.heap_size_bytes()
             + promises_back.heap_size_bytes()
             + cached_dense
-                .as_ref()
-                .map_or(0, |data| data.dyn_total_size_bytes())
-            + cached_sparse
                 .as_ref()
                 .map_or(0, |data| data.dyn_total_size_bytes())
     }
@@ -826,8 +562,7 @@ impl std::fmt::Debug for CachedRangeComponentResultsInner {
             promises_back: _,
             front_status: _,
             back_status: _,
-            cached_dense: _,  // we can't, we don't know the type
-            cached_sparse: _, // we can't, we don't know the type
+            cached_dense: _, // we can't, we don't know the type
         } = self;
 
         if indices.is_empty() {
@@ -858,7 +593,6 @@ impl CachedRangeComponentResultsInner {
             front_status: (TimeInt::MIN, PromiseResult::Ready(())),
             back_status: (TimeInt::MAX, PromiseResult::Ready(())),
             cached_dense: None,
-            cached_sparse: None,
         }
     }
 
@@ -876,7 +610,6 @@ impl CachedRangeComponentResultsInner {
             front_status: _,
             back_status: _,
             cached_dense,
-            cached_sparse,
         } = self;
 
         assert!(
@@ -917,10 +650,6 @@ impl CachedRangeComponentResultsInner {
         if let Some(dense) = cached_dense.as_ref() {
             assert_eq!(indices.len(), dense.dyn_num_entries());
         }
-
-        if let Some(sparse) = cached_sparse.as_ref() {
-            assert_eq!(indices.len(), sparse.dyn_num_entries());
-        }
     }
 
     /// Returns the time range covered by the cached data.
@@ -957,7 +686,6 @@ impl CachedRangeComponentResultsInner {
             front_status,
             back_status,
             cached_dense,
-            cached_sparse,
         } = self;
 
         if front_status.0 >= threshold {
@@ -984,9 +712,6 @@ impl CachedRangeComponentResultsInner {
         {
             indices.truncate(threshold_idx);
             if let Some(data) = cached_dense {
-                data.dyn_truncate(threshold_idx);
-            }
-            if let Some(data) = cached_sparse {
                 data.dyn_truncate(threshold_idx);
             }
         }

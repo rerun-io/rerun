@@ -32,7 +32,7 @@ fn main() -> anyhow::Result<()> {
         &store,
         &query,
         &entity_path.into(),
-        MyPoints::all_components().iter().cloned(), // no generics!
+        MyPoints::all_components().iter().copied(), // no generics!
     );
 
     // Then, grab the results for each individual components.
@@ -48,16 +48,9 @@ fn main() -> anyhow::Result<()> {
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.
     //
-    // A choice now has to be made regarding the nullability of the _component batch's instances_.
-    // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
-    // shouldn't be using anything but `iter_dense`.
-    //
-    // This is the step at which caching comes into play.
-    //
-    // If the data has already been accessed with the same nullability characteristics in the
-    // past, then this will just grab the pre-deserialized, pre-resolved/pre-converted result from
-    // the cache.
-    //
+    // That's when caching comes into play.
+    // If the data has already been accessed in the past, then this will just grab the
+    // pre-deserialized, pre-resolved/pre-converted result from the cache.
     // Otherwise, this will trigger a deserialization and cache the result for next time.
     let all_points = all_points.to_dense::<MyPoint>(&resolver);
     let all_colors = all_colors.to_dense::<MyColor>(&resolver);
@@ -66,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     // The cache might not have been able to resolve and deserialize the entire dataset across all
     // available timestamps.
     //
-    // We can use the following APIs to check the status of the front back sides of the data range.
+    // We can use the following APIs to check the status of the front and back sides of the data range.
     //
     // E.g. it is possible that the front-side of the range is still waiting for pending data while
     // the back-side has been fully loaded.
