@@ -1,6 +1,7 @@
 #include "mat4x4.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
 #include "vec4d.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>
@@ -11,7 +12,7 @@ namespace rerun {
 #if 0
         // <CODEGEN_COPY_TO_HEADER>
 
-        static const Mat4x4 IDENTITY;
+        RERUN_SDK_EXPORT static const Mat4x4 IDENTITY;
 
         /// Creates a new 4x4 matrix from 3 *columns* of 4 elements each.
         Mat4x4(const Vec4D (&columns)[4])

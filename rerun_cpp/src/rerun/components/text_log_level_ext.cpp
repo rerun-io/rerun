@@ -1,5 +1,10 @@
 #include "text_log_level.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
+
+// </CODEGEN_COPY_TO_HEADER>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
@@ -16,22 +21,22 @@ namespace rerun {
             // <CODEGEN_COPY_TO_HEADER>
 
             /// Designates catastrophic failures.
-            static const TextLogLevel Critical;
+            RERUN_SDK_EXPORT static const TextLogLevel Critical;
 
             /// Designates very serious errors.
-            static const TextLogLevel Error;
+            RERUN_SDK_EXPORT static const TextLogLevel Error;
 
             /// Designates hazardous situations.
-            static const TextLogLevel Warning;
+            RERUN_SDK_EXPORT static const TextLogLevel Warning;
 
             /// Designates useful information.
-            static const TextLogLevel Info;
+            RERUN_SDK_EXPORT static const TextLogLevel Info;
 
             /// Designates lower priority information.
-            static const TextLogLevel Debug;
+            RERUN_SDK_EXPORT static const TextLogLevel Debug;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel Trace;
+            RERUN_SDK_EXPORT static const TextLogLevel Trace;
 
             /// Construct `TextLogLevel` from a null-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}

@@ -7,6 +7,7 @@
 #include "../components/clear_is_recursive.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -92,9 +93,9 @@ namespace rerun::archetypes {
       public:
         // Extensions to generated type defined in 'clear_ext.cpp'
 
-        static const Clear FLAT;
+        RERUN_SDK_EXPORT static const Clear FLAT;
 
-        static const Clear RECURSIVE;
+        RERUN_SDK_EXPORT static const Clear RECURSIVE;
 
         Clear(bool _is_recursive = false) : Clear(components::ClearIsRecursive(_is_recursive)) {}
 
