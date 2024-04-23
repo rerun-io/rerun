@@ -245,7 +245,7 @@ pip = ">=23"
 [feature.wheel-test.tasks]
 # In the wheel-test environment we want to use the wheel-installed `rerun` binary on the path.
 # This overrides the `rerun` task from the default env which otherwise executes via cargo.
-rerun = "rerun"
+rerun-from-path = "rerun"
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.
