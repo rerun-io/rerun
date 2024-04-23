@@ -1,7 +1,8 @@
 # Jobs that only run for developers on the `rerun` team.
-# - We have to ensure that these jobs _only_ run for PRs inside the `rerun-io` organization
-#   this is done using the following check, added to every job:
+# We have to ensure that these jobs _only_ run for PRs inside the `rerun-io` organization
+# this is done using the following check, added to every job:
 #     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+# (unfortunately this does not work on the trigger or the entire `jobs` category)
 
 name: Pull-Request
 
@@ -22,6 +23,7 @@ jobs:
     secrets: inherit
 
   cpp-paths-filter:
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
@@ -44,6 +46,7 @@ jobs:
               - '**/*cmake'
 
   docs-paths-filter:
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       docs_changes: ${{ steps.filter.outputs.docs_changes }}
@@ -65,6 +68,7 @@ jobs:
               - 'examples/manifest.toml'
 
   python-paths-filter:
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       python_changes: ${{ steps.filter.outputs.python_changes }}
@@ -86,6 +90,7 @@ jobs:
               - '**/pyproject.toml'
 
   rust-paths-filter:
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       rust_changes: ${{ steps.filter.outputs.rust_changes }}
@@ -107,6 +112,7 @@ jobs:
               - "**/*.toml"
 
   web-paths-filter:
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       web_changes: ${{ steps.filter.outputs.web_changes }}
@@ -247,7 +253,7 @@ jobs:
 
   deploy-landing-preview:
     name: "Deploy Landing Preview"
-    if: needs.docs-paths-filter.outputs.docs_changes == 'true'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.docs-paths-filter.outputs.docs_changes == 'true'
     needs: docs-paths-filter
     uses: ./.github/workflows/reusable_deploy_landing_preview.yml
     with:
