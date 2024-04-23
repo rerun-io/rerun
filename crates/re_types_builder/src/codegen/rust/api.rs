@@ -155,6 +155,7 @@ fn generate_object_file(
     code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
+    code.push_str("#![allow(clippy::cloned_instead_of_copied)]\n");
     code.push_str("#![allow(clippy::iter_on_single_items)]\n");
     code.push_str("#![allow(clippy::map_flatten)]\n");
     code.push_str("#![allow(clippy::match_wildcard_for_single_variants)]\n");

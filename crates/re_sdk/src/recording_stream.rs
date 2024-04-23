@@ -461,9 +461,6 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// web-based Rerun viewer via WebSockets.
     ///
-    /// This method needs to be called in a context where a Tokio runtime is already running (see
-    /// example below).
-    ///
     /// If the `open_browser` argument is `true`, your default browser will be opened with a
     /// connected web-viewer.
     ///
@@ -481,16 +478,6 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```ignore
-    /// // Ensure we have a running tokio runtime.
-    /// let mut tokio_runtime = None;
-    /// let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-    ///     handle
-    /// } else {
-    ///     let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-    ///     tokio_runtime.get_or_insert(rt).handle().clone()
-    /// };
-    /// let _tokio_runtime_guard = tokio_runtime_handle.enter();
-    ///
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
     ///     .serve("0.0.0.0",
     ///            Default::default(),

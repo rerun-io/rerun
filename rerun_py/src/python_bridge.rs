@@ -84,10 +84,9 @@ fn flush_garbage_queue() {
 
 #[cfg(feature = "web_viewer")]
 fn global_web_viewer_server(
-) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServerHandle>> {
-    static WEB_HANDLE: OnceCell<
-        parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServerHandle>>,
-    > = OnceCell::new();
+) -> parking_lot::MutexGuard<'static, Option<re_web_viewer_server::WebViewerServer>> {
+    static WEB_HANDLE: OnceCell<parking_lot::Mutex<Option<re_web_viewer_server::WebViewerServer>>> =
+        OnceCell::new();
     WEB_HANDLE.get_or_init(Default::default).lock()
 }
 
@@ -795,14 +794,6 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[cfg(feature = "web_viewer")]
-#[must_use = "the tokio_runtime guard must be kept alive while using tokio"]
-fn enter_tokio_runtime() -> tokio::runtime::EnterGuard<'static> {
-    static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
-        Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create tokio runtime"));
-    TOKIO_RUNTIME.enter()
-}
-
 /// Serve a web-viewer.
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
@@ -828,8 +819,6 @@ fn serve(
 
         let server_memory_limit = re_memory::MemoryLimit::parse(&server_memory_limit)
             .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:")))?;
-
-        let _guard = enter_tokio_runtime();
 
         let sink = re_sdk::web_viewer::new_sink(
             open_browser,
@@ -1123,9 +1112,8 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
     {
         let mut web_handle = global_web_viewer_server();
 
-        let _guard = enter_tokio_runtime();
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServerHandle::new("0.0.0.0", WebViewerServerPort(port))
+            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
                 .map_err(|err| {
                     PyRuntimeError::new_err(format!(
                         "Failed to start web viewer server on port {port}: {err}",

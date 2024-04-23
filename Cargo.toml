@@ -21,60 +21,61 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.76"
-version = "0.16.0-alpha.1+dev"
+version = "0.16.0-alpha.2"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
-re_analytics = { path = "crates/re_analytics", version = "=0.16.0-alpha.1", default-features = false }
-re_build_info = { path = "crates/re_build_info", version = "=0.16.0-alpha.1", default-features = false }
-re_build_tools = { path = "crates/re_build_tools", version = "=0.16.0-alpha.1", default-features = false }
-re_crash_handler = { path = "crates/re_crash_handler", version = "=0.16.0-alpha.1", default-features = false }
-re_data_source = { path = "crates/re_data_source", version = "=0.16.0-alpha.1", default-features = false }
-re_data_store = { path = "crates/re_data_store", version = "=0.16.0-alpha.1", default-features = false }
-re_data_ui = { path = "crates/re_data_ui", version = "=0.16.0-alpha.1", default-features = false }
-re_dev_tools = { path = "crates/re_dev_tools", version = "=0.16.0-alpha.1", default-features = false }
-re_entity_db = { path = "crates/re_entity_db", version = "=0.16.0-alpha.1", default-features = false }
-re_error = { path = "crates/re_error", version = "=0.16.0-alpha.1", default-features = false }
-re_format = { path = "crates/re_format", version = "=0.16.0-alpha.1", default-features = false }
-re_int_histogram = { path = "crates/re_int_histogram", version = "=0.16.0-alpha.1", default-features = false }
-re_log = { path = "crates/re_log", version = "=0.16.0-alpha.1", default-features = false }
-re_log_encoding = { path = "crates/re_log_encoding", version = "=0.16.0-alpha.1", default-features = false }
-re_log_types = { path = "crates/re_log_types", version = "=0.16.0-alpha.1", default-features = false }
-re_memory = { path = "crates/re_memory", version = "=0.16.0-alpha.1", default-features = false }
-re_query = { path = "crates/re_query", version = "=0.16.0-alpha.1", default-features = false }
-re_query_cache = { path = "crates/re_query_cache", version = "=0.16.0-alpha.1", default-features = false }
-re_query_cache2 = { path = "crates/re_query_cache2", version = "=0.16.0-alpha.1", default-features = false }
-re_query2 = { path = "crates/re_query2", version = "=0.16.0-alpha.1", default-features = false }
-re_renderer = { path = "crates/re_renderer", version = "=0.16.0-alpha.1", default-features = false }
-re_sdk = { path = "crates/re_sdk", version = "=0.16.0-alpha.1", default-features = false }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.16.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/re_smart_channel", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view = { path = "crates/re_space_view", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_dataframe = { path = "crates/re_space_view_dataframe", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.16.0-alpha.1", default-features = false }
-re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.16.0-alpha.1", default-features = false }
-re_string_interner = { path = "crates/re_string_interner", version = "=0.16.0-alpha.1", default-features = false }
-re_time_panel = { path = "crates/re_time_panel", version = "=0.16.0-alpha.1", default-features = false }
-re_tracing = { path = "crates/re_tracing", version = "=0.16.0-alpha.1", default-features = false }
-re_tuid = { path = "crates/re_tuid", version = "=0.16.0-alpha.1", default-features = false }
-re_types = { path = "crates/re_types", version = "=0.16.0-alpha.1", default-features = false }
-re_types_blueprint = { path = "crates/re_types_blueprint", version = "=0.16.0-alpha.1", default-features = false }
-re_types_builder = { path = "crates/re_types_builder", version = "=0.16.0-alpha.1", default-features = false }
-re_types_core = { path = "crates/re_types_core", version = "=0.16.0-alpha.1", default-features = false }
-re_ui = { path = "crates/re_ui", version = "=0.16.0-alpha.1", default-features = false }
-re_viewer = { path = "crates/re_viewer", version = "=0.16.0-alpha.1", default-features = false }
-re_viewer_context = { path = "crates/re_viewer_context", version = "=0.16.0-alpha.1", default-features = false }
-re_viewport = { path = "crates/re_viewport", version = "=0.16.0-alpha.1", default-features = false }
-re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.16.0-alpha.1", default-features = false }
-re_ws_comms = { path = "crates/re_ws_comms", version = "=0.16.0-alpha.1", default-features = false }
-rerun = { path = "crates/rerun", version = "=0.16.0-alpha.1", default-features = false }
+re_analytics = { path = "crates/re_analytics", version = "=0.16.0-alpha.2", default-features = false }
+re_build_info = { path = "crates/re_build_info", version = "=0.16.0-alpha.2", default-features = false }
+re_build_tools = { path = "crates/re_build_tools", version = "=0.16.0-alpha.2", default-features = false }
+re_crash_handler = { path = "crates/re_crash_handler", version = "=0.16.0-alpha.2", default-features = false }
+re_data_source = { path = "crates/re_data_source", version = "=0.16.0-alpha.2", default-features = false }
+re_data_store = { path = "crates/re_data_store", version = "=0.16.0-alpha.2", default-features = false }
+re_data_ui = { path = "crates/re_data_ui", version = "=0.16.0-alpha.2", default-features = false }
+re_dev_tools = { path = "crates/re_dev_tools", version = "=0.16.0-alpha.2", default-features = false }
+re_entity_db = { path = "crates/re_entity_db", version = "=0.16.0-alpha.2", default-features = false }
+re_error = { path = "crates/re_error", version = "=0.16.0-alpha.2", default-features = false }
+re_format = { path = "crates/re_format", version = "=0.16.0-alpha.2", default-features = false }
+re_format_arrow = { path = "crates/re_format_arrow", version = "=0.16.0-alpha.2", default-features = false }
+re_int_histogram = { path = "crates/re_int_histogram", version = "=0.16.0-alpha.2", default-features = false }
+re_log = { path = "crates/re_log", version = "=0.16.0-alpha.2", default-features = false }
+re_log_encoding = { path = "crates/re_log_encoding", version = "=0.16.0-alpha.2", default-features = false }
+re_log_types = { path = "crates/re_log_types", version = "=0.16.0-alpha.2", default-features = false }
+re_memory = { path = "crates/re_memory", version = "=0.16.0-alpha.2", default-features = false }
+re_query = { path = "crates/re_query", version = "=0.16.0-alpha.2", default-features = false }
+re_query_cache = { path = "crates/re_query_cache", version = "=0.16.0-alpha.2", default-features = false }
+re_query_cache2 = { path = "crates/re_query_cache2", version = "=0.16.0-alpha.2", default-features = false }
+re_query2 = { path = "crates/re_query2", version = "=0.16.0-alpha.2", default-features = false }
+re_renderer = { path = "crates/re_renderer", version = "=0.16.0-alpha.2", default-features = false }
+re_sdk = { path = "crates/re_sdk", version = "=0.16.0-alpha.2", default-features = false }
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.16.0-alpha.2", default-features = false }
+re_smart_channel = { path = "crates/re_smart_channel", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view = { path = "crates/re_space_view", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_dataframe = { path = "crates/re_space_view_dataframe", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.16.0-alpha.2", default-features = false }
+re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.16.0-alpha.2", default-features = false }
+re_string_interner = { path = "crates/re_string_interner", version = "=0.16.0-alpha.2", default-features = false }
+re_time_panel = { path = "crates/re_time_panel", version = "=0.16.0-alpha.2", default-features = false }
+re_tracing = { path = "crates/re_tracing", version = "=0.16.0-alpha.2", default-features = false }
+re_tuid = { path = "crates/re_tuid", version = "=0.16.0-alpha.2", default-features = false }
+re_types = { path = "crates/re_types", version = "=0.16.0-alpha.2", default-features = false }
+re_types_blueprint = { path = "crates/re_types_blueprint", version = "=0.16.0-alpha.2", default-features = false }
+re_types_builder = { path = "crates/re_types_builder", version = "=0.16.0-alpha.2", default-features = false }
+re_types_core = { path = "crates/re_types_core", version = "=0.16.0-alpha.2", default-features = false }
+re_ui = { path = "crates/re_ui", version = "=0.16.0-alpha.2", default-features = false }
+re_viewer = { path = "crates/re_viewer", version = "=0.16.0-alpha.2", default-features = false }
+re_viewer_context = { path = "crates/re_viewer_context", version = "=0.16.0-alpha.2", default-features = false }
+re_viewport = { path = "crates/re_viewport", version = "=0.16.0-alpha.2", default-features = false }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.16.0-alpha.2", default-features = false }
+re_ws_comms = { path = "crates/re_ws_comms", version = "=0.16.0-alpha.2", default-features = false }
+rerun = { path = "crates/rerun", version = "=0.16.0-alpha.2", default-features = false }
 
 # egui-crates:
 ecolor = "0.27.2"
@@ -141,7 +142,6 @@ glam = "0.22" # glam update blocked by macaw
 glob = "0.3"
 gltf = "1.1"
 half = "2.3.1"
-hyper = "0.14"
 image = { version = "0.24", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
@@ -215,10 +215,10 @@ thiserror = "1.0"
 time = { version = "0.3", default-features = false, features = [
   "wasm-bindgen",
 ] }
+tiny_http = { version = "0.12", default-features = false }
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
-tokio = { version = "1.24", default-features = false }
 toml = { version = "0.8.10", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.20", default-features = false }
@@ -239,7 +239,7 @@ webbrowser = "0.8"
 winit = { version = "0.29.9", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "0.19.1", default-features = false, features = [
+wgpu = { version = "0.19.4", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "webgl",
   "metal",
@@ -253,7 +253,7 @@ wgpu = { version = "0.19.1", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-wgpu-core = "0.19.0"
+wgpu-core = "0.19.4"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
 zune-core = "0.4"
@@ -277,6 +277,176 @@ panic = "abort" # This leads to better optimizations and smaller binaries (and i
 
 [profile.bench]
 debug = true
+
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+elided_lifetimes_in_paths = "warn"
+future_incompatible = "warn"
+nonstandard_style = "warn"
+rust_2018_idioms = "warn"
+rust_2021_prelude_collisions = "warn"
+semicolon_in_expressions_from_macros = "warn"
+trivial_numeric_casts = "warn"
+unsafe_op_in_unsafe_fn = "warn"               # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+
+trivial_casts = "allow"
+unused_qualifications = "allow"
+
+[workspace.lints.rustdoc]
+all = "warn"
+missing_crate_level_docs = "warn"
+
+# See also clippy.toml
+[workspace.lints.clippy]
+as_ptr_cast_mut = "warn"
+await_holding_lock = "warn"
+bool_to_int_with_if = "warn"
+char_lit_as_u8 = "warn"
+checked_conversions = "warn"
+clear_with_drain = "warn"
+cloned_instead_of_copied = "warn"
+dbg_macro = "warn"
+debug_assert_with_mut_call = "warn"
+derive_partial_eq_without_eq = "warn"
+disallowed_macros = "warn"                  # See clippy.toml
+disallowed_methods = "warn"                 # See clippy.toml
+disallowed_names = "warn"                   # See clippy.toml
+disallowed_script_idents = "warn"           # See clippy.toml
+disallowed_types = "warn"                   # See clippy.toml
+doc_link_with_quotes = "warn"
+doc_markdown = "warn"
+empty_enum = "warn"
+enum_glob_use = "warn"
+equatable_if_let = "warn"
+exit = "warn"
+expl_impl_clone_on_copy = "warn"
+explicit_deref_methods = "warn"
+explicit_into_iter_loop = "warn"
+explicit_iter_loop = "warn"
+fallible_impl_from = "warn"
+filter_map_next = "warn"
+flat_map_option = "warn"
+float_cmp_const = "warn"
+fn_params_excessive_bools = "warn"
+fn_to_numeric_cast_any = "warn"
+from_iter_instead_of_collect = "warn"
+get_unwrap = "warn"
+if_let_mutex = "warn"
+implicit_clone = "warn"
+imprecise_flops = "warn"
+index_refutable_slice = "warn"
+inefficient_to_string = "warn"
+infinite_loop = "warn"
+into_iter_without_iter = "warn"
+invalid_upcast_comparisons = "warn"
+iter_not_returning_iterator = "warn"
+iter_on_empty_collections = "warn"
+iter_on_single_items = "warn"
+iter_without_into_iter = "warn"
+large_digit_groups = "warn"
+large_include_file = "warn"
+large_stack_arrays = "warn"
+large_stack_frames = "warn"
+large_types_passed_by_value = "warn"
+let_unit_value = "warn"
+linkedlist = "warn"
+lossy_float_literal = "warn"
+macro_use_imports = "warn"
+manual_assert = "warn"
+manual_clamp = "warn"
+manual_instant_elapsed = "warn"
+manual_let_else = "warn"
+manual_ok_or = "warn"
+manual_string_new = "warn"
+map_err_ignore = "warn"
+map_flatten = "warn"
+map_unwrap_or = "warn"
+match_on_vec_items = "warn"
+match_same_arms = "warn"
+match_wild_err_arm = "warn"
+match_wildcard_for_single_variants = "warn"
+mem_forget = "warn"
+mismatched_target_os = "warn"
+mismatching_type_param_order = "warn"
+missing_enforced_import_renames = "warn"
+missing_safety_doc = "warn"
+mut_mut = "warn"
+mutex_integer = "warn"
+needless_borrow = "warn"
+needless_continue = "warn"
+needless_for_each = "warn"
+needless_pass_by_ref_mut = "warn"
+needless_pass_by_value = "warn"
+negative_feature_names = "warn"
+nonstandard_macro_braces = "warn"
+option_option = "warn"
+path_buf_push_overwrite = "warn"
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+pub_without_shorthand = "warn"
+rc_mutex = "warn"
+readonly_write_lock = "warn"
+redundant_type_annotations = "warn"
+ref_option_ref = "warn"
+rest_pat_in_fully_bound_structs = "warn"
+same_functions_in_if_condition = "warn"
+semicolon_if_nothing_returned = "warn"
+should_panic_without_expect = "warn"
+significant_drop_tightening = "warn"
+single_match_else = "warn"
+str_to_string = "warn"
+string_add_assign = "warn"
+string_add = "warn"
+string_lit_as_bytes = "warn"
+string_lit_chars_any = "warn"
+string_to_string = "warn"
+suspicious_command_arg_space = "warn"
+suspicious_xor_used_as_pow = "warn"
+todo = "warn"
+too_many_lines = "warn"
+trailing_empty_array = "warn"
+trait_duplication_in_bounds = "warn"
+tuple_array_conversions = "warn"
+unchecked_duration_subtraction = "warn"
+undocumented_unsafe_blocks = "warn"
+unimplemented = "warn"
+uninhabited_references = "warn"
+uninlined_format_args = "warn"
+unnecessary_box_returns = "warn"
+unnecessary_safety_doc = "warn"
+unnecessary_struct_initialization = "warn"
+unnecessary_wraps = "warn"
+unnested_or_patterns = "warn"
+unused_peekable = "warn"
+unused_rounding = "warn"
+unused_self = "warn"
+useless_transmute = "warn"
+verbose_file_reads = "warn"
+wildcard_dependencies = "warn"
+wildcard_imports = "warn"
+zero_sized_map_values = "warn"
+# Disabled waiting on https://github.com/rust-lang/rust-clippy/issues/9602
+#self_named_module_files = "warn"
+
+manual_range_contains = "allow" # this one is just worse imho
+ref_patterns = "allow"          # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
+
+# TODO(emilk): enable more of these lints:
+iter_over_hash_type = "allow"
+let_underscore_untyped = "allow"
+missing_assert_message = "allow"
+missing_errors_doc = "allow"
+
+# TODO(#3408): Forbid `.unwrap()`
+# This would be nice to enable, but we have way too many unwraps right now 😭
+# Enabling this lint in 2023-04-27 yielded 556 hits.
+# Enabling this lint in 2023-09-23 yielded 352 hits
+unwrap_used = "allow"
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.

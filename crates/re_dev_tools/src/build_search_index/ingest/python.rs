@@ -1,13 +1,11 @@
+use super::{Context, DocumentData, DocumentKind};
+use crate::build_search_index::util::CommandExt as _;
+use crate::build_search_index::util::ProgressBarExt as _;
+use anyhow::Context as _;
+use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::process::Command;
-
-use anyhow::Context as _;
-use serde::Deserialize;
-
-use crate::build_search_index::util::CommandExt as _;
-
-use super::{Context, DocumentData, DocumentKind};
 
 const RERUN_SDK: &str = "rerun_sdk";
 
@@ -16,7 +14,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     // run `mkdocs` to generate documentation, which also produces a `objects.inv` file
     // this file contains every documented item and a URL to where it is documented
-    progress.set_message("mkdocs build");
+    progress.set("mkdocs build", ctx.is_tty());
     Command::new("mkdocs")
         .with_arg("build")
         .with_arg("-f")
@@ -24,7 +22,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .output()?;
 
     // run `sphobjinv` to convert the `objects.inv` file into JSON, and fully resolve all links/names
-    progress.set_message("sphobjinv convert");
+    progress.set("sphobjinv convert", ctx.is_tty());
     let inv: Inventory = Command::new("sphobjinv")
         .with_args(["convert", "json", "--expand"])
         .with_cwd(ctx.workspace_root())
@@ -32,7 +30,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         .with_arg("-")
         .parse_json::<SphinxObjectInv>()
         .context(
-            "sphobjinv may not be installed, are you running in the py-docs pixi environment?",
+            "sphobjinv may not be installed, try running `pixi run pip install -r rerun_py/requirements-doc.txt`",
         )?
         .objects
         .into_values()
@@ -41,18 +39,20 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
 
     // run `griffe` to obtain an tree of the entire public module hierarchy in `rerun_sdk`
     // this dump is only used to obtain docstrings
-    progress.set_message("griffe dump");
+    progress.set("griffe dump", ctx.is_tty());
     let dump: Dump = Command::new("griffe")
         .with_args(["dump", "rerun_sdk"])
         .parse_json()
-        .context("either griffe or rerun_sdk is not installed")?;
+        .context("either griffe or rerun_sdk is not installed, try running `pixi run pip install -r rerun_py/requirements-doc.txt` and building the SDK")?;
 
     let docs = collect_docstrings(&dump[RERUN_SDK]);
 
     // index each documented item
-    let _version = &ctx.rerun_pkg().version;
-    // let base_url = format!("https://ref.rerun.io/docs/python/{version}");
-    let base_url = "https://ref.rerun.io/docs/python/main";
+    let base_url = format!(
+        "https://ref.rerun.io/docs/python/{version}",
+        version = ctx.release_version()
+    );
+    // let base_url = "https://ref.rerun.io/docs/python/main";
     for (path, obj) in inv {
         ctx.push(DocumentData {
             kind: DocumentKind::Python,

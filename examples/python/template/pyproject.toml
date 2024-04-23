@@ -1,0 +1,18 @@
+[project]
+name = "template"
+version = "0.1.0"
+# requires-python = "<3.12"  # any python constraints for this example, beyond the Rerun supported versions
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+template = "template:main"
+
+[tool.rerun-example]
+skip = true
+# extra-args = []  # extra arguments to pass when running the example on CI (str | [str])
+# exclude-platform = []  # platforms where this example doesn't run (str | [str])
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

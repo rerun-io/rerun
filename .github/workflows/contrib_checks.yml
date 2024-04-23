@@ -22,8 +22,7 @@ env:
   # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
   RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  RUSTDOCFLAGS: --deny warnings
 
   # Do *not* use sscache since on contributor ci we don't have access to the gcloud stored cache.
   #RUSTC_WRAPPER: "sccache"
@@ -48,7 +47,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.0
+          pixi-version: v0.19.1
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -62,13 +61,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.5.2
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          pixi-version: v0.19.0
-          environments: py-docs
+          python-version: "3.8"
+
+      - name: Install Python dependencies
+        shell: bash
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
 
       - name: Build via mkdocs
-        run: pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
+        shell: bash
+        run: |
+          mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
@@ -81,13 +88,13 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.0
+          pixi-version: v0.19.1
 
       - name: Codegen check
         run: pixi run codegen --force --check
 
   rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
+    name: Rust lints (fmt, check, clippy, tests, doc)
     runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v4
@@ -107,7 +114,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.0
+          pixi-version: v0.19.1
 
       - name: Rerun lints
         run: pixi run lint-rerun
@@ -152,7 +159,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.0
+          pixi-version: v0.19.1
           environments: cpp
 
       # TODO(emilk): make this work somehow. Right now this just results in

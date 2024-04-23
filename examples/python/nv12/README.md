@@ -13,6 +13,6 @@ This example displays an NV12 encoded video stream from a webcam in rerun.
 ## Run the code
 
 ```bash
-pip install -r examples/python/nv12/requirements.txt
-python examples/python/nv12/main.py
+pip install -e examples/python/nv12
+python -m nv12
 ```

@@ -12,6 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 all-features = true
 
@@ -21,7 +24,13 @@ all-features = true
 client = ["ewebsock"]
 
 ## Enable the server.
-server = ["dep:parking_lot", "dep:re_smart_channel", "tungstenite", "polling"]
+server = [
+  "dep:parking_lot",
+  "dep:re_smart_channel",
+  "dep:tungstenite",
+  "dep:polling",
+  "tungstenite/handshake",
+]
 
 ## Enable encryption using TLS support (`wss://`).
 tls = [

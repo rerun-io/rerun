@@ -17,5 +17,5 @@ Showcases how to incrementally log data belonging to the same archetype, and re-
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
-python examples/python/incremental_logging/main.py
+python examples/python/incremental_logging/increamental_logging.py
 ```

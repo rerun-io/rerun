@@ -69,17 +69,17 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/raw_mesh/requirements.txt
+pip install -e examples/python/raw_mesh
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/raw_mesh/main.py # run the example
+python -m raw_mesh # run the example
 ```
 You can specify scene:
 ```bash
-python examples/python/objectron/main.py --scene {lantern,avocado,buggy,brain_stem}
+python -m raw_mesh --scene {lantern,avocado,buggy,brain_stem}
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/raw_mesh/main.py --help
+python -m raw_mesh --help
 ```

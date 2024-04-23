@@ -2,9 +2,6 @@
 //!
 //! TODO(emilk): move some of this numeric formatting into `emath` so we can use it in `egui_plot`.
 
-#[cfg(feature = "arrow")]
-pub mod arrow;
-
 mod time;
 
 use std::{cmp::PartialOrd, fmt::Display};
@@ -294,7 +291,7 @@ fn test_format_f32() {
         (78.4321, "78.432 1"),
         (-std::f32::consts::PI, "−3.141 593"),
         (-std::f32::consts::PI * 1e6, "−3 141 593"),
-        (-std::f32::consts::PI * 1e20, "−3.141593e20"), // We should switch to scientific notation to now show dummy digits
+        (-std::f32::consts::PI * 1e20, "−3.141593e20"), // We switch to scientific notation to not show false precision
     ];
     for (value, expected) in cases {
         let got = format_f32(value);
@@ -327,7 +324,7 @@ fn test_format_f64() {
         (78.4321, "78.432 1"),
         (-std::f64::consts::PI, "−3.141 592 653 589 79"),
         (-std::f64::consts::PI * 1e6, "−3 141 592.653 589 79"),
-        (-std::f64::consts::PI * 1e20, "−3.14159265358979e20"), // We should switch to scientific notation to now show dummy digits
+        (-std::f64::consts::PI * 1e20, "−3.14159265358979e20"), // We switch to scientific notation to not show false precision
     ];
     for (value, expected) in cases {
         let got = format_f64(value);

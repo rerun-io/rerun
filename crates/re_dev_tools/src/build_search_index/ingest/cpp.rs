@@ -1,20 +1,18 @@
-use std::collections::HashSet;
-use std::fmt::Display;
-use std::fs::read_to_string;
-use std::process::Command;
-
+use super::Context;
+use super::DocumentData;
+use super::DocumentKind;
+use crate::build_search_index::util::CommandExt as _;
+use crate::build_search_index::util::ProgressBarExt as _;
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 use roxmltree::Children;
 use roxmltree::Descendants;
 use roxmltree::Document;
 use roxmltree::Node;
-
-use crate::build_search_index::util::CommandExt as _;
-
-use super::Context;
-use super::DocumentData;
-use super::DocumentKind;
+use std::collections::HashSet;
+use std::fmt::Display;
+use std::fs::read_to_string;
+use std::process::Command;
 
 macro_rules! document {
     ($dom:ident, $path:expr) => {
@@ -26,7 +24,8 @@ macro_rules! document {
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     let progress = ctx.progress_bar("cpp");
 
-    progress.set_message("doxygen");
+    progress.set("doxygen", ctx.is_tty());
+
     Command::new("doxygen")
         .with_arg("docs/Doxyfile")
         .with_cwd(ctx.workspace_root().join("rerun_cpp"))

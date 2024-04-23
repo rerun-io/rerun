@@ -12,7 +12,6 @@ import argparse
 import os
 import re
 import sys
-from glob import glob
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator
 
@@ -84,6 +83,36 @@ def check_string(s: str) -> str | None:
     return None
 
 
+def lint_url(url: str) -> str | None:
+    ALLOW_LIST_URLS = {
+        "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
+        "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
+        "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
+        "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
+        "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
+        "https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE",
+        "https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT",
+    }
+
+    if url in ALLOW_LIST_URLS:
+        return
+
+    if m := re.match(r"https://github.com/.*/blob/(\w+)/.*", url):
+        branch = m.group(1)
+        if branch in ("main", "master", "trunk", "latest"):
+            if "#L" in url:
+                return f"Do not link directly to a file:line on '{branch}' - it may change! Use a perma-link instead (commit hash or tag). Url: {url}"
+
+            if "/README.md" in url:
+                pass  # Probably fine
+            elif url.startswith("https://github.com/rerun-io/rerun/blob/"):
+                pass  # TODO(#6077): figure out how we best link to our own code from our docs
+            else:
+                return f"Do not link directly to a file on '{branch}' - it may disappear! Use a commit hash or tag instead. Url: {url}"
+
+    return None
+
+
 def lint_line(
     line: str, prev_line: str | None, file_extension: str = "rs", is_in_docstring: bool = False
 ) -> str | None:
@@ -116,6 +145,11 @@ def lint_line(
 
     if m := double_word.search(line):
         return f"Found double word: '{m.group(0)}'"
+
+    if m := re.search(r'https?://[^ )"]+', line):
+        url = m.group(0)
+        if err := lint_url(url):
+            return err
 
     if file_extension not in ("txt"):
         if (
@@ -613,6 +647,21 @@ def test_lint_workspace_deps() -> None:
 # -----------------------------------------------------------------------------
 
 
+workspace_lints = re.compile(r"\[lints\]\nworkspace\s*=\s*true")
+
+
+def lint_workspace_lints(cargo_file_content: str) -> str | None:
+    """Checks that a non-example cargo file has a lints section that sets workspace to true."""
+
+    if workspace_lints.search(cargo_file_content):
+        return None
+    else:
+        return "Non-example cargo files should have a [lints] section with workspace = true"
+
+
+# -----------------------------------------------------------------------------
+
+
 def fix_header_casing(s: str) -> str:
     allowed_title_words = [
         "Apache",
@@ -909,6 +958,13 @@ def lint_file(filepath: str, args: Any) -> int:
         if args.fix:
             source.rewrite(lines_out)
 
+    if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
+        error = lint_workspace_lints(source.content)
+
+        if error is not None:
+            print(source.error(error))
+            num_errors += 1
+
     # Markdown-specific lints
     if filepath.endswith(".md"):
         errors = lint_frontmatter(filepath, source.content)
@@ -958,46 +1014,6 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
         error_count += 1
 
     return error_count
-
-
-def lint_example_requirements() -> int:
-    """Check that `examples/python/requirements.txt` contains all requirements from the subdirectories and is correctly sorted."""
-
-    failed = False
-
-    with open("examples/python/requirements.txt", encoding="utf8") as f:
-        lines = f.read().strip().splitlines()
-        sorted_lines = lines.copy()
-        sorted_lines.sort()
-        requirements = set(lines)
-
-    missing = []
-    for path in glob("examples/python/*/requirements.txt"):
-        path = str(os.path.relpath(path, "examples/python")).replace("\\", "/")
-        line = f"-r {path}"
-        if line not in requirements:
-            missing.append(line)
-
-    if len(missing) != 0:
-        print("\n`examples/python/requirements.txt` is missing the following requirements:")
-        for line in missing:
-            print(line)
-        failed = True
-
-    if lines != sorted_lines:
-        print("\n`examples/python/requirements.txt` is not correctly sorted.")
-        failed = True
-
-    if failed:
-        print("\nHere is what `examples/python/requirements.txt` should contain:")
-        expected = glob("examples/python/*/requirements.txt")
-        expected.sort()
-        for path in expected:
-            path = str(os.path.relpath(path, "examples/python")).replace("\\", "/")
-            print(f"-r {path}")
-        return 1
-
-    return 0
 
 
 def main() -> None:
@@ -1057,7 +1073,7 @@ def main() -> None:
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
-        "./examples/python/objectron/proto/",  # auto-generated
+        "./examples/python/objectron/objectron/proto/",  # auto-generated
         "./examples/rust/objectron/src/objectron.rs",  # auto-generated
         "./rerun_cpp/docs/doxygen-awesome/",  # copied from an external repository
         "./rerun_cpp/docs/html",
@@ -1102,8 +1118,6 @@ def main() -> None:
 
         # Since no files have been specified, we also run the global lints.
         num_errors += lint_crate_docs(should_ignore)
-
-    num_errors += lint_example_requirements()
 
     if num_errors == 0:
         print(f"{sys.argv[0]} finished without error")

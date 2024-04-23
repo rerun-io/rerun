@@ -50,6 +50,7 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
+  "scripts/lint.py",                              # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
 ]
 
@@ -104,6 +105,9 @@ exclude = [
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',
+
+  # Needs authentication
+  'https://edge.meilisearch.com',
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.

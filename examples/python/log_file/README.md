@@ -9,6 +9,6 @@ Demonstrates how to log any file from the SDK using the [`DataLoader`](https://w
 
 Usage:
 ```bash
-python examples/python/log_file/main.py examples/assets
+python examples/python/log_file/log_file.py examples/assets
 ```
 

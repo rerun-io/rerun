@@ -1,0 +1,16 @@
+[project]
+name = "live_camera_edge_detection"
+version = "0.1.0"
+# requires-python = "<3.12"
+readme = "README.md"
+dependencies = ["opencv-python", "rerun-sdk"]
+
+[project.scripts]
+live_camera_edge_detection = "live_camera_edge_detection:main"
+
+[tool.rerun-example]
+extra-args = "--num-frames=30"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -503,7 +503,7 @@ fn debug_menu_options_ui(
         }
 
         if ui.button("SEGFAULT").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/065f3dd9c1c318630e539375165cf74961b44bcc/sadness-generator/src/lib.rs
 
             /// This is the fixed address used to generate a segfault. It's possible that
             /// this address can be mapped and writable by the your process in which case a
@@ -522,7 +522,7 @@ fn debug_menu_options_ui(
         }
 
         if ui.button("Stack overflow").clicked() {
-            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/main/sadness-generator/src/lib.rs
+            // Taken from https://github.com/EmbarkStudios/crash-handling/blob/065f3dd9c1c318630e539375165cf74961b44bcc/sadness-generator/src/lib.rs
             fn recurse(data: u64) -> u64 {
                 let mut buff = [0u8; 256];
                 buff[..9].copy_from_slice(b"junk data");

@@ -264,7 +264,7 @@ fn roundtrip() {
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
                 // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
@@ -326,7 +326,7 @@ fn roundtrip() {
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
                 // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
@@ -380,7 +380,7 @@ fn roundtrip() {
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
                 // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
@@ -433,7 +433,7 @@ fn roundtrip() {
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
                 // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
-                // https://github.com/jorgecarleitao/arrow2/blob/main/src/array/primitive/fmt.rs#L35
+                // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);

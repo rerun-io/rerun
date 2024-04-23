@@ -109,7 +109,7 @@ impl StaticTable {
                 columns
                     .entry(*component_name)
                     .or_default()
-                    .push_back(cells.get(component_name).cloned().cloned());
+                    .push_back(cells.get(component_name).copied().cloned());
             }
         }
 

@@ -382,11 +382,10 @@ def is_already_published(version: str, crate: Crate) -> bool:
     # the request failed
     if not resp.ok:
         detail = body["errors"][0]["detail"]
-        if detail == "Not Found":
-            # First time we're publishing this crate
-            return False
+        if resp.status_code == 404:
+            return False  # New crate that hasn't been published before
         else:
-            raise Exception(f"failed to get crate {crate_name}: {detail}")
+            raise Exception(f"Failed to get crate '{crate_name}': {resp.status_code} {detail}")
 
     # crate has not been uploaded yet
     if "versions" not in body:
@@ -496,7 +495,7 @@ def publish(dry_run: bool, token: str) -> None:
         publish_unpublished_crates_in_parallel(crates, version, token)
 
 
-def get_latest_published_version(crate_name: str) -> str | None:
+def get_latest_published_version(crate_name: str, skip_prerelease: bool = False) -> str | None:
     resp = requests.get(
         f"https://crates.io/api/v1/crates/{crate_name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
@@ -515,7 +514,15 @@ def get_latest_published_version(crate_name: str) -> str | None:
         return None
 
     # response orders versions by semver
-    return body["versions"][0]["num"]  # type: ignore [no-any-return]
+    versions = body["versions"]
+
+    if skip_prerelease:
+        for version in versions:
+            # no prerelease metadata
+            if "-" not in version["num"]:
+                return version["num"]
+    else:
+        return versions[0]["num"]  # type: ignore [no-any-return]
 
 
 class Target(Enum):
@@ -530,7 +537,7 @@ def get_release_version_from_git_branch() -> str:
     return git.Repo().active_branch.name.lstrip("release-")
 
 
-def get_version(target: Target | None) -> VersionInfo:
+def get_version(target: Target | None, skip_prerelease: bool = False) -> VersionInfo:
     if target is Target.Git:
         branch_name = get_release_version_from_git_branch()
         try:
@@ -540,7 +547,7 @@ def get_version(target: Target | None) -> VersionInfo:
             print("this script expects the format `release-x.y.z-meta.N`")
             exit(1)
     elif target is Target.CratesIo:
-        latest_published_version = get_latest_published_version("rerun")
+        latest_published_version = get_latest_published_version("rerun", skip_prerelease)
         if not latest_published_version:
             raise Exception("Failed to get latest published version for `rerun` crate")
         current_version = VersionInfo.parse(latest_published_version)
@@ -574,8 +581,13 @@ def check_git_branch_name() -> None:
         raise Exception(f'"{version}" is not a valid version string. See RELEASES.md for supported formats')
 
 
-def print_version(target: Target | None, finalize: bool = False, pre_id: bool = False) -> None:
-    current_version = get_version(target)
+def print_version(
+    target: Target | None,
+    finalize: bool = False,
+    pre_id: bool = False,
+    skip_prerelease: bool = False,
+) -> None:
+    current_version = get_version(target, skip_prerelease)
 
     if finalize:
         current_version = current_version.finalize_version()
@@ -629,13 +641,16 @@ def main() -> None:
     get_version_parser.add_argument(
         "--from", type=Target, choices=list(Target), help="Get version from git or crates.io", dest="target"
     )
+    get_version_parser.add_argument(
+        "--skip-prerelease", action="store_true", help="If target is cratesio, return the first non-prerelease version"
+    )
 
     args = parser.parse_args()
 
     if args.cmd == "check-git-branch-name":
         check_git_branch_name()
     if args.cmd == "get-version":
-        print_version(args.target, args.finalize, args.pre_id)
+        print_version(args.target, args.finalize, args.pre_id, args.skip_prerelease)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")

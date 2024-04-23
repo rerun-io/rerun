@@ -49,7 +49,7 @@
     // see https://github.com/rerun-io/rerun/pull/519 for rationale
     "rust-analyzer.check.overrideCommand": [
         "cargo",
-        "cranky",
+        "clippy",
         "--target-dir=target_ra",
         "--workspace",
         "--message-format=json",

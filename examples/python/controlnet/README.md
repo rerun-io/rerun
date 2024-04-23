@@ -77,17 +77,17 @@ git checkout latest  # Check out the commit matching the latest SDK release
 
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/controlnet/requirements.txt
+pip install -e examples/python/controlnet
 ```
 
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/controlnet/main.py
+python -m controlnet
 ```
 
 You can specify your own image and prompts using
 ```bash
-python examples/python/controlnet/main.py [--img-path IMG_PATH] [--prompt PROMPT] [--negative-prompt NEGATIVE_PROMPT]
+python -m controlnet [--img-path IMG_PATH] [--prompt PROMPT] [--negative-prompt NEGATIVE_PROMPT]
 ```
 
 This example requires a machine with CUDA backend available for pytorch (GPU) to work.

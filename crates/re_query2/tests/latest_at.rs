@@ -34,7 +34,7 @@ fn simple_query() -> anyhow::Result<()> {
         &store,
         &timeline_query,
         &entity_path.into(),
-        MyPoints::all_components().iter().cloned(),
+        MyPoints::all_components().iter().copied(),
     );
 
     // We expect this to generate the following `DataFrame`
@@ -104,7 +104,7 @@ fn static_query() -> anyhow::Result<()> {
         &store,
         &timeline_query,
         &entity_path.into(),
-        MyPoints::all_components().iter().cloned(),
+        MyPoints::all_components().iter().copied(),
     );
 
     // We expect this to generate the following `DataFrame`
@@ -173,7 +173,7 @@ fn no_instance_join_query() -> anyhow::Result<()> {
         &store,
         &timeline_query,
         &entity_path.into(),
-        MyPoints::all_components().iter().cloned(),
+        MyPoints::all_components().iter().copied(),
     );
 
     // We expect this to generate the following `DataFrame`

@@ -72,13 +72,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -r examples/python/segment_anything_model/requirements.txt
+pip install -e examples/python/segment_anything_model
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python examples/python/segment_anything_model/main.py # run the example
+python -m segment_anything_model # run the example
 ```
 If you wish to customize it or explore additional features, use the CLI with the `--help` option for guidance:
 ```bash
-python examples/python/segment_anything_model/main.py --help
+python -m segment_anything_model --help
 ```

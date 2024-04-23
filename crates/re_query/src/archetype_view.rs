@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, marker::PhantomData};
 
 use arrow2::array::{Array, PrimitiveArray};
-use re_format::arrow;
+
 use re_log_types::{DataCell, DataCellRow, RowId, TimeInt};
 use re_types_core::{
     components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
@@ -21,7 +21,7 @@ pub struct ComponentWithInstances {
 
 impl std::fmt::Display for ComponentWithInstances {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let table = arrow::format_table(
+        let table = re_format_arrow::format_table(
             [
                 self.instance_keys.as_arrow_ref(),
                 self.values.as_arrow_ref(),
@@ -270,7 +270,7 @@ impl<A: Archetype> std::fmt::Display for ArchetypeView<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let first_required = self.required_comp();
 
-        let primary_table = arrow::format_table(
+        let primary_table = re_format_arrow::format_table(
             [
                 first_required.instance_keys.as_arrow_ref(),
                 first_required.values.as_arrow_ref(),

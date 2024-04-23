@@ -17,5 +17,5 @@ Simple example of logging point and line primitives to draw a 3D helix.
 </picture>
 
 ```bash
-python examples/python/dna/main.py
+python examples/python/dna/dna.py
 ```

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Run some of our python exeamples, piping their log stream to the rerun process.
+Run some of our python examples, piping their log stream to the rerun process.
 
 This is an end-to-end test for testing:
 * Our Python API
@@ -17,6 +17,7 @@ import argparse
 import os
 import subprocess
 import time
+from pathlib import Path
 
 PORT = 9752
 
@@ -24,7 +25,7 @@ PORT = 9752
 def main() -> None:
     parser = argparse.ArgumentParser(description="Runs end-to-end tests of select python example.")
     parser.add_argument("--no-build", action="store_true", help="Skip building rerun-sdk")
-    parser.add_argument("--no-pip-reqs", action="store_true", help="Skip installing pip requirements")
+    parser.add_argument("--no-install", action="store_true", help="Skip installing the examples")
 
     if parser.parse_args().no_build:
         print("Skipping building rerun-sdk - assuming it is already built and up-to-date!")
@@ -41,36 +42,32 @@ def main() -> None:
         print(f"rerun-sdk built in {elapsed:.1f} seconds")
         print("")
 
-    if not parser.parse_args().no_pip_reqs:
-        requirements = [
-            "tests/python/test_api/requirements.txt",
-            "examples/python/minimal_options/requirements.txt",
-            "examples/python/multithreading/requirements.txt",
-            "examples/python/plots/requirements.txt",
-        ]
+    examples = [
+        # Trivial examples that don't require weird dependencies, or downloading data
+        ("tests/python/test_api", ["--test", "all"]),
+        ("examples/python/minimal_options", []),
+        ("examples/python/multithreading", []),
+        ("examples/python/plots", []),
+    ]
 
+    if not parser.parse_args().no_install:
         print("----------------------------------------------------------")
-        print("Installing pip dependencies…")
+        print("Installing examples…")
         start_time = time.time()
-        for requirement in requirements:
-            subprocess.run(["pip", "install", "--quiet", "-r", requirement], check=True)
+        args = ["pip", "install", "--quiet"]
+        for example, _ in examples:
+            # install in editable mode so `__file__` relative paths work
+            args.extend(["-e", example])
+        subprocess.run(args, check=True)
         elapsed = time.time() - start_time
         print(f"pip install in {elapsed:.1f} seconds")
         print("")
-
-    examples = [
-        # Trivial examples that don't require weird dependencies, or downloading data
-        ("tests/python/test_api/main.py", ["--test", "all"]),
-        ("examples/python/minimal_options/main.py", []),
-        ("examples/python/multithreading/main.py", []),
-        ("examples/python/plots/main.py", []),
-    ]
 
     for example, args in examples:
         print("----------------------------------------------------------")
         print(f"Testing {example}…\n")
         start_time = time.time()
-        run_example(example, args)
+        run_example(Path(example).name, args)
         elapsed = time.time() - start_time
         print(f"{example} done in {elapsed:.1f} seconds")
         print()
@@ -88,7 +85,7 @@ def run_example(example: str, extra_args: list[str]) -> None:
     rerun_process = subprocess.Popen(cmd, env=env)
     time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
 
-    cmd = ["python", example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
+    cmd = ["python", "-m", example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
     python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")
