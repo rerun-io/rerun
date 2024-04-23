@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""
-Example running BERT-based named entity recognition (NER).
-
-Run
-```sh
-examples/python/llm_embedding_ner/main.py
-```
-"""
+"""Example running BERT-based named entity recognition (NER)."""
 
 from __future__ import annotations
 

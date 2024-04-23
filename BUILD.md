@@ -59,7 +59,7 @@ Additionally, nightly dev wheels from head of `main` are available at <https://g
 
 If you want to build from source, you can do so easily in the pixi environment:
 * Run `pixi run py-build --release` to build SDK & viewer for python (or `pixi run py-build` for a debug build)
-* Then you can run examples from the repository, either by making the pixi shell active with  `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/main.py`
+* Then you can run examples from the repository, either by making the pixi shell active with  `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`
 
 
 ### Tests & Tooling

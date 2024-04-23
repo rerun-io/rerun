@@ -18,12 +18,6 @@ Using both traditional methods as well as the one described in the DeepSDF paper
     month = {June},
     year = {2019}
 }
-
-Run:
-```sh
-# assuming your virtual env is up
-examples/python/signed_distance_fields/main.py
-```
 """
 
 from __future__ import annotations

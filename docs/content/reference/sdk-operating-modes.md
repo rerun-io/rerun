@@ -90,7 +90,7 @@ Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/
 
 Use [`rr.stdout`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.stdout).
 
-Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/main.py).
+Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/python/stdio/stdio.py).
 
 #### Rust
 

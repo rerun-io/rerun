@@ -18,14 +18,14 @@ We show how Rerun blueprints can then be used to present many different views of
 
 
 ```bash
-pip install -r examples/python/blueprint_stocks/requirements.txt
-python examples/python/blueprint_stocks/blueprint_main.py
+pip install -e examples/python/blueprint_stocks
+python -m blueprint_stocks
 ```
 
 The different blueprints can be explored using the `--blueprint` flag. For example:
 
 ```
-python examples/python/blueprint_stocks/main.py --blueprint=one-stock
+python -m blueprint_stocks --blueprint=one-stock
 ```
 
 Available choices are:
