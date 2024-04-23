@@ -131,9 +131,6 @@ pub struct CachedLatestAtComponentResults {
     /// The resolved, converted, deserialized dense data.
     pub(crate) cached_dense: OnceLock<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 
-    /// The resolved, converted, deserialized sparse data.
-    pub(crate) cached_sparse: OnceLock<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
-
     pub(crate) cached_heap_size_bytes: AtomicU64,
 }
 
@@ -144,7 +141,6 @@ impl CachedLatestAtComponentResults {
             index: (TimeInt::STATIC, RowId::ZERO),
             promise: None,
             cached_dense: OnceLock::new(),
-            cached_sparse: OnceLock::new(),
             cached_heap_size_bytes: AtomicU64::new(0),
         }
     }
@@ -177,8 +173,7 @@ impl std::fmt::Debug for CachedLatestAtComponentResults {
         let Self {
             index,
             promise: _,
-            cached_dense: _,  // we can't, we don't know the type
-            cached_sparse: _, // we can't, we don't know the type
+            cached_dense: _, // we can't, we don't know the type
             cached_heap_size_bytes,
         } = self;
 
@@ -242,42 +237,6 @@ impl CachedLatestAtComponentResults {
         self.to_dense(resolver)
             .map(|data| data.map(|data| data.iter()))
     }
-
-    /// Returns the component data as a sparse vector.
-    ///
-    /// Returns an error if the component is missing or cannot be deserialized.
-    ///
-    /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
-    /// deserializing the data into a single one, if you don't need the extra flexibility.
-    #[inline]
-    pub fn to_sparse<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<&[Option<C>]>> {
-        if let Some(cell) = self.promise.as_ref() {
-            resolver
-                .resolve(cell)
-                .map(|cell| self.downcast_sparse::<C>(&cell))
-        } else {
-            // Manufactured empty result.
-            PromiseResult::Ready(Ok(&[]))
-        }
-    }
-
-    /// Iterates over the component data, assuming it is sparse.
-    ///
-    /// Returns an error if the component is missing or cannot be deserialized.
-    ///
-    /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
-    /// deserializing the data into a single one, if you don't need the extra flexibility.
-    #[inline]
-    pub fn iter_sparse<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = Option<&C>>>> {
-        self.to_sparse(resolver)
-            .map(|data| data.map(|data| data.iter().map(Option::as_ref)))
-    }
 }
 
 impl CachedLatestAtComponentResults {
@@ -306,56 +265,12 @@ impl CachedLatestAtComponentResults {
 
         downcast(&**cached)
     }
-
-    fn downcast_sparse<C: Component>(&self, cell: &DataCell) -> crate::Result<&[Option<C>]> {
-        // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
-        // data has already been computed.
-        //
-        // See next comment as to why we need this.
-        if let Some(cached) = self.cached_sparse.get() {
-            return downcast_opt(&**cached);
-        }
-
-        // We have to do this outside of the callback in order to propagate errors.
-        // Hence the early exit check above.
-        let data = cell
-            .try_to_native_opt::<C>()
-            .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
-
-        #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> =
-            self.cached_sparse.get_or_init(move || {
-                self.cached_heap_size_bytes
-                    .fetch_add(data.total_size_bytes(), Relaxed);
-                Box::new(FlatVecDeque::from(data))
-            });
-
-        downcast_opt(&**cached)
-    }
 }
 
 fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> crate::Result<&[C]> {
     let cached = cached
         .as_any()
         .downcast_ref::<FlatVecDeque<C>>()
-        .ok_or_else(|| QueryError::TypeMismatch {
-            actual: "<unknown>".into(),
-            requested: C::name(),
-        })?;
-
-    if cached.num_entries() != 1 {
-        return Err(anyhow::anyhow!("latest_at deque must be single entry").into());
-    }
-    // unwrap checked just above ^^^
-    Ok(cached.iter().next().unwrap())
-}
-
-fn downcast_opt<C: Component>(
-    cached: &(dyn ErasedFlatVecDeque + Send + Sync),
-) -> crate::Result<&[Option<C>]> {
-    let cached = cached
-        .as_any()
-        .downcast_ref::<FlatVecDeque<Option<C>>>()
         .ok_or_else(|| QueryError::TypeMismatch {
             actual: "<unknown>".into(),
             requested: C::name(),

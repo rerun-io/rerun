@@ -217,7 +217,6 @@ impl LatestAtCache {
                 index: (data_time, row_id),
                 promise: Some(Promise::new(cell)),
                 cached_dense: Default::default(),
-                cached_sparse: Default::default(),
                 cached_heap_size_bytes: AtomicU64::new(0),
             });
 

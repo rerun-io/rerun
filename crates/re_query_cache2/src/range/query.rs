@@ -243,10 +243,6 @@ impl CachedRangeComponentResultsInner {
         self.cached_dense
             .as_ref()
             .map_or(0u64, |cached| cached.dyn_num_values() as _)
-            + self
-                .cached_sparse
-                .as_ref()
-                .map_or(0u64, |cached| cached.dyn_num_values() as _)
     }
 
     /// Given a `query`, returns N reduced queries that are sufficient to fill the missing data
