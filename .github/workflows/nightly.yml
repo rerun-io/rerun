@@ -24,7 +24,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: nightly
-      FULL: "true"
+      CHANNEL: nightly
     secrets: inherit
 
   checks-rust:

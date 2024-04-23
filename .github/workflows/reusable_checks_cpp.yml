@@ -6,12 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      FULL:
-        # Booleans are almost unusable
-        # See https://medium.com/@sohail.ra5/github-actions-passing-boolean-input-variables-to-reusable-workflow-call-42d39bf7342e
-        type: string
-        required: true
-        default: "true"
+      CHANNEL:
+        required: false
+        type: string # enum: 'nightly', 'main', or 'pr'
 
   workflow_dispatch:
     inputs:
@@ -19,12 +16,9 @@ on:
         required: false
         type: string
         default: "adhoc"
-      FULL:
-        description: "If false only linux is tested"
-        type: choice
-        options:
-          - "true"
-          - "false"
+      CHANNEL:
+        required: false
+        type: string # enum: 'nightly', 'main', or 'pr'
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_cpp
@@ -59,13 +53,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
-        run: |
-          echo "Full matrix: ${{ inputs.FULL }}"
-          if ${{ inputs.FULL }}; then
-            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
-          else
-            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
-          fi
+        run: echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
 
   cpp-tests:
     name: C++ build & test - ${{ matrix.name }}
@@ -108,6 +96,10 @@ jobs:
 
       - name: pixi run cpp-test
         run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
+
+      - name: pixi run cpp-build-all-shared-libs
+        if: ${{ inputs.CHANNEL == 'nightly' }}
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all-shared-libs
 
       - name: additional_commands
         run: ${{ matrix.additional_commands }}
