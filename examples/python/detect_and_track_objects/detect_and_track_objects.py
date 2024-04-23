@@ -35,8 +35,8 @@ DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets
 CACHE_DIR: Final = EXAMPLE_DIR / "cache"
 
 # panoptic_coco_categories.json comes from:
-# https://github.com/cocodataset/panopticapi/blob/master/panoptic_coco_categories.json
-# License: https://github.com/cocodataset/panopticapi/blob/master/license.txt
+# https://github.com/cocodataset/panopticapi/blob/7bb4655548f98f3fedc07bf37e9040a992b054b0/panoptic_coco_categories.json
+# License: https://github.com/cocodataset/panopticapi/blob/7bb4655548f98f3fedc07bf37e9040a992b054b0/license.txt
 COCO_CATEGORIES_PATH = EXAMPLE_DIR / "panoptic_coco_categories.json"
 
 DOWNSCALE_FACTOR = 2

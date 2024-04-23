@@ -102,8 +102,8 @@ pixi run cpp-build-all
 
 High-level documentation for rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
-- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/docs/writing_docs.md).
-- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the python doc-system, see [Writing Docs](https://github.com/rerun-io/rerun/blob/main/rerun_py/docs/writing_docs.md).
+- 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
+- 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
 - 🦀 [Rust API docs](https://docs.rs/rerun/) are hosted on  <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
 
 ## Building for the web

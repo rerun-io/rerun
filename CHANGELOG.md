@@ -661,7 +661,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
   - Much more powerful UI, allowing query ranges relative to time cursor
 - 🕸️ The viewer can now be easily embedded in your web apps via our [npm package](https://www.npmjs.com/package/@rerun-io/web-viewer)
 - 🐍 ⚠️ Legacy Python API now removed, check the [migration guide](https://github.com/rerun-io/rerun/issues/723) if you're not using `rr.log` yet
-- 🦀 The new `StoreSubscriber` trait allows to be notified of all changes in the datastore. This can be used to build custom indices and trigger systems, and serves as a foundation for upcoming performance improvements. Check out [our example](https://github.com/rerun-io/rerun/blob/main/examples/rust/custom_store_subscriber/README.md) for more information.
+- 🦀 The new `StoreSubscriber` trait allows to be notified of all changes in the datastore. This can be used to build custom indices and trigger systems, and serves as a foundation for upcoming performance improvements. Check out [our example](examples/rust/custom_store_subscriber/README.md) for more information.
 
 ⚠️ Known issues on Visual Time Range:
 - Time cursor [sometimes stops scrolling correctly](https://github.com/rerun-io/rerun/issues/4246) on plot window

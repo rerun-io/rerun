@@ -1,7 +1,7 @@
 //! Implement natural ordering for strings, so that "file5" < "file10".
 //!
 //! Crates considered:
-//! * `human-sort`: <https://github.com/paradakh/human-sort/blob/master/src/lib.rs> - overflows on large integers
+//! * `human-sort`: <https://github.com/paradakh/human-sort/blob/d3e11b7f122961b45d13a6ff6f5cfe0e0b48a8a0/src/lib.rs> - overflows on large integers
 //! * `lexical-sort`: <https://lib.rs/crates/lexical-sort> - comes with a huge unicode->ascii table
 //! * `natord`: <https://docs.rs/natord/latest/natord/> - the one we're using
 
