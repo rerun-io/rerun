@@ -3,7 +3,7 @@ use itertools::Itertools as _;
 use re_query_cache2::{PromiseResult, QueryError};
 use re_types::{
     archetypes::{self, SeriesPoint},
-    components::{Color, MarkerShape, MarkerSize, Name, Scalar, StrokeWidth},
+    components::{Color, MarkerShape, MarkerSize, Name, Scalar},
     Archetype as _, ComponentNameSet, Loggable,
 };
 use re_viewer_context::{
@@ -43,7 +43,6 @@ impl VisualizerSystem for SeriesPointSystem {
             .map(ToOwned::to_owned)
             .collect::<ComponentNameSet>();
         query_info.queried.append(&mut series_point_queried);
-        query_info.queried.insert(StrokeWidth::name());
         query_info.indicators = std::iter::once(SeriesPoint::indicator().name()).collect();
         query_info
     }
@@ -100,8 +99,6 @@ impl SeriesPointSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let store = ctx.recording_store();
-        let query_caches2 = ctx.recording().query_caches2();
         let resolver = ctx.recording().resolver();
 
         let (plot_bounds, time_per_pixel) = determine_plot_bounds_and_time_per_pixel(ctx, query);
@@ -152,11 +149,16 @@ impl SeriesPointSystem {
                 let entity_path = &data_result.entity_path;
                 let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-                let results = query_caches2.range(
-                    store,
+                let results = ctx.recording().query_caches2().range(
+                    ctx.recording_store(),
                     &query,
                     entity_path,
-                    [Scalar::name(), Color::name(), StrokeWidth::name()],
+                    [
+                        Scalar::name(),
+                        Color::name(),
+                        MarkerSize::name(),
+                        MarkerShape::name(),
+                    ],
                 );
 
                 let all_scalars = results
@@ -323,7 +325,7 @@ impl SeriesPointSystem {
                 data_result,
                 time_per_pixel,
                 points,
-                store,
+                ctx.recording_store(),
                 query,
                 series_name,
                 &mut self.all_series,

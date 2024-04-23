@@ -51,18 +51,14 @@ impl VisualizerSystem for TextLogSystem {
         view_query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let store = ctx.recording_store();
-        let query_caches2 = ctx.recording().query_caches2();
         let resolver = ctx.recording().resolver();
-
-        // We want everything, for all times:
         let query = re_data_store::RangeQuery::new(view_query.timeline, TimeRange::EVERYTHING);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-            let results = query_caches2.range(
-                store,
+            let results = ctx.recording().query_caches2().range(
+                ctx.recording_store(),
                 &query,
                 &data_result.entity_path,
                 [Text::name(), TextLogLevel::name(), Color::name()],
@@ -116,7 +112,7 @@ impl VisualizerSystem for TextLogSystem {
         }
 
         {
-            // Sort by currently selected tiemeline
+            // Sort by currently selected timeline
             re_tracing::profile_scope!("sort");
             self.entries.sort_by_key(|e| e.time);
         }
