@@ -155,8 +155,6 @@ fn load_series(
 ) -> Result<(), QueryError> {
     re_tracing::profile_function!();
 
-    let store = ctx.recording_store();
-    let query_caches2 = ctx.recording().query_caches2();
     let resolver = ctx.recording().resolver();
 
     let annotation_info = annotations
@@ -197,8 +195,8 @@ fn load_series(
         let entity_path = &data_result.entity_path;
         let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-        let results = query_caches2.range(
-            store,
+        let results = ctx.recording().query_caches2().range(
+            ctx.recording_store(),
             &query,
             entity_path,
             [Scalar::name(), Color::name(), StrokeWidth::name()],
@@ -333,7 +331,7 @@ fn load_series(
         data_result,
         time_per_pixel,
         points,
-        store,
+        ctx.recording_store(),
         query,
         series_name,
         all_series,
