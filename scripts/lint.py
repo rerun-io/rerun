@@ -83,6 +83,36 @@ def check_string(s: str) -> str | None:
     return None
 
 
+def lint_url(url: str) -> str | None:
+    ALLOW_LIST_URLS = {
+        "https://github.com/lycheeverse/lychee/blob/master/lychee.example.toml",
+        "https://github.com/rerun-io/documentation/blob/main/src/utils/tokens.ts",
+        "https://github.com/rerun-io/rerun/blob/main/ARCHITECTURE.md",
+        "https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md",
+        "https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md",
+        "https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE",
+        "https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT",
+    }
+
+    if url in ALLOW_LIST_URLS:
+        return
+
+    if m := re.match(r"https://github.com/.*/blob/(\w+)/.*", url):
+        branch = m.group(1)
+        if branch in ("main", "master", "trunk", "latest"):
+            if "#L" in url:
+                return f"Do not link directly to a file:line on '{branch}' - it may change! Use a perma-link instead (commit hash or tag). Url: {url}"
+
+            if "/README.md" in url:
+                pass  # Probably fine
+            elif url.startswith("https://github.com/rerun-io/rerun/blob/"):
+                pass  # TODO(#6077): figure out how we best link to our own code from our docs
+            else:
+                return f"Do not link directly to a file on '{branch}' - it may disappear! Use a commit hash or tag instead. Url: {url}"
+
+    return None
+
+
 def lint_line(
     line: str, prev_line: str | None, file_extension: str = "rs", is_in_docstring: bool = False
 ) -> str | None:
@@ -115,6 +145,11 @@ def lint_line(
 
     if m := double_word.search(line):
         return f"Found double word: '{m.group(0)}'"
+
+    if m := re.search(r'https?://[^ )"]+', line):
+        url = m.group(0)
+        if err := lint_url(url):
+            return err
 
     if file_extension not in ("txt"):
         if (

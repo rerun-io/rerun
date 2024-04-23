@@ -86,7 +86,7 @@ fn colormap_turbo_srgb(t: f32) -> vec3f {
 //  - use nested horner representation for polynomials
 //  - polynomials were fitted to minimize maximum error (as opposed to least squares)
 //
-// Data fitted from https://github.com/BIDS/colormap/blob/master/colormaps.py (CC0).
+// Data fitted from https://github.com/BIDS/colormap/blob/bc549477db0c12b54a5928087552ad2cf274980f/colormaps.py (CC0).
 
 /// Returns a gamma-space sRGB in 0-1 range.
 /// This is a polynomial approximation from Viridis color map, assuming `t` is

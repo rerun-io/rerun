@@ -28,7 +28,7 @@ fn array_to_rust(arrow_array: &PyAny, name: Option<&str>) -> PyResult<(Box<dyn A
     #[allow(unsafe_code)]
     // SAFETY:
     // TODO(jleibs): Convince ourselves that this is safe
-    // Following pattern from: https://github.com/pola-rs/polars/blob/master/examples/python_rust_compiled_function/src/ffi.rs
+    // Following pattern from: https://github.com/pola-rs/polars/blob/1c6b7b70e935fe70384fc0d1ca8d07763011d8b8/examples/python_rust_compiled_function/src/ffi.rs
     unsafe {
         let mut field = ffi::import_field_from_c(schema.as_ref())
             .map_err(|err| PyValueError::new_err(format!("Error importing Field: {err}")))?;

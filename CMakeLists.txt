@@ -138,7 +138,7 @@ message(STATUS "Rerun version ${RERUN_VERSION}")
 # Loguru logging library (https://github.com/emilk/loguru):
 set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces
 
-# Loguru, see https://github.com/emilk/loguru/blob/master/loguru_cmake_example/CMakeLists.txt
+# Loguru, see https://github.com/emilk/loguru/blob/4adaa185883e3c04da25913579c451d3c32cfac1/loguru_cmake_example/CMakeLists.txt
 include(FetchContent)
 FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path

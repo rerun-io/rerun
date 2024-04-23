@@ -1,5 +1,5 @@
-# Copied from https://github.com/apple/ARKitScenes/blob/main/download_data.py
-# Licensing information: https://github.com/apple/ARKitScenes/blob/main/LICENSE
+# Copied from https://github.com/apple/ARKitScenes/blob/9ec0b99c3cd55e29fc0724e1229e2e6c2909ab45/download_data.py
+# Licensing information: https://github.com/apple/ARKitScenes/blob/9ec0b99c3cd55e29fc0724e1229e2e6c2909ab45/LICENSE
 from __future__ import annotations
 
 import math
