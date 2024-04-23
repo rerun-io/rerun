@@ -382,11 +382,10 @@ def is_already_published(version: str, crate: Crate) -> bool:
     # the request failed
     if not resp.ok:
         detail = body["errors"][0]["detail"]
-        if detail == "Not Found":
-            # First time we're publishing this crate
-            return False
+        if resp.status_code == 404:
+            return False  # New crate that hasn't been published before
         else:
-            raise Exception(f"failed to get crate {crate_name}: {detail}")
+            raise Exception(f"Failed to get crate '{crate_name}': {resp.status_code} {detail}")
 
     # crate has not been uploaded yet
     if "versions" not in body:
