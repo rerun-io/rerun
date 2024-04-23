@@ -62,6 +62,11 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
+            if object_kind == ObjectKind::SpaceView {
+                // TODO(#5521): Implement SpaceView codegen for Rust.
+                continue;
+            }
+
             self.generate_folder(
                 reporter,
                 objects,

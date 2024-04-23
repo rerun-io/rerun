@@ -20,7 +20,7 @@ impl PythonCodeFormatter {
 }
 
 impl CodeFormatter for PythonCodeFormatter {
-    fn format(&mut self, _reporter: &crate::Reporter, files: &mut crate::GeneratedFiles) {
+    fn format(&mut self, reporter: &crate::Reporter, files: &mut crate::GeneratedFiles) {
         use rayon::prelude::*;
 
         re_tracing::profile_function!();
@@ -44,7 +44,9 @@ impl CodeFormatter for PythonCodeFormatter {
             crate::codegen::common::write_file(&formatted_source_path, contents);
         });
 
-        format_python_dir(&tempdir_path).unwrap();
+        if let Err(err) = format_python_dir(&tempdir_path) {
+            reporter.error_file(&tempdir_path, format!("{err:?}"));
+        }
 
         // Read back and copy to the final destination:
         files.par_iter_mut().for_each(|(filepath, contents)| {

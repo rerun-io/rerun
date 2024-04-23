@@ -215,7 +215,12 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+    pub const ALL: [Self; 4] = [
+        Self::Datatype,
+        Self::Component,
+        Self::Archetype,
+        Self::SpaceView,
+    ];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
@@ -533,6 +538,7 @@ impl Object {
 
     pub fn scope(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
+            .or_else(|| (self.kind == ObjectKind::SpaceView).then(|| "blueprint".to_owned()))
     }
 
     pub fn deprecation_notice(&self) -> Option<String> {

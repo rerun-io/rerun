@@ -1,5 +1,7 @@
 //! Implements the Python codegen pass.
 
+mod space_views;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
@@ -18,6 +20,8 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
+
+use self::space_views::code_for_space_view;
 
 use super::common::ExampleInfo;
 
@@ -342,14 +346,18 @@ impl PythonCodeGenerator {
             code.push_indented(0, &format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
                 code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
-                code.push_indented(
-                    0,
-                    &format!(
-                        "# You can extend this class by creating a {:?} class in {:?}.",
-                        ext_class.name, ext_class.file_name
-                    ),
-                    2,
-                );
+
+                if obj.kind != ObjectKind::SpaceView {
+                    // Space view type extension isn't implemented yet (shouldn't be hard though to add if).
+                    code.push_indented(
+                        0,
+                        &format!(
+                            "# You can extend this class by creating a {:?} class in {:?}.",
+                            ext_class.name, ext_class.file_name
+                        ),
+                        2,
+                    );
+                }
             }
 
             let manifest = quote_manifest(names);
@@ -436,7 +444,11 @@ impl PythonCodeGenerator {
 
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
-                    code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    if obj.kind == ObjectKind::SpaceView {
+                        code_for_space_view(reporter, objects, obj)
+                    } else {
+                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    }
                 }
                 crate::objects::ObjectClass::Enum => {
                     code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
@@ -458,7 +470,7 @@ impl PythonCodeGenerator {
             files_to_write.insert(filepath.clone(), code);
         }
 
-        // rerun/[{scope}]/{datatypes|components|archetypes}/__init__.py
+        // rerun/[{scope}]/{datatypes|components|archetypes|space_views}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
         for (scope, mods) in scoped_mods {
@@ -476,6 +488,10 @@ fn write_init_file(
     mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
+    if mods.is_empty() {
+        return;
+    }
+
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
     let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
@@ -766,7 +782,9 @@ fn code_for_struct(
                 1,
             );
         }
-        ObjectKind::SpaceView => unimplemented!(),
+        ObjectKind::SpaceView => {
+            unreachable!("Space views processing shouldn't reach struct generation code.");
+        }
     }
 
     code

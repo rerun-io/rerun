@@ -136,6 +136,10 @@ impl crate::CodeGenerator for CppCodeGenerator {
 
         ObjectKind::ALL
             .par_iter()
+            .filter(|&&object_kind| {
+                // TODO(#5521): Implement SpaceView codegen for Rust.
+                object_kind != ObjectKind::SpaceView
+            })
             .flat_map(|object_kind| {
                 scopes
                     .par_iter()
