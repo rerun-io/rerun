@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration for the background of the 3D space view.
 #[derive(Clone, Debug)]
 pub struct Background3D {
-    /// The type of the background. Defaults to DirectionalGradient
+    /// The type of the background. Defaults to Background3DKind.GradientDark.
     pub kind: crate::blueprint::components::Background3DKind,
 
     /// Color used for Background3DKind.SolidColor.

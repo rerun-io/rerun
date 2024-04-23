@@ -19,7 +19,7 @@
 namespace rerun::blueprint::archetypes {
     /// **Archetype**: Configuration for the background of the 3D space view.
     struct Background3D {
-        /// The type of the background. Defaults to DirectionalGradient
+        /// The type of the background. Defaults to Background3DKind.GradientDark.
         rerun::blueprint::components::Background3DKind kind;
 
         /// Color used for Background3DKind.SolidColor.

@@ -5,6 +5,7 @@ from typing import Any, Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
+from .._baseclasses import AsComponents
 from .._spawn import _spawn_viewer
 from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
@@ -41,6 +42,7 @@ class SpaceView:
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
         name: Utf8Like | None,
+        properties: dict[str, AsComponents] = {},
     ):
         """
         Construct a blueprint for a new space view.
@@ -58,6 +60,8 @@ class SpaceView:
         contents
             The contents of the space view specified as a query expression. This is either a single expression,
             or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
+        properties
+            Dictionary of property archetypes to add to space view's internal hierarchy.
 
         """
         self.id = uuid.uuid4()
@@ -65,6 +69,7 @@ class SpaceView:
         self.name = name
         self.origin = origin
         self.contents = contents
+        self.properties = properties
 
     def blueprint_path(self) -> str:
         """
@@ -103,6 +108,9 @@ class SpaceView:
         )
 
         stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]
+
+        for prop_name, prop in self.properties.items():
+            stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
 
     def _repr_html_(self) -> Any:
         """IPython interface to conversion to html."""
