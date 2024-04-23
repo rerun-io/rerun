@@ -61,7 +61,6 @@ pub struct RangeCache {
     /// All temporal data, organized by _data_ time.
     ///
     /// Query time is irrelevant for range queries.
-    // TODO(#4810): bucketize
     pub per_data_time: CachedRangeComponentResults,
 
     /// Everything greater than or equal to this timestamp has been asynchronously invalidated.
@@ -102,15 +101,11 @@ impl std::fmt::Debug for RangeCache {
             let per_data_time = per_data_time.read();
 
             let per_data_time_indices = &per_data_time.indices;
-            if !per_data_time_indices.is_empty() {
-                data_time_min = TimeInt::min(
-                    data_time_min,
-                    per_data_time_indices.front().map(|(t, _)| *t).unwrap(),
-                );
-                data_time_max = TimeInt::max(
-                    data_time_max,
-                    per_data_time_indices.back().map(|(t, _)| *t).unwrap(),
-                );
+            if let Some(time_front) = per_data_time_indices.front().map(|(t, _)| *t) {
+                data_time_min = TimeInt::min(data_time_min, time_front);
+            }
+            if let Some(time_back) = per_data_time_indices.back().map(|(t, _)| *t) {
+                data_time_max = TimeInt::max(data_time_max, time_back);
             }
         }
 
@@ -238,8 +233,15 @@ impl RangeCache {
 // ---
 
 impl CachedRangeComponentResultsInner {
+    /// How many _indices_ across this entire cache?
     #[inline]
-    pub fn num_values(&self) -> u64 {
+    pub fn num_indices(&self) -> u64 {
+        self.indices.len() as _
+    }
+
+    /// How many _instances_ across this entire cache?
+    #[inline]
+    pub fn num_instances(&self) -> u64 {
         self.cached_dense
             .as_ref()
             .map_or(0u64, |cached| cached.dyn_num_values() as _)
@@ -268,8 +270,8 @@ impl CachedRangeComponentResultsInner {
             return Some(reduced_query);
         }
 
-        // If this cache contains static data, then there's no point in querying anything since
-        // static data overrides everything else.
+        // If the cache contains static data, then there's no point in querying anything else since
+        // static data overrides everything anyway.
         if self
             .indices
             .front()
@@ -280,6 +282,10 @@ impl CachedRangeComponentResultsInner {
 
         // Otherwise, query for what's missing on the front-side of the cache, while making sure to
         // take pending promises into account!
+        //
+        // Keep in mind: it is not possible for the cache to contain only part of a given
+        // timestamp. All entries for a given timestamp are loaded and invalidated atomically,
+        // whether it's promises or already resolved entries.
 
         let pending_front_min = self
             .promises_front
@@ -329,8 +335,8 @@ impl CachedRangeComponentResultsInner {
             return None;
         }
 
-        // If this cache contains static data, then there's no point in querying anything since
-        // static data overrides everything else.
+        // If the cache contains static data, then there's no point in querying anything else since
+        // static data overrides everything anyway.
         if self
             .indices
             .front()
@@ -341,6 +347,10 @@ impl CachedRangeComponentResultsInner {
 
         // Otherwise, query for what's missing on the back-side of the cache, while making sure to
         // take pending promises into account!
+        //
+        // Keep in mind: it is not possible for the cache to contain only part of a given
+        // timestamp. All entries for a given timestamp are loaded and invalidated atomically,
+        // whether it's promises or already resolved entries.
 
         let pending_back_max = self
             .promises_back
@@ -365,6 +375,7 @@ impl CachedRangeComponentResultsInner {
         }
 
         // Back query should never overlap with the front query.
+        // Reminder: time ranges are all inclusive.
         if let Some(query_front) = query_front {
             let front_max_plus_one = query_front.range().max().as_i64().saturating_add(1);
             let back_min = reduced_query.range().min().as_i64();

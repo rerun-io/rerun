@@ -273,6 +273,9 @@ impl CachedRangeComponentResults {
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
     pub fn to_dense<C: Component>(&self, resolver: &PromiseResolver) -> CachedRangeData<'_, C> {
+        // It's tracing the deserialization of an entire range query at once -- it's fine.
+        re_tracing::profile_function!();
+
         // --- Step 1: try and upsert pending data (write lock) ---
 
         thread_local! {
@@ -325,12 +328,16 @@ impl CachedRangeComponentResults {
             }
 
             if !results.promises_front.is_empty() {
+                re_tracing::profile_scope!("front");
+
                 let mut resolved_indices = Vec::with_capacity(results.promises_front.len());
                 let mut resolved_data = Vec::with_capacity(results.promises_front.len());
 
                 // Pop the promises from the end so that if we encounter one that has yet to be
                 // resolved, we can stop right there and know we have a contiguous range of data
                 // available up to that point in time.
+                //
+                // Reminder: promises are sorted in ascending index order.
                 while let Some(((data_time, row_id), promise)) = results.promises_front.pop() {
                     let data = match resolver.resolve(&promise) {
                         PromiseResult::Pending => {
@@ -371,7 +378,7 @@ impl CachedRangeComponentResults {
                     .collect();
 
                 let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                // Unwraps: the data is created when entering this function -- we know it's there
+                // Unwraps: the deque is created when entering this function -- we know it's there
                 // and we know its type.
                 let cached_dense = results
                     .cached_dense
@@ -384,10 +391,16 @@ impl CachedRangeComponentResults {
             }
 
             if !results.promises_back.is_empty() {
+                re_tracing::profile_scope!("back");
+
                 let mut resolved_indices = Vec::with_capacity(results.promises_back.len());
                 let mut resolved_data = Vec::with_capacity(results.promises_back.len());
 
-                // Reverse the promises first so we can pop() from the back. See below why.
+                // Reverse the promises first so we can pop() from the back.
+                // It's fine, this is a one-time operation in the successful case, and it's extremely fast to do.
+                // See below why.
+                //
+                // Reminder: promises are sorted in ascending index order.
                 results.promises_back.reverse();
 
                 // Pop the promises from the end so that if we encounter one that has yet to be
@@ -422,13 +435,13 @@ impl CachedRangeComponentResults {
                     resolved_data.push(data);
                 }
 
-                // Reverse our reversal and give the promises back to their rightful owner.
+                // Reverse our reversal.
                 results.promises_back.reverse();
 
                 results.indices.extend(resolved_indices);
 
                 let resolved_data = FlatVecDeque::from_vecs(resolved_data);
-                // Unwraps: the data is created when entering this function -- we know it's there
+                // Unwraps: the deque is created when entering this function -- we know it's there
                 // and we know its type.
                 let cached_dense = results
                     .cached_dense
@@ -459,17 +472,25 @@ impl CachedRangeComponentResults {
         };
 
         let front_status = {
-            let (front_time, front_status) = &results.front_status;
-            if *front_time <= self.time_range.min() {
-                front_status.clone()
+            let (results_front_time, results_front_status) = &results.front_status;
+            let query_front_time = self.time_range.min();
+            if query_front_time < *results_front_time {
+                // If the query covers a larger time span on its front-side than the resulting data, then
+                // we should forward the status of the resulting data so the caller can know why it's
+                // been cropped off.
+                results_front_status.clone()
             } else {
                 PromiseResult::Ready(())
             }
         };
         let back_status = {
-            let (back_time, back_status) = &results.back_status;
-            if self.time_range.max() <= *back_time {
-                back_status.clone()
+            let (results_back_time, results_back_status) = &results.back_status;
+            let query_back_time = self.time_range.max();
+            if query_back_time > *results_back_time {
+                // If the query covers a larger time span on its back-side than the resulting data, then
+                // we should forward the status of the resulting data so the caller can know why it's
+                // been cropped off.
+                results_back_status.clone()
             } else {
                 PromiseResult::Ready(())
             }

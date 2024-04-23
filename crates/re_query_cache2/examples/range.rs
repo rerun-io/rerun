@@ -80,10 +80,6 @@ fn main() -> anyhow::Result<()> {
     //
     // Both the resolution and deserialization steps might fail, which is why this returns a `Result<Result<T>>`.
     // Use `PromiseResult::flatten` to simplify it down to a single result.
-    //
-    // A choice now has to be made regarding the nullability of the _component batch's instances_.
-    // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
-    // shouldn't be using anything but `iter_dense`.
     eprintln!("results:");
     for ((data_time, row_id), points, colors, labels) in all_frames {
         let colors = colors.unwrap_or(&[]);
