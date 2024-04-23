@@ -405,6 +405,9 @@ impl QuotedObject {
                 ObjectKind::Archetype => {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
                 }
+                ObjectKind::SpaceView => {
+                    unimplemented!();
+                }
             },
             ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),
             ObjectClass::Union => Ok(Self::from_union(

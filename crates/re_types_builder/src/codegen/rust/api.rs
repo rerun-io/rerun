@@ -1307,6 +1307,7 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
+        ObjectKind::SpaceView => unimplemented!(),
     }
 }
 

@@ -68,28 +68,34 @@ impl Objects {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
         };
 
-        // Validate fields types: Archetype consist of components, everything else consists of datatypes.
+        // Validate fields types: Archetype consist of components, Space Views consist of archetypes, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
                     let field_obj = &this[field_type_fqname];
-                    if obj.kind == ObjectKind::Archetype {
-                        assert!(field_obj.kind == ObjectKind::Component,
-                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype.",
-                            field.fqname, field_type_fqname
-                        );
-                    } else {
-                        assert!(field_obj.kind == ObjectKind::Datatype,
-                            "{virtpath}: Field {:?} (pointing to an instance of {:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes.",
-                            field.fqname, field_type_fqname
-                        );
+                    match obj.kind {
+                        ObjectKind::Datatype | ObjectKind::Component => {
+                            if field_obj.kind != ObjectKind::Datatype {
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes."));
+                            }
+                        }
+                        ObjectKind::Archetype => {
+                            if field_obj.kind != ObjectKind::Component {
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype."));
+                            }
+                        }
+                        ObjectKind::SpaceView => {
+                            if field_obj.kind != ObjectKind::Archetype {
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an space view but is not an archetype. Only archetypes are allowed as fields of a Space View's properties."));
+                            }
+                        }
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
-                    assert!(obj.kind != ObjectKind::Archetype,
-                        "{virtpath}: Field {:?} is a primitive field of type {:?}. Only Components are allowed on Archetypes.",
-                        field.fqname, field.typ);
+                    if obj.kind == ObjectKind::Archetype && obj.kind == ObjectKind::SpaceView {
+                        reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes & Components.", field.fqname, field.typ));
+                    }
                 }
             }
         }
@@ -202,6 +208,10 @@ pub enum ObjectKind {
     Datatype,
     Component,
     Archetype,
+
+    /// Views are neither archetypes nor components but are used to generate code to make it easy
+    /// to add and configure views on the blueprint.
+    SpaceView,
 }
 
 impl ObjectKind {
@@ -223,6 +233,9 @@ impl ObjectKind {
             ObjectKind::Component
         } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
             ObjectKind::Archetype
+        } else if pkg_name.starts_with("rerun.blueprint.space_views") {
+            // Not bothering with scope attributes on space_views since they're always part of the blueprint.
+            ObjectKind::SpaceView
         } else {
             panic!("unknown package {pkg_name:?}");
         }
@@ -233,6 +246,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "datatypes",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
+            ObjectKind::SpaceView => "space_views",
         }
     }
 
@@ -241,6 +255,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatype",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
+            ObjectKind::SpaceView => "Space View",
         }
     }
 
@@ -249,6 +264,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatypes",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
+            ObjectKind::SpaceView => "SpaceViews",
         }
     }
 }

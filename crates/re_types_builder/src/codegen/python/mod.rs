@@ -322,7 +322,7 @@ impl PythonCodeGenerator {
                         ]
                     }
                 }
-                ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::SpaceView | ObjectKind::Archetype => vec![obj.name.clone()],
             };
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
@@ -442,7 +442,7 @@ impl PythonCodeGenerator {
                     code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -766,6 +766,7 @@ fn code_for_struct(
                 1,
             );
         }
+        ObjectKind::SpaceView => unimplemented!(),
     }
 
     code
@@ -915,12 +916,20 @@ return pa.UnionArray.from_buffers(
                 1,
             );
         }
+        ObjectKind::SpaceView => {
+            reporter.error(
+                &obj.virtpath,
+                &obj.fqname,
+                "An space view cannot be an enum",
+            );
+        }
     }
 
     code
 }
 
 fn code_for_union(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -1062,13 +1071,20 @@ fn code_for_union(
     match kind {
         ObjectKind::Archetype => (),
         ObjectKind::Component => {
-            unreachable!("component may not be a union")
+            reporter.error(&obj.virtpath, &obj.fqname, "An component cannot be an enum");
         }
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
                 1,
+            );
+        }
+        ObjectKind::SpaceView => {
+            reporter.error(
+                &obj.virtpath,
+                &obj.fqname,
+                "An space view cannot be an enum",
             );
         }
     }
@@ -1970,15 +1986,10 @@ fn quote_init_method(
             })
             .collect::<Vec<_>>()
     };
-    let doc_typedesc = match obj.kind {
-        ObjectKind::Datatype => "datatype",
-        ObjectKind::Component => "component",
-        ObjectKind::Archetype => "archetype",
-    };
-
     let mut doc_string_lines = vec![format!(
-        "Create a new instance of the {} {doc_typedesc}.",
-        obj.name
+        "Create a new instance of the {} {}.",
+        obj.name,
+        obj.kind.singular_name().to_lowercase()
     )];
     if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());
