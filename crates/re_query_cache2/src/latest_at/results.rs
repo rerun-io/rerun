@@ -154,8 +154,16 @@ impl CachedLatestAtComponentResults {
         self.index.0 == TimeInt::STATIC
     }
 
+    /// How many _indices_ across this entire cache?
     #[inline]
-    pub fn num_values(&self) -> u64 {
+    pub fn num_indices(&self) -> u64 {
+        _ = self;
+        1
+    }
+
+    /// How many _instances_ across this entire cache?
+    #[inline]
+    pub fn num_instances(&self) -> u64 {
         self.cached_dense
             .get()
             .map_or(0u64, |cached| cached.dyn_num_values() as _)
