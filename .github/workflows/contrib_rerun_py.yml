@@ -75,18 +75,3 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         run: |
           pixi run -e wheel-test RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
-
-      - name: Cache RRD dataset
-        id: dataset
-        uses: actions/cache@v4
-        with:
-          path: examples/python/structure_from_motion/dataset/
-          # TODO(jleibs): Derive this key from the invocation below
-          key: structure-from-motion-dataset-structure-from-motion-fiat-v1
-
-      - name: Generate Embedded RRD file
-        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
-        run: |
-          mkdir rrd
-          pip install -r examples/python/structure_from_motion/requirements.txt
-          pixi run -e wheel-test python examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
