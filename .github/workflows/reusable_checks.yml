@@ -80,8 +80,7 @@ jobs:
           pixi-version: v0.19.0
 
       - name: Codegen check
-        run: |
-          pixi run codegen --force --check
+        run: pixi run codegen --force --check
 
   # ---------------------------------------------------------------------------
 
