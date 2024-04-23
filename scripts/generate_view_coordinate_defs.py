@@ -18,7 +18,7 @@ BEGIN_MARKER = "<BEGIN_GENERATED:{}>"
 END_MARKER = "<END_GENERATED:{}>"
 
 
-SCRIPT_PATH = os.path.relpath(__file__, os.getcwd())
+SCRIPT_PATH = os.path.relpath(__file__, os.getcwd()).replace("\\", "/")
 
 ################################################################################
 
