@@ -1,6 +1,7 @@
 #include "mat3x3.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
+#include "../rerun_sdk_export.hpp"
 #include "vec3d.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>

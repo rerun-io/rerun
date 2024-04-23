@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 #include "quaternion.hpp"
 #include "rotation_axis_angle.hpp"
@@ -84,7 +85,7 @@ namespace rerun::datatypes {
       public:
         // Extensions to generated type defined in 'rotation3d_ext.cpp'
 
-        static const Rotation3D IDENTITY;
+        RERUN_SDK_EXPORT static const Rotation3D IDENTITY;
 
         void swap(Rotation3D& other) noexcept {
             std::swap(this->_tag, other._tag);

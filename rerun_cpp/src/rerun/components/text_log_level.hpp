@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/utf8.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -28,22 +29,22 @@ namespace rerun::components {
         // Extensions to generated type defined in 'text_log_level_ext.cpp'
 
         /// Designates catastrophic failures.
-        static const TextLogLevel Critical;
+        RERUN_SDK_EXPORT static const TextLogLevel Critical;
 
         /// Designates very serious errors.
-        static const TextLogLevel Error;
+        RERUN_SDK_EXPORT static const TextLogLevel Error;
 
         /// Designates hazardous situations.
-        static const TextLogLevel Warning;
+        RERUN_SDK_EXPORT static const TextLogLevel Warning;
 
         /// Designates useful information.
-        static const TextLogLevel Info;
+        RERUN_SDK_EXPORT static const TextLogLevel Info;
 
         /// Designates lower priority information.
-        static const TextLogLevel Debug;
+        RERUN_SDK_EXPORT static const TextLogLevel Debug;
 
         /// Designates very low priority, often extremely verbose, information.
-        static const TextLogLevel Trace;
+        RERUN_SDK_EXPORT static const TextLogLevel Trace;
 
         /// Construct `TextLogLevel` from a null-terminated UTF8 string.
         TextLogLevel(const char* str) : value(str) {}

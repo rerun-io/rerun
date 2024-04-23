@@ -11,10 +11,12 @@ fn main() {
         #[cfg(target_os = "windows")]
         let rerun_bin = std::env::current_dir()
             .unwrap()
-            .join("rerun_sdk/bin/rerun.exe");
+            .join("rerun_sdk/rerun_cli/rerun.exe");
 
         #[cfg(not(target_os = "windows"))]
-        let rerun_bin = std::env::current_dir().unwrap().join("rerun_sdk/bin/rerun");
+        let rerun_bin = std::env::current_dir()
+            .unwrap()
+            .join("rerun_sdk/rerun_cli/rerun");
 
         if !rerun_bin.exists() {
             eprintln!("ERROR: Expected to find `rerun` at `{rerun_bin:?}`.");

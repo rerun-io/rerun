@@ -153,7 +153,7 @@ fn log_ar_camera(
     // input (1920x1440); we need to convert between the two.
     // See:
     // - https://github.com/google-research-datasets/Objectron/issues/39
-    // - https://github.com/google-research-datasets/Objectron/blob/master/notebooks/objectron-3dprojection-hub-tutorial.ipynb
+    // - https://github.com/google-research-datasets/Objectron/blob/c06a65165a18396e1e00091981fd1652875c97b5/notebooks/objectron-3dprojection-hub-tutorial.ipynb
     // swap px/py
     use glam::Vec3Swizzles as _;
     intrinsics.z_axis = intrinsics.z_axis.yxz();
@@ -324,7 +324,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         format!(
             "Could not read the recording, have you downloaded the dataset? \
             Try running the python version first to download it automatically \
-            (`examples/python/objectron/main.py --recording {}`).",
+            (`python -m objectron --recording {}`).",
             args.recording.to_possible_value().unwrap().get_name(),
         )
     })?;

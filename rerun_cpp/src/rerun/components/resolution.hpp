@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/vec2d.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -20,7 +21,7 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'resolution_ext.cpp'
 
-        static const Resolution IDENTITY;
+        RERUN_SDK_EXPORT static const Resolution IDENTITY;
 
         /// Construct resolution from width and height floats.
         Resolution(float width, float height) : resolution{width, height} {}

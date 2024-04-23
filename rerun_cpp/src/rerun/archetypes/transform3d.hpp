@@ -7,6 +7,7 @@
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
+#include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -65,7 +66,7 @@ namespace rerun::archetypes {
         /// Identity transformation.
         ///
         /// Applying this transform does not alter an entity's transformation.
-        static const Transform3D IDENTITY;
+        RERUN_SDK_EXPORT static const Transform3D IDENTITY;
 
         /// New 3D transform from translation/matrix datatype.
         ///

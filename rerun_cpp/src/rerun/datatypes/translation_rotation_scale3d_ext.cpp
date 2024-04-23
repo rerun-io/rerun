@@ -2,6 +2,7 @@
 
 // <CODEGEN_COPY_TO_HEADER>
 #include "../compiler_utils.hpp"
+#include "../rerun_sdk_export.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>
 namespace rerun {
@@ -14,7 +15,7 @@ namespace rerun {
             ///
             /// Applying this transform does not alter an entity's transformation.
             /// It has all optional fields set to `std::nullopt`.
-            static const TranslationRotationScale3D IDENTITY;
+            RERUN_SDK_EXPORT static const TranslationRotationScale3D IDENTITY;
 
             // Need to disable the maybe-uninitialized here because the compiler gets confused by the combination
             // of union-types datatypes inside of an optional component.

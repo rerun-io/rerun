@@ -5,8 +5,8 @@ A collection of many small examples, in one file.
 It uses a lot of different aspects of the Rerun API in order to test it.
 
 Example usage:
-* Run all tests: `examples/python/test_api/main.py`
-* Run specific test: `examples/python/test_api/main.py --test rects`
+* Run all tests: `examples/python/test_api/test_api.py`
+* Run specific test: `examples/python/test_api/test_api.py --test rects`
 """
 
 from __future__ import annotations

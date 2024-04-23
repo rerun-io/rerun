@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Example template.
-
-Run:
-```sh
-pip install -r examples/python/template/requirements.txt
-python examples/python/template/main.py
-```
-"""
+"""Example template."""
 
 from __future__ import annotations
 

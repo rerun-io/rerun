@@ -26,7 +26,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
-      FULL: "true"
+      CHANNEL: main
     secrets: inherit
 
   rust_checks:

@@ -3,11 +3,6 @@
 Example running ControlNet conditioned on Canny edges.
 
 Based on https://huggingface.co/docs/diffusers/using-diffusers/controlnet.
-
-Run
-```sh
-examples/python/controlnet/main.py
-```
 """
 
 from __future__ import annotations

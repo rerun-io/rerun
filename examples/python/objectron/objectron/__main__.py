@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-Example of using the Rerun SDK to log the Objectron dataset.
-
-Example: `examples/python/objectron/main.py --recording chair`
-"""
+"""Example of using the Rerun SDK to log the Objectron dataset."""
 
 from __future__ import annotations
 

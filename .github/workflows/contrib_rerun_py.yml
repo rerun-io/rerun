@@ -28,12 +28,8 @@ env:
 
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
+  # Do *not* use sscache since on contributor ci we don't have access to the gcloud stored cache.
+  #RUSTC_WRAPPER: "sccache"
 
   # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
   # these incremental artifacts when running on CI.
@@ -60,41 +56,8 @@ jobs:
           pixi-version: v0.19.1
           environments: wheel-test
 
-      - name: Build Wheel
-        uses: PyO3/maturin-action@v1
-        with:
-          maturin-version: "1.5.1"
-          manylinux: manylinux_2_31
-          container: off
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --target x86_64-unknown-linux-gnu
-            ${{ inputs.MATURIN_FEATURE_FLAGS }}
-            --out dist
-
-      - name: Get version
-        id: get-version
-        run: |
-          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-
-      - name: Install built wheel
-        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-        # find the dependencies to reinstall them.
-        run: |
-          pixi run -e wheel-test pip uninstall rerun-sdk
-          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
-
-      - name: Print wheel version
-        run: |
-          pixi run -e wheel-test python -m rerun --version
-          pixi run -e wheel-test which rerun
-          pixi run -e wheel-test rerun --version
-
       - name: Run Python unit-tests
-        run: pixi run -e wheel-test cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
+        run: pixi run -e wheel-test py-test
 
       - name: Run e2e test
         run: pixi run -e wheel-test RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
@@ -112,18 +75,3 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         run: |
           pixi run -e wheel-test RUST_LOG=debug docs/snippets/compare_snippet_output.py --release --target x86_64-unknown-linux-gnu --no-py-build
-
-      - name: Cache RRD dataset
-        id: dataset
-        uses: actions/cache@v4
-        with:
-          path: examples/python/structure_from_motion/dataset/
-          # TODO(jleibs): Derive this key from the invocation below
-          key: structure-from-motion-dataset-structure-from-motion-fiat-v1
-
-      - name: Generate Embedded RRD file
-        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
-        run: |
-          mkdir rrd
-          pip install -r examples/python/structure_from_motion/requirements.txt
-          pixi run -e wheel-test python examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
