@@ -370,10 +370,10 @@ pub enum TimeSeriesAggregator {
     /// Keep both the minimum and maximum values in the range.
     ///
     /// This will yield two aggregated points instead of one, effectively creating a vertical line.
-    #[default]
     MinMax,
 
     /// Find both the minimum and maximum values in the range, then use the average of those.
+    #[default] // Fast, and looks good
     MinMaxAverage,
 }
 
