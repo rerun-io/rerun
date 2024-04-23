@@ -32,7 +32,9 @@ impl CError {
                 // `c_char` is something different depending on platforms, and this is needed for
                 // when it's the same as `u8`.
                 #[allow(trivial_numeric_casts)]
-                message_c[bytes_next] = *byte as _;
+                {
+                    message_c[bytes_next] = *byte as _;
+                }
                 bytes_next += 1;
             }
         }
