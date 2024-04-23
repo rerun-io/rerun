@@ -65,11 +65,6 @@ jobs:
         with:
           pixi-version: v0.19.1
 
-      # We need to build the web viewer for `rust_checks.py` to succeed.
-      # We build in release so that we can reuse the results for actual publishing, if necessary
-      - name: Build web-viewer (release)
-        run: pixi run rerun-build-web-release
-
       - name: Rust checks & tests
         if: ${{ inputs.CHANNEL == 'pr' }}
         run: pixi run rs-check --skip-check-individual-crates --skip-wasm-checks --skip-test
