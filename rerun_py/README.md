@@ -49,7 +49,7 @@ python3 -m rerun
 
 In a second terminal, run the example with the `--connect` option:
 ```sh
-python3 examples/python/plots/main.py --connect
+python3 examples/python/plots/plots.py --connect
 ```
 Note that SDK and Viewer can run on different machines!
 
@@ -63,7 +63,7 @@ pixi run py-build --release
 ```
 To build SDK & viewer for python (or `pixi run py-build` for a debug build) and install it in the pixi environment.
 
-You can then run examples from the repository, either by making the pixi shell active with `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/main.py`.
+You can then run examples from the repository, either by making the pixi shell active with `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`.
 
 Respectively, to build a wheel instead for manual install use:
 ```sh

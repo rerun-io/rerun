@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""
-Example using MRI scan data in the DICOM format.
-
-Run:
-``` sh
-python3 examples/python/dicom/main.py
-```
-"""
+"""Example using MRI scan data in the DICOM format."""
 
 from __future__ import annotations
 

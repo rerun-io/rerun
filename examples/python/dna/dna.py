@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-The example from our Getting Started page.
-
-`examples/python/dna/main.py`
-"""
+"""The example from our Getting Started page."""
 
 from __future__ import annotations
 

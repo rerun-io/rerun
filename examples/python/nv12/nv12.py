@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Stream NV12 images from a webcam.
-
-Run:
-```sh
-pip install -r examples/python/nv12/requirements.txt
-python examples/python/nv12/main.py
-```
-"""
+"""Stream NV12 images from a webcam."""
 
 from __future__ import annotations
 

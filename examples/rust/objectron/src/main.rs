@@ -324,7 +324,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         format!(
             "Could not read the recording, have you downloaded the dataset? \
             Try running the python version first to download it automatically \
-            (`examples/python/objectron/main.py --recording {}`).",
+            (`python -m objectron --recording {}`).",
             args.recording.to_possible_value().unwrap().get_name(),
         )
     })?;

@@ -4,15 +4,6 @@ Example of using Rerun to log and visualize the output of [Segment Anything](htt
 
 Can be used to test mask-generation on one or more images. Images can be local file-paths
 or remote urls.
-
-Exa:
-```
-# Run on a remote image:
-python main.py https://raw.githubusercontent.com/facebookresearch/segment-anything/main/notebooks/images/dog.jpg
-
-# Use cuda and a different model on a local image
-python main.py --device cuda --model vit_h /path/to/my_image.jpg
-```
 """
 
 from __future__ import annotations

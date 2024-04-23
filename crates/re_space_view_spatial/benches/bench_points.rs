@@ -35,7 +35,7 @@ use self::constants::*;
 
 // ---
 
-/// Mimics `examples/python/open_photogrammetry_format/main.py`
+/// Mimics `examples/python/open_photogrammetry_format/open_photogrammetry_format.py`
 fn bench_points(c: &mut criterion::Criterion) {
     let timeline = Timeline::log_time();
     let ent_path = EntityPath::from("points");

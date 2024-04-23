@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy.
-
-Run:
-```sh
-# assuming your virtual env is up
-examples/python/raw_mesh/main.py
-```
-"""
+"""Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy."""
 
 from __future__ import annotations
 

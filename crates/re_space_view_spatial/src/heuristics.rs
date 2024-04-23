@@ -86,7 +86,7 @@ fn update_pinhole_property_heuristics(
         if properties.pinhole_image_plane_distance.is_auto() {
             let scene_size = scene_bbox_accum.size().length();
             let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/main.py --no-frames`
+                scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
             } else {
                 // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
                 // the heuristic will change it or it will be user edited. In the case of non-defined bounds

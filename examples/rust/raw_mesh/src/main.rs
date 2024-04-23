@@ -148,7 +148,7 @@ impl Args {
             anyhow::bail!(
                 "Could not load the scene, have you downloaded the dataset? \
                 Try running the python version first to download it automatically \
-                (`examples/python/raw_mesh/main.py --scene {scene_name}`).",
+                (`python -m raw_mesh --scene {scene_name}`).",
             )
         }
 

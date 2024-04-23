@@ -10,12 +10,6 @@ This ensures that the algorithm will converge to the optimal path given enough t
 A more detailed explanation can be found in the original paper
 Karaman, S. Frazzoli, S. 2011. "Sampling-based algorithms for optimal motion planning".
 or in the following medium article: https://theclassytim.medium.com/robotic-path-planning-rrt-and-rrt-212319121378
-
-Run:
-```bash
-pip install -r examples/python/rrt-star/requirements.txt
-python examples/python/rrt-star/main.py
-```
 """
 
 from __future__ import annotations
