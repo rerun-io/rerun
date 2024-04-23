@@ -105,6 +105,7 @@ impl SpatialSpaceViewState {
                 ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
             }
         });
+        ui.end_row();
     }
 
     pub fn default_size_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {

@@ -2,6 +2,7 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
+use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
@@ -248,7 +249,22 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .show(ui, |ui| {
                 state.default_size_ui(ctx, ui);
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
-                ui.end_row();
+
+                if let Some(bounds) = state.state_2d.bounds {
+                    ctx.re_ui
+                        .grid_left_hand_label(ui, "Bounds")
+                        .on_hover_text("The currently visible area.");
+                    ui.vertical(|ui| {
+                        ui.style_mut().wrap = Some(false);
+                        let (min, max) = (bounds.min, bounds.max);
+                        ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+                        ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+                        if ui.button("Reset bounds").clicked() {
+                            state.state_2d.bounds = None;
+                        }
+                    });
+                    ui.end_row();
+                }
             });
         Ok(())
     }
