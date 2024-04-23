@@ -60,7 +60,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                self.left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -70,15 +70,12 @@ impl MemoryPanel {
     }
 
     fn left_side(
-        &self,
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
     ) {
-        _ = self;
-
         ui.strong("Rerun Viewer resource usage");
 
         ui.separator();

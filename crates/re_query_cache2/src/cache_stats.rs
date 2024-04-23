@@ -44,8 +44,6 @@ pub struct CachedComponentStats {
 
 impl Caches {
     /// Computes the stats for all primary caches.
-    ///
-    /// `per_component` toggles per-component stats.
     pub fn stats(&self) -> CachesStats {
         re_tracing::profile_function!();
 
@@ -64,7 +62,7 @@ impl Caches {
                             total_instances: cache
                                 .per_data_time
                                 .values()
-                                .map(|results| results.num_values())
+                                .map(|results| results.num_instances())
                                 .sum(),
                             total_size_bytes: cache.total_size_bytes(),
                         },
