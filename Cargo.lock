@@ -4209,6 +4209,7 @@ dependencies = [
  "criterion",
  "document-features",
  "indent",
+ "insta",
  "itertools 0.12.0",
  "mimalloc",
  "nohash-hasher",
