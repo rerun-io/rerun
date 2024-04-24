@@ -31,7 +31,7 @@ pub struct View2DState {
 }
 
 impl View2DState {
-    /// Pan and and zoom, and return the current transform.
+    /// Pan and zoom, and return the current transform.
     fn ui_from_scene(
         &mut self,
         response: &egui::Response,
