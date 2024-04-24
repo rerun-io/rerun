@@ -5,9 +5,9 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use parking_lot::RwLock;
 
+use crate::Promise;
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use crate::Promise;
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
