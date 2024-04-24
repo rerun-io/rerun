@@ -12,7 +12,6 @@
 #include "components/draw_order.hpp"
 #include "components/half_sizes2d.hpp"
 #include "components/half_sizes3d.hpp"
-#include "components/instance_key.hpp"
 #include "components/keypoint_id.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"
