@@ -20,7 +20,7 @@ class Spatial2DView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a blueprint for a new Spatial2DView view.
 

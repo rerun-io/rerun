@@ -20,7 +20,7 @@ class BarChartView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-    ):
+    ) -> None:
         """
         Construct a blueprint for a new BarChartView view.
 

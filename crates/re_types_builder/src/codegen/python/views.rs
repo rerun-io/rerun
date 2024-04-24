@@ -75,7 +75,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
         ));
     }
 
-    code.push_indented(1, "):", 1);
+    code.push_indented(1, ") -> None:", 1);
 
     let mut init_docs = Vec::new();
     init_docs.push(format!(

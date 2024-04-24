@@ -27,7 +27,7 @@ class Spatial3DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.Background3DKindLike
         | None = None,
-    ):
+    ) -> None:
         """
         Construct a blueprint for a new Spatial3DView view.
 
