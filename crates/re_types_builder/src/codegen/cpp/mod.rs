@@ -410,6 +410,7 @@ impl QuotedObject {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
                 }
                 ObjectKind::SpaceView => {
+                    // TODO(#5521): Implement SpaceView codegen for Rust.
                     unimplemented!();
                 }
             },
