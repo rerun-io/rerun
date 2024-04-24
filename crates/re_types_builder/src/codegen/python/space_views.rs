@@ -47,7 +47,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
             reporter.error(
                 &obj.virtpath,
                 &property.fqname,
-                "Space View properties must be archetypes.",
+                "Space view properties must be archetypes.",
             );
             continue;
         };
@@ -138,7 +138,7 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
             reporter.error(
                 &obj.virtpath,
                 &property.fqname,
-                "Space View properties must be archetypes.",
+                "Space view properties must be archetypes.",
             );
             continue;
         };

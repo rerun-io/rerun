@@ -77,17 +77,17 @@ impl Objects {
                     match obj.kind {
                         ObjectKind::Datatype | ObjectKind::Component => {
                             if field_obj.kind != ObjectKind::Datatype {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of a Component or Datatype but is itself not a Datatype. Only Archetype fields can be Components, all other fields have to be primitive or be a datatypes."));
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes."));
                             }
                         }
                         ObjectKind::Archetype => {
                             if field_obj.kind != ObjectKind::Component {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an Archetype."));
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an archetype."));
                             }
                         }
                         ObjectKind::SpaceView => {
                             if field_obj.kind != ObjectKind::Archetype {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an space view but is not an archetype. Only archetypes are allowed as fields of a Space View's properties."));
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an space view but is not an archetype. Only archetypes are allowed as fields of a space view's properties."));
                             }
                         }
                     }
@@ -260,7 +260,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatype",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
-            ObjectKind::SpaceView => "Space View",
+            ObjectKind::SpaceView => "Space view",
         }
     }
 
