@@ -136,6 +136,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
+/// The pinhole sensor rectangle: [0, 0] - [width, height]
 fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<Rect> {
     pinhole
         .resolution()
@@ -170,6 +171,7 @@ pub fn view_2d(
         .as_ref()
         .and_then(pinhole_resolution_rect)
         .unwrap_or_else(|| {
+            // TODO(emilk): if there is a single image, use that as the default bounds
             let scene_rect_accum = state.bounding_boxes.accumulated;
             egui::Rect::from_min_max(
                 scene_rect_accum.min.truncate().to_array().into(),
@@ -312,13 +314,15 @@ fn setup_target_config(
     let scene_bounds_size = glam::vec2(scene_bounds.width(), scene_bounds.height());
 
     let pinhole;
-    let canvas_rect;
+
+    // The pinhole sensor rectangle: [0, 0] - [width, height]
+    let pinhole_rect;
 
     if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
         pinhole = scene_pinhole;
-        canvas_rect = pinhole_resolution_rect(&pinhole).unwrap_or_else(|| {
+        pinhole_rect = pinhole_resolution_rect(&pinhole).unwrap_or_else(|| {
             // This is weird - we have a projection with an unknown scale.
             // Let's just pick something plausible and hope for the best 😬.
             Rect::from_min_size(Pos2::ZERO, egui::Vec2::splat(1000.0))
@@ -327,7 +331,7 @@ fn setup_target_config(
         // The user didn't pick a pinhole, but we still set up a 3D projection.
         // So we just pick _any_ pinhole camera, but we pick a "plausible" one so that
         // it is similar to real-life pinhole cameras, so that we get similar scales and precision.
-        let focal_length = 1000.0; // Whatever, but small values can cause precision issues, noticable on rectangle corners.
+        let focal_length = 1000.0; // Whatever, but small values can cause precision issues, noticeable on rectangle corners.
         let principal_point = glam::Vec2::splat(500.0); // Whatever
         let resolution = egui::Vec2::splat(1000.0); // Whatever
         pinhole = Pinhole {
@@ -340,7 +344,7 @@ fn setup_target_config(
             resolution: Some([resolution.x, resolution.y].into()),
             camera_xyz: Some(ViewCoordinates::RDF),
         };
-        canvas_rect = Rect::from_min_size(Pos2::ZERO, resolution);
+        pinhole_rect = Rect::from_min_size(Pos2::ZERO, resolution);
     }
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
@@ -363,8 +367,9 @@ fn setup_target_config(
         anyhow::bail!("Failed to compute camera transform for 2D view.");
     };
 
+    // "pan-and-scan" to look at a particular part (scene_bounds) of the scene (pinhole_rect).
     let viewport_transformation = re_renderer::RectTransform {
-        region: re_render_rect_from_egui_rect(canvas_rect),
+        region: re_render_rect_from_egui_rect(pinhole_rect),
         region_of_interest: re_render_rect_from_egui_rect(scene_bounds),
     };
 
