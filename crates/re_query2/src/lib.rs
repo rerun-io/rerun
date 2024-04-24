@@ -1,5 +1,8 @@
-//! Provide query-centric access to the [`re_data_store`].
+//! Caching datastructures for `re_query`.
 
+mod cache;
+mod cache_stats;
+mod flat_vec_deque;
 mod latest_at;
 mod promise;
 mod range;
@@ -8,12 +11,25 @@ mod visible_history;
 pub mod clamped_zip;
 pub mod range_zip;
 
+pub use self::cache::{CacheKey, Caches};
+pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::clamped_zip::*;
-pub use self::latest_at::{latest_at, LatestAtComponentResults, LatestAtResults};
+pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
+pub use self::latest_at::{
+    CachedLatestAtComponentResults, CachedLatestAtMonoResult, CachedLatestAtResults,
+};
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
-pub use self::range::{range, RangeComponentResults, RangeResults};
+pub use self::range::{CachedRangeComponentResults, CachedRangeData, CachedRangeResults};
 pub use self::range_zip::*;
 pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
+
+pub(crate) use self::latest_at::LatestAtCache;
+pub(crate) use self::range::{CachedRangeComponentResultsInner, RangeCache};
+
+pub mod external {
+    pub use paste;
+    pub use seq_macro;
+}
 
 // ---
 
@@ -78,4 +94,28 @@ pub trait ToArchetype<A: re_types_core::Archetype> {
         &self,
         resolver: &crate::PromiseResolver,
     ) -> crate::PromiseResult<crate::Result<A>>;
+}
+
+// ---
+
+use re_data_store::{LatestAtQuery, RangeQuery};
+
+#[derive(Debug)]
+pub enum CachedResults {
+    LatestAt(LatestAtQuery, CachedLatestAtResults),
+    Range(RangeQuery, CachedRangeResults),
+}
+
+impl From<(LatestAtQuery, CachedLatestAtResults)> for CachedResults {
+    #[inline]
+    fn from((query, results): (LatestAtQuery, CachedLatestAtResults)) -> Self {
+        Self::LatestAt(query, results)
+    }
+}
+
+impl From<(RangeQuery, CachedRangeResults)> for CachedResults {
+    #[inline]
+    fn from((query, results): (RangeQuery, CachedRangeResults)) -> Self {
+        Self::Range(query, results)
+    }
 }

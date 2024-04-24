@@ -5,7 +5,8 @@ use re_log_types::{build_frame_nr, DataRow, RowId, TimeType, Timeline};
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query2::{
-    clamped_zip_1x2, LatestAtComponentResults, LatestAtResults, PromiseResolver, PromiseResult,
+    clamped_zip_1x2, CachedLatestAtComponentResults, CachedLatestAtResults, PromiseResolver,
+    PromiseResult,
 };
 
 // ---
@@ -21,28 +22,28 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    // First, get the raw results for this query.
+    let caches = re_query2::Caches::new(&store);
+
+    // First, get the results for this query.
     //
-    // Raw here means that these results are neither deserialized, nor resolved/converted.
-    // I.e. this corresponds to the raw `DataCell`s, straight from our datastore.
-    let results: LatestAtResults = re_query2::latest_at(
+    // They might or might not already be cached. We won't know for sure until we try to access
+    // each individual component's data below.
+    let results: CachedLatestAtResults = caches.latest_at(
         &store,
         &query,
         &entity_path.into(),
         MyPoints::all_components().iter().copied(), // no generics!
     );
 
-    // Then, grab the raw results for each individual components.
-    //
-    // This is still raw data, but now a choice has been made regarding the nullability of the
-    // _component batch_ itself (that says nothing about its _instances_!).
-    //
+    // Then, grab the results for each individual components.
     // * `get_required` returns an error if the component batch is missing
     // * `get_or_empty` returns an empty set of results if the component if missing
     // * `get` returns an option
-    let points: &LatestAtComponentResults = results.get_required(MyPoint::name())?;
-    let colors: &LatestAtComponentResults = results.get_or_empty(MyColor::name());
-    let labels: &LatestAtComponentResults = results.get_or_empty(MyLabel::name());
+    //
+    // At this point we still don't know whether they are cached or not. That's the next step.
+    let points: &CachedLatestAtComponentResults = results.get_required(MyPoint::name())?;
+    let colors: &CachedLatestAtComponentResults = results.get_or_empty(MyColor::name());
+    let labels: &CachedLatestAtComponentResults = results.get_or_empty(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.
@@ -50,9 +51,10 @@ fn main() -> anyhow::Result<()> {
     // Both the resolution and deserialization steps might fail, which is why this returns a `Result<Result<T>>`.
     // Use `PromiseResult::flatten` to simplify it down to a single result.
     //
-    // A choice now has to be made regarding the nullability of the _component batch's instances_.
-    // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
-    // shouldn't be using anything but `iter_dense`.
+    // This is the step at which caching comes into play.
+    // If the data has already been accessed in the past, then this will just grab the pre-deserialized,
+    // pre-resolved/pre-converted result from the cache.
+    // Otherwise, this will trigger a deserialization and cache the result for next time.
 
     let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
         PromiseResult::Pending => {
@@ -72,12 +74,12 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let labels = match labels.iter_sparse::<MyLabel>(&resolver).flatten() {
+    let labels = match labels.iter_dense::<MyLabel>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
         }
-        PromiseResult::Ready(data) => data,
+        PromiseResult::Ready(data) => data.map(Some),
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
@@ -86,7 +88,10 @@ fn main() -> anyhow::Result<()> {
     //
     // In most cases this will be either a clamped zip, or no joining at all.
 
-    let color_default_fn = || MyColor::from(0xFF00FFFF);
+    let color_default_fn = || {
+        static DEFAULT: MyColor = MyColor(0xFF00FFFF);
+        &DEFAULT
+    };
     let label_default_fn = || None;
 
     let results =

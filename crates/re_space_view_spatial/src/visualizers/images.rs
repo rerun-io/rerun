@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query_cache::range_zip_1x2;
+use re_query2::range_zip_1x2;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,

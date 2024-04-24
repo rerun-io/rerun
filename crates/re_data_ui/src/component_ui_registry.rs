@@ -1,5 +1,5 @@
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query_cache::CachedLatestAtComponentResults, EntityDb};
+use re_entity_db::{external::re_query2::CachedLatestAtComponentResults, EntityDb};
 use re_log_types::{external::arrow2, EntityPath};
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
