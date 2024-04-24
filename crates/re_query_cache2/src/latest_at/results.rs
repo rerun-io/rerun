@@ -126,7 +126,7 @@ pub struct CachedLatestAtComponentResults {
     pub(crate) promise: Option<Promise>,
 
     /// The resolved, converted, deserialized dense data.
-    pub(crate) cached_dense: OnceLock<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
+    pub(crate) cached_dense: OnceLock<Arc<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
 impl CachedLatestAtComponentResults {
@@ -274,9 +274,9 @@ impl CachedLatestAtComponentResults {
             .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
 
         #[allow(clippy::borrowed_box)]
-        let cached: &Box<dyn ErasedFlatVecDeque + Send + Sync> = self
+        let cached: &Arc<dyn ErasedFlatVecDeque + Send + Sync> = self
             .cached_dense
-            .get_or_init(move || Box::new(FlatVecDeque::from(data)));
+            .get_or_init(move || Arc::new(FlatVecDeque::from(data)));
 
         downcast(&**cached)
     }
