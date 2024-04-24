@@ -136,6 +136,12 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
+fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<Rect> {
+    pinhole
+        .resolution()
+        .map(|res| Rect::from_min_max(Pos2::ZERO, pos2(res.x, res.y)))
+}
+
 /// Create the outer 2D view, which consists of a scrollable region
 pub fn view_2d(
     ctx: &ViewerContext<'_>,
@@ -156,19 +162,20 @@ pub fn view_2d(
         return Ok(());
     }
 
+    // Note that we can't rely on the camera being part of scene.space_cameras since that requires
+    // the camera to be added to the scene!
     let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
 
-    let default_scene_rect = if let Some(res) = pinhole.as_ref().and_then(|p| p.resolution()) {
-        // Note that we can't rely on the camera being part of scene.space_cameras since that requires
-        // the camera to be added to the scene!
-        Rect::from_min_max(Pos2::ZERO, pos2(res.x, res.y))
-    } else {
-        let scene_rect_accum = state.bounding_boxes.accumulated;
-        egui::Rect::from_min_max(
-            scene_rect_accum.min.truncate().to_array().into(),
-            scene_rect_accum.max.truncate().to_array().into(),
-        )
-    };
+    let default_scene_rect = pinhole
+        .as_ref()
+        .and_then(pinhole_resolution_rect)
+        .unwrap_or_else(|| {
+            let scene_rect_accum = state.bounding_boxes.accumulated;
+            egui::Rect::from_min_max(
+                scene_rect_accum.min.truncate().to_array().into(),
+                scene_rect_accum.max.truncate().to_array().into(),
+            )
+        });
 
     let (mut response, painter) =
         ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
