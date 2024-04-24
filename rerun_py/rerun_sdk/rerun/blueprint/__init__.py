@@ -45,10 +45,10 @@ from .components import (
     Background3DKind,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
-from .space_views import Spatial3DView
-from .space_views_old import (
+from .space_views import (
     BarChartView,
     Spatial2DView,
+    Spatial3DView,
     TensorView,
     TextDocumentView,
     TextLogView,

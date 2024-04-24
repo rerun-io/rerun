@@ -33,4 +33,10 @@ include "./blueprint/archetypes/viewport_blueprint.fbs";
 include "./blueprint/archetypes/plot_legend.fbs";
 include "./blueprint/archetypes/scalar_axis.fbs";
 
+include "./blueprint/space_views/bar_chart.fbs";
+include "./blueprint/space_views/spatial2d.fbs";
 include "./blueprint/space_views/spatial3d.fbs";
+include "./blueprint/space_views/tensor.fbs";
+include "./blueprint/space_views/text_document.fbs";
+include "./blueprint/space_views/text_log.fbs";
+include "./blueprint/space_views/time_series.fbs";

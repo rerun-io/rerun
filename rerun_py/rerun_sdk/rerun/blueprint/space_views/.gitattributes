@@ -2,4 +2,10 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
+bar_chart_view.py linguist-generated=true
+spatial2d_view.py linguist-generated=true
 spatial3d_view.py linguist-generated=true
+tensor_view.py linguist-generated=true
+text_document_view.py linguist-generated=true
+text_log_view.py linguist-generated=true
+time_series_view.py linguist-generated=true

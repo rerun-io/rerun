@@ -2,8 +2,6 @@ include "rerun/attributes.fbs";
 
 namespace rerun.blueprint.space_views;
 
-// ---
-
 /// A Spatial 3D view.
 table Spatial3DView (
     "attr.rerun.space_view_identifier": "3D"
