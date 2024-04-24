@@ -31,6 +31,7 @@ impl Reporter {
     /// Error about a file as a whole.
     ///
     /// Use sparingly for things like failing to write a file or failing to format it.
+    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_file(&self, path: &Utf8Path, text: impl ToString) {
         self.errors
             .send(format!("{path}: {}", text.to_string()))
