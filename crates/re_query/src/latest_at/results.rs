@@ -11,14 +11,14 @@ use crate::{
 
 // ---
 
-/// Cached results for a latest-at query.
+///  results for a latest-at query.
 ///
 /// The data is both deserialized and resolved/converted.
 ///
-/// Use [`CachedLatestAtResults::get`], [`CachedLatestAtResults::get_required`] and
-/// [`CachedLatestAtResults::get_or_empty`] in order to access the results for each individual component.
+/// Use [`LatestAtResults::get`], [`LatestAtResults::get_required`] and
+/// [`LatestAtResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
-pub struct CachedLatestAtResults {
+pub struct LatestAtResults {
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
@@ -27,10 +27,10 @@ pub struct CachedLatestAtResults {
     pub compound_index: (TimeInt, RowId),
 
     /// Results for each individual component.
-    pub components: IntMap<ComponentName, Arc<CachedLatestAtComponentResults>>,
+    pub components: IntMap<ComponentName, Arc<LatestAtComponentResults>>,
 }
 
-impl Default for CachedLatestAtResults {
+impl Default for LatestAtResults {
     #[inline]
     fn default() -> Self {
         Self {
@@ -40,31 +40,31 @@ impl Default for CachedLatestAtResults {
     }
 }
 
-impl CachedLatestAtResults {
+impl LatestAtResults {
     #[inline]
     pub fn contains(&self, component_name: impl Into<ComponentName>) -> bool {
         self.components.contains_key(&component_name.into())
     }
 
-    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> Option<&CachedLatestAtComponentResults> {
+    ) -> Option<&LatestAtComponentResults> {
         self.components
             .get(&component_name.into())
             .map(|arc| &**arc)
     }
 
-    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
     pub fn get_required(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> crate::Result<&CachedLatestAtComponentResults> {
+    ) -> crate::Result<&LatestAtComponentResults> {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             Ok(component)
@@ -73,32 +73,28 @@ impl CachedLatestAtResults {
         }
     }
 
-    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
+    /// Returns the [`LatestAtComponentResults`] for the specified [`Component`].
     ///
     /// Returns empty results if the component is not present.
     #[inline]
     pub fn get_or_empty(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> &CachedLatestAtComponentResults {
+    ) -> &LatestAtComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
         } else {
-            static EMPTY: CachedLatestAtComponentResults = CachedLatestAtComponentResults::empty();
+            static EMPTY: LatestAtComponentResults = LatestAtComponentResults::empty();
             &EMPTY
         }
     }
 }
 
-impl CachedLatestAtResults {
+impl LatestAtResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(
-        &mut self,
-        component_name: ComponentName,
-        cached: Arc<CachedLatestAtComponentResults>,
-    ) {
+    pub fn add(&mut self, component_name: ComponentName, cached: Arc<LatestAtComponentResults>) {
         // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
         // final result is the most recent index among all of its components, as defined by time
         // and row-id order.
@@ -119,7 +115,7 @@ impl CachedLatestAtResults {
 // ---
 
 /// Lazily cached results for a particular component when using a cached latest-at query.
-pub struct CachedLatestAtComponentResults {
+pub struct LatestAtComponentResults {
     pub(crate) index: (TimeInt, RowId),
 
     // Option so we can have a constant default value for `Self`.
@@ -129,7 +125,7 @@ pub struct CachedLatestAtComponentResults {
     pub(crate) cached_dense: OnceLock<Arc<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
-impl CachedLatestAtComponentResults {
+impl LatestAtComponentResults {
     #[inline]
     pub const fn empty() -> Self {
         Self {
@@ -170,7 +166,7 @@ impl CachedLatestAtComponentResults {
     }
 }
 
-impl SizeBytes for CachedLatestAtComponentResults {
+impl SizeBytes for LatestAtComponentResults {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -187,7 +183,7 @@ impl SizeBytes for CachedLatestAtComponentResults {
     }
 }
 
-impl std::fmt::Debug for CachedLatestAtComponentResults {
+impl std::fmt::Debug for LatestAtComponentResults {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             index,
@@ -204,7 +200,7 @@ impl std::fmt::Debug for CachedLatestAtComponentResults {
     }
 }
 
-impl CachedLatestAtComponentResults {
+impl LatestAtComponentResults {
     #[inline]
     pub fn index(&self) -> &(TimeInt, RowId) {
         &self.index
@@ -257,7 +253,7 @@ impl CachedLatestAtComponentResults {
     }
 }
 
-impl CachedLatestAtComponentResults {
+impl LatestAtComponentResults {
     fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<&[C]> {
         // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
         // data has already been computed.

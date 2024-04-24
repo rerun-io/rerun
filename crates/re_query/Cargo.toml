@@ -22,7 +22,7 @@ all-features = true
 [features]
 default = ["to_archetype"]
 
-## Implements `ToArchetype<A>` for all builtin archetypes on `CachedLatestAtResults`.
+## Implements `ToArchetype<A>` for all builtin archetypes on `LatestAtResults`.
 to_archetype = ["dep:re_types", "dep:re_types_blueprint"]
 
 ## Enable codegen helper binaries (generates ClampedZip & RangeZip implementations).

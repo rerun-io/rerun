@@ -68,7 +68,7 @@ fn generate_impls(
 
         use re_types_core::{Archetype, Loggable as _};
 
-        use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
+        use crate::{LatestAtResults, PromiseResolver, PromiseResult};
     };
 
     for obj in objects.ordered_objects(Some(ObjectKind::Archetype)) {
@@ -237,7 +237,7 @@ fn quote_to_archetype_impl(objects: &Objects, obj: &Object) -> TokenStream {
     });
 
     quote! {
-        impl crate::ToArchetype<#quoted_arch_fqname> for CachedLatestAtResults {
+        impl crate::ToArchetype<#quoted_arch_fqname> for LatestAtResults {
             #[inline]
             fn to_archetype(
                 &self,

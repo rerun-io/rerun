@@ -3,11 +3,11 @@ use re_log_types::{EntityPath, RowId, TimeInt};
 use re_types_core::Component;
 use re_types_core::{external::arrow2::array::Array, ComponentName};
 
-use crate::{CachedLatestAtComponentResults, Caches, PromiseResolver, PromiseResult};
+use crate::{Caches, LatestAtComponentResults, PromiseResolver, PromiseResult};
 
 // ---
 
-impl CachedLatestAtComponentResults {
+impl LatestAtComponentResults {
     /// Returns the component data as a dense vector.
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
@@ -241,12 +241,12 @@ impl CachedLatestAtComponentResults {
 // ---
 
 #[derive(Clone)]
-pub struct CachedLatestAtMonoResult<C> {
+pub struct LatestAtMonoResult<C> {
     pub index: (TimeInt, RowId),
     pub value: C,
 }
 
-impl<C> CachedLatestAtMonoResult<C> {
+impl<C> LatestAtMonoResult<C> {
     #[inline]
     pub fn data_time(&self) -> TimeInt {
         self.index.0
@@ -258,7 +258,7 @@ impl<C> CachedLatestAtMonoResult<C> {
     }
 }
 
-impl<C: std::ops::Deref> std::ops::Deref for CachedLatestAtMonoResult<C> {
+impl<C: std::ops::Deref> std::ops::Deref for LatestAtMonoResult<C> {
     type Target = C;
 
     #[inline]
@@ -287,7 +287,7 @@ impl Caches {
         entity_path: &EntityPath,
         query: &LatestAtQuery,
         level: re_log::Level,
-    ) -> Option<CachedLatestAtMonoResult<C>> {
+    ) -> Option<LatestAtMonoResult<C>> {
         re_tracing::profile_function!();
 
         let results = self.latest_at(store, query, entity_path, [C::name()]);
@@ -303,7 +303,7 @@ impl Caches {
                 );
                 None
             }
-            PromiseResult::Ready(data) if data.len() == 1 => Some(CachedLatestAtMonoResult {
+            PromiseResult::Ready(data) if data.len() == 1 => Some(LatestAtMonoResult {
                 index,
                 value: data[0].clone(),
             }),
@@ -343,7 +343,7 @@ impl Caches {
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<CachedLatestAtMonoResult<C>> {
+    ) -> Option<LatestAtMonoResult<C>> {
         self.latest_at_component_with_log_level(
             store,
             resolver,
@@ -368,7 +368,7 @@ impl Caches {
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<CachedLatestAtMonoResult<C>> {
+    ) -> Option<LatestAtMonoResult<C>> {
         self.latest_at_component_with_log_level(
             store,
             resolver,
@@ -385,7 +385,7 @@ impl Caches {
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
-    ) -> Option<(EntityPath, CachedLatestAtMonoResult<C>)> {
+    ) -> Option<(EntityPath, LatestAtMonoResult<C>)> {
         re_tracing::profile_function!();
 
         let mut cur_entity_path = Some(entity_path.clone());

@@ -5,11 +5,11 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 
-use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
+use crate::{LatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
-impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for CachedLatestAtResults {
+impl crate::ToArchetype<re_types::archetypes::SeriesPoint> for LatestAtResults {
     #[inline]
     fn to_archetype(
         &self,

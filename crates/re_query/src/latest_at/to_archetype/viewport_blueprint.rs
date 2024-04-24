@@ -5,12 +5,12 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 
-use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
+use crate::{LatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
 impl crate::ToArchetype<re_types_blueprint::blueprint::archetypes::ViewportBlueprint>
-    for CachedLatestAtResults
+    for LatestAtResults
 {
     #[inline]
     fn to_archetype(

@@ -168,7 +168,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::CachedRangeResultsExt as _;
+                use crate::visualizers::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 
