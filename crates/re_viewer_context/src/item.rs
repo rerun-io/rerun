@@ -199,8 +199,7 @@ pub fn resolve_mono_instance_path(
                 [component],
             );
             if let Some(results) = results.get(component) {
-                if let re_query::PromiseResult::Ready(cell) =
-                    results.resolved(entity_db.resolver())
+                if let re_query::PromiseResult::Ready(cell) = results.resolved(entity_db.resolver())
                 {
                     if cell.num_instances() > 1 {
                         return instance.clone();

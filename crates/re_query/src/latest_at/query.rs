@@ -7,11 +7,10 @@ use parking_lot::RwLock;
 
 use re_data_store::{DataStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_query2::Promise;
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
-use crate::{CacheKey, CachedLatestAtComponentResults, CachedLatestAtResults, Caches};
+use crate::{CacheKey, CachedLatestAtComponentResults, CachedLatestAtResults, Caches, Promise};
 
 // ---
 

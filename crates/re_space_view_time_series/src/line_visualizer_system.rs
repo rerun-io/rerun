@@ -296,11 +296,9 @@ fn load_series(
                     .range_indices(all_scalars_entry_range.clone())
                     .map(|index| (index, ()));
 
-                let all_frames = re_query::range_zip_1x1(
-                    all_scalars_indexed,
-                    all_stroke_widths.range_indexed(),
-                )
-                .enumerate();
+                let all_frames =
+                    re_query::range_zip_1x1(all_scalars_indexed, all_stroke_widths.range_indexed())
+                        .enumerate();
 
                 for (i, (_index, _scalars, stroke_widths)) in all_frames {
                     if let Some(stroke_width) =

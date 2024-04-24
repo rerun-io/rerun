@@ -5,8 +5,7 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
 
-use crate::CachedLatestAtResults;
-use crate::{PromiseResolver, PromiseResult};
+use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 

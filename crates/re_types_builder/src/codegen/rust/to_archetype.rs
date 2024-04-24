@@ -34,8 +34,7 @@ fn generate_mod(
     objects: &Objects,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
-    let generated_path =
-        Utf8PathBuf::from("crates/re_query/src/latest_at/to_archetype/mod.rs");
+    let generated_path = Utf8PathBuf::from("crates/re_query/src/latest_at/to_archetype/mod.rs");
 
     let mut code = String::new();
     code.push_str(&format!("// {}\n\n", crate::codegen::autogen_warning!()));
@@ -67,10 +66,9 @@ fn generate_impls(
     let quoted_imports = quote! {
         use std::sync::Arc;
 
-        use re_query::{PromiseResolver, PromiseResult};
         use re_types_core::{Archetype, Loggable as _};
 
-        use crate::CachedLatestAtResults;
+        use crate::{CachedLatestAtResults, PromiseResolver, PromiseResult};
     };
 
     for obj in objects.ordered_objects(Some(ObjectKind::Archetype)) {

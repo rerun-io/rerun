@@ -127,9 +127,7 @@ impl VisualizerSystem for TextLogSystem {
 
 // TODO(#5607): what should happen if the promise is still pending?
 #[inline]
-fn check_range<'a, C: Component>(
-    results: &'a CachedRangeData<'a, C>,
-) -> re_query::Result<()> {
+fn check_range<'a, C: Component>(results: &'a CachedRangeData<'a, C>) -> re_query::Result<()> {
     let (front_status, back_status) = results.status();
     match front_status {
         PromiseResult::Pending => return Ok(()),
