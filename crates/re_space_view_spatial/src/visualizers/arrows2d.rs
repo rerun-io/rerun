@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache2::{range_zip_1x6, CachedResults};
+use re_query_cache2::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
@@ -218,121 +218,66 @@ impl VisualizerSystem for Arrows2DVisualizer {
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
-                match results {
-                    CachedResults::LatestAt(_query, results) => {
-                        re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+                re_tracing::profile_scope!(format!("{entity_path}"));
 
-                        use crate::visualizers::CachedLatestAtResultsExt as _;
+                use crate::visualizers::CachedRangeResultsExt as _;
 
-                        let resolver = ctx.recording().resolver();
+                let resolver = ctx.recording().resolver();
 
-                        let vectors = match results.get_dense::<Vector2D>(resolver) {
-                            Some(Ok(vectors)) if !vectors.is_empty() => vectors,
-                            Some(err @ Err(_)) => err?,
-                            _ => return Ok(()),
-                        };
+                let vectors = match results.get_dense::<Vector2D>(resolver) {
+                    Some(Ok(vectors)) => vectors,
+                    Some(err @ Err(_)) => err?,
+                    _ => return Ok(()),
+                };
 
-                        line_builder.reserve_strips(vectors.len())?;
-                        line_builder.reserve_vertices(vectors.len() * 2)?;
-
-                        let origins = results.get_or_empty_dense(resolver)?;
-                        let colors = results.get_or_empty_dense(resolver)?;
-                        let radii = results.get_or_empty_dense(resolver)?;
-                        let labels = results.get_or_empty_dense(resolver)?;
-                        let class_ids = results.get_or_empty_dense(resolver)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                        let data = Arrows2DComponentData {
-                            vectors,
-                            origins,
-                            colors,
-                            radii,
-                            labels,
-                            keypoint_ids,
-                            class_ids,
-                        };
-
-                        self.process_data(
-                            &mut line_builder,
-                            view_query,
-                            entity_path,
-                            spatial_ctx,
-                            std::iter::once(data),
-                        );
-                    }
-
-                    CachedResults::Range(_query, results) => {
-                        re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
-
-                        use crate::visualizers::CachedRangeResultsExt as _;
-
-                        let resolver = ctx.recording().resolver();
-
-                        let vectors = match results.get_dense::<Vector2D>(resolver) {
-                            Some(Ok(vectors)) => vectors,
-                            Some(err @ Err(_)) => err?,
-                            _ => return Ok(()),
-                        };
-
-                        let num_vectors = vectors
-                            .range_indexed()
-                            .map(|(_, vectors)| vectors.len())
-                            .sum::<usize>();
-                        if num_vectors == 0 {
-                            return Ok(());
-                        }
-
-                        line_builder.reserve_strips(num_vectors)?;
-                        line_builder.reserve_vertices(num_vectors * 2)?;
-
-                        let origins = results.get_or_empty_dense(resolver)?;
-                        let colors = results.get_or_empty_dense(resolver)?;
-                        let radii = results.get_or_empty_dense(resolver)?;
-                        let labels = results.get_or_empty_dense(resolver)?;
-                        let class_ids = results.get_or_empty_dense(resolver)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                        let data = range_zip_1x6(
-                            vectors.range_indexed(),
-                            origins.range_indexed(),
-                            colors.range_indexed(),
-                            radii.range_indexed(),
-                            labels.range_indexed(),
-                            class_ids.range_indexed(),
-                            keypoint_ids.range_indexed(),
-                        )
-                        .map(
-                            |(
-                                _index,
-                                vectors,
-                                origins,
-                                colors,
-                                radii,
-                                labels,
-                                class_ids,
-                                keypoint_ids,
-                            )| {
-                                Arrows2DComponentData {
-                                    vectors,
-                                    origins: origins.unwrap_or_default(),
-                                    colors: colors.unwrap_or_default(),
-                                    radii: radii.unwrap_or_default(),
-                                    labels: labels.unwrap_or_default(),
-                                    class_ids: class_ids.unwrap_or_default(),
-                                    keypoint_ids: keypoint_ids.unwrap_or_default(),
-                                }
-                            },
-                        );
-
-                        self.process_data(
-                            &mut line_builder,
-                            view_query,
-                            entity_path,
-                            spatial_ctx,
-                            data,
-                        );
-                    }
+                let num_vectors = vectors
+                    .range_indexed()
+                    .map(|(_, vectors)| vectors.len())
+                    .sum::<usize>();
+                if num_vectors == 0 {
+                    return Ok(());
                 }
+
+                line_builder.reserve_strips(num_vectors)?;
+                line_builder.reserve_vertices(num_vectors * 2)?;
+
+                let origins = results.get_or_empty_dense(resolver)?;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x6(
+                    vectors.range_indexed(),
+                    origins.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, vectors, origins, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Arrows2DComponentData {
+                            vectors,
+                            origins: origins.unwrap_or_default(),
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
 
                 Ok(())
             },

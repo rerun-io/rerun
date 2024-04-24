@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache2::{range_zip_1x5, CachedResults};
+use re_query_cache2::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
@@ -221,106 +221,64 @@ impl VisualizerSystem for Points2DVisualizer {
             view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, _entity_props, spatial_ctx, results| match results {
-                CachedResults::LatestAt(_query, results) => {
-                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
 
-                    use crate::visualizers::CachedLatestAtResultsExt as _;
+                use crate::visualizers::CachedRangeResultsExt as _;
 
-                    let resolver = ctx.recording().resolver();
+                let resolver = ctx.recording().resolver();
 
-                    let positions = match results.get_dense::<Position2D>(resolver) {
-                        Some(Ok(positions)) if !positions.is_empty() => positions,
-                        Some(err @ Err(_)) => err?,
-                        _ => return Ok(()),
-                    };
+                let positions = match results.get_dense::<Position2D>(resolver) {
+                    Some(Ok(positions)) => positions,
+                    Some(err @ Err(_)) => err?,
+                    _ => return Ok(()),
+                };
 
-                    point_builder.reserve(positions.len())?;
-
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                    let data = Points2DComponentData {
-                        positions,
-                        colors,
-                        radii,
-                        labels,
-                        keypoint_ids,
-                        class_ids,
-                    };
-
-                    self.process_data(
-                        &mut point_builder,
-                        &mut line_builder,
-                        view_query,
-                        entity_path,
-                        spatial_ctx,
-                        std::iter::once(data),
-                    )
+                let num_positions = positions
+                    .range_indexed()
+                    .map(|(_, positions)| positions.len())
+                    .sum::<usize>();
+                if num_positions == 0 {
+                    return Ok(());
                 }
 
-                CachedResults::Range(_query, results) => {
-                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+                point_builder.reserve(num_positions)?;
 
-                    use crate::visualizers::CachedRangeResultsExt as _;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
-                    let resolver = ctx.recording().resolver();
+                let data = range_zip_1x5(
+                    positions.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Points2DComponentData {
+                            positions,
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
 
-                    let positions = match results.get_dense::<Position2D>(resolver) {
-                        Some(Ok(positions)) => positions,
-                        Some(err @ Err(_)) => err?,
-                        _ => return Ok(()),
-                    };
-
-                    let num_positions = positions
-                        .range_indexed()
-                        .map(|(_, positions)| positions.len())
-                        .sum::<usize>();
-                    if num_positions == 0 {
-                        return Ok(());
-                    }
-
-                    point_builder.reserve(num_positions)?;
-
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                    let data = range_zip_1x5(
-                        positions.range_indexed(),
-                        colors.range_indexed(),
-                        radii.range_indexed(),
-                        labels.range_indexed(),
-                        class_ids.range_indexed(),
-                        keypoint_ids.range_indexed(),
-                    )
-                    .map(
-                        |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
-                            Points2DComponentData {
-                                positions,
-                                colors: colors.unwrap_or_default(),
-                                radii: radii.unwrap_or_default(),
-                                labels: labels.unwrap_or_default(),
-                                class_ids: class_ids.unwrap_or_default(),
-                                keypoint_ids: keypoint_ids.unwrap_or_default(),
-                            }
-                        },
-                    );
-
-                    self.process_data(
-                        &mut point_builder,
-                        &mut line_builder,
-                        view_query,
-                        entity_path,
-                        spatial_ctx,
-                        data,
-                    )
-                }
+                self.process_data(
+                    &mut point_builder,
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                )
             },
         )?;
 

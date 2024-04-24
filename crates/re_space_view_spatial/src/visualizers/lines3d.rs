@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache2::{range_zip_1x5, CachedResults};
+use re_query_cache2::range_zip_1x5;
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::LineStrips3D,
@@ -211,116 +211,70 @@ impl VisualizerSystem for Lines3DVisualizer {
             view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |ctx, entity_path, _entity_props, spatial_ctx, results| match results {
-                CachedResults::LatestAt(_query, results) => {
-                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
 
-                    use crate::visualizers::CachedLatestAtResultsExt as _;
+                use crate::visualizers::CachedRangeResultsExt as _;
 
-                    let resolver = ctx.recording().resolver();
+                let resolver = ctx.recording().resolver();
 
-                    let strips = match results.get_dense::<LineStrip3D>(resolver) {
-                        Some(Ok(strips)) if !strips.is_empty() => strips,
-                        Some(err @ Err(_)) => err?,
-                        _ => return Ok(()),
-                    };
+                let strips = match results.get_dense::<LineStrip3D>(resolver) {
+                    Some(Ok(strips)) => strips,
+                    Some(err @ Err(_)) => err?,
+                    _ => return Ok(()),
+                };
 
-                    line_builder.reserve_strips(strips.len())?;
-                    line_builder.reserve_vertices(
-                        strips.iter().map(|strip| strip.0.len()).sum::<usize>(),
-                    )?;
-
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                    let data = Lines3DComponentData {
-                        strips,
-                        colors,
-                        radii,
-                        labels,
-                        keypoint_ids,
-                        class_ids,
-                    };
-
-                    self.process_data(
-                        &mut line_builder,
-                        view_query,
-                        entity_path,
-                        spatial_ctx,
-                        std::iter::once(data),
-                    );
-
-                    Ok(())
+                let num_strips = strips
+                    .range_indexed()
+                    .map(|(_, strips)| strips.len())
+                    .sum::<usize>();
+                if num_strips == 0 {
+                    return Ok(());
                 }
+                line_builder.reserve_strips(num_strips)?;
 
-                CachedResults::Range(_query, results) => {
-                    re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+                let num_vertices = strips
+                    .range_indexed()
+                    .map(|(_, strips)| strips.iter().map(|strip| strip.0.len()).sum::<usize>())
+                    .sum::<usize>();
+                line_builder.reserve_vertices(num_vertices)?;
 
-                    use crate::visualizers::CachedRangeResultsExt as _;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
 
-                    let resolver = ctx.recording().resolver();
+                let data = range_zip_1x5(
+                    strips.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Lines3DComponentData {
+                            strips,
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
 
-                    let strips = match results.get_dense::<LineStrip3D>(resolver) {
-                        Some(Ok(strips)) => strips,
-                        Some(err @ Err(_)) => err?,
-                        _ => return Ok(()),
-                    };
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
 
-                    let num_strips = strips
-                        .range_indexed()
-                        .map(|(_, strips)| strips.len())
-                        .sum::<usize>();
-                    if num_strips == 0 {
-                        return Ok(());
-                    }
-                    line_builder.reserve_strips(num_strips)?;
-
-                    let num_vertices = strips
-                        .range_indexed()
-                        .map(|(_, strips)| strips.iter().map(|strip| strip.0.len()).sum::<usize>())
-                        .sum::<usize>();
-                    line_builder.reserve_vertices(num_vertices)?;
-
-                    let colors = results.get_or_empty_dense(resolver)?;
-                    let radii = results.get_or_empty_dense(resolver)?;
-                    let labels = results.get_or_empty_dense(resolver)?;
-                    let class_ids = results.get_or_empty_dense(resolver)?;
-                    let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                    let data = range_zip_1x5(
-                        strips.range_indexed(),
-                        colors.range_indexed(),
-                        radii.range_indexed(),
-                        labels.range_indexed(),
-                        class_ids.range_indexed(),
-                        keypoint_ids.range_indexed(),
-                    )
-                    .map(
-                        |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
-                            Lines3DComponentData {
-                                strips,
-                                colors: colors.unwrap_or_default(),
-                                radii: radii.unwrap_or_default(),
-                                labels: labels.unwrap_or_default(),
-                                class_ids: class_ids.unwrap_or_default(),
-                                keypoint_ids: keypoint_ids.unwrap_or_default(),
-                            }
-                        },
-                    );
-
-                    self.process_data(
-                        &mut line_builder,
-                        view_query,
-                        entity_path,
-                        spatial_ctx,
-                        data,
-                    );
-
-                    Ok(())
-                }
+                Ok(())
             },
         )?;
 
