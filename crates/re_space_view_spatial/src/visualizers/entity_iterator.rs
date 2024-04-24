@@ -2,7 +2,7 @@ use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_query_cache::{CachedResults, ExtraQueryHistory};
+use re_query2::{CachedResults, ExtraQueryHistory};
 use re_renderer::DepthOffset;
 use re_space_view::query_visual_history;
 use re_types::Archetype;

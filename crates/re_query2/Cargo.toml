@@ -1,13 +1,12 @@
 [package]
 name = "re_query2"
 authors.workspace = true
-description = "Temporary crate meant to replace re_query"
+description = "High-level query APIs"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-# TODO(cmc): Replace re_query with this crate. Never publish this one.
-publish = false
+publish = true
 readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
@@ -21,10 +20,10 @@ all-features = true
 
 
 [features]
-default = []
+default = ["to_archetype"]
 
-## Enable (de)serialization using serde.
-serde = ["dep:serde"]
+## Implements `ToArchetype<A>` for all builtin archetypes on `CachedLatestAtResults`.
+to_archetype = ["dep:re_types", "dep:re_types_blueprint"]
 
 ## Enable codegen helper binaries (generates ClampedZip & RangeZip implementations).
 codegen = ["unindent"]
@@ -33,28 +32,35 @@ codegen = ["unindent"]
 [dependencies]
 # Rerun dependencies:
 re_data_store.workspace = true
+re_error.workspace = true
 re_format.workspace = true
-re_format_arrow.workspace = true
-re_log_types.workspace = true
-re_types_core.workspace = true
 re_log.workspace = true
+re_log_types.workspace = true
 re_tracing.workspace = true
 re_tuid.workspace = true
+re_types_core.workspace = true
+
+# Rerun dependencies (optional):
+re_types = { workspace = true, optional = true }
+re_types_blueprint = { workspace = true, optional = true }
 
 # External dependencies:
 ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
 backtrace.workspace = true
-document-features.workspace = true
-itertools = { workspace = true }
+indent.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
 nohash-hasher.workspace = true
-serde = { workspace = true, features = ["derive", "rc"], optional = true }
-smallvec.workspace = true
+parking_lot.workspace = true
+paste.workspace = true
+seq-macro.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
-# Optional:
+# External dependencies (optional):
 unindent = { workspace = true, optional = true }
 
 
@@ -62,7 +68,6 @@ unindent = { workspace = true, optional = true }
 re_types = { workspace = true, features = ["datagen"] }
 
 criterion.workspace = true
-itertools = { workspace = true }
 mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 similar-asserts.workspace = true
@@ -70,6 +75,11 @@ similar-asserts.workspace = true
 
 [lib]
 bench = false
+
+
+[[example]]
+name = "latest_at_archetype"
+required-features = ["to_archetype"]
 
 
 [[bin]]
@@ -81,6 +91,10 @@ required-features = ["codegen"]
 name = "range_zip"
 required-features = ["codegen"]
 
+
+[[bench]]
+name = "flat_vec_deque"
+harness = false
 
 [[bench]]
 name = "latest_at"

@@ -1,21 +1,24 @@
-use nohash_hasher::IntMap;
-use re_log_types::{DataCell, RowId, TimeInt};
-use re_types_core::ComponentName;
-use re_types_core::{Component, DeserializationError, DeserializationResult};
+use std::sync::{Arc, OnceLock};
 
-use crate::{Promise, PromiseResolver, PromiseResult};
+use nohash_hasher::IntMap;
+
+use re_log_types::{DataCell, RowId, TimeInt};
+use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
+
+use crate::{
+    ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseResult, QueryError,
+};
 
 // ---
 
-/// Raw results for a latest-at query.
+/// Cached results for a latest-at query.
 ///
-/// The data is neither deserialized, nor resolved/converted.
-/// It it the raw [`DataCell`]s, straight from our datastore.
+/// The data is both deserialized and resolved/converted.
 ///
-/// Use [`LatestAtResults::get`], [`LatestAtResults::get_required`] and [`LatestAtResults::get_or_empty`]
-/// in order to access the raw results for each individual component.
-#[derive(Debug, Clone)]
-pub struct LatestAtResults {
+/// Use [`CachedLatestAtResults::get`], [`CachedLatestAtResults::get_required`] and
+/// [`CachedLatestAtResults::get_or_empty`] in order to access the results for each individual component.
+#[derive(Debug)]
+pub struct CachedLatestAtResults {
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
@@ -23,11 +26,11 @@ pub struct LatestAtResults {
     /// sub-results, as defined by time and row-id order.
     pub compound_index: (TimeInt, RowId),
 
-    /// Raw results for each individual component.
-    pub components: IntMap<ComponentName, LatestAtComponentResults>,
+    /// Results for each individual component.
+    pub components: IntMap<ComponentName, Arc<CachedLatestAtComponentResults>>,
 }
 
-impl Default for LatestAtResults {
+impl Default for CachedLatestAtResults {
     #[inline]
     fn default() -> Self {
         Self {
@@ -37,63 +40,65 @@ impl Default for LatestAtResults {
     }
 }
 
-impl LatestAtResults {
+impl CachedLatestAtResults {
     #[inline]
     pub fn contains(&self, component_name: impl Into<ComponentName>) -> bool {
         self.components.contains_key(&component_name.into())
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
+    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
     #[inline]
     pub fn get(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> Option<&LatestAtComponentResults> {
-        self.components.get(&component_name.into())
+    ) -> Option<&CachedLatestAtComponentResults> {
+        self.components
+            .get(&component_name.into())
+            .map(|arc| &**arc)
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
+    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
     pub fn get_required(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> crate::Result<&LatestAtComponentResults> {
+    ) -> crate::Result<&CachedLatestAtComponentResults> {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             Ok(component)
         } else {
-            Err(DeserializationError::MissingComponent {
-                component: component_name,
-                backtrace: ::backtrace::Backtrace::new_unresolved(),
-            }
-            .into())
+            Err(QueryError::PrimaryNotFound(component_name))
         }
     }
 
-    /// Returns the [`LatestAtComponentResults`] for the specified `component_name`.
+    /// Returns the [`CachedLatestAtComponentResults`] for the specified [`Component`].
     ///
     /// Returns empty results if the component is not present.
     #[inline]
     pub fn get_or_empty(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> &LatestAtComponentResults {
+    ) -> &CachedLatestAtComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
         } else {
-            static DEFAULT: LatestAtComponentResults = LatestAtComponentResults::EMPTY;
-            &DEFAULT
+            static EMPTY: CachedLatestAtComponentResults = CachedLatestAtComponentResults::empty();
+            &EMPTY
         }
     }
 }
 
-impl LatestAtResults {
+impl CachedLatestAtResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component_name: ComponentName, index: (TimeInt, RowId), cell: DataCell) {
+    pub fn add(
+        &mut self,
+        component_name: ComponentName,
+        cached: Arc<CachedLatestAtComponentResults>,
+    ) {
         // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
         // final result is the most recent index among all of its components, as defined by time
         // and row-id order.
@@ -102,50 +107,117 @@ impl LatestAtResults {
         // reasons with the legacy instance-key model. This will go away next.
         use re_types_core::Loggable as _;
         if component_name != re_types_core::components::InstanceKey::name()
-            && index > self.compound_index
+            && cached.index > self.compound_index
         {
-            self.compound_index = index;
+            self.compound_index = cached.index;
         }
 
-        self.components.insert(
-            component_name,
-            LatestAtComponentResults {
-                index,
-                promise: Some(Promise::new(cell)),
-            },
-        );
+        self.components.insert(component_name, cached);
     }
 }
 
 // ---
 
-/// Uncached results for a particular component when using a latest-at query.
-#[derive(Debug, Clone)]
-pub struct LatestAtComponentResults {
-    index: (TimeInt, RowId),
+/// Lazily cached results for a particular component when using a cached latest-at query.
+pub struct CachedLatestAtComponentResults {
+    pub(crate) index: (TimeInt, RowId),
 
-    // Option so we can have a constant default value for `Self` for the optional+empty case.
-    promise: Option<Promise>,
+    // Option so we can have a constant default value for `Self`.
+    pub(crate) promise: Option<Promise>,
+
+    /// The resolved, converted, deserialized dense data.
+    pub(crate) cached_dense: OnceLock<Arc<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
-impl Default for LatestAtComponentResults {
+impl CachedLatestAtComponentResults {
     #[inline]
-    fn default() -> Self {
-        Self::EMPTY
+    pub const fn empty() -> Self {
+        Self {
+            index: (TimeInt::STATIC, RowId::ZERO),
+            promise: None,
+            cached_dense: OnceLock::new(),
+        }
+    }
+
+    /// Returns the [`ComponentName`] of the resolved data, if available.
+    #[inline]
+    pub fn component_name(&self, resolver: &PromiseResolver) -> Option<ComponentName> {
+        match self.resolved(resolver) {
+            PromiseResult::Ready(cell) => Some(cell.component_name()),
+            _ => None,
+        }
+    }
+
+    /// Returns whether the resolved data is static.
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.index.0 == TimeInt::STATIC
+    }
+
+    /// How many _indices_ across this entire cache?
+    #[inline]
+    pub fn num_indices(&self) -> u64 {
+        _ = self;
+        1
+    }
+
+    /// How many _instances_ across this entire cache?
+    #[inline]
+    pub fn num_instances(&self) -> u64 {
+        self.cached_dense
+            .get()
+            .map_or(0u64, |cached| cached.dyn_num_values() as _)
     }
 }
 
-impl LatestAtComponentResults {
-    const EMPTY: Self = Self {
-        index: (TimeInt::STATIC, RowId::ZERO),
-        promise: None,
-    };
+impl SizeBytes for CachedLatestAtComponentResults {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            index,
+            promise,
+            cached_dense,
+        } = self;
+
+        index.total_size_bytes()
+            + promise.total_size_bytes()
+            + cached_dense
+                .get()
+                .map_or(0, |data| data.dyn_total_size_bytes())
+    }
 }
 
-impl LatestAtComponentResults {
+impl std::fmt::Debug for CachedLatestAtComponentResults {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            index,
+            promise: _,
+            cached_dense: _, // we can't, we don't know the type
+        } = self;
+
+        f.write_fmt(format_args!(
+            "[{:?}#{}] {}",
+            index.0,
+            index.1,
+            re_format::format_bytes(self.total_size_bytes() as _)
+        ))
+    }
+}
+
+impl CachedLatestAtComponentResults {
     #[inline]
     pub fn index(&self) -> &(TimeInt, RowId) {
         &self.index
+    }
+
+    /// Returns the raw resolved data, if it's ready.
+    #[inline]
+    pub fn resolved(&self, resolver: &PromiseResolver) -> PromiseResult<DataCell> {
+        if let Some(cell) = self.promise.as_ref() {
+            resolver.resolve(cell)
+        } else {
+            PromiseResult::Pending
+        }
     }
 
     /// Returns the component data as a dense vector.
@@ -158,15 +230,14 @@ impl LatestAtComponentResults {
     pub fn to_dense<C: Component>(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<DeserializationResult<Vec<C>>> {
+    ) -> PromiseResult<crate::Result<&[C]>> {
         if let Some(cell) = self.promise.as_ref() {
-            resolver.resolve(cell).map(|cell| {
-                cell.try_to_native()
-                    .map_err(|err| DeserializationError::DataCellError(err.to_string()))
-            })
+            resolver
+                .resolve(cell)
+                .map(|cell| self.downcast_dense::<C>(&cell))
         } else {
             // Manufactured empty result.
-            PromiseResult::Ready(Ok(vec![]))
+            PromiseResult::Ready(Ok(&[]))
         }
     }
 
@@ -180,45 +251,49 @@ impl LatestAtComponentResults {
     pub fn iter_dense<C: Component>(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<DeserializationResult<impl ExactSizeIterator<Item = C>>> {
+    ) -> PromiseResult<crate::Result<impl ExactSizeIterator<Item = &C>>> {
         self.to_dense(resolver)
-            .map(|data| data.map(|data| data.into_iter()))
+            .map(|data| data.map(|data| data.iter()))
     }
+}
 
-    /// Returns the component data as a sparse vector.
-    ///
-    /// Returns an error if the component is missing or cannot be deserialized.
-    ///
-    /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
-    /// deserializing the data into a single one, if you don't need the extra flexibility.
-    #[inline]
-    pub fn to_sparse<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> PromiseResult<DeserializationResult<Vec<Option<C>>>> {
-        if let Some(cell) = self.promise.as_ref() {
-            resolver.resolve(cell).map(|cell| {
-                cell.try_to_native_opt()
-                    .map_err(|err| DeserializationError::DataCellError(err.to_string()))
-            })
-        } else {
-            // Manufactured empty result.
-            PromiseResult::Ready(Ok(vec![]))
+impl CachedLatestAtComponentResults {
+    fn downcast_dense<C: Component>(&self, cell: &DataCell) -> crate::Result<&[C]> {
+        // `OnceLock::get` is non-blocking -- this is a best-effort fast path in case the
+        // data has already been computed.
+        //
+        // See next comment as to why we need this.
+        if let Some(cached) = self.cached_dense.get() {
+            return downcast(&**cached);
         }
-    }
 
-    /// Iterates over the component data, assuming it is sparse.
-    ///
-    /// Returns an error if the component is missing or cannot be deserialized.
-    ///
-    /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
-    /// deserializing the data into a single one, if you don't need the extra flexibility.
-    #[inline]
-    pub fn iter_sparse<C: Component>(
-        &self,
-        resolver: &PromiseResolver,
-    ) -> PromiseResult<DeserializationResult<impl ExactSizeIterator<Item = Option<C>>>> {
-        self.to_sparse(resolver)
-            .map(|data| data.map(|data| data.into_iter()))
+        // We have to do this outside of the callback in order to propagate errors.
+        // Hence the early exit check above.
+        let data = cell
+            .try_to_native::<C>()
+            .map_err(|err| DeserializationError::DataCellError(err.to_string()))?;
+
+        #[allow(clippy::borrowed_box)]
+        let cached: &Arc<dyn ErasedFlatVecDeque + Send + Sync> = self
+            .cached_dense
+            .get_or_init(move || Arc::new(FlatVecDeque::from(data)));
+
+        downcast(&**cached)
     }
+}
+
+fn downcast<C: Component>(cached: &(dyn ErasedFlatVecDeque + Send + Sync)) -> crate::Result<&[C]> {
+    let cached = cached
+        .as_any()
+        .downcast_ref::<FlatVecDeque<C>>()
+        .ok_or_else(|| QueryError::TypeMismatch {
+            actual: "<unknown>".into(),
+            requested: C::name(),
+        })?;
+
+    if cached.num_entries() != 1 {
+        return Err(anyhow::anyhow!("latest_at deque must be single entry").into());
+    }
+    // unwrap checked just above ^^^
+    Ok(cached.iter().next().unwrap())
 }

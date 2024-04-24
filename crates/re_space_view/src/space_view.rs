@@ -1,6 +1,6 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
-use re_entity_db::external::re_query_cache::PromiseResult;
+use re_entity_db::external::re_query2::PromiseResult;
 
 use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;

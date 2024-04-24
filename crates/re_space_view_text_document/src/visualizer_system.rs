@@ -1,5 +1,5 @@
 use re_data_store::LatestAtQuery;
-use re_space_view::external::re_query_cache::PromiseResult;
+use re_space_view::external::re_query2::PromiseResult;
 use re_types::{archetypes::TextDocument, components};
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,

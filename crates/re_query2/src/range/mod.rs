@@ -1,5 +1,8 @@
 mod query;
 mod results;
 
-pub use self::query::range;
-pub use self::results::{RangeComponentResults, RangeResults};
+pub use self::query::RangeCache;
+pub use self::results::{
+    CachedRangeComponentResults, CachedRangeComponentResultsInner, CachedRangeData,
+    CachedRangeResults,
+};

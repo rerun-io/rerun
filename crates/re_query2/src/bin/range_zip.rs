@@ -486,7 +486,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p re_query2 --all-features --bin range_zip`.
+        // This file was generated using `cargo r -p crate --all-features --bin range_zip`.
         // DO NOT EDIT.
 
         // ---
