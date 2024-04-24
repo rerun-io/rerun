@@ -318,13 +318,18 @@ fn setup_target_config(
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
         pinhole = scene_pinhole;
-        canvas_rect = pinhole_resolution_rect(&pinhole).unwrap(); // TODO
+        canvas_rect = pinhole_resolution_rect(&pinhole).unwrap_or_else(|| {
+            // This is weird - we have a projection with an unknown scale.
+            // Let's just pick something plausible and hope for the best 😬.
+            Rect::from_min_size(Pos2::ZERO, egui::Vec2::splat(1000.0))
+        });
     } else {
         // The user didn't pick a pinhole, but we still set up a 3D projection.
-        // So we just pick any pinhole.
-        let focal_length = 1.0; // Whatever
-        let principal_point = glam::vec2(0.5, 0.5); // Whatever
-        let resolution = egui::vec2(1.0, 1.0); // Whatever
+        // So we just pick _any_ pinhole camera, but we pick a "plausible" one so that
+        // it is similar to real-life pinhole cameras, so that we get similar scales and precision.
+        let focal_length = 1000.0; // Whatever, but small values can cause precision issues, noticable on rectangle corners.
+        let principal_point = glam::Vec2::splat(500.0); // Whatever
+        let resolution = egui::Vec2::splat(1000.0); // Whatever
         pinhole = Pinhole {
             image_from_camera: glam::Mat3::from_cols(
                 glam::vec3(focal_length, 0.0, 0.0),
