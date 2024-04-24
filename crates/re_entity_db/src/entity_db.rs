@@ -209,7 +209,7 @@ impl EntityDb {
         query: &re_data_store::LatestAtQuery,
     ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
-        re_query::CachedLatestAtResults: re_query::ToArchetype<A>,
+        re_query::LatestAtResults: re_query::ToArchetype<A>,
     {
         let results = self.query_caches().latest_at(
             self.store(),
@@ -240,7 +240,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query::CachedLatestAtMonoResult<C>> {
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
         self.query_caches().latest_at_component::<C>(
             self.store(),
             self.resolver(),
@@ -254,7 +254,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query::CachedLatestAtMonoResult<C>> {
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
         self.query_caches().latest_at_component_quiet::<C>(
             self.store(),
             self.resolver(),
@@ -268,7 +268,7 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<(EntityPath, re_query::CachedLatestAtMonoResult<C>)> {
+    ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
         self.query_caches()
             .latest_at_component_at_closest_ancestor::<C>(
                 self.store(),

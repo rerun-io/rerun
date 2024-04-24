@@ -13,25 +13,25 @@ use re_log_types::{RowId, TimeInt, TimeRange};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
 use crate::{
-    CachedLatestAtComponentResults, ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver,
+    ErasedFlatVecDeque, FlatVecDeque, LatestAtComponentResults, Promise, PromiseResolver,
     PromiseResult,
 };
 
 // ---
 
-/// Cached results for a range query.
+///  results for a range query.
 ///
 /// The data is both deserialized and resolved/converted.
 ///
-/// Use [`CachedRangeResults::get`], [`CachedRangeResults::get_required`] and
-/// [`CachedRangeResults::get_or_empty`] in order to access the results for each individual component.
+/// Use [`RangeResults::get`], [`RangeResults::get_required`] and
+/// [`RangeResults::get_or_empty`] in order to access the results for each individual component.
 #[derive(Debug)]
-pub struct CachedRangeResults {
+pub struct RangeResults {
     pub query: RangeQuery,
-    pub components: IntMap<ComponentName, CachedRangeComponentResults>,
+    pub components: IntMap<ComponentName, RangeComponentResults>,
 }
 
-impl CachedRangeResults {
+impl RangeResults {
     #[inline]
     pub(crate) fn new(query: RangeQuery) -> Self {
         Self {
@@ -45,23 +45,20 @@ impl CachedRangeResults {
         self.components.contains_key(&component_name.into())
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     #[inline]
-    pub fn get(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> Option<&CachedRangeComponentResults> {
+    pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&RangeComponentResults> {
         self.components.get(&component_name.into())
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     ///
     /// Returns an error if the component is not present.
     #[inline]
     pub fn get_required(
         &self,
         component_name: impl Into<ComponentName>,
-    ) -> crate::Result<&CachedRangeComponentResults> {
+    ) -> crate::Result<&RangeComponentResults> {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             Ok(component)
@@ -74,27 +71,24 @@ impl CachedRangeResults {
         }
     }
 
-    /// Returns the [`CachedRangeComponentResults`] for the specified [`Component`].
+    /// Returns the [`RangeComponentResults`] for the specified [`Component`].
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_or_empty(
-        &self,
-        component_name: impl Into<ComponentName>,
-    ) -> &CachedRangeComponentResults {
+    pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
         } else {
-            CachedRangeComponentResults::empty()
+            RangeComponentResults::empty()
         }
     }
 }
 
-impl CachedRangeResults {
+impl RangeResults {
     #[doc(hidden)]
     #[inline]
-    pub fn add(&mut self, component_name: ComponentName, cached: CachedRangeComponentResults) {
+    pub fn add(&mut self, component_name: ComponentName, cached: RangeComponentResults) {
         self.components.insert(component_name, cached);
     }
 }
@@ -111,17 +105,17 @@ thread_local! {
 
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug)]
-pub struct CachedRangeComponentResults {
+pub struct RangeComponentResults {
     /// The [`TimeRange`] of the query that was used in order to retrieve these results in the
     /// first place.
     ///
     /// The "original" copy in the cache just stores [`TimeRange::EMPTY`]. It's meaningless.
     pub(crate) time_range: TimeRange,
 
-    pub(crate) inner: Arc<RwLock<CachedRangeComponentResultsInner>>,
+    pub(crate) inner: Arc<RwLock<RangeComponentResultsInner>>,
 }
 
-impl CachedRangeComponentResults {
+impl RangeComponentResults {
     /// Clones the results while making sure to stamp them with the [`TimeRange`] of the associated query.
     #[inline]
     pub(crate) fn clone_at(&self, time_range: TimeRange) -> Self {
@@ -132,15 +126,15 @@ impl CachedRangeComponentResults {
     }
 }
 
-impl CachedRangeComponentResults {
+impl RangeComponentResults {
     #[inline]
     pub fn empty() -> &'static Self {
-        static EMPTY: OnceLock<CachedRangeComponentResults> = OnceLock::new();
-        EMPTY.get_or_init(CachedRangeComponentResults::default)
+        static EMPTY: OnceLock<RangeComponentResults> = OnceLock::new();
+        EMPTY.get_or_init(RangeComponentResults::default)
     }
 }
 
-impl re_types_core::SizeBytes for CachedRangeComponentResults {
+impl re_types_core::SizeBytes for RangeComponentResults {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: it's all on the heap past this point.
@@ -148,18 +142,18 @@ impl re_types_core::SizeBytes for CachedRangeComponentResults {
     }
 }
 
-impl Default for CachedRangeComponentResults {
+impl Default for RangeComponentResults {
     #[inline]
     fn default() -> Self {
         Self {
             time_range: TimeRange::EMPTY,
-            inner: Arc::new(RwLock::new(CachedRangeComponentResultsInner::empty())),
+            inner: Arc::new(RwLock::new(RangeComponentResultsInner::empty())),
         }
     }
 }
 
-impl std::ops::Deref for CachedRangeComponentResults {
-    type Target = RwLock<CachedRangeComponentResultsInner>;
+impl std::ops::Deref for RangeComponentResults {
+    type Target = RwLock<RangeComponentResultsInner>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -208,7 +202,7 @@ impl<'a, T: 'static> std::ops::Deref for Data<'a, T> {
     }
 }
 
-pub struct CachedRangeData<'a, T> {
+pub struct RangeData<'a, T> {
     // NOTE: Options so we can represent an empty result without having to somehow conjure a mutex
     // guard out of thin air.
     //
@@ -230,14 +224,14 @@ pub struct CachedRangeData<'a, T> {
     reentering: &'static std::thread::LocalKey<RefCell<u32>>,
 }
 
-impl<'a, C: Component> CachedRangeData<'a, C> {
+impl<'a, C: Component> RangeData<'a, C> {
     /// Useful to abstract over latest-at and ranged results.
     #[inline]
     pub fn from_latest_at(
         resolver: &PromiseResolver,
-        results: &'a CachedLatestAtComponentResults,
+        results: &'a LatestAtComponentResults,
     ) -> Self {
-        let CachedLatestAtComponentResults {
+        let LatestAtComponentResults {
             index,
             promise: _,
             cached_dense,
@@ -256,7 +250,7 @@ impl<'a, C: Component> CachedRangeData<'a, C> {
     }
 }
 
-impl<'a, T> Drop for CachedRangeData<'a, T> {
+impl<'a, T> Drop for RangeData<'a, T> {
     #[inline]
     fn drop(&mut self) {
         self.reentering
@@ -264,7 +258,7 @@ impl<'a, T> Drop for CachedRangeData<'a, T> {
     }
 }
 
-impl<'a, T: 'static> CachedRangeData<'a, T> {
+impl<'a, T: 'static> RangeData<'a, T> {
     /// Returns the current status on both ends of the range.
     ///
     /// E.g. it is possible that the front-side of the range is still waiting for pending data while
@@ -343,7 +337,7 @@ impl<'a, T: 'static> CachedRangeData<'a, T> {
     }
 }
 
-impl CachedRangeComponentResults {
+impl RangeComponentResults {
     /// Returns the component data as a dense vector.
     ///
     /// Returns an error if the component is missing or cannot be deserialized.
@@ -351,7 +345,7 @@ impl CachedRangeComponentResults {
     /// Use [`PromiseResult::flatten`] to merge the results of resolving the promise and of
     /// deserializing the data into a single one, if you don't need the extra flexibility.
     #[inline]
-    pub fn to_dense<C: Component>(&self, resolver: &PromiseResolver) -> CachedRangeData<'_, C> {
+    pub fn to_dense<C: Component>(&self, resolver: &PromiseResolver) -> RangeData<'_, C> {
         // It's tracing the deserialization of an entire range query at once -- it's fine.
         re_tracing::profile_function!();
 
@@ -360,7 +354,7 @@ impl CachedRangeComponentResults {
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
         if self.time_range == TimeRange::EMPTY {
-            return CachedRangeData {
+            return RangeData {
                 indices: None,
                 data: None,
                 time_range: TimeRange::EMPTY,
@@ -583,7 +577,7 @@ impl CachedRangeComponentResults {
                 .unwrap()
         });
 
-        CachedRangeData {
+        RangeData {
             indices: Some(Indices::Cached(indices)),
             data: Some(Data::Cached(data)),
             time_range: self.time_range,
@@ -597,7 +591,7 @@ impl CachedRangeComponentResults {
 // ---
 
 /// Lazily cached results for a particular component when using a cached range query.
-pub struct CachedRangeComponentResultsInner {
+pub struct RangeComponentResultsInner {
     pub(crate) indices: VecDeque<(TimeInt, RowId)>,
 
     /// All the pending promises that must resolved in order to fill the missing data on the
@@ -625,7 +619,7 @@ pub struct CachedRangeComponentResultsInner {
     pub(crate) cached_dense: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
-impl SizeBytes for CachedRangeComponentResultsInner {
+impl SizeBytes for RangeComponentResultsInner {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -646,7 +640,7 @@ impl SizeBytes for CachedRangeComponentResultsInner {
     }
 }
 
-impl std::fmt::Debug for CachedRangeComponentResultsInner {
+impl std::fmt::Debug for RangeComponentResultsInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             indices,
@@ -675,7 +669,7 @@ impl std::fmt::Debug for CachedRangeComponentResultsInner {
     }
 }
 
-impl CachedRangeComponentResultsInner {
+impl RangeComponentResultsInner {
     #[inline]
     pub const fn empty() -> Self {
         Self {

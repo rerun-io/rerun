@@ -5,8 +5,8 @@ use re_log_types::{build_frame_nr, DataRow, RowId, TimeRange, TimeType, Timeline
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query::{
-    clamped_zip_1x2, range_zip_1x2, CachedRangeComponentResults, CachedRangeResults,
-    PromiseResolver, PromiseResult,
+    clamped_zip_1x2, range_zip_1x2, PromiseResolver, PromiseResult, RangeComponentResults,
+    RangeResults,
 };
 
 // ---
@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
     //
     // They might or might not already be cached. We won't know for sure until we try to access
     // each individual component's data below.
-    let results: CachedRangeResults = caches.range(
+    let results: RangeResults = caches.range(
         &store,
         &query,
         &entity_path.into(),
@@ -41,9 +41,9 @@ fn main() -> anyhow::Result<()> {
     // * `get` returns an option
     //
     // At this point we still don't know whether they are cached or not. That's the next step.
-    let all_points: &CachedRangeComponentResults = results.get_required(MyPoint::name())?;
-    let all_colors: &CachedRangeComponentResults = results.get_or_empty(MyColor::name());
-    let all_labels: &CachedRangeComponentResults = results.get_or_empty(MyLabel::name());
+    let all_points: &RangeComponentResults = results.get_required(MyPoint::name())?;
+    let all_colors: &RangeComponentResults = results.get_or_empty(MyColor::name());
+    let all_labels: &RangeComponentResults = results.get_or_empty(MyLabel::name());
 
     // Then comes the time to resolve/convert and deserialize the data.
     // These steps have to be done together for efficiency reasons.
