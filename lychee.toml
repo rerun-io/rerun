@@ -84,6 +84,7 @@ exclude = [
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
   'https://github.com/rerun-io/rerun/commit/\.*', # Ignore links to our own commits (typically in changelog).
   'https://github.com/rerun-io/rerun/pull/\.*',   # Ignore links to our own pull requests (typically in changelog).
+  'https://github.com/rerun-io/rerun/issues/\.*', # Ignore links to our own issues.
 
   # Intentionally faked links.
   'file://foo',

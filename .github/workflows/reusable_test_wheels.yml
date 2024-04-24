@@ -172,7 +172,7 @@ jobs:
         run: |
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
-          pixi run -e wheel-test rerun --version
+          pixi run -e wheel-test rerun-from-path  --version
 
       - name: Run unit tests
         run: cd rerun_py/tests && pixi run -e wheel-test pytest -c ../pyproject.toml
