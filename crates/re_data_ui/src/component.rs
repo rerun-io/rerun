@@ -3,7 +3,7 @@ use std::sync::Arc;
 use egui::NumExt;
 
 use re_entity_db::{
-    external::re_query2::CachedLatestAtComponentResults, EntityPath, InstancePath,
+    external::re_query::CachedLatestAtComponentResults, EntityPath, InstancePath,
 };
 use re_types::ComponentName;
 use re_ui::SyntaxHighlighting as _;

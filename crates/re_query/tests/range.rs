@@ -6,7 +6,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
-use re_query2::{Caches, PromiseResolver, PromiseResult};
+use re_query::{Caches, PromiseResolver, PromiseResult};
 use re_types::{components::InstanceKey, Archetype};
 use re_types_core::Loggable as _;
 
@@ -537,7 +537,7 @@ use re_types_core::Loggable as _;
 //         ));
 //         let cached_all_colors_indexed = cached_all_colors.range_indexed();
 //
-//         let expected = re_query2::range(
+//         let expected = re_query::range(
 //             store,
 //             query,
 //             entity_path,

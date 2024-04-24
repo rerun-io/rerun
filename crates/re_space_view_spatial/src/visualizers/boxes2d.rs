@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query2::range_zip_1x6;
+use re_query::range_zip_1x6;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,

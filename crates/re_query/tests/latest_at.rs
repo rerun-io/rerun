@@ -8,8 +8,8 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
-use re_query2::Caches;
-use re_query2::PromiseResolver;
+use re_query::Caches;
+use re_query::PromiseResolver;
 use re_types::Archetype as _;
 use re_types_core::{components::InstanceKey, Loggable as _};
 
@@ -500,7 +500,7 @@ use re_types_core::{components::InstanceKey, Loggable as _};
 //             .flatten()
 //             .unwrap();
 //
-//         let expected = re_query2::latest_at(
+//         let expected = re_query::latest_at(
 //             store,
 //             query,
 //             entity_path,

@@ -149,7 +149,6 @@ Update instructions:
 |----------------------|--------------------------------------------------------------------------|
 | re_entity_db         | In-memory storage of Rerun entities                                      |
 | re_query             | Querying data in the re_data_store                                       |
-| re_query2       | Caching datastructures for re_query                                      |
 | re_types             | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
 | re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
