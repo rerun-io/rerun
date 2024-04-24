@@ -190,9 +190,10 @@ pub fn view_2d(
         fov_y: None,
     };
 
+    let scene_bounds = *scene_from_ui.to();
     let Ok(target_config) = setup_target_config(
         &painter,
-        scene_from_ui,
+        scene_bounds,
         &query.space_origin.to_string(),
         state.auto_size_config(),
         query.highlights.any_outlines(),
@@ -279,11 +280,11 @@ pub fn view_2d(
 
 fn setup_target_config(
     egui_painter: &egui::Painter,
-    scene_from_ui: RectTransform,
+    scene_bounds: Rect,
     space_name: &str,
     auto_size_config: re_renderer::AutoSizeConfig,
     any_outlines: bool,
-    pinhole: Option<Pinhole>,
+    scene_pinhole: Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
     let pixels_from_points = egui_painter.ctx().pixels_per_point();
     let resolution_in_pixel =
@@ -304,25 +305,38 @@ fn setup_target_config(
     // * a perspective camera *at the origin* for 3D rendering
     // Both share the same view-builder and the same viewport transformation but are independent otherwise.
 
+    // TODO(andreas): Support anamorphic pinhole cameras properly.
+
     // For simplicity (and to reduce surprises!) we always render with a pinhole camera.
     // Make up a default pinhole camera if we don't have one placing it in a way to look at the entire space.
-    let scene_bounds_size = glam::vec2(scene_from_ui.to().width(), scene_from_ui.to().height());
-    let default_principal_point = scene_from_ui.to().center();
-    let default_principal_point = glam::vec2(default_principal_point.x, default_principal_point.y);
-    let pinhole = pinhole.unwrap_or_else(|| {
-        let focal_length_in_pixels = scene_bounds_size.x;
+    let scene_bounds_size = glam::vec2(scene_bounds.width(), scene_bounds.height());
 
-        Pinhole {
+    let pinhole;
+    let canvas_rect;
+
+    if let Some(scene_pinhole) = scene_pinhole {
+        // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
+        // and we want to use that pinhole projection to do so.
+        pinhole = scene_pinhole;
+        canvas_rect = pinhole_resolution_rect(&pinhole).unwrap(); // TODO
+    } else {
+        // The user didn't pick a pinhole, but we still set up a 3D projection.
+        // So we just pick any pinhole.
+        let focal_length = 1.0; // Whatever
+        let principal_point = glam::vec2(0.5, 0.5); // Whatever
+        let resolution = egui::vec2(1.0, 1.0); // Whatever
+        pinhole = Pinhole {
             image_from_camera: glam::Mat3::from_cols(
-                glam::vec3(focal_length_in_pixels, 0.0, 0.0),
-                glam::vec3(0.0, focal_length_in_pixels, 0.0),
-                default_principal_point.extend(1.0),
+                glam::vec3(focal_length, 0.0, 0.0),
+                glam::vec3(0.0, focal_length, 0.0),
+                principal_point.extend(1.0),
             )
             .into(),
-            resolution: Some(scene_bounds_size.into()),
+            resolution: Some([resolution.x, resolution.y].into()),
             camera_xyz: Some(ViewCoordinates::RDF),
-        }
-    });
+        };
+        canvas_rect = Rect::from_min_size(Pos2::ZERO, resolution);
+    }
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
@@ -334,7 +348,6 @@ fn setup_target_config(
 
     // Put the camera at the position where it sees the entire image plane as defined
     // by the pinhole camera.
-    // TODO(andreas): Support anamorphic pinhole cameras properly.
     let focal_length = pinhole.focal_length_in_pixels();
     let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean
     let Some(view_from_world) = macaw::IsoTransform::look_at_rh(
@@ -345,18 +358,10 @@ fn setup_target_config(
         anyhow::bail!("Failed to compute camera transform for 2D view.");
     };
 
-    // Cut to the portion of the currently visible ui area.
-    let mut viewport_transformation = re_renderer::RectTransform {
-        region_of_interest: re_render_rect_from_egui_rect(egui_painter.clip_rect()),
-        region: re_render_rect_from_egui_rect(*scene_from_ui.from()),
+    let viewport_transformation = re_renderer::RectTransform {
+        region: re_render_rect_from_egui_rect(canvas_rect),
+        region_of_interest: re_render_rect_from_egui_rect(scene_bounds),
     };
-
-    // The principal point might not be quite centered.
-    // We need to account for this translation in the viewport transformation.
-    let principal_point_offset = default_principal_point - pinhole.principal_point();
-    let ui_from_scene_scale = scene_from_ui.inverse().scale();
-    viewport_transformation.region_of_interest.min +=
-        principal_point_offset * glam::vec2(ui_from_scene_scale.x, ui_from_scene_scale.y);
 
     Ok({
         let name = space_name.into();
