@@ -168,13 +168,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore link checker cache
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          key: cache-lychee-${{ github.sha }}
-          restore-keys: cache-lychee-
-
       # Check https://github.com/lycheeverse/lychee on how to run locally.
       - name: Link Checker
         id: lychee
@@ -185,4 +178,4 @@ jobs:
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
-            --verbose --base . --cache --max-cache-age 1d . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --base . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
