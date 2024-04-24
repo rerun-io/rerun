@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache2::{range_zip_1x7, CachedResults};
+use re_query_cache2::range_zip_1x7;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes3D,
@@ -204,129 +204,80 @@ impl VisualizerSystem for Boxes3DVisualizer {
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
-                match results {
-                    CachedResults::LatestAt(_query, results) => {
-                        re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
+                re_tracing::profile_scope!(format!("{entity_path}"));
 
-                        use crate::visualizers::CachedLatestAtResultsExt as _;
+                use crate::visualizers::CachedRangeResultsExt as _;
 
-                        let resolver = ctx.recording().resolver();
+                let resolver = ctx.recording().resolver();
 
-                        let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
-                            Some(Ok(vectors)) if !vectors.is_empty() => vectors,
-                            Some(err @ Err(_)) => err?,
-                            _ => return Ok(()),
-                        };
+                let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
+                    Some(Ok(vectors)) => vectors,
+                    Some(err @ Err(_)) => err?,
+                    _ => return Ok(()),
+                };
 
-                        // Each box consists of 12 independent lines with 2 vertices each.
-                        line_builder.reserve_strips(half_sizes.len() * 12)?;
-                        line_builder.reserve_vertices(half_sizes.len() * 12 * 2)?;
-
-                        let centers = results.get_or_empty_dense(resolver)?;
-                        let rotations = results.get_or_empty_dense(resolver)?;
-                        let colors = results.get_or_empty_dense(resolver)?;
-                        let radii = results.get_or_empty_dense(resolver)?;
-                        let labels = results.get_or_empty_dense(resolver)?;
-                        let class_ids = results.get_or_empty_dense(resolver)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                        let data = Boxes3DComponentData {
-                            half_sizes,
-                            centers,
-                            rotations,
-                            colors,
-                            radii,
-                            labels,
-                            keypoint_ids,
-                            class_ids,
-                        };
-
-                        self.process_data(
-                            &mut line_builder,
-                            view_query,
-                            entity_path,
-                            spatial_ctx,
-                            std::iter::once(data),
-                        );
-                    }
-
-                    CachedResults::Range(_query, results) => {
-                        re_tracing::profile_scope!(format!("{entity_path} @ {_query:?}"));
-
-                        use crate::visualizers::CachedRangeResultsExt as _;
-
-                        let resolver = ctx.recording().resolver();
-
-                        let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
-                            Some(Ok(vectors)) => vectors,
-                            Some(err @ Err(_)) => err?,
-                            _ => return Ok(()),
-                        };
-
-                        let num_boxes = half_sizes
-                            .range_indexed()
-                            .map(|(_, vectors)| vectors.len())
-                            .sum::<usize>();
-                        if num_boxes == 0 {
-                            return Ok(());
-                        }
-
-                        // Each box consists of 12 independent lines with 2 vertices each.
-                        line_builder.reserve_strips(num_boxes * 12)?;
-                        line_builder.reserve_vertices(num_boxes * 12 * 2)?;
-
-                        let centers = results.get_or_empty_dense(resolver)?;
-                        let rotations = results.get_or_empty_dense(resolver)?;
-                        let colors = results.get_or_empty_dense(resolver)?;
-                        let radii = results.get_or_empty_dense(resolver)?;
-                        let labels = results.get_or_empty_dense(resolver)?;
-                        let class_ids = results.get_or_empty_dense(resolver)?;
-                        let keypoint_ids = results.get_or_empty_dense(resolver)?;
-
-                        let data = range_zip_1x7(
-                            half_sizes.range_indexed(),
-                            centers.range_indexed(),
-                            rotations.range_indexed(),
-                            colors.range_indexed(),
-                            radii.range_indexed(),
-                            labels.range_indexed(),
-                            class_ids.range_indexed(),
-                            keypoint_ids.range_indexed(),
-                        )
-                        .map(
-                            |(
-                                _index,
-                                half_sizes,
-                                centers,
-                                rotations,
-                                colors,
-                                radii,
-                                labels,
-                                class_ids,
-                                keypoint_ids,
-                            )| {
-                                Boxes3DComponentData {
-                                    half_sizes,
-                                    centers: centers.unwrap_or_default(),
-                                    rotations: rotations.unwrap_or_default(),
-                                    colors: colors.unwrap_or_default(),
-                                    radii: radii.unwrap_or_default(),
-                                    labels: labels.unwrap_or_default(),
-                                    class_ids: class_ids.unwrap_or_default(),
-                                    keypoint_ids: keypoint_ids.unwrap_or_default(),
-                                }
-                            },
-                        );
-
-                        self.process_data(
-                            &mut line_builder,
-                            view_query,
-                            entity_path,
-                            spatial_ctx,
-                            data,
-                        );
-                    }
+                let num_boxes = half_sizes
+                    .range_indexed()
+                    .map(|(_, vectors)| vectors.len())
+                    .sum::<usize>();
+                if num_boxes == 0 {
+                    return Ok(());
                 }
+
+                // Each box consists of 12 independent lines with 2 vertices each.
+                line_builder.reserve_strips(num_boxes * 12)?;
+                line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+
+                let centers = results.get_or_empty_dense(resolver)?;
+                let rotations = results.get_or_empty_dense(resolver)?;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x7(
+                    half_sizes.range_indexed(),
+                    centers.range_indexed(),
+                    rotations.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(
+                        _index,
+                        half_sizes,
+                        centers,
+                        rotations,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                    )| {
+                        Boxes3DComponentData {
+                            half_sizes,
+                            centers: centers.unwrap_or_default(),
+                            rotations: rotations.unwrap_or_default(),
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
 
                 Ok(())
             },

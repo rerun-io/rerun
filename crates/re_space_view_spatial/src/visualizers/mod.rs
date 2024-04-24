@@ -22,7 +22,7 @@ pub use images::{ImageVisualizer, ViewerImage};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
-pub(crate) use self::results_ext::{CachedLatestAtResultsExt, CachedRangeResultsExt};
+pub(crate) use self::results_ext::CachedRangeResultsExt;
 
 // ---
 
