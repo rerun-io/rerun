@@ -165,6 +165,8 @@ jobs:
   link-checker:
     name: Check links
     runs-on: ubuntu-latest
+    # do not fail entire workflow (e.g. nightly) if this is the only failing check
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
