@@ -19,7 +19,7 @@ use crate::{
 
 // ---
 
-///  results for a range query.
+/// Results for a range query.
 ///
 /// The data is both deserialized and resolved/converted.
 ///
