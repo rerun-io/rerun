@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class TextDocumentView(SpaceView):
-    """**Space View**: A text document view."""
+    """**Space view**: A text document view."""
 
     def __init__(
         self,

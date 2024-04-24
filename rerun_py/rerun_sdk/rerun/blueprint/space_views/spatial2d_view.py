@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class Spatial2DView(SpaceView):
-    """**Space View**: A Spatial 2D view."""
+    """**Space view**: A Spatial 2D view."""
 
     def __init__(
         self,

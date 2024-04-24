@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class TensorView(SpaceView):
-    """**Space View**: A tensor view."""
+    """**Space view**: A tensor view."""
 
     def __init__(
         self,

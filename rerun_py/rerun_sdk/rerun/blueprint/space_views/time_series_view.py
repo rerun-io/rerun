@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class TimeSeriesView(SpaceView):
-    """**Space View**: A time series view."""
+    """**Space view**: A time series view."""
 
     def __init__(
         self,

@@ -15,7 +15,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class Spatial3DView(SpaceView):
-    """**Space View**: A Spatial 3D view."""
+    """**Space view**: A Spatial 3D view."""
 
     def __init__(
         self,

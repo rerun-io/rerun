@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class TextLogView(SpaceView):
-    """**Space View**: A text log view."""
+    """**Space view**: A text log view."""
 
     def __init__(
         self,

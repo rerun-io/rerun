@@ -12,7 +12,7 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class BarChartView(SpaceView):
-    """**Space View**: A bar chart view."""
+    """**Space view**: A bar chart view."""
 
     def __init__(
         self,
