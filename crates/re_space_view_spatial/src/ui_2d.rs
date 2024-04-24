@@ -141,7 +141,8 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
     layout.layout_job.into()
 }
 
-/// The pinhole sensor rectangle: [0, 0] - [width, height]
+/// The pinhole sensor rectangle: [0, 0] - [width, height],
+/// ignoring principal point.
 fn pinhole_resolution_rect(pinhole: &Pinhole) -> Option<Rect> {
     pinhole
         .resolution()
@@ -293,11 +294,6 @@ fn setup_target_config(
     any_outlines: bool,
     scene_pinhole: Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
-    let pixels_from_points = egui_painter.ctx().pixels_per_point();
-    let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_points);
-    anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
-
     // TODO(#1025):
     // The camera setup is done in a way that works well with the way we inverse pinhole camera transformations right now.
     // This has a lot of issues though, mainly because we pretend that the 2D plane has a defined depth.
@@ -319,18 +315,18 @@ fn setup_target_config(
     let scene_bounds_size = glam::vec2(scene_bounds.width(), scene_bounds.height());
 
     let pinhole;
-
-    // The pinhole sensor rectangle: [0, 0] - [width, height]
-    let pinhole_rect;
+    let resolution;
 
     if let Some(scene_pinhole) = scene_pinhole {
         // The user has a pinhole, and we may want to project 3D stuff into this 2D space,
         // and we want to use that pinhole projection to do so.
         pinhole = scene_pinhole;
-        pinhole_rect = pinhole_resolution_rect(&pinhole).unwrap_or_else(|| {
-            // This is weird - we have a projection with an unknown scale.
+
+        resolution = pinhole.resolution().unwrap_or_else(|| {
+            // This is weird - we have a projection with an unknown resolution.
             // Let's just pick something plausible and hope for the best 😬.
-            Rect::from_min_size(Pos2::ZERO, egui::Vec2::splat(1000.0))
+            re_log::warn_once!("Pinhole projection lacks resolution.");
+            glam::Vec2::splat(1000.0)
         });
     } else {
         // The user didn't pick a pinhole, but we still set up a 3D projection.
@@ -338,7 +334,7 @@ fn setup_target_config(
         // it is similar to real-life pinhole cameras, so that we get similar scales and precision.
         let focal_length = 1000.0; // Whatever, but small values can cause precision issues, noticeable on rectangle corners.
         let principal_point = glam::Vec2::splat(500.0); // Whatever
-        let resolution = egui::Vec2::splat(1000.0); // Whatever
+        resolution = glam::Vec2::splat(1000.0); // Whatever
         pinhole = Pinhole {
             image_from_camera: glam::Mat3::from_cols(
                 glam::vec3(focal_length, 0.0, 0.0),
@@ -349,34 +345,46 @@ fn setup_target_config(
             resolution: Some([resolution.x, resolution.y].into()),
             camera_xyz: Some(ViewCoordinates::RDF),
         };
-        pinhole_rect = Rect::from_min_size(Pos2::ZERO, resolution);
     }
+    let pinhole_rect = Rect::from_min_size(Pos2::ZERO, egui::vec2(resolution.x, resolution.y));
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
         vertical_fov: pinhole.fov_y().unwrap_or(Eye::DEFAULT_FOV_Y),
         near_plane_distance: 0.1,
         aspect_ratio: pinhole
             .aspect_ratio()
-            .unwrap_or(scene_bounds_size.x / scene_bounds_size.y),
+            .unwrap_or(scene_bounds_size.x / scene_bounds_size.y), // only happens if the pinhole lacks resolution
     };
 
-    // Put the camera at the position where it sees the entire image plane as defined
-    // by the pinhole camera.
     let focal_length = pinhole.focal_length_in_pixels();
-    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean
-    let Some(view_from_world) = macaw::IsoTransform::look_at_rh(
+    let focal_length = 2.0 / (1.0 / focal_length.x() + 1.0 / focal_length.y()); // harmonic mean (lack of anamorphic support)
+
+    // Position the camera looking straight at the principal point:
+    let view_from_world = macaw::IsoTransform::look_at_rh(
         pinhole.principal_point().extend(-focal_length),
         pinhole.principal_point().extend(0.0),
         -glam::Vec3::Y,
-    ) else {
-        anyhow::bail!("Failed to compute camera transform for 2D view.");
-    };
+    )
+    .ok_or_else(|| anyhow::format_err!("Failed to compute camera transform for 2D view."))?;
 
     // "pan-and-scan" to look at a particular part (scene_bounds) of the scene (pinhole_rect).
-    let viewport_transformation = re_renderer::RectTransform {
+    let mut viewport_transformation = re_renderer::RectTransform {
         region: re_render_rect_from_egui_rect(pinhole_rect),
         region_of_interest: re_render_rect_from_egui_rect(scene_bounds),
     };
+
+    // We want to look at the center of the scene bounds,
+    // but we set up the camera to look at the principal point,
+    // so we need to translate the view camera to compensate for that:
+    let image_center = 0.5 * resolution;
+    viewport_transformation.region_of_interest.min += image_center - pinhole.principal_point();
+
+    // ----------------------
+
+    let pixels_from_point = egui_painter.ctx().pixels_per_point();
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_point);
+    anyhow::ensure!(0 < resolution_in_pixel[0] && 0 < resolution_in_pixel[1]);
 
     Ok({
         let name = space_name.into();
@@ -386,7 +394,7 @@ fn setup_target_config(
             view_from_world,
             projection_from_view,
             viewport_transformation,
-            pixels_from_point: pixels_from_points,
+            pixels_from_point,
             auto_size_config,
             outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
         }
