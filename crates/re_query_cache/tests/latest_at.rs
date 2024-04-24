@@ -170,7 +170,7 @@ fn splatted_query() {
 }
 
 #[test]
-fn invalidation_xxx() {
+fn invalidation() {
     let entity_path = "point";
 
     let test_invalidation = |query: LatestAtQuery,
