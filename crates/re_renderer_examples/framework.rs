@@ -33,7 +33,7 @@ pub trait Example {
         re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<ViewDrawResult>;
 
     fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}

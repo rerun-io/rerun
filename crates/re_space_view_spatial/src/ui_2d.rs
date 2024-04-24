@@ -381,9 +381,9 @@ fn setup_target_config(
 
     // ----------------------
 
-    let pixels_from_point = egui_painter.ctx().pixels_per_point();
+    let pixels_per_point = egui_painter.ctx().pixels_per_point();
     let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_from_point);
+        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_per_point);
     anyhow::ensure!(0 < resolution_in_pixel[0] && 0 < resolution_in_pixel[1]);
 
     Ok({
@@ -394,7 +394,7 @@ fn setup_target_config(
             view_from_world,
             projection_from_view,
             viewport_transformation,
-            pixels_from_point,
+            pixels_per_point,
             auto_size_config,
             outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
         }

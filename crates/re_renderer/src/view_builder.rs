@@ -243,7 +243,7 @@ pub struct TargetConfiguration {
     /// I.e. the UI zoom factor.
     /// Note that this does not affect any of the camera & projection properties and is only used
     /// whenever point sizes were explicitly specified.
-    pub pixels_from_point: f32,
+    pub pixels_per_point: f32,
 
     /// How [`Size::AUTO`] is interpreted.
     pub auto_size_config: AutoSizeConfig,
@@ -263,7 +263,7 @@ impl Default for TargetConfiguration {
                 aspect_ratio: 1.0,
             },
             viewport_transformation: RectTransform::IDENTITY,
-            pixels_from_point: 1.0,
+            pixels_per_point: 1.0,
             auto_size_config: Default::default(),
             outline_config: None,
         }
@@ -457,7 +457,7 @@ impl ViewBuilder {
             camera_forward,
             tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
-            pixels_from_point: config.pixels_from_point,
+            pixels_per_point: config.pixels_per_point,
 
             auto_size_points: auto_size_points.0,
             auto_size_lines: auto_size_lines.0,
