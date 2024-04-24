@@ -144,6 +144,10 @@ pub const ENTITY_EMPTY: Icon = Icon::new(
 );
 pub const LINK: Icon = Icon::new("link", include_bytes!("../data/icons/link.png"));
 pub const COMPONENT: Icon = Icon::new("component", include_bytes!("../data/icons/component.png"));
+pub const COMPONENT_STATIC: Icon = Icon::new(
+    "component_static",
+    include_bytes!("../data/icons/component_static.png"),
+);
 
 pub const APPLICATION: Icon = Icon::new(
     "application",

@@ -8,9 +8,9 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, DataCell, DataRow, DataTable, DataTableResult, EntityPath, EntityPathHash,
-    LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, TimeRange, TimeRangeF,
-    Timeline,
+    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult, EntityPath,
+    EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
+    TimeRange, TimeRangeF, Timeline,
 };
 use re_query2::PromiseResult;
 use re_types_core::{components::InstanceKey, Archetype, Loggable};
@@ -329,7 +329,20 @@ impl EntityDb {
 
     /// Total number of timeless messages for any entity.
     pub fn num_timeless_messages(&self) -> u64 {
-        self.tree.num_timeless_messages_recursive()
+        self.tree.num_static_messages_recursive()
+    }
+
+    /// Returns whether a component is static.
+    pub fn is_component_static(&self, component_path: &ComponentPath) -> Option<bool> {
+        if let Some(entity_tree) = self.tree().subtree(component_path.entity_path()) {
+            entity_tree
+                .entity
+                .components
+                .get(&component_path.component_name)
+                .map(|component_histogram| component_histogram.is_static())
+        } else {
+            None
+        }
     }
 
     pub fn num_rows(&self) -> usize {

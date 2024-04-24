@@ -359,23 +359,28 @@ fn what_is_selected_ui(
             }
         }
 
-        Item::ComponentPath(re_log_types::ComponentPath {
-            entity_path,
-            component_name,
-        }) => {
+        Item::ComponentPath(component_path) => {
+            let entity_path = &component_path.entity_path;
+            let component_name = &component_path.component_name;
+
+            let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+            let is_static = db.is_component_static(component_path).unwrap_or_default();
+
             item_title_ui(
                 ctx.re_ui,
                 ui,
                 component_name.short_name(),
-                Some(&re_ui::icons::COMPONENT),
+                Some(if is_static {
+                    &re_ui::icons::COMPONENT_STATIC
+                } else {
+                    &re_ui::icons::COMPONENT
+                }),
                 &format!(
                     "Component {} of entity '{}'",
                     component_name.full_name(),
                     entity_path
                 ),
             );
-
-            let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
 
             ui.horizontal(|ui| {
                 ui.label("component of");

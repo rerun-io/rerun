@@ -14,6 +14,7 @@ use egui::emath::Rangef;
 use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
 use re_data_ui::item_ui::guess_instance_path_icon;
+use re_data_ui::DataUi as _;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, TimeInt,
@@ -21,7 +22,8 @@ use re_log_types::{
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, ViewerContext,
+    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
 
@@ -513,6 +515,7 @@ impl TimePanel {
                     self.show_tree(
                         ctx,
                         viewport_blueprint,
+                        entity_db,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -526,6 +529,7 @@ impl TimePanel {
                     self.show_children(
                         ctx,
                         viewport_blueprint,
+                        entity_db,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -542,6 +546,7 @@ impl TimePanel {
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        entity_db: &re_entity_db::EntityDb,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -615,6 +620,7 @@ impl TimePanel {
                     self.show_children(
                         ctx,
                         viewport_blueprint,
+                        entity_db,
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
@@ -693,7 +699,6 @@ impl TimePanel {
                     time_area_response,
                     time_area_painter,
                     ui,
-                    tree.num_timeless_messages_recursive() as usize,
                     num_messages_at_time,
                     row_rect,
                     &self.time_ranges_ui,
@@ -708,6 +713,7 @@ impl TimePanel {
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
+        entity_db: &re_entity_db::EntityDb,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -719,6 +725,7 @@ impl TimePanel {
             self.show_tree(
                 ctx,
                 viewport_blueprint,
+                entity_db,
                 time_ctrl,
                 time_area_response,
                 time_area_painter,
@@ -737,11 +744,13 @@ impl TimePanel {
             for component_name in re_data_ui::ui_visible_components(tree.entity.components.keys()) {
                 let data = &tree.entity.components[&component_name];
 
+                let is_static = data.is_static();
                 let component_has_data_in_current_timeline =
                     time_ctrl.component_has_data_in_current_timeline(data);
+
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
-                let item = TimePanelItem::component_path(component_path);
+                let item = TimePanelItem::component_path(component_path.clone());
 
                 let mut clip_rect = clip_rect_save;
                 clip_rect.max.x = tree_max_y;
@@ -755,7 +764,11 @@ impl TimePanel {
                             .highlight_for_ui_element(&item.to_item())
                             == HoverHighlight::Hovered,
                     )
-                    .with_icon(&re_ui::icons::COMPONENT)
+                    .with_icon(if is_static {
+                        &re_ui::icons::COMPONENT_STATIC
+                    } else {
+                        &re_ui::icons::COMPONENT
+                    })
                     .show_hierarchical(ui);
 
                 ui.set_clip_rect(clip_rect_save);
@@ -776,9 +789,9 @@ impl TimePanel {
                 let empty_messages_over_time = TimeHistogram::default();
                 let messages_over_time = data.get(timeline).unwrap_or(&empty_messages_over_time);
 
-                // `data.times` does not contain timeless. Need to add those manually:
+                // `data.times` does not contain static. Need to add those manually:
                 let total_num_messages =
-                    messages_over_time.total_count() + data.num_timeless_messages();
+                    messages_over_time.total_count() + data.num_static_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
                         ui.label(ctx.re_ui.warning_text(format!(
@@ -787,6 +800,17 @@ impl TimePanel {
                         )));
                     } else {
                         ui.label(format!("Number of events: {total_num_messages}"));
+
+                        // Static components are not displayed at all on the timeline, so cannot be
+                        // previewed there. So we display their content in this tooltip instead.
+                        if is_static {
+                            let query = re_data_store::LatestAtQuery::new(
+                                *time_ctrl.timeline(),
+                                TimeInt::MAX,
+                            );
+                            let verbosity = UiVerbosity::Reduced;
+                            component_path.data_ui(ctx, ui, verbosity, &query, entity_db);
+                        }
                     }
                 });
 
@@ -820,7 +844,6 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         ui,
-                        data.num_timeless_messages() as usize,
                         messages_over_time,
                         row_rect,
                         &self.time_ranges_ui,
@@ -1070,11 +1093,7 @@ fn initialize_time_ranges_ui(
     re_tracing::profile_function!();
 
     // If there's any timeless data, add the "beginning range" that contains timeless data.
-    let mut time_range = if entity_db.num_timeless_messages() > 0 {
-        vec![TimeRange::point(TimeInt::MIN_TIME_PANEL)]
-    } else {
-        Vec::new()
-    };
+    let mut time_range = Vec::new();
 
     if let Some(times) = entity_db.time_histogram(time_ctrl.timeline()) {
         // NOTE: `times` can be empty if a GC wiped everything.

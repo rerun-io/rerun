@@ -10,7 +10,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
-use re_log_types::{ComponentPath, TimeInt, TimeRange, TimeReal};
+use re_log_types::{ComponentPath, TimeRange, TimeReal};
 use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
 
 use crate::TimePanelItem;
@@ -368,14 +368,13 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 
 #[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
-    data_dentity_graph_painter: &mut DataDensityGraphPainter,
+    data_density_graph_painter: &mut DataDensityGraphPainter,
     ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
     db: &re_entity_db::EntityDb,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
-    num_timeless_messages: usize,
     time_histogram: &TimeHistogram,
     row_rect: Rect,
     time_ranges_ui: &TimeRangesUi,
@@ -435,11 +434,6 @@ pub fn data_density_graph_ui(
             }
         };
 
-        add_data_point(
-            TimeRange::point(TimeInt::MIN_TIME_PANEL),
-            num_timeless_messages,
-        );
-
         let visible_time_range = time_ranges_ui
             .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
@@ -479,7 +473,7 @@ pub fn data_density_graph_ui(
     density_graph.buckets = smooth(&density_graph.buckets);
 
     density_graph.paint(
-        data_dentity_graph_painter,
+        data_density_graph_painter,
         row_rect.y_range(),
         time_area_painter,
         graph_color(ctx, &item.to_item(), ui),
@@ -559,7 +553,7 @@ fn show_row_ids_tooltip(
 
         if let Some(component_name) = component_name {
             let component_path = ComponentPath::new(entity_path.clone(), *component_name);
-            item_ui::component_path_button(ctx, ui, &component_path);
+            item_ui::component_path_button(ctx, ui, &component_path, db);
             ui.add_space(8.0);
             component_path.data_ui(ctx, ui, verbosity, &query, db);
         } else {

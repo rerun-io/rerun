@@ -52,6 +52,52 @@ impl DataUi for EntityLatestAtResults {
             UiVerbosity::LimitHeight | UiVerbosity::Full => num_instances,
         };
 
+        // Display log time and additional diagnostic information for static components.
+        if verbosity != UiVerbosity::Small {
+            ui.label(format!(
+                "Log time: {}",
+                query
+                    .timeline()
+                    .typ()
+                    .format(self.results.index().0, ctx.app_options.time_zone),
+            ));
+
+            // if the component is static, we display extra diagnostic information
+            if self.results.is_static() {
+                if let Some(histogram) = db
+                    .tree()
+                    .subtree(&self.entity_path)
+                    .and_then(|tree| tree.entity.components.get(&self.component_name))
+                {
+                    if histogram.num_static_messages() > 1 {
+                        ui.label(ctx.re_ui.warning_text(format!(
+                            "Static component value was overridden {} times",
+                            histogram.num_static_messages() - 1,
+                        )))
+                        .on_hover_text(
+                            "Whe a static component is logged multiple times, only the last value \
+                            is stored. Previously logged values are overwritten and not \
+                            recoverable.",
+                        );
+                    }
+
+                    let timeline_message_count = histogram.num_timeline_messages();
+                    if timeline_message_count > 0 {
+                        ui.label(ctx.re_ui.error_text(format!(
+                            "Static component has {} event{} logged on timelines",
+                            timeline_message_count,
+                            if timeline_message_count > 1 { "s" } else { "" }
+                        )))
+                        .on_hover_text(
+                            "Components should be logged either as static or on timelines, but \
+                            never both. Values for static components logged to timelines cannot be \
+                            displayed.",
+                        );
+                    }
+                }
+            }
+        }
+
         // Here we enforce that exactly `max_row` rows are displayed, which means that:
         // - For `num_instances == max_row`, then `max_row` rows are displayed.
         // - For `num_instances == max_row + 1`, then `max_row-1` rows are displayed and "…2 more"

@@ -374,12 +374,14 @@ pub fn component_path_button(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     component_path: &ComponentPath,
+    db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     component_path_button_to(
         ctx,
         ui,
         component_path.component_name.short_name(),
         component_path,
+        db,
     )
     .on_hover_text(component_path.component_name.full_name()) // we should show the full name somewhere
 }
@@ -390,11 +392,17 @@ pub fn component_path_button_to(
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     component_path: &ComponentPath,
+    db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
+    let is_component_static = db.is_component_static(component_path).unwrap_or_default();
     let response = ctx.re_ui.selectable_label_with_icon(
         ui,
-        &icons::COMPONENT,
+        if is_component_static {
+            &icons::COMPONENT_STATIC
+        } else {
+            &icons::COMPONENT
+        },
         text,
         ctx.selection().contains_item(&item),
         re_ui::LabelStyle::Normal,

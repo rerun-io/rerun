@@ -200,31 +200,6 @@ impl TimeRangesUi {
                 TimeReal::from(first.tight_time.min()),
                 TimeReal::from(last.tight_time.max()),
             );
-
-            // Special: don't allow users dragging time between MIN_TIME_PANEL (-∞ = timeless data)
-            // and some real time.
-            //
-            // Otherwise we get weird times (e.g. dates in 1923).
-            // Selecting times between other segments is not as problematic, as all other segments are
-            // real times, so interpolating between them always produces valid times
-            // (we want users to have a smooth experience dragging the time handle anywhere else).
-            // By disallowing times between MIN_TIME_PANEL and the first real segment,
-            // we also disallow users dragging the time to be between -∞ and the
-            // real beginning of their data. That further highlights the specialness of -∞.
-            //
-            // TODO(#5264): remove time panel hack once we migrate to the new static UI
-            if first.tight_time.contains(TimeInt::MIN_TIME_PANEL) {
-                if let Some(second) = self.segments.get(1) {
-                    let half_way =
-                        TimeRangeF::new(TimeInt::MIN_TIME_PANEL, second.tight_time.min()).lerp(0.5);
-
-                    if time < half_way {
-                        time = TimeReal::from(TimeInt::MIN_TIME_PANEL);
-                    } else if time < second.tight_time.min() {
-                        time = second.tight_time.min().into();
-                    }
-                }
-            }
         }
         time
     }
