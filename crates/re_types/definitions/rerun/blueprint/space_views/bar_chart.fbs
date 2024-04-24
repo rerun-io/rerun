@@ -1,9 +1,0 @@
-include "rerun/attributes.fbs";
-
-namespace rerun.blueprint.space_views;
-
-/// A bar chart view.
-table BarChartView (
-    "attr.rerun.space_view_identifier": "BarChart"
-) {
-}

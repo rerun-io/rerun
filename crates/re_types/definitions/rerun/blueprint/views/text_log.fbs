@@ -1,0 +1,9 @@
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.views;
+
+/// A text log view.
+table TextLogView (
+    "attr.rerun.view_identifier": "TextLog"
+) {
+}

@@ -85,15 +85,15 @@ impl Objects {
                                 reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an archetype."));
                             }
                         }
-                        ObjectKind::SpaceView => {
+                        ObjectKind::View => {
                             if field_obj.kind != ObjectKind::Archetype {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an space view but is not an archetype. Only archetypes are allowed as fields of a space view's properties."));
+                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties."));
                             }
                         }
                     }
                 } else {
                     // Note that we *do* allow primitive fields on components for the moment. Not doing so creates a lot of bloat.
-                    if obj.kind == ObjectKind::Archetype && obj.kind == ObjectKind::SpaceView {
+                    if obj.kind == ObjectKind::Archetype || obj.kind == ObjectKind::View {
                         reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes & Components.", field.fqname, field.typ));
                     }
                 }
@@ -211,16 +211,11 @@ pub enum ObjectKind {
 
     /// Views are neither archetypes nor components but are used to generate code to make it easy
     /// to add and configure views on the blueprint.
-    SpaceView,
+    View,
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 4] = [
-        Self::Datatype,
-        Self::Component,
-        Self::Archetype,
-        Self::SpaceView,
-    ];
+    pub const ALL: [Self; 4] = [Self::Datatype, Self::Component, Self::Archetype, Self::View];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
@@ -238,9 +233,9 @@ impl ObjectKind {
             ObjectKind::Component
         } else if pkg_name.starts_with(format!("rerun{scope}.archetypes").as_str()) {
             ObjectKind::Archetype
-        } else if pkg_name.starts_with("rerun.blueprint.space_views") {
-            // Not bothering with scope attributes on space_views since they're always part of the blueprint.
-            ObjectKind::SpaceView
+        } else if pkg_name.starts_with("rerun.blueprint.views") {
+            // Not bothering with scope attributes on views since they're always part of the blueprint.
+            ObjectKind::View
         } else {
             panic!("unknown package {pkg_name:?}");
         }
@@ -251,7 +246,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "datatypes",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
-            ObjectKind::SpaceView => "space_views",
+            ObjectKind::View => "views",
         }
     }
 
@@ -260,7 +255,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatype",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
-            ObjectKind::SpaceView => "Space view",
+            ObjectKind::View => "View",
         }
     }
 
@@ -269,7 +264,7 @@ impl ObjectKind {
             ObjectKind::Datatype => "Datatypes",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
-            ObjectKind::SpaceView => "SpaceViews",
+            ObjectKind::View => "Views",
         }
     }
 }
@@ -538,7 +533,7 @@ impl Object {
 
     pub fn scope(&self) -> Option<String> {
         self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
-            .or_else(|| (self.kind == ObjectKind::SpaceView).then(|| "blueprint".to_owned()))
+            .or_else(|| (self.kind == ObjectKind::View).then(|| "blueprint".to_owned()))
     }
 
     pub fn deprecation_notice(&self) -> Option<String> {

@@ -56,8 +56,8 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
-                ObjectKind::SpaceView => {
-                    // TODO(#6082): Implement space view docs generation.
+                ObjectKind::View => {
+                    // TODO(#6082): Implement view docs generation.
                     continue;
                 }
             }
@@ -215,8 +215,8 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             write_fields(&mut page, object, object_map);
         }
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
-        ObjectKind::SpaceView => {
-            // TODO(#6082): Implement space view docs generation.
+        ObjectKind::View => {
+            // TODO(#6082): Implement view docs generation.
         }
     }
 
@@ -291,8 +291,8 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
                 }
             }
         }
-        ObjectKind::SpaceView => {
-            // TODO(#6082): Implement space view docs generation.
+        ObjectKind::View => {
+            // TODO(#6082): Implement view docs generation.
         }
     }
 

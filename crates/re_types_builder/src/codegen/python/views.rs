@@ -3,10 +3,10 @@ use crate::{
         common::StringExt as _,
         python::{quote_doc_lines, quote_obj_docs},
     },
-    Object, Objects, Reporter, ATTR_PYTHON_ALIASES, ATTR_RERUN_SPACE_VIEW_IDENTIFIER,
+    Object, Objects, Reporter, ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER,
 };
 
-pub fn code_for_space_view(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
+pub fn code_for_view(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     assert!(obj.is_struct());
 
     let mut code = String::new();
@@ -47,7 +47,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
             reporter.error(
                 &obj.virtpath,
                 &property.fqname,
-                "Space view properties must be archetypes.",
+                "View properties must be archetypes.",
             );
             continue;
         };
@@ -94,7 +94,7 @@ All other entities will be transformed to be displayed relative to this origin."
         ),
         (
             "contents",
-            "The contents of the space view specified as a query expression.
+            "The contents of the view specified as a query expression.
 This is either a single expression, or a list of multiple expressions.
 See [rerun.blueprint.archetypes.SpaceViewContents][]."
                 .to_owned(),
@@ -121,12 +121,11 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
     }
     code.push_indented(1, quote_doc_lines(init_docs), 1);
 
-    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_SPACE_VIEW_IDENTIFIER)
-    else {
+    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
         reporter.error(
             &obj.virtpath,
             &obj.fqname,
-            format!("Missing {ATTR_RERUN_SPACE_VIEW_IDENTIFIER} attribute for space view"),
+            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
         );
         return code;
     };
@@ -138,7 +137,7 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
             reporter.error(
                 &obj.virtpath,
                 &property.fqname,
-                "Space view properties must be archetypes.",
+                "View properties must be archetypes.",
             );
             continue;
         };

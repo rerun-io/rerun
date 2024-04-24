@@ -1,6 +1,6 @@
 //! Implements the Python codegen pass.
 
-mod space_views;
+mod views;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -21,7 +21,7 @@ use crate::{
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
-use self::space_views::code_for_space_view;
+use self::views::code_for_view;
 
 use super::common::ExampleInfo;
 
@@ -326,7 +326,7 @@ impl PythonCodeGenerator {
                         ]
                     }
                 }
-                ObjectKind::SpaceView | ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::View | ObjectKind::Archetype => vec![obj.name.clone()],
             };
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
@@ -347,8 +347,8 @@ impl PythonCodeGenerator {
             if let Some(source_path) = obj.relative_filepath() {
                 code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
 
-                if obj.kind != ObjectKind::SpaceView {
-                    // Space view type extension isn't implemented yet (shouldn't be hard though to add if).
+                if obj.kind != ObjectKind::View {
+                    // View type extension isn't implemented yet (shouldn't be hard though to add if needed).
                     code.push_indented(
                         0,
                         &format!(
@@ -444,8 +444,8 @@ impl PythonCodeGenerator {
 
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
-                    if obj.kind == ObjectKind::SpaceView {
-                        code_for_space_view(reporter, objects, obj)
+                    if obj.kind == ObjectKind::View {
+                        code_for_view(reporter, objects, obj)
                     } else {
                         code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
                     }
@@ -782,8 +782,8 @@ fn code_for_struct(
                 1,
             );
         }
-        ObjectKind::SpaceView => {
-            unreachable!("Space views processing shouldn't reach struct generation code.");
+        ObjectKind::View => {
+            unreachable!("View processing shouldn't reach struct generation code.");
         }
     }
 
@@ -934,12 +934,8 @@ return pa.UnionArray.from_buffers(
                 1,
             );
         }
-        ObjectKind::SpaceView => {
-            reporter.error(
-                &obj.virtpath,
-                &obj.fqname,
-                "An space view cannot be an enum",
-            );
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "A view cannot be an enum");
         }
     }
 
@@ -1098,12 +1094,8 @@ fn code_for_union(
                 1,
             );
         }
-        ObjectKind::SpaceView => {
-            reporter.error(
-                &obj.virtpath,
-                &obj.fqname,
-                "An space view cannot be an enum",
-            );
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "An view cannot be an enum");
         }
     }
 

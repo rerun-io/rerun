@@ -1,0 +1,9 @@
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.views;
+
+/// A time series view.
+table TimeSeriesView (
+    "attr.rerun.view_identifier": "TimeSeries"
+) {
+}

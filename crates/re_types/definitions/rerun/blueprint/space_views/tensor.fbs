@@ -1,9 +1,0 @@
-include "rerun/attributes.fbs";
-
-namespace rerun.blueprint.space_views;
-
-/// A tensor view.
-table TensorView (
-    "attr.rerun.space_view_identifier": "Tensor"
-) {
-}

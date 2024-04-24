@@ -1,9 +1,0 @@
-include "rerun/attributes.fbs";
-
-namespace rerun.blueprint.space_views;
-
-/// A time series view.
-table TimeSeriesView (
-    "attr.rerun.space_view_identifier": "TimeSeries"
-) {
-}

@@ -177,7 +177,7 @@ pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recomme
 pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
 pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
 pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
-pub const ATTR_RERUN_SPACE_VIEW_IDENTIFIER: &str = "attr.rerun.space_view_identifier";
+pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
 pub const ATTR_RERUN_DEPRECATED: &str = "attr.rerun.deprecated";
 
 pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";

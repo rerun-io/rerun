@@ -62,8 +62,8 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            if object_kind == ObjectKind::SpaceView {
-                // TODO(#5521): Implement SpaceView codegen for Rust.
+            if object_kind == ObjectKind::View {
+                // TODO(#5521): Implement view codegen for Rust.
                 continue;
             }
 
@@ -1312,7 +1312,7 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
-        ObjectKind::SpaceView => unimplemented!(),
+        ObjectKind::View => unimplemented!(),
     }
 }
 
