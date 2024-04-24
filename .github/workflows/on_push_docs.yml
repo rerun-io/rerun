@@ -32,7 +32,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.1
+          pixi-version: v0.20.0
 
       - name: Get version
         id: versioning
@@ -57,7 +57,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.5.2
         with:
-          pixi-version: v0.19.1
+          pixi-version: v0.20.0
 
       - name: Install rerun-sdk
         run: |
