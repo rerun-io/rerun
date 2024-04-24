@@ -253,7 +253,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                 if let Some(bounds) = state.state_2d.bounds {
                     ctx.re_ui
                         .grid_left_hand_label(ui, "Bounds")
-                        .on_hover_text("The currently visible area.");
+                        .on_hover_text("The area guaranteed to be visible.\nDepending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.");
                     ui.vertical(|ui| {
                         ui.style_mut().wrap = Some(false);
                         let (min, max) = (bounds.min, bounds.max);
