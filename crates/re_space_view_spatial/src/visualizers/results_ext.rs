@@ -80,15 +80,11 @@ impl CachedRangeResultsExt for CachedRangeResults {
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status();
         match front_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -134,15 +130,11 @@ impl CachedRangeResultsExt for CachedLatestAtResults {
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
         match front_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => {
-                return Err(re_query_cache::QueryError::Other(err.into()))
-            }
+            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
