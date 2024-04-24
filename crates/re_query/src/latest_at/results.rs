@@ -11,7 +11,7 @@ use crate::{
 
 // ---
 
-///  results for a latest-at query.
+/// Results for a latest-at query.
 ///
 /// The data is both deserialized and resolved/converted.
 ///
