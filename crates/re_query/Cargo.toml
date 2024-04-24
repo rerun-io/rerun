@@ -1,5 +1,5 @@
 [package]
-name = "re_query2"
+name = "re_query"
 authors.workspace = true
 description = "High-level query APIs"
 edition.workspace = true

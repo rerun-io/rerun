@@ -1,6 +1,6 @@
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
-use re_query2::range_zip_1x2;
+use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Asset3D,

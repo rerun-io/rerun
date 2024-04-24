@@ -1418,7 +1418,7 @@ version = "0.16.0-alpha.2"
 dependencies = [
  "mimalloc",
  "re_crash_handler",
- "re_query2",
+ "re_query",
  "re_sdk_comms",
  "re_viewer",
 ]
@@ -4308,7 +4308,7 @@ dependencies = [
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_smart_channel",
  "re_tracing",
  "re_types",
@@ -4455,7 +4455,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_query2"
+name = "re_query"
 version = "0.16.0-alpha.2"
 dependencies = [
  "ahash",
@@ -4629,7 +4629,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_tracing",
  "re_types",
  "re_types_core",
@@ -4666,7 +4666,7 @@ dependencies = [
  "re_data_ui",
  "re_entity_db",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_tracing",
  "re_types_core",
@@ -4698,7 +4698,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -4765,7 +4765,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_tracing",
  "re_types",
@@ -4785,7 +4785,7 @@ dependencies = [
  "re_format",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_space_view",
  "re_tracing",
@@ -5000,7 +5000,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_memory",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_space_view",
@@ -5059,7 +5059,7 @@ dependencies = [
  "re_entity_db",
  "re_log",
  "re_log_types",
- "re_query2",
+ "re_query",
  "re_renderer",
  "re_smart_channel",
  "re_string_interner",

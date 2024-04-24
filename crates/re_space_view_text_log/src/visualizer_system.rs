@@ -1,7 +1,7 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
-use re_query2::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
+use re_query::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -129,16 +129,16 @@ impl VisualizerSystem for TextLogSystem {
 #[inline]
 fn check_range<'a, C: Component>(
     results: &'a CachedRangeData<'a, C>,
-) -> re_query2::Result<()> {
+) -> re_query::Result<()> {
     let (front_status, back_status) = results.status();
     match front_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
     match back_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
 
