@@ -75,7 +75,7 @@ impl DataUi for EntityLatestAtResults {
                             histogram.num_static_messages() - 1,
                         )))
                         .on_hover_text(
-                            "Whe a static component is logged multiple times, only the last value \
+                            "When a static component is logged multiple times, only the last value \
                             is stored. Previously logged values are overwritten and not \
                             recoverable.",
                         );
