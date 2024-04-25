@@ -386,7 +386,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0);
+        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| (*v).0);
         let lock_y_during_zoom = y_lock_range_during_zoom
             || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
@@ -767,7 +767,7 @@ fn axis_ui(
                         let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
                         let mut edit_locked = y_lock_zoom;
                         ctx.re_ui
-                            .checkbox(ui, &mut edit_locked.0, "Lock Range")
+                            .checkbox(ui, &mut edit_locked.0.0, "Lock Range")
                             .on_hover_text(
                             "If set, when zooming, the Y axis range will remain locked to the specified range.",
                         );
