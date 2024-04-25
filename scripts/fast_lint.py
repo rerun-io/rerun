@@ -139,11 +139,12 @@ def main() -> None:
 
     jobs = [
         LintJob("lint-codegen", accepts_files=False),
-        LintJob(
-            "lint-cpp-files",
-            extensions=[".cpp", ".c", ".h", ".hpp"],
-            allow_no_filter=False,
-        ),
+        # TODO(jleibs): implement lint-cpp-files
+        # LintJob(
+        #     "lint-cpp-files",
+        #     extensions=[".cpp", ".c", ".h", ".hpp"],
+        #     allow_no_filter=False,
+        # ),
         LintJob("lint-rerun"),
         LintJob(
             "lint-rs-files",

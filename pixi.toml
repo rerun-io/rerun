@@ -116,7 +116,7 @@ fmt = { depends_on = ["format"] }
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo --quiet run --package re_types_builder -- --check"
-# TODO(jleibs): implement lint-cpp-all
+# TODO(jleibs): implement lint-cpp-files
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
