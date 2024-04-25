@@ -103,7 +103,7 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
         ("name", "The display name of the view.".to_owned()),
         (
             "visible",
-            "Whether this space view is visible.
+            "Whether this view is visible.
 
 Defaults to true if not specified."
                 .to_owned(),
