@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Check if all examples are listed (or explicitly ignored) in our example manifest."""
 
 from __future__ import annotations
