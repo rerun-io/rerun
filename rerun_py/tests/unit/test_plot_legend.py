@@ -18,14 +18,14 @@ def test_scalar_axis() -> None:
         "lefttop",
         None,
     ]
-    visibles = [
+    visible_array = [
         None,
         True,
     ]
 
     all_arrays = itertools.zip_longest(
         corners,
-        visibles,
+        visible_array,
     )
 
     for corner, visible in all_arrays:
