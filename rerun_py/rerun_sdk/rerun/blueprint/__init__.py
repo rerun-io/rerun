@@ -45,7 +45,7 @@ from .components import (
     Background3DKind,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
-from .space_views import (
+from .views import (
     BarChartView,
     Spatial2DView,
     Spatial3DView,
