@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
-use re_log_types::{DataCellColumn, DataTable, DataTableResult, NumInstances, RowId, Timeline};
+use re_log_types::{DataCellColumn, DataTable, DataTableResult, RowId, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{
@@ -19,17 +19,11 @@ impl IndexedBucket {
     /// - `insert_id`
     /// - `row_id`
     /// - `time`
-    /// - `num_instances`
-    /// - `$cluster_key`
     /// - rest of component columns in ascending lexical order
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
         re_tracing::profile_function!();
 
-        let Self {
-            timeline,
-            cluster_key,
-            inner,
-        } = self;
+        let Self { timeline, inner } = self;
 
         let IndexedBucketInner {
             is_sorted: _,
@@ -38,17 +32,14 @@ impl IndexedBucket {
             col_insert_id,
             col_row_id,
             max_row_id: _,
-            col_num_instances,
             columns,
             size_bytes: _,
         } = &*inner.read();
 
         serialize(
-            cluster_key,
             Some((*timeline, col_time)),
             col_insert_id,
             col_row_id,
-            col_num_instances,
             columns,
         )
     }
@@ -61,14 +52,9 @@ impl StaticTable {
     /// - `insert_id`
     /// - `row_id`
     /// - `time`
-    /// - `num_instances`
-    /// - `$cluster_key`
     /// - rest of component columns in ascending lexical order
     pub fn serialize(&self) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
         re_tracing::profile_function!();
-
-        // NOTE: cannot fail, the cluster key _has_ to be there by definition
-        let cluster_keys = &self.cells[&self.cluster_key];
 
         let mut cells_per_row_id: BTreeMap<RowId, Vec<_>> = Default::default();
         for static_cell in self.cells.values() {
@@ -77,9 +63,6 @@ impl StaticTable {
                 .or_default()
                 .push(static_cell.clone());
         }
-        for cells in cells_per_row_id.values_mut() {
-            cells.push(cluster_keys.clone());
-        }
 
         let col_insert_id = cells_per_row_id
             .values()
@@ -87,11 +70,6 @@ impl StaticTable {
             .collect();
 
         let col_row_id = cells_per_row_id.keys().copied().collect();
-
-        let col_num_instances = cells_per_row_id
-            .values()
-            .filter_map(|cells| cells.first().map(|cell| cell.num_instances))
-            .collect();
 
         let component_names: Vec<_> = self
             .cells
@@ -113,25 +91,16 @@ impl StaticTable {
             }
         }
 
-        serialize(
-            &self.cluster_key,
-            None,
-            &col_insert_id,
-            &col_row_id,
-            &col_num_instances,
-            &columns,
-        )
+        serialize(None, &col_insert_id, &col_row_id, &columns)
     }
 }
 
 // ---
 
 fn serialize(
-    cluster_key: &ComponentName,
     col_time: Option<(Timeline, &VecDeque<i64>)>,
     col_insert_id: &VecDeque<u64>,
     col_row_id: &VecDeque<RowId>,
-    col_num_instances: &VecDeque<NumInstances>,
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
     re_tracing::profile_function!();
@@ -146,14 +115,14 @@ fn serialize(
 
     {
         let (control_schema, control_columns) =
-            serialize_control_columns(col_time, col_insert_id, col_row_id, col_num_instances)?;
+            serialize_control_columns(col_time, col_insert_id, col_row_id)?;
         schema.fields.extend(control_schema.fields);
         schema.metadata.extend(control_schema.metadata);
         columns.extend(control_columns);
     }
 
     {
-        let (data_schema, data_columns) = serialize_data_columns(cluster_key, table)?;
+        let (data_schema, data_columns) = serialize_data_columns(table)?;
         schema.fields.extend(data_schema.fields);
         schema.metadata.extend(data_schema.metadata);
         columns.extend(data_columns);
@@ -166,7 +135,6 @@ fn serialize_control_columns(
     col_time: Option<(Timeline, &VecDeque<i64>)>,
     col_insert_id: &VecDeque<u64>,
     col_row_id: &VecDeque<RowId>,
-    col_num_instances: &VecDeque<NumInstances>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 
@@ -177,7 +145,6 @@ fn serialize_control_columns(
     // - insert_id
     // - row_id
     // - time
-    // - num_instances
 
     // NOTE: Optional column, so make sure it's actually there:
     if !col_insert_id.is_empty() {
@@ -204,16 +171,10 @@ fn serialize_control_columns(
         columns.push(time_column);
     }
 
-    let (num_instances_field, num_instances_column) =
-        DataTable::serialize_control_column(col_num_instances)?;
-    schema.fields.push(num_instances_field);
-    columns.push(num_instances_column);
-
     Ok((schema, columns))
 }
 
 fn serialize_data_columns(
-    cluster_key: &ComponentName,
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
@@ -222,17 +183,7 @@ fn serialize_data_columns(
     let mut columns = Vec::new();
 
     // NOTE: ordering is taken into account!
-    let mut table: BTreeMap<_, _> = table.iter().collect();
-
-    // Cluster column first and foremost!
-    //
-    // NOTE: cannot fail, the cluster key _has_ to be there by definition
-    let cluster_column = table.remove(&cluster_key).unwrap();
-    {
-        let (field, column) = DataTable::serialize_data_column(cluster_key, cluster_column)?;
-        schema.fields.push(field);
-        columns.push(column);
-    }
+    let table: BTreeMap<_, _> = table.iter().collect();
 
     for (component, column) in table {
         // NOTE: Don't serialize columns with only null values.

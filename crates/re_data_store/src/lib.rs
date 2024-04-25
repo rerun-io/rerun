@@ -41,8 +41,7 @@ pub use self::store_subscriber::{StoreSubscriber, StoreSubscriberHandle};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
-    ClusterCellCache, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    StaticCell, StaticTable,
+    IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry, StaticCell, StaticTable,
 };
 
 // Re-exports

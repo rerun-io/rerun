@@ -9,10 +9,11 @@ use arrow2::array::{Array, FixedSizeListArray, PrimitiveArray, StructArray};
 use criterion::Criterion;
 use itertools::Itertools;
 
+use re_log_types::example_components::MyIndex;
 use re_log_types::DataCell;
-use re_types::datagen::{build_some_instances, build_some_positions2d};
+use re_types::datagen::build_some_positions2d;
 use re_types::{
-    components::{InstanceKey, Position2D},
+    components::Position2D,
     testing::{build_some_large_structs, LargeStruct},
 };
 use re_types_core::{Component, SizeBytes};
@@ -40,7 +41,7 @@ const NUM_INSTANCES: usize = 1;
 
 #[derive(Debug, Clone, Copy)]
 enum ArrayKind {
-    /// E.g. an array of `InstanceKey`.
+    /// E.g. an array of `MyIndex`.
     Primitive,
 
     /// E.g. an array of `Position2D`.
@@ -79,7 +80,7 @@ fn erased_clone(c: &mut Criterion) {
 
         match kind {
             ArrayKind::Primitive => {
-                let data = build_some_instances(NUM_INSTANCES);
+                let data = MyIndex::from_iter(0..NUM_INSTANCES as _);
                 bench_arrow(&mut group, &data);
                 bench_native(&mut group, &data);
             }
@@ -198,7 +199,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
         fn generate_cells(kind: ArrayKind) -> Vec<DataCell> {
             match kind {
                 ArrayKind::Primitive => (0..NUM_ROWS)
-                    .map(|_| DataCell::from_native(build_some_instances(NUM_INSTANCES).as_slice()))
+                    .map(|_| {
+                        DataCell::from_native(MyIndex::from_iter(0..NUM_INSTANCES as _).as_slice())
+                    })
                     .collect(),
                 ArrayKind::Struct => (0..NUM_ROWS)
                     .map(|_| {
@@ -312,9 +315,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .collect()
             }
 
-            fn generate_keys() -> Vec<Vec<InstanceKey>> {
+            fn generate_indices() -> Vec<Vec<MyIndex>> {
                 (0..NUM_ROWS)
-                    .map(|_| build_some_instances(NUM_INSTANCES))
+                    .map(|_| MyIndex::from_iter(0..NUM_INSTANCES as _))
                     .collect()
             }
 
@@ -325,7 +328,7 @@ fn estimated_size_bytes(c: &mut Criterion) {
             }
 
             match kind {
-                ArrayKind::Primitive => bench_std(&mut group, generate_keys()),
+                ArrayKind::Primitive => bench_std(&mut group, generate_indices()),
                 ArrayKind::Struct => bench_std(&mut group, generate_positions()),
                 ArrayKind::StructLarge => bench_std(&mut group, generate_rects()),
             }
