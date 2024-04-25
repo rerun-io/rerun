@@ -169,7 +169,19 @@ impl SizeBytes for LatestAtCache {
             .keys()
             .map(|k| k.total_size_bytes())
             .sum::<u64>();
-        let per_data_time = per_data_time.total_size_bytes();
+        // NOTE: per query time buckets are just pointers, don't count them.
+
+        let per_data_time_keys = per_data_time
+            .keys()
+            .map(|k| k.total_size_bytes())
+            .sum::<u64>();
+        let per_data_time_values = per_data_time
+            .values()
+            // NOTE: make sure to dereference the Arc, else this will account for zero (assumed amortized!)
+            .map(|arc| (**arc).total_size_bytes())
+            .sum::<u64>();
+
+        let per_data_time = per_data_time_keys + per_data_time_values;
         let pending_invalidations = pending_invalidations.total_size_bytes();
 
         per_query_time + per_data_time + pending_invalidations

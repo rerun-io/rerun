@@ -179,8 +179,8 @@ impl SizeBytes for CachedLatestAtComponentResults {
             cached_dense,
         } = self;
 
-        index.heap_size_bytes()
-            + promise.heap_size_bytes()
+        index.total_size_bytes()
+            + promise.total_size_bytes()
             + cached_dense
                 .get()
                 .map_or(0, |data| data.dyn_total_size_bytes())
