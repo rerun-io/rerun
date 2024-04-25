@@ -32,7 +32,7 @@ pub struct View2DState {
     /// Some thing outside of these bounds may also be visible due to letterboxing.
     ///
     /// Default: [`Rect::NAN`] (invalid).
-    /// Invlaid bound will be set to the default on the next frame.
+    /// Invalid bound will be set to the default on the next frame.
     /// The default is usually the scene bounding box.
     pub visual_bounds: Rect,
 }
@@ -187,6 +187,8 @@ pub fn view_2d(
     if ui.available_size().min_elem() <= 0.0 {
         return Ok(());
     }
+
+    // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
 
     // Note that we can't rely on the camera being part of scene.space_cameras since that requires
     // the camera to be added to the scene!
