@@ -24,7 +24,7 @@ class TimeSeriesView(SpaceView):
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
-        plot_legend: blueprint_archetypes.PlotLegend | None = None,
+        plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TimeSeriesView view.
