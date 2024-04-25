@@ -135,6 +135,32 @@ fn listen_for_new_clients(listener: &TcpListener, options: ServerOptions, tx: &S
                     .ok();
             }
             Err(err) => {
+                if cfg!(target_os = "windows") {
+                    const WSANOTINITIALISED: i32 = 10093;
+                    const WSAEINTR: i32 = 10004;
+
+                    if let Some(raw_os_error) = err.raw_os_error() {
+                        #[allow(clippy::match_same_arms)]
+                        match raw_os_error {
+                            WSANOTINITIALISED => {
+                                // This happens either if WSAStartup wasn't called beforehand,
+                                // or WSACleanup was called as part of shutdown already.
+                                //
+                                // If we end up in here it's almost certainly the later case
+                                // which implies that the process is shutting down.
+                                break;
+                            }
+                            WSAEINTR => {
+                                // A blocking operation as interrupted.
+                                // This can only happen if the listener is closing,
+                                // meaning that this server is shutting down.
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 re_log::warn!("Failed to accept incoming SDK client: {err}");
             }
         }
