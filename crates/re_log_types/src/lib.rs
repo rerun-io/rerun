@@ -360,8 +360,6 @@ pub struct StoreInfo {
     pub started: Time,
 
     pub store_source: StoreSource,
-
-    pub store_kind: StoreKind,
 }
 
 impl StoreInfo {

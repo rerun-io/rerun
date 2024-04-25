@@ -239,7 +239,6 @@ mod tests {
                 is_official_example: false,
                 started: Time::from_ns_since_epoch(0),
                 store_source: StoreSource::Unknown,
-                store_kind: StoreKind::Recording,
             },
         })
     }

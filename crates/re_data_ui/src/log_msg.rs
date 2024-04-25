@@ -48,7 +48,6 @@ impl DataUi for SetStoreInfo {
             started,
             store_source,
             is_official_example,
-            store_kind,
         } = info;
 
         let re_ui = &ctx.re_ui;
@@ -83,7 +82,7 @@ impl DataUi for SetStoreInfo {
             ui.end_row();
 
             re_ui.grid_left_hand_label(ui, "store_kind:");
-            ui.label(format!("{store_kind}"));
+            ui.label(format!("{}", store_id.kind));
             ui.end_row();
         });
     }

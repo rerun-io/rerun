@@ -198,6 +198,7 @@ impl RecordingStreamBuilder {
     /// The default is to use a random [`StoreId`].
     #[inline]
     pub fn store_id(mut self, store_id: StoreId) -> Self {
+        self.store_kind = store_id.kind;
         self.store_id = Some(store_id);
         self
     }
@@ -545,7 +546,6 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             store_source,
-            store_kind,
         };
 
         let batcher_config =
@@ -814,11 +814,14 @@ impl RecordingStream {
         batcher_config: DataTableBatcherConfig,
         sink: Box<dyn LogSink>,
     ) -> RecordingStreamResult<Self> {
-        let sink = forced_sink_path().map_or(sink, |path| {
-            re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
-            // `unwrap` is ok since this force sinks are only used in tests.
-            Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
-        });
+        let sink = (info.store_id.kind == StoreKind::Recording)
+            .then(forced_sink_path)
+            .flatten()
+            .map_or(sink, |path| {
+                re_log::info!("Forcing FileSink because of env-var {ENV_FORCE_SAVE}={path:?}");
+                // `unwrap` is ok since this force sinks are only used in tests.
+                Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
+            });
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
             inner: Either::Left(Arc::new(Some(inner))),
         })
@@ -1624,11 +1627,6 @@ impl RecordingStream {
     pub fn memory(&self) -> MemorySinkStorage {
         let sink = crate::sink::MemorySink::default();
         let mut storage = sink.buffer();
-
-        if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new memory sink since _RERUN_FORCE_SINK is set");
-            return storage;
-        }
 
         self.set_sink(Box::new(sink));
         storage.rec = Some(self.clone());
