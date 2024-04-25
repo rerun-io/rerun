@@ -288,6 +288,7 @@ impl CachedRangeComponentResults {
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
+        // Manufactured empty result.
         if self.time_range == TimeRange::EMPTY {
             return CachedRangeData {
                 indices: None,
