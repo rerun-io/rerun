@@ -101,8 +101,16 @@ rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/c
   "rerun-build-web", # The checks require the web viewer wasm to be around.
 ] }
 
+rs-fmt = "cargo fmt --all"
+
 # Code formatting for all languages.
-format = { depends_on = ["py-fmt", "cpp-fmt", "toml-fmt", "misc-fmt"] }
+format = { depends_on = [
+  "py-fmt",
+  "cpp-fmt",
+  "rs-fmt",
+  "toml-fmt",
+  "misc-fmt",
+] }
 fmt = { depends_on = ["format"] }
 
 # Assorted linting tasks
