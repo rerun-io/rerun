@@ -130,10 +130,7 @@ pub fn process_color_slice<'a>(
             }
         }
     } else {
-        let colors = colors
-            .iter()
-            .chain(std::iter::repeat(colors.last().unwrap()))
-            .take(num_instances);
+        let colors = entity_iterator::clamped(colors, num_instances);
         match annotation_infos {
             ResolvedAnnotationInfos::Same(_count, annotation_info) => {
                 re_tracing::profile_scope!("many-colors, same annotation");
@@ -166,11 +163,8 @@ pub fn process_radius_slice(
     if radii.is_empty() {
         vec![re_renderer::Size::AUTO; num_instances]
     } else {
-        radii
-            .iter()
-            .chain(std::iter::repeat(radii.last().unwrap()))
+        entity_iterator::clamped(radii, num_instances)
             .map(|radius| process_radius(entity_path, *radius))
-            .take(num_instances)
             .collect()
     }
 }
@@ -218,10 +212,7 @@ fn process_annotation_and_keypoint_slices(
         );
     };
 
-    let class_ids = class_ids
-        .iter()
-        .chain(std::iter::repeat(class_ids.last().unwrap()))
-        .take(num_instances);
+    let class_ids = entity_iterator::clamped(class_ids, num_instances);
 
     if keypoint_ids.is_empty() {
         let annotation_info = class_ids
@@ -236,10 +227,7 @@ fn process_annotation_and_keypoint_slices(
             Default::default(),
         )
     } else {
-        let keypoint_ids = keypoint_ids
-            .iter()
-            .chain(std::iter::repeat(keypoint_ids.last().unwrap()))
-            .take(num_instances);
+        let keypoint_ids = entity_iterator::clamped(keypoint_ids, num_instances);
         let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
             .map(|(position, keypoint_id, &class_id)| {
                 let class_description = annotations.resolved_class_description(Some(class_id));

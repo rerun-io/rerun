@@ -211,8 +211,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let resolver = ctx.recording().resolver();
 
                 let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
-                    Some(Ok(vectors)) => vectors,
-                    Some(err @ Err(_)) => err?,
+                    Some(vectors) => vectors?,
                     _ => return Ok(()),
                 };
 

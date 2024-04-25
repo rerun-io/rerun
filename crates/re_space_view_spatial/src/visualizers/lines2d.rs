@@ -210,8 +210,7 @@ impl VisualizerSystem for Lines2DVisualizer {
                 let resolver = ctx.recording().resolver();
 
                 let strips = match results.get_dense::<LineStrip2D>(resolver) {
-                    Some(Ok(strips)) => strips,
-                    Some(err @ Err(_)) => err?,
+                    Some(strips) => strips?,
                     _ => return Ok(()),
                 };
 
