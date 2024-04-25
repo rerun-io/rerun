@@ -511,7 +511,7 @@ fn write_view_properties(
     putln!(o, "## Properties");
     putln!(o);
 
-    // collect names of field _components_ by their `FieldKind`
+    // Each field in a view should be a property
     for field in &object.fields {
         let Some(fqname) = field.typ.fqname() else {
             continue;
