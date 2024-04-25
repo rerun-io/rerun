@@ -68,7 +68,7 @@ impl Objects {
             objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
         };
 
-        // Validate fields types: Archetype consist of components, Space Views consist of archetypes, everything else consists of datatypes.
+        // Validate fields types: Archetype consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
         for obj in this.objects.values() {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
@@ -77,17 +77,17 @@ impl Objects {
                     match obj.kind {
                         ObjectKind::Datatype | ObjectKind::Component => {
                             if field_obj.kind != ObjectKind::Datatype {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes."));
+                                reporter.error(virtpath, field_type_fqname, "Is part of a Component or Datatype but is itself not a Datatype. Only archetype fields can be components, all other fields have to be primitive or be a datatypes.");
                             }
                         }
                         ObjectKind::Archetype => {
                             if field_obj.kind != ObjectKind::Component {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an archetypes but is not a component. Only components are allowed as fields on an archetype."));
+                                reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
                             }
                         }
                         ObjectKind::View => {
                             if field_obj.kind != ObjectKind::Archetype {
-                                reporter.error(virtpath, &obj.fqname, format!("Points to an instance of {field_type_fqname:?}) is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties."));
+                                reporter.error(virtpath, field_type_fqname, "Is part of an view but is not an archetype. Only archetypes are allowed as fields of a view's properties.");
                             }
                         }
                     }
