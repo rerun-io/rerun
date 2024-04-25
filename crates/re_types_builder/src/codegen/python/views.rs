@@ -39,6 +39,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     origin: EntityPathLike = "/",
     contents: SpaceViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
+    visible: blueprint_components.VisibilityLike | None = None,
     "#
     .to_owned();
 
@@ -100,6 +101,13 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
                 .to_owned(),
         ),
         ("name", "The display name of the view.".to_owned()),
+        (
+            "visible",
+            "Whether this space view is visible.
+
+Defaults to true if not specified."
+                .to_owned(),
+        ),
     ];
     for field in &obj.fields {
         let doc_content = field.docs.doc_lines_for_untagged_and("py");
@@ -165,7 +173,7 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
     }
     code.push_indented(
         1,
-        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, properties=properties)"#),
+        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties)"#),
         1,
     );
 

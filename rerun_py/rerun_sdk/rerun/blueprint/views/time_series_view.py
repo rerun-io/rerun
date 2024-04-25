@@ -8,6 +8,7 @@ __all__ = ["TimeSeriesView"]
 
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
+from .. import components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -20,6 +21,7 @@ class TimeSeriesView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
+        visible: blueprint_components.VisibilityLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TimeSeriesView view.
@@ -35,10 +37,19 @@ class TimeSeriesView(SpaceView):
             See [rerun.blueprint.archetypes.SpaceViewContents][].
         name:
             The display name of the view.
+        visible:
+            Whether this space view is visible.
+
+            Defaults to true if not specified.
 
         """
 
         properties: dict[str, AsComponents] = {}
         super().__init__(
-            class_identifier="TimeSeries", origin=origin, contents=contents, name=name, properties=properties
+            class_identifier="TimeSeries",
+            origin=origin,
+            contents=contents,
+            name=name,
+            visible=visible,
+            properties=properties,
         )

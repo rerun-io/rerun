@@ -23,6 +23,7 @@ class Spatial3DView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
+        visible: blueprint_components.VisibilityLike | None = None,
         background: blueprint_archetypes.Background3D
         | datatypes.Rgba32Like
         | blueprint_components.Background3DKindLike
@@ -42,6 +43,10 @@ class Spatial3DView(SpaceView):
             See [rerun.blueprint.archetypes.SpaceViewContents][].
         name:
             The display name of the view.
+        visible:
+            Whether this space view is visible.
+
+            Defaults to true if not specified.
         background:
             Configuration for the background of the 3D space view.
 
@@ -53,4 +58,6 @@ class Spatial3DView(SpaceView):
                 background = blueprint_archetypes.Background3D(background)
             properties["Background3D"] = background
 
-        super().__init__(class_identifier="3D", origin=origin, contents=contents, name=name, properties=properties)
+        super().__init__(
+            class_identifier="3D", origin=origin, contents=contents, name=name, visible=visible, properties=properties
+        )
