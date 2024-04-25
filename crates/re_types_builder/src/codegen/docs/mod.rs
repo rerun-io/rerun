@@ -221,7 +221,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
         ObjectKind::View => {
             // TODO(#6082): Views should include the archetypes they know how to show
-            write_view_properties(&mut page, object, object_map);
+            write_view_properties(reporter, &mut page, object, object_map);
         }
     }
 
@@ -498,13 +498,20 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
     }
 }
 
-fn write_view_properties(o: &mut String, object: &Object, object_map: &ObjectMap) {
+fn write_view_properties(
+    reporter: &Reporter,
+    o: &mut String,
+    object: &Object,
+    object_map: &ObjectMap,
+) {
     if object.fields.is_empty() {
         return;
     }
 
+    putln!(o, "## Properties");
+    putln!(o);
+
     // collect names of field _components_ by their `FieldKind`
-    let mut properties = Vec::new();
     for field in &object.fields {
         let Some(fqname) = field.typ.fqname() else {
             continue;
@@ -512,21 +519,51 @@ fn write_view_properties(o: &mut String, object: &Object, object_map: &ObjectMap
         let Some(ty) = object_map.get(fqname) else {
             continue;
         };
-        properties.push(format!(
-            "[`{}`](../{}/{}.md)",
-            ty.name,
-            ty.kind.plural_snake_case(),
-            ty.snake_case_name()
-        ));
+        write_view_property(reporter, o, ty, object_map);
+    }
+}
+
+fn write_view_property(
+    reporter: &Reporter,
+    o: &mut String,
+    object: &Object,
+    _object_map: &ObjectMap,
+) {
+    putln!(o, "### `{}`", object.name);
+
+    let top_level_docs = object.docs.untagged();
+
+    if top_level_docs.is_empty() {
+        reporter.error(
+            &object.virtpath,
+            &object.fqname,
+            "Undocumented view property",
+        );
     }
 
-    if properties.is_empty() {
+    for line in top_level_docs {
+        putln!(o, "{line}");
+    }
+
+    if object.fields.is_empty() {
         return;
     }
 
-    putln!(o, "## Properties");
-    putln!(o);
-    putln!(o, "{}", properties.join(", "));
+    let mut fields = Vec::new();
+    for field in &object.fields {
+        fields.push(format!(
+            "* {}: {}",
+            field.name,
+            field.docs.first_line().unwrap_or_default()
+        ));
+    }
+
+    if !fields.is_empty() {
+        putln!(o);
+        for field in fields {
+            putln!(o, "{field}");
+        }
+    }
 }
 
 fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
