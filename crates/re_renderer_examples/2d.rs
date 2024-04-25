@@ -60,7 +60,7 @@ impl framework::Example for Render2D {
         re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
@@ -302,7 +302,7 @@ impl framework::Example for Render2D {
                             vertical_world_size: splits[0].resolution_in_pixel[1] as f32,
                             far_plane_distance: 1000.0,
                         },
-                        pixels_from_point,
+                        pixels_per_point,
                         ..Default::default()
                     },
                 );
@@ -344,7 +344,7 @@ impl framework::Example for Render2D {
                             near_plane_distance: 0.01,
                             aspect_ratio: resolution[0] as f32 / resolution[1] as f32,
                         },
-                        pixels_from_point,
+                        pixels_per_point,
                         ..Default::default()
                     },
                 );

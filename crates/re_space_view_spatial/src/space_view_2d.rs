@@ -2,6 +2,7 @@ use ahash::HashSet;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_entity_db::{EntityDb, EntityProperties, EntityTree};
+use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
@@ -248,7 +249,23 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .show(ui, |ui| {
                 state.default_size_ui(ctx, ui);
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
-                ui.end_row();
+
+                {
+                    let visual_bounds = &mut state.state_2d.visual_bounds;
+                    ctx.re_ui
+                        .grid_left_hand_label(ui, "Bounds")
+                        .on_hover_text("The area guaranteed to be visible.\nDepending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.");
+                    ui.vertical(|ui| {
+                        ui.style_mut().wrap = Some(false);
+                        let (min, max) = (visual_bounds.min, visual_bounds.max);
+                        ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+                        ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+                        if ui.button("Reset bounds").clicked() {
+                            *visual_bounds = egui::Rect::NAN;
+                        }
+                    });
+                    ui.end_row();
+                }
             });
         Ok(())
     }

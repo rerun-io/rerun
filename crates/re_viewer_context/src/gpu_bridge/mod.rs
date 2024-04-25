@@ -86,9 +86,9 @@ pub fn tensor_decode_srgb_gamma_heuristic(
 
 // ----------------------------------------------------------------------------
 
-pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_from_point: f32) -> [u32; 2] {
-    let min = (clip_rect.min.to_vec2() * pixels_from_point).round();
-    let max = (clip_rect.max.to_vec2() * pixels_from_point).round();
+pub fn viewport_resolution_in_pixels(clip_rect: egui::Rect, pixels_per_point: f32) -> [u32; 2] {
+    let min = (clip_rect.min.to_vec2() * pixels_per_point).round();
+    let max = (clip_rect.max.to_vec2() * pixels_per_point).round();
     let resolution = max - min;
     [resolution.x as u32, resolution.y as u32]
 }
@@ -160,14 +160,14 @@ pub fn render_image(
 
     // ------------------------------------------------------------------------
 
-    let pixels_from_points = egui_painter.ctx().pixels_per_point();
+    let pixels_per_point = egui_painter.ctx().pixels_per_point();
     let ui_from_space = egui::emath::RectTransform::from_to(space_rect, image_rect_on_screen);
     let space_from_ui = ui_from_space.inverse();
     let space_from_points = space_from_ui.scale().y;
     let points_from_pixels = 1.0 / egui_painter.ctx().pixels_per_point();
     let space_from_pixel = space_from_points * points_from_pixels;
 
-    let resolution_in_pixel = viewport_resolution_in_pixels(viewport, pixels_from_points);
+    let resolution_in_pixel = viewport_resolution_in_pixels(viewport, pixels_per_point);
     anyhow::ensure!(resolution_in_pixel[0] > 0 && resolution_in_pixel[1] > 0);
 
     let camera_position_space = space_from_ui.transform_pos(viewport.min);
@@ -184,7 +184,7 @@ pub fn render_image(
             far_plane_distance: 1000.0,
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
-        pixels_from_point: pixels_from_points,
+        pixels_per_point,
         auto_size_config: Default::default(),
         outline_config: None,
     };
