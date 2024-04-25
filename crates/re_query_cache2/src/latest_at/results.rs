@@ -157,6 +157,12 @@ impl CachedLatestAtComponentResults {
             _ => None,
         }
     }
+
+    /// Returns whether the resolved data is static.
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        self.index.0 == TimeInt::STATIC
+    }
 }
 
 impl SizeBytes for CachedLatestAtComponentResults {

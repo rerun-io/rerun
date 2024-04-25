@@ -245,8 +245,8 @@ impl EntityTree {
     }
 
     /// Number of timeless messages in this tree, or any child, recursively.
-    pub fn num_timeless_messages_recursive(&self) -> u64 {
-        self.subtree.time_histogram.num_timeless_messages()
+    pub fn num_static_messages_recursive(&self) -> u64 {
+        self.subtree.time_histogram.num_static_messages()
     }
 
     pub fn time_histogram_for_component(

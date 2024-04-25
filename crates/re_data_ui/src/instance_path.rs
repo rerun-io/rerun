@@ -65,6 +65,7 @@ impl DataUi for InstancePath {
                     ctx,
                     ui,
                     &ComponentPath::new(entity_path.clone(), component_name),
+                    db,
                 );
             }
         }
@@ -89,6 +90,7 @@ impl DataUi for InstancePath {
                         ctx,
                         ui,
                         &ComponentPath::new(entity_path.clone(), component_name),
+                        db,
                     );
 
                     if instance_key.is_splat() {
