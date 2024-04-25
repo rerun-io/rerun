@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from ... import datatypes
-from .. import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
+from .. import components as blueprint_components
 
 
 class BackgroundExt:
