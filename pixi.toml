@@ -196,11 +196,11 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
+cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
   "cpp-prepare",
 ] }
 cpp-prepare-shared-libs = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON"
-cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
+cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
   "cpp-prepare-shared-libs",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
