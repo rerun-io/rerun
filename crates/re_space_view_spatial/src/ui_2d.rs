@@ -23,11 +23,26 @@ use crate::{
 
 // ---
 
-#[derive(Clone, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct View2DState {
     /// The visible parts of the scene, in the coordinate space of the scene.
-    pub bounds: Option<Rect>,
+    ///
+    /// Everything within these bounds are guaranteed to be visible.
+    /// Some thing outside of these bounds may also be visible due to letterboxing.
+    ///
+    /// Default: [`Rect::NAN`] (invalid).
+    /// Invlaid bound will be set to the default on the next frame.
+    /// The default is usually the scene bounding box.
+    pub visual_bounds: Rect,
+}
+
+impl Default for View2DState {
+    fn default() -> Self {
+        Self {
+            visual_bounds: Rect::NAN,
+        }
+    }
 }
 
 impl View2DState {
@@ -37,15 +52,19 @@ impl View2DState {
         response: &egui::Response,
         default_scene_rect: Rect,
     ) -> RectTransform {
-        if response.double_clicked() {
-            self.bounds = None; // double-click to reset
+        fn valid_bound(rect: &Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
         }
 
-        let bounds = self.bounds.get_or_insert(default_scene_rect);
-        if !bounds.is_positive() {
+        if response.double_clicked() {
+            self.visual_bounds = default_scene_rect; // double-click to reset
+        }
+
+        let bounds = &mut self.visual_bounds;
+        if !valid_bound(bounds) {
             *bounds = default_scene_rect;
         }
-        if !bounds.is_positive() {
+        if !valid_bound(bounds) {
             // Nothing in scene, probably.
             // Just return something that isn't NaN.
             let fake_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0));

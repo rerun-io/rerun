@@ -250,17 +250,18 @@ impl SpaceViewClass for SpatialSpaceView2D {
                 state.default_size_ui(ctx, ui);
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 
-                if let Some(bounds) = state.state_2d.bounds {
+                {
+                    let visual_bounds = &mut state.state_2d.visual_bounds;
                     ctx.re_ui
                         .grid_left_hand_label(ui, "Bounds")
                         .on_hover_text("The area guaranteed to be visible.\nDepending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.");
                     ui.vertical(|ui| {
                         ui.style_mut().wrap = Some(false);
-                        let (min, max) = (bounds.min, bounds.max);
+                        let (min, max) = (visual_bounds.min, visual_bounds.max);
                         ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                         ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
                         if ui.button("Reset bounds").clicked() {
-                            state.state_2d.bounds = None;
+                            *visual_bounds = egui::Rect::NAN;
                         }
                     });
                     ui.end_row();
