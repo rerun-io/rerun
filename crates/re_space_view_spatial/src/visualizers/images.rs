@@ -860,8 +860,7 @@ impl ImageVisualizer {
                 let resolver = ctx.recording().resolver();
 
                 let tensors = match results.get_dense::<TensorData>(resolver) {
-                    Some(Ok(tensors)) => tensors,
-                    Some(err @ Err(_)) => err?,
+                    Some(tensors) => tensors?,
                     _ => return Ok(()),
                 };
 

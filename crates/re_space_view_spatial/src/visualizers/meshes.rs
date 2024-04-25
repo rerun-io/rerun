@@ -173,8 +173,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                 let resolver = ctx.recording().resolver();
 
                 let vertex_positions = match results.get_dense::<Position3D>(resolver) {
-                    Some(Ok(positions)) => positions,
-                    Some(err @ Err(_)) => err?,
+                    Some(positions) => positions?,
                     _ => return Ok(()),
                 };
 
