@@ -280,6 +280,12 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.blueprint.components",
         show_tables=False,
     ),
+    Section(
+        title="Blueprint",
+        sub_title="Views",
+        mod_path="rerun.blueprint.views",
+        show_tables=False,
+    ),
     ################################################################################
     # Remaining sections
     Section(
