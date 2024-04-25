@@ -125,7 +125,7 @@ pub enum Projection {
 }
 
 impl Projection {
-    fn projection_from_view(self, aspect_ratio: f32) -> glam::Mat4 {
+    fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
             Projection::Perspective {
                 vertical_fov,
@@ -146,6 +146,7 @@ impl Projection {
                 vertical_world_size,
                 far_plane_distance,
             } => {
+                let aspect_ratio = resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32;
                 let horizontal_world_size = vertical_world_size * aspect_ratio;
 
                 // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
@@ -381,12 +382,9 @@ impl ViewBuilder {
             },
         );
 
-        let aspect_ratio =
-            config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
-
         let projection_from_view = config
             .projection_from_view
-            .projection_from_view(aspect_ratio);
+            .projection_from_view(config.resolution_in_pixel);
 
         let tan_half_fov = config.projection_from_view.tan_half_fov();
 
