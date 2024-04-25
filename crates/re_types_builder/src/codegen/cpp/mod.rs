@@ -136,6 +136,10 @@ impl crate::CodeGenerator for CppCodeGenerator {
 
         ObjectKind::ALL
             .par_iter()
+            .filter(|&&object_kind| {
+                // TODO(#5521): Implement view codegen for Rust.
+                object_kind != ObjectKind::View
+            })
             .flat_map(|object_kind| {
                 scopes
                     .par_iter()
@@ -404,6 +408,10 @@ impl QuotedObject {
                 )),
                 ObjectKind::Archetype => {
                     Ok(Self::from_archetype(obj, hpp_includes, hpp_type_extensions))
+                }
+                ObjectKind::View => {
+                    // TODO(#5521): Implement view codegen for Rust.
+                    unimplemented!();
                 }
             },
             ObjectClass::Enum => Ok(Self::from_enum(objects, obj, hpp_includes)),

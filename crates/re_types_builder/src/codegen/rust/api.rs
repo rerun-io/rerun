@@ -62,6 +62,11 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
+            if object_kind == ObjectKind::View {
+                // TODO(#5521): Implement view codegen for Rust.
+                continue;
+            }
+
             self.generate_folder(
                 reporter,
                 objects,
@@ -1307,6 +1312,7 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
+        ObjectKind::View => unimplemented!(),
     }
 }
 

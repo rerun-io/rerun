@@ -3,8 +3,8 @@
 //! This crate contains both the IDL definitions for Rerun types (flatbuffers) as well as the code
 //! generated from those using `re_types_builder`.
 //!
-//! All builtin archetypes, components and datatypes can be found in their respective top-level
-//! modules.
+//! All builtin archetypes, components, datatypes and space view definitions can be found in their
+//! respective top-level modules.
 //!
 //! ## Contributing
 //!

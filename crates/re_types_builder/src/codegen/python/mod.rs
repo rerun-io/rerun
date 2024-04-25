@@ -1,5 +1,7 @@
 //! Implements the Python codegen pass.
 
+mod views;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use anyhow::Context as _;
@@ -18,6 +20,8 @@ use crate::{
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
     ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
+
+use self::views::code_for_view;
 
 use super::common::ExampleInfo;
 
@@ -322,7 +326,7 @@ impl PythonCodeGenerator {
                         ]
                     }
                 }
-                ObjectKind::Archetype => vec![obj.name.clone()],
+                ObjectKind::View | ObjectKind::Archetype => vec![obj.name.clone()],
             };
 
             // NOTE: Isolating the file stem only works because we're handling datatypes, components
@@ -342,14 +346,18 @@ impl PythonCodeGenerator {
             code.push_indented(0, &format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
                 code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
-                code.push_indented(
-                    0,
-                    &format!(
-                        "# You can extend this class by creating a {:?} class in {:?}.",
-                        ext_class.name, ext_class.file_name
-                    ),
-                    2,
-                );
+
+                if obj.kind != ObjectKind::View {
+                    // View type extension isn't implemented yet (shouldn't be hard though to add if needed).
+                    code.push_indented(
+                        0,
+                        &format!(
+                            "# You can extend this class by creating a {:?} class in {:?}.",
+                            ext_class.name, ext_class.file_name
+                        ),
+                        2,
+                    );
+                }
             }
 
             let manifest = quote_manifest(names);
@@ -436,13 +444,17 @@ impl PythonCodeGenerator {
 
             let obj_code = match obj.class {
                 crate::objects::ObjectClass::Struct => {
-                    code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    if obj.kind == ObjectKind::View {
+                        code_for_view(reporter, objects, obj)
+                    } else {
+                        code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
+                    }
                 }
                 crate::objects::ObjectClass::Enum => {
                     code_for_enum(reporter, arrow_registry, &ext_class, objects, obj)
                 }
                 crate::objects::ObjectClass::Union => {
-                    code_for_union(arrow_registry, &ext_class, objects, obj)
+                    code_for_union(reporter, arrow_registry, &ext_class, objects, obj)
                 }
             };
 
@@ -458,7 +470,7 @@ impl PythonCodeGenerator {
             files_to_write.insert(filepath.clone(), code);
         }
 
-        // rerun/[{scope}]/{datatypes|components|archetypes}/__init__.py
+        // rerun/[{scope}]/{datatypes|components|archetypes|space_views}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
         for (scope, mods) in scoped_mods {
@@ -476,6 +488,10 @@ fn write_init_file(
     mods: &BTreeMap<String, Vec<String>>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
+    if mods.is_empty() {
+        return;
+    }
+
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
     let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
@@ -766,6 +782,9 @@ fn code_for_struct(
                 1,
             );
         }
+        ObjectKind::View => {
+            unreachable!("View processing shouldn't reach struct generation code.");
+        }
     }
 
     code
@@ -915,12 +934,16 @@ return pa.UnionArray.from_buffers(
                 1,
             );
         }
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "A view cannot be an enum");
+        }
     }
 
     code
 }
 
 fn code_for_union(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
@@ -1062,7 +1085,7 @@ fn code_for_union(
     match kind {
         ObjectKind::Archetype => (),
         ObjectKind::Component => {
-            unreachable!("component may not be a union")
+            reporter.error(&obj.virtpath, &obj.fqname, "An component cannot be an enum");
         }
         ObjectKind::Datatype => {
             code.push_indented(
@@ -1070,6 +1093,9 @@ fn code_for_union(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
                 1,
             );
+        }
+        ObjectKind::View => {
+            reporter.error(&obj.virtpath, &obj.fqname, "An view cannot be an enum");
         }
     }
 
@@ -1970,15 +1996,10 @@ fn quote_init_method(
             })
             .collect::<Vec<_>>()
     };
-    let doc_typedesc = match obj.kind {
-        ObjectKind::Datatype => "datatype",
-        ObjectKind::Component => "component",
-        ObjectKind::Archetype => "archetype",
-    };
-
     let mut doc_string_lines = vec![format!(
-        "Create a new instance of the {} {doc_typedesc}.",
-        obj.name
+        "Create a new instance of the {} {}.",
+        obj.name,
+        obj.kind.singular_name().to_lowercase()
     )];
     if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());

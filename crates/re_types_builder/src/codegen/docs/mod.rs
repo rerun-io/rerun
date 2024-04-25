@@ -56,6 +56,10 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
+                ObjectKind::View => {
+                    // TODO(#6082): Implement view docs generation.
+                    continue;
+                }
             }
 
             let page = object_page(reporter, object, object_map);
@@ -211,6 +215,9 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             write_fields(&mut page, object, object_map);
         }
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
+        ObjectKind::View => {
+            // TODO(#6082): Implement view docs generation.
+        }
     }
 
     {
@@ -283,6 +290,9 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
                     reporter.warn(&object.virtpath, &object.fqname, "No examples");
                 }
             }
+        }
+        ObjectKind::View => {
+            // TODO(#6082): Implement view docs generation.
         }
     }
 
