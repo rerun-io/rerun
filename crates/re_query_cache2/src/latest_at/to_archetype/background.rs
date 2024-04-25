@@ -10,22 +10,22 @@ use re_query2::{PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
-impl crate::ToArchetype<re_types::blueprint::archetypes::Background3D> for CachedLatestAtResults {
+impl crate::ToArchetype<re_types::blueprint::archetypes::Background> for CachedLatestAtResults {
     #[inline]
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<re_types::blueprint::archetypes::Background3D>> {
-        re_tracing::profile_function!(<re_types::blueprint::archetypes::Background3D>::name());
+    ) -> PromiseResult<crate::Result<re_types::blueprint::archetypes::Background>> {
+        re_tracing::profile_function!(<re_types::blueprint::archetypes::Background>::name());
 
         // --- Required ---
 
-        use re_types::blueprint::components::Background3DKind;
-        let kind = match self.get_required(<Background3DKind>::name()) {
+        use re_types::blueprint::components::BackgroundKind;
+        let kind = match self.get_required(<BackgroundKind>::name()) {
             Ok(kind) => kind,
             Err(query_err) => return PromiseResult::Ready(Err(query_err)),
         };
-        let kind = match kind.to_dense::<Background3DKind>(resolver) {
+        let kind = match kind.to_dense::<BackgroundKind>(resolver) {
             PromiseResult::Pending => return PromiseResult::Pending,
             PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
             PromiseResult::Ready(query_res) => match query_res {
@@ -59,7 +59,7 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::Background3D> for Cache
 
         // ---
 
-        let arch = re_types::blueprint::archetypes::Background3D { kind, color };
+        let arch = re_types::blueprint::archetypes::Background { kind, color };
 
         PromiseResult::Ready(Ok(arch))
     }

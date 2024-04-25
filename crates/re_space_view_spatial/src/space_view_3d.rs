@@ -4,7 +4,7 @@ use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
 use re_space_view::query_space_view_sub_archetype;
 use re_types::{
-    blueprint::{archetypes::Background3D, components::Background3DKind},
+    blueprint::{archetypes::Background, components::BackgroundKind},
     components::ViewCoordinates,
     Loggable,
 };
@@ -407,7 +407,7 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
     let (archetype, blueprint_path) =
         query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
 
-    let Background3D { color, mut kind } = archetype.ok().flatten().unwrap_or_default();
+    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or_default();
 
     ctx.re_ui.grid_left_hand_label(ui, "Background");
 
@@ -418,26 +418,26 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
             .show_ui(ui, |ui| {
                 ui.selectable_value(
                     &mut kind,
-                    Background3DKind::GradientDark,
-                    background_color_text(Background3DKind::GradientDark),
+                    BackgroundKind::GradientDark,
+                    background_color_text(BackgroundKind::GradientDark),
                 );
                 ui.selectable_value(
                     &mut kind,
-                    Background3DKind::GradientBright,
-                    background_color_text(Background3DKind::GradientBright),
+                    BackgroundKind::GradientBright,
+                    background_color_text(BackgroundKind::GradientBright),
                 );
                 ui.selectable_value(
                     &mut kind,
-                    Background3DKind::SolidColor,
-                    background_color_text(Background3DKind::SolidColor),
+                    BackgroundKind::SolidColor,
+                    background_color_text(BackgroundKind::SolidColor),
                 );
             });
         if kind_before != kind {
             ctx.save_blueprint_component(&blueprint_path, &kind);
         }
 
-        if kind == Background3DKind::SolidColor {
-            let current_color = color.unwrap_or(Background3D::DEFAULT_COLOR).into();
+        if kind == BackgroundKind::SolidColor {
+            let current_color = color.unwrap_or(Background::DEFAULT_COLOR).into();
             let mut edit_color = current_color;
             egui::color_picker::color_edit_button_srgba(
                 ui,
@@ -456,10 +456,10 @@ fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut e
     ui.end_row();
 }
 
-fn background_color_text(kind: Background3DKind) -> &'static str {
+fn background_color_text(kind: BackgroundKind) -> &'static str {
     match kind {
-        Background3DKind::GradientDark => "Dark gradient",
-        Background3DKind::GradientBright => "Bright gradient",
-        Background3DKind::SolidColor => "Solid color",
+        BackgroundKind::GradientDark => "Dark gradient",
+        BackgroundKind::GradientBright => "Bright gradient",
+        BackgroundKind::SolidColor => "Solid color",
     }
 }

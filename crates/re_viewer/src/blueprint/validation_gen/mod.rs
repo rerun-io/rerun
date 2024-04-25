@@ -3,7 +3,7 @@ use super::validation::validate_component;
 pub use re_entity_db::blueprint::components::EntityPropertiesComponent;
 use re_entity_db::EntityDb;
 pub use re_types::blueprint::components::ActiveTab;
-pub use re_types::blueprint::components::Background3DKind;
+pub use re_types::blueprint::components::BackgroundKind;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::IncludedContent;
@@ -31,7 +31,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     validate_component::<ActiveTab>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoSpaceViews>(blueprint)
-        && validate_component::<Background3DKind>(blueprint)
+        && validate_component::<BackgroundKind>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)

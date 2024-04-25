@@ -39,10 +39,10 @@ from .api import (
     TimePanel,
 )
 from .archetypes import (
-    Background3D,
+    Background,
 )
 from .components import (
-    Background3DKind,
+    BackgroundKind,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (

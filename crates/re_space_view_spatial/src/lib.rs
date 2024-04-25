@@ -75,3 +75,54 @@ fn query_pinhole(
                 .map(|c| c.value),
         })
 }
+
+pub(crate) fn configure_background(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    query: &re_viewer_context::ViewQuery<'_>,
+) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
+    use re_renderer::renderer;
+    use re_types::blueprint::{archetypes::Background, components::BackgroundKind};
+
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let (
+        Background {
+            kind,
+            color: solid_color,
+        },
+        _,
+    ) = re_space_view::query_space_view_sub_archetype_or_default::<Background>(
+        query.space_view_id,
+        blueprint_db,
+        blueprint_query,
+    );
+
+    match kind {
+        BackgroundKind::GradientDark => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientDark,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::GradientBright => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientBright,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::SolidColor => (
+            None,
+            solid_color.unwrap_or(Background::DEFAULT_COLOR).into(),
+        ),
+    }
+}

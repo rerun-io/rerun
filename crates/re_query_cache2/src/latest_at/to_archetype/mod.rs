@@ -4,7 +4,7 @@ mod annotation_context;
 mod arrows2d;
 mod arrows3d;
 mod asset3d;
-mod background3d;
+mod background;
 mod bar_chart;
 mod boxes2d;
 mod boxes3d;
