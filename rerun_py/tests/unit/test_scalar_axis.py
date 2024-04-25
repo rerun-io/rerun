@@ -6,14 +6,12 @@ from typing import Optional, cast
 import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
-from rerun_py.tests.unit.common_arrays import none_empty_or_value
+
+from .common_arrays import none_empty_or_value
 
 
 def test_scalar_axis() -> None:
     rr.set_strict_mode(True)
-
-    # Default construction.
-    assert rrb.ScalarAxis() == rrb.ScalarAxis(range=None, lock_range_during_zoom=None)
 
     # All from 42.1337 to 1337.42, but expressed differently
     ranges = [

@@ -45,6 +45,7 @@ from .archetypes import (
 )
 from .components import (
     Background3DKind,
+    Corner2D,
     LockRangeDuringZoom,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
