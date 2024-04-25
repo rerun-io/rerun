@@ -55,7 +55,7 @@ impl DataUi for EntityLatestAtResults {
         // Display log time and additional diagnostic information for static components.
         if verbosity != UiVerbosity::Small {
             ui.label(format!(
-                "Log time: {}",
+                "Timestamp: {}",
                 query
                     .timeline()
                     .typ()
