@@ -21,7 +21,7 @@ class BarChartView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
-        visible: blueprint_components.VisibilityLike | None = None,
+        visible: blueprint_components.VisibleLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new BarChartView view.
@@ -38,7 +38,7 @@ class BarChartView(SpaceView):
         name:
             The display name of the view.
         visible:
-            Whether this space view is visible.
+            Whether this view is visible.
 
             Defaults to true if not specified.
 
