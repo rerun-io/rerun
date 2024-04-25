@@ -294,6 +294,8 @@ fn setup_target_config(
     any_outlines: bool,
     scene_pinhole: Option<Pinhole>,
 ) -> anyhow::Result<TargetConfiguration> {
+    // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
+
     // TODO(#1025):
     // The camera setup is done in a way that works well with the way we inverse pinhole camera transformations right now.
     // This has a lot of issues though, mainly because we pretend that the 2D plane has a defined depth.

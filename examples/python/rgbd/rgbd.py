@@ -98,6 +98,8 @@ def log_nyud_data(recording_path: Path, subset_idx: int, frames: int) -> None:
                     rr.Pinhole(
                         resolution=[img_depth.shape[1], img_depth.shape[0]],
                         focal_length=0.7 * img_depth.shape[1],
+                        # Intentionally off-center to demonstrate that we support it
+                        principal_point=[0.45 * img_depth.shape[1], 0.55 * img_depth.shape[0]],
                     ),
                 )
 
