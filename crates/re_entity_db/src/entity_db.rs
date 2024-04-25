@@ -327,8 +327,8 @@ impl EntityDb {
         self.tree().subtree.time_histogram.get(timeline)
     }
 
-    /// Total number of timeless messages for any entity.
-    pub fn num_timeless_messages(&self) -> u64 {
+    /// Total number of static messages for any entity.
+    pub fn num_static_messages(&self) -> u64 {
         self.tree.num_static_messages_recursive()
     }
 

@@ -1047,7 +1047,7 @@ fn is_time_safe_to_show(
     timeline: &re_data_store::Timeline,
     time: TimeReal,
 ) -> bool {
-    if entity_db.num_timeless_messages() == 0 {
+    if entity_db.num_static_messages() == 0 {
         return true; // no timeless messages, no problem
     }
 
@@ -1092,7 +1092,6 @@ fn initialize_time_ranges_ui(
 ) -> TimeRangesUi {
     re_tracing::profile_function!();
 
-    // If there's any timeless data, add the "beginning range" that contains timeless data.
     let mut time_range = Vec::new();
 
     if let Some(times) = entity_db.time_histogram(time_ctrl.timeline()) {

@@ -16,7 +16,7 @@ pub struct TimeHistogramPerTimeline {
     /// When do we have data? Ignores timeless.
     times: BTreeMap<Timeline, TimeHistogram>,
 
-    /// Extra bookkeeping used to seed any timelines that include timeless msgs.
+    /// Extra bookkeeping used to seed any timelines that include static msgs.
     num_static_messages: u64,
 }
 
@@ -56,8 +56,8 @@ impl TimeHistogramPerTimeline {
         self.num_static_messages
     }
 
-    /// Total number of (non-static) message over all timelines.
-    pub fn num_timeline_messages(&self) -> u64 {
+    /// Total number of temporal messages over all timelines.
+    pub fn num_temporal_messages(&self) -> u64 {
         self.times.values().map(|hist| hist.total_count()).sum()
     }
 

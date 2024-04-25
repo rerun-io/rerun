@@ -52,10 +52,10 @@ impl DataUi for EntityLatestAtResults {
             UiVerbosity::LimitHeight | UiVerbosity::Full => num_instances,
         };
 
-        // Display log time and additional diagnostic information for static components.
+        // Display data time and additional diagnostic information for static components.
         if verbosity != UiVerbosity::Small {
             ui.label(format!(
-                "Timestamp: {}",
+                "Data time: {}",
                 query
                     .timeline()
                     .typ()
@@ -72,7 +72,7 @@ impl DataUi for EntityLatestAtResults {
                     if histogram.num_static_messages() > 1 {
                         ui.label(ctx.re_ui.warning_text(format!(
                             "Static component value was overridden {} times",
-                            histogram.num_static_messages() - 1,
+                            histogram.num_static_messages().saturating_sub(1),
                         )))
                         .on_hover_text(
                             "When a static component is logged multiple times, only the last value \
@@ -81,7 +81,7 @@ impl DataUi for EntityLatestAtResults {
                         );
                     }
 
-                    let timeline_message_count = histogram.num_timeline_messages();
+                    let timeline_message_count = histogram.num_temporal_messages();
                     if timeline_message_count > 0 {
                         ui.label(ctx.re_ui.error_text(format!(
                             "Static component has {} event{} logged on timelines",
