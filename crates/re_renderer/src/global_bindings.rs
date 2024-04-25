@@ -33,7 +33,7 @@ pub struct FrameUniformBuffer {
 
     /// How many pixels there are per point.
     /// I.e. the UI zoom factor
-    pub pixels_from_point: f32,
+    pub pixels_per_point: f32,
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection

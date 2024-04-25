@@ -6257,6 +6257,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_pinhole_projection"
+version = "0.16.0-alpha.2"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "re_log",
+ "rerun",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"

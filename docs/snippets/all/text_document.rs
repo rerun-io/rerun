@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "markdown",
-        &rerun::TextDocument::new(
+        &rerun::TextDocument::from_markdown(
             r#"
 # Hello Markdown!
 [Click here to see the raw text](recording://markdown:Text).
@@ -47,7 +47,6 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 ![A random image](https://picsum.photos/640/480)
 "#.trim(),
         )
-        .with_media_type(rerun::MediaType::markdown()),
     )?;
 
     Ok(())

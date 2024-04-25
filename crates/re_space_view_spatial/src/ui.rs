@@ -105,6 +105,7 @@ impl SpatialSpaceViewState {
                 ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
             }
         });
+        ui.end_row();
     }
 
     pub fn default_size_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
@@ -247,7 +248,7 @@ fn size_ui(
 
 pub fn create_labels(
     mut labels: Vec<UiLabel>,
-    ui_from_canvas: egui::emath::RectTransform,
+    ui_from_scene: egui::emath::RectTransform,
     eye3d: &Eye,
     parent_ui: &egui::Ui,
     highlights: &SpaceViewHighlights,
@@ -255,7 +256,7 @@ pub fn create_labels(
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_canvas.to());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     // Closest last (painters algorithm)
     labels.sort_by_key(|label| {
@@ -276,7 +277,7 @@ pub fn create_labels(
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
-                let rect_in_ui = ui_from_canvas.transform_rect(rect);
+                let rect_in_ui = ui_from_scene.transform_rect(rect);
                 (
                     // Place the text centered below the rect
                     (rect_in_ui.width() - 4.0).at_least(60.0),
@@ -288,7 +289,7 @@ pub fn create_labels(
                 if spatial_kind == SpatialSpaceViewKind::ThreeD {
                     continue;
                 }
-                let pos_in_ui = ui_from_canvas.transform_pos(pos);
+                let pos_in_ui = ui_from_scene.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui + egui::vec2(0.0, 3.0))
             }
             UiLabelTarget::Position3D(pos) => {
@@ -352,7 +353,7 @@ pub fn create_labels(
         ));
 
         ui_rects.push(PickableUiRect {
-            rect: ui_from_canvas.inverse().transform_rect(bg_rect),
+            rect: ui_from_scene.inverse().transform_rect(bg_rect),
             instance_hash: label.labeled_instance,
         });
     }

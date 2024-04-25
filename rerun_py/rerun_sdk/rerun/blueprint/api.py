@@ -12,7 +12,7 @@ from ..memory import MemoryRecording
 from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
-from .components import ColumnShareArrayLike, RowShareArrayLike
+from .components import ColumnShareArrayLike, RowShareArrayLike, VisibleLike
 from .components.container_kind import ContainerKindLike
 
 SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
@@ -42,6 +42,7 @@ class SpaceView:
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
         name: Utf8Like | None,
+        visible: VisibleLike | None = None,
         properties: dict[str, AsComponents] = {},
     ):
         """
@@ -60,6 +61,10 @@ class SpaceView:
         contents
             The contents of the space view specified as a query expression. This is either a single expression,
             or a list of multiple expressions. See [rerun.blueprint.archetypes.SpaceViewContents][].
+        visible:
+            Whether this space view is visible.
+
+            Defaults to true if not specified.
         properties
             Dictionary of property archetypes to add to space view's internal hierarchy.
 
@@ -69,6 +74,7 @@ class SpaceView:
         self.name = name
         self.origin = origin
         self.contents = contents
+        self.visible = visible
         self.properties = properties
 
     def blueprint_path(self) -> str:
@@ -105,6 +111,7 @@ class SpaceView:
             class_identifier=self.class_identifier,
             display_name=self.name,
             space_origin=self.origin,
+            visible=self.visible,
         )
 
         stream.log(self.blueprint_path(), arch, recording=stream)  # type: ignore[attr-defined]

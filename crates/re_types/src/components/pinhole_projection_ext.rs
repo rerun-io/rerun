@@ -17,6 +17,20 @@ impl PinholeProjection {
         ])
     }
 
+    /// Principal point of the pinhole camera,
+    /// i.e. the intersection of the optical axis and the image plane.
+    ///
+    /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)
+    #[cfg(feature = "glam")]
+    #[inline]
+    pub fn with_principal_point(mut self, principal_point: impl Into<Vec2D>) -> Self {
+        let pp = principal_point.into();
+        let col = 2;
+        self.0.set(0, col, pp.x());
+        self.0.set(1, col, pp.y());
+        self
+    }
+
     /// X & Y focal length in pixels.
     ///
     /// [see definition of intrinsic matrix](https://en.wikipedia.org/wiki/Camera_resectioning#Intrinsic_parameters)

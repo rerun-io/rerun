@@ -61,7 +61,7 @@ impl RenderDepthClouds {
     fn draw_backprojected_point_cloud<FD, ID>(
         &mut self,
         re_ctx: &re_renderer::RenderContext,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
         frame_draw_data: FD,
@@ -122,7 +122,7 @@ impl RenderDepthClouds {
                     near_plane_distance: 0.01,
                     aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
                 },
-                pixels_from_point,
+                pixels_per_point,
                 ..Default::default()
             },
         );
@@ -146,7 +146,7 @@ impl RenderDepthClouds {
     fn draw_depth_cloud<FD, ID>(
         &mut self,
         re_ctx: &re_renderer::RenderContext,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
         frame_draw_data: FD,
@@ -202,7 +202,7 @@ impl RenderDepthClouds {
                     near_plane_distance: 0.01,
                     aspect_ratio: resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32,
                 },
-                pixels_from_point,
+                pixels_per_point,
                 ..Default::default()
             },
         );
@@ -265,7 +265,7 @@ impl framework::Example for RenderDepthClouds {
         re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         let Self {
             albedo,
@@ -329,7 +329,7 @@ impl framework::Example for RenderDepthClouds {
         vec![
             self.draw_backprojected_point_cloud(
                 re_ctx,
-                pixels_from_point,
+                pixels_per_point,
                 splits[0].resolution_in_pixel,
                 splits[0].target_location,
                 frame_draw_data.clone(),
@@ -337,7 +337,7 @@ impl framework::Example for RenderDepthClouds {
             ),
             self.draw_depth_cloud(
                 re_ctx,
-                pixels_from_point,
+                pixels_per_point,
                 splits[1].resolution_in_pixel,
                 splits[1].target_location,
                 frame_draw_data,

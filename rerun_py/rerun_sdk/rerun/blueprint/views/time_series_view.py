@@ -9,6 +9,7 @@ __all__ = ["TimeSeriesView"]
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes
+from .. import components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -21,6 +22,7 @@ class TimeSeriesView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
+        visible: blueprint_components.VisibleLike | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | None = None,
     ) -> None:
@@ -38,6 +40,10 @@ class TimeSeriesView(SpaceView):
             See [rerun.blueprint.archetypes.SpaceViewContents][].
         name:
             The display name of the view.
+        visible:
+            Whether this view is visible.
+
+            Defaults to true if not specified.
         axis_y:
             Configures the vertical axis of the plot.
         plot_legend:
@@ -57,5 +63,10 @@ class TimeSeriesView(SpaceView):
             properties["PlotLegend"] = plot_legend
 
         super().__init__(
-            class_identifier="TimeSeries", origin=origin, contents=contents, name=name, properties=properties
+            class_identifier="TimeSeries",
+            origin=origin,
+            contents=contents,
+            name=name,
+            visible=visible,
+            properties=properties,
         )

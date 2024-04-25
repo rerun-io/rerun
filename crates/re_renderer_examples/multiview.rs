@@ -306,7 +306,7 @@ impl Example for Multiview {
         re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
-        pixels_from_point: f32,
+        pixels_per_point: f32,
     ) -> Vec<framework::ViewDrawResult> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
@@ -373,7 +373,7 @@ impl Example for Multiview {
                         resolution_in_pixel: splits[$n].resolution_in_pixel,
                         view_from_world,
                         projection_from_view: projection_from_view.clone(),
-                        pixels_from_point,
+                        pixels_per_point,
                         ..Default::default()
                     },
                     skybox.clone(),

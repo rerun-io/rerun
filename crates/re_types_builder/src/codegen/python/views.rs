@@ -17,6 +17,7 @@ pub fn code_for_view(reporter: &Reporter, objects: &Objects, obj: &Object) -> St
 from .. import archetypes as blueprint_archetypes
 from .. import components as blueprint_components
 from ... import datatypes
+from ... import components
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
 from ..api import SpaceView, SpaceViewContentsLike
@@ -39,6 +40,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
     origin: EntityPathLike = "/",
     contents: SpaceViewContentsLike = "$origin/**",
     name: Utf8Like | None = None,
+    visible: blueprint_components.VisibleLike | None = None,
     "#
     .to_owned();
 
@@ -100,6 +102,13 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
                 .to_owned(),
         ),
         ("name", "The display name of the view.".to_owned()),
+        (
+            "visible",
+            "Whether this view is visible.
+
+Defaults to true if not specified."
+                .to_owned(),
+        ),
     ];
     for field in &obj.fields {
         let doc_content = field.docs.doc_lines_for_untagged_and("py");
@@ -165,7 +174,7 @@ See [rerun.blueprint.archetypes.SpaceViewContents][]."
     }
     code.push_indented(
         1,
-        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, properties=properties)"#),
+        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties)"#),
         1,
     );
 

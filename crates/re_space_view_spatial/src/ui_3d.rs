@@ -511,7 +511,7 @@ pub fn view_3d(
         },
         viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
-        pixels_from_point: ui.ctx().pixels_per_point(),
+        pixels_per_point: ui.ctx().pixels_per_point(),
         auto_size_config: state.auto_size_config(),
 
         outline_config: query

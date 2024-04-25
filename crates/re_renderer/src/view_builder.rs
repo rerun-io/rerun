@@ -69,7 +69,7 @@ pub type SharedViewBuilder = Arc<RwLock<Option<ViewBuilder>>>;
 
 /// Configures the camera placement in the orthographic frustum,
 /// as well as the coordinate system convention.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum OrthographicCameraMode {
     /// Puts the view space origin into the middle of the screen.
     ///
@@ -94,7 +94,7 @@ pub enum OrthographicCameraMode {
 }
 
 /// How we project from 3D to 2D.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Projection {
     /// Perspective camera looking along the negative z view space axis.
     Perspective {
@@ -122,6 +122,74 @@ pub enum Projection {
         /// Distance of the far plane to the camera.
         far_plane_distance: f32,
     },
+}
+
+impl Projection {
+    fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
+        match self {
+            Projection::Perspective {
+                vertical_fov,
+                near_plane_distance,
+                aspect_ratio,
+            } => {
+                // We use infinite reverse-z projection matrix
+                // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
+                // * no need to worry about far plane
+                glam::Mat4::perspective_infinite_reverse_rh(
+                    vertical_fov,
+                    aspect_ratio,
+                    near_plane_distance,
+                )
+            }
+            Projection::Orthographic {
+                camera_mode,
+                vertical_world_size,
+                far_plane_distance,
+            } => {
+                let aspect_ratio = resolution_in_pixel[0] as f32 / resolution_in_pixel[1] as f32;
+                let horizontal_world_size = vertical_world_size * aspect_ratio;
+
+                // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
+                match camera_mode {
+                    OrthographicCameraMode::NearPlaneCenter => glam::Mat4::orthographic_rh(
+                        -0.5 * horizontal_world_size,
+                        0.5 * horizontal_world_size,
+                        -0.5 * vertical_world_size,
+                        0.5 * vertical_world_size,
+                        far_plane_distance,
+                        0.0,
+                    ),
+                    OrthographicCameraMode::TopLeftCornerAndExtendZ => glam::Mat4::orthographic_rh(
+                        0.0,
+                        horizontal_world_size,
+                        vertical_world_size,
+                        0.0,
+                        far_plane_distance,
+                        -far_plane_distance,
+                    ),
+                }
+            }
+        }
+    }
+
+    fn tan_half_fov(&self) -> glam::Vec2 {
+        match self {
+            Projection::Perspective {
+                vertical_fov,
+                aspect_ratio,
+                ..
+            } => {
+                // Calculate ratio between screen size and screen distance.
+                // Great for getting directions from normalized device coordinates.
+                // (btw. this is the same as [1.0 / projection_from_view[0].x, 1.0 / projection_from_view[1].y])
+                glam::vec2(
+                    (vertical_fov * 0.5).tan() * aspect_ratio,
+                    (vertical_fov * 0.5).tan(),
+                )
+            }
+            Projection::Orthographic { .. } => glam::vec2(f32::MAX, f32::MAX), // Can't use infinity in shaders
+        }
+    }
 }
 
 /// How [`Size::AUTO`] is interpreted.
@@ -176,7 +244,7 @@ pub struct TargetConfiguration {
     /// I.e. the UI zoom factor.
     /// Note that this does not affect any of the camera & projection properties and is only used
     /// whenever point sizes were explicitly specified.
-    pub pixels_from_point: f32,
+    pub pixels_per_point: f32,
 
     /// How [`Size::AUTO`] is interpreted.
     pub auto_size_config: AutoSizeConfig,
@@ -196,7 +264,7 @@ impl Default for TargetConfiguration {
                 aspect_ratio: 1.0,
             },
             viewport_transformation: RectTransform::IDENTITY,
-            pixels_from_point: 1.0,
+            pixels_per_point: 1.0,
             auto_size_config: Default::default(),
             outline_config: None,
         }
@@ -314,89 +382,33 @@ impl ViewBuilder {
             },
         );
 
-        let (projection_from_view, tan_half_fov, pixel_world_size_from_camera_distance) =
-            match config.projection_from_view.clone() {
-                Projection::Perspective {
-                    vertical_fov,
-                    near_plane_distance,
-                    aspect_ratio,
-                } => {
-                    // We use infinite reverse-z projection matrix
-                    // * great precision both with floating point and integer: https://developer.nvidia.com/content/depth-precision-visualized
-                    // * no need to worry about far plane
-                    let projection_from_view = glam::Mat4::perspective_infinite_reverse_rh(
-                        vertical_fov,
-                        aspect_ratio,
-                        near_plane_distance,
-                    );
+        let projection_from_view = config
+            .projection_from_view
+            .projection_from_view(config.resolution_in_pixel);
 
-                    // Calculate ratio between screen size and screen distance.
-                    // Great for getting directions from normalized device coordinates.
-                    // (btw. this is the same as [1.0 / projection_from_view[0].x, 1.0 / projection_from_view[1].y])
-                    let tan_half_fov = glam::vec2(
-                        (vertical_fov * 0.5).tan() * aspect_ratio,
-                        (vertical_fov * 0.5).tan(),
-                    );
+        let tan_half_fov = config.projection_from_view.tan_half_fov();
 
-                    // Determine how wide a pixel is in world space at unit distance from the camera.
-                    //
-                    // derivation:
-                    // tan(FOV / 2) = (screen_in_world / 2) / distance
-                    // screen_in_world = tan(FOV / 2) * distance * 2
-                    //
-                    // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
-                    // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
-                    //                                              = tan(FOV / 2) * 2.0 / resolution
-                    let pixel_world_size_from_camera_distance =
-                        tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32;
-
-                    (
-                        projection_from_view,
-                        tan_half_fov,
-                        pixel_world_size_from_camera_distance,
-                    )
-                }
-                Projection::Orthographic {
-                    camera_mode,
-                    vertical_world_size,
-                    far_plane_distance,
-                } => {
-                    let aspect_ratio =
-                        config.resolution_in_pixel[0] as f32 / config.resolution_in_pixel[1] as f32;
-                    let horizontal_world_size = vertical_world_size * aspect_ratio;
-                    // Note that we inverse z (by swapping near and far plane) to be consistent with our perspective projection.
-                    let projection_from_view = match camera_mode {
-                        OrthographicCameraMode::NearPlaneCenter => glam::Mat4::orthographic_rh(
-                            -0.5 * horizontal_world_size,
-                            0.5 * horizontal_world_size,
-                            -0.5 * vertical_world_size,
-                            0.5 * vertical_world_size,
-                            far_plane_distance,
-                            0.0,
-                        ),
-                        OrthographicCameraMode::TopLeftCornerAndExtendZ => {
-                            glam::Mat4::orthographic_rh(
-                                0.0,
-                                horizontal_world_size,
-                                vertical_world_size,
-                                0.0,
-                                far_plane_distance,
-                                -far_plane_distance,
-                            )
-                        }
-                    };
-
-                    let tan_half_fov = glam::vec2(f32::MAX, f32::MAX);
-                    let pixel_world_size_from_camera_distance = vertical_world_size
-                        / config.resolution_in_pixel[0].max(config.resolution_in_pixel[1]) as f32;
-
-                    (
-                        projection_from_view,
-                        tan_half_fov,
-                        pixel_world_size_from_camera_distance,
-                    )
-                }
-            };
+        let pixel_world_size_from_camera_distance = match config.projection_from_view {
+            Projection::Perspective { .. } => {
+                // Determine how wide a pixel is in world space at unit distance from the camera.
+                //
+                // derivation:
+                // tan(FOV / 2) = (screen_in_world / 2) / distance
+                // screen_in_world = tan(FOV / 2) * distance * 2
+                //
+                // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
+                // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
+                //                                              = tan(FOV / 2) * 2.0 / resolution
+                tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32
+            }
+            Projection::Orthographic {
+                vertical_world_size,
+                ..
+            } => {
+                vertical_world_size
+                    / config.resolution_in_pixel[0].max(config.resolution_in_pixel[1]) as f32
+            }
+        };
 
         // Finally, apply a viewport transformation to the projection.
         let ndc_scale_and_translation = config
@@ -443,7 +455,7 @@ impl ViewBuilder {
             camera_forward,
             tan_half_fov: tan_half_fov.into(),
             pixel_world_size_from_camera_distance,
-            pixels_from_point: config.pixels_from_point,
+            pixels_per_point: config.pixels_per_point,
 
             auto_size_points: auto_size_points.0,
             auto_size_lines: auto_size_lines.0,

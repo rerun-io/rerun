@@ -24,6 +24,28 @@ impl Mat3x3 {
             _ => panic!("index out of bounds"),
         }
     }
+
+    /// Get a specific element.
+    // NOTE: row-col is the normal index order for matrices in mathematics.
+    #[inline]
+    pub fn get(&self, row: usize, col: usize) -> f32 {
+        assert!(
+            row < 3 && col < 3,
+            "Mat3x3 index out of bounds (row: {row}, col: {col})"
+        );
+        self.0[row + col * 3]
+    }
+
+    /// Set a specific element.
+    // NOTE: row-col is the normal index order for matrices in mathematics.
+    #[inline]
+    pub fn set(&mut self, row: usize, col: usize, value: f32) {
+        assert!(
+            row < 3 && col < 3,
+            "Mat3x3 index out of bounds (row: {row}, col: {col})"
+        );
+        self.0[row + col * 3] = value;
+    }
 }
 
 impl<Idx> std::ops::Index<Idx> for Mat3x3
@@ -32,6 +54,7 @@ where
 {
     type Output = Idx::Output;
 
+    /// Column-major order matrix coefficients.
     #[inline]
     fn index(&self, index: Idx) -> &Self::Output {
         &self.0[index]
