@@ -1,10 +1,6 @@
 //! Logs a `Tensor` archetype for roundtrip checks.
 
-use rerun::{
-    archetypes::TextDocument,
-    external::{re_log, re_types::components::MediaType},
-    RecordingStream,
-};
+use rerun::{archetypes::TextDocument, external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
