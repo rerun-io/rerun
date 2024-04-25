@@ -196,11 +196,11 @@ py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
+cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
   "cpp-prepare",
 ] }
 cpp-prepare-shared-libs = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=ON"
-cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
+cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --target ALL", depends_on = [
   "cpp-prepare-shared-libs",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
@@ -243,9 +243,10 @@ torch = ">=2.0.1"
 pip = ">=23"
 
 [feature.wheel-test.tasks]
-# In the wheel-test environment we want to use the wheel-installed `rerun` binary on the path.
-# This overrides the `rerun` task from the default env which otherwise executes via cargo.
-rerun = "rerun"
+# In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
+# However, since `rerun` is already its own task, we can't just `pixi run rerun`. This task lets us work
+# around that and executes `rerun` from the system shell within the context of the pixi environment.
+rerun-from-path = "rerun"
 
 # Run the Python tests.
 # Don't call this on CI - use `nox` to run tests on all supported Python versions instead.

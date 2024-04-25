@@ -29,7 +29,12 @@ impl CError {
             c.encode_utf8(&mut bytes);
 
             for byte in &bytes[..c.len_utf8()] {
-                message_c[bytes_next] = *byte as _;
+                // `c_char` is something different depending on platforms, and this is needed for
+                // when it's the same as `u8`.
+                #[allow(trivial_numeric_casts)]
+                {
+                    message_c[bytes_next] = *byte as _;
+                }
                 bytes_next += 1;
             }
         }

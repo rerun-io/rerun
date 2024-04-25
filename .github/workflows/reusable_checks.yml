@@ -84,9 +84,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.5.2
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.19.1
+          pixi-version: v0.20.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -101,9 +101,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.5.2
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.19.1
+          pixi-version: v0.20.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -153,9 +153,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.5.2
+      - uses: prefix-dev/setup-pixi@v0.6.0
         with:
-          pixi-version: v0.19.1
+          pixi-version: v0.20.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check
@@ -165,15 +165,10 @@ jobs:
   link-checker:
     name: Check links
     runs-on: ubuntu-latest
+    # do not fail entire workflow (e.g. nightly) if this is the only failing check
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-
-      - name: Restore link checker cache
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          key: cache-lychee-${{ github.sha }}
-          restore-keys: cache-lychee-
 
       # Check https://github.com/lycheeverse/lychee on how to run locally.
       - name: Link Checker
@@ -185,4 +180,4 @@ jobs:
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
-            --verbose --base . --cache --max-cache-age 1d . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+            --verbose --base . "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"

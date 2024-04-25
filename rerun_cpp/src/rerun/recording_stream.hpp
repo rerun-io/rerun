@@ -346,7 +346,7 @@ namespace rerun {
         [[deprecated("Use `log_static` instead")]] void log_timeless(
             std::string_view entity_path, const Ts&... archetypes_or_collections
         ) const {
-            return log_static(entity_path, true, archetypes_or_collections...);
+            return log_static(entity_path, archetypes_or_collections...);
         }
 
         /// Logs one or more archetype and/or component batches as static data.

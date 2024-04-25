@@ -178,3 +178,36 @@ add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
 add_subdirectory(docs/snippets)
+
+# ------------------------------------------------------------------------------
+# Setup an 'all_targets' target that depends on all targets in the project.
+#
+# CMake already has an `all` (lowercase!) target as the default,
+# but it does NOT work with Visual Studio and XCode.
+# See https://cmake.org/cmake/help/latest/guide/user-interaction/index.html#selecting-a-target
+
+# Collect all currently added targets in all subdirectories
+#
+# Via: https://stackoverflow.com/a/60232044
+#
+# Parameters:
+# - _result the list containing all found targets
+# - _dir root directory to start looking from
+function(get_all_targets _result _dir)
+    get_property(_subdirs DIRECTORY "${_dir}" PROPERTY SUBDIRECTORIES)
+
+    foreach(_subdir IN LISTS _subdirs)
+        get_all_targets(${_result} "${_subdir}")
+    endforeach()
+
+    get_directory_property(_sub_targets DIRECTORY "${_dir}" BUILDSYSTEM_TARGETS)
+    set(${_result} ${${_result}} ${_sub_targets} PARENT_SCOPE)
+endfunction()
+
+get_all_targets(all_targets ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_target(ALL DEPENDS ${all_targets})
+
+foreach(target IN LISTS all_targets_list)
+    add_dependencies(ALL ${target})
+endforeach()

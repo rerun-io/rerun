@@ -37,10 +37,10 @@ For example:
 ```python
 my_blueprint = rrb.Blueprint(
     rrb.Horizontal(
-        rrb.SpaceView(rrb.BarChartView()),
+        rrb.BarChartView(),
         rrb.Vertical(
-            rrb.SpaceView(rrb.Spatial2DView()),
-            rrb.SpaceView(rrb.Spatial3DView()),
+            rrb.Spatial2DView(),
+            rrb.Spatial3DView(),
         ),
     ),
 )
