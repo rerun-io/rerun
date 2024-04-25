@@ -265,6 +265,11 @@ pub fn view_2d(
         view_builder.queue_draw(draw_data);
     }
 
+    let (background_drawable, clear_color) = crate::configure_background(ctx, query);
+    if let Some(background_drawable) = background_drawable {
+        view_builder.queue_draw(background_drawable);
+    }
+
     // ------------------------------------------------------------------------
 
     if let Some(mode) = screenshot_context_menu(ctx, &response) {
@@ -278,7 +283,7 @@ pub fn view_2d(
     painter.add(gpu_bridge::new_renderer_callback(
         view_builder,
         painter.clip_rect(),
-        ui.visuals().extreme_bg_color.into(),
+        clear_color,
     ));
 
     // Make sure to _first_ draw the selected, and *then* the hovered context on top!
