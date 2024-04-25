@@ -11,18 +11,6 @@ from rerun import Box2DFormat
 
 from .turbo import turbo_colormap_data
 
-__all__ = [
-    "ColorGrid",
-    "build_color_grid",
-    "color_grid",
-    "RectPyramid",
-    "build_rect_pyramid",
-    "rect_pyramid",
-    "ColorSpiral",
-    "build_color_spiral",
-    "color_spiral",
-]
-
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
 
