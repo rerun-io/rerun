@@ -824,6 +824,7 @@ pub fn background_ui(
                 egui::color_picker::Alpha::Opaque,
             );
             if edit_color != current_color {
+                ctx.save_blueprint_component(&blueprint_path, &BackgroundKind::SolidColor);
                 ctx.save_blueprint_component(&blueprint_path, &Color::from(edit_color));
             }
         }
