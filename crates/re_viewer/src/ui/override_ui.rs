@@ -5,12 +5,9 @@ use itertools::Itertools;
 use re_data_store::LatestAtQuery;
 use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
-use re_log_types::{DataCell, DataRow, RowId, StoreKind};
+use re_log_types::{DataRow, RowId, StoreKind};
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
-use re_types_core::{
-    components::{InstanceKey, VisualizerOverrides},
-    ComponentName,
-};
+use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiVerbosity,
     ViewSystemIdentifier, ViewerContext,
@@ -24,7 +21,7 @@ pub fn override_ui(
 ) {
     let InstancePath {
         entity_path,
-        instance_key,
+        instance,
     } = instance_path;
 
     // Because of how overrides are implemented the overridden-data must be an entity
@@ -173,7 +170,7 @@ pub fn override_ui(
                                 path,
                                 &overrides.individual_override_path,
                                 &results,
-                                instance_key,
+                                instance,
                             );
                         } else {
                             // TODO(jleibs): Is it possible to set an override to empty and not confuse
@@ -239,20 +236,10 @@ pub fn add_new_override(
 
                         let components = [*component];
 
-                        let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
-                        splat_cell.compute_size_bytes();
-
                         let Some(mut initial_data) = db
                             .store()
                             .latest_at(query, &data_result.entity_path, *component, &components)
                             .and_then(|result| result.2[0].clone())
-                            .and_then(|cell| {
-                                if cell.num_instances() == 1 {
-                                    Some(cell)
-                                } else {
-                                    None
-                                }
-                            })
                             .or_else(|| {
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
                                     sys.initial_override_value(
@@ -284,8 +271,7 @@ pub fn add_new_override(
                             RowId::new(),
                             ctx.store_context.blueprint_timepoint_for_writes(),
                             override_path.clone(),
-                            1,
-                            [splat_cell, initial_data],
+                            [initial_data],
                         ) {
                             Ok(row) => {
                                 ctx.command_sender
@@ -325,7 +311,7 @@ pub fn override_visualizer_ui(
     ui.push_id("visualizer_overrides", |ui| {
         let InstancePath {
             entity_path,
-            instance_key: _,
+            instance: _,
         } = instance_path;
 
         let recording = ctx.recording();

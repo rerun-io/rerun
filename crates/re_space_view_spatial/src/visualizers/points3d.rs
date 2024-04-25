@@ -1,11 +1,12 @@
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points3D,
-    components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
+    components::{ClassId, Color, KeypointId, Position3D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -79,7 +80,7 @@ impl Points3DVisualizer {
                         target: UiLabelTarget::Position3D(world_from_obj.transform_point3(*point)),
                         labeled_instance: InstancePathHash::instance(
                             entity_path,
-                            InstanceKey(i as _),
+                            Instance::from(i as u64),
                         ),
                     }),
                     _ => None,
@@ -133,8 +134,9 @@ impl Points3DVisualizer {
                 // Determine if there's any sub-ranges that need extra highlighting.
                 {
                     for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                        let highlighted_point_index =
-                            (highlighted_key.0 < num_instances as u64).then_some(highlighted_key.0);
+                        let highlighted_point_index = (highlighted_key.get()
+                            < num_instances as u64)
+                            .then_some(highlighted_key.get());
                         if let Some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(

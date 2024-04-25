@@ -1,12 +1,8 @@
 use re_viewer::external::{
     egui,
-    re_log_types::EntityPath,
+    re_log_types::{EntityPath, Instance},
     re_query, re_renderer,
-    re_types::{
-        self,
-        components::{Color, InstanceKey},
-        ComponentName, Loggable as _,
-    },
+    re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
         IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
         ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
@@ -16,12 +12,12 @@ use re_viewer::external::{
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct InstanceColorSystem {
-    pub colors: Vec<(EntityPath, Vec<ColorWithInstanceKey>)>,
+    pub colors: Vec<(EntityPath, Vec<ColorWithInstance>)>,
 }
 
-pub struct ColorWithInstanceKey {
+pub struct ColorWithInstance {
     pub color: egui::Color32,
-    pub instance_key: InstanceKey,
+    pub instance: Instance,
 }
 
 struct ColorArchetype;
@@ -90,11 +86,11 @@ impl VisualizerSystem for InstanceColorSystem {
                 data_result.entity_path.clone(),
                 (0..)
                     .zip(colors)
-                    .map(|(instance_key, color)| {
+                    .map(|(instance, color)| {
                         let [r, g, b, _] = color.to_array();
-                        ColorWithInstanceKey {
+                        ColorWithInstance {
                             color: egui::Color32::from_rgb(r, g, b),
-                            instance_key: instance_key.into(),
+                            instance: instance.into(),
                         }
                     })
                     .collect(),

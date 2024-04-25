@@ -108,11 +108,6 @@ namespace rerun::archetypes {
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 0;
-        }
     };
 
 } // namespace rerun::archetypes

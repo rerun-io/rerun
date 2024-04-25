@@ -90,11 +90,6 @@ namespace rerun::archetypes {
         Tensor(Tensor&& other) = default;
 
         explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes

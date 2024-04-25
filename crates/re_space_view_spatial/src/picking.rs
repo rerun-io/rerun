@@ -2,8 +2,8 @@
 
 use ahash::HashSet;
 use re_entity_db::InstancePathHash;
+use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
-use re_types::components::InstanceKey;
 
 use crate::visualizers::ViewerImage;
 use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
@@ -269,7 +269,7 @@ fn picking_textured_rects(context: &PickingContext, images: &[ViewerImage]) -> V
             hits.push(PickingRayHit {
                 instance_path_hash: InstancePathHash {
                     entity_path_hash: image.ent_path.hash(),
-                    instance_key: InstanceKey::from_2d_image_coordinate(
+                    instance: Instance::from_2d_image_coordinate(
                         [(u * width as f32) as u32, (v * height as f32) as u32],
                         width as u64,
                     ),

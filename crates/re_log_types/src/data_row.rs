@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use re_types_core::{AsComponents, ComponentName, SizeBytes};
 
-use crate::{DataCell, DataCellError, DataTable, EntityPath, NumInstances, TableId, TimePoint};
+use crate::{DataCell, DataCellError, DataTable, EntityPath, TableId, TimePoint};
 
 // ---
 
@@ -231,16 +231,15 @@ re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 ///
 /// ## Layout
 ///
-/// A row is a collection of cells where each cell must either be empty (a clear), unit-lengthed
-/// (a splat) or `num_instances` long (standard): `[[C1, C1, C1], [], [C3], [C4, C4, C4], …]`.
+/// A row is a collection of cells where each cell can have an arbitrary number of
+/// instances: `[[C1, C1, C1], [], [C3], [C4, C4, C4], …]`.
 ///
 /// Consider this example:
 /// ```ignore
-/// let num_instances = 2;
 /// let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 /// let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 /// let labels: &[MyLabel] = &[];
-/// let row = DataRow::from_cells3(row_id, timepoint, ent_path, num_instances, (points, colors, labels));
+/// let row = DataRow::from_cells3(row_id, timepoint, ent_path, (points, colors, labels));
 /// ```
 ///
 /// A row has no arrow representation nor datatype of its own, as it is merely a collection of
@@ -269,7 +268,6 @@ re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 /// #     (Timeline::new_sequence("clock"), 666),   //
 /// # ];
 /// #
-/// let num_instances = 2;
 /// let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0}, MyPoint { x: 20.0, y: 20.0 }];
 /// let colors: &[_] = &[MyColor(0xff7f7f7f)];
 /// let labels: &[MyLabel] = &[];
@@ -278,7 +276,6 @@ re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 ///     row_id,
 ///     "a/b/c",
 ///     timepoint,
-///     num_instances,
 ///     (points, colors, labels),
 /// ).unwrap();
 /// eprintln!("{row}");
@@ -296,14 +293,6 @@ pub struct DataRow {
 
     /// User-specified [`EntityPath`] for this event.
     pub entity_path: EntityPath,
-
-    /// The expected number of values (== component instances) in each cell.
-    ///
-    /// Each cell must have either:
-    /// - 0 instance (clear),
-    /// - 1 instance (splat),
-    /// - `num_instances` instances (standard).
-    pub num_instances: NumInstances,
 
     /// The actual cells (== columns, == components).
     pub cells: DataCellRow,
@@ -342,26 +331,18 @@ impl DataRow {
             .map(DataCell::from_component_batch)
             .collect::<Result<Vec<DataCell>, _>>()?;
 
-        // TODO(emilk): should `DataRow::from_cells` calculate `num_instances` instead?
-        let num_instances = data_cells.iter().map(|cell| cell.num_instances()).max();
-        let num_instances = num_instances.unwrap_or(0);
-
-        let mut row =
-            DataRow::from_cells(row_id, timepoint, entity_path, num_instances, data_cells)?;
+        let mut row = DataRow::from_cells(row_id, timepoint, entity_path, data_cells)?;
         row.compute_all_size_bytes();
         Ok(row)
     }
 
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
     ///
-    /// Fails if:
-    /// - one or more cell isn't 0, 1 or `num_instances` long,
-    /// - two or more cells share the same component type.
+    /// Fails if two or more cells share the same component type.
     pub fn from_cells(
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
         entity_path: impl Into<EntityPath>,
-        num_instances: u32,
         cells: impl IntoIterator<Item = DataCell>,
     ) -> DataReadResult<Self> {
         let cells = DataCellRow(cells.into_iter().collect());
@@ -385,7 +366,6 @@ impl DataRow {
             row_id,
             entity_path,
             timepoint,
-            num_instances: num_instances.into(),
             cells,
         })
     }
@@ -412,14 +392,12 @@ impl SizeBytes for DataRow {
             row_id,
             timepoint,
             entity_path,
-            num_instances,
             cells,
         } = self;
 
         row_id.heap_size_bytes()
             + timepoint.heap_size_bytes()
             + entity_path.heap_size_bytes()
-            + num_instances.heap_size_bytes()
             + cells.heap_size_bytes()
     }
 }
@@ -448,11 +426,6 @@ impl DataRow {
     #[inline]
     pub fn component_names(&self) -> impl ExactSizeIterator<Item = ComponentName> + '_ {
         self.cells.iter().map(|cell| cell.component_name())
-    }
-
-    #[inline]
-    pub fn num_instances(&self) -> NumInstances {
-        self.num_instances
     }
 
     #[inline]
@@ -501,7 +474,6 @@ impl DataRow {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
-        num_instances: u32,
         into_cells: C0,
     ) -> DataReadResult<DataRow>
     where
@@ -511,7 +483,6 @@ impl DataRow {
             row_id,
             timepoint.into(),
             entity_path.into(),
-            num_instances,
             [into_cells.into()],
         )?;
         this.compute_all_size_bytes();
@@ -522,7 +493,6 @@ impl DataRow {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
-        num_instances: u32,
         into_cells: C0,
     ) -> DataRowResult<DataRow>
     where
@@ -533,7 +503,6 @@ impl DataRow {
             row_id,
             timepoint.into(),
             entity_path.into(),
-            num_instances,
             [into_cells.try_into()?],
         )?)
     }
@@ -547,7 +516,6 @@ impl DataRow {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
-        num_instances: u32,
         into_cells: (C0, C1),
     ) -> DataRowResult<DataRow>
     where
@@ -558,7 +526,6 @@ impl DataRow {
             row_id,
             timepoint.into(),
             entity_path.into(),
-            num_instances,
             [
                 into_cells.0.into(), //
                 into_cells.1.into(), //
@@ -572,7 +539,6 @@ impl DataRow {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
-        num_instances: u32,
         into_cells: (C0, C1),
     ) -> DataRowResult<DataRow>
     where
@@ -585,7 +551,6 @@ impl DataRow {
             row_id,
             timepoint.into(),
             entity_path.into(),
-            num_instances,
             [
                 into_cells.0.try_into()?, //
                 into_cells.1.try_into()?, //
@@ -597,7 +562,6 @@ impl DataRow {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         timepoint: impl Into<TimePoint>,
-        num_instances: u32,
         into_cells: (C0, C1, C2),
     ) -> DataRowResult<DataRow>
     where
@@ -612,7 +576,6 @@ impl DataRow {
             row_id,
             timepoint.into(),
             entity_path.into(),
-            num_instances,
             [
                 into_cells.0.try_into()?, //
                 into_cells.1.try_into()?, //

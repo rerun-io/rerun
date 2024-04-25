@@ -11,7 +11,7 @@ use re_types_core::{ComponentName, Loggable, SizeBytes};
 
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    NumInstances, RowId, TimePoint, Timeline,
+    RowId, TimePoint, Timeline,
 };
 
 // ---
@@ -62,8 +62,6 @@ pub type TimePointVec = VecDeque<TimePoint>;
 pub type ErasedTimeVec = VecDeque<i64>;
 
 pub type EntityPathVec = VecDeque<EntityPath>;
-
-pub type NumInstancesVec = VecDeque<NumInstances>;
 
 pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 
@@ -229,8 +227,7 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// ## Layout
 ///
 /// A table is a collection of sparse rows, which are themselves collections of cells, where each
-/// cell must either be empty (a clear), unit-lengthed (a splat) or `num_instances` long
-/// (standard):
+/// cell can contain an arbitrary number of instances:
 /// ```text
 /// [
 ///   [[C1, C1, C1], [], [C3], [C4, C4, C4], …],
@@ -243,22 +240,19 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// Consider this example:
 /// ```ignore
 /// let row0 = {
-///     let num_instances = 2;
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::from_cells3(RowId::new(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
+///     DataRow::from_cells3(RowId::new(), "a", timepoint(1, 1), (points, colors, labels))?
 /// };
 /// let row1 = {
-///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors)?
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), colors)?
 /// };
 /// let row2 = {
-///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::from_cells2(RowId::new(), "c", timepoint(2, 1), num_instances, (colors, labels))?
+///     DataRow::from_cells2(RowId::new(), "c", timepoint(2, 1), (colors, labels))?
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -268,15 +262,15 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///
 /// The table above translates to the following, where each column is contiguous in memory:
 /// ```text
-/// ┌──────────┬───────────────────────────────┬──────────────────────────────────┬───────────────────┬─────────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
-/// │ frame_nr ┆ log_time                      ┆ rerun.row_id                     ┆ rerun.entity_path ┆ rerun.num_instances ┆  ┆ rerun.components.Point2D                    ┆ rerun.components.Color │
-/// ╞══════════╪═══════════════════════════════╪══════════════════════════════════╪═══════════════════╪═════════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
-/// │ 1        ┆ 2023-04-05 09:36:47.188796402 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ a                 ┆ 2                   ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
-/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 1        ┆ 2023-04-05 09:36:47.188852222 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ b                 ┆ 0                   ┆ -           ┆ -                                ┆ []              │
-/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-/// │ 2        ┆ 2023-04-05 09:36:47.188855872 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ c                 ┆ 1                   ┆ [hey]       ┆ -                                ┆ [4294967295]    │
-/// └──────────┴───────────────────────────────┴──────────────────────────────────┴───────────────────┴─────────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
+/// ┌──────────┬───────────────────────────────┬──────────────────────────────────┬───────────────────┬─────────────┬──────────────────────────────────┬─────────────────┐
+/// │ frame_nr ┆ log_time                      ┆ rerun.row_id                     ┆ rerun.entity_path ┆  ┆ rerun.components.Point2D                    ┆ rerun.components.Color │
+/// ╞══════════╪═══════════════════════════════╪══════════════════════════════════╪═══════════════════╪═════════════╪══════════════════════════════════╪═════════════════╡
+/// │ 1        ┆ 2023-04-05 09:36:47.188796402 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ a                 ┆ []          ┆ [{x: 10, y: 10}, {x: 20, y: 20}] ┆ [2155905279]    │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 1        ┆ 2023-04-05 09:36:47.188852222 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ b                 ┆ -           ┆ -                                ┆ []              │
+/// ├╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+/// │ 2        ┆ 2023-04-05 09:36:47.188855872 ┆ 1753004ACBF5D6E651F2983C3DAF260C ┆ c                 ┆ [hey]       ┆ -                                ┆ [4294967295]    │
+/// └──────────┴───────────────────────────────┴──────────────────────────────────┴───────────────────┴─────────────┴──────────────────────────────────┴─────────────────┘
 /// ```
 ///
 /// ## Example
@@ -297,7 +291,6 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// # };
 /// #
 /// let row0 = {
-///     let num_instances = 2;
 ///     let points: &[MyPoint] = &[MyPoint { x: 10.0, y: 10.0 }, MyPoint { x: 20.0, y: 20.0 }];
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[MyLabel] = &[];
@@ -306,20 +299,17 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///         RowId::new(),
 ///         "a",
 ///         timepoint(1, 1),
-///         num_instances,
 ///         (points, colors, labels),
 ///     ).unwrap()
 /// };
 ///
 /// let row1 = {
-///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors).unwrap()
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), colors).unwrap()
 /// };
 ///
 /// let row2 = {
-///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor(0xff7f7f7f)];
 ///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
@@ -327,7 +317,6 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///         RowId::new(),
 ///         "c",
 ///         timepoint(2, 1),
-///         num_instances,
 ///         (colors, labels),
 ///     ).unwrap()
 /// };
@@ -368,11 +357,6 @@ pub struct DataTable {
     /// The entity each row relates to, respectively.
     pub col_entity_path: EntityPathVec,
 
-    /// The entire column of `num_instances`.
-    ///
-    /// Keeps track of the expected number of instances in each row.
-    pub col_num_instances: NumInstancesVec,
-
     /// All the rows for all the component columns.
     ///
     /// The cells are optional since not all rows will have data for every single component
@@ -388,7 +372,6 @@ impl DataTable {
             col_row_id: Default::default(),
             col_timelines: Default::default(),
             col_entity_path: Default::default(),
-            col_num_instances: Default::default(),
             columns: Default::default(),
         }
     }
@@ -402,11 +385,10 @@ impl DataTable {
         // Explode all rows into columns, and keep track of which components are involved.
         let mut components = IntSet::default();
         #[allow(clippy::type_complexity)]
-        let (col_row_id, col_timepoint, col_entity_path, col_num_instances, column): (
+        let (col_row_id, col_timepoint, col_entity_path, column): (
             RowIdVec,
             TimePointVec,
             EntityPathVec,
-            NumInstancesVec,
             Vec<_>,
         ) = rows
             .map(|row| {
@@ -415,10 +397,9 @@ impl DataTable {
                     row_id,
                     timepoint,
                     entity_path,
-                    num_instances,
                     cells,
                 } = row;
-                (row_id, timepoint, entity_path, num_instances, cells)
+                (row_id, timepoint, entity_path, cells)
             })
             .multiunzip();
 
@@ -467,7 +448,6 @@ impl DataTable {
             col_row_id,
             col_timelines,
             col_entity_path,
-            col_num_instances,
             columns,
         }
     }
@@ -489,7 +469,6 @@ impl DataTable {
             col_row_id,
             col_timelines,
             col_entity_path,
-            col_num_instances,
             columns,
         } = self;
 
@@ -509,7 +488,6 @@ impl DataTable {
                         .collect::<BTreeMap<_, _>>(),
                 ),
                 col_entity_path[i].clone(),
-                col_num_instances[i].into(),
                 cells,
             )
         })
@@ -557,7 +535,6 @@ impl SizeBytes for DataTable {
             col_row_id,
             col_timelines,
             col_entity_path,
-            col_num_instances,
             columns,
         } = self;
 
@@ -565,7 +542,6 @@ impl SizeBytes for DataTable {
             + col_row_id.heap_size_bytes()
             + col_timelines.heap_size_bytes()
             + col_entity_path.heap_size_bytes()
-            + col_num_instances.heap_size_bytes()
             + columns.heap_size_bytes()
     }
 }
@@ -651,7 +627,6 @@ impl DataTable {
             col_row_id: _,
             col_timelines,
             col_entity_path: _,
-            col_num_instances: _,
             columns: _,
         } = self;
 
@@ -680,7 +655,6 @@ impl DataTable {
             col_row_id,
             col_timelines: _,
             col_entity_path,
-            col_num_instances,
             columns: _,
         } = self;
 
@@ -695,11 +669,6 @@ impl DataTable {
             Self::serialize_control_column(col_entity_path)?;
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
-
-        let (num_instances_field, num_instances_column) =
-            Self::serialize_control_column(col_num_instances)?;
-        schema.fields.push(num_instances_field);
-        columns.push(num_instances_column);
 
         schema.metadata = [(TableId::name().to_string(), table_id.to_string())].into();
 
@@ -768,7 +737,6 @@ impl DataTable {
             col_row_id: _,
             col_timelines: _,
             col_entity_path: _,
-            col_num_instances: _,
             columns: table,
         } = self;
 
@@ -957,12 +925,6 @@ impl DataTable {
                 .unwrap()
                 .as_ref(),
         )?;
-        let col_num_instances = NumInstances::from_arrow(
-            chunk
-                .get(control_index(NumInstances::name().as_str())?)
-                .unwrap()
-                .as_ref(),
-        )?;
 
         // --- Components ---
 
@@ -993,7 +955,6 @@ impl DataTable {
             col_row_id: col_row_id.into(),
             col_timelines,
             col_entity_path: col_entity_path.into(),
-            col_num_instances: col_num_instances.into(),
             columns,
         })
     }
@@ -1160,14 +1121,12 @@ impl DataTable {
                     row_id: _,
                     timepoint: timepoint1,
                     entity_path: entity_path1,
-                    num_instances: num_instances1,
                     cells: ref cells1,
                 } = row1;
                 let DataRow {
                     row_id: _,
                     timepoint: timepoint2,
                     entity_path: entity_path2,
-                    num_instances: num_instances2,
                     cells: ref cells2,
                 } = row2;
 
@@ -1244,7 +1203,6 @@ impl DataTable {
                                 RowId::ZERO,
                                 "cell",
                                 TimePoint::default(),
-                                cell.num_instances(),
                                 cell,
                             )
                             .unwrap();
@@ -1286,10 +1244,7 @@ impl DataTable {
                 }
 
                 anyhow::ensure!(
-                    timepoint1 == timepoint2
-                        && entity_path1 == entity_path2
-                        && num_instances1 == num_instances2
-                        && cells1 == cells2,
+                    timepoint1 == timepoint2 && entity_path1 == entity_path2 && cells1 == cells2,
                     "Found discrepancy in row #{ri}:\n{}\n{}\
                     \n\nrow1:\n{row1}
                     \n\nrow2:\n{row2}",
@@ -1334,41 +1289,25 @@ impl DataTable {
         };
 
         let row0 = {
-            let num_instances = 2;
             let positions: &[MyPoint] = &[MyPoint::new(10.0, 10.0), MyPoint::new(20.0, 20.0)];
             let colors: &[_] = &[MyColor(0x8080_80FF)];
             let labels: &[MyLabel] = &[];
 
-            DataRow::from_cells3(
-                RowId::new(),
-                "a",
-                timepoint(1),
-                num_instances,
-                (positions, colors, labels),
-            )
-            .unwrap()
+            DataRow::from_cells3(RowId::new(), "a", timepoint(1), (positions, colors, labels))
+                .unwrap()
         };
 
         let row1 = {
-            let num_instances = 0;
             let colors: &[MyColor] = &[];
 
-            DataRow::from_cells1(RowId::new(), "b", timepoint(1), num_instances, colors).unwrap()
+            DataRow::from_cells1(RowId::new(), "b", timepoint(1), colors).unwrap()
         };
 
         let row2 = {
-            let num_instances = 1;
             let colors: &[_] = &[MyColor(0xFFFF_FFFF)];
             let labels: &[_] = &[MyLabel("hey".into())];
 
-            DataRow::from_cells2(
-                RowId::new(),
-                "c",
-                timepoint(2),
-                num_instances,
-                (colors, labels),
-            )
-            .unwrap()
+            DataRow::from_cells2(RowId::new(), "c", timepoint(2), (colors, labels)).unwrap()
         };
 
         let mut table = DataTable::from_rows(table_id, [row0, row1, row2]);

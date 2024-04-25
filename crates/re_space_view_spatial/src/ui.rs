@@ -4,11 +4,12 @@ use macaw::BoundingBox;
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline};
 use re_format::format_f32;
+use re_log_types::Instance;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::{
     blueprint::archetypes::Background,
-    components::{Color, DepthMeter, InstanceKey, TensorData, ViewCoordinates},
+    components::{Color, DepthMeter, TensorData, ViewCoordinates},
 };
 use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
@@ -338,7 +339,7 @@ pub fn create_labels(
 
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
-            .index_highlight(label.labeled_instance.instance_key);
+            .index_highlight(label.labeled_instance.instance);
         let fill_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
                 SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
@@ -484,7 +485,7 @@ pub fn picking(
 
         if response.double_clicked() {
             // Select entire entity on double-click:
-            instance_path.instance_key = InstanceKey::SPLAT;
+            instance_path.instance = Instance::ALL;
         }
 
         let interactive = ctx
@@ -525,10 +526,8 @@ pub fn picking(
                     } else {
                         let tensor_path_hash = hit.instance_path_hash.versioned(tensor.row_id());
                         tensor.image_height_width_channels().map(|[_, w, _]| {
-                            let coordinates = hit
-                                .instance_path_hash
-                                .instance_key
-                                .to_2d_image_coordinate(w);
+                            let coordinates =
+                                hit.instance_path_hash.instance.to_2d_image_coordinate(w);
                             (tensor_path_hash, tensor, meaning, coordinates)
                         })
                     }
@@ -538,7 +537,7 @@ pub fn picking(
         };
         if picked_image_with_coords.is_some() {
             // We don't support selecting pixels yet.
-            instance_path.instance_key = InstanceKey::SPLAT;
+            instance_path.instance = Instance::ALL;
         }
 
         hovered_items.push(Item::DataResult(query.space_view_id, instance_path.clone()));

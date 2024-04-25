@@ -12,6 +12,6 @@ impl DataUi for re_entity_db::EntityPath {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        InstancePath::entity_splat(self.clone()).data_ui(ctx, ui, verbosity, query, db);
+        InstancePath::entity_all(self.clone()).data_ui(ctx, ui, verbosity, query, db);
     }
 }

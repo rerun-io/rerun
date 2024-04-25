@@ -1,9 +1,8 @@
 use nohash_hasher::IntMap;
 
 use re_entity_db::InstancePath;
-use re_log_types::EntityPathHash;
+use re_log_types::{EntityPathHash, Instance};
 use re_renderer::OutlineMaskPreference;
-use re_types::components::InstanceKey;
 
 use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
@@ -13,15 +12,14 @@ use crate::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 #[derive(Default)]
 pub struct SpaceViewEntityHighlight {
     overall: InteractionHighlight,
-    instances: ahash::HashMap<InstanceKey, InteractionHighlight>,
+    instances: ahash::HashMap<Instance, InteractionHighlight>,
 }
 
 impl SpaceViewEntityHighlight {
     /// Adds a new highlight to the entity highlight, combining it with existing highlights.
     #[inline]
     pub fn add(&mut self, instance: &InstancePath, highlight: InteractionHighlight) {
-        let highlight_target = if let Some(selected_index) = instance.instance_key.specific_index()
-        {
+        let highlight_target = if let Some(selected_index) = instance.instance.specific_index() {
             self.instances.entry(selected_index).or_default()
         } else {
             &mut self.overall
@@ -59,11 +57,11 @@ pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighli
 
 impl<'a> OptionalSpaceViewEntityHighlight<'a> {
     #[inline]
-    pub fn index_highlight(&self, instance_key: InstanceKey) -> InteractionHighlight {
+    pub fn index_highlight(&self, instance: Instance) -> InteractionHighlight {
         match self.0 {
             Some(entity_highlight) => entity_highlight
                 .instances
-                .get(&instance_key)
+                .get(&instance)
                 .copied()
                 .unwrap_or_default()
                 .max(entity_highlight.overall),
@@ -75,13 +73,13 @@ impl<'a> OptionalSpaceViewEntityHighlight<'a> {
 #[derive(Default)]
 pub struct SpaceViewOutlineMasks {
     pub overall: OutlineMaskPreference,
-    pub instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
+    pub instances: ahash::HashMap<Instance, OutlineMaskPreference>,
 }
 
 impl SpaceViewOutlineMasks {
-    pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
+    pub fn index_outline_mask(&self, instance: Instance) -> OutlineMaskPreference {
         self.instances
-            .get(&instance_key)
+            .get(&instance)
             .copied()
             .unwrap_or_default()
             .with_fallback_to(self.overall)
@@ -89,12 +87,11 @@ impl SpaceViewOutlineMasks {
 
     /// Add a new outline mask to this entity path, combining it with existing masks.
     pub fn add(&mut self, instance: &InstancePath, preference: OutlineMaskPreference) {
-        let outline_mask_target =
-            if let Some(selected_index) = instance.instance_key.specific_index() {
-                self.instances.entry(selected_index).or_default()
-            } else {
-                &mut self.overall
-            };
+        let outline_mask_target = if let Some(selected_index) = instance.instance.specific_index() {
+            self.instances.entry(selected_index).or_default()
+        } else {
+            &mut self.overall
+        };
         *outline_mask_target = preference.with_fallback_to(*outline_mask_target);
     }
 }

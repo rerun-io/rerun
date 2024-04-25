@@ -1,11 +1,10 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x7;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes3D,
-    components::{
-        ClassId, Color, HalfSizes3D, InstanceKey, KeypointId, Position3D, Radius, Rotation3D, Text,
-    },
+    components::{ClassId, Color, HalfSizes3D, KeypointId, Position3D, Radius, Rotation3D, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -61,7 +60,10 @@ impl Boxes3DVisualizer {
                     target: UiLabelTarget::Position3D(
                         world_from_entity.transform_point3(center.0.into()),
                     ),
-                    labeled_instance: InstancePathHash::instance(entity_path, InstanceKey(i as _)),
+                    labeled_instance: InstancePathHash::instance(
+                        entity_path,
+                        Instance::from(i as u64),
+                    ),
                 })
             })
     }
@@ -137,8 +139,10 @@ impl Boxes3DVisualizer {
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
-                if let Some(outline_mask_ids) =
-                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
                 {
                     box3d.outline_mask_ids(*outline_mask_ids);
                 }

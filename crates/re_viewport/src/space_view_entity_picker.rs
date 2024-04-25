@@ -179,7 +179,7 @@ fn add_entities_line_ui(
                 ctx.recording(),
                 ui,
                 Some(space_view.id),
-                &InstancePath::entity_splat(entity_path.clone()),
+                &InstancePath::entity_all(entity_path.clone()),
                 widget_text,
             );
             if query_result.contains_entity(entity_path) {

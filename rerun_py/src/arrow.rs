@@ -68,15 +68,8 @@ pub fn build_data_row_from_components(
         .map(|(value, field)| DataCell::from_arrow(field.name.into(), value))
         .collect_vec();
 
-    let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
-    let row = DataRow::from_cells(
-        row_id,
-        time_point.clone(),
-        entity_path.clone(),
-        num_instances,
-        cells,
-    )
-    .map_err(|err| PyValueError::new_err(err.to_string()))?;
+    let row = DataRow::from_cells(row_id, time_point.clone(), entity_path.clone(), cells)
+        .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
     Ok(row)
 }

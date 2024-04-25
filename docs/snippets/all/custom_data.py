@@ -52,7 +52,7 @@ def log_custom_data() -> None:
         "left/my_confident_point_cloud",
         CustomPoints3D(
             points3d=point_grid,
-            confidences=[42],  # splat
+            confidences=[42],
         ),
     )
 

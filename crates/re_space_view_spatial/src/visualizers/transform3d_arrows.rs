@@ -1,6 +1,6 @@
 use egui::Color32;
-use re_log_types::EntityPath;
-use re_types::components::{InstanceKey, Transform3D};
+use re_log_types::{EntityPath, Instance};
+use re_types::components::Transform3D;
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
@@ -137,7 +137,7 @@ pub fn add_axis_arrows(
         .picking_object_id(re_renderer::PickingLayerObjectId(
             ent_path.map_or(0, |p| p.hash64()),
         ));
-    let picking_instance_id = re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0);
+    let picking_instance_id = re_renderer::PickingLayerInstanceId(Instance::ALL.get());
 
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)

@@ -1,9 +1,10 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x6;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes2D,
-    components::{ClassId, Color, HalfSizes2D, InstanceKey, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, HalfSizes2D, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -71,7 +72,7 @@ impl Boxes2DVisualizer {
                                 )),
                                 labeled_instance: InstancePathHash::instance(
                                     entity_path,
-                                    InstanceKey(i as _),
+                                    Instance::from(i as u64),
                                 ),
                             })
                         }
@@ -148,8 +149,10 @@ impl Boxes2DVisualizer {
                     .color(color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
-                if let Some(outline_mask_ids) =
-                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
                 {
                     rectangle.outline_mask_ids(*outline_mask_ids);
                 }

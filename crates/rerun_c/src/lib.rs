@@ -166,7 +166,6 @@ pub struct CDataCell {
 #[repr(C)]
 pub struct CDataRow {
     pub entity_path: CStringView,
-    pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *mut CDataCell,
 }
@@ -631,7 +630,6 @@ fn rr_log_impl(
 
     let CDataRow {
         entity_path,
-        num_instances,
         num_data_cells,
         data_cells,
     } = data_row;
@@ -640,9 +638,7 @@ fn rr_log_impl(
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     let num_data_cells = num_data_cells as usize;
-    re_log::debug!(
-        "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
-    );
+    re_log::debug!("rerun_log {entity_path:?}, num_data_cells: {num_data_cells}");
 
     let mut cells = re_log_types::DataCellVec::default();
     cells.reserve(num_data_cells);
@@ -700,7 +696,6 @@ fn rr_log_impl(
         row_id,
         TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
-        num_instances,
         cells,
     )
     .map_err(|err| {
