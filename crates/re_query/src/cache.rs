@@ -226,7 +226,7 @@ impl StoreSubscriber for Caches {
         // running while we're updating the invalidation flags.
 
         {
-            re_tracing::profile_scope!("timeless");
+            re_tracing::profile_scope!("static");
 
             // TODO(cmc): This is horribly stupid and slow and can easily be made faster by adding
             // yet another layer of caching indirection.
