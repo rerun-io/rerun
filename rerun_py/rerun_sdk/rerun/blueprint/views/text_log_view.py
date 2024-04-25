@@ -8,6 +8,7 @@ __all__ = ["TextLogView"]
 
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
+from .. import components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -20,6 +21,7 @@ class TextLogView(SpaceView):
         origin: EntityPathLike = "/",
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
+        visible: blueprint_components.VisibleLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TextLogView view.
@@ -35,8 +37,19 @@ class TextLogView(SpaceView):
             See [rerun.blueprint.archetypes.SpaceViewContents][].
         name:
             The display name of the view.
+        visible:
+            Whether this view is visible.
+
+            Defaults to true if not specified.
 
         """
 
         properties: dict[str, AsComponents] = {}
-        super().__init__(class_identifier="TextLog", origin=origin, contents=contents, name=name, properties=properties)
+        super().__init__(
+            class_identifier="TextLog",
+            origin=origin,
+            contents=contents,
+            name=name,
+            visible=visible,
+            properties=properties,
+        )
