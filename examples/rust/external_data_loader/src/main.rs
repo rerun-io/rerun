@@ -1,6 +1,6 @@
 //! Example of an external data-loader executable plugin for the Rerun Viewer.
 
-use rerun::{MediaType, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE};
+use rerun::EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE;
 
 // The Rerun Viewer will always pass at least these two pieces of information:
 // 1. The path to be loaded, as a positional arg.
@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     rec.log_with_static(
         entity_path_prefix.join(&rerun::EntityPath::from_file_path(&args.filepath)),
         args.statically || args.timeless,
-        &rerun::TextDocument::new(text).with_media_type(MediaType::MARKDOWN),
+        &rerun::TextDocument::from_markdown(text),
     )?;
 
     Ok::<_, anyhow::Error>(())

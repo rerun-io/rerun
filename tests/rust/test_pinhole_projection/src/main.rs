@@ -4,7 +4,7 @@
 //! cargo run -p test_pinhole_projection
 //! ```
 
-use rerun::{external::re_log, MediaType, RecordingStream};
+use rerun::{external::re_log, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -31,7 +31,7 @@ fn run(rec: &RecordingStream) -> anyhow::Result<()> {
     ";
     rec.log_static(
         "description",
-        &rerun::TextDocument::new(DESCRIPTION).with_media_type(MediaType::markdown()),
+        &rerun::TextDocument::from_markdown(DESCRIPTION),
     )?;
 
     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN)?;
