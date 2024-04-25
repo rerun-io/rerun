@@ -20,7 +20,9 @@ mod ui_2d;
 mod ui_3d;
 mod visualizers;
 
+use re_types::blueprint::archetypes::Background;
 use re_types::components::{Resolution, TensorData};
+
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
@@ -76,14 +78,10 @@ fn query_pinhole(
         })
 }
 
-pub(crate) fn configure_background(
+pub(crate) fn background(
     ctx: &re_viewer_context::ViewerContext<'_>,
     query: &re_viewer_context::ViewQuery<'_>,
-    default_background: re_types::blueprint::archetypes::Background,
-) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
-    use re_renderer::renderer;
-    use re_types::blueprint::{archetypes::Background, components::BackgroundKind};
-
+) -> Option<Background> {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let background = re_space_view::query_space_view_sub_archetype::<Background>(
@@ -92,12 +90,17 @@ pub(crate) fn configure_background(
         blueprint_query,
     )
     .0;
-    let background = background.ok().flatten().unwrap_or(default_background);
+    background.ok().flatten()
+}
 
-    let Background {
-        kind,
-        color: solid_color,
-    } = background;
+pub(crate) fn configure_background(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    background: re_types::blueprint::archetypes::Background,
+) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
+    use re_renderer::renderer;
+    use re_types::blueprint::components::BackgroundKind;
+
+    let Background { kind, color } = background;
 
     match kind {
         BackgroundKind::GradientDark => (
@@ -124,10 +127,7 @@ pub(crate) fn configure_background(
 
         BackgroundKind::SolidColor => (
             None,
-            solid_color
-                .or(default_background.color)
-                .unwrap_or(re_types::components::Color::BLACK)
-                .into(),
+            color.unwrap_or(re_types::components::Color::BLACK).into(),
         ),
     }
 }

@@ -265,11 +265,9 @@ pub fn view_2d(
         view_builder.queue_draw(draw_data);
     }
 
-    let (background_drawable, clear_color) = crate::configure_background(
-        ctx,
-        query,
-        re_types::blueprint::archetypes::Background::DEFAULT_2D,
-    );
+    let background = crate::background(ctx, query)
+        .unwrap_or(re_types::blueprint::archetypes::Background::DEFAULT_2D);
+    let (background_drawable, clear_color) = crate::configure_background(ctx, background);
     if let Some(background_drawable) = background_drawable {
         view_builder.queue_draw(background_drawable);
     }
