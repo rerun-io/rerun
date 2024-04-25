@@ -40,7 +40,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "markdown",
-///         &rerun::TextDocument::new(
+///         &rerun::TextDocument::from_markdown(
 ///             r#"
 /// # Hello Markdown!
 /// [Click here to see the raw text](recording://markdown:Text).
@@ -77,7 +77,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ![A random image](https://picsum.photos/640/480)
 /// "#.trim(),
 ///         )
-///         .with_media_type(rerun::MediaType::markdown()),
 ///     )?;
 ///
 ///     Ok(())

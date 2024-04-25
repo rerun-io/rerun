@@ -31,7 +31,7 @@ fn run(rec: &RecordingStream) -> anyhow::Result<()> {
     ";
     rec.log_static(
         "description",
-        &rerun::TextDocument::new(DESCRIPTION).with_media_type(MediaType::markdown()),
+        &rerun::TextDocument::from_markdown(DESCRIPTION),
     )?;
 
     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Y_DOWN)?;

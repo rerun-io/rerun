@@ -32,4 +32,12 @@ impl TextDocument {
             media_type,
         })
     }
+
+    /// Creates a new [`TextDocument`] containing Markdown.
+    ///
+    /// Equivalent to `TextDocument::new(markdown).with_media_type(MediaType::markdown())`.
+    #[inline]
+    pub fn from_markdown(markdown: impl Into<crate::components::Text>) -> Self {
+        Self::new(markdown).with_media_type(MediaType::markdown())
+    }
 }
