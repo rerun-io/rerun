@@ -23,12 +23,11 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The type of the background in a space views.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BackgroundKind {
     /// A dark gradient.
     ///
     /// In 3D views it changes depending on the direction of the view.
-    #[default]
     GradientDark = 1,
 
     /// A bright gradient.

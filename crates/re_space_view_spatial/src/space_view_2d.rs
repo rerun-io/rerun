@@ -249,7 +249,8 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .show(ui, |ui| {
                 state.default_sizes_ui(ctx, ui);
 
-                crate::ui::background_ui(ctx, space_view_id, ui);
+                crate::ui::background_ui(ctx, ui, space_view_id, re_types::
+    blueprint::archetypes::Background::DEFAULT_2D);
 
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 

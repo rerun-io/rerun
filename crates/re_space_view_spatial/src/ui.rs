@@ -8,7 +8,7 @@ use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::{
     blueprint::archetypes::Background,
-    components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates},
+    components::{Color, DepthMeter, InstanceKey, TensorData, ViewCoordinates},
 };
 use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
@@ -772,13 +772,18 @@ pub fn format_vector(v: glam::Vec3) -> String {
     }
 }
 
-pub fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+pub fn background_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view_id: SpaceViewId,
+    default_background: Background,
+) {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let (archetype, blueprint_path) =
         re_space_view::query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
 
-    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or_default();
+    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
 
     ctx.re_ui.grid_left_hand_label(ui, "Background");
 
@@ -808,7 +813,10 @@ pub fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &m
         }
 
         if kind == BackgroundKind::SolidColor {
-            let current_color = color.unwrap_or(Background::DEFAULT_COLOR).into();
+            let current_color = color
+                .or(default_background.color)
+                .unwrap_or(Color::BLACK)
+                .into();
             let mut edit_color = current_color;
             egui::color_picker::color_edit_button_srgba(
                 ui,
@@ -816,10 +824,7 @@ pub fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &m
                 egui::color_picker::Alpha::Opaque,
             );
             if edit_color != current_color {
-                ctx.save_blueprint_component(
-                    &blueprint_path,
-                    &re_types::components::Color::from(edit_color),
-                );
+                ctx.save_blueprint_component(&blueprint_path, &Color::from(edit_color));
             }
         }
     });

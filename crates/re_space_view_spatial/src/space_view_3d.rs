@@ -363,7 +363,12 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 });
                 ui.end_row();
 
-                crate::ui::background_ui(ctx, space_view_id, ui);
+                crate::ui::background_ui(
+                    ctx,
+                    ui,
+                    space_view_id,
+                    re_types::blueprint::archetypes::Background::DEFAULT_3D,
+                );
 
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
             });

@@ -663,7 +663,11 @@ pub fn view_3d(
     // Commit ui induced lines.
     view_builder.queue_draw(line_builder.into_draw_data()?);
 
-    let (background_drawable, clear_color) = crate::configure_background(ctx, query);
+    let (background_drawable, clear_color) = crate::configure_background(
+        ctx,
+        query,
+        re_types::blueprint::archetypes::Background::DEFAULT_3D,
+    );
     if let Some(background_drawable) = background_drawable {
         view_builder.queue_draw(background_drawable);
     }

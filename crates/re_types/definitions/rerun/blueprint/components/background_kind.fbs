@@ -15,7 +15,7 @@ enum BackgroundKind: byte (
     /// A dark gradient.
     ///
     /// In 3D views it changes depending on the direction of the view.
-    GradientDark (default),
+    GradientDark,
 
     /// A bright gradient.
     ///
