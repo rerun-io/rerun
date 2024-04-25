@@ -183,6 +183,9 @@ rs-update-insta-tests = "cargo test ; cargo insta review"
 # Upload image to gcloud storage.
 upload-image = "python scripts/upload_image.py"
 
+# Upload .rrd to gcloud storage.
+upload-rrd = "python scripts/upload_rrd.py"
+
 # Check whether there's too large files in the repository.
 check-large-files = "python scripts/ci/check_large_files.py"
 
