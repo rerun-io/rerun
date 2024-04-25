@@ -140,7 +140,7 @@ impl Viewport<'_, '_> {
             Item::ComponentPath(component_path) => self.handle_focused_item(
                 ctx,
                 ui,
-                &Item::InstancePath(InstancePath::entity_splat(
+                &Item::InstancePath(InstancePath::entity_all(
                     component_path.entity_path.clone(),
                 )),
             ),
@@ -539,7 +539,7 @@ impl Viewport<'_, '_> {
             {
                 ctx.selection_state().set_selection(Item::DataResult(
                     space_view.id,
-                    InstancePath::entity_splat(entity_path.clone()),
+                    InstancePath::entity_all(entity_path.clone()),
                 ));
             }
             return;

@@ -57,8 +57,7 @@ fn memory_use<R>(run: impl Fn() -> R) -> usize {
 
 use re_data_store::{DataStore, DataStoreConfig};
 use re_log_types::{DataRow, RowId, TimePoint, TimeType, Timeline};
-use re_types::components::{InstanceKey, Scalar};
-use re_types_core::Loggable as _;
+use re_types::components::Scalar;
 
 /// The memory overhead of storing many scalars in the store.
 #[test]
@@ -70,7 +69,6 @@ fn scalar_memory_overhead() {
     let total_mem_use = memory_use(|| {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             DataStoreConfig::default(),
         );
 
@@ -78,12 +76,10 @@ fn scalar_memory_overhead() {
             let entity_path = re_log_types::entity_path!("scalar");
             let timepoint =
                 TimePoint::default().with(Timeline::new("log_time", TimeType::Time), i as i64);
-            let num_instances = 1;
             let row = DataRow::from_cells1_sized(
                 RowId::new(),
                 entity_path,
                 timepoint,
-                num_instances,
                 vec![Scalar(i as f64)],
             )
             .unwrap();

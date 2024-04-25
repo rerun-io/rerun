@@ -1,10 +1,10 @@
 use re_entity_db::EntityPath;
-use re_log_types::{RowId, TimeInt};
+use re_log_types::{Instance, RowId, TimeInt};
 use re_query::range_zip_1x2;
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Asset3D,
-    components::{Blob, InstanceKey, MediaType, OutOfTreeTransform3D},
+    components::{Blob, MediaType, OutOfTreeTransform3D},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
@@ -59,8 +59,8 @@ impl Asset3DVisualizer {
             };
 
             let primary_row_id = data.index.1;
-            let picking_instance_hash = re_entity_db::InstancePathHash::entity_splat(entity_path);
-            let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
+            let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
+            let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             // TODO(#3232): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…

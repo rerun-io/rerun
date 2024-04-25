@@ -1,11 +1,11 @@
-use re_types_core::{components::InstanceKey, ComponentName};
+use re_types_core::ComponentName;
 
-use crate::EntityPath;
+use crate::{EntityPath, Instance};
 
 /// A general path to some data.
 ///
-/// This always starts with an [`EntityPath`], followed
-/// by an optional [`InstanceKey`], followed by an optional [`ComponentName`].
+/// This always starts with an [`EntityPath`], followed by an optional instance index,
+/// followed by an optional [`ComponentName`].
 ///
 /// For instance:
 ///
@@ -16,17 +16,15 @@ use crate::EntityPath;
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct DataPath {
     pub entity_path: EntityPath,
-
-    pub instance_key: Option<InstanceKey>,
-
+    pub instance: Option<Instance>,
     pub component_name: Option<ComponentName>,
 }
 
 impl std::fmt::Display for DataPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.entity_path.fmt(f)?;
-        if let Some(instance_key) = &self.instance_key {
-            write!(f, "[#{}]", instance_key.0)?;
+        if let Some(instance) = &self.instance {
+            write!(f, "[#{instance}]")?;
         }
         if let Some(component_name) = &self.component_name {
             write!(f, ":{component_name:?}")?;

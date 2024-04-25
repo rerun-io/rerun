@@ -3,6 +3,7 @@ use std::sync::Arc;
 use egui::NumExt;
 
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
+use re_log_types::Instance;
 use re_types::ComponentName;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -85,7 +86,7 @@ impl DataUi for EntityLatestAtResults {
                 db,
                 &self.entity_path,
                 &self.results,
-                &re_types::components::InstanceKey(0),
+                &Instance::from(0),
             );
         } else if one_line {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
@@ -108,10 +109,10 @@ impl DataUi for EntityLatestAtResults {
                     re_ui::ReUi::setup_table_body(&mut body);
                     let row_height = re_ui::ReUi::table_line_height();
                     body.rows(row_height, num_displayed_rows, |mut row| {
-                        let instance_key = re_types::components::InstanceKey(row.index() as _);
+                        let instance = Instance::from(row.index() as u64);
                         row.col(|ui| {
                             let instance_path =
-                                InstancePath::instance(self.entity_path.clone(), instance_key);
+                                InstancePath::instance(self.entity_path.clone(), instance);
                             item_ui::instance_path_button_to(
                                 ctx,
                                 query,
@@ -119,7 +120,7 @@ impl DataUi for EntityLatestAtResults {
                                 ui,
                                 None,
                                 &instance_path,
-                                instance_key.syntax_highlighted(ui.style()),
+                                instance.syntax_highlighted(ui.style()),
                             );
                         });
                         row.col(|ui| {
@@ -131,7 +132,7 @@ impl DataUi for EntityLatestAtResults {
                                 db,
                                 &self.entity_path,
                                 &self.results,
-                                &instance_key,
+                                &instance,
                             );
                         });
                     });

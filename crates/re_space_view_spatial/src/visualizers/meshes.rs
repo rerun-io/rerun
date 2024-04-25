@@ -1,13 +1,12 @@
 use itertools::Itertools as _;
 use re_entity_db::EntityPath;
-use re_log_types::{RowId, TimeInt};
+use re_log_types::{Instance, RowId, TimeInt};
 use re_query::range_zip_1x7;
 use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        ClassId, Color, InstanceKey, Material, MeshProperties, Position3D, TensorData, Texcoord2D,
-        Vector3D,
+        ClassId, Color, Material, MeshProperties, Position3D, TensorData, Texcoord2D, Vector3D,
     },
 };
 use re_viewer_context::{
@@ -65,8 +64,8 @@ impl Mesh3DVisualizer {
     ) {
         for data in data {
             let primary_row_id = data.index.1;
-            let picking_instance_hash = re_entity_db::InstancePathHash::entity_splat(entity_path);
-            let outline_mask_ids = ent_context.highlight.index_outline_mask(InstanceKey::SPLAT);
+            let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
+            let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             let mesh = ctx.cache.entry(|c: &mut MeshCache| {
                 let key = MeshCacheKey {

@@ -117,18 +117,17 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes2D".into(),
@@ -137,14 +136,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
             "rerun.components.Position2D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.DrawOrder".into(),
-            "rerun.components.InstanceKey".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Text".into(),
         ]
     });
 
 impl Boxes2D {
-    pub const NUM_COMPONENTS: usize = 9usize;
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 /// Indicator component for the [`Boxes2D`] [`::re_types_core::Archetype`]
@@ -316,11 +314,6 @@ impl ::re_types_core::AsComponents for Boxes2D {
         .into_iter()
         .flatten()
         .collect()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.half_sizes.len()
     }
 }
 

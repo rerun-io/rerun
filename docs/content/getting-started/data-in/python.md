@@ -134,7 +134,7 @@ These are [_entity paths_](../../concepts/entity-component.md), which uniquely i
 
 One final observation: notice how we're logging a whole batch of points and colors all at once here.
 [Batches of data](../../concepts/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
-You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _splatting_.
+You're looking at one of these dedicated features right now in fact: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
 

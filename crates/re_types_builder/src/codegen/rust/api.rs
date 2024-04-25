@@ -1061,23 +1061,6 @@ fn quote_trait_impls_from_obj(
                 (num_components, quoted_components)
             }
 
-            let first_required_comp = obj.fields.iter().find(|field| {
-                field
-                    .try_get_attr::<String>(ATTR_RERUN_COMPONENT_REQUIRED)
-                    .is_some()
-            });
-
-            let num_instances = if let Some(comp) = first_required_comp {
-                if comp.typ.is_plural() {
-                    let name = format_ident!("{}", comp.name);
-                    quote!(self.#name.len())
-                } else {
-                    quote!(1)
-                }
-            } else {
-                quote!(0)
-            };
-
             let indicator_name = format!("{}Indicator", obj.name);
             let indicator_fqname =
                 format!("{}Indicator", obj.fqname).replace("archetypes", "components");
@@ -1090,14 +1073,8 @@ fn quote_trait_impls_from_obj(
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
             let (num_recommended, recommended) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
-            let (num_optional, optional) = compute_components(
-                obj,
-                ATTR_RERUN_COMPONENT_OPTIONAL,
-                // NOTE: Our internal query systems always need to query for instance keys, and
-                // they need to do so using a compile-time array, so make sure it's there at
-                // compile-time even for archetypes that don't use it.
-                ["rerun.components.InstanceKey".to_owned()],
-            );
+            let (num_optional, optional) =
+                compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
             let num_all = num_required + num_recommended + num_optional;
 
@@ -1298,11 +1275,6 @@ fn quote_trait_impls_from_obj(
                         use ::re_types_core::Archetype as _;
 
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
-                    }
-
-                    #[inline]
-                    fn num_instances(&self) -> usize {
-                        #num_instances
                     }
                 }
             }

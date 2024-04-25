@@ -184,10 +184,6 @@ pub const DISPLAY_PRECISION: usize = 3;
 /// For instance, the [`Points3D`][archetypes::Points3D] archetype contains a
 /// batch of positions, a batch of colors, etc.
 ///
-/// These component batches are must all have the same length, or one of the special lengths:
-/// * 0 - an empty batch
-/// * 1 - a "splat" batch, e.g. using the same color for all positions.
-///
 /// Each entity can consist of many archetypes, but usually each entity will only have one archetype.
 ///
 /// A special archetype is [`Clear`][archetypes::Clear] which resets all the components
@@ -214,9 +210,9 @@ pub mod archetypes {
 /// Each component is a wrapper around a [`datatype`][datatypes].
 pub mod components {
 
-    // Some components (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
-    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
-    // `re_types` behemoth just so one can use one of these fundamental types.
+    // Some components are so fundamental and used everywhere that we want them to be exposed
+    // by `re_types_core` directly; that way we don't force a dependency on the `re_types`
+    // behemoth just so one can use one of these fundamental types.
     //
     // To do so, re-inject `re_types_core`'s components into our own module.
 
@@ -232,9 +228,9 @@ pub mod components {
 /// They all implement the [`Datatype`] trait.
 pub mod datatypes {
 
-    // Some datatypes (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
-    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
-    // `re_types` behemoth just so one can use one of these fundamental types.
+    // Some datatypes are so fundamental and used everywhere that we want them to be exposed
+    // by `re_types_core` directly; that way we don't force a dependency on the `re_types`
+    // behemoth just so one can use one of these fundamental types.
     //
     // To do so, re-inject `re_types_core`'s datatypes into our own module.
 

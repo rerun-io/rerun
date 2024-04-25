@@ -7,11 +7,10 @@ use re_data_store::{
     DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId,
+    build_frame_nr, build_log_time, example_components::MyIndex, DataRow, DataTable, EntityPath,
+    RowId, TableId,
 };
-use re_types::components::InstanceKey;
-use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
-use re_types_core::Loggable as _;
+use re_types::datagen::{build_some_colors, build_some_positions2d};
 
 // ---
 
@@ -47,7 +46,6 @@ impl RowSet {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 assert_eq!(entry.get().entity_path(), row.entity_path());
                 assert_eq!(entry.get().cells(), row.cells());
-                assert_eq!(entry.get().num_instances(), row.num_instances());
                 for (timeline, time) in row.timepoint() {
                     entry.get_mut().timepoint.insert(*timeline, *time);
                 }
@@ -79,17 +77,14 @@ fn data_store_dump() {
 
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store3 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
 
@@ -184,12 +179,10 @@ fn data_store_dump_filtered() {
 
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
 
@@ -281,25 +274,25 @@ fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
     let row1 = test_row!(entity_path @ [
             build_frame_nr(frame1),
-        ] => 3; [instances1.clone(), colors1]);
+        ] => [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
     let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances1, positions2]);
+        ] => [instances1, positions2]);
 
     let positions3 = build_some_positions2d(10);
     let row3 = test_row!(entity_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
-        ] => 10; [positions3]);
+        ] => [positions3]);
 
     let colors4 = build_some_colors(5);
     let row4 = test_row!(entity_path @ [
             build_frame_nr(frame4),
-        ] => 5; [colors4]);
+        ] => [colors4]);
 
     let mut table = DataTable::from_rows(TableId::new(), [row1, row2, row3, row4]);
     table.compute_all_size_bytes();
@@ -321,7 +314,6 @@ fn data_store_dump_empty_column() {
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         config,
     );
 
@@ -336,15 +328,15 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {
-        let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
+        let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
         let row1 = test_row!(entity_path @ [
                 build_frame_nr(frame1),
-            ] => 3; [instances1, colors1]);
+            ] => [instances1, colors1]);
 
-        let (instances2, positions2) = (build_some_instances(3), build_some_positions2d(3));
+        let (instances2, positions2) = (MyIndex::from_iter(0..3), build_some_positions2d(3));
         let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => 3; [instances2, positions2]);
+        ] => [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::new(), [row1, row2]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);
@@ -352,10 +344,10 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Now insert another table with points only.
     {
-        let (instances3, positions3) = (build_some_instances(3), build_some_colors(3));
+        let (instances3, positions3) = (MyIndex::from_iter(0..3), build_some_colors(3));
         let row3 = test_row!(entity_path @ [
                 build_frame_nr(frame3),
-            ] => 3; [instances3, positions3]);
+            ] => [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::new(), [row3]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);

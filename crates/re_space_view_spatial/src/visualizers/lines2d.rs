@@ -1,9 +1,10 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, InstanceKey, KeypointId, LineStrip2D, Radius, Text},
+    components::{ClassId, Color, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -71,7 +72,7 @@ impl Lines2DVisualizer {
                             target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
                             labeled_instance: InstancePathHash::instance(
                                 entity_path,
-                                InstanceKey(i as _),
+                                Instance::from(i as u64),
                             ),
                         })
                     }
@@ -134,8 +135,10 @@ impl Lines2DVisualizer {
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
-                if let Some(outline_mask_ids) =
-                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
                 {
                     lines.outline_mask_ids(*outline_mask_ids);
                 }

@@ -236,7 +236,6 @@ impl SpaceViewBlueprint {
                     RowId::new(),
                     store_context.blueprint_timepoint_for_writes(),
                     sub_path,
-                    1,
                     info.components
                         .keys()
                         // It's important that we don't include the SpaceViewBlueprint's components
@@ -482,7 +481,6 @@ mod tests {
             RowId::new(),
             path.clone(),
             TimePoint::default(),
-            1,
             DataCell::from([component]),
         )
         .unwrap();

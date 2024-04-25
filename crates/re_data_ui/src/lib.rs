@@ -59,7 +59,7 @@ pub fn ui_visible_components<'a>(
 
 /// Show this component in the UI.
 pub fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
-    const HIDDEN_COMPONENTS: &[&str] = &["rerun.components.InstanceKey"];
+    const HIDDEN_COMPONENTS: &[&str] = &[];
     !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 

@@ -202,10 +202,6 @@ typedef struct {
     /// Where to log to, e.g. `world/camera`.
     rr_string entity_path;
 
-    /// Number of instances of this entity (e.g. number of points in a point
-    /// cloud).
-    uint32_t num_instances;
-
     /// Number of components.
     uint32_t num_data_cells;
 
@@ -268,7 +264,7 @@ typedef struct rr_error {
 ///
 /// This should match the string returned by `rr_version_string`.
 /// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.16.0-alpha.1+dev"
+#define RERUN_SDK_HEADER_VERSION "0.16.0-alpha.2"
 
 /// Returns a human-readable version string of the Rerun C SDK.
 ///

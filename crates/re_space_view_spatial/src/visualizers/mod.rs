@@ -30,7 +30,7 @@ use ahash::HashMap;
 
 use re_entity_db::{EntityPath, InstancePathHash};
 use re_types::{
-    components::{Color, InstanceKey},
+    components::Color,
     datatypes::{KeypointId, KeypointPair},
 };
 use re_viewer_context::{
@@ -345,7 +345,9 @@ pub fn load_keypoint_connections(
                 .color(color)
                 .flags(re_renderer::renderer::LineStripFlags::FLAG_COLOR_GRADIENT)
                 // Select the entire object when clicking any of the lines.
-                .picking_instance_id(re_renderer::PickingLayerInstanceId(InstanceKey::SPLAT.0));
+                .picking_instance_id(re_renderer::PickingLayerInstanceId(
+                    re_log_types::Instance::ALL.get(),
+                ));
         }
     }
 

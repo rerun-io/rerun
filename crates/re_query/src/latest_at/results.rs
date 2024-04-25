@@ -98,13 +98,8 @@ impl LatestAtResults {
         // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
         // final result is the most recent index among all of its components, as defined by time
         // and row-id order.
-        //
-        // TODO(#5303): We have to ignore the cluster key in this piece of logic for backwards compatibility
-        // reasons with the legacy instance-key model. This will go away next.
-        use re_types_core::Loggable as _;
-        if component_name != re_types_core::components::InstanceKey::name()
-            && cached.index > self.compound_index
-        {
+
+        if cached.index > self.compound_index {
             self.compound_index = cached.index;
         }
 

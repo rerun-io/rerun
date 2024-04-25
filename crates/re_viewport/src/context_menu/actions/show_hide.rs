@@ -118,7 +118,7 @@ fn data_result_visible(
     instance_path: &InstancePath,
 ) -> Option<bool> {
     instance_path
-        .is_splat()
+        .is_all()
         .then(|| {
             let query_result = ctx.viewer_context.lookup_query_result(*space_view_id);
             query_result

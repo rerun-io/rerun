@@ -156,10 +156,9 @@ mod tests {
     use ahash::HashSet;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint},
+        example_components::{MyColor, MyIndex, MyPoint},
         DataRow, RowId, StoreId, TimePoint, Timeline,
     };
-    use re_types_core::{components::InstanceKey, Loggable as _};
 
     use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber};
 
@@ -209,12 +208,10 @@ mod tests {
     fn store_subscriber() -> anyhow::Result<()> {
         let mut store1 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
         let mut store2 = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -235,7 +232,7 @@ mod tests {
                 (timeline_yet_another, 1), //
             ]),
             "entity_a".into(),
-            [&InstanceKey::from_iter(0..10) as _],
+            [&MyIndex::from_iter(0..10) as _],
         )?;
 
         expected_events.extend(store1.insert_row(&row));
@@ -267,7 +264,7 @@ mod tests {
                 TimePoint::default(),
                 "entity_b".into(),
                 [
-                    &InstanceKey::from_iter(0..num_instances as _) as _,
+                    &MyIndex::from_iter(0..num_instances as _) as _,
                     &colors as _,
                 ],
             )?
