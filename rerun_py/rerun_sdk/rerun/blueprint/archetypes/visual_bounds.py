@@ -5,40 +5,20 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from ... import components, datatypes
+from ... import components
 from ..._baseclasses import Archetype
-from ...error_utils import catch_and_log_exceptions
+from .visual_bounds_ext import VisualBoundsExt
 
 __all__ = ["VisualBounds"]
 
 
 @define(str=False, repr=False, init=False)
-class VisualBounds(Archetype):
+class VisualBounds(VisualBoundsExt, Archetype):
     """**Archetype**: Controls the visual bounds of a 2D space view."""
 
-    def __init__(self: Any, *, visual_bounds: datatypes.AABB2DLike | None = None):
-        """
-        Create a new instance of the VisualBounds archetype.
-
-        Parameters
-        ----------
-        visual_bounds:
-            The visible parts of a 2D space view, in the coordinate space of the scene.
-
-            Everything within these bounds are guaranteed to be visible.
-            Somethings outside of these bounds may also be visible due to letterboxing.
-
-        """
-
-        # You can define your own __init__ function as a member of VisualBoundsExt in visual_bounds_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(visual_bounds=visual_bounds)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in visual_bounds_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

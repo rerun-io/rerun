@@ -7,14 +7,15 @@ from __future__ import annotations
 
 from .. import datatypes
 from .._baseclasses import ComponentBatchMixin
+from .aabb2d_ext import AABB2DExt
 
 __all__ = ["AABB2D", "AABB2DBatch", "AABB2DType"]
 
 
-class AABB2D(datatypes.AABB2D):
+class AABB2D(AABB2DExt, datatypes.AABB2D):
     """**Component**: An Axis-Aligned Bounding Box in 2D space."""
 
-    # You can define your own __init__ function as a member of AABB2DExt in aabb2d_ext.py
+    # __init__ can be found in aabb2d_ext.py
 
     # Note: there are no fields here because AABB2D delegates to datatypes.AABB2D
     pass
