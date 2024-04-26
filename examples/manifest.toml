@@ -33,13 +33,13 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 examples = [
   # display order, most interesting first
   "ros_node",
-  "nuscenes",
+  "nuscenes_dataset",
   "ros_bridge",
   "kiss-icp",
   "urdf_loader",
   "live_depth_sensor",
   "lidar",
-  "rrt-star",
+  "rrt_star",
   "rgbd",
   "nv12",
 ]
@@ -125,7 +125,7 @@ examples = [
   "dna",
   "log_file",
   "minimal",
-  "multiprocessing",
+  "multiprocess_logging",
   "multithreading",
   "plots",
   "raw_mesh",
@@ -148,4 +148,6 @@ examples = [
   "spawn_viewer",
   "stdio",
   "template",
+  "all_examples",
+  "_empty_rerun_sdk",
 ]

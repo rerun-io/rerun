@@ -7,8 +7,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-__all__ = ["bounce_lerp", "interleave"]
-
 
 def bounce_lerp(
     a: float, b: float, t: float | np.ndarray[Any, np.dtype[Any]]
