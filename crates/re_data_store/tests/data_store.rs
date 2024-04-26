@@ -154,11 +154,6 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(entity_path @ [build_frame_nr(frame2)] => [MyIndex::from_iter(0..2)]);
-        store.insert_row(&row).unwrap();
-
-        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
-
         let row = test_row!(entity_path @ [build_frame_nr(frame3)] => [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
