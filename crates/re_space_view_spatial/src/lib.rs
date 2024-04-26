@@ -127,6 +127,9 @@ pub(crate) fn configure_background(
 
         BackgroundKind::SolidColor => (
             None,
+            // If the user has told us to use a solid color, but hasn't picked a specific color,
+            // we need to fall back to something. For dark mode, black makes sense.
+            // TODO(#3058): support light mode
             color.unwrap_or(re_types::components::Color::BLACK).into(),
         ),
     }
