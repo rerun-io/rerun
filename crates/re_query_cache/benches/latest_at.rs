@@ -6,10 +6,12 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
-use re_query_cache::Caches;
+use re_query2::{clamped_zip_1x1, PromiseResolver};
+use re_query_cache::{CachedLatestAtResults, Caches};
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
+    Archetype as _,
 };
 use re_types_core::Loggable as _;
 
@@ -278,33 +280,47 @@ fn query_and_visit_points(
     store: &DataStore,
     paths: &[EntityPath],
 ) -> Vec<SavePoint> {
+    let resolver = PromiseResolver::default();
+
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
-    let mut points = Vec::with_capacity(NUM_POINTS as _);
+    let mut ret = Vec::with_capacity(NUM_POINTS as _);
 
     // TODO(jleibs): Add Radius once we have support for it in field_types
-    for path in paths {
-        caches
-            .query_archetype_pov1_comp1::<Points2D, Position2D, Color, _>(
-                store,
-                &query.clone().into(),
-                path,
-                |(_, _, positions, colors)| {
-                    itertools::izip!(positions.iter(), colors.unwrap().iter()).for_each(
-                        |(pos, color)| {
-                            points.push(SavePoint {
-                                _pos: *pos,
-                                _color: *color,
-                            });
-                        },
-                    );
-                },
-            )
-            .unwrap();
+    for entity_path in paths {
+        let results: CachedLatestAtResults = caches.latest_at(
+            store,
+            &query,
+            entity_path,
+            Points2D::all_components().iter().copied(), // no generics!
+        );
+
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_or_empty(Color::name());
+
+        let points = points
+            .iter_dense::<Position2D>(&resolver)
+            .flatten()
+            .unwrap()
+            .copied();
+
+        let colors = colors
+            .iter_dense::<Color>(&resolver)
+            .flatten()
+            .unwrap()
+            .copied();
+        let color_default_fn = || Color::from(0xFF00FFFF);
+
+        for (point, color) in clamped_zip_1x1(points, colors, color_default_fn) {
+            ret.push(SavePoint {
+                _pos: point,
+                _color: Some(color),
+            });
+        }
     }
-    assert_eq!(NUM_POINTS as usize, points.len());
-    points
+    assert_eq!(NUM_POINTS as usize, ret.len());
+    ret
 }
 
 struct SaveString {
@@ -316,28 +332,43 @@ fn query_and_visit_strings(
     store: &DataStore,
     paths: &[EntityPath],
 ) -> Vec<SaveString> {
+    let resolver = PromiseResolver::default();
+
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);
 
-    for path in paths {
-        caches
-            .query_archetype_pov1_comp1::<Points2D, Position2D, Text, _>(
-                store,
-                &query.clone().into(),
-                path,
-                |(_, _, _, labels)| {
-                    for label in labels.unwrap() {
-                        strings.push(SaveString {
-                            _label: label.clone(),
-                        });
-                    }
-                },
-            )
-            .unwrap();
+    for entity_path in paths {
+        let results: CachedLatestAtResults = caches.latest_at(
+            store,
+            &query,
+            entity_path,
+            Points2D::all_components().iter().copied(), // no generics!
+        );
+
+        let points = results.get_required(Position2D::name()).unwrap();
+        let colors = results.get_or_empty(Text::name());
+
+        let points = points
+            .iter_dense::<Position2D>(&resolver)
+            .flatten()
+            .unwrap()
+            .copied();
+
+        let labels = colors
+            .iter_dense::<Text>(&resolver)
+            .flatten()
+            .unwrap()
+            .cloned();
+        let label_default_fn = || Text(String::new().into());
+
+        for (_point, label) in clamped_zip_1x1(points, labels, label_default_fn) {
+            strings.push(SaveString {
+                _label: Some(label),
+            });
+        }
     }
     assert_eq!(NUM_STRINGS as usize, strings.len());
-
     criterion::black_box(strings)
 }

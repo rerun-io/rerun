@@ -160,7 +160,7 @@ impl SpaceViewClass for DataframeSpaceView {
                     // TODO(#4466): make it explicit if that value results
                     // from a splat joint.
 
-                    let results = ctx.recording().query_caches2().latest_at(
+                    let results = ctx.recording().query_caches().latest_at(
                         ctx.recording_store(),
                         &latest_at_query,
                         &instance.entity_path,

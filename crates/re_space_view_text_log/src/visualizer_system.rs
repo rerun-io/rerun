@@ -1,7 +1,7 @@
 use re_data_store::TimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
-use re_query_cache2::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
+use re_query_cache::{clamped_zip_1x2, range_zip_1x2, CachedRangeData, PromiseResult};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -57,7 +57,7 @@ impl VisualizerSystem for TextLogSystem {
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
-            let results = ctx.recording().query_caches2().range(
+            let results = ctx.recording().query_caches().range(
                 ctx.recording_store(),
                 &query,
                 &data_result.entity_path,
@@ -129,16 +129,16 @@ impl VisualizerSystem for TextLogSystem {
 #[inline]
 fn check_range<'a, C: Component>(
     results: &'a CachedRangeData<'a, C>,
-) -> re_query_cache2::Result<()> {
+) -> re_query_cache::Result<()> {
     let (front_status, back_status) = results.status();
     match front_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query_cache2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
     match back_status {
         PromiseResult::Pending => return Ok(()),
-        PromiseResult::Error(err) => return Err(re_query_cache2::QueryError::Other(err.into())),
+        PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
         PromiseResult::Ready(_) => {}
     }
 

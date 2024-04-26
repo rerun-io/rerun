@@ -165,6 +165,17 @@ impl<T> From<VecDeque<T>> for FlatVecDeque<T> {
     }
 }
 
+impl<T> From<Vec<T>> for FlatVecDeque<T> {
+    #[inline]
+    fn from(values: Vec<T>) -> Self {
+        let num_values = values.len();
+        Self {
+            values: values.into(),
+            offsets: std::iter::once(num_values).collect(),
+        }
+    }
+}
+
 impl<T> Default for FlatVecDeque<T> {
     #[inline]
     fn default() -> Self {

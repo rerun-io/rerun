@@ -1,5 +1,5 @@
 use itertools::Itertools as _;
-use re_query_cache2::{PromiseResult, QueryError};
+use re_query_cache::{PromiseResult, QueryError};
 use re_types::archetypes;
 use re_types::{
     archetypes::SeriesLine,
@@ -195,7 +195,7 @@ fn load_series(
         let entity_path = &data_result.entity_path;
         let query = re_data_store::RangeQuery::new(query.timeline, time_range);
 
-        let results = ctx.recording().query_caches2().range(
+        let results = ctx.recording().query_caches().range(
             ctx.recording_store(),
             &query,
             entity_path,
@@ -259,7 +259,7 @@ fn load_series(
                     .map(|index| (index, ()));
 
                 let all_frames =
-                    re_query_cache2::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
+                    re_query_cache::range_zip_1x1(all_scalars_indexed, all_colors.range_indexed())
                         .enumerate();
 
                 for (i, (_index, _scalars, colors)) in all_frames {
@@ -296,7 +296,7 @@ fn load_series(
                     .range_indices(all_scalars_entry_range.clone())
                     .map(|index| (index, ()));
 
-                let all_frames = re_query_cache2::range_zip_1x1(
+                let all_frames = re_query_cache::range_zip_1x1(
                     all_scalars_indexed,
                     all_stroke_widths.range_indexed(),
                 )

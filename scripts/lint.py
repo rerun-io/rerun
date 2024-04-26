@@ -980,7 +980,7 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
     # These crates will replace existing ones and won't ever be published as-is.
-    tmp_crates = ["re_query2", "re_query_cache2"]
+    tmp_crates = ["re_query2"]
 
     crates_dir = Path("crates")
     architecture_md_file = Path("ARCHITECTURE.md")

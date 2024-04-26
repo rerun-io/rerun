@@ -2,15 +2,15 @@
 //! - A 1:1 port of the tests in `crates/re_query/tests/archetype_query_tests.rs`, with caching enabled.
 //! - Invalidation tests.
 
-use itertools::Itertools as _;
-
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
+use re_query2::PromiseResolver;
 use re_query_cache::Caches;
+use re_types::Archetype as _;
 use re_types_core::{components::InstanceKey, Loggable as _};
 
 // ---
@@ -68,7 +68,7 @@ fn static_query() {
         DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, positions).unwrap();
     insert_and_react(&mut store, &mut caches, &row);
 
-    // Assign one of them a color with an explicit instance.. static_!
+    // Assign one of them a color with an explicit instance.. statically!
     let color_instances = vec![InstanceKey(1)];
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
     let row = DataRow::from_cells2_sized(
@@ -409,7 +409,7 @@ fn invalidation_of_future_optionals() {
 }
 
 #[test]
-fn invalidation_timeless() {
+fn static_invalidation() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         InstanceKey::name(),
@@ -476,49 +476,51 @@ fn query_and_compare(
 ) {
     re_log::setup_logging();
 
+    let resolver = PromiseResolver::default();
+
     for _ in 0..3 {
-        let mut cached_data_time = None;
-        let mut cached_row_id = None;
-        let mut cached_instance_keys = Vec::new();
-        let mut cached_positions = Vec::new();
-        let mut cached_colors = Vec::new();
-        caches
-            .query_archetype_pov1_comp1::<MyPoints, MyPoint, MyColor, _>(
-                store,
-                &query.clone().into(),
-                entity_path,
-                |((data_time, row_id), instance_keys, positions, colors)| {
-                    cached_data_time = Some(data_time);
-                    cached_row_id = Some(row_id);
-                    cached_instance_keys.extend(instance_keys.iter().copied());
-                    cached_positions.extend(positions.iter().copied());
-                    cached_colors
-                        .extend(re_query_cache::iter_or_repeat_opt(colors, positions.len()));
-                },
-            )
+        let cached = caches.latest_at(
+            store,
+            query,
+            entity_path,
+            MyPoints::all_components().iter().copied(),
+        );
+
+        let cached_points = cached.get_required(MyPoint::name()).unwrap();
+        let cached_point_data = cached_points
+            .to_dense::<MyPoint>(&resolver)
+            .flatten()
             .unwrap();
 
-        let expected = re_query::query_archetype::<MyPoints>(store, query, entity_path).unwrap();
-        let expected_data_time = expected.data_time();
-        let expected_row_id = expected.primary_row_id();
+        let cached_colors = cached.get_or_empty(MyColor::name());
+        let cached_color_data = cached_colors
+            .to_dense::<MyColor>(&resolver)
+            .flatten()
+            .unwrap();
 
-        let expected_instance_keys = expected.iter_instance_keys().collect_vec();
-        let expected_positions = expected
-            .iter_required_component::<MyPoint>()
-            .unwrap()
-            .collect_vec();
-        let expected_colors = expected
-            .iter_optional_component::<MyColor>()
-            .unwrap()
-            .collect_vec();
+        let expected = re_query2::latest_at(
+            store,
+            query,
+            entity_path,
+            MyPoints::all_components().iter().copied(),
+        );
 
-        // Keep this around for the next unlucky chap.
-        // eprintln!("i={i} (expected={expected_data_time:?}, cached={cached_data_time:?})");
+        let expected_points = expected.get_required(MyPoint::name()).unwrap();
+        let expected_point_data = expected_points
+            .to_dense::<MyPoint>(&resolver)
+            .flatten()
+            .unwrap();
 
-        similar_asserts::assert_eq!(Some(expected_data_time), cached_data_time);
-        similar_asserts::assert_eq!(Some(expected_row_id), cached_row_id);
-        similar_asserts::assert_eq!(expected_instance_keys, cached_instance_keys);
-        similar_asserts::assert_eq!(expected_positions, cached_positions);
-        similar_asserts::assert_eq!(expected_colors, cached_colors);
+        let expected_colors = expected.get_or_empty(MyColor::name());
+        let expected_color_data = expected_colors
+            .to_dense::<MyColor>(&resolver)
+            .flatten()
+            .unwrap();
+
+        // eprintln!("{}", store.to_data_table().unwrap());
+
+        similar_asserts::assert_eq!(expected.compound_index, cached.compound_index);
+        similar_asserts::assert_eq!(expected_point_data, cached_point_data);
+        similar_asserts::assert_eq!(expected_color_data, cached_color_data);
     }
 }
