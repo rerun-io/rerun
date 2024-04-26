@@ -1,12 +1,12 @@
-use itertools::{izip, Itertools};
+use itertools::Itertools;
 use re_data_store::{DataStore, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, DataRow, RowId, TimeRange, TimeType, Timeline};
 use re_types_core::{Archetype as _, Loggable as _};
 
-use re_query2::{
-    clamped_zip_1x2, range_zip_1x2, PromiseResolver, PromiseResult, RangeComponentResults,
-    RangeResults,
+use re_query_cache2::{
+    clamped_zip_1x2, range_zip_1x2, CachedRangeComponentResults, CachedRangeResults,
+    PromiseResolver, PromiseResult,
 };
 
 // ---
@@ -22,90 +22,73 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(timeline, TimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
+    let caches = re_query_cache2::Caches::new(&store);
+
     // First, get the raw results for this query.
     //
-    // Raw here means that these results are neither deserialized, nor resolved/converted.
-    // I.e. this corresponds to the raw `DataCell`s, straight from our datastore.
-    let results: RangeResults = re_query2::range(
+    // They might or might not already be cached. We won't know for sure until we try to access
+    // each individual component's data below.
+    let results: CachedRangeResults = caches.range(
         &store,
         &query,
         &entity_path.into(),
         MyPoints::all_components().iter().copied(), // no generics!
     );
 
-    // Then, grab the raw results for each individual components.
-    //
-    // This is still raw data, but now a choice has been made regarding the nullability of the
-    // _component batch_ itself (that says nothing about its _instances_!).
-    //
+    // Then, grab the results for each individual components.
     // * `get_required` returns an error if the component batch is missing
     // * `get_or_empty` returns an empty set of results if the component if missing
     // * `get` returns an option
-    let all_points: &RangeComponentResults = results.get_required(MyPoint::name())?;
-    let all_colors: &RangeComponentResults = results.get_or_empty(MyColor::name());
-    let all_labels: &RangeComponentResults = results.get_or_empty(MyLabel::name());
+    //
+    // At this point we still don't know whether they are cached or not. That's the next step.
+    let all_points: &CachedRangeComponentResults = results.get_required(MyPoint::name())?;
+    let all_colors: &CachedRangeComponentResults = results.get_or_empty(MyColor::name());
+    let all_labels: &CachedRangeComponentResults = results.get_or_empty(MyLabel::name());
 
-    let all_indexed_points = izip!(
-        all_points.iter_indices(),
-        all_points.iter_dense::<MyPoint>(&resolver)
-    );
-    let all_indexed_colors = izip!(
-        all_colors.iter_indices(),
-        all_colors.iter_sparse::<MyColor>(&resolver)
-    );
-    let all_indexed_labels = izip!(
-        all_labels.iter_indices(),
-        all_labels.iter_sparse::<MyLabel>(&resolver)
-    );
+    // Then comes the time to resolve/convert and deserialize the data.
+    // These steps have to be done together for efficiency reasons.
+    //
+    // That's when caching comes into play.
+    // If the data has already been accessed in the past, then this will just grab the
+    // pre-deserialized, pre-resolved/pre-converted result from the cache.
+    // Otherwise, this will trigger a deserialization and cache the result for next time.
+    let all_points = all_points.to_dense::<MyPoint>(&resolver);
+    let all_colors = all_colors.to_dense::<MyColor>(&resolver);
+    let all_labels = all_labels.to_dense::<MyLabel>(&resolver);
 
-    let all_frames = range_zip_1x2(all_indexed_points, all_indexed_colors, all_indexed_labels);
+    // The cache might not have been able to resolve and deserialize the entire dataset across all
+    // available timestamps.
+    //
+    // We can use the following APIs to check the status of the front and back sides of the data range.
+    //
+    // E.g. it is possible that the front-side of the range is still waiting for pending data while
+    // the back-side has been fully loaded.
+    assert!(matches!(
+        all_points.status(),
+        (PromiseResult::Ready(()), PromiseResult::Ready(()))
+    ));
+
+    // Zip the results together using a stateful time-based join.
+    let all_frames = range_zip_1x2(
+        all_points.range_indexed(),
+        all_colors.range_indexed(),
+        all_labels.range_indexed(),
+    );
 
     // Then comes the time to resolve/convert and deserialize the data, _for each timestamp_.
     // These steps have to be done together for efficiency reasons.
     //
     // Both the resolution and deserialization steps might fail, which is why this returns a `Result<Result<T>>`.
     // Use `PromiseResult::flatten` to simplify it down to a single result.
-    //
-    // A choice now has to be made regarding the nullability of the _component batch's instances_.
-    // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
-    // shouldn't be using anything but `iter_dense`.
     eprintln!("results:");
     for ((data_time, row_id), points, colors, labels) in all_frames {
-        let points = match points.flatten() {
-            PromiseResult::Pending => {
-                // Handle the fact that the data isn't ready appropriately.
-                continue;
-            }
-            PromiseResult::Ready(data) => data,
-            PromiseResult::Error(err) => return Err(err.into()),
+        let colors = colors.unwrap_or(&[]);
+        let color_default_fn = || {
+            static DEFAULT: MyColor = MyColor(0xFF00FFFF);
+            &DEFAULT
         };
 
-        let colors = if let Some(colors) = colors {
-            match colors.flatten() {
-                PromiseResult::Pending => {
-                    // Handle the fact that the data isn't ready appropriately.
-                    continue;
-                }
-                PromiseResult::Ready(data) => data,
-                PromiseResult::Error(err) => return Err(err.into()),
-            }
-        } else {
-            vec![]
-        };
-        let color_default_fn = || Some(MyColor::from(0xFF00FFFF));
-
-        let labels = if let Some(labels) = labels {
-            match labels.flatten() {
-                PromiseResult::Pending => {
-                    // Handle the fact that the data isn't ready appropriately.
-                    continue;
-                }
-                PromiseResult::Ready(data) => data,
-                PromiseResult::Error(err) => return Err(err.into()),
-            }
-        } else {
-            vec![]
-        };
+        let labels = labels.unwrap_or(&[]).iter().cloned().map(Some);
         let label_default_fn = || None;
 
         // With the data now fully resolved/converted and deserialized, the joining logic can be

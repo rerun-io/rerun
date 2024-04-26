@@ -7,7 +7,7 @@ use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
 use re_log_types::{EntityPath, StoreId, Timeline};
 use re_types_core::ComponentName;
 
-use crate::LatestAtCache;
+use crate::{LatestAtCache, RangeCache};
 
 // ---
 
@@ -17,6 +17,20 @@ pub struct CacheKey {
     pub entity_path: EntityPath,
     pub timeline: Timeline,
     pub component_name: ComponentName,
+}
+
+impl re_types_core::SizeBytes for CacheKey {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            entity_path,
+            timeline,
+            component_name,
+        } = self;
+        entity_path.heap_size_bytes()
+            + timeline.heap_size_bytes()
+            + component_name.heap_size_bytes()
+    }
 }
 
 impl std::fmt::Debug for CacheKey {
@@ -55,7 +69,10 @@ pub struct Caches {
     pub(crate) store_id: StoreId,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    pub(crate) per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+    pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+
+    // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
+    pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
 impl Caches {
@@ -63,7 +80,8 @@ impl Caches {
     pub fn new(store: &DataStore) -> Self {
         Self {
             store_id: store.id().clone(),
-            per_cache_key: Default::default(),
+            latest_at_per_cache_key: Default::default(),
+            range_per_cache_key: Default::default(),
         }
     }
 }
@@ -139,8 +157,9 @@ impl StoreSubscriber for Caches {
             }
         }
 
-        let caches = self.per_cache_key.write();
-        // NOTE: Don't release the top-level lock -- even though this cannot happen yet with
+        let caches_latest_at = self.latest_at_per_cache_key.write();
+        let caches_range = self.range_per_cache_key.write();
+        // NOTE: Don't release the top-level locks -- even though this cannot happen yet with
         // our current macro-architecture, we want to prevent queries from concurrently
         // running while we're updating the invalidation flags.
 
@@ -152,9 +171,15 @@ impl StoreSubscriber for Caches {
             // But since this pretty much never happens in practice, let's not go there until we
             // have metrics showing that show we need to.
             for (entity_path, component_name) in compacted.static_ {
-                for (key, cache) in caches.iter() {
+                for (key, cache) in caches_latest_at.iter() {
                     if key.entity_path == entity_path && key.component_name == component_name {
                         cache.write().pending_invalidations.insert(TimeInt::STATIC);
+                    }
+                }
+
+                for (key, cache) in caches_range.iter() {
+                    if key.entity_path == entity_path && key.component_name == component_name {
+                        cache.write().pending_invalidation = Some(TimeInt::STATIC);
                     }
                 }
             }
@@ -164,11 +189,18 @@ impl StoreSubscriber for Caches {
             re_tracing::profile_scope!("temporal");
 
             for (key, times) in compacted.temporal {
-                if let Some(cache) = caches.get(&key) {
+                if let Some(cache) = caches_latest_at.get(&key) {
                     cache
                         .write()
                         .pending_invalidations
                         .extend(times.iter().copied());
+                }
+
+                if let Some(cache) = caches_range.get(&key) {
+                    let pending_invalidation = &mut cache.write().pending_invalidation;
+                    let min_time = times.first().copied();
+                    *pending_invalidation =
+                        Option::min(*pending_invalidation, min_time).or(min_time);
                 }
             }
         }

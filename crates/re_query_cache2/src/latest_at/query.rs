@@ -36,7 +36,7 @@ impl Caches {
         for component_name in component_names {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
             let cache = Arc::clone(
-                self.per_cache_key
+                self.latest_at_per_cache_key
                     .write()
                     .entry(key.clone())
                     .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key.clone())))),
@@ -217,7 +217,6 @@ impl LatestAtCache {
                 index: (data_time, row_id),
                 promise: Some(Promise::new(cell)),
                 cached_dense: Default::default(),
-                cached_sparse: Default::default(),
                 cached_heap_size_bytes: AtomicU64::new(0),
             });
 
@@ -248,8 +247,6 @@ impl LatestAtCache {
             pending_invalidations,
         } = self;
 
-        let pending_invalidations = std::mem::take(pending_invalidations);
-
         // First, remove any data indexed by a _query time_ that's more recent than the oldest
         // _data time_ that's been invalidated.
         //
@@ -260,6 +257,27 @@ impl LatestAtCache {
         }
 
         // Second, remove any data indexed by _data time_, if it's been invalidated.
-        per_data_time.retain(|data_time, _| !pending_invalidations.contains(data_time));
+        let mut dropped_data_times = Vec::new();
+        per_data_time.retain(|data_time, _| {
+            if pending_invalidations.contains(data_time) {
+                dropped_data_times.push(*data_time);
+                false
+            } else {
+                true
+            }
+        });
+
+        // TODO(#5974): Because of non-deterministic ordering and parallelism and all things of that
+        // nature, it can happen that we try to handle pending invalidations before we even cached
+        // the associated data.
+        //
+        // If that happens, the data will be cached after we've invalidated *nothing*, and will stay
+        // there indefinitely since the cache doesn't have a dedicated GC yet.
+        //
+        // TL;DR: make sure to keep track of pending invalidations indefinitely as long as we
+        // haven't had the opportunity to actually invalidate the associated data.
+        for data_time in dropped_data_times {
+            pending_invalidations.remove(&data_time);
+        }
     }
 }

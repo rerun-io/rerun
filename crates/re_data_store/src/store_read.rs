@@ -87,6 +87,24 @@ impl RangeQuery {
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
         Self { timeline, range }
     }
+
+    #[inline]
+    pub const fn everything(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            range: TimeRange::EVERYTHING,
+        }
+    }
+
+    #[inline]
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    #[inline]
+    pub fn range(&self) -> TimeRange {
+        self.range
+    }
 }
 
 // --- Data store ---

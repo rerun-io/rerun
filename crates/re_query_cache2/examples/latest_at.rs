@@ -51,16 +51,9 @@ fn main() -> anyhow::Result<()> {
     // Both the resolution and deserialization steps might fail, which is why this returns a `Result<Result<T>>`.
     // Use `PromiseResult::flatten` to simplify it down to a single result.
     //
-    // A choice now has to be made regarding the nullability of the _component batch's instances_.
-    // Our IDL doesn't support nullable instances at the moment -- so for the foreseeable future you probably
-    // shouldn't be using anything but `iter_dense`.
-    //
     // This is the step at which caching comes into play.
-    //
-    // If the data has already been accessed with the same nullability characteristics in the
-    // past, then this will just grab the pre-deserialized, pre-resolved/pre-converted result from
-    // the cache.
-    //
+    // If the data has already been accessed in the past, then this will just grab the pre-deserialized,
+    // pre-resolved/pre-converted result from the cache.
     // Otherwise, this will trigger a deserialization and cache the result for next time.
 
     let points = match points.iter_dense::<MyPoint>(&resolver).flatten() {
@@ -81,12 +74,12 @@ fn main() -> anyhow::Result<()> {
         PromiseResult::Error(err) => return Err(err.into()),
     };
 
-    let labels = match labels.iter_sparse::<MyLabel>(&resolver).flatten() {
+    let labels = match labels.iter_dense::<MyLabel>(&resolver).flatten() {
         PromiseResult::Pending => {
             // Handle the fact that the data isn't ready appropriately.
             return Ok(());
         }
-        PromiseResult::Ready(data) => data,
+        PromiseResult::Ready(data) => data.map(Some),
         PromiseResult::Error(err) => return Err(err.into()),
     };
 

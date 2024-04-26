@@ -12,7 +12,7 @@ use crate::{Promise, PromiseResolver, PromiseResult};
 /// The data is neither deserialized, nor resolved/converted.
 /// It it the raw [`DataCell`]s, straight from our datastore.
 ///
-/// Use [`RangeResults::get`], [`RangeResults::get_required`] and [`RangeResults::get_optional`]
+/// Use [`RangeResults::get`], [`RangeResults::get_required`] and [`RangeResults::get_or_empty`]
 /// in order to access the raw results for each individual component.
 #[derive(Default, Debug, Clone)]
 pub struct RangeResults {
@@ -56,7 +56,7 @@ impl RangeResults {
     ///
     /// Returns empty results if the component is not present.
     #[inline]
-    pub fn get_optional(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
+    pub fn get_or_empty(&self, component_name: impl Into<ComponentName>) -> &RangeComponentResults {
         let component_name = component_name.into();
         if let Some(component) = self.components.get(&component_name) {
             component
@@ -79,7 +79,10 @@ impl RangeResults {
             .map(|(index, cell)| (index, Promise::new(cell)))
             .unzip();
 
-        let results = RangeComponentResults { indices, cells };
+        let results = RangeComponentResults {
+            indices,
+            promises: cells,
+        };
         results.sanity_check();
 
         self.components.insert(component_name, results);
@@ -92,7 +95,7 @@ impl RangeResults {
 #[derive(Debug, Clone)]
 pub struct RangeComponentResults {
     pub indices: Vec<(TimeInt, RowId)>,
-    pub cells: Vec<Promise>,
+    pub promises: Vec<Promise>,
 }
 
 impl Default for RangeComponentResults {
@@ -107,14 +110,17 @@ impl RangeComponentResults {
     pub const fn empty() -> Self {
         Self {
             indices: Vec::new(),
-            cells: Vec::new(),
+            promises: Vec::new(),
         }
     }
 
     /// No-op in release.
     #[inline]
     pub fn sanity_check(&self) {
-        let Self { indices, cells } = self;
+        let Self {
+            indices,
+            promises: cells,
+        } = self;
         if cfg!(debug_assertions) {
             assert_eq!(indices.len(), cells.len());
         }
@@ -141,7 +147,7 @@ impl RangeComponentResults {
         &self,
         resolver: &PromiseResolver,
     ) -> Vec<PromiseResult<DeserializationResult<Vec<C>>>> {
-        self.cells
+        self.promises
             .iter()
             .map(|cell| {
                 resolver.resolve(cell).map(|cell| {
@@ -173,7 +179,7 @@ impl RangeComponentResults {
         &self,
         resolver: &PromiseResolver,
     ) -> Vec<PromiseResult<DeserializationResult<Vec<Option<C>>>>> {
-        self.cells
+        self.promises
             .iter()
             .map(|cell| {
                 resolver.resolve(cell).map(|cell| {
