@@ -6,7 +6,7 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityPath, EntityProperties};
 use re_log_types::{EntityPathHash, RowId, TimeInt};
-use re_query_cache::range_zip_1x2;
+use re_query::range_zip_1x2;
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
     Colormap,
@@ -855,7 +855,7 @@ impl ImageVisualizer {
             |ctx, entity_path, entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::CachedRangeResultsExt as _;
+                use crate::visualizers::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 

@@ -2,7 +2,7 @@
 
 use egui::NumExt as _;
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query_cache::CachedLatestAtComponentResults, EntityDb};
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::EntityPath;
 use re_types::{
     components::{
@@ -23,7 +23,7 @@ fn edit_color_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_color = component
@@ -66,7 +66,7 @@ fn edit_text_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_text = component
@@ -106,7 +106,7 @@ fn edit_name_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_text = component
@@ -147,7 +147,7 @@ fn edit_scatter_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_scatter = component
@@ -196,7 +196,7 @@ fn edit_radius_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_radius = component
@@ -243,7 +243,7 @@ fn edit_marker_shape_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_marker = component
@@ -329,7 +329,7 @@ fn edit_stroke_width_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_stroke_width = component
@@ -376,7 +376,7 @@ fn edit_marker_size_ui(
     db: &EntityDb,
     entity_path: &EntityPath,
     override_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     let current_marker_size = component
@@ -425,7 +425,7 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
         &EntityDb,
         &EntityPath,
         &EntityPath,
-        &CachedLatestAtComponentResults,
+        &LatestAtComponentResults,
         &re_types::components::InstanceKey,
     ),
 ) where

@@ -2,7 +2,7 @@ use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_query_cache::{CachedResults, ExtraQueryHistory};
+use re_query::{ExtraQueryHistory, Results};
 use re_renderer::DepthOffset;
 use re_space_view::query_visual_history;
 use re_types::Archetype;
@@ -46,7 +46,7 @@ pub fn query_archetype_with_history<A: Archetype>(
     time: &TimeInt,
     history: &ExtraQueryHistory,
     entity_path: &EntityPath,
-) -> CachedResults {
+) -> Results {
     let visible_history = match timeline.typ() {
         re_log_types::TimeType::Time => history.nanos,
         re_log_types::TimeType::Sequence => history.sequences,
@@ -96,7 +96,7 @@ where
         &EntityPath,
         &EntityProperties,
         &SpatialSceneEntityContext<'_>,
-        &CachedResults,
+        &Results,
     ) -> Result<(), SpaceViewSystemExecutionError>,
 {
     let transforms = view_ctx.get::<TransformContext>()?;

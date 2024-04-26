@@ -1,5 +1,5 @@
 use re_data_store::LatestAtQuery;
-use re_entity_db::{external::re_query_cache::CachedLatestAtComponentResults, EntityDb};
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{external::arrow2, EntityPath};
 use re_types::external::arrow2::array::Utf8Array;
 use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
@@ -62,7 +62,7 @@ fn fallback_component_ui(
     _query: &LatestAtQuery,
     db: &EntityDb,
     _entity_path: &EntityPath,
-    component: &CachedLatestAtComponentResults,
+    component: &LatestAtComponentResults,
     instance_key: &re_types::components::InstanceKey,
 ) {
     // TODO(#5607): what should happen if the promise is still pending?

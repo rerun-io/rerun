@@ -3,7 +3,7 @@ use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use re_entity_db::{
-    external::{re_data_store::LatestAtQuery, re_query_cache::PromiseResult},
+    external::{re_data_store::LatestAtQuery, re_query::PromiseResult},
     EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{

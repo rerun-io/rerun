@@ -1,5 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_query_cache::range_zip_1x7;
+use re_query::range_zip_1x7;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes3D,
@@ -206,7 +206,7 @@ impl VisualizerSystem for Boxes3DVisualizer {
             |ctx, entity_path, _entity_props, spatial_ctx, results| {
                 re_tracing::profile_scope!(format!("{entity_path}"));
 
-                use crate::visualizers::CachedRangeResultsExt as _;
+                use crate::visualizers::RangeResultsExt as _;
 
                 let resolver = ctx.recording().resolver();
 

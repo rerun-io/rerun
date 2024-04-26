@@ -49,9 +49,6 @@ pub enum SpaceViewSystemExecutionError {
     QueryError(#[from] re_query::QueryError),
 
     #[error(transparent)]
-    QueryError2(#[from] re_query_cache::QueryError),
-
-    #[error(transparent)]
     DeserializationError(#[from] re_types::DeserializationError),
 
     #[error("Failed to create draw data: {0}")]

@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use egui::NumExt;
 
-use re_entity_db::{
-    external::re_query_cache::CachedLatestAtComponentResults, EntityPath, InstancePath,
-};
+use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, InstancePath};
 use re_types::ComponentName;
 use re_ui::SyntaxHighlighting as _;
 use re_viewer_context::{UiVerbosity, ViewerContext};
@@ -16,7 +14,7 @@ use crate::item_ui;
 pub struct EntityLatestAtResults {
     pub entity_path: EntityPath,
     pub component_name: ComponentName,
-    pub results: Arc<CachedLatestAtComponentResults>,
+    pub results: Arc<LatestAtComponentResults>,
 }
 
 impl DataUi for EntityLatestAtResults {

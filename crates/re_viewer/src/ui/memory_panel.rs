@@ -2,7 +2,7 @@ use itertools::Itertools;
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query_cache::{CachedComponentStats, CachesStats};
+use re_query::{CachedComponentStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_viewer_context::store_hub::StoreHubStats;
 

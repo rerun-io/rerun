@@ -1,7 +1,4 @@
-use re_query_cache::{
-    CachedLatestAtResults, CachedRangeData, CachedRangeResults, CachedResults, PromiseResolver,
-    PromiseResult,
-};
+use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
 use re_types::Component;
 
 // ---
@@ -10,60 +7,56 @@ use re_types::Component;
 ///
 /// Also turns all results into range results, so that views only have to worry about the ranged
 /// case.
-pub trait CachedRangeResultsExt {
+pub trait RangeResultsExt {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<CachedRangeData<'a, C>>>;
+    ) -> Option<re_query::Result<RangeData<'a, C>>>;
 
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<CachedRangeData<'a, C>>;
+    ) -> re_query::Result<RangeData<'a, C>>;
 }
 
-impl CachedRangeResultsExt for CachedResults {
+impl RangeResultsExt for Results {
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<CachedRangeData<'a, C>>> {
+    ) -> Option<re_query::Result<RangeData<'a, C>>> {
         match self {
-            CachedResults::LatestAt(_, results) => results.get_dense(resolver),
-            CachedResults::Range(_, results) => results.get_dense(resolver),
+            Results::LatestAt(_, results) => results.get_dense(resolver),
+            Results::Range(_, results) => results.get_dense(resolver),
         }
     }
 
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<CachedRangeData<'a, C>> {
+    ) -> re_query::Result<RangeData<'a, C>> {
         match self {
-            CachedResults::LatestAt(_, results) => results.get_or_empty_dense(resolver),
-            CachedResults::Range(_, results) => results.get_or_empty_dense(resolver),
+            Results::LatestAt(_, results) => results.get_or_empty_dense(resolver),
+            Results::Range(_, results) => results.get_or_empty_dense(resolver),
         }
     }
 }
 
-impl CachedRangeResultsExt for CachedRangeResults {
+impl RangeResultsExt for RangeResults {
     #[inline]
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<CachedRangeData<'a, C>>> {
+    ) -> Option<re_query::Result<RangeData<'a, C>>> {
         let results = self.get(C::name())?.to_dense(resolver);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status();
         match front_status {
-            PromiseResult::Error(err) => {
-                return Some(Err(re_query_cache::QueryError::Other(err.into())))
-            }
+            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => {
-                return Some(Err(re_query_cache::QueryError::Other(err.into())))
-            }
+            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -74,17 +67,17 @@ impl CachedRangeResultsExt for CachedRangeResults {
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<CachedRangeData<'a, C>> {
+    ) -> re_query::Result<RangeData<'a, C>> {
         let results = self.get_or_empty(C::name()).to_dense(resolver);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = results.status();
         match front_status {
-            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -92,27 +85,23 @@ impl CachedRangeResultsExt for CachedRangeResults {
     }
 }
 
-impl CachedRangeResultsExt for CachedLatestAtResults {
+impl RangeResultsExt for LatestAtResults {
     #[inline]
     fn get_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> Option<re_query_cache::Result<CachedRangeData<'a, C>>> {
+    ) -> Option<re_query::Result<RangeData<'a, C>>> {
         let results = self.get(C::name())?;
-        let data = CachedRangeData::from_latest_at(resolver, results);
+        let data = RangeData::from_latest_at(resolver, results);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
         match front_status {
-            PromiseResult::Error(err) => {
-                return Some(Err(re_query_cache::QueryError::Other(err.into())))
-            }
+            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => {
-                return Some(Err(re_query_cache::QueryError::Other(err.into())))
-            }
+            PromiseResult::Error(err) => return Some(Err(re_query::QueryError::Other(err.into()))),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 
@@ -123,18 +112,18 @@ impl CachedRangeResultsExt for CachedLatestAtResults {
     fn get_or_empty_dense<'a, C: Component>(
         &'a self,
         resolver: &PromiseResolver,
-    ) -> re_query_cache::Result<CachedRangeData<'a, C>> {
+    ) -> re_query::Result<RangeData<'a, C>> {
         let results = self.get_or_empty(C::name());
-        let data = CachedRangeData::from_latest_at(resolver, results);
+        let data = RangeData::from_latest_at(resolver, results);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
         match front_status {
-            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
         match back_status {
-            PromiseResult::Error(err) => return Err(re_query_cache::QueryError::Other(err.into())),
+            PromiseResult::Error(err) => return Err(re_query::QueryError::Other(err.into())),
             PromiseResult::Pending | PromiseResult::Ready(_) => {}
         }
 

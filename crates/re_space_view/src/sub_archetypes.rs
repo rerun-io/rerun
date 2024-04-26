@@ -1,6 +1,6 @@
 use re_data_store::LatestAtQuery;
 use re_entity_db::{
-    external::re_query_cache::{CachedLatestAtResults, PromiseResult, ToArchetype},
+    external::re_query::{LatestAtResults, PromiseResult, ToArchetype},
     EntityDb,
 };
 use re_log_types::EntityPath;
@@ -46,7 +46,7 @@ pub fn query_space_view_sub_archetype<A: Archetype>(
     query: &LatestAtQuery,
 ) -> (PromiseResult<Option<A>>, EntityPath)
 where
-    CachedLatestAtResults: ToArchetype<A>,
+    LatestAtResults: ToArchetype<A>,
 {
     let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
     (
@@ -63,7 +63,7 @@ pub fn query_space_view_sub_archetype_or_default<A: Archetype + Default>(
     query: &LatestAtQuery,
 ) -> (A, EntityPath)
 where
-    CachedLatestAtResults: ToArchetype<A>,
+    LatestAtResults: ToArchetype<A>,
 {
     let (arch, path) = query_space_view_sub_archetype(space_view_id, blueprint_db, query);
     (arch.ok().flatten().unwrap_or_default(), path)
