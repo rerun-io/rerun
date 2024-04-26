@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configuration for the background of a space view.
+    /// **Archetype**: Configuration for the background of a view.
     struct Background {
         /// The type of the background. Defaults to BackgroundKind.GradientDark.
         rerun::blueprint::components::BackgroundKind kind;

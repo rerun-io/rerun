@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configuration for the background of a space view.
+/// **Archetype**: Configuration for the background of a view.
 #[derive(Clone, Debug, Copy)]
 pub struct Background {
     /// The type of the background. Defaults to BackgroundKind.GradientDark.

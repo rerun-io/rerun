@@ -24,7 +24,7 @@ from enum import Enum
 
 
 class BackgroundKind(Enum):
-    """**Component**: The type of the background in a space views."""
+    """**Component**: The type of the background in a view."""
 
     GradientDark = 1
     """

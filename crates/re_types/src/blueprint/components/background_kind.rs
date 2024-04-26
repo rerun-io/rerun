@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: The type of the background in a space views.
+/// **Component**: The type of the background in a view.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BackgroundKind {
     /// A dark gradient.

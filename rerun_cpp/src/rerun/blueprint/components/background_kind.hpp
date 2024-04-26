@@ -15,7 +15,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::components {
-    /// **Component**: The type of the background in a space views.
+    /// **Component**: The type of the background in a view.
     enum class BackgroundKind : uint8_t {
 
         /// A dark gradient.

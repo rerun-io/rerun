@@ -17,7 +17,7 @@ __all__ = ["Background"]
 
 @define(str=False, repr=False, init=False)
 class Background(BackgroundExt, Archetype):
-    """**Archetype**: Configuration for the background of a space view."""
+    """**Archetype**: Configuration for the background of a view."""
 
     # __init__ can be found in background_ext.py
 
