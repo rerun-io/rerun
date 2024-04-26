@@ -8,7 +8,7 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.components;
 
 
-/// The type of the background in a space views.
+/// The type of the background in a view.
 enum BackgroundKind: byte (
     "attr.rerun.scope": "blueprint"
 ) {
