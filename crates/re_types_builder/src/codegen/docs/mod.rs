@@ -97,7 +97,7 @@ on [Entities and Components](../../concepts/entity-component.md).",
             (
                 ObjectKind::View,
                 4,
-                r"Views are responsible for creating visual representations of archetypes. This page lists all built-in views.",
+                r"Views are the panels shown in the viewer's viewport and the primary means of inspecting & visualizing previously logged data. This page lists all built-in views.",
                 &views,
             ),
         ] {
