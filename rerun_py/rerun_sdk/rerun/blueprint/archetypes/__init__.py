@@ -10,6 +10,7 @@ from .scalar_axis import ScalarAxis
 from .space_view_blueprint import SpaceViewBlueprint
 from .space_view_contents import SpaceViewContents
 from .viewport_blueprint import ViewportBlueprint
+from .visible_time_range import VisibleTimeRange
 from .visual_bounds import VisualBounds
 
 __all__ = [
@@ -21,5 +22,6 @@ __all__ = [
     "SpaceViewBlueprint",
     "SpaceViewContents",
     "ViewportBlueprint",
+    "VisibleTimeRange",
     "VisualBounds",
 ]

@@ -1,0 +1,34 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+// ---
+
+// TODO: Clarify if an empty range means latest-at.
+
+/// Configures what range of the timeline is shown on a view.
+///
+/// Whenever no visual time range applies, queries are done with "latest at" semantics.
+/// This means that the view will, starting from the time cursor position,
+/// query the latest data available for each component type.
+///
+/// The default visual time range depends on the type of view this property applies to:
+/// - For time series views, the default is to show the entire timeline.
+/// - For any other view, the default is to apply latest-at semantics.
+///
+/// The visual time range can be overriden also individually per entity.
+table VisibleTimeRange (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    /// The range of time to show for timelines based on sequence numbers.
+    sequence: rerun.blueprint.components.VisibleTimeRangeSequence ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// The range of time to show for timelines based on time.
+    time: rerun.blueprint.components.VisibleTimeRangeTime ("attr.rerun.component_optional", nullable, order: 2000);
+}

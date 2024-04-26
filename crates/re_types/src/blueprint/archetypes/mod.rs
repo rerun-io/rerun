@@ -6,6 +6,7 @@ mod plot_legend;
 mod scalar_axis;
 mod space_view_blueprint;
 mod space_view_contents;
+mod visible_time_range;
 mod visual_bounds;
 
 pub use self::background::Background;
@@ -13,4 +14,5 @@ pub use self::plot_legend::PlotLegend;
 pub use self::scalar_axis::ScalarAxis;
 pub use self::space_view_blueprint::SpaceViewBlueprint;
 pub use self::space_view_contents::SpaceViewContents;
+pub use self::visible_time_range::VisibleTimeRange;
 pub use self::visual_bounds::VisualBounds;
