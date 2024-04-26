@@ -731,6 +731,7 @@ impl IndexedBucketInner {
                     } else {
                         let mut d = StoreDiff::deletion(removed_row_id, entity_path.clone());
                         d.at_timestamp(timeline, time);
+                        d.insert(cell);
                         diff = Some(d);
                     }
                 }
