@@ -8,12 +8,12 @@ pub struct Instance(pub(crate) u64);
 impl From<u64> for Instance {
     #[inline]
     fn from(instance: u64) -> Self {
-        debug_assert_ne!(
-            instance,
-            u64::MAX,
-            "u64::MAX is reserved to refer to all instances: {:#?}",
-            backtrace::Backtrace::new()
-        );
+        if cfg!(debug_assertions) && instance == u64::MAX {
+            re_log::warn!(
+                "u64::MAX is reserved to refer to all instances: {:#?}",
+                backtrace::Backtrace::new()
+            );
+        }
         Self(instance)
     }
 }
