@@ -130,17 +130,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(
-            crate::testing::datatypes::AffixFuzzer21::from_arrow_opt(arrow_data)
-                .with_context("rerun.testing.components.AffixFuzzer21#nested_halves")?
-                .into_iter()
-                .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.testing.components.AffixFuzzer21#nested_halves")
-                .with_context("rerun.testing.components.AffixFuzzer21")?,
-        )
+        crate::testing::datatypes::AffixFuzzer21::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 }

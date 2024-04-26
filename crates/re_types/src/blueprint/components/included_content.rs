@@ -146,55 +146,7 @@ impl ::re_types_core::Loggable for IncludedContent {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.blueprint.components.IncludedContent#contents")?;
-            let arrow_data_buf = arrow_data.values();
-            let offsets = arrow_data.offsets();
-            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                offsets.iter().zip(offsets.lengths()),
-                arrow_data.validity(),
-            )
-            .map(|elem| {
-                elem.map(|(start, len)| {
-                    let start = *start as usize;
-                    let end = start + len;
-                    if end as usize > arrow_data_buf.len() {
-                        return Err(DeserializationError::offset_slice_oob(
-                            (start, end),
-                            arrow_data_buf.len(),
-                        ));
-                    }
-
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
-                    Ok(data)
-                })
-                .transpose()
-            })
-            .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| {
-                    res_or_opt
-                        .map(|v| crate::datatypes::EntityPath(::re_types_core::ArrowString(v)))
-                })
-            })
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.blueprint.components.IncludedContent#contents")?
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.blueprint.components.IncludedContent#contents")
-        .with_context("rerun.blueprint.components.IncludedContent")?)
+        crate::datatypes::EntityPath::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 }

@@ -790,10 +790,6 @@ fn quote_trait_impls_from_obj(
 
             let datatype = ArrowDataTypeTokenizer(&datatype, false);
 
-            let quoted_serializer =
-                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
-            let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
-
             let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
@@ -827,6 +823,30 @@ fn quote_trait_impls_from_obj(
             } else {
                 quote!()
             };
+
+            // Forward deserialization to existing datatype if it's transparent.
+            let quoted_deserializer = if obj.is_arrow_transparent()
+                && !obj.fields[0].is_nullable
+                && matches!(obj.fields[0].typ, Type::Object(_))
+            {
+                let forwarded_type = quote_field_type_from_typ(&obj.fields[0].typ, true).0;
+                quote! {
+                    #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
+                }
+            } else {
+                let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
+                quote! {
+                    // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
+                    // re_tracing::profile_function!();
+
+                    use arrow2::{datatypes::*, array::*, buffer::*};
+                    use ::re_types_core::{Loggable as _, ResultExt as _};
+                    Ok(#quoted_deserializer)
+                }
+            };
+
+            let quoted_serializer =
+                quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
 
             quote! {
                 ::re_types_core::macros::impl_into_cow!(#name);
@@ -871,13 +891,7 @@ fn quote_trait_impls_from_obj(
                     where
                         Self: Sized
                     {
-                        // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
-                        // re_tracing::profile_function!();
-
-                        use arrow2::{datatypes::*, array::*, buffer::*};
-                        use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                        Ok(#quoted_deserializer)
+                        #quoted_deserializer
                     }
 
                     #quoted_from_arrow

@@ -157,76 +157,8 @@ impl ::re_types_core::Loggable for PinholeProjection {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.components.PinholeProjection#image_from_camera")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let offsets = (0..)
-                    .step_by(9usize)
-                    .zip((9usize..).step_by(9usize).take(arrow_data.len()));
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<Float32Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Float32;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.components.PinholeProjection#image_from_camera")?
-                        .into_iter()
-                        .map(|opt| opt.copied())
-                        .collect::<Vec<_>>()
-                };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    offsets,
-                    arrow_data.validity(),
-                )
-                .map(|elem| {
-                    elem.map(|(start, end)| {
-                        debug_assert!(end - start == 9usize);
-                        if end as usize > arrow_data_inner.len() {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_inner.len(),
-                            ));
-                        }
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        let data =
-                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
-                        let data = data.iter().cloned().map(Option::unwrap_or_default);
-
-                        // NOTE: Unwrapping cannot fail: the length must be correct.
-                        #[allow(clippy::unwrap_used)]
-                        Ok(array_init::from_iter(data).unwrap())
-                    })
-                    .transpose()
-                })
-                .map(|res_or_opt| {
-                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Mat3x3(v)))
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.components.PinholeProjection#image_from_camera")
-        .with_context("rerun.components.PinholeProjection")?)
+        crate::datatypes::Mat3x3::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 
     #[allow(clippy::wildcard_imports)]

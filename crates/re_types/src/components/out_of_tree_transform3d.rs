@@ -141,15 +141,7 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(crate::datatypes::Transform3D::from_arrow_opt(arrow_data)
-            .with_context("rerun.components.OutOfTreeTransform3D#repr")?
-            .into_iter()
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.OutOfTreeTransform3D#repr")
-            .with_context("rerun.components.OutOfTreeTransform3D")?)
+        crate::datatypes::Transform3D::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 }

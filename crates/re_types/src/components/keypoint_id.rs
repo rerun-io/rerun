@@ -143,25 +143,8 @@ impl ::re_types_core::Loggable for KeypointId {
     where
         Self: Sized,
     {
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
-        Ok(arrow_data
-            .as_any()
-            .downcast_ref::<UInt16Array>()
-            .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
-                let actual = arrow_data.data_type().clone();
-                DeserializationError::datatype_mismatch(expected, actual)
-            })
-            .with_context("rerun.components.KeypointId#id")?
-            .into_iter()
-            .map(|opt| opt.copied())
-            .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::KeypointId(v)))
-            .map(|v| v.ok_or_else(DeserializationError::missing_data))
-            .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.KeypointId#id")
-            .with_context("rerun.components.KeypointId")?)
+        crate::datatypes::KeypointId::from_arrow_opt(arrow_data)
+            .map(|v| v.into_iter().map(|v| v.map(|v| Self(v))).collect())
     }
 
     #[allow(clippy::wildcard_imports)]
