@@ -49,7 +49,12 @@ where
     CachedLatestAtResults: ToArchetype<A>,
 {
     let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
-    (blueprint_db.latest_at_archetype(&path, query), path)
+    (
+        blueprint_db
+            .latest_at_archetype(&path, query)
+            .map(|res| res.map(|(_, arch)| arch)),
+        path,
+    )
 }
 
 pub fn query_space_view_sub_archetype_or_default<A: Archetype + Default>(

@@ -1,4 +1,4 @@
-use re_entity_db::InstancePath;
+use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use crate::{ContainerId, SpaceViewId};
@@ -151,18 +151,18 @@ impl Item {
 
 /// If the given item refers to the first element of an instance with a single element, resolve to a splatted entity path.
 pub fn resolve_mono_instance_path_item(
+    entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
     item: &Item,
 ) -> Item {
     // Resolve to entity path if there's only a single instance.
     match item {
         Item::InstancePath(instance_path) => {
-            Item::InstancePath(resolve_mono_instance_path(query, store, instance_path))
+            Item::InstancePath(resolve_mono_instance_path(entity_db, query, instance_path))
         }
         Item::DataResult(space_view_id, instance_path) => Item::DataResult(
             *space_view_id,
-            resolve_mono_instance_path(query, store, instance_path),
+            resolve_mono_instance_path(entity_db, query, instance_path),
         ),
         Item::AppId(_)
         | Item::DataSource(_)
@@ -175,27 +175,36 @@ pub fn resolve_mono_instance_path_item(
 
 /// If the given path refers to the first element of an instance with a single element, resolve to a splatted entity path.
 pub fn resolve_mono_instance_path(
+    entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
     instance: &re_entity_db::InstancePath,
 ) -> re_entity_db::InstancePath {
     re_tracing::profile_function!();
 
     if instance.instance_key.0 == 0 {
-        let Some(components) = store.all_components(&query.timeline(), &instance.entity_path)
+        // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
+        let Some(components) = entity_db
+            .store()
+            .all_components(&query.timeline(), &instance.entity_path)
         else {
             // No components at all, return splatted entity.
             return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
         };
+
         for component in components {
-            if let Some((_, _row_id, instances)) = re_query::get_component_with_instances(
-                store,
+            let results = entity_db.query_caches().latest_at(
+                entity_db.store(),
                 query,
                 &instance.entity_path,
-                component,
-            ) {
-                if instances.len() > 1 {
-                    return instance.clone();
+                [component],
+            );
+            if let Some(results) = results.get(component) {
+                if let re_query_cache::PromiseResult::Ready(cell) =
+                    results.resolved(entity_db.resolver())
+                {
+                    if cell.num_instances() > 1 {
+                        return instance.clone();
+                    }
                 }
             }
         }
