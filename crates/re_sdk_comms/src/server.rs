@@ -136,6 +136,7 @@ fn listen_for_new_clients(listener: &TcpListener, options: ServerOptions, tx: &S
             }
             Err(err) => {
                 if cfg!(target_os = "windows") {
+                    // Windows error codes resolved to names via http://errorcodelookup.com/
                     const WSANOTINITIALISED: i32 = 10093;
                     const WSAEINTR: i32 = 10004;
 
@@ -151,7 +152,7 @@ fn listen_for_new_clients(listener: &TcpListener, options: ServerOptions, tx: &S
                                 break;
                             }
                             WSAEINTR => {
-                                // A blocking operation as interrupted.
+                                // A blocking operation was interrupted.
                                 // This can only happen if the listener is closing,
                                 // meaning that this server is shutting down.
                                 break;
