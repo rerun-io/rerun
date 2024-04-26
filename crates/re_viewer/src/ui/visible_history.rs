@@ -11,7 +11,7 @@ use re_space_view::{
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::components::VisibleTimeRange;
+use re_types::blueprint::components::{VisibleTimeRangeSequence, VisibleTimeRangeTime};
 use re_types_core::Loggable as _;
 use re_ui::{markdown_ui, ReUi};
 use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, ViewerContext};
@@ -59,21 +59,32 @@ pub fn visual_time_range_ui(
         .space_view_class_registry
         .get_class_or_log_error(&space_view_class);
 
-    let mut resolved_range = data_result
-        .lookup_override::<VisibleTimeRange>(ctx)
-        .unwrap_or(space_view_class.default_visible_time_range());
+    let active_time_range_override = match time_type {
+        TimeType::Time => data_result
+            .lookup_override::<VisibleTimeRangeTime>(ctx)
+            .map(|v| v.0),
+        TimeType::Sequence => data_result
+            .lookup_override::<VisibleTimeRangeSequence>(ctx)
+            .map(|v| v.0),
+    };
+
     let mut has_individual_range = if let Some(data_result_tree) = data_result_tree {
         // If there is a data-tree, we know we have individual settings if we are our own source.
-        data_result
-            .component_override_source(data_result_tree, &VisibleTimeRange::name())
-            .as_ref()
-            == Some(&data_result.entity_path)
+        let component_override_source = match time_type {
+            TimeType::Time => data_result
+                .component_override_source(data_result_tree, &VisibleTimeRangeTime::name()),
+            TimeType::Sequence => data_result
+                .component_override_source(data_result_tree, &VisibleTimeRangeSequence::name()),
+        };
+
+        component_override_source.as_ref() == Some(&data_result.entity_path)
     } else {
         // Otherwise we can inspect directly.
-        data_result
-            .lookup_override::<VisibleTimeRange>(ctx)
-            .is_some()
+        active_time_range_override.is_some()
     };
+
+    let mut resolved_range =
+        active_time_range_override.unwrap_or(space_view_class.default_visible_time_range());
 
     let collapsing_response = re_ui.collapsing_header(ui, "Visible time range", false, |ui| {
         let has_individual_range_before = has_individual_range;
@@ -109,17 +120,8 @@ pub fn visual_time_range_ui(
             .unwrap_or_default()
             .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::MIN)
 
-        // pick right from/to depending on the timeline type.
-        let (from, to) = match time_type {
-            TimeType::Time => (
-                &mut resolved_range.0.from_time,
-                &mut resolved_range.0.to_time,
-            ),
-            TimeType::Sequence => (
-                &mut resolved_range.0.from_sequence,
-                &mut resolved_range.0.to_sequence,
-            ),
-        };
+        let from = &mut resolved_range.start;
+        let to = &mut resolved_range.end;
 
         // Convert to legacy visual history type.
         let mut visible_history = VisibleHistory {
@@ -230,11 +232,22 @@ pub fn visual_time_range_ui(
             || resolved_range != resolved_range_before
         {
             if has_individual_range {
-                re_log::debug!("override!");
-                data_result.save_recursive_override(ctx, &resolved_range);
+                let resolved_range = resolved_range.clone();
+                match time_type {
+                    TimeType::Time => data_result
+                        .save_recursive_override(ctx, &VisibleTimeRangeTime(resolved_range)),
+                    TimeType::Sequence => data_result
+                        .save_recursive_override(ctx, &VisibleTimeRangeSequence(resolved_range)),
+                };
             } else {
-                re_log::debug!("clear!");
-                data_result.clear_recursive_override::<VisibleTimeRange>(ctx);
+                match time_type {
+                    TimeType::Time => {
+                        data_result.clear_recursive_override::<VisibleTimeRangeTime>(ctx);
+                    }
+                    TimeType::Sequence => {
+                        data_result.clear_recursive_override::<VisibleTimeRangeSequence>(ctx);
+                    }
+                }
             }
         }
     });
@@ -262,7 +275,7 @@ pub fn visual_time_range_ui(
 
     if should_display_visible_history {
         if let Some(current_time) = time_ctrl.time_int() {
-            let range = visible_time_range_to_time_range(&resolved_range, time_type, current_time);
+            let range = visible_time_range_to_time_range(&resolved_range, current_time);
             ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(range);
         }
     }

@@ -15,22 +15,12 @@ namespace rerun {
         Loggable<blueprint::datatypes::VisibleTimeRange>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
             arrow::field(
-                "from_sequence",
+                "start",
                 Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false
             ),
             arrow::field(
-                "to_sequence",
-                Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false
-            ),
-            arrow::field(
-                "from_time",
-                Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false
-            ),
-            arrow::field(
-                "to_time",
+                "end",
                 Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false
             ),
@@ -79,12 +69,10 @@ namespace rerun {
             auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::
-                                     fill_arrow_array_builder(
-                                         field_builder,
-                                         &elements[elem_idx].from_sequence,
-                                         1
-                                     ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::
+                        fill_arrow_array_builder(field_builder, &elements[elem_idx].start, 1)
+                );
             }
         }
         {
@@ -93,27 +81,7 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(
                     Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::
-                        fill_arrow_array_builder(field_builder, &elements[elem_idx].to_sequence, 1)
-                );
-            }
-        }
-        {
-            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(2));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::
-                        fill_arrow_array_builder(field_builder, &elements[elem_idx].from_time, 1)
-                );
-            }
-        }
-        {
-            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(3));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::blueprint::datatypes::VisibleTimeRangeBoundary>::
-                        fill_arrow_array_builder(field_builder, &elements[elem_idx].to_time, 1)
+                        fill_arrow_array_builder(field_builder, &elements[elem_idx].end, 1)
                 );
             }
         }

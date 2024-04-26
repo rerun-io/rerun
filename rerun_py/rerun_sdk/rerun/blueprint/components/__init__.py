@@ -51,7 +51,12 @@ from .viewer_recommendation_hash import (
     ViewerRecommendationHashType,
 )
 from .visible import Visible, VisibleArrayLike, VisibleBatch, VisibleLike, VisibleType
-from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
+from .visible_time_range_sequence import (
+    VisibleTimeRangeSequence,
+    VisibleTimeRangeSequenceBatch,
+    VisibleTimeRangeSequenceType,
+)
+from .visible_time_range_time import VisibleTimeRangeTime, VisibleTimeRangeTimeBatch, VisibleTimeRangeTimeType
 
 __all__ = [
     "ActiveTab",
@@ -136,8 +141,11 @@ __all__ = [
     "VisibleArrayLike",
     "VisibleBatch",
     "VisibleLike",
-    "VisibleTimeRange",
-    "VisibleTimeRangeBatch",
-    "VisibleTimeRangeType",
+    "VisibleTimeRangeSequence",
+    "VisibleTimeRangeSequenceBatch",
+    "VisibleTimeRangeSequenceType",
+    "VisibleTimeRangeTime",
+    "VisibleTimeRangeTimeBatch",
+    "VisibleTimeRangeTimeType",
     "VisibleType",
 ]

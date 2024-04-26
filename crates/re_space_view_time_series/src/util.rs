@@ -35,15 +35,18 @@ pub fn determine_time_range(
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
 ) -> TimeRange {
-    let visible_time_range_override = data_result
-        .lookup_override::<re_types::blueprint::components::VisibleTimeRange>(ctx)
-        .unwrap_or(TimeSeriesSpaceView::DEFAULT_TIME_RANGE);
+    let visible_time_range_override = match query.timeline.typ() {
+        re_log_types::TimeType::Time => data_result
+            .lookup_override::<re_types::blueprint::components::VisibleTimeRangeTime>(ctx)
+            .map(|v| v.0),
+        re_log_types::TimeType::Sequence => data_result
+            .lookup_override::<re_types::blueprint::components::VisibleTimeRangeSequence>(ctx)
+            .map(|v| v.0),
+    }
+    .unwrap_or(TimeSeriesSpaceView::DEFAULT_TIME_RANGE);
 
-    let mut time_range = visible_time_range_to_time_range(
-        &visible_time_range_override,
-        query.timeline.typ(),
-        query.latest_at,
-    );
+    let mut time_range =
+        visible_time_range_to_time_range(&visible_time_range_override, query.latest_at);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

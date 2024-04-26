@@ -4917,6 +4917,7 @@ dependencies = [
  "rayon",
  "re_arrow2",
  "re_build_tools",
+ "re_error",
  "re_log",
  "re_tracing",
  "rust-format",

@@ -32,4 +32,5 @@ space_view_origin.hpp linguist-generated=true
 viewer_recommendation_hash.hpp linguist-generated=true
 visible.cpp linguist-generated=true
 visible.hpp linguist-generated=true
-visible_time_range.hpp linguist-generated=true
+visible_time_range_sequence.hpp linguist-generated=true
+visible_time_range_time.hpp linguist-generated=true
