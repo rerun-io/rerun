@@ -51,9 +51,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
       - name: Load C++ test matrix
         id: set-matrix
-        run: echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${{ github.event.inputs.CHANNEL }}" == "pr" ]]; then
+            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_fast.json)" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+          fi
+
 
   cpp-tests:
     name: C++ build & test - ${{ matrix.name }}
