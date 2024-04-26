@@ -28,7 +28,7 @@ pub fn space_view_sub_archetype<A: re_types::Archetype>(
     space_view_id: re_viewer_context::SpaceViewId,
 ) -> Option<A>
 where
-    CachedLatestAtResults: ToArchetype<A>,
+    LatestAtResults: ToArchetype<A>,
 {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
@@ -37,6 +37,7 @@ where
         .latest_at_archetype(&path, blueprint_query)
         .ok()
         .flatten()
+        .map(|(_index, value)| value)
 }
 
 /// Returns `Ok(None)` if any of the required components are missing.
