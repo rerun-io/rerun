@@ -6,7 +6,7 @@ use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
-    blueprint::archetypes::Background,
+    blueprint::archetypes::{Background, VisualBounds},
     Archetype, ComponentName,
 };
 use re_viewer_context::{
@@ -254,22 +254,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 
-                {
-                    let visual_bounds = &mut state.state_2d.visual_bounds;
-                    ctx.re_ui
-                        .grid_left_hand_label(ui, "Bounds")
-                        .on_hover_text("The area guaranteed to be visible.\nDepending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.");
-                    ui.vertical(|ui| {
-                        ui.style_mut().wrap = Some(false);
-                        let (min, max) = (visual_bounds.min, visual_bounds.max);
-                        ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                        ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-                        if ui.button("Reset bounds").clicked() {
-                            *visual_bounds = egui::Rect::NAN;
-                        }
-                    });
-                    ui.end_row();
-                }
+                visual_bounds_ui(ctx, space_view_id, ui);
             });
         Ok(())
     }
@@ -295,6 +280,35 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         crate::ui_2d::view_2d(ctx, ui, state, query, system_output)
     }
+}
+
+fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
+    let tooltip = "The area guaranteed to be visible.\n\
+                   Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.";
+    re_space_view::edit_blueprint_component::<VisualBounds, re_types::components::AABB2D, ()>(
+        ctx,
+        space_view_id,
+        |aabb: &mut Option<re_types::components::AABB2D>| {
+            ctx.re_ui
+                .grid_left_hand_label(ui, "Bounds")
+                .on_hover_text(tooltip);
+            ui.vertical(|ui| {
+                ui.style_mut().wrap = Some(false);
+
+                if let Some(aabb) = aabb {
+                    let rect = egui::Rect::from(*aabb);
+                    let (min, max) = (rect.min, rect.max);
+                    ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+                    ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+                }
+
+                if ui.button("Reset bounds").clicked() {
+                    *aabb = None;
+                }
+            });
+            ui.end_row();
+        },
+    );
 }
 
 // Count the number of image entities with the given component exist that aren't

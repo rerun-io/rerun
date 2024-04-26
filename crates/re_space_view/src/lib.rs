@@ -18,8 +18,9 @@ pub use screenshot::ScreenshotMode;
 pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
 pub use sub_archetypes::{
-    entity_path_for_space_view_sub_archetype, query_space_view_sub_archetype,
-    query_space_view_sub_archetype_or_default, space_view_sub_archetype,
+    edit_blueprint_component, entity_path_for_space_view_sub_archetype, get_blueprint_component,
+    query_space_view_sub_archetype, query_space_view_sub_archetype_or_default,
+    space_view_sub_archetype,
 };
 pub use visual_time_range::{
     query_visual_history, time_range_boundary_to_visible_history_boundary,

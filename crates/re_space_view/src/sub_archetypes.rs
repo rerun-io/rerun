@@ -5,7 +5,7 @@ use re_entity_db::{
 };
 use re_log_types::EntityPath;
 use re_types::Archetype;
-use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId};
+use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId, ViewerContext};
 
 pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     space_view_id: SpaceViewId,
@@ -68,4 +68,39 @@ where
 {
     let (arch, path) = query_space_view_sub_archetype(space_view_id, blueprint_db, query);
     (arch.ok().flatten().unwrap_or_default(), path)
+}
+
+/// Read a single component of a blueprint archetype in a space view.
+pub fn get_blueprint_component<A: re_types::Archetype, C: re_types::Component>(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+) -> Option<C> {
+    let blueprint_db = ctx.store_context.blueprint;
+    let query = ctx.blueprint_query;
+    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    blueprint_db
+        .latest_at_component::<C>(&path, query)
+        .map(|x| x.value)
+}
+
+/// Edit a single component of a blueprint archetype in a space view.
+pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component + PartialEq, R>(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    edit_component: impl FnOnce(&mut Option<C>) -> R,
+) -> R {
+    let blueprint_db = ctx.store_context.blueprint;
+    let query = ctx.blueprint_query;
+    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    let original = blueprint_db.latest_at_component::<C>(&path, query);
+    let original: Option<C> = original.map(|x| x.value);
+
+    let mut edited = original.clone();
+    let ret = edit_component(&mut edited);
+
+    if edited != original {
+        ctx.save_blueprint_component(&path, &edited);
+    }
+
+    ret
 }

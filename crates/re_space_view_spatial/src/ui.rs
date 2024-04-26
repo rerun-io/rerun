@@ -27,7 +27,7 @@ use crate::{
 };
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
 
-use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
+use super::{eye::Eye, ui_3d::View3DState};
 
 /// Default auto point radius in UI points.
 const AUTO_POINT_RADIUS: f32 = 1.5;
@@ -63,7 +63,6 @@ pub struct SpatialSpaceViewState {
     /// Last frame's picking result.
     pub previous_picking_result: Option<PickingResult>,
 
-    pub(super) state_2d: View2DState,
     pub(super) state_3d: View3DState,
 
     /// Size of automatically sized objects. None if it wasn't configured.

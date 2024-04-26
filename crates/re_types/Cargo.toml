@@ -68,6 +68,7 @@ arrow2 = { workspace = true, features = [
 ] }
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true
+emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }
 infer.workspace = true
 itertools.workspace = true
