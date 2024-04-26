@@ -12,12 +12,12 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::AABB2D>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
             arrow::field(
-                "min_xy",
+                "min",
                 arrow::fixed_size_list(arrow::field("item", arrow::float64(), false), 2),
                 false
             ),
             arrow::field(
-                "max_xy",
+                "max",
                 arrow::fixed_size_list(arrow::field("item", arrow::float64(), false), 2),
                 false
             ),
@@ -64,9 +64,9 @@ namespace rerun {
             auto value_builder = static_cast<arrow::DoubleBuilder*>(field_builder->value_builder());
 
             ARROW_RETURN_NOT_OK(field_builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].min_xy) == sizeof(elements[0]));
+            static_assert(sizeof(elements[0].min) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].min_xy.data(),
+                elements[0].min.data(),
                 static_cast<int64_t>(num_elements * 2),
                 nullptr
             ));
@@ -77,9 +77,9 @@ namespace rerun {
             auto value_builder = static_cast<arrow::DoubleBuilder*>(field_builder->value_builder());
 
             ARROW_RETURN_NOT_OK(field_builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].max_xy) == sizeof(elements[0]));
+            static_assert(sizeof(elements[0].max) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].max_xy.data(),
+                elements[0].max.data(),
                 static_cast<int64_t>(num_elements * 2),
                 nullptr
             ));

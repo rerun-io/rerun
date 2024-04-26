@@ -19,10 +19,10 @@ namespace rerun::datatypes {
     /// **Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
     struct AABB2D {
         /// The minimum bounds; usually left-top corner.
-        std::array<double, 2> min_xy;
+        std::array<double, 2> min;
 
         /// The maximum bounds; usually right-bottom corner.
-        std::array<double, 2> max_xy;
+        std::array<double, 2> max;
 
       public:
         AABB2D() = default;

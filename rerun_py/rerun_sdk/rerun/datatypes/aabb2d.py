@@ -24,28 +24,28 @@ __all__ = ["AABB2D", "AABB2DArrayLike", "AABB2DBatch", "AABB2DLike", "AABB2DType
 class AABB2D:
     """**Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners."""
 
-    def __init__(self: Any, min_xy: npt.ArrayLike, max_xy: npt.ArrayLike):
+    def __init__(self: Any, min: npt.ArrayLike, max: npt.ArrayLike):
         """
         Create a new instance of the AABB2D datatype.
 
         Parameters
         ----------
-        min_xy:
+        min:
             The minimum bounds; usually left-top corner.
-        max_xy:
+        max:
             The maximum bounds; usually right-bottom corner.
 
         """
 
         # You can define your own __init__ function as a member of AABB2DExt in aabb2d_ext.py
-        self.__attrs_init__(min_xy=min_xy, max_xy=max_xy)
+        self.__attrs_init__(min=min, max=max)
 
-    min_xy: npt.NDArray[np.float64] = field(converter=to_np_float64)
+    min: npt.NDArray[np.float64] = field(converter=to_np_float64)
     # The minimum bounds; usually left-top corner.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    max_xy: npt.NDArray[np.float64] = field(converter=to_np_float64)
+    max: npt.NDArray[np.float64] = field(converter=to_np_float64)
     # The maximum bounds; usually right-bottom corner.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -66,13 +66,13 @@ class AABB2DType(BaseExtensionType):
             self,
             pa.struct([
                 pa.field(
-                    "min_xy",
+                    "min",
                     pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
                     nullable=False,
                     metadata={},
                 ),
                 pa.field(
-                    "max_xy",
+                    "max",
                     pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
                     nullable=False,
                     metadata={},

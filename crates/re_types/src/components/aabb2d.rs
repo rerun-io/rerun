@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for AABB2D {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
-                "min_xy",
+                "min",
                 DataType::FixedSizeList(
                     std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                     2usize,
@@ -85,7 +85,7 @@ impl ::re_types_core::Loggable for AABB2D {
                 false,
             ),
             Field::new(
-                "max_xy",
+                "max",
                 DataType::FixedSizeList(
                     std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                     2usize,

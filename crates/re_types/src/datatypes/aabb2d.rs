@@ -27,16 +27,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(C)]
 pub struct AABB2D {
     /// The minimum bounds; usually left-top corner.
-    pub min_xy: [f64; 2usize],
+    pub min: [f64; 2usize],
 
     /// The maximum bounds; usually right-bottom corner.
-    pub max_xy: [f64; 2usize],
+    pub max: [f64; 2usize],
 }
 
 impl ::re_types_core::SizeBytes for AABB2D {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.min_xy.heap_size_bytes() + self.max_xy.heap_size_bytes()
+        self.min.heap_size_bytes() + self.max.heap_size_bytes()
     }
 
     #[inline]
@@ -61,7 +61,7 @@ impl ::re_types_core::Loggable for AABB2D {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
-                "min_xy",
+                "min",
                 DataType::FixedSizeList(
                     std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                     2usize,
@@ -69,7 +69,7 @@ impl ::re_types_core::Loggable for AABB2D {
                 false,
             ),
             Field::new(
-                "max_xy",
+                "max",
                 DataType::FixedSizeList(
                     std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                     2usize,
@@ -104,23 +104,23 @@ impl ::re_types_core::Loggable for AABB2D {
                 <crate::datatypes::AABB2D>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, min_xy): (Vec<_>, Vec<_>) = data
+                        let (somes, min): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { min_xy, .. } = &**datum;
-                                    min_xy.clone()
+                                    let Self { min, .. } = &**datum;
+                                    min.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let min_xy_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let min_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let min_xy_inner_data: Vec<_> = min_xy
+                            let min_inner_data: Vec<_> = min
                                 .iter()
                                 .flat_map(|v| match v {
                                     Some(v) => itertools::Either::Left(v.iter().cloned()),
@@ -130,8 +130,8 @@ impl ::re_types_core::Loggable for AABB2D {
                                 })
                                 .map(Some)
                                 .collect();
-                            let min_xy_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                min_xy_bitmap.as_ref().map(|bitmap| {
+                            let min_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                min_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
                                         .map(|i| std::iter::repeat(i).take(2usize))
@@ -150,36 +150,36 @@ impl ::re_types_core::Loggable for AABB2D {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float64,
-                                    min_xy_inner_data
+                                    min_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
                                         .collect(),
-                                    min_xy_inner_bitmap,
+                                    min_inner_bitmap,
                                 )
                                 .boxed(),
-                                min_xy_bitmap,
+                                min_bitmap,
                             )
                             .boxed()
                         }
                     },
                     {
-                        let (somes, max_xy): (Vec<_>, Vec<_>) = data
+                        let (somes, max): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { max_xy, .. } = &**datum;
-                                    max_xy.clone()
+                                    let Self { max, .. } = &**datum;
+                                    max.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let max_xy_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let max_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let max_xy_inner_data: Vec<_> = max_xy
+                            let max_inner_data: Vec<_> = max
                                 .iter()
                                 .flat_map(|v| match v {
                                     Some(v) => itertools::Either::Left(v.iter().cloned()),
@@ -189,8 +189,8 @@ impl ::re_types_core::Loggable for AABB2D {
                                 })
                                 .map(Some)
                                 .collect();
-                            let max_xy_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                max_xy_bitmap.as_ref().map(|bitmap| {
+                            let max_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                max_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
                                         .map(|i| std::iter::repeat(i).take(2usize))
@@ -209,14 +209,14 @@ impl ::re_types_core::Loggable for AABB2D {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float64,
-                                    max_xy_inner_data
+                                    max_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
                                         .collect(),
-                                    max_xy_inner_bitmap,
+                                    max_inner_bitmap,
                                 )
                                 .boxed(),
-                                max_xy_bitmap,
+                                max_bitmap,
                             )
                             .boxed()
                         }
@@ -257,15 +257,15 @@ impl ::re_types_core::Loggable for AABB2D {
                     .map(|field| field.name.as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let min_xy = {
-                    if !arrays_by_name.contains_key("min_xy") {
+                let min = {
+                    if !arrays_by_name.contains_key("min") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "min_xy",
+                            "min",
                         ))
                         .with_context("rerun.datatypes.AABB2D");
                     }
-                    let arrow_data = &**arrays_by_name["min_xy"];
+                    let arrow_data = &**arrays_by_name["min"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -282,7 +282,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
-                            .with_context("rerun.datatypes.AABB2D#min_xy")?;
+                            .with_context("rerun.datatypes.AABB2D#min")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -299,7 +299,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                         let actual = arrow_data_inner.data_type().clone();
                                         DeserializationError::datatype_mismatch(expected, actual)
                                     })
-                                    .with_context("rerun.datatypes.AABB2D#min_xy")?
+                                    .with_context("rerun.datatypes.AABB2D#min")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
@@ -333,15 +333,15 @@ impl ::re_types_core::Loggable for AABB2D {
                         .into_iter()
                     }
                 };
-                let max_xy = {
-                    if !arrays_by_name.contains_key("max_xy") {
+                let max = {
+                    if !arrays_by_name.contains_key("max") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "max_xy",
+                            "max",
                         ))
                         .with_context("rerun.datatypes.AABB2D");
                     }
-                    let arrow_data = &**arrays_by_name["max_xy"];
+                    let arrow_data = &**arrays_by_name["max"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -358,7 +358,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
                             })
-                            .with_context("rerun.datatypes.AABB2D#max_xy")?;
+                            .with_context("rerun.datatypes.AABB2D#max")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -375,7 +375,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                         let actual = arrow_data_inner.data_type().clone();
                                         DeserializationError::datatype_mismatch(expected, actual)
                                     })
-                                    .with_context("rerun.datatypes.AABB2D#max_xy")?
+                                    .with_context("rerun.datatypes.AABB2D#max")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
@@ -410,18 +410,18 @@ impl ::re_types_core::Loggable for AABB2D {
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(min_xy, max_xy),
+                    ::itertools::izip!(min, max),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(min_xy, max_xy)| {
+                    opt.map(|(min, max)| {
                         Ok(Self {
-                            min_xy: min_xy
+                            min: min
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.AABB2D#min_xy")?,
-                            max_xy: max_xy
+                                .with_context("rerun.datatypes.AABB2D#min")?,
+                            max: max
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.AABB2D#max_xy")?,
+                                .with_context("rerun.datatypes.AABB2D#max")?,
                         })
                     })
                     .transpose()
