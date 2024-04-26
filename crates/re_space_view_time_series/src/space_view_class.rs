@@ -6,10 +6,8 @@ use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_space_view_sub_archetype_or_default};
-use re_types::{
-    blueprint::components::{Corner2D, VisibleTimeRange},
-    components::Range1D,
-};
+use re_types::blueprint::datatypes::VisibleTimeRange;
+use re_types::{blueprint::components::Corner2D, components::Range1D};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };

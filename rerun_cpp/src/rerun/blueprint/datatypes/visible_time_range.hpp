@@ -16,19 +16,15 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::blueprint::datatypes {
-    /// **Datatype**: Visible time range bounds.
+    /// **Datatype**: Visible time range bounds for a timelines.
+    ///
+    /// This datatype does not specify whether it's a time or sequence based timeline.
     struct VisibleTimeRange {
         /// Low time boundary for sequence timeline.
-        rerun::blueprint::datatypes::VisibleTimeRangeBoundary from_sequence;
+        rerun::blueprint::datatypes::VisibleTimeRangeBoundary start;
 
         /// High time boundary for sequence timeline.
-        rerun::blueprint::datatypes::VisibleTimeRangeBoundary to_sequence;
-
-        /// Low time boundary for time timeline.
-        rerun::blueprint::datatypes::VisibleTimeRangeBoundary from_time;
-
-        /// High time boundary for time timeline.
-        rerun::blueprint::datatypes::VisibleTimeRangeBoundary to_time;
+        rerun::blueprint::datatypes::VisibleTimeRangeBoundary end;
 
       public:
         VisibleTimeRange() = default;

@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
-use re_types::{blueprint::components::VisibleTimeRange, ComponentName};
+use re_types::{blueprint::datatypes::VisibleTimeRange, ComponentName};
 
 use crate::{
     IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,

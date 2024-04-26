@@ -22,36 +22,27 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Visible time range bounds.
+/// **Datatype**: Visible time range bounds for a timelines.
+///
+/// This datatype does not specify whether it's a time or sequence based timeline.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VisibleTimeRange {
     /// Low time boundary for sequence timeline.
-    pub from_sequence: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
+    pub start: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
 
     /// High time boundary for sequence timeline.
-    pub to_sequence: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
-
-    /// Low time boundary for time timeline.
-    pub from_time: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
-
-    /// High time boundary for time timeline.
-    pub to_time: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
+    pub end: crate::blueprint::datatypes::VisibleTimeRangeBoundary,
 }
 
 impl ::re_types_core::SizeBytes for VisibleTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.from_sequence.heap_size_bytes()
-            + self.to_sequence.heap_size_bytes()
-            + self.from_time.heap_size_bytes()
-            + self.to_time.heap_size_bytes()
+        self.start.heap_size_bytes() + self.end.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::is_pod()
-            && <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::is_pod()
-            && <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::is_pod()
             && <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::is_pod()
     }
 }
@@ -72,22 +63,12 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
-                "from_sequence",
+                "start",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
-                "to_sequence",
-                <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false,
-            ),
-            Field::new(
-                "from_time",
-                <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false,
-            ),
-            Field::new(
-                "to_time",
+                "end",
                 <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
@@ -119,90 +100,46 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
                 <crate::blueprint::datatypes::VisibleTimeRange>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, from_sequence): (Vec<_>, Vec<_>) = data
+                        let (somes, start): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_sequence, .. } = &**datum;
-                                    from_sequence.clone()
+                                    let Self { start, .. } = &**datum;
+                                    start.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let from_sequence_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let start_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = from_sequence_bitmap;
+                            _ = start_bitmap;
                             crate::blueprint::datatypes::VisibleTimeRangeBoundary::to_arrow_opt(
-                                from_sequence,
+                                start,
                             )?
                         }
                     },
                     {
-                        let (somes, to_sequence): (Vec<_>, Vec<_>) = data
+                        let (somes, end): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { to_sequence, .. } = &**datum;
-                                    to_sequence.clone()
+                                    let Self { end, .. } = &**datum;
+                                    end.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let to_sequence_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let end_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = to_sequence_bitmap;
+                            _ = end_bitmap;
                             crate::blueprint::datatypes::VisibleTimeRangeBoundary::to_arrow_opt(
-                                to_sequence,
-                            )?
-                        }
-                    },
-                    {
-                        let (somes, from_time): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_time, .. } = &**datum;
-                                    from_time.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let from_time_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = from_time_bitmap;
-                            crate::blueprint::datatypes::VisibleTimeRangeBoundary::to_arrow_opt(
-                                from_time,
-                            )?
-                        }
-                    },
-                    {
-                        let (somes, to_time): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { to_time, .. } = &**datum;
-                                    to_time.clone()
-                                });
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let to_time_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = to_time_bitmap;
-                            crate::blueprint::datatypes::VisibleTimeRangeBoundary::to_arrow_opt(
-                                to_time,
+                                end,
                             )?
                         }
                     },
@@ -242,93 +179,49 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
                     .map(|field| field.name.as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let from_sequence = {
-                    if !arrays_by_name.contains_key("from_sequence") {
+                let start = {
+                    if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "from_sequence",
+                            "start",
                         ))
                         .with_context("rerun.blueprint.datatypes.VisibleTimeRange");
                     }
-                    let arrow_data = &**arrays_by_name["from_sequence"];
+                    let arrow_data = &**arrays_by_name["start"];
                     crate::blueprint::datatypes::VisibleTimeRangeBoundary::from_arrow_opt(
                         arrow_data,
                     )
-                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#from_sequence")?
+                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#start")?
                     .into_iter()
                 };
-                let to_sequence = {
-                    if !arrays_by_name.contains_key("to_sequence") {
+                let end = {
+                    if !arrays_by_name.contains_key("end") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "to_sequence",
+                            "end",
                         ))
                         .with_context("rerun.blueprint.datatypes.VisibleTimeRange");
                     }
-                    let arrow_data = &**arrays_by_name["to_sequence"];
+                    let arrow_data = &**arrays_by_name["end"];
                     crate::blueprint::datatypes::VisibleTimeRangeBoundary::from_arrow_opt(
                         arrow_data,
                     )
-                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#to_sequence")?
-                    .into_iter()
-                };
-                let from_time = {
-                    if !arrays_by_name.contains_key("from_time") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "from_time",
-                        ))
-                        .with_context("rerun.blueprint.datatypes.VisibleTimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["from_time"];
-                    crate::blueprint::datatypes::VisibleTimeRangeBoundary::from_arrow_opt(
-                        arrow_data,
-                    )
-                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#from_time")?
-                    .into_iter()
-                };
-                let to_time = {
-                    if !arrays_by_name.contains_key("to_time") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "to_time",
-                        ))
-                        .with_context("rerun.blueprint.datatypes.VisibleTimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["to_time"];
-                    crate::blueprint::datatypes::VisibleTimeRangeBoundary::from_arrow_opt(
-                        arrow_data,
-                    )
-                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#to_time")?
+                    .with_context("rerun.blueprint.datatypes.VisibleTimeRange#end")?
                     .into_iter()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(from_sequence, to_sequence, from_time, to_time),
+                    ::itertools::izip!(start, end),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(from_sequence, to_sequence, from_time, to_time)| {
+                    opt.map(|(start, end)| {
                         Ok(Self {
-                            from_sequence: from_sequence
+                            start: start
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisibleTimeRange#from_sequence",
-                                )?,
-                            to_sequence: to_sequence
+                                .with_context("rerun.blueprint.datatypes.VisibleTimeRange#start")?,
+                            end: end
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisibleTimeRange#to_sequence",
-                                )?,
-                            from_time: from_time
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisibleTimeRange#from_time",
-                                )?,
-                            to_time: to_time
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                    "rerun.blueprint.datatypes.VisibleTimeRange#to_time",
-                                )?,
+                                .with_context("rerun.blueprint.datatypes.VisibleTimeRange#end")?,
                         })
                     })
                     .transpose()

@@ -45,7 +45,10 @@ impl CodeFormatter for PythonCodeFormatter {
         });
 
         if let Err(err) = format_python_dir(&tempdir_path) {
-            reporter.error_file(&tempdir_path, err);
+            reporter.error_file(
+                &tempdir_path,
+                re_error::format(err.context("python code formatting")),
+            );
         }
 
         // Read back and copy to the final destination:

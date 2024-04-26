@@ -15,7 +15,8 @@ pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
-pub use re_types::blueprint::components::VisibleTimeRange;
+pub use re_types::blueprint::components::VisibleTimeRangeSequence;
+pub use re_types::blueprint::components::VisibleTimeRangeTime;
 pub use re_types_blueprint::blueprint::components::AutoLayout;
 pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
 pub use re_types_blueprint::blueprint::components::ContainerKind;
@@ -49,5 +50,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)
-        && validate_component::<VisibleTimeRange>(blueprint)
+        && validate_component::<VisibleTimeRangeSequence>(blueprint)
+        && validate_component::<VisibleTimeRangeTime>(blueprint)
 }
