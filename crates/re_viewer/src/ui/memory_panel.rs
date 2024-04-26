@@ -1,9 +1,8 @@
-use std::sync::atomic::AtomicBool;
-
+use itertools::Itertools;
 use re_data_store::{DataStoreConfig, DataStoreRowStats, DataStoreStats};
 use re_format::{format_bytes, format_uint};
 use re_memory::{util::sec_since_start, MemoryHistory, MemoryLimit, MemoryUse};
-use re_query_cache::{CachedComponentStats, CachedEntityStats, CachesStats};
+use re_query_cache2::{CachedComponentStats, CachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_viewer_context::store_hub::StoreHubStats;
 
@@ -15,13 +14,6 @@ use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 pub struct MemoryPanel {
     history: MemoryHistory,
     memory_purge_times: Vec<f64>,
-
-    /// If `true`, enables the much-more-costly-to-compute per-component stats for the primary
-    /// cache.
-    prim_cache_detailed_stats: AtomicBool,
-
-    /// If `true`, will show stats about empty primary caches too, which likely indicates a bug (dangling bucket).
-    prim_cache_show_empty: AtomicBool,
 }
 
 impl MemoryPanel {
@@ -49,12 +41,6 @@ impl MemoryPanel {
         self.memory_purge_times.push(sec_since_start());
     }
 
-    #[inline]
-    pub fn primary_cache_detailed_stats_enabled(&self) -> bool {
-        self.prim_cache_detailed_stats
-            .load(std::sync::atomic::Ordering::Relaxed)
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn ui(
         &self,
@@ -74,7 +60,7 @@ impl MemoryPanel {
             .min_width(250.0)
             .default_width(300.0)
             .show_inside(ui, |ui| {
-                self.left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
+                Self::left_side(ui, re_ui, limit, gpu_resource_stats, store_stats);
             });
 
         egui::CentralPanel::default().show_inside(ui, |ui| {
@@ -84,7 +70,6 @@ impl MemoryPanel {
     }
 
     fn left_side(
-        &self,
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         limit: &MemoryLimit,
@@ -115,7 +100,7 @@ impl MemoryPanel {
 
             ui.separator();
             ui.collapsing("Primary Cache Resources", |ui| {
-                self.caches_stats(ui, re_ui, &store_stats.recording_cached_stats);
+                Self::caches_stats(ui, &store_stats.recording_cached_stats);
             });
 
             ui.separator();
@@ -319,27 +304,15 @@ impl MemoryPanel {
             });
     }
 
-    fn caches_stats(&self, ui: &mut egui::Ui, re_ui: &re_ui::ReUi, caches_stats: &CachesStats) {
-        use std::sync::atomic::Ordering::Relaxed;
-
-        let mut detailed_stats = self.prim_cache_detailed_stats.load(Relaxed);
-        re_ui
-            .checkbox(ui, &mut detailed_stats, "Detailed stats")
-            .on_hover_text("Show detailed statistics when hovering entity paths below.\nThis will slow down the program.");
-        self.prim_cache_detailed_stats
-            .store(detailed_stats, Relaxed);
-
-        let mut show_empty = self.prim_cache_show_empty.load(Relaxed);
-        re_ui
-            .checkbox(ui, &mut show_empty, "Show empty caches")
-            .on_hover_text(
-                "Show empty caches too.\nDangling buckets are generally the result of a bug.",
-            );
-        self.prim_cache_show_empty.store(show_empty, Relaxed);
-
+    fn caches_stats(ui: &mut egui::Ui, caches_stats: &CachesStats) {
         let CachesStats { latest_at, range } = caches_stats;
 
-        if show_empty || !latest_at.is_empty() {
+        let latest_at = latest_at
+            .iter()
+            .filter(|(_, stats)| stats.total_indices > 0)
+            .collect_vec();
+
+        if !latest_at.is_empty() {
             ui.separator();
             ui.strong("LatestAt");
             egui::ScrollArea::vertical()
@@ -350,27 +323,36 @@ impl MemoryPanel {
                         .num_columns(3)
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Entity").underline());
-                            ui.label(egui::RichText::new("Rows").underline())
-                                .on_hover_text(
-                                    "How many distinct data timestamps have been cached?",
-                                );
+                            ui.label(egui::RichText::new("Component").underline());
+                            ui.label(egui::RichText::new("Indices").underline());
+                            ui.label(egui::RichText::new("Instances").underline());
                             ui.label(egui::RichText::new("Size").underline());
                             ui.end_row();
 
-                            for (entity_path, stats) in latest_at {
-                                if !show_empty && stats.is_empty() {
-                                    continue;
-                                }
+                            for (cache_key, stats) in latest_at {
+                                let &CachedComponentStats {
+                                    total_indices,
+                                    total_instances,
+                                    total_size_bytes,
+                                } = stats;
 
-                                let res = ui.label(entity_path.to_string());
-                                entity_stats_ui(ui, res, stats);
+                                ui.label(cache_key.entity_path.to_string());
+                                ui.label(cache_key.component_name.to_string());
+                                ui.label(re_format::format_uint(total_indices));
+                                ui.label(re_format::format_uint(total_instances));
+                                ui.label(re_format::format_bytes(total_size_bytes as _));
                                 ui.end_row();
                             }
                         });
                 });
         }
 
-        if show_empty || !latest_at.is_empty() {
+        let range = range
+            .iter()
+            .filter(|(_, (_, stats))| stats.total_indices > 0)
+            .collect_vec();
+
+        if !range.is_empty() {
             ui.separator();
             ui.strong("Range");
             egui::ScrollArea::vertical()
@@ -381,75 +363,36 @@ impl MemoryPanel {
                         .num_columns(4)
                         .show(ui, |ui| {
                             ui.label(egui::RichText::new("Entity").underline());
-                            ui.label(egui::RichText::new("Time range").underline());
-                            ui.label(egui::RichText::new("Rows").underline())
-                                .on_hover_text(
-                                    "How many distinct data timestamps have been cached?",
-                                );
-                            ui.label(egui::RichText::new("Size").underline());
-                            ui.end_row();
-
-                            for (entity_path, stats_per_range) in range {
-                                for (timeline, time_range, stats) in stats_per_range {
-                                    if !show_empty && stats.is_empty() {
-                                        continue;
-                                    }
-
-                                    let res = ui.label(entity_path.to_string());
-                                    ui.label(format!(
-                                        "{}({})",
-                                        timeline.name(),
-                                        timeline.format_time_range_utc(time_range)
-                                    ));
-                                    entity_stats_ui(ui, res, stats);
-                                    ui.end_row();
-                                }
-                            }
-                        });
-                });
-        }
-
-        fn entity_stats_ui(
-            ui: &mut egui::Ui,
-            hover_response: egui::Response,
-            entity_stats: &CachedEntityStats,
-        ) {
-            let CachedEntityStats {
-                total_size_bytes,
-                total_rows,
-                per_component,
-            } = entity_stats;
-
-            if let Some(per_component) = per_component.as_ref() {
-                hover_response.on_hover_ui_at_pointer(|ui| {
-                    egui::Grid::new("component cache stats grid")
-                        .num_columns(3)
-                        .show(ui, |ui| {
                             ui.label(egui::RichText::new("Component").underline());
-                            ui.label(egui::RichText::new("Rows").underline());
+                            ui.label(egui::RichText::new("Indices").underline());
                             ui.label(egui::RichText::new("Instances").underline());
                             ui.label(egui::RichText::new("Size").underline());
+                            ui.label(egui::RichText::new("Time range").underline());
                             ui.end_row();
 
-                            for (component_name, stats) in per_component {
+                            for (cache_key, (time_range, stats)) in range {
                                 let &CachedComponentStats {
-                                    total_rows,
+                                    total_indices,
                                     total_instances,
                                     total_size_bytes,
                                 } = stats;
 
-                                ui.label(component_name.to_string());
-                                ui.label(re_format::format_uint(total_rows));
+                                ui.label(cache_key.entity_path.to_string());
+                                ui.label(cache_key.component_name.to_string());
+                                ui.label(re_format::format_uint(total_indices));
                                 ui.label(re_format::format_uint(total_instances));
                                 ui.label(re_format::format_bytes(total_size_bytes as _));
+                                ui.label(format!(
+                                    "{}({})",
+                                    cache_key.timeline.name(),
+                                    time_range.map_or("<static>".to_owned(), |time_range| {
+                                        cache_key.timeline.format_time_range_utc(&time_range)
+                                    })
+                                ));
                                 ui.end_row();
                             }
                         });
                 });
-            }
-
-            ui.label(re_format::format_uint(*total_rows));
-            ui.label(re_format::format_bytes(*total_size_bytes as _));
         }
     }
 

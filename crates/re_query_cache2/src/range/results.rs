@@ -567,9 +567,9 @@ impl SizeBytes for CachedRangeComponentResultsInner {
             cached_dense,
         } = self;
 
-        indices.heap_size_bytes()
-            + promises_front.heap_size_bytes()
-            + promises_back.heap_size_bytes()
+        indices.total_size_bytes()
+            + promises_front.total_size_bytes()
+            + promises_back.total_size_bytes()
             + cached_dense
                 .as_ref()
                 .map_or(0, |data| data.dyn_total_size_bytes())
