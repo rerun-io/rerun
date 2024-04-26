@@ -36,3 +36,4 @@ text_log.rs linguist-generated=true
 transform3d.rs linguist-generated=true
 view_coordinates.rs linguist-generated=true
 viewport_blueprint.rs linguist-generated=true
+visual_bounds.rs linguist-generated=true

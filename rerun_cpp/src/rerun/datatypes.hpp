@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "datatypes/aabb2d.hpp"
 #include "datatypes/angle.hpp"
 #include "datatypes/annotation_info.hpp"
 #include "datatypes/bool.hpp"

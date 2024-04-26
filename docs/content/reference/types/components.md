@@ -14,6 +14,7 @@ For more information on the relationship between **archetypes** and **components
 on [Entities and Components](../../concepts/entity-component.md).
 
 
+* [`AABB2D`](components/aabb2d.md): An Axis-Aligned Bounding Box in 2D space.
 * [`AnnotationContext`](components/annotation_context.md): The `AnnotationContext` provides additional information on how to display entities.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`ClassId`](components/class_id.md): A 16-bit ID representing a type of semantic class.

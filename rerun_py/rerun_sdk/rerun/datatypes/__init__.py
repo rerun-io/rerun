@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .aabb2d import AABB2D, AABB2DArrayLike, AABB2DBatch, AABB2DLike, AABB2DType
 from .angle import Angle, AngleArrayLike, AngleBatch, AngleLike, AngleType
 from .annotation_info import (
     AnnotationInfo,
@@ -89,6 +90,11 @@ from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
 
 __all__ = [
+    "AABB2D",
+    "AABB2DArrayLike",
+    "AABB2DBatch",
+    "AABB2DLike",
+    "AABB2DType",
     "Angle",
     "AngleArrayLike",
     "AngleBatch",

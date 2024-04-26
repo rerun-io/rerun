@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .aabb2d import AABB2D, AABB2DBatch, AABB2DType
 from .annotation_context import (
     AnnotationContext,
     AnnotationContextArrayLike,
@@ -79,6 +80,9 @@ from .visualizer_overrides import (
 )
 
 __all__ = [
+    "AABB2D",
+    "AABB2DBatch",
+    "AABB2DType",
     "AnnotationContext",
     "AnnotationContextArrayLike",
     "AnnotationContextBatch",

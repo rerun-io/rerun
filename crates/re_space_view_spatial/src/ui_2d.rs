@@ -31,7 +31,7 @@ pub struct View2DState {
     /// The visible parts of the scene, in the coordinate space of the scene.
     ///
     /// Everything within these bounds are guaranteed to be visible.
-    /// Some thing outside of these bounds may also be visible due to letterboxing.
+    /// Somethings outside of these bounds may also be visible due to letterboxing.
     ///
     /// Default: [`Rect::NAN`] (invalid).
     /// Invalid bound will be set to the default on the next frame.

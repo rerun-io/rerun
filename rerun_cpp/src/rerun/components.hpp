@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "components/aabb2d.hpp"
 #include "components/annotation_context.hpp"
 #include "components/blob.hpp"
 #include "components/class_id.hpp"

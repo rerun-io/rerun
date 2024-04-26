@@ -1,3 +1,4 @@
+include "./components/aabb2d.fbs";
 include "./components/annotation_context.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";

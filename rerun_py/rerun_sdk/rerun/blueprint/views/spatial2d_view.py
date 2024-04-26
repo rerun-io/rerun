@@ -28,6 +28,7 @@ class Spatial2DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
+        visual_bounds: blueprint_archetypes.VisualBounds | None = None,
     ) -> None:
         """
         Construct a blueprint for a new Spatial2DView view.
@@ -49,6 +50,11 @@ class Spatial2DView(SpaceView):
             Defaults to true if not specified.
         background:
             Configuration for the background of the space view.
+        visual_bounds:
+            The visible parts of the scene, in the coordinate space of the scene.
+
+            Everything within these bounds are guaranteed to be visible.
+            Somethings outside of these bounds may also be visible due to letterboxing.
 
         """
 
@@ -57,6 +63,11 @@ class Spatial2DView(SpaceView):
             if not isinstance(background, blueprint_archetypes.Background):
                 background = blueprint_archetypes.Background(background)
             properties["Background"] = background
+
+        if visual_bounds is not None:
+            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds):
+                visual_bounds = blueprint_archetypes.VisualBounds(visual_bounds)
+            properties["VisualBounds"] = visual_bounds
 
         super().__init__(
             class_identifier="2D", origin=origin, contents=contents, name=name, visible=visible, properties=properties

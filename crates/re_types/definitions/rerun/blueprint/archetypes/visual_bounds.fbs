@@ -1,0 +1,23 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint.archetypes;
+
+
+/// Controls the visual bounds of a 2D space view.
+table VisualBounds (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy"
+) {
+    /// The visible parts of a 2D space view, in the coordinate space of the scene.
+    ///
+    /// Everything within these bounds are guaranteed to be visible.
+    /// Somethings outside of these bounds may also be visible due to letterboxing.
+    visual_bounds: rerun.components.AABB2D ("attr.rerun.component_optional", nullable, order: 1000);
+
+    // Here we'll add things like locking the visual bounds of one space view to another
+}
