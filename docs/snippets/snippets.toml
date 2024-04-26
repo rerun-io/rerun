@@ -13,6 +13,7 @@ log_line = [ # Not a complete example -- just a single log line
   "rust",
   "py",
 ]
+spatial3dview = ["cpp", "rust"] # Missing examples
 timelines_example = [ # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
   "py",
   "cpp",

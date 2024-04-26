@@ -39,12 +39,11 @@ impl crate::DataUi for EntityDb {
             if let Some(store_info) = self.store_info() {
                 let re_log_types::StoreInfo {
                     application_id,
-                    store_id: _,
+                    store_id,
                     cloned_from,
                     is_official_example: _,
                     started,
                     store_source,
-                    store_kind,
                 } = store_info;
 
                 if let Some(cloned_from) =  cloned_from {
@@ -62,7 +61,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Kind");
-                ui.label(store_kind.to_string());
+                ui.label(store_id.kind.to_string());
                 ui.end_row();
 
                 re_ui.grid_left_hand_label(ui, "Created");

@@ -123,7 +123,6 @@ pub(crate) fn prepare_store_info(
                 is_official_example: false,
                 started: re_log_types::Time::now(),
                 store_source,
-                store_kind: re_log_types::StoreKind::Recording,
             },
         })
     })

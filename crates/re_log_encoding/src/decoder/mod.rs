@@ -239,7 +239,6 @@ fn test_encode_decode() {
                 rustc_version: String::new(),
                 llvm_version: String::new(),
             },
-            store_kind: re_log_types::StoreKind::Recording,
         },
     })];
 
