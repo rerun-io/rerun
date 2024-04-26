@@ -23,6 +23,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Material`](datatypes/material.md): Material properties of a mesh.
 * [`MeshProperties`](datatypes/mesh_properties.md): Optional triangle indices for a mesh.
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
+* [`Range1D`](datatypes/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Rgba32`](datatypes/rgba32.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Rotation3D`](datatypes/rotation3d.md): A 3D rotation.
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.

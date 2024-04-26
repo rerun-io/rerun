@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Sequence
 import numpy as np
 import pyarrow as pa
 
-from .._validators import flat_np_float_array_from_array_like
+from .._validators import flat_np_float32_array_from_array_like
 
 if TYPE_CHECKING:
     from . import Vec4DArrayLike
@@ -28,5 +28,5 @@ class Vec4DExt:
             if isinstance(data, Sequence):
                 data = [np.array(p.xyzw) if isinstance(p, Vec4D) else p for p in data]
 
-        points = flat_np_float_array_from_array_like(data, 4)
+        points = flat_np_float32_array_from_array_like(data, 4)
         return pa.FixedSizeListArray.from_arrays(points, type=data_type)

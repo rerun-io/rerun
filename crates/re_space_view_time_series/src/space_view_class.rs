@@ -386,7 +386,7 @@ It can greatly improve performance (and readability) in such situations as it pr
         // use timeline_name as part of id, so that egui stores different pan/zoom for different timelines
         let plot_id_src = ("plot", &timeline_name);
 
-        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| v.0);
+        let y_lock_range_during_zoom = y_lock_range_during_zoom.map_or(false, |v| (*v).0);
         let lock_y_during_zoom = y_lock_range_during_zoom
             || ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
@@ -491,8 +491,8 @@ It can greatly improve performance (and readability) in such situations as it pr
                     let mut max = current_bounds.max();
 
                     if range_was_edited || is_resetting || locked_y_range_was_enabled {
-                        min[1] = y_range.0[0];
-                        max[1] = y_range.0[1];
+                        min[1] = y_range.start();
+                        max[1] = y_range.end();
                     }
 
                     let new_bounds = egui_plot::PlotBounds::from_min_max(min, max);
@@ -722,25 +722,25 @@ fn axis_ui(
                     });
 
                     if !auto_range {
-                        let mut range_edit = y_range
-                            .unwrap_or_else(|| y_range.unwrap_or(Range1D(state.saved_y_axis_range)));
+                        let range_edit = y_range
+                            .unwrap_or_else(|| y_range.unwrap_or(state.saved_y_axis_range.into()));
 
                         ui.horizontal(|ui| {
                             // Max < Min is not supported.
                             // Also, egui_plot doesn't handle min==max (it ends up picking a default range instead then)
-                            let prev_min = crate::util::next_up_f64(range_edit.0[0]);
-                            let prev_max = range_edit.0[1];
+                            let prev_min = crate::util::next_up_f64(range_edit.start());
+                            let prev_max = range_edit.end();
                             // Scale the speed to the size of the range
                             let speed = ((prev_max - prev_min) * 0.01).at_least(0.001);
                             ui.label("Min");
                             ui.add(
-                                egui::DragValue::new(&mut range_edit.0[0])
+                                egui::DragValue::new(&mut range_edit.start())
                                     .speed(speed)
                                     .clamp_range(std::f64::MIN..=prev_max),
                             );
                             ui.label("Max");
                             ui.add(
-                                egui::DragValue::new(&mut range_edit.0[1])
+                                egui::DragValue::new(&mut range_edit.end())
                                     .speed(speed)
                                     .clamp_range(prev_min..=std::f64::MAX),
                             );
@@ -767,7 +767,7 @@ fn axis_ui(
                         let y_lock_zoom = y_lock_range_during_zoom.unwrap_or(false.into());
                         let mut edit_locked = y_lock_zoom;
                         ctx.re_ui
-                            .checkbox(ui, &mut edit_locked.0, "Lock Range")
+                            .checkbox(ui, &mut edit_locked.0.0, "Lock Range")
                             .on_hover_text(
                             "If set, when zooming, the Y axis range will remain locked to the specified range.",
                         );

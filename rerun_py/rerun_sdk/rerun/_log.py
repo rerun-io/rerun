@@ -11,8 +11,6 @@ from ._baseclasses import AsComponents, ComponentBatchLike
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
-__all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
-
 
 class IndicatorComponentBatch:
     """

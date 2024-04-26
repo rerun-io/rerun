@@ -13,6 +13,7 @@ include "./datatypes/mat4x4.fbs";
 include "./datatypes/material.fbs";
 include "./datatypes/mesh_properties.fbs";
 include "./datatypes/quaternion.fbs";
+include "./datatypes/range1d.fbs";
 include "./datatypes/rgba32.fbs";
 include "./datatypes/rotation_axis_angle.fbs";
 include "./datatypes/rotation3d.fbs";

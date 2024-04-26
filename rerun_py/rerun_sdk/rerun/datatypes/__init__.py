@@ -41,6 +41,7 @@ from .mesh_properties import (
     MeshPropertiesType,
 )
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
+from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
 from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -163,6 +164,11 @@ __all__ = [
     "QuaternionBatch",
     "QuaternionLike",
     "QuaternionType",
+    "Range1D",
+    "Range1DArrayLike",
+    "Range1DBatch",
+    "Range1DLike",
+    "Range1DType",
     "Rgba32",
     "Rgba32ArrayLike",
     "Rgba32Batch",

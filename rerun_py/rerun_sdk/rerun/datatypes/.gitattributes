@@ -17,6 +17,7 @@ mat4x4.py linguist-generated=true
 material.py linguist-generated=true
 mesh_properties.py linguist-generated=true
 quaternion.py linguist-generated=true
+range1d.py linguist-generated=true
 rgba32.py linguist-generated=true
 rotation3d.py linguist-generated=true
 rotation_axis_angle.py linguist-generated=true
