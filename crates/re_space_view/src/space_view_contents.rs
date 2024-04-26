@@ -21,8 +21,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    query_space_view_sub_archetype, DataQuery, EntityOverrideContext, PropertyResolver,
-    SpaceViewBlueprint,
+    query_view_property, DataQuery, EntityOverrideContext, PropertyResolver, SpaceViewBlueprint,
 };
 
 /// An implementation of [`DataQuery`] that is built from a [`blueprint_archetypes::SpaceViewContents`].
@@ -101,9 +100,8 @@ impl SpaceViewContents {
         space_view_class_identifier: SpaceViewClassIdentifier,
         space_env: &EntityPathSubs,
     ) -> Self {
-        let (contents, blueprint_entity_path) = query_space_view_sub_archetype::<
-            blueprint_archetypes::SpaceViewContents,
-        >(id, blueprint_db, query);
+        let (contents, blueprint_entity_path) =
+            query_view_property::<blueprint_archetypes::SpaceViewContents>(id, blueprint_db, query);
 
         let blueprint_archetypes::SpaceViewContents { query } = match contents {
             PromiseResult::Pending => {

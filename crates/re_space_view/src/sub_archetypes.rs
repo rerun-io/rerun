@@ -7,7 +7,7 @@ use re_log_types::EntityPath;
 use re_types::Archetype;
 use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId, ViewerContext};
 
-pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
+pub fn entity_path_for_view_property<T: Archetype>(
     space_view_id: SpaceViewId,
     _blueprint_entity_tree: &EntityTree,
 ) -> EntityPath {
@@ -23,7 +23,7 @@ pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
 }
 
 /// Return the archetype value for the given space view, or `None` if it doesn't exist.
-pub fn space_view_sub_archetype<A: re_types::Archetype>(
+pub fn view_property<A: re_types::Archetype>(
     ctx: &re_viewer_context::ViewerContext<'_>,
     space_view_id: re_viewer_context::SpaceViewId,
 ) -> Option<A>
@@ -32,7 +32,7 @@ where
 {
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
-    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
     blueprint_db
         .latest_at_archetype(&path, blueprint_query)
         .ok()
@@ -41,7 +41,7 @@ where
 }
 
 /// Returns `Ok(None)` if any of the required components are missing.
-pub fn query_space_view_sub_archetype<A: Archetype>(
+pub fn query_view_property<A: Archetype>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
     query: &LatestAtQuery,
@@ -49,7 +49,7 @@ pub fn query_space_view_sub_archetype<A: Archetype>(
 where
     LatestAtResults: ToArchetype<A>,
 {
-    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
     (
         blueprint_db
             .latest_at_archetype(&path, query)
@@ -58,7 +58,7 @@ where
     )
 }
 
-pub fn query_space_view_sub_archetype_or_default<A: Archetype + Default>(
+pub fn query_view_property_or_default<A: Archetype + Default>(
     space_view_id: SpaceViewId,
     blueprint_db: &EntityDb,
     query: &LatestAtQuery,
@@ -66,7 +66,7 @@ pub fn query_space_view_sub_archetype_or_default<A: Archetype + Default>(
 where
     LatestAtResults: ToArchetype<A>,
 {
-    let (arch, path) = query_space_view_sub_archetype(space_view_id, blueprint_db, query);
+    let (arch, path) = query_view_property(space_view_id, blueprint_db, query);
     (arch.ok().flatten().unwrap_or_default(), path)
 }
 
@@ -77,7 +77,7 @@ pub fn get_blueprint_component<A: re_types::Archetype, C: re_types::Component>(
 ) -> Option<C> {
     let blueprint_db = ctx.store_context.blueprint;
     let query = ctx.blueprint_query;
-    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    let path = entity_path_for_view_property::<A>(space_view_id, blueprint_db.tree());
     blueprint_db
         .latest_at_component::<C>(&path, query)
         .map(|x| x.value)
@@ -93,8 +93,7 @@ pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component +
     edit_component: impl FnOnce(&mut Option<C>) -> R,
 ) -> R {
     let active_blueprint = ctx.store_context.blueprint;
-    let active_path =
-        entity_path_for_space_view_sub_archetype::<A>(space_view_id, active_blueprint.tree());
+    let active_path = entity_path_for_view_property::<A>(space_view_id, active_blueprint.tree());
     let original_value: Option<C> = active_blueprint
         .latest_at_component::<C>(&active_path, ctx.blueprint_query)
         .map(|x| x.value);
@@ -111,10 +110,8 @@ pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component +
                 .store_context
                 .default_blueprint
                 .and_then(|default_blueprint| {
-                    let default_path = entity_path_for_space_view_sub_archetype::<A>(
-                        space_view_id,
-                        default_blueprint.tree(),
-                    );
+                    let default_path =
+                        entity_path_for_view_property::<A>(space_view_id, default_blueprint.tree());
                     default_blueprint
                         .latest_at_component::<C>(&default_path, ctx.blueprint_query)
                         .map(|x| x.value)
