@@ -24,9 +24,9 @@ class Spatial3DView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
-        background: blueprint_archetypes.Background3D
+        background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
-        | blueprint_components.Background3DKindLike
+        | blueprint_components.BackgroundKindLike
         | None = None,
     ) -> None:
         """
@@ -48,15 +48,15 @@ class Spatial3DView(SpaceView):
 
             Defaults to true if not specified.
         background:
-            Configuration for the background of the 3D space view.
+            Configuration for the background of the space view.
 
         """
 
         properties: dict[str, AsComponents] = {}
         if background is not None:
-            if not isinstance(background, blueprint_archetypes.Background3D):
-                background = blueprint_archetypes.Background3D(background)
-            properties["Background3D"] = background
+            if not isinstance(background, blueprint_archetypes.Background):
+                background = blueprint_archetypes.Background(background)
+            properties["Background"] = background
 
         super().__init__(
             class_identifier="3D", origin=origin, contents=contents, name=name, visible=visible, properties=properties

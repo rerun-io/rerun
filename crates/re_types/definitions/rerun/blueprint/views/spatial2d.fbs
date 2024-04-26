@@ -6,4 +6,6 @@ namespace rerun.blueprint.views;
 table Spatial2DView (
     "attr.rerun.view_identifier": "2D"
 ) {
+    /// Configuration for the background of the space view.
+    background: rerun.blueprint.archetypes.Background (order: 1000);
 }

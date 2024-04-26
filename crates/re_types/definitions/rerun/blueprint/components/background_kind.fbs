@@ -8,14 +8,18 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.components;
 
 
-/// The type of the background in 3D space views.
-enum Background3DKind: byte (
+/// The type of the background in a view.
+enum BackgroundKind: byte (
     "attr.rerun.scope": "blueprint"
 ) {
-    /// Gradient depending on the direction of the view, dark theme.
-    GradientDark (default),
+    /// A dark gradient.
+    ///
+    /// In 3D views it changes depending on the direction of the view.
+    GradientDark,
 
-    /// Gradient depending on the direction of the view, bright theme.
+    /// A bright gradient.
+    ///
+    /// In 3D views it changes depending on the direction of the view.
     GradientBright,
 
     /// Simple uniform color.

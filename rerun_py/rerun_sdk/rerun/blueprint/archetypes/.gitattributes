@@ -2,7 +2,7 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
-background3d.py linguist-generated=true
+background.py linguist-generated=true
 container_blueprint.py linguist-generated=true
 panel_blueprint.py linguist-generated=true
 plot_legend.py linguist-generated=true

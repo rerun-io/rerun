@@ -13,12 +13,12 @@ from .api import (
     TimePanel,
 )
 from .archetypes import (
-    Background3D,
+    Background,
     PlotLegend,
     ScalarAxis,
 )
 from .components import (
-    Background3DKind,
+    BackgroundKind,
     Corner2D,
     LockRangeDuringZoom,
 )

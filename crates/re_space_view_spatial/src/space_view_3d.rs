@@ -1,13 +1,9 @@
 use itertools::Itertools;
 use nohash_hasher::IntSet;
+
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
-use re_space_view::query_space_view_sub_archetype;
-use re_types::{
-    blueprint::{archetypes::Background3D, components::Background3DKind},
-    components::ViewCoordinates,
-    Loggable,
-};
+use re_types::{components::ViewCoordinates, Loggable};
 use re_viewer_context::{
     PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
@@ -314,7 +310,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx.re_ui
             .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
-                state.default_size_ui(ctx, ui);
+                state.default_sizes_ui(ctx, ui);
 
                 ctx.re_ui
                     .grid_left_hand_label(ui, "Camera")
@@ -367,11 +363,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
                 });
                 ui.end_row();
 
-                background_ui(ctx, space_view_id, ui);
-                ui.end_row();
+                crate::ui::background_ui(
+                    ctx,
+                    ui,
+                    space_view_id,
+                    re_types::blueprint::archetypes::Background::DEFAULT_3D,
+                );
 
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::ThreeD);
-                ui.end_row();
             });
 
         Ok(())
@@ -398,68 +397,5 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .load(std::sync::atomic::Ordering::Relaxed);
 
         crate::ui_3d::view_3d(ctx, ui, state, query, system_output)
-    }
-}
-
-fn background_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
-    let blueprint_db = ctx.store_context.blueprint;
-    let blueprint_query = ctx.blueprint_query;
-    let (archetype, blueprint_path) =
-        query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
-
-    let Background3D { color, mut kind } = archetype.ok().flatten().unwrap_or_default();
-
-    ctx.re_ui.grid_left_hand_label(ui, "Background");
-
-    ui.vertical(|ui| {
-        let kind_before = kind;
-        egui::ComboBox::from_id_source("background")
-            .selected_text(background_color_text(kind))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    &mut kind,
-                    Background3DKind::GradientDark,
-                    background_color_text(Background3DKind::GradientDark),
-                );
-                ui.selectable_value(
-                    &mut kind,
-                    Background3DKind::GradientBright,
-                    background_color_text(Background3DKind::GradientBright),
-                );
-                ui.selectable_value(
-                    &mut kind,
-                    Background3DKind::SolidColor,
-                    background_color_text(Background3DKind::SolidColor),
-                );
-            });
-        if kind_before != kind {
-            ctx.save_blueprint_component(&blueprint_path, &kind);
-        }
-
-        if kind == Background3DKind::SolidColor {
-            let current_color = color.unwrap_or(Background3D::DEFAULT_COLOR).into();
-            let mut edit_color = current_color;
-            egui::color_picker::color_edit_button_srgba(
-                ui,
-                &mut edit_color,
-                egui::color_picker::Alpha::Opaque,
-            );
-            if edit_color != current_color {
-                ctx.save_blueprint_component(
-                    &blueprint_path,
-                    &re_types::components::Color::from(edit_color),
-                );
-            }
-        }
-    });
-
-    ui.end_row();
-}
-
-fn background_color_text(kind: Background3DKind) -> &'static str {
-    match kind {
-        Background3DKind::GradientDark => "Dark gradient",
-        Background3DKind::GradientBright => "Bright gradient",
-        Background3DKind::SolidColor => "Solid color",
     }
 }

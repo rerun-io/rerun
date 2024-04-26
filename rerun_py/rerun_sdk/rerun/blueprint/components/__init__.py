@@ -11,12 +11,12 @@ from .auto_space_views import (
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
 )
-from .background3d_kind import (
-    Background3DKind,
-    Background3DKindArrayLike,
-    Background3DKindBatch,
-    Background3DKindLike,
-    Background3DKindType,
+from .background_kind import (
+    BackgroundKind,
+    BackgroundKindArrayLike,
+    BackgroundKindBatch,
+    BackgroundKindLike,
+    BackgroundKindType,
 )
 from .column_share import ColumnShare, ColumnShareArrayLike, ColumnShareBatch, ColumnShareLike, ColumnShareType
 from .container_kind import (
@@ -67,11 +67,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
-    "Background3DKind",
-    "Background3DKindArrayLike",
-    "Background3DKindBatch",
-    "Background3DKindLike",
-    "Background3DKindType",
+    "BackgroundKind",
+    "BackgroundKindArrayLike",
+    "BackgroundKindBatch",
+    "BackgroundKindLike",
+    "BackgroundKindType",
     "ColumnShare",
     "ColumnShareArrayLike",
     "ColumnShareBatch",

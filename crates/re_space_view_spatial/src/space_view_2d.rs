@@ -6,6 +6,7 @@ use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
+    blueprint::archetypes::Background,
     Archetype, ComponentName,
 };
 use re_viewer_context::{
@@ -240,14 +241,17 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
         _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<SpatialSpaceViewState>()?;
         ctx.re_ui
             .selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
-                state.default_size_ui(ctx, ui);
+                state.default_sizes_ui(ctx, ui);
+
+                crate::ui::background_ui(ctx, ui, space_view_id, Background::DEFAULT_2D);
+
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 
                 {

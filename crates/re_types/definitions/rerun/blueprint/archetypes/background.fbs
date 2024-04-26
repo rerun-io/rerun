@@ -10,19 +10,20 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// Configuration for the background of the 3D space view.
-table Background3D (
+/// Configuration for the background of a view.
+table Background (
+    "attr.python.aliases": "datatypes.Rgba32Like, blueprint_components.BackgroundKindLike",
     "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "datatypes.Rgba32Like, blueprint_components.Background3DKindLike"
+    "attr.rust.derive": "Copy"
 ) {
     // --- Required ---
 
-    /// The type of the background. Defaults to Background3DKind.GradientDark.
-    kind: rerun.blueprint.components.Background3DKind ("attr.rerun.component_required", order: 1000);
+    /// The type of the background. Defaults to BackgroundKind.GradientDark.
+    kind: rerun.blueprint.components.BackgroundKind ("attr.rerun.component_required", order: 1000);
 
     // --- Optional ---
 
-    /// Color used for Background3DKind.SolidColor.
+    /// Color used for BackgroundKind.SolidColor.
     ///
     /// Defaults to White.
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);

@@ -6,15 +6,17 @@ use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
-use re_types::tensor_data::TensorDataMeaning;
+use re_types::{
+    blueprint::archetypes::Background,
+    components::{Color, DepthMeter, InstanceKey, TensorData, ViewCoordinates},
+};
+use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
-    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights,
+    HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
     UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
-use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::{
     contexts::AnnotationSceneContext,
@@ -23,6 +25,8 @@ use crate::{
     visualizers::{CamerasVisualizer, ImageVisualizer, UiLabel, UiLabelTarget},
 };
 use crate::{eye::EyeMode, heuristics::auto_size_world_heuristic};
+
+use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
 
 /// Default auto point radius in UI points.
 const AUTO_POINT_RADIUS: f32 = 1.5;
@@ -108,7 +112,8 @@ impl SpatialSpaceViewState {
         ui.end_row();
     }
 
-    pub fn default_size_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+    /// Default sizes of points and lines.
+    pub fn default_sizes_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let auto_size_world =
             auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
@@ -764,5 +769,74 @@ pub fn format_vector(v: glam::Vec3) -> String {
         "-Z".to_owned()
     } else {
         format!("[{:.02}, {:.02}, {:.02}]", v.x, v.y, v.z)
+    }
+}
+
+pub fn background_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view_id: SpaceViewId,
+    default_background: Background,
+) {
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let (archetype, blueprint_path) =
+        re_space_view::query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
+
+    let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
+
+    ctx.re_ui.grid_left_hand_label(ui, "Background");
+
+    ui.vertical(|ui| {
+        let kind_before = kind;
+        egui::ComboBox::from_id_source("background")
+            .selected_text(background_color_text(kind))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::GradientDark,
+                    background_color_text(BackgroundKind::GradientDark),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::GradientBright,
+                    background_color_text(BackgroundKind::GradientBright),
+                );
+                ui.selectable_value(
+                    &mut kind,
+                    BackgroundKind::SolidColor,
+                    background_color_text(BackgroundKind::SolidColor),
+                );
+            });
+        if kind_before != kind {
+            ctx.save_blueprint_component(&blueprint_path, &kind);
+        }
+
+        if kind == BackgroundKind::SolidColor {
+            let current_color = color
+                .or(default_background.color)
+                .unwrap_or(Color::BLACK)
+                .into();
+            let mut edit_color = current_color;
+            egui::color_picker::color_edit_button_srgba(
+                ui,
+                &mut edit_color,
+                egui::color_picker::Alpha::Opaque,
+            );
+            if edit_color != current_color {
+                ctx.save_blueprint_component(&blueprint_path, &BackgroundKind::SolidColor);
+                ctx.save_blueprint_component(&blueprint_path, &Color::from(edit_color));
+            }
+        }
+    });
+
+    ui.end_row();
+}
+
+fn background_color_text(kind: BackgroundKind) -> &'static str {
+    match kind {
+        BackgroundKind::GradientDark => "Dark gradient",
+        BackgroundKind::GradientBright => "Bright gradient",
+        BackgroundKind::SolidColor => "Solid color",
     }
 }
