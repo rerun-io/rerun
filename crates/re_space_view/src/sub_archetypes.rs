@@ -22,6 +22,23 @@ pub fn entity_path_for_space_view_sub_archetype<T: Archetype>(
     space_view_blueprint_path.join(&EntityPath::from_single_string(T::name().short_name()))
 }
 
+/// Return the archetype value for the given space view, or `None` if it doesn't exist.
+pub fn space_view_sub_archetype<A: re_types::Archetype>(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    space_view_id: re_viewer_context::SpaceViewId,
+) -> Option<A>
+where
+    CachedLatestAtResults: ToArchetype<A>,
+{
+    let blueprint_db = ctx.store_context.blueprint;
+    let blueprint_query = ctx.blueprint_query;
+    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
+    blueprint_db
+        .latest_at_archetype(&path, blueprint_query)
+        .ok()
+        .flatten()
+}
+
 /// Returns `Ok(None)` if any of the required components are missing.
 pub fn query_space_view_sub_archetype<A: Archetype>(
     space_view_id: SpaceViewId,

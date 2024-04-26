@@ -4,7 +4,9 @@ use macaw::IsoTransform;
 use re_entity_db::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
-use re_types::{archetypes::Pinhole, components::ViewCoordinates};
+use re_types::{
+    archetypes::Pinhole, blueprint::archetypes::Background, components::ViewCoordinates,
+};
 use re_viewer_context::{
     gpu_bridge, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
     ViewerContext,
@@ -265,8 +267,9 @@ pub fn view_2d(
         view_builder.queue_draw(draw_data);
     }
 
-    let background = crate::background(ctx, query)
-        .unwrap_or(re_types::blueprint::archetypes::Background::DEFAULT_2D);
+    let background =
+        re_space_view::space_view_sub_archetype::<Background>(ctx, query.space_view_id)
+            .unwrap_or(Background::DEFAULT_2D);
     let (background_drawable, clear_color) = crate::configure_background(ctx, background);
     if let Some(background_drawable) = background_drawable {
         view_builder.queue_draw(background_drawable);

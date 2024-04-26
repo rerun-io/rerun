@@ -78,21 +78,6 @@ fn query_pinhole(
         })
 }
 
-pub(crate) fn background(
-    ctx: &re_viewer_context::ViewerContext<'_>,
-    query: &re_viewer_context::ViewQuery<'_>,
-) -> Option<Background> {
-    let blueprint_db = ctx.store_context.blueprint;
-    let blueprint_query = ctx.blueprint_query;
-    let background = re_space_view::query_space_view_sub_archetype::<Background>(
-        query.space_view_id,
-        blueprint_db,
-        blueprint_query,
-    )
-    .0;
-    background.ok().flatten()
-}
-
 pub(crate) fn configure_background(
     ctx: &re_viewer_context::ViewerContext<'_>,
     background: re_types::blueprint::archetypes::Background,
