@@ -51,9 +51,6 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let transforms = view_ctx.get::<TransformContext>()?;
 
-        let query_caches = ctx.recording().query_caches();
-        let store = ctx.recording_store();
-
         let latest_at_query = re_data_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -66,16 +63,10 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
                 continue;
             }
 
-            if query_caches
-                .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
-                    store,
-                    &latest_at_query,
-                    &data_result.entity_path,
-                    |_| {},
-                )
-                // NOTE: Can only fail if the primary component is missing, which is what we
-                // want to check here (i.e.: there's no transform for this entity!).
-                .is_err()
+            if ctx
+                .recording()
+                .latest_at_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
+                .is_none()
             {
                 continue;
             }

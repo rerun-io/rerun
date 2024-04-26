@@ -8,7 +8,7 @@
 //! to reduce the amount of changes in code that is likely to be refactored soon anyways.
 
 use re_log_types::TimeRange;
-use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
+use re_query2::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 use re_types::blueprint::{
     components::VisibleTimeRange,
     datatypes::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind},

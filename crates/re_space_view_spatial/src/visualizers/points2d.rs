@@ -1,5 +1,8 @@
+use itertools::Itertools as _;
+
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::{LineDrawableBuilder, PointCloudBuilder};
+use re_query_cache2::range_zip_1x5;
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
@@ -15,12 +18,12 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
-        UiLabel, UiLabelTarget,
+        process_radius_slice, UiLabel, UiLabelTarget,
     },
 };
 
 use super::{
-    filter_visualizable_2d_entities, SpatialViewVisualizerData,
+    entity_iterator::clamped, filter_visualizable_2d_entities, SpatialViewVisualizerData,
     SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
 };
 
@@ -41,127 +44,117 @@ impl Default for Points2DVisualizer {
     }
 }
 
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl Points2DVisualizer {
     fn process_labels<'a>(
-        labels: &'a [Option<Text>],
+        entity_path: &'a EntityPath,
         positions: &'a [glam::Vec3],
-        instance_path_hashes: &'a [InstancePathHash],
+        labels: &'a [Text],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        itertools::izip!(
-            annotation_infos.iter(),
-            positions,
-            labels,
-            colors,
-            instance_path_hashes,
-        )
-        .filter_map(
-            move |(annotation_info, point, label, color, labeled_instance)| {
-                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+        let labels = clamped(labels, positions.len());
+        itertools::izip!(annotation_infos.iter(), positions, labels, colors)
+            .enumerate()
+            .filter_map(move |(i, (annotation_info, point, label, color))| {
+                let label = annotation_info.label(Some(label.as_str()));
                 match (point, label) {
                     (point, Some(label)) => Some(UiLabel {
                         text: label,
                         color: *color,
                         target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
-                        labeled_instance: *labeled_instance,
+                        labeled_instance: InstancePathHash::instance(
+                            entity_path,
+                            InstanceKey(i as _),
+                        ),
                     }),
                     _ => None,
                 }
-            },
-        )
+            })
     }
 
-    fn process_data(
+    fn process_data<'a>(
         &mut self,
         point_builder: &mut PointCloudBuilder<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        data: &Points2DComponentData<'_>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
+        data: impl Iterator<Item = Points2DComponentData<'a>>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        re_tracing::profile_function!();
+        for data in data {
+            let num_instances = data.positions.len();
 
-        let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
-            query.latest_at,
-            data.instance_keys,
-            data.keypoint_ids,
-            data.class_ids,
-            data.positions.iter().map(|p| glam::vec3(p.x(), p.y(), 0.0)),
-            &ent_context.annotations,
-        );
+            let positions = data
+                .positions
+                .iter()
+                .map(|p| glam::vec3(p.x(), p.y(), 0.0))
+                .collect_vec();
 
-        let positions = Self::load_positions(data);
-        let colors = Self::load_colors(data, ent_path, &annotation_infos);
-        let radii = Self::load_radii(data, ent_path);
-        let picking_instance_ids = bytemuck::cast_slice(data.instance_keys);
+            let picking_ids = (0..num_instances)
+                .map(|i| PickingLayerInstanceId(i as _))
+                .collect_vec();
 
-        {
-            re_tracing::profile_scope!("to_gpu");
+            let (annotation_infos, keypoints) = process_annotation_and_keypoint_slices(
+                query.latest_at,
+                num_instances,
+                positions.iter().copied(),
+                data.keypoint_ids,
+                data.class_ids,
+                &ent_context.annotations,
+            );
 
-            let point_batch = point_builder
-                .batch(ent_path.to_string())
-                .depth_offset(ent_context.depth_offset)
-                .flags(
-                    re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
-                        | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
-                )
-                .world_from_obj(ent_context.world_from_entity)
-                .outline_mask_ids(ent_context.highlight.overall)
-                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let colors =
+                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
 
-            let mut point_range_builder =
-                point_batch.add_points_2d(&positions, &radii, &colors, picking_instance_ids);
-
-            // Determine if there's any sub-ranges that need extra highlighting.
             {
-                re_tracing::profile_scope!("marking additional highlight points");
-                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                    // TODO(andreas, jeremy): We can do this much more efficiently
-                    let highlighted_point_index = data
-                        .instance_keys
-                        .iter()
-                        .position(|key| highlighted_key == key);
-                    if let Some(highlighted_point_index) = highlighted_point_index {
-                        point_range_builder = point_range_builder
-                            .push_additional_outline_mask_ids_for_range(
-                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
-                                *instance_mask_ids,
-                            );
+                let point_batch = point_builder
+                    .batch(entity_path.to_string())
+                    .depth_offset(ent_context.depth_offset)
+                    .flags(
+                        re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
+                            | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+                    )
+                    .world_from_obj(ent_context.world_from_entity)
+                    .outline_mask_ids(ent_context.highlight.overall)
+                    .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
+
+                let mut point_range_builder =
+                    point_batch.add_points_2d(&positions, &radii, &colors, &picking_ids);
+
+                // Determine if there's any sub-ranges that need extra highlighting.
+                {
+                    re_tracing::profile_scope!("marking additional highlight points");
+                    for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
+                        let highlighted_point_index =
+                            (highlighted_key.0 < num_instances as u64).then_some(highlighted_key.0);
+                        if let Some(highlighted_point_index) = highlighted_point_index {
+                            point_range_builder = point_range_builder
+                                .push_additional_outline_mask_ids_for_range(
+                                    highlighted_point_index as u32
+                                        ..highlighted_point_index as u32 + 1,
+                                    *instance_mask_ids,
+                                );
+                        }
                     }
                 }
             }
-        };
 
-        self.data.add_bounding_box_from_points(
-            ent_path.hash(),
-            positions.iter().copied(),
-            ent_context.world_from_entity,
-        );
+            self.data.add_bounding_box_from_points(
+                entity_path.hash(),
+                positions.iter().copied(),
+                ent_context.world_from_entity,
+            );
 
-        load_keypoint_connections(line_builder, ent_context, ent_path, &keypoints)?;
+            load_keypoint_connections(line_builder, ent_context, entity_path, &keypoints)?;
 
-        if data.instance_keys.len() <= self.max_labels {
-            re_tracing::profile_scope!("labels");
-
-            // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
-
-            let instance_path_hashes_for_picking = {
-                re_tracing::profile_scope!("instance_hashes");
-                data.instance_keys
-                    .iter()
-                    .copied()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
-                    .collect::<Vec<_>>()
-            };
-
-            if let Some(labels) = data.labels {
+            if num_instances <= self.max_labels {
                 self.data.ui_labels.extend(Self::process_labels(
-                    labels,
+                    entity_path,
                     &positions,
-                    &instance_path_hashes_for_picking,
+                    data.labels,
                     &colors,
                     &annotation_infos,
                 ));
@@ -170,49 +163,21 @@ impl Points2DVisualizer {
 
         Ok(())
     }
-
-    #[inline]
-    pub fn load_positions(
-        Points2DComponentData { positions, .. }: &Points2DComponentData<'_>,
-    ) -> Vec<glam::Vec3> {
-        re_tracing::profile_function!();
-        positions
-            .iter()
-            .map(|p| glam::vec3(p.x(), p.y(), 0.0))
-            .collect()
-    }
-
-    #[inline]
-    pub fn load_radii(
-        &Points2DComponentData {
-            positions, radii, ..
-        }: &Points2DComponentData<'_>,
-        ent_path: &EntityPath,
-    ) -> Vec<re_renderer::Size> {
-        crate::visualizers::process_radius_slice(radii, positions.len(), ent_path)
-    }
-
-    #[inline]
-    pub fn load_colors(
-        &Points2DComponentData { colors, .. }: &Points2DComponentData<'_>,
-        ent_path: &EntityPath,
-        annotation_infos: &ResolvedAnnotationInfos,
-    ) -> Vec<re_renderer::Color32> {
-        crate::visualizers::process_color_slice(colors, ent_path, annotation_infos)
-    }
 }
 
 // ---
 
 #[doc(hidden)] // Public for benchmarks
 pub struct Points2DComponentData<'a> {
-    pub instance_keys: &'a [InstanceKey],
+    // Point of views
     pub positions: &'a [Position2D],
-    pub colors: Option<&'a [Option<Color>]>,
-    pub radii: Option<&'a [Option<Radius>]>,
-    pub labels: Option<&'a [Option<Text>]>,
-    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
-    pub class_ids: Option<&'a [Option<ClassId>]>,
+
+    // Clamped to edge
+    pub colors: &'a [Color],
+    pub radii: &'a [Radius],
+    pub labels: &'a [Text],
+    pub keypoint_ids: &'a [KeypointId],
+    pub class_ids: &'a [ClassId],
 }
 
 impl IdentifiedViewSystem for Points2DVisualizer {
@@ -238,71 +203,80 @@ impl VisualizerSystem for Points2DVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let num_points = super::entity_iterator::count_instances_in_archetype_views::<
-            Points2DVisualizer,
-            Points2D,
-            9,
-        >(ctx, query);
-
-        if num_points == 0 {
-            return Ok(Vec::new());
-        }
-
         let mut point_builder = PointCloudBuilder::new(ctx.render_ctx);
         point_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go with the dynamic allocation approach.
+        // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll
+        // go with the dynamic allocation approach.
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
         line_builder
             .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
 
-        super::entity_iterator::process_archetype_pov1_comp5::<
-            Points2DVisualizer,
-            Points2D,
-            Position2D,
-            Color,
-            Radius,
-            Text,
-            re_types::components::KeypointId,
-            re_types::components::ClassId,
-            _,
-        >(
+        super::entity_iterator::process_archetype::<Points2DVisualizer, Points2D, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx,
-             ent_path,
-             _ent_props,
-             ent_context,
-             (_time, _row_id),
-             instance_keys,
-             positions,
-             colors,
-             radii,
-             labels,
-             keypoint_ids,
-             class_ids| {
-                let data = Points2DComponentData {
-                    instance_keys,
-                    positions,
-                    colors,
-                    radii,
-                    labels,
-                    keypoint_ids,
-                    class_ids,
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
+
+                use crate::visualizers::CachedRangeResultsExt as _;
+
+                let resolver = ctx.recording().resolver();
+
+                let positions = match results.get_dense::<Position2D>(resolver) {
+                    Some(positions) => positions?,
+                    _ => return Ok(()),
                 };
+
+                let num_positions = positions
+                    .range_indexed()
+                    .map(|(_, positions)| positions.len())
+                    .sum::<usize>();
+                if num_positions == 0 {
+                    return Ok(());
+                }
+
+                point_builder.reserve(num_positions)?;
+
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x5(
+                    positions.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, positions, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Points2DComponentData {
+                            positions,
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
                 self.process_data(
                     &mut point_builder,
                     &mut line_builder,
-                    query,
-                    &data,
-                    ent_path,
-                    ent_context,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
                 )
             },
         )?;

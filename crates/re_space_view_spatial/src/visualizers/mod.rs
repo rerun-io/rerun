@@ -13,6 +13,7 @@ mod lines3d;
 mod meshes;
 mod points2d;
 mod points3d;
+mod results_ext;
 mod spatial_view_visualizer;
 mod transform3d_arrows;
 
@@ -21,8 +22,9 @@ pub use images::{ImageVisualizer, ViewerImage};
 pub use spatial_view_visualizer::SpatialViewVisualizerData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsVisualizer};
 
-#[doc(hidden)] // Public for benchmarks
-pub use points3d::{LoadedPoints, Points3DComponentData};
+pub(crate) use self::results_ext::CachedRangeResultsExt;
+
+// ---
 
 use ahash::HashMap;
 
@@ -101,126 +103,97 @@ pub fn collect_ui_labels(visualizers: &VisualizerCollection) -> Vec<UiLabel> {
     ui_labels
 }
 
-pub fn picking_id_from_instance_key(
-    instance_key: InstanceKey,
-) -> re_renderer::PickingLayerInstanceId {
-    re_renderer::PickingLayerInstanceId(instance_key.0)
-}
-
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
-    colors: Option<&'a [Option<Color>]>,
-    ent_path: &'a EntityPath,
+    entity_path: &'a EntityPath,
+    num_instances: usize,
     annotation_infos: &'a ResolvedAnnotationInfos,
+    colors: &'a [Color],
 ) -> Vec<egui::Color32> {
-    // This can be rather slow for colors with transparency, since we need to pre-multiply the alpha.
-    re_tracing::profile_function!();
+    // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
 
-    let default_color = DefaultColor::EntityPath(ent_path);
+    let default_color = DefaultColor::EntityPath(entity_path);
 
-    match (colors, annotation_infos) {
-        (None, ResolvedAnnotationInfos::Same(count, annotation_info)) => {
-            re_tracing::profile_scope!("no colors, same annotation");
-            let color = annotation_info.color(None, default_color);
-            vec![color; *count]
+    if colors.is_empty() {
+        match annotation_infos {
+            ResolvedAnnotationInfos::Same(count, annotation_info) => {
+                re_tracing::profile_scope!("no colors, same annotation");
+                let color = annotation_info.color(None, default_color);
+                vec![color; *count]
+            }
+            ResolvedAnnotationInfos::Many(annotation_info) => {
+                re_tracing::profile_scope!("no-colors, many annotations");
+                annotation_info
+                    .iter()
+                    .map(|annotation_info| annotation_info.color(None, default_color))
+                    .collect()
+            }
         }
-
-        (None, ResolvedAnnotationInfos::Many(annotation_infos)) => {
-            re_tracing::profile_scope!("no-colors, many annotations");
-            annotation_infos
-                .iter()
-                .map(|annotation_info| annotation_info.color(None, default_color))
-                .collect()
+    } else {
+        let colors = entity_iterator::clamped(colors, num_instances);
+        match annotation_infos {
+            ResolvedAnnotationInfos::Same(_count, annotation_info) => {
+                re_tracing::profile_scope!("many-colors, same annotation");
+                colors
+                    .map(|color| annotation_info.color(Some(color.to_array()), default_color))
+                    .collect()
+            }
+            ResolvedAnnotationInfos::Many(annotation_infos) => {
+                re_tracing::profile_scope!("many-colors, many annotations");
+                colors
+                    .zip(annotation_infos.iter())
+                    .map(move |(color, annotation_info)| {
+                        annotation_info.color(Some(color.to_array()), default_color)
+                    })
+                    .collect()
+            }
         }
-
-        (Some(colors), ResolvedAnnotationInfos::Same(count, annotation_info)) => {
-            re_tracing::profile_scope!("many-colors, same annotation");
-            debug_assert_eq!(colors.len(), *count);
-            colors
-                .iter()
-                .map(|color| annotation_info.color(color.map(|c| c.to_array()), default_color))
-                .collect()
-        }
-
-        (Some(colors), ResolvedAnnotationInfos::Many(annotation_infos)) => {
-            re_tracing::profile_scope!("many-colors, many annotations");
-            colors
-                .iter()
-                .zip(annotation_infos.iter())
-                .map(move |(color, annotation_info)| {
-                    annotation_info.color(color.map(|c| c.to_array()), default_color)
-                })
-                .collect()
-        }
-    }
-}
-
-/// Process `Text` components using annotations.
-pub fn process_label_slice(
-    labels: Option<&[Option<re_types::components::Text>]>,
-    default_len: usize,
-    annotation_infos: &ResolvedAnnotationInfos,
-) -> Vec<Option<String>> {
-    re_tracing::profile_function!();
-
-    match labels {
-        None => vec![None; default_len],
-        Some(labels) => itertools::izip!(annotation_infos.iter(), labels)
-            .map(move |(annotation_info, text)| {
-                annotation_info.label(text.as_ref().map(|t| t.as_str()))
-            })
-            .collect(),
     }
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
 /// where no radius is specified.
 pub fn process_radius_slice(
-    radii: Option<&[Option<re_types::components::Radius>]>,
-    default_len: usize,
-    ent_path: &EntityPath,
+    entity_path: &EntityPath,
+    num_instances: usize,
+    radii: &[re_types::components::Radius],
 ) -> Vec<re_renderer::Size> {
     re_tracing::profile_function!();
-    let ent_path = ent_path.clone();
 
-    match radii {
-        None => {
-            vec![re_renderer::Size::AUTO; default_len]
-        }
-        Some(radii) => radii
-            .iter()
-            .map(|radius| process_radius(&ent_path, radius))
-            .collect(),
+    if radii.is_empty() {
+        vec![re_renderer::Size::AUTO; num_instances]
+    } else {
+        entity_iterator::clamped(radii, num_instances)
+            .map(|radius| process_radius(entity_path, *radius))
+            .collect()
     }
 }
 
 fn process_radius(
     entity_path: &EntityPath,
-    radius: &Option<re_types::components::Radius>,
+    radius: re_types::components::Radius,
 ) -> re_renderer::Size {
-    radius.map_or(re_renderer::Size::AUTO, |r| {
-        if 0.0 <= r.0 && r.0.is_finite() {
-            re_renderer::Size::new_scene(r.0)
+    if 0.0 <= radius.0 && radius.0.is_finite() {
+        re_renderer::Size::new_scene(radius.0)
+    } else {
+        if radius.0 < 0.0 {
+            re_log::warn_once!("Found negative radius in entity {entity_path}");
+        } else if radius.0.is_infinite() {
+            re_log::warn_once!("Found infinite radius in entity {entity_path}");
         } else {
-            if r.0 < 0.0 {
-                re_log::warn_once!("Found negative radius in entity {entity_path}");
-            } else if r.0.is_infinite() {
-                re_log::warn_once!("Found infinite radius in entity {entity_path}");
-            } else {
-                re_log::warn_once!("Found NaN radius in entity {entity_path}");
-            }
-            re_renderer::Size::AUTO
+            re_log::warn_once!("Found NaN radius in entity {entity_path}");
         }
-    })
+        re_renderer::Size::AUTO
+    }
 }
 
 /// Resolves all annotations and keypoints for the given entity view.
 fn process_annotation_and_keypoint_slices(
     latest_at: re_log_types::TimeInt,
-    instance_keys: &[InstanceKey],
-    keypoint_ids: Option<&[Option<re_types::components::KeypointId>]>,
-    class_ids: Option<&[Option<re_types::components::ClassId>]>,
+    num_instances: usize,
     positions: impl Iterator<Item = glam::Vec3>,
+    keypoint_ids: &[re_types::components::KeypointId],
+    class_ids: &[re_types::components::ClassId],
     annotations: &Annotations,
 ) -> (ResolvedAnnotationInfos, Keypoints) {
     re_tracing::profile_function!();
@@ -228,42 +201,23 @@ fn process_annotation_and_keypoint_slices(
     let mut keypoints: Keypoints = HashMap::default();
 
     // No need to process annotations if we don't have class-ids
-    let Some(class_ids) = class_ids else {
+    if class_ids.is_empty() {
         let resolved_annotation = annotations
             .resolved_class_description(None)
             .annotation_info();
 
         return (
-            ResolvedAnnotationInfos::Same(instance_keys.len(), resolved_annotation),
+            ResolvedAnnotationInfos::Same(num_instances, resolved_annotation),
             keypoints,
         );
     };
 
-    if let Some(keypoint_ids) = keypoint_ids {
-        let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
-            .map(|(positions, &keypoint_id, &class_id)| {
-                let class_description = annotations.resolved_class_description(class_id);
+    let class_ids = entity_iterator::clamped(class_ids, num_instances);
 
-                if let (Some(keypoint_id), Some(class_id), position) =
-                    (keypoint_id, class_id, positions)
-                {
-                    keypoints
-                        .entry((class_id, latest_at.as_i64()))
-                        .or_default()
-                        .insert(keypoint_id.0, position);
-                    class_description.annotation_info_with_keypoint(keypoint_id.0)
-                } else {
-                    class_description.annotation_info()
-                }
-            })
-            .collect();
-
-        (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
-    } else {
+    if keypoint_ids.is_empty() {
         let annotation_info = class_ids
-            .iter()
             .map(|&class_id| {
-                let class_description = annotations.resolved_class_description(class_id);
+                let class_description = annotations.resolved_class_description(Some(class_id));
                 class_description.annotation_info()
             })
             .collect();
@@ -272,6 +226,21 @@ fn process_annotation_and_keypoint_slices(
             ResolvedAnnotationInfos::Many(annotation_info),
             Default::default(),
         )
+    } else {
+        let keypoint_ids = entity_iterator::clamped(keypoint_ids, num_instances);
+        let annotation_info = itertools::izip!(positions, keypoint_ids, class_ids)
+            .map(|(position, keypoint_id, &class_id)| {
+                let class_description = annotations.resolved_class_description(Some(class_id));
+
+                keypoints
+                    .entry((class_id, latest_at.as_i64()))
+                    .or_default()
+                    .insert(keypoint_id.0, position);
+                class_description.annotation_info_with_keypoint(keypoint_id.0)
+            })
+            .collect();
+
+        (ResolvedAnnotationInfos::Many(annotation_info), keypoints)
     }
 }
 

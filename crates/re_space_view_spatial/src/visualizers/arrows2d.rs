@@ -1,4 +1,5 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_query_cache2::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows2D,
@@ -10,15 +11,18 @@ use re_viewer_context::{
     VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use super::{
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-};
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, UiLabel, UiLabelTarget},
 };
+
+use super::{
+    entity_iterator::clamped, process_annotation_and_keypoint_slices, process_color_slice,
+    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+};
+
+// ---
 
 pub struct Arrows2DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
@@ -35,152 +39,148 @@ impl Default for Arrows2DVisualizer {
     }
 }
 
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl Arrows2DVisualizer {
     fn process_labels<'a>(
+        entity_path: &'a EntityPath,
         vectors: &'a [Vector2D],
-        origins: impl Iterator<Item = Option<Position2D>> + 'a,
-        labels: &'a [Option<Text>],
-        instance_path_hashes: &'a [InstancePathHash],
+        origins: impl Iterator<Item = &'a Position2D> + 'a,
+        labels: &'a [Text],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
         world_from_obj: glam::Affine3A,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        itertools::izip!(
-            annotation_infos.iter(),
-            vectors,
-            origins,
-            labels,
-            colors,
-            instance_path_hashes,
-        )
-        .filter_map(
-            move |(annotation_info, vector, origin, label, color, labeled_instance)| {
-                let origin = origin.unwrap_or(Position2D::ZERO);
-                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-                match (vector, label) {
-                    (vector, Some(label)) => {
-                        let midpoint =
+        let labels = clamped(labels, vectors.len());
+        let origins = origins.chain(std::iter::repeat(&Position2D::ZERO));
+        itertools::izip!(annotation_infos.iter(), vectors, origins, labels, colors)
+            .enumerate()
+            .filter_map(
+                move |(i, (annotation_info, vector, origin, label, color))| {
+                    let label = annotation_info.label(Some(label.as_str()));
+                    match (vector, label) {
+                        (vector, Some(label)) => {
+                            let midpoint =
                              // `0.45` rather than `0.5` to account for cap and such
                             glam::Vec2::from(origin.0) + glam::Vec2::from(vector.0) * 0.45;
-                        let midpoint = world_from_obj.transform_point3(midpoint.extend(0.0));
+                            let midpoint = world_from_obj.transform_point3(midpoint.extend(0.0));
 
-                        Some(UiLabel {
-                            text: label,
-                            color: *color,
-                            target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
-                            labeled_instance: *labeled_instance,
-                        })
+                            Some(UiLabel {
+                                text: label,
+                                color: *color,
+                                target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
+                                labeled_instance: InstancePathHash::instance(
+                                    entity_path,
+                                    InstanceKey(i as _),
+                                ),
+                            })
+                        }
+                        _ => None,
                     }
-                    _ => None,
-                }
-            },
-        )
+                },
+            )
     }
 
-    fn process_data(
+    fn process_data<'a>(
         &mut self,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        data: &Arrows2DComponentData<'_>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
+        data: impl Iterator<Item = Arrows2DComponentData<'a>>,
     ) {
-        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
-            query.latest_at,
-            data.instance_keys,
-            data.keypoint_ids,
-            data.class_ids,
-            data.vectors.iter().map(|_| glam::Vec3::ZERO),
-            &ent_context.annotations,
-        );
+        for data in data {
+            let num_instances = data.vectors.len();
+            if num_instances == 0 {
+                continue;
+            }
 
-        let radii = process_radius_slice(data.radii, data.vectors.len(), ent_path);
-        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
-        let origins = || {
-            data.origins.map_or_else(
-                || itertools::Either::Left(std::iter::repeat(Some(Position2D::ZERO))),
-                |origins| itertools::Either::Right(origins.iter().copied()),
-            )
-        };
+            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+                query.latest_at,
+                num_instances,
+                data.vectors.iter().map(|_| glam::Vec3::ZERO),
+                data.keypoint_ids,
+                data.class_ids,
+                &ent_context.annotations,
+            );
 
-        if data.instance_keys.len() <= self.max_labels {
-            re_tracing::profile_scope!("labels");
+            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let colors =
+                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
 
-            // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
-
-            let instance_path_hashes_for_picking = {
-                re_tracing::profile_scope!("instance_hashes");
-                data.instance_keys
-                    .iter()
-                    .copied()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
-                    .collect::<Vec<_>>()
-            };
-
-            if let Some(labels) = data.labels {
+            if num_instances <= self.max_labels {
+                let origins = clamped(data.origins, num_instances);
                 self.data.ui_labels.extend(Self::process_labels(
+                    entity_path,
                     data.vectors,
-                    origins(),
-                    labels,
-                    &instance_path_hashes_for_picking,
+                    origins,
+                    data.labels,
                     &colors,
                     &annotation_infos,
                     ent_context.world_from_entity,
                 ));
             }
-        }
 
-        let mut line_batch = line_builder
-            .batch(ent_path.to_string())
-            .world_from_obj(ent_context.world_from_entity)
-            .outline_mask_ids(ent_context.highlight.overall)
-            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            let mut line_batch = line_builder
+                .batch(entity_path.to_string())
+                .world_from_obj(ent_context.world_from_entity)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-        let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut bounding_box = macaw::BoundingBox::nothing();
 
-        for (instance_key, vector, origin, radius, color) in
-            itertools::izip!(data.instance_keys, data.vectors, origins(), radii, colors,)
-        {
-            let vector: glam::Vec2 = vector.0.into();
-            let origin: glam::Vec2 = origin.unwrap_or(Position2D::ZERO).0.into();
-            let end = origin + vector;
+            let origins =
+                clamped(data.origins, num_instances).chain(std::iter::repeat(&Position2D::ZERO));
+            for (i, (vector, origin, radius, color)) in
+                itertools::izip!(data.vectors, origins, radii, colors).enumerate()
+            {
+                let vector: glam::Vec2 = vector.0.into();
+                let origin: glam::Vec2 = origin.0.into();
+                let end = origin + vector;
 
-            let segment = line_batch
-                .add_segment_2d(origin, end)
-                .radius(radius)
-                .color(color)
-                .flags(
-                    LineStripFlags::FLAG_CAP_END_TRIANGLE
-                        | LineStripFlags::FLAG_CAP_START_ROUND
-                        | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
-                )
-                .picking_instance_id(PickingLayerInstanceId(instance_key.0));
+                let segment = line_batch
+                    .add_segment_2d(origin, end)
+                    .radius(radius)
+                    .color(color)
+                    .flags(
+                        LineStripFlags::FLAG_CAP_END_TRIANGLE
+                            | LineStripFlags::FLAG_CAP_START_ROUND
+                            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                    )
+                    .picking_instance_id(PickingLayerInstanceId(i as _));
 
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
-                segment.outline_mask_ids(*outline_mask_ids);
+                if let Some(outline_mask_ids) =
+                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                {
+                    segment.outline_mask_ids(*outline_mask_ids);
+                }
+
+                bounding_box.extend(origin.extend(0.0));
+                bounding_box.extend(end.extend(0.0));
             }
 
-            bounding_box.extend(origin.extend(0.0));
-            bounding_box.extend(end.extend(0.0));
+            self.data.add_bounding_box(
+                entity_path.hash(),
+                bounding_box,
+                ent_context.world_from_entity,
+            );
         }
-
-        self.data
-            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
     }
 }
 
 // ---
 
 struct Arrows2DComponentData<'a> {
-    pub instance_keys: &'a [InstanceKey],
-    pub vectors: &'a [Vector2D],
-    pub origins: Option<&'a [Option<Position2D>]>,
-    pub colors: Option<&'a [Option<Color>]>,
-    pub radii: Option<&'a [Option<Radius>]>,
-    pub labels: Option<&'a [Option<Text>]>,
-    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
-    pub class_ids: Option<&'a [Option<ClassId>]>,
+    // Point of views
+    vectors: &'a [Vector2D],
+
+    // Clamped to edge
+    origins: &'a [Position2D],
+    colors: &'a [Color],
+    radii: &'a [Radius],
+    labels: &'a [Text],
+    keypoint_ids: &'a [KeypointId],
+    class_ids: &'a [ClassId],
 }
 
 impl IdentifiedViewSystem for Arrows2DVisualizer {
@@ -206,64 +206,78 @@ impl VisualizerSystem for Arrows2DVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let num_arrows = super::entity_iterator::count_instances_in_archetype_views::<
-            Arrows2DVisualizer,
-            Arrows2D,
-            8,
-        >(ctx, query);
-
-        if num_arrows == 0 {
-            return Ok(Vec::new());
-        }
-
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
-        line_builder.reserve_strips(num_arrows)?;
-        line_builder.reserve_vertices(num_arrows * 2)?;
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype_pov1_comp6::<
-            Arrows2DVisualizer,
-            Arrows2D,
-            Vector2D,
-            Position2D,
-            Color,
-            Radius,
-            Text,
-            KeypointId,
-            ClassId,
-            _,
-        >(
+        super::entity_iterator::process_archetype::<Arrows2DVisualizer, Arrows2D, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx,
-             ent_path,
-             _ent_props,
-             ent_context,
-             (_time, _row_id),
-             instance_keys,
-             vectors,
-             origins,
-             colors,
-             radii,
-             labels,
-             keypoint_ids,
-             class_ids| {
-                let data = Arrows2DComponentData {
-                    instance_keys,
-                    vectors,
-                    origins,
-                    colors,
-                    radii,
-                    labels,
-                    keypoint_ids,
-                    class_ids,
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
+
+                use crate::visualizers::CachedRangeResultsExt as _;
+
+                let resolver = ctx.recording().resolver();
+
+                let vectors = match results.get_dense::<Vector2D>(resolver) {
+                    Some(vectors) => vectors?,
+                    _ => return Ok(()),
                 };
-                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+
+                let num_vectors = vectors
+                    .range_indexed()
+                    .map(|(_, vectors)| vectors.len())
+                    .sum::<usize>();
+                if num_vectors == 0 {
+                    return Ok(());
+                }
+
+                line_builder.reserve_strips(num_vectors)?;
+                line_builder.reserve_vertices(num_vectors * 2)?;
+
+                let origins = results.get_or_empty_dense(resolver)?;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x6(
+                    vectors.range_indexed(),
+                    origins.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, vectors, origins, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Arrows2DComponentData {
+                            vectors,
+                            origins: origins.unwrap_or_default(),
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
+
                 Ok(())
             },
         )?;

@@ -12,7 +12,10 @@ use re_data_store::RangeQuery;
 use re_log_types::{RowId, TimeInt, TimeRange};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
-use crate::{ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver, PromiseResult};
+use crate::{
+    CachedLatestAtComponentResults, ErasedFlatVecDeque, FlatVecDeque, Promise, PromiseResolver,
+    PromiseResult,
+};
 
 // ---
 
@@ -98,6 +101,14 @@ impl CachedRangeResults {
 
 // ---
 
+thread_local! {
+    /// Keeps track of reentrancy counts for the current thread.
+    ///
+    /// Used to detect and prevent potential deadlocks when using the cached APIs in work-stealing
+    /// environments such as Rayon.
+    static REENTERING: RefCell<u32> = const { RefCell::new(0) };
+}
+
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug)]
 pub struct CachedRangeComponentResults {
@@ -156,7 +167,47 @@ impl std::ops::Deref for CachedRangeComponentResults {
     }
 }
 
+/// Helper datastructure to make it possible to convert latest-at results into ranged results.
 #[derive(Debug)]
+enum Indices<'a> {
+    Owned(VecDeque<(TimeInt, RowId)>),
+    Cached(MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>),
+}
+
+impl<'a> std::ops::Deref for Indices<'a> {
+    type Target = VecDeque<(TimeInt, RowId)>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Indices::Owned(data) => data,
+            Indices::Cached(data) => data,
+        }
+    }
+}
+
+/// Helper datastructure to make it possible to convert latest-at results into ranged results.
+enum Data<'a, T> {
+    Owned(Arc<dyn ErasedFlatVecDeque + Send + Sync>),
+    Cached(MappedRwLockReadGuard<'a, FlatVecDeque<T>>),
+}
+
+impl<'a, T: 'static> std::ops::Deref for Data<'a, T> {
+    type Target = FlatVecDeque<T>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Data::Owned(data) => {
+                // Unwrap: only way to instantiate a `Data` is via the `From` impl below which we
+                // fully control.
+                data.as_any().downcast_ref().unwrap()
+            }
+            Data::Cached(data) => data,
+        }
+    }
+}
+
 pub struct CachedRangeData<'a, T> {
     // NOTE: Options so we can represent an empty result without having to somehow conjure a mutex
     // guard out of thin air.
@@ -164,8 +215,9 @@ pub struct CachedRangeData<'a, T> {
     // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
     // impossible to return an owned type in a `parking_lot` guard.
     // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
-    indices: Option<MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>>,
-    data: Option<MappedRwLockReadGuard<'a, FlatVecDeque<T>>>,
+    // indices: Option<MappedRwLockReadGuard<'a, VecDeque<(TimeInt, RowId)>>>,
+    indices: Option<Indices<'a>>,
+    data: Option<Data<'a, T>>,
 
     time_range: TimeRange,
     front_status: PromiseResult<()>,
@@ -178,6 +230,32 @@ pub struct CachedRangeData<'a, T> {
     reentering: &'static std::thread::LocalKey<RefCell<u32>>,
 }
 
+impl<'a, C: Component> CachedRangeData<'a, C> {
+    /// Useful to abstract over latest-at and ranged results.
+    #[inline]
+    pub fn from_latest_at(
+        resolver: &PromiseResolver,
+        results: &'a CachedLatestAtComponentResults,
+    ) -> Self {
+        let CachedLatestAtComponentResults {
+            index,
+            promise: _,
+            cached_dense,
+        } = results;
+
+        let status = results.to_dense::<C>(resolver).map(|_| ());
+
+        Self {
+            indices: Some(Indices::Owned(vec![*index].into())),
+            data: cached_dense.get().map(|data| Data::Owned(Arc::clone(data))),
+            time_range: TimeRange::new(index.0, index.0),
+            front_status: status.clone(),
+            back_status: status,
+            reentering: &REENTERING,
+        }
+    }
+}
+
 impl<'a, T> Drop for CachedRangeData<'a, T> {
     #[inline]
     fn drop(&mut self) {
@@ -186,7 +264,7 @@ impl<'a, T> Drop for CachedRangeData<'a, T> {
     }
 }
 
-impl<'a, T> CachedRangeData<'a, T> {
+impl<'a, T: 'static> CachedRangeData<'a, T> {
     /// Returns the current status on both ends of the range.
     ///
     /// E.g. it is possible that the front-side of the range is still waiting for pending data while
@@ -201,10 +279,11 @@ impl<'a, T> CachedRangeData<'a, T> {
         &self,
         entry_range: Range<usize>,
     ) -> impl Iterator<Item = &(TimeInt, RowId)> {
-        match self.indices.as_ref() {
+        let indices = match self.indices.as_ref() {
             Some(indices) => itertools::Either::Left(indices.range(entry_range)),
             None => itertools::Either::Right(std::iter::empty()),
-        }
+        };
+        indices
     }
 
     #[inline]
@@ -277,14 +356,6 @@ impl CachedRangeComponentResults {
         re_tracing::profile_function!();
 
         // --- Step 1: try and upsert pending data (write lock) ---
-
-        thread_local! {
-            /// Keeps track of reentrancy counts for the current thread.
-            ///
-            /// Used to detect and prevent potential deadlocks when using the cached APIs in work-stealing
-            /// environments such as Rayon.
-            static REENTERING: RefCell<u32> = const { RefCell::new(0) };
-        }
 
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
@@ -514,8 +585,8 @@ impl CachedRangeComponentResults {
         });
 
         CachedRangeData {
-            indices: Some(indices),
-            data: Some(data),
+            indices: Some(Indices::Cached(indices)),
+            data: Some(Data::Cached(data)),
             time_range: self.time_range,
             front_status,
             back_status,

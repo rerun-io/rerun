@@ -1,5 +1,6 @@
-use re_entity_db::EntityPath;
-use re_renderer::LineDrawableBuilder;
+use re_entity_db::{EntityPath, InstancePathHash};
+use re_query_cache2::range_zip_1x7;
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Boxes3D,
     components::{
@@ -7,9 +8,9 @@ use re_types::{
     },
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext, VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo,
-    VisualizerSystem,
+    ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
@@ -19,10 +20,12 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_3d_entities, picking_id_from_instance_key,
-    process_annotation_and_keypoint_slices, process_color_slice, process_label_slice,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    entity_iterator::clamped, filter_visualizable_3d_entities,
+    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
+
+// ---
 
 pub struct Boxes3DVisualizer(SpatialViewVisualizerData);
 
@@ -34,118 +37,136 @@ impl Default for Boxes3DVisualizer {
     }
 }
 
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl Boxes3DVisualizer {
-    fn process_data(
+    fn process_labels<'a>(
+        entity_path: &'a EntityPath,
+        half_sizes: &'a [HalfSizes3D],
+        centers: impl Iterator<Item = &'a Position3D> + 'a,
+        labels: &'a [Text],
+        colors: &'a [egui::Color32],
+        annotation_infos: &'a ResolvedAnnotationInfos,
+        world_from_entity: glam::Affine3A,
+    ) -> impl Iterator<Item = UiLabel> + 'a {
+        let labels = clamped(labels, half_sizes.len());
+        let centers = centers.chain(std::iter::repeat(&Position3D::ZERO));
+        itertools::izip!(annotation_infos.iter(), centers, labels, colors)
+            .enumerate()
+            .filter_map(move |(i, (annotation_info, center, label, color))| {
+                let label = annotation_info.label(Some(label.as_str()));
+                label.map(|label| UiLabel {
+                    text: label,
+                    color: *color,
+                    target: UiLabelTarget::Position3D(
+                        world_from_entity.transform_point3(center.0.into()),
+                    ),
+                    labeled_instance: InstancePathHash::instance(entity_path, InstanceKey(i as _)),
+                })
+            })
+    }
+
+    fn process_data<'a>(
         &mut self,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        data: &Boxes3DComponentData<'_>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
+        data: impl Iterator<Item = Boxes3DComponentData<'a>>,
     ) {
-        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
-            query.latest_at,
-            data.instance_keys,
-            data.keypoint_ids,
-            data.class_ids,
-            data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
-            &ent_context.annotations,
-        );
+        for data in data {
+            let num_instances = data.half_sizes.len();
+            if num_instances == 0 {
+                continue;
+            }
 
-        let centers = || {
-            data.centers
-                .as_ref()
-                .map_or(
-                    itertools::Either::Left(std::iter::repeat(&None).take(data.half_sizes.len())),
-                    |data| itertools::Either::Right(data.iter()),
-                )
-                .map(|center| center.unwrap_or(Position3D::ZERO))
-        };
-        let rotations = || {
-            data.rotations
-                .as_ref()
-                .map_or(
-                    itertools::Either::Left(std::iter::repeat(&None).take(data.half_sizes.len())),
-                    |data| itertools::Either::Right(data.iter()),
-                )
-                .map(|center| center.clone().unwrap_or(Rotation3D::IDENTITY))
-        };
+            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+                query.latest_at,
+                num_instances,
+                data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
+                data.keypoint_ids,
+                data.class_ids,
+                &ent_context.annotations,
+            );
 
-        let radii = process_radius_slice(data.radii, data.half_sizes.len(), ent_path);
-        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
-        let labels = process_label_slice(data.labels, data.half_sizes.len(), &annotation_infos);
+            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let colors =
+                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
 
-        let mut line_batch = line_builder
-            .batch("boxes3d")
-            .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_entity)
-            .outline_mask_ids(ent_context.highlight.overall)
-            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            let centers = clamped(data.centers, num_instances);
+            self.0.ui_labels.extend(Self::process_labels(
+                entity_path,
+                data.half_sizes,
+                centers,
+                data.labels,
+                &colors,
+                &annotation_infos,
+                ent_context.world_from_entity,
+            ));
 
-        let mut bounding_box = macaw::BoundingBox::nothing();
+            let mut line_batch = line_builder
+                .batch("boxes3d")
+                .depth_offset(ent_context.depth_offset)
+                .world_from_obj(ent_context.world_from_entity)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-        for (instance_key, half_size, center, rotation, radius, color, label) in itertools::izip!(
-            data.instance_keys,
-            data.half_sizes,
-            centers(),
-            rotations(),
-            radii,
-            colors,
-            labels,
-        ) {
-            let instance_hash = re_entity_db::InstancePathHash::instance(ent_path, *instance_key);
+            let mut bounding_box = macaw::BoundingBox::nothing();
 
-            bounding_box.extend(half_size.box_min(center));
-            bounding_box.extend(half_size.box_max(center));
-
-            let center = center.into();
-
-            let box3d = line_batch
-                .add_box_outline_from_transform(glam::Affine3A::from_scale_rotation_translation(
-                    glam::Vec3::from(*half_size) * 2.0,
-                    rotation.into(),
-                    center,
-                ))
-                .color(color)
-                .radius(radius)
-                .picking_instance_id(picking_id_from_instance_key(*instance_key));
-            if let Some(outline_mask_ids) = ent_context
-                .highlight
-                .instances
-                .get(&instance_hash.instance_key)
+            let centers =
+                clamped(data.centers, num_instances).chain(std::iter::repeat(&Position3D::ZERO));
+            let rotations = clamped(data.rotations, num_instances)
+                .chain(std::iter::repeat(&Rotation3D::IDENTITY));
+            for (i, (half_size, &center, rotation, radius, color)) in
+                itertools::izip!(data.half_sizes, centers, rotations, radii, colors).enumerate()
             {
-                box3d.outline_mask_ids(*outline_mask_ids);
+                bounding_box.extend(half_size.box_min(center));
+                bounding_box.extend(half_size.box_max(center));
+
+                let center = center.into();
+
+                let box3d = line_batch
+                    .add_box_outline_from_transform(
+                        glam::Affine3A::from_scale_rotation_translation(
+                            glam::Vec3::from(*half_size) * 2.0,
+                            rotation.0.into(),
+                            center,
+                        ),
+                    )
+                    .color(color)
+                    .radius(radius)
+                    .picking_instance_id(PickingLayerInstanceId(i as _));
+
+                if let Some(outline_mask_ids) =
+                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                {
+                    box3d.outline_mask_ids(*outline_mask_ids);
+                }
             }
 
-            if let Some(text) = label {
-                self.0.ui_labels.push(UiLabel {
-                    text,
-                    color,
-                    target: UiLabelTarget::Position3D(
-                        ent_context.world_from_entity.transform_point3(center),
-                    ),
-                    labeled_instance: instance_hash,
-                });
-            }
+            self.0.add_bounding_box(
+                entity_path.hash(),
+                bounding_box,
+                ent_context.world_from_entity,
+            );
         }
-
-        self.0
-            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
     }
 }
 
 // ---
 
 struct Boxes3DComponentData<'a> {
-    pub instance_keys: &'a [InstanceKey],
-    pub half_sizes: &'a [HalfSizes3D],
-    pub centers: Option<&'a [Option<Position3D>]>,
-    pub rotations: Option<&'a [Option<Rotation3D>]>,
-    pub colors: Option<&'a [Option<Color>]>,
-    pub radii: Option<&'a [Option<Radius>]>,
-    pub labels: Option<&'a [Option<Text>]>,
-    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
-    pub class_ids: Option<&'a [Option<ClassId>]>,
+    // Point of views
+    half_sizes: &'a [HalfSizes3D],
+
+    // Clamped to edge
+    centers: &'a [Position3D],
+    rotations: &'a [Rotation3D],
+    colors: &'a [Color],
+    radii: &'a [Radius],
+    labels: &'a [Text],
+    keypoint_ids: &'a [KeypointId],
+    class_ids: &'a [ClassId],
 }
 
 impl IdentifiedViewSystem for Boxes3DVisualizer {
@@ -171,69 +192,92 @@ impl VisualizerSystem for Boxes3DVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let num_boxes = super::entity_iterator::count_instances_in_archetype_views::<
-            Boxes3DVisualizer,
-            Boxes3D,
-            9,
-        >(ctx, query);
-
-        if num_boxes == 0 {
-            return Ok(Vec::new());
-        }
-
         let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        // Each box consists of 12 independent lines with 2 vertices each.
-        line_builder.reserve_strips(num_boxes * 12)?;
-        line_builder.reserve_vertices(num_boxes * 12 * 2)?;
-
-        super::entity_iterator::process_archetype_pov1_comp7::<
-            Boxes3DVisualizer,
-            Boxes3D,
-            HalfSizes3D,
-            Position3D,
-            Rotation3D,
-            Color,
-            Radius,
-            Text,
-            re_types::components::KeypointId,
-            re_types::components::ClassId,
-            _,
-        >(
+        super::entity_iterator::process_archetype::<Boxes3DVisualizer, Boxes3D, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx,
-             ent_path,
-             _ent_props,
-             ent_context,
-             (_time, _row_id),
-             instance_keys,
-             half_sizes,
-             centers,
-             rotations,
-             colors,
-             radii,
-             labels,
-             keypoint_ids,
-             class_ids| {
-                let data = Boxes3DComponentData {
-                    instance_keys,
-                    half_sizes,
-                    centers,
-                    rotations,
-                    colors,
-                    radii,
-                    labels,
-                    keypoint_ids,
-                    class_ids,
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
+
+                use crate::visualizers::CachedRangeResultsExt as _;
+
+                let resolver = ctx.recording().resolver();
+
+                let half_sizes = match results.get_dense::<HalfSizes3D>(resolver) {
+                    Some(vectors) => vectors?,
+                    _ => return Ok(()),
                 };
-                self.process_data(&mut line_builder, query, &data, ent_path, ent_context);
+
+                let num_boxes = half_sizes
+                    .range_indexed()
+                    .map(|(_, vectors)| vectors.len())
+                    .sum::<usize>();
+                if num_boxes == 0 {
+                    return Ok(());
+                }
+
+                // Each box consists of 12 independent lines with 2 vertices each.
+                line_builder.reserve_strips(num_boxes * 12)?;
+                line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+
+                let centers = results.get_or_empty_dense(resolver)?;
+                let rotations = results.get_or_empty_dense(resolver)?;
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x7(
+                    half_sizes.range_indexed(),
+                    centers.range_indexed(),
+                    rotations.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(
+                        _index,
+                        half_sizes,
+                        centers,
+                        rotations,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                    )| {
+                        Boxes3DComponentData {
+                            half_sizes,
+                            centers: centers.unwrap_or_default(),
+                            rotations: rotations.unwrap_or_default(),
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
+
                 Ok(())
             },
         )?;
