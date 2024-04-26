@@ -15,6 +15,7 @@ material.rs linguist-generated=true
 mesh_properties.rs linguist-generated=true
 mod.rs linguist-generated=true
 quaternion.rs linguist-generated=true
+range1d.rs linguist-generated=true
 rgba32.rs linguist-generated=true
 rotation3d.rs linguist-generated=true
 rotation_axis_angle.rs linguist-generated=true

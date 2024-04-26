@@ -16,6 +16,7 @@ mat4x4.md linguist-generated=true
 material.md linguist-generated=true
 mesh_properties.md linguist-generated=true
 quaternion.md linguist-generated=true
+range1d.md linguist-generated=true
 rgba32.md linguist-generated=true
 rotation3d.md linguist-generated=true
 rotation_axis_angle.md linguist-generated=true

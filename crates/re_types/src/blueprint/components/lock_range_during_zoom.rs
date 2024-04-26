@@ -25,9 +25,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Indicate whether the range should be locked when zooming in on the data.
 ///
 /// Default is `false`, i.e. zoom will change the visualized range.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-pub struct LockRangeDuringZoom(pub bool);
+pub struct LockRangeDuringZoom(pub crate::datatypes::Bool);
 
 impl ::re_types_core::SizeBytes for LockRangeDuringZoom {
     #[inline]
@@ -37,21 +37,29 @@ impl ::re_types_core::SizeBytes for LockRangeDuringZoom {
 
     #[inline]
     fn is_pod() -> bool {
-        <bool>::is_pod()
+        <crate::datatypes::Bool>::is_pod()
     }
 }
 
-impl From<bool> for LockRangeDuringZoom {
-    #[inline]
-    fn from(lock_range: bool) -> Self {
-        Self(lock_range)
+impl<T: Into<crate::datatypes::Bool>> From<T> for LockRangeDuringZoom {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<LockRangeDuringZoom> for bool {
+impl std::borrow::Borrow<crate::datatypes::Bool> for LockRangeDuringZoom {
     #[inline]
-    fn from(value: LockRangeDuringZoom) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for LockRangeDuringZoom {
+    type Target = crate::datatypes::Bool;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Bool {
+        &self.0
     }
 }
 
@@ -99,7 +107,17 @@ impl ::re_types_core::Loggable for LockRangeDuringZoom {
             };
             BooleanArray::new(
                 Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0
+                    .into_iter()
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::Bool(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect(),
                 data0_bitmap,
             )
             .boxed()
@@ -125,6 +143,7 @@ impl ::re_types_core::Loggable for LockRangeDuringZoom {
             })
             .with_context("rerun.blueprint.components.LockRangeDuringZoom#lock_range")?
             .into_iter()
+            .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Bool(v)))
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()

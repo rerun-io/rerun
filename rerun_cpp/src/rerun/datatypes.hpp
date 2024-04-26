@@ -17,6 +17,7 @@
 #include "datatypes/material.hpp"
 #include "datatypes/mesh_properties.hpp"
 #include "datatypes/quaternion.hpp"
+#include "datatypes/range1d.hpp"
 #include "datatypes/rgba32.hpp"
 #include "datatypes/rotation3d.hpp"
 #include "datatypes/rotation_axis_angle.hpp"

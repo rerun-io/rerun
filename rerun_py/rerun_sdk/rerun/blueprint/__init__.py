@@ -14,9 +14,13 @@ from .api import (
 )
 from .archetypes import (
     Background3D,
+    PlotLegend,
+    ScalarAxis,
 )
 from .components import (
     Background3DKind,
+    Corner2D,
+    LockRangeDuringZoom,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (

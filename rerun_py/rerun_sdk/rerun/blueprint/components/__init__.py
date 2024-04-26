@@ -37,13 +37,7 @@ from .entity_properties_component import (
 from .grid_columns import GridColumns, GridColumnsArrayLike, GridColumnsBatch, GridColumnsLike, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
-from .lock_range_during_zoom import (
-    LockRangeDuringZoom,
-    LockRangeDuringZoomArrayLike,
-    LockRangeDuringZoomBatch,
-    LockRangeDuringZoomLike,
-    LockRangeDuringZoomType,
-)
+from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
 from .panel_expanded import PanelExpanded, PanelExpandedBatch, PanelExpandedType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
@@ -110,9 +104,7 @@ __all__ = [
     "IncludedSpaceViewBatch",
     "IncludedSpaceViewType",
     "LockRangeDuringZoom",
-    "LockRangeDuringZoomArrayLike",
     "LockRangeDuringZoomBatch",
-    "LockRangeDuringZoomLike",
     "LockRangeDuringZoomType",
     "PanelExpanded",
     "PanelExpandedBatch",
