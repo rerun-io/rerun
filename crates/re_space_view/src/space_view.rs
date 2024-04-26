@@ -1,8 +1,9 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
 use re_entity_db::external::re_query::PromiseResult;
+use re_types::blueprint::components::VisibleTimeRangeTime;
 
-use crate::SpaceViewContents;
+use crate::{query_view_property, SpaceViewContents};
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
 use re_log_types::{DataRow, EntityPathSubs, RowId};
@@ -10,6 +11,7 @@ use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
     blueprint::components::{SpaceViewOrigin, Visible},
     components::Name,
+    Loggable as _,
 };
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
@@ -440,6 +442,32 @@ impl SpaceViewBlueprint {
                     }
                 }
             }
+        }
+
+        // Special case: VisibleTimeRange is a view property that inherits down to entity properties.
+        // Insert it into the recursive component overrides, so that it's inherited by all entities.
+        // TODO(andreas): Rather than inheriting down the tree, this should be handled as a default value on
+        let (visible_time_range, visible_time_range_path) = query_view_property::<
+            blueprint_archetypes::VisibleTimeRange,
+        >(self.id, ctx.blueprint, query);
+        let visible_time_range = visible_time_range.ok().flatten();
+        if visible_time_range
+            .as_ref()
+            .map_or(false, |r| r.time.is_some())
+        {
+            recursive_component_overrides.insert(
+                VisibleTimeRangeTime::name(),
+                OverridePath::blueprint_path(visible_time_range_path.clone()),
+            );
+        }
+        if visible_time_range
+            .as_ref()
+            .map_or(false, |r| r.sequence.is_some())
+        {
+            recursive_component_overrides.insert(
+                VisibleTimeRangeTime::name(),
+                OverridePath::blueprint_path(visible_time_range_path.clone()),
+            );
         }
 
         DataResult {

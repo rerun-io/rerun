@@ -29,7 +29,10 @@ use re_viewport::{
 use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
 
-use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_time_range_ui};
+use super::{
+    selection_history_ui::SelectionHistoryUi, visual_time_range::visual_time_range_ui_entity,
+    visual_time_range::visual_time_range_ui_space_view,
+};
 
 // ---
 
@@ -902,19 +905,11 @@ fn blueprint_ui_for_space_view(
             &class_identifier,
         );
 
+        visual_time_range_ui_space_view(ctx, ui, class_identifier, space_view_id);
+
         // Space View don't inherit properties.
         let space_view_data_result =
             space_view.space_view_data_result(ctx.store_context, ctx.blueprint_query);
-
-        visual_time_range_ui(
-            ctx,
-            ui,
-            None, // There is no tree above the space view yet
-            &space_view_data_result,
-            class_identifier,
-            true,
-        );
-
         let mut props = space_view_data_result
             .individual_properties()
             .cloned()
@@ -1184,13 +1179,12 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    visual_time_range_ui(
+    visual_time_range_ui_entity(
         ctx,
         ui,
         Some(&query_result.tree),
         data_result,
         *space_view_class,
-        false,
     );
 
     egui::Grid::new("entity_properties")
