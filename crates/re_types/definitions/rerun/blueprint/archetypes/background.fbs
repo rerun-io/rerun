@@ -10,7 +10,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// Configuration for the background of a space view.
+/// Configuration for the background of a view.
 table Background (
     "attr.python.aliases": "datatypes.Rgba32Like, blueprint_components.BackgroundKindLike",
     "attr.rerun.scope": "blueprint",
