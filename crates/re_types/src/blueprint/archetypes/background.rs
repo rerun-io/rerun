@@ -53,26 +53,20 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.BackgroundIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.Color".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.BackgroundKind".into(),
             "rerun.blueprint.components.BackgroundIndicator".into(),
             "rerun.components.Color".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Background {
-    pub const NUM_COMPONENTS: usize = 4usize;
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`Background`] [`::re_types_core::Archetype`]
@@ -162,11 +156,6 @@ impl ::re_types_core::AsComponents for Background {
         .into_iter()
         .flatten()
         .collect()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
     }
 }
 

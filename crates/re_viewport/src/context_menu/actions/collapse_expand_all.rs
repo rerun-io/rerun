@@ -69,7 +69,7 @@ impl ContextMenuAction for CollapseExpandAllAction {
             self.process_data_result(
                 ctx,
                 space_view_id,
-                &InstancePath::entity_splat(root_node.data_result.entity_path.clone()),
+                &InstancePath::entity_all(root_node.data_result.entity_path.clone()),
             );
         }
     }

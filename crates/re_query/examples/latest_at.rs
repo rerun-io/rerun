@@ -106,7 +106,6 @@ fn main() -> anyhow::Result<()> {
 fn store() -> anyhow::Result<DataStore> {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        re_types::components::InstanceKey::name(),
         Default::default(),
     );
 
@@ -116,15 +115,15 @@ fn store() -> anyhow::Result<DataStore> {
         let timepoint = [build_frame_nr(123)];
 
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, points)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points)?;
         store.insert_row(&row)?;
 
         let colors = vec![MyColor::from_rgb(255, 0, 0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, colors)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, colors)?;
         store.insert_row(&row)?;
 
         let labels = vec![MyLabel("a".into()), MyLabel("b".into())];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, labels)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, labels)?;
         store.insert_row(&row)?;
     }
 

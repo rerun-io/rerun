@@ -45,19 +45,6 @@ pub trait AsComponents {
     // depending on their presence (or lack thereof) at runtime anyway.
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>>;
 
-    /// The number of instances in each batch.
-    ///
-    /// If not implemented, the number of instances will be determined by the longest
-    /// batch in the bundle.
-    #[inline]
-    fn num_instances(&self) -> usize {
-        self.as_component_batches()
-            .into_iter()
-            .map(|comp_batch| comp_batch.as_ref().num_instances())
-            .max()
-            .unwrap_or(0)
-    }
-
     // ---
 
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.

@@ -524,33 +524,6 @@ impl QuotedObject {
             });
         }
 
-        // Num instances gives the number of primary instances.
-        {
-            let first_required_field = required_component_fields.first();
-            let definition_body = if let Some(field) = first_required_field {
-                let first_required_field_name = &format_ident!("{}", field.name);
-                if field.typ.is_plural() {
-                    quote!(return #first_required_field_name.size();)
-                } else {
-                    quote!(return 1;)
-                }
-            } else {
-                quote!(return 0;)
-            };
-            methods.push(Method {
-                docs: "Returns the number of primary instances of this archetype.".into(),
-                declaration: MethodDeclaration {
-                    is_static: false,
-                    return_type: quote!(size_t),
-                    name_and_parameters: quote! {
-                        num_instances() const
-                    },
-                },
-                definition_body,
-                inline: true,
-            });
-        }
-
         let quoted_namespace = if let Some(scope) = obj.scope() {
             let scope = format_ident!("{}", scope);
             quote! { #scope::archetypes }

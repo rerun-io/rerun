@@ -531,8 +531,6 @@ namespace rerun {
         /// In order to use this you need to pass serialized Arrow data cells.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param num_instances
-        /// Each cell is expected to hold exactly `num_instances` instances.
         /// \param num_data_cells Number of data cells passed in.
         /// \param data_cells The data cells to log.
         /// \param inject_time
@@ -541,8 +539,8 @@ namespace rerun {
         ///
         /// \see `try_log_serialized_batches`
         Error try_log_data_row(
-            std::string_view entity_path, size_t num_instances, size_t num_data_cells,
-            const DataCell* data_cells, bool inject_time
+            std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
+            bool inject_time
         ) const;
 
         /// Logs the file at the given `path` using all `DataLoader`s available.

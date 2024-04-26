@@ -8,8 +8,8 @@
 //! Some components, mostly transform related ones, are "mono-components".
 //! This means that Rerun makes assumptions that depend on this component
 //! only taking on a singular value for all instances of an Entity. Where possible,
-//! exposed APIs will force these components to be logged as a singular instance
-//! or a splat. However, it is an error with undefined behavior to manually use lower-level
+//! exposed APIs will force these components to be logged as a singular instance.
+//! However, it is an error with undefined behavior to manually use lower-level
 //! APIs to log a batched mono-component.
 //!
 //! This requirement is especially apparent with transforms:
@@ -18,15 +18,16 @@
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
 pub mod arrow_msg;
+pub mod example_components;
+pub mod hash;
+pub mod path;
+pub mod time_point;
+
 mod data_cell;
 mod data_row;
 mod data_table;
-pub mod example_components;
-pub mod hash;
-mod num_instances;
-pub mod path;
+mod instance;
 mod time;
-pub mod time_point;
 mod time_range;
 mod time_real;
 mod vec_deque_ext;
@@ -44,10 +45,10 @@ pub use self::data_row::{
 };
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, METADATA_KIND,
-    METADATA_KIND_CONTROL, METADATA_KIND_DATA,
+    ErasedTimeVec, RowIdVec, TableId, TimePointVec, METADATA_KIND, METADATA_KIND_CONTROL,
+    METADATA_KIND_DATA,
 };
-pub use self::num_instances::NumInstances;
+pub use self::instance::Instance;
 pub use self::path::*;
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{

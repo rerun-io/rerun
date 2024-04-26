@@ -76,20 +76,19 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.TensorIndicator".into(),
-            "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl Tensor {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`Tensor`] [`::re_types_core::Archetype`]
@@ -167,11 +166,6 @@ impl ::re_types_core::AsComponents for Tensor {
         .into_iter()
         .flatten()
         .collect()
-    }
-
-    #[inline]
-    fn num_instances(&self) -> usize {
-        1
     }
 }
 

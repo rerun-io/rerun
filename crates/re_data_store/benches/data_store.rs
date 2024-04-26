@@ -9,14 +9,10 @@ use re_data_store::{
     RangeQuery, TimeInt, TimeRange,
 };
 use re_log_types::{
-    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimePoint, TimeType,
-    Timeline,
+    build_frame_nr, example_components::MyIndex, DataCell, DataRow, DataTable, EntityPath, RowId,
+    TableId, TimePoint, TimeType, Timeline,
 };
-use re_types::datagen::build_some_instances;
-use re_types::{
-    components::InstanceKey,
-    testing::{build_some_large_structs, LargeStruct},
-};
+use re_types::testing::{build_some_large_structs, LargeStruct};
 use re_types_core::{ComponentName, Loggable as _};
 
 criterion_group!(
@@ -123,7 +119,6 @@ fn insert_same_time_point(c: &mut Criterion) {
                 b.iter(|| {
                     let mut store = DataStore::new(
                         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-                        InstanceKey::name(),
                         DataStoreConfig::default(),
                     );
 
@@ -398,9 +393,8 @@ fn build_rows_ex(
             RowId::new(),
             "large_structs",
             time_point(frame_idx),
-            num_instances as _,
             (
-                build_some_instances(num_instances),
+                MyIndex::from_iter(0..num_instances as _),
                 build_some_large_structs(num_instances),
             ),
         )
@@ -432,10 +426,8 @@ fn build_rows_ex(
 }
 
 fn insert_rows(config: DataStoreConfig, rows: &[DataRow]) -> DataStore {
-    let cluster_key = InstanceKey::name();
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        cluster_key,
         config,
     );
     for row in rows {

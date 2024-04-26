@@ -15,9 +15,9 @@ In the Python APIs, the majority of archetypes are named with the plural form, f
 ## Terminology
 
 - An *entity* is a collection of *components* (see [Entities and Components](entity-component.md)).
-- When an entity is batched, it's components individual elements are called *instances*.
-- When every instance within an entity has the same value for a component, that component is called a *splat*. This
-  is a common pattern and has dedicated support for it (see the [Splats](#splats) section below).
+- When an entity is batched, its components' individual elements are called *instances*.
+- When every instance within an entity shares the same value for a component, we say that this component is clamped. This
+  is a common pattern and has dedicated support for it (see the [Component Clamping](#component-clamping) section below).
   For instance, you can set all the colors of a point cloud to the same color by passing a single color value to the
  `color` parameter.
 - During queries, a batch always has a *primary* component. The primary component is what determines
@@ -50,14 +50,11 @@ When querying a batched component, the component-values are joined together base
 Logically, this happens as a *left-join* using the primary component for the entity. For example, if you log 3
 points and then later log 5 colors, you will still only see 3 points in the viewer.
 
+What should happen if you have 5 points and 3 colors then? This is where clamping semantics come into play.
 
-## Splats
+## Component clamping
 
-As mentioned, Rerun has special handling for splats within batches. This is what happens when you mix arrays and
-single values in an API call. The non-array value is instead logged as a splat. Behind the scenes, the splat is stored
-as a single value rather than a full array. Then, when doing the join at lookup time the splat is repeated across
-every instance in the batch.
+As mentioned, Rerun has special semantics when joining batches of different sizes, for example this is what happens when you mix arrays and single values in an API call.
 
-
-
-
+If the component on the left-side of the join (the so-called primary component) has more instances than the other, then these tail values will simply be ignored.
+On the other hand, if the component on the left-side of the join (the so-called primary component) has less instances than the other, then the last instance will be repeated across every instance left in the batch. We call this clamping, in reference to texture sampling (think `CLAMP_TO_EDGE`!).

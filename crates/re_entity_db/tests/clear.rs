@@ -1,14 +1,10 @@
 use re_data_store::{DataStore, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{
-    example_components::{MyColor, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{
-    archetypes::Clear,
-    components::{ClearIsRecursive, InstanceKey},
-    AsComponents,
-};
+use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
 
 // ---
 
@@ -222,28 +218,27 @@ fn clears() -> anyhow::Result<()> {
     {
         let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9)]);
-        let instance_key = InstanceKey(0);
+        let instance = MyIndex(0);
         let row = DataRow::from_component_batches(
             row_id,
             timepoint,
             entity_path_parent.clone(),
-            [&[instance_key] as _],
+            [&[instance] as _],
         )?;
 
         db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
-            let (_, _, got_instance_key) =
-                query_latest_component::<InstanceKey>(db.store(), &entity_path_parent, &query)
-                    .unwrap();
-            similar_asserts::assert_eq!(instance_key, got_instance_key);
+            let (_, _, got_instance) =
+                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query).unwrap();
+            similar_asserts::assert_eq!(instance, got_instance);
         }
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
             assert!(
-                query_latest_component::<InstanceKey>(db.store(), &entity_path_parent, &query)
+                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query)
                     .is_none()
             );
         }

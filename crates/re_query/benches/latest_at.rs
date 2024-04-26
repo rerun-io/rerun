@@ -10,7 +10,7 @@ use re_query::{clamped_zip_1x1, PromiseResolver};
 use re_query::{Caches, LatestAtResults};
 use re_types::{
     archetypes::Points2D,
-    components::{Color, InstanceKey, Position2D, Text},
+    components::{Color, Position2D, Text},
     Archetype as _,
 };
 use re_types_core::Loggable as _;
@@ -206,7 +206,6 @@ fn build_points_rows(paths: &[EntityPath], num_points: usize) -> Vec<DataRow> {
                     RowId::new(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).try_into().unwrap())],
-                    num_points as _,
                     (
                         build_some_point2d(num_points),
                         build_some_colors(num_points),
@@ -232,7 +231,6 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
                     RowId::new(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).try_into().unwrap())],
-                    num_strings as _,
                     // We still need to create points because they are the primary for the
                     // archetype query we want to do. We won't actually deserialize the points
                     // during the query -- we just need it for the primary keys.
@@ -258,7 +256,6 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
 fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> (Caches, DataStore) {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         Default::default(),
     );
     let mut caches = Caches::new(&store);

@@ -7,7 +7,7 @@ use re_log_types::{
     DataRow, EntityPath, RowId, TimePoint,
 };
 use re_query::{Caches, PromiseResolver, PromiseResult};
-use re_types::{components::InstanceKey, Archetype};
+use re_types::Archetype;
 use re_types_core::Loggable as _;
 
 // ---
@@ -16,7 +16,6 @@ use re_types_core::Loggable as _;
 fn simple_range() -> anyhow::Result<()> {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         Default::default(),
     );
     let mut caches = Caches::new(&store);
@@ -29,7 +28,6 @@ fn simple_range() -> anyhow::Result<()> {
         RowId::new(),
         entity_path.clone(),
         timepoint1,
-        2,
         points1.clone(),
     )?;
     insert_and_react(&mut store, &mut caches, &row1_1);
@@ -38,7 +36,6 @@ fn simple_range() -> anyhow::Result<()> {
         RowId::new(),
         entity_path.clone(),
         timepoint1,
-        1,
         colors1.clone(),
     )?;
     insert_and_react(&mut store, &mut caches, &row1_2);
@@ -49,7 +46,6 @@ fn simple_range() -> anyhow::Result<()> {
         RowId::new(),
         entity_path.clone(),
         timepoint2,
-        1,
         colors2.clone(),
     )?;
     insert_and_react(&mut store, &mut caches, &row2);
@@ -60,7 +56,6 @@ fn simple_range() -> anyhow::Result<()> {
         RowId::new(),
         entity_path.clone(),
         timepoint3,
-        2,
         points3.clone(),
     )?;
     insert_and_react(&mut store, &mut caches, &row3);
@@ -136,7 +131,6 @@ fn simple_range() -> anyhow::Result<()> {
 fn static_range() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         Default::default(),
     );
     let mut caches = Caches::new(&store);
@@ -149,7 +143,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         timepoint1,
-        2,
         points1.clone(),
     )
     .unwrap();
@@ -159,7 +152,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         timepoint1,
-        1,
         colors1.clone(),
     )
     .unwrap();
@@ -169,7 +161,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         TimePoint::default(),
-        1,
         colors1.clone(),
     )
     .unwrap();
@@ -181,7 +172,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         timepoint2,
-        1,
         colors2.clone(),
     )
     .unwrap();
@@ -191,7 +181,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         TimePoint::default(),
-        1,
         colors2.clone(),
     )
     .unwrap();
@@ -204,7 +193,6 @@ fn static_range() {
         RowId::new(),
         entity_path.clone(),
         timepoint3,
-        2,
         points3.clone(),
     )
     .unwrap();
@@ -305,7 +293,6 @@ fn invalidation() {
 
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
         let mut caches = Caches::new(&store);
@@ -315,7 +302,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             present_data_timepoint.clone(),
-            2,
             points1.clone(),
         )
         .unwrap();
@@ -326,7 +312,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             present_data_timepoint.clone(),
-            1,
             colors2.clone(),
         )
         .unwrap();
@@ -355,7 +340,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             present_data_timepoint.clone(),
-            2,
             points3.clone(),
         )
         .unwrap();
@@ -383,7 +367,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             present_data_timepoint,
-            2,
             colors4.clone(),
         )
         .unwrap();
@@ -414,7 +397,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             past_data_timepoint.clone(),
-            2,
             points5.clone(),
         )
         .unwrap();
@@ -452,7 +434,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             past_data_timepoint.clone(),
-            2,
             colors6.clone(),
         )
         .unwrap();
@@ -488,7 +469,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             future_data_timepoint.clone(),
-            2,
             points7.clone(),
         )
         .unwrap();
@@ -523,7 +503,6 @@ fn invalidation() {
             RowId::new(),
             entity_path,
             future_data_timepoint,
-            1,
             colors8.clone(),
         )
         .unwrap();
@@ -602,7 +581,6 @@ fn invalidation() {
 fn invalidation_of_future_optionals() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         Default::default(),
     );
     let mut caches = Caches::new(&store);
@@ -616,8 +594,8 @@ fn invalidation_of_future_optionals() {
     let query = re_data_store::RangeQuery::new(frame2[0].0, TimeRange::EVERYTHING);
 
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row1 = DataRow::from_cells1_sized(RowId::new(), entity_path, timeless, 2, points1.clone())
-        .unwrap();
+    let row1 =
+        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless, points1.clone()).unwrap();
     insert_and_react(&mut store, &mut caches, &row1);
 
     let expected_points = &[
@@ -635,7 +613,7 @@ fn invalidation_of_future_optionals() {
 
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
     let row2 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame2, 1, colors2.clone()).unwrap();
+        DataRow::from_cells1_sized(RowId::new(), entity_path, frame2, colors2.clone()).unwrap();
     insert_and_react(&mut store, &mut caches, &row2);
 
     let expected_colors = &[
@@ -655,7 +633,7 @@ fn invalidation_of_future_optionals() {
 
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
     let row3 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, 1, colors3.clone()).unwrap();
+        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, colors3.clone()).unwrap();
     insert_and_react(&mut store, &mut caches, &row3);
 
     let expected_colors = &[
@@ -679,7 +657,7 @@ fn invalidation_of_future_optionals() {
 
     let colors4 = vec![MyColor::from_rgb(0, 255, 0)];
     let row4 =
-        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, 1, colors4.clone()).unwrap();
+        DataRow::from_cells1_sized(RowId::new(), entity_path, frame3, colors4.clone()).unwrap();
     insert_and_react(&mut store, &mut caches, &row4);
 
     let expected_colors = &[
@@ -710,7 +688,6 @@ fn invalidation_of_future_optionals() {
 fn invalidation_static() {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         Default::default(),
     );
     let mut caches = Caches::new(&store);
@@ -723,14 +700,9 @@ fn invalidation_static() {
     let query = re_data_store::RangeQuery::new(frame0[0].0, TimeRange::EVERYTHING);
 
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
-    let row1 = DataRow::from_cells1_sized(
-        RowId::new(),
-        entity_path,
-        timeless.clone(),
-        2,
-        points1.clone(),
-    )
-    .unwrap();
+    let row1 =
+        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless.clone(), points1.clone())
+            .unwrap();
     insert_and_react(&mut store, &mut caches, &row1);
 
     let expected_points = &[
@@ -747,14 +719,9 @@ fn invalidation_static() {
     );
 
     let colors2 = vec![MyColor::from_rgb(255, 0, 0)];
-    let row2 = DataRow::from_cells1_sized(
-        RowId::new(),
-        entity_path,
-        timeless.clone(),
-        1,
-        colors2.clone(),
-    )
-    .unwrap();
+    let row2 =
+        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless.clone(), colors2.clone())
+            .unwrap();
     insert_and_react(&mut store, &mut caches, &row2);
 
     let expected_colors = &[
@@ -770,8 +737,8 @@ fn invalidation_static() {
     );
 
     let colors3 = vec![MyColor::from_rgb(0, 0, 255)];
-    let row3 = DataRow::from_cells1_sized(RowId::new(), entity_path, timeless, 1, colors3.clone())
-        .unwrap();
+    let row3 =
+        DataRow::from_cells1_sized(RowId::new(), entity_path, timeless, colors3.clone()).unwrap();
     insert_and_react(&mut store, &mut caches, &row3);
 
     let expected_colors = &[

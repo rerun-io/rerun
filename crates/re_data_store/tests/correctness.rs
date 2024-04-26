@@ -8,13 +8,12 @@ use re_data_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
-use re_log_types::example_components::MyPoint;
+use re_log_types::example_components::{MyIndex, MyPoint};
 use re_log_types::{
-    build_frame_nr, build_log_time, DataCell, DataRow, Duration, EntityPath, RowId, Time, TimeInt,
-    TimePoint, TimeType, Timeline,
+    build_frame_nr, build_log_time, DataRow, Duration, EntityPath, RowId, Time, TimeInt, TimePoint,
+    TimeType, Timeline,
 };
-use re_types::components::InstanceKey;
-use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
+use re_types::datagen::{build_some_colors, build_some_positions2d};
 use re_types_core::Loggable as _;
 
 // ---
@@ -54,7 +53,6 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -89,7 +87,6 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -120,7 +117,6 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -160,7 +156,6 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -203,72 +198,15 @@ fn write_errors() {
     let entity_path = EntityPath::from("this/that");
 
     {
-        pub fn build_sparse_instances() -> DataCell {
-            DataCell::from_component_sparse::<InstanceKey>([Some(1), None, Some(3)])
-        }
-
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
-            Default::default(),
-        );
-        let row = test_row!(entity_path @
-            [build_frame_nr(32), build_log_time(Time::now())] => 3; [
-                build_sparse_instances(), build_some_positions2d(3)
-        ]);
-        assert!(matches!(
-            store.insert_row(&row),
-            Err(WriteError::SparseClusteringComponent(_)),
-        ));
-    }
-
-    {
-        pub fn build_unsorted_instances() -> DataCell {
-            DataCell::from_component::<InstanceKey>([1, 3, 2])
-        }
-
-        pub fn build_duped_instances() -> DataCell {
-            DataCell::from_component::<InstanceKey>([1, 2, 2])
-        }
-
-        let mut store = DataStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
-            Default::default(),
-        );
-        {
-            let row = test_row!(entity_path @
-                [build_frame_nr(32), build_log_time(Time::now())] => 3; [
-                    build_unsorted_instances(), build_some_positions2d(3)
-            ]);
-            assert!(matches!(
-                store.insert_row(&row),
-                Err(WriteError::InvalidClusteringComponent(_)),
-            ));
-        }
-        {
-            let row = test_row!(entity_path @
-                [build_frame_nr(32), build_log_time(Time::now())] => 3; [
-                    build_duped_instances(), build_some_positions2d(3)
-            ]);
-            assert!(matches!(
-                store.insert_row(&row),
-                Err(WriteError::InvalidClusteringComponent(_)),
-            ));
-        }
-    }
-
-    {
-        let mut store = DataStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
         let mut row = test_row!(entity_path @ [
             build_frame_nr(1),
             build_log_time(Time::now()),
-        ] => 1; [ build_some_positions2d(1) ]);
+        ] => [ build_some_positions2d(1) ]);
 
         row.row_id = re_log_types::RowId::new();
         store.insert_row(&row).unwrap();
@@ -298,7 +236,6 @@ fn latest_at_emptiness_edge_cases() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         latest_at_emptiness_edge_cases_impl(&mut store);
@@ -317,7 +254,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
     store
         .insert_row(&test_row!(entity_path @ [
                 build_log_time(now), build_frame_nr(frame40),
-            ] => num_instances; [build_some_instances(num_instances as _)]))
+            ] => [MyIndex::from_iter(0..num_instances as _)]))
         .unwrap();
 
     sanity_unwrap(store);
@@ -332,8 +269,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
-            InstanceKey::name(),
-            &[InstanceKey::name()],
+            MyIndex::name(),
+            &[MyIndex::name()],
         );
         assert!(cells.is_none());
     }
@@ -343,8 +280,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
-            InstanceKey::name(),
-            &[InstanceKey::name()],
+            MyIndex::name(),
+            &[MyIndex::name()],
         );
         assert!(cells.is_none());
     }
@@ -354,8 +291,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
-            &[InstanceKey::name()],
+            MyIndex::name(),
+            &[MyIndex::name()],
         );
         assert!(cells.is_none());
     }
@@ -366,7 +303,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &entity_path,
-            InstanceKey::name(),
+            MyIndex::name(),
             components,
         );
         assert!(cells.is_none());
@@ -377,7 +314,7 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &entity_path,
-            InstanceKey::name(),
+            MyIndex::name(),
             &[],
         );
         assert!(cells.is_none());
@@ -388,8 +325,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
-            &[InstanceKey::name()],
+            MyIndex::name(),
+            &[MyIndex::name()],
         );
         assert!(cells.is_none());
     }
@@ -399,8 +336,8 @@ fn latest_at_emptiness_edge_cases_impl(store: &mut DataStore) {
         let cells = store.latest_at(
             &LatestAtQuery::new(timeline_wrong_kind, frame40),
             &EntityPath::from("does/not/exist"),
-            InstanceKey::name(),
-            &[InstanceKey::name()],
+            MyIndex::name(),
+            &[MyIndex::name()],
         );
         assert!(cells.is_none());
     }
@@ -414,7 +351,6 @@ fn gc_correct() {
 
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         DataStoreConfig::default(),
     );
 
@@ -431,7 +367,7 @@ fn gc_correct() {
             let num_instances = rng.gen_range(0..=1_000);
             let row = test_row!(entity_path @ [
                 build_frame_nr(frame_nr),
-            ] => num_instances; [
+            ] => [
                 build_some_colors(num_instances as _),
             ]);
             store.insert_row(&row).unwrap();
@@ -481,7 +417,6 @@ fn gc_metadata_size() -> anyhow::Result<()> {
     for enable_batching in [false, true] {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             Default::default(),
         );
 
@@ -529,7 +464,6 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         entity_min_time_correct_impl(&mut store)?;

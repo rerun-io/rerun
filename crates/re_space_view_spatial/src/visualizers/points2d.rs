@@ -1,11 +1,12 @@
 use itertools::Itertools as _;
 
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x5;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
 use re_types::{
     archetypes::Points2D,
-    components::{ClassId, Color, InstanceKey, KeypointId, Position2D, Radius, Text},
+    components::{ClassId, Color, KeypointId, Position2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -66,7 +67,7 @@ impl Points2DVisualizer {
                         target: UiLabelTarget::Point2D(egui::pos2(point.x, point.y)),
                         labeled_instance: InstancePathHash::instance(
                             entity_path,
-                            InstanceKey(i as _),
+                            Instance::from(i as u64),
                         ),
                     }),
                     _ => None,
@@ -128,8 +129,9 @@ impl Points2DVisualizer {
                 {
                     re_tracing::profile_scope!("marking additional highlight points");
                     for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                        let highlighted_point_index =
-                            (highlighted_key.0 < num_instances as u64).then_some(highlighted_key.0);
+                        let highlighted_point_index = (highlighted_key.get()
+                            < num_instances as u64)
+                            .then_some(highlighted_key.get());
                         if let Some(highlighted_point_index) = highlighted_point_index {
                             point_range_builder = point_range_builder
                                 .push_additional_outline_mask_ids_for_range(

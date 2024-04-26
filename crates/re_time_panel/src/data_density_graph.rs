@@ -557,7 +557,7 @@ fn show_row_ids_tooltip(
             ui.add_space(8.0);
             component_path.data_ui(ctx, ui, verbosity, &query, db);
         } else {
-            let instance_path = re_entity_db::InstancePath::entity_splat(entity_path.clone());
+            let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
             item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
             ui.add_space(8.0);
             instance_path.data_ui(ctx, ui, verbosity, &query, db);

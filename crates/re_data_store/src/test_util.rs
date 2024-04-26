@@ -7,32 +7,29 @@ use crate::{DataStore, DataStoreConfig, WriteError};
 #[doc(hidden)]
 #[macro_export]
 macro_rules! test_row {
-    ($entity:ident => $n:expr; [$c0:expr $(,)*]) => {{
+    ($entity:ident => [$c0:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells1_sized(
             ::re_log_types::RowId::new(),
             $entity.clone(),
             ::re_log_types::TimePoint::default(),
-            $n,
             $c0,
         )
         .unwrap()
     }};
-    ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {{
+    ($entity:ident @ $frames:tt => [$c0:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells1_sized(
             ::re_log_types::RowId::new(),
             $entity.clone(),
             $frames,
-            $n,
             $c0,
         )
         .unwrap()
     }};
-    ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {{
+    ($entity:ident @ $frames:tt => [$c0:expr, $c1:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells2_sized(
             ::re_log_types::RowId::new(),
             $entity.clone(),
             $frames,
-            $n,
             ($c0, $c1),
         )
         .unwrap()

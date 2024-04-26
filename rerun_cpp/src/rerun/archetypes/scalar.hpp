@@ -62,11 +62,6 @@ namespace rerun::archetypes {
         Scalar(Scalar&& other) = default;
 
         explicit Scalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes

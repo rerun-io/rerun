@@ -13,7 +13,7 @@ use re_log_types::{
     TimeRange, TimeRangeF, Timeline,
 };
 use re_query::PromiseResult;
-use re_types_core::{components::InstanceKey, Archetype, Loggable};
+use re_types_core::{Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
@@ -127,11 +127,8 @@ pub struct EntityDb {
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store = re_data_store::DataStore::new(
-            store_id.clone(),
-            InstanceKey::name(),
-            DataStoreConfig::default(),
-        );
+        let data_store =
+            re_data_store::DataStore::new(store_id.clone(), DataStoreConfig::default());
         let query_caches = re_query::Caches::new(&data_store);
         Self {
             data_source: None,
@@ -531,7 +528,7 @@ impl EntityDb {
                 // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
                 //    these rows! This flaky ordering will in turn leak through the public
                 //    API (e.g. range queries)!
-                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
+                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, cells) {
                     Ok(row) => {
                         let res = insert_row_with_retries(
                             &mut self.data_store,

@@ -6,7 +6,6 @@ from typing import Any, Iterable
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from . import components as cmp
 from ._baseclasses import AsComponents, ComponentBatchLike
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
@@ -43,13 +42,6 @@ class IndicatorComponentBatch:
 
     def as_arrow_array(self) -> pa.Array:
         return self.data
-
-
-def _splat() -> cmp.InstanceKeyBatch:
-    """Helper to generate a splat InstanceKeyArray."""
-
-    _MAX_U64 = 2**64 - 1
-    return pa.array([_MAX_U64], type=cmp.InstanceKeyType().storage_type)  # type: ignore[no-any-return]
 
 
 @catch_and_log_exceptions()
@@ -267,7 +259,6 @@ def log_components(
     recording = RecordingStream.to_native(recording)
 
     instanced: dict[str, pa.Array] = {}
-    splats: dict[str, pa.Array] = {}
 
     components = list(components)
 
@@ -304,21 +295,8 @@ def log_components(
         if isinstance(array, pa.ExtensionArray):
             array = array.storage
 
-        if len(array) == 1 and num_instances > 1:
-            splats[name] = array
-        else:
-            instanced[name] = array
+        instanced[name] = array
 
-    if splats:
-        splats["rerun.components.InstanceKey"] = _splat()
-        bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
-            entity_path,
-            components=splats,
-            static_=static,
-            recording=recording,
-        )
-
-    # Always log the instanced components last so range-based queries will include the other data. See(#1215)
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,
         components=instanced,

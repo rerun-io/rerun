@@ -5,7 +5,7 @@ use re_types::{
     archetypes::Points2D,
     components::{Color, Position2D, Text},
 };
-use re_types_core::{Archetype as _, Loggable as _};
+use re_types_core::Archetype as _;
 
 use re_query::{clamped_zip_1x2, LatestAtResults, PromiseResolver, PromiseResult};
 
@@ -79,7 +79,6 @@ fn main() -> anyhow::Result<()> {
 fn store() -> anyhow::Result<DataStore> {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        re_types::components::InstanceKey::name(),
         Default::default(),
     );
 
@@ -89,15 +88,15 @@ fn store() -> anyhow::Result<DataStore> {
         let timepoint = [build_frame_nr(123)];
 
         let points = vec![Position2D::new(1.0, 2.0), Position2D::new(3.0, 4.0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, points)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, points)?;
         store.insert_row(&row)?;
 
         let colors = vec![Color::from_rgb(255, 0, 0)];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, colors)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, colors)?;
         store.insert_row(&row)?;
 
         let labels = vec![Text("a".into()), Text("b".into())];
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 2, labels)?;
+        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, labels)?;
         store.insert_row(&row)?;
     }
 

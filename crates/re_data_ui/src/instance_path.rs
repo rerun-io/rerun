@@ -18,7 +18,7 @@ impl DataUi for InstancePath {
     ) {
         let Self {
             entity_path,
-            instance_key,
+            instance,
         } = self;
 
         let Some(components) = ctx
@@ -93,7 +93,7 @@ impl DataUi for InstancePath {
                         db,
                     );
 
-                    if instance_key.is_splat() {
+                    if instance.is_all() {
                         crate::EntityLatestAtResults {
                             entity_path: entity_path.clone(),
                             component_name,
@@ -109,7 +109,7 @@ impl DataUi for InstancePath {
                             db,
                             entity_path,
                             results,
-                            instance_key,
+                            instance,
                         );
                     }
 

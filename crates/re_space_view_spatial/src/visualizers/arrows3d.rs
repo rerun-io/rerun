@@ -1,9 +1,10 @@
 use re_entity_db::{EntityPath, InstancePathHash};
+use re_log_types::Instance;
 use re_query::range_zip_1x6;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::Arrows3D,
-    components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text, Vector3D},
+    components::{ClassId, Color, KeypointId, Position3D, Radius, Text, Vector3D},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -73,7 +74,7 @@ impl Arrows3DVisualizer {
                                 ),
                                 labeled_instance: InstancePathHash::instance(
                                     entity_path,
-                                    InstanceKey(i as _),
+                                    Instance::from(i as u64),
                                 ),
                             })
                         }
@@ -152,8 +153,10 @@ impl Arrows3DVisualizer {
                     )
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
-                if let Some(outline_mask_ids) =
-                    ent_context.highlight.instances.get(&InstanceKey(i as _))
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
                 {
                     segment.outline_mask_ids(*outline_mask_ids);
                 }

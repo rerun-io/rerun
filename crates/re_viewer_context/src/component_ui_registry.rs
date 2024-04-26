@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb, EntityPath};
-use re_log_types::DataCell;
-use re_types::{components::InstanceKey, ComponentName, Loggable as _};
+use re_log_types::{DataCell, Instance};
+use re_types::ComponentName;
 
 use crate::ViewerContext;
 
@@ -41,7 +41,7 @@ type ComponentUiCallback = Box<
             &EntityDb,
             &EntityPath,
             &LatestAtComponentResults,
-            &InstanceKey,
+            &Instance,
         ) + Send
         + Sync,
 >;
@@ -56,7 +56,7 @@ type ComponentEditCallback = Box<
             &EntityPath,
             &EntityPath,
             &LatestAtComponentResults,
-            &InstanceKey,
+            &Instance,
         ) + Send
         + Sync,
 >;
@@ -121,7 +121,7 @@ impl ComponentUiRegistry {
         db: &EntityDb,
         entity_path: &EntityPath,
         component: &LatestAtComponentResults,
-        instance_key: &InstanceKey,
+        instance: &Instance,
     ) {
         let Some(component_name) = component.component_name(db.resolver()) else {
             // TODO(#5607): what should happen if the promise is still pending?
@@ -129,12 +129,6 @@ impl ComponentUiRegistry {
         };
 
         re_tracing::profile_function!(component_name.full_name());
-
-        if component_name == InstanceKey::name() {
-            // The user wants to show a ui for the `InstanceKey` component - well, that's easy:
-            ui.label(instance_key.to_string());
-            return;
-        }
 
         let ui_callback = self
             .component_uis
@@ -148,7 +142,7 @@ impl ComponentUiRegistry {
             db,
             entity_path,
             component,
-            instance_key,
+            instance,
         );
     }
 
@@ -164,7 +158,7 @@ impl ComponentUiRegistry {
         entity_path: &EntityPath,
         override_path: &EntityPath,
         component: &LatestAtComponentResults,
-        instance_key: &InstanceKey,
+        instance: &Instance,
     ) {
         let Some(component_name) = component.component_name(db.resolver()) else {
             // TODO(#5607): what should happen if the promise is still pending?
@@ -183,7 +177,7 @@ impl ComponentUiRegistry {
                 entity_path,
                 override_path,
                 component,
-                instance_key,
+                instance,
             );
         } else {
             // Even if we can't edit the component, it's still helpful to show what the value is.
@@ -195,7 +189,7 @@ impl ComponentUiRegistry {
                 db,
                 entity_path,
                 component,
-                instance_key,
+                instance,
             );
         }
     }

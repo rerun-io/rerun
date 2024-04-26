@@ -24,7 +24,6 @@ impl DataStore {
             RowId::new(),
             entity_path.clone(),
             timepoint.clone(),
-            1,
             [component],
         ) {
             Ok(row) => row,
@@ -64,7 +63,6 @@ impl DataStore {
                 RowId::new(),
                 entity_path.clone(),
                 timepoint.clone(),
-                cell.num_instances(),
                 cell,
             ) {
                 Ok(row) => row,

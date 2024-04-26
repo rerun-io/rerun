@@ -10,8 +10,7 @@ use re_data_store::{
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId, Time, TimePoint,
 };
-use re_types::components::InstanceKey;
-use re_types_core::{AsComponents, ComponentBatch, ComponentName, Loggable as _};
+use re_types_core::{AsComponents, ComponentBatch};
 
 criterion_group!(benches, plotting_dashboard);
 criterion_main!(benches);
@@ -85,13 +84,7 @@ fn plotting_dashboard(c: &mut Criterion) {
 
     // Default config
     group.bench_function("default", |b| {
-        let store = build_store(
-            Default::default(),
-            InstanceKey::name(),
-            false,
-            &mut timegen,
-            &mut datagen,
-        );
+        let store = build_store(Default::default(), false, &mut timegen, &mut datagen);
         b.iter_batched(
             || store.clone(),
             |mut store| {
@@ -117,7 +110,6 @@ fn plotting_dashboard(c: &mut Criterion) {
                             indexed_bucket_num_rows: num_rows_per_bucket,
                             ..Default::default()
                         },
-                        InstanceKey::name(),
                         false,
                         &mut timegen,
                         &mut datagen,
@@ -142,7 +134,6 @@ fn plotting_dashboard(c: &mut Criterion) {
 
 fn build_store<FT, FD>(
     config: DataStoreConfig,
-    cluster_key: ComponentName,
     packed: bool,
     timegen: &mut FT,
     datagen: &mut FD,
@@ -153,7 +144,6 @@ where
 {
     let mut store = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        cluster_key,
         config,
     );
 

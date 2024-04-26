@@ -202,10 +202,6 @@ typedef struct {
     /// Where to log to, e.g. `world/camera`.
     rr_string entity_path;
 
-    /// Number of instances of this entity (e.g. number of points in a point
-    /// cloud).
-    uint32_t num_instances;
-
     /// Number of components.
     uint32_t num_data_cells;
 

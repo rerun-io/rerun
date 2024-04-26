@@ -93,8 +93,8 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
 
         let component = PanelExpanded(is_expanded.into());
 
-        let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
-            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+        let row =
+            DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, [component]).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
         welcome_screen_blueprint.add_data_row(row).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
     }
@@ -116,9 +116,8 @@ impl<'a> AppBlueprint<'a> {
 
             let component = PanelExpanded(is_expanded.into());
 
-            let row =
-                DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, 1, [component])
-                    .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+            let row = DataRow::from_cells1_sized(RowId::new(), entity_path, timepoint, [component])
+                .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
             command_sender.send_system(SystemCommand::UpdateBlueprint(
                 store_ctx.blueprint.store_id().clone(),

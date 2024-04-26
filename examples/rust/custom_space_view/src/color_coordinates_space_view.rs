@@ -13,7 +13,7 @@ use re_viewer::external::{
     },
 };
 
-use crate::color_coordinates_visualizer_system::{ColorWithInstanceKey, InstanceColorSystem};
+use crate::color_coordinates_visualizer_system::{ColorWithInstance, InstanceColorSystem};
 
 /// The different modes for displaying color coordinates in the custom space view.
 #[derive(Default, Debug, PartialEq, Clone, Copy)]
@@ -237,12 +237,8 @@ fn color_space_ui(
     // Circles for the colors in the scene.
     for (ent_path, colors) in &colors.colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
-        for ColorWithInstanceKey {
-            instance_key,
-            color,
-        } in colors
-        {
-            let highlight = ent_highlight.index_highlight(*instance_key);
+        for ColorWithInstance { instance, color } in colors {
+            let highlight = ent_highlight.index_highlight(*instance);
 
             let (x, y) = position_at(*color);
             let center = egui::pos2(
@@ -265,12 +261,12 @@ fn color_space_ui(
 
             let interact = ui.interact(
                 egui::Rect::from_center_size(center, egui::Vec2::splat(radius * 2.0)),
-                ui.id().with(("circle", &ent_path, instance_key)),
+                ui.id().with(("circle", &ent_path, instance)),
                 egui::Sense::click(),
             );
 
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
-            let instance = InstancePath::instance(ent_path.clone(), *instance_key);
+            let instance = InstancePath::instance(ent_path.clone(), *instance);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
                 item_ui::instance_path_button(
                     ctx,

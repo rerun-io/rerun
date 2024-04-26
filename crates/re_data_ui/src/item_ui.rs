@@ -47,7 +47,7 @@ pub fn entity_path_button(
         db,
         ui,
         space_view_id,
-        &InstancePath::entity_splat(entity_path.clone()),
+        &InstancePath::entity_all(entity_path.clone()),
         entity_path.syntax_highlighted(ui.style()),
     )
 }
@@ -67,7 +67,7 @@ pub fn entity_path_parts_buttons(
         ui.spacing_mut().item_spacing.x = 2.0;
 
         // Show one single icon up-front instead:
-        let instance_path = InstancePath::entity_splat(entity_path.clone());
+        let instance_path = InstancePath::entity_all(entity_path.clone());
         ui.add(instance_path_icon(&query.timeline(), db, &instance_path).as_image());
 
         let mut accumulated = Vec::new();
@@ -81,7 +81,7 @@ pub fn entity_path_parts_buttons(
                 db,
                 ui,
                 space_view_id,
-                &InstancePath::entity_splat(accumulated.clone().into()),
+                &InstancePath::entity_all(accumulated.clone().into()),
                 part.syntax_highlighted(ui.style()),
                 with_icon,
             );
@@ -106,7 +106,7 @@ pub fn entity_path_button_to(
         db,
         ui,
         space_view_id,
-        &InstancePath::entity_splat(entity_path.clone()),
+        &InstancePath::entity_all(entity_path.clone()),
         text,
     )
 }
@@ -140,7 +140,7 @@ pub fn instance_path_icon(
     db: &re_entity_db::EntityDb,
     instance_path: &InstancePath,
 ) -> &'static icons::Icon {
-    if instance_path.is_splat() {
+    if instance_path.is_all() {
         // It is an entity path
         if db
             .store()
@@ -268,13 +268,13 @@ pub fn instance_path_parts_buttons(
                 db,
                 ui,
                 space_view_id,
-                &InstancePath::entity_splat(accumulated.clone().into()),
+                &InstancePath::entity_all(accumulated.clone().into()),
                 part.syntax_highlighted(ui.style()),
                 with_icon,
             );
         }
 
-        if !instance_path.instance_key.is_splat() {
+        if !instance_path.instance.is_all() {
             ui.weak("[");
             instance_path_button_to_ex(
                 ctx,
@@ -283,7 +283,7 @@ pub fn instance_path_parts_buttons(
                 ui,
                 space_view_id,
                 instance_path,
-                instance_path.instance_key.syntax_highlighted(ui.style()),
+                instance_path.instance.syntax_highlighted(ui.style()),
                 with_icon,
             );
             ui.weak("]");
@@ -419,10 +419,7 @@ pub fn data_blueprint_button_to(
     space_view_id: SpaceViewId,
     entity_path: &EntityPath,
 ) -> egui::Response {
-    let item = Item::DataResult(
-        space_view_id,
-        InstancePath::entity_splat(entity_path.clone()),
-    );
+    let item = Item::DataResult(space_view_id, InstancePath::entity_all(entity_path.clone()));
     let response = ui
         .selectable_label(ctx.selection().contains_item(&item), text)
         .on_hover_ui(|ui| {
@@ -505,7 +502,8 @@ pub fn cursor_interact_with_selectable(
 
 /// Displays the "hover card" (i.e. big tooltip) for an instance or an entity.
 ///
-/// The entity hover card is displayed the provided instance path is a splat.
+/// The entity hover card is displayed if the provided instance path doesn't refer to a specific
+/// instance.
 pub fn instance_hover_card_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
@@ -518,7 +516,7 @@ pub fn instance_hover_card_ui(
         return;
     }
 
-    let subtype_string = if instance_path.instance_key.is_splat() {
+    let subtype_string = if instance_path.instance.is_all() {
         "Entity"
     } else {
         "Entity instance"
@@ -529,7 +527,7 @@ pub fn instance_hover_card_ui(
     // TODO(emilk): give data_ui an alternate "everything on this timeline" query?
     // Then we can move the size view into `data_ui`.
 
-    if instance_path.instance_key.is_splat() {
+    if instance_path.instance.is_all() {
         if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline(), subtree);
         }
@@ -548,7 +546,7 @@ pub fn entity_hover_card_ui(
     db: &re_entity_db::EntityDb,
     entity_path: &EntityPath,
 ) {
-    let instance_path = InstancePath::entity_splat(entity_path.clone());
+    let instance_path = InstancePath::entity_all(entity_path.clone());
     instance_hover_card_ui(ui, ctx, query, db, &instance_path);
 }
 

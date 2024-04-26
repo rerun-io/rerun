@@ -131,8 +131,6 @@ pub fn cacheable(component_name: re_types::ComponentName) -> bool {
     use re_types_core::Loggable as _;
     let not_cacheable = NOT_CACHEABLE.get_or_init(|| {
         [
-            // TODO(#5303): instance keys are on their way out anyhow.
-            re_types::components::InstanceKey::name(),
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
             // want yet another copy.
             re_types::components::TensorData::name(),
