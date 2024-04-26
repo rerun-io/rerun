@@ -6,6 +6,7 @@ use re_format::format_f32;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
+    blueprint::archetypes::Background,
     Archetype, ComponentName,
 };
 use re_viewer_context::{
@@ -249,8 +250,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
             .show(ui, |ui| {
                 state.default_sizes_ui(ctx, ui);
 
-                crate::ui::background_ui(ctx, ui, space_view_id, re_types::
-    blueprint::archetypes::Background::DEFAULT_2D);
+                crate::ui::background_ui(ctx, ui, space_view_id, Background::DEFAULT_2D);
 
                 state.bounding_box_ui(ctx, ui, SpatialSpaceViewKind::TwoD);
 
