@@ -19,6 +19,7 @@ impl TextLogLevel {
     /// Designates very low priority, often extremely verbose, information.
     pub const TRACE: &'static str = "TRACE";
 
+    /// The log level as a string slice, e.g. "INFO".
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()

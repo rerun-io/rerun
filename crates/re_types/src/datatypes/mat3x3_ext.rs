@@ -3,6 +3,9 @@ use super::Mat3x3;
 use crate::datatypes::Vec3D;
 
 impl Mat3x3 {
+    /// The identity matrix.
+    ///
+    /// The multiplicative identity, representing no transform.
     #[rustfmt::skip]
     pub const IDENTITY: Mat3x3 = Mat3x3([
         1.0, 0.0, 0.0,

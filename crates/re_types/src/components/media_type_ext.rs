@@ -72,6 +72,7 @@ impl MediaType {
 }
 
 impl MediaType {
+    /// Returns the media type as a string slice, e.g. "text/plain".
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()

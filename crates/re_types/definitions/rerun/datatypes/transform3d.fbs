@@ -15,7 +15,7 @@ union Transform3D (
   /// Translation plus a 3x3 matrix for scale, rotation, scew, etc.
   TranslationAndMat3x3: TranslationAndMat3x3,
 
-  /// Translation, rotation and scale as separate components.
+  /// Translation, rotation and scale, decomposed.
   TranslationRotationScale: TranslationRotationScale3D,
 
   // TODO(andreas): Raw 4x4 matrix.

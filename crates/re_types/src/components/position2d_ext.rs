@@ -5,19 +5,22 @@ use super::Position2D;
 // ---
 
 impl Position2D {
+    /// The origin.
     pub const ZERO: Self = Self::new(0.0, 0.0);
-    pub const ONE: Self = Self::new(1.0, 1.0);
 
+    /// Create a new positions.
     #[inline]
     pub const fn new(x: f32, y: f32) -> Self {
         Self(Vec2D::new(x, y))
     }
 
+    /// The x coordinate, i.e. index 0
     #[inline]
     pub fn x(&self) -> f32 {
         self.0.x()
     }
 
+    /// The y coordinate, i.e. index 1
     #[inline]
     pub fn y(&self) -> f32 {
         self.0.y()

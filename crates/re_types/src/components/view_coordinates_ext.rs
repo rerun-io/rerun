@@ -56,6 +56,7 @@ impl ViewCoordinates {
         }
     }
 
+    /// The up-axis.
     #[inline]
     pub fn up(&self) -> Option<SignedAxis3> {
         for (dim, &dir) in self.0.iter().enumerate() {
@@ -68,6 +69,7 @@ impl ViewCoordinates {
         None
     }
 
+    /// The right-axis.
     #[inline]
     pub fn right(&self) -> Option<SignedAxis3> {
         for (dim, &dir) in self.0.iter().enumerate() {
@@ -80,6 +82,7 @@ impl ViewCoordinates {
         None
     }
 
+    /// The forward-axis.
     #[inline]
     pub fn forward(&self) -> Option<SignedAxis3> {
         for (dim, &dir) in self.0.iter().enumerate() {
@@ -92,6 +95,7 @@ impl ViewCoordinates {
         None
     }
 
+    /// Describe using three letters, e.g. `RDF` for X=Right, Y=Down, Z=Forward.
     pub fn describe_short(&self) -> String {
         let [x, y, z] = self.0;
         let x = ViewDir::try_from(x).map(|x| x.short()).unwrap_or("?");
@@ -100,6 +104,7 @@ impl ViewCoordinates {
         format!("{x}{y}{z}")
     }
 
+    /// A long description of the coordinate system, explicitly writing out all directions.
     pub fn describe(&self) -> String {
         let [x, y, z] = self.0;
         let x_short = ViewDir::try_from(x).map(|x| x.short()).unwrap_or("?");
@@ -216,6 +221,9 @@ impl ViewCoordinates {
         }
     }
 
+    /// Returns whether or not this coordinate system is left or right handed.
+    ///
+    /// If the coordinate system is degenerate, an error is returned.
     #[cfg(feature = "glam")]
     #[inline]
     pub fn handedness(&self) -> Result<Handedness, String> {

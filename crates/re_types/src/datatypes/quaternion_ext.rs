@@ -10,12 +10,16 @@ impl Default for Quaternion {
 }
 
 impl Quaternion {
+    /// The identity quaternion representing no rotation.
     pub const IDENTITY: Self = Self([0.0, 0.0, 0.0, 1.0]);
 
+    /// From XYZW.
     #[inline]
     pub const fn from_xyzw(xyzw: [f32; 4]) -> Self {
         Self(xyzw)
     }
+
+    /// From WXYZ.
 
     #[inline]
     pub const fn from_wxyz([w, x, y, z]: [f32; 4]) -> Self {

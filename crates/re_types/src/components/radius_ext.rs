@@ -1,7 +1,10 @@
 use super::Radius;
 
 impl Radius {
+    /// Zero radius.
     pub const ZERO: Self = Self(0.0);
+
+    /// Unit radius.
     pub const ONE: Self = Self(1.0);
 }
 

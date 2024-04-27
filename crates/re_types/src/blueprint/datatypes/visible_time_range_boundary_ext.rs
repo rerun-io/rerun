@@ -2,11 +2,16 @@ use super::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
 use re_types_core::datatypes::TimeInt;
 
 impl VisibleTimeRangeBoundary {
+    /// Put the boundary at the current time cursor.
     pub const AT_CURSOR: Self = Self {
         kind: VisibleTimeRangeBoundaryKind::RelativeToTimeCursor,
         time: TimeInt(0),
     };
 
+    /// The boundary extends to infinity.
+    ///
+    /// For minimum bounds, this mean the minimum time (-∞),
+    /// and for maximum bounds, this means the maximum time (+∞).
     pub const INFINITE: Self = Self {
         kind: VisibleTimeRangeBoundaryKind::Infinite,
         time: TimeInt(0),

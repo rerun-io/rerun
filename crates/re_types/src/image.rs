@@ -1,15 +1,20 @@
+//! Image-related utilities.
+
 use smallvec::{smallvec, SmallVec};
 
 use crate::datatypes::{TensorData, TensorDimension};
 
+/// Error returned when trying to interpret a tensor as an image.
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum ImageConstructionError<T: TryInto<TensorData>>
 where
     T::Error: std::error::Error,
 {
+    /// Could not convert source to [`TensorData`].
     #[error("Could not convert source to TensorData: {0}")]
     TensorDataConversion(T::Error),
 
+    /// The tensor did not have the right shape for an image (e.g. had too many dimensions).
     #[error("Could not create Image from TensorData with shape {0:?}")]
     BadImageShape(Vec<TensorDimension>),
 }

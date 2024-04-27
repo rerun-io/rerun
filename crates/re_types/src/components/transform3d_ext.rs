@@ -76,6 +76,12 @@ impl Transform3D {
 
 #[cfg(feature = "glam")]
 impl Transform3D {
+    /// Get the transform that transform child-space into parent-space.
+    ///
+    /// For instance, if we have an entity at position [1, 2, 3] in the parent space,
+    /// then this transform would be the translation `+[1, 2, 3]`,
+    /// transforming the child's origin [0, 0, 0] to its position
+    /// in parent space ([1, 2, 3]).
     #[inline]
     pub fn into_parent_from_child_transform(self) -> glam::Affine3A {
         let transform: glam::Affine3A = self.0.into();
@@ -86,6 +92,9 @@ impl Transform3D {
         }
     }
 
+    /// Returns the transform from parent space to the child space.
+    ///
+    /// This is the inverse of [`Self::into_parent_from_child_transform`].
     #[inline]
     pub fn into_child_from_parent_transform(self) -> glam::Affine3A {
         let transform: glam::Affine3A = self.0.into();

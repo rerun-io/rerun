@@ -19,6 +19,8 @@ pub enum Mesh3DError {
 }
 
 impl Mesh3D {
+    /// Check that this is a valid mesh, e.g. that the vertex indices are within bounds
+    /// and that we have the same number of positions and normals (if any).
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 
@@ -57,11 +59,13 @@ impl Mesh3D {
         Ok(())
     }
 
+    /// The total number of vertices.
     #[inline]
     pub fn num_vertices(&self) -> usize {
         self.vertex_positions.len()
     }
 
+    /// The total number of triangles.
     #[inline]
     pub fn num_triangles(&self) -> usize {
         if let Some(indices) = self

@@ -11,11 +11,13 @@ use super::{TensorBuffer, TensorData, TensorDimension};
 // ----------------------------------------------------------------------------
 
 impl TensorData {
+    /// Create a new tensor.
     #[inline]
     pub fn new(shape: Vec<TensorDimension>, buffer: TensorBuffer) -> Self {
         Self { shape, buffer }
     }
 
+    /// The shape of the tensor, including optional dimension names.
     #[inline]
     pub fn shape(&self) -> &[TensorDimension] {
         self.shape.as_slice()
@@ -35,6 +37,9 @@ impl TensorData {
         }
     }
 
+    /// The number of dimensions of the tensor.
+    ///
+    /// An image tensor will either have two (height, width) or three (height, width, channels) dimensions.
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
@@ -157,6 +162,9 @@ impl TensorData {
         }
     }
 
+    /// Get the value of the element at the given index.
+    ///
+    /// Return `None` if out-of-bounds, or if the tensor is encoded (e.g. [`Self::Jpeg`]).
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
@@ -227,7 +235,11 @@ impl TensorData {
         }
     }
 
-    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a valid NV12 image.
+    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a NV12 image.
+    ///
+    /// If the tensos is not [`Self::Nv12`], `None` is returned.
+    ///
+    /// It is undefined what happens if the coordinate is out-of-bounds.
     pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
         let TensorBuffer::Nv12(buf) = &self.buffer else {
             return None;
@@ -251,6 +263,11 @@ impl TensorData {
         }
     }
 
+    /// Returns decoded RGB8 value at the given image coordinates if this tensor is a YUY2 image.
+    ///
+    /// If the tensos is not [`Self::Yuy2`], `None` is returned.
+    ///
+    /// It is undefined what happens if the coordinate is out-of-bounds.
     pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
         let TensorBuffer::Yuy2(buf) = &self.buffer else {
             return None;
@@ -308,11 +325,13 @@ impl TensorData {
         )
     }
 
+    /// The datatype of the tensor.
     #[inline]
     pub fn dtype(&self) -> TensorDataType {
         self.buffer.dtype()
     }
 
+    /// The size of the tensor data, in bytes.
     #[inline]
     pub fn size_in_bytes(&self) -> usize {
         self.buffer.size_in_bytes()
@@ -587,6 +606,7 @@ impl TensorData {
         Self::from_jpeg_bytes(jpeg_bytes)
     }
 
+    /// Construct a new tensor from the contents of a `.jpeg` file at the given path.
     #[deprecated = "Renamed 'from_jpeg_file'"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
@@ -638,6 +658,7 @@ impl TensorData {
         })
     }
 
+    /// Construct a new tensor from the contents of a `.jpeg` file.
     #[deprecated = "Renamed 'from_jpeg_bytes'"]
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]

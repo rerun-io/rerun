@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewDir {
@@ -27,6 +29,14 @@ impl TryFrom<u8> for ViewDir {
 }
 
 impl ViewDir {
+    /// Convert an upper case letter to one of the six cardinal directions.
+    ///
+    /// * 'U' => [`Self::Up`]
+    /// * 'D' => [`Self::Down`]
+    /// * 'R' => [`Self::Right`]
+    /// * 'L' => [`Self::Left`]
+    /// * 'F' => [`Self::Forward`]
+    /// * 'B' => [`Self::Back`]
     #[inline]
     pub fn from_ascii_char(c: u8) -> Result<Self, String> {
         match c {
@@ -40,6 +50,14 @@ impl ViewDir {
         }
     }
 
+    /// Represent this direction as the first letter of the direction's name, in uppercase.
+    ///
+    /// * [`Self::Up`] => 'U'
+    /// * [`Self::Down`] => 'D'
+    /// * [`Self::Right`] => 'R'
+    /// * [`Self::Left`] => 'L'
+    /// * [`Self::Forward`] => 'F'
+    /// * [`Self::Back`] => 'B'
     #[inline]
     pub fn short(&self) -> &'static str {
         match self {
@@ -52,6 +70,7 @@ impl ViewDir {
         }
     }
 
+    /// Long description of the direction, e.g. "Up", "Down", "Right", "Left", "Forward", "Back".
     #[inline]
     pub fn long(&self) -> &'static str {
         match self {
@@ -75,6 +94,11 @@ pub enum Axis3 {
 }
 
 impl Axis3 {
+    /// Convert a dimension index to an axis.
+    ///
+    /// * 0 => [`Self::X`]
+    /// * 1 => [`Self::Y`]
+    /// * 2 => [`Self::Z`]
     #[inline]
     pub fn from_dim(dim: usize) -> Self {
         match dim {
@@ -112,16 +136,30 @@ pub enum Sign {
 /// i.e. one of the six cardinal direction in 3D space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SignedAxis3 {
+    /// Positive or negative.
     pub sign: Sign,
+
+    /// One of `X`, `Y`, `Z`.
     pub axis: Axis3,
 }
 
 impl SignedAxis3 {
+    /// +X
     pub const POSITIVE_X: Self = Self::new(Sign::Positive, Axis3::X);
+
+    /// -X
     pub const NEGATIVE_X: Self = Self::new(Sign::Negative, Axis3::X);
+
+    /// +Y
     pub const POSITIVE_Y: Self = Self::new(Sign::Positive, Axis3::Y);
+
+    /// -Y
     pub const NEGATIVE_Y: Self = Self::new(Sign::Negative, Axis3::Y);
+
+    /// +Z
     pub const POSITIVE_Z: Self = Self::new(Sign::Positive, Axis3::Z);
+
+    /// -Z
     pub const NEGATIVE_Z: Self = Self::new(Sign::Negative, Axis3::Z);
 
     #[inline]
@@ -129,6 +167,7 @@ impl SignedAxis3 {
         Self { sign, axis }
     }
 
+    /// Convert to a unit-length 3D vector.
     #[inline]
     pub fn as_vec3(&self) -> [f32; 3] {
         match (self.sign, self.axis) {
@@ -182,25 +221,26 @@ impl From<SignedAxis3> for glam::Vec3 {
 /// Left or right handedness. Used to describe a coordinate system.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Handedness {
+    /// Right-handed coordinate system.
     Right,
-    Left,
+
+    /// Left-handed coordinate system.
+    ///
+    /// Rerun does not yet support this,
+    /// see <https://github.com/rerun-io/rerun/issues/5032>.
+    Left, // TODO(#5032): Support left-handed coordinate systems.
 }
 
 impl Handedness {
+    /// Create a `Handedness` from a boolean.
+    ///
+    /// If `true`, returns `Right`, otherwise `Left`.
     #[inline]
     pub const fn from_right_handed(right_handed: bool) -> Self {
         if right_handed {
             Handedness::Right
         } else {
             Handedness::Left
-        }
-    }
-
-    #[inline]
-    pub fn describe(&self) -> &'static str {
-        match self {
-            Self::Left => "left handed",
-            Self::Right => "right handed",
         }
     }
 }

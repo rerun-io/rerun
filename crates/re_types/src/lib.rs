@@ -259,6 +259,7 @@ pub use re_types_core::*;
 
 // ---
 
+/// Re-exports of external crates that are used throughout the codebase.
 pub mod external {
     pub use re_types_core;
 

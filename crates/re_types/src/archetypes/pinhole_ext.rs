@@ -55,12 +55,14 @@ impl Pinhole {
             .map(|resolution| 2.0 * (0.5 * resolution[1] / self.image_from_camera.col(1)[1]).atan())
     }
 
+    /// The resolution of the camera sensor in pixels.
     #[inline]
     #[cfg(feature = "glam")]
     pub fn resolution(&self) -> Option<glam::Vec2> {
         self.resolution.map(|r| (*r).into())
     }
 
+    /// Width/height ratio of the camera sensor.
     #[inline]
     pub fn aspect_ratio(&self) -> Option<f32> {
         self.resolution.map(|r| r[0] / r[1])
