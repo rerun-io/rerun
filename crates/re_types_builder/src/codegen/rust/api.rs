@@ -789,6 +789,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
     lines
 }
 
+fn quote_doc_line(line: &str) -> TokenStream {
+    let line = format!(" {line}"); // add space between `///` and comment
+    quote!(# [doc = #line])
+}
+
 fn quote_doc_lines(lines: &[String]) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
@@ -1081,6 +1086,9 @@ fn quote_trait_impls_from_obj(
             let (num_optional, optional) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
+            let num_components_docstring  = quote_doc_line(&format!(
+                "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
+            ));
             let num_all = num_required + num_recommended + num_optional;
 
             let quoted_field_names = obj
@@ -1206,6 +1214,7 @@ fn quote_trait_impls_from_obj(
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
+                    #num_components_docstring
                     pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
