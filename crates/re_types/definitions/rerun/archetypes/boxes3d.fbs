@@ -29,7 +29,7 @@ table Boxes3D (
   /// Optional center positions of the boxes.
   centers: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
-  // Optional rotations of the boxes.
+  /// Optional rotations of the boxes.
   rotations: [rerun.components.Rotation3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   /// Optional colors for the boxes.
