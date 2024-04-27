@@ -171,6 +171,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![warn(missing_docs)] // Let's keep the this crate well-documented!
+
 // ---
 
 /// Number of decimals shown for all vector display methods.
