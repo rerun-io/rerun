@@ -112,6 +112,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl Clear {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -194,6 +195,8 @@ impl crate::AsComponents for Clear {
 }
 
 impl Clear {
+    /// Create a new `Clear`.
+    #[inline]
     pub fn new(is_recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
             is_recursive: is_recursive.into(),

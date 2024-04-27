@@ -153,6 +153,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl Points2D {
+    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
@@ -329,6 +330,8 @@ impl ::re_types_core::AsComponents for Points2D {
 }
 
 impl Points2D {
+    /// Create a new `Points2D`.
+    #[inline]
     pub fn new(
         positions: impl IntoIterator<Item = impl Into<crate::components::Position2D>>,
     ) -> Self {
@@ -343,6 +346,7 @@ impl Points2D {
         }
     }
 
+    /// Optional radii for the points, effectively turning them into circles.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -352,6 +356,7 @@ impl Points2D {
         self
     }
 
+    /// Optional colors for the points.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -361,6 +366,7 @@ impl Points2D {
         self
     }
 
+    /// Optional text labels for the points.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -370,12 +376,18 @@ impl Points2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional class Ids for the points.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,
@@ -385,6 +397,14 @@ impl Points2D {
         self
     }
 
+    /// Optional keypoint IDs for the points, identifying them within a class.
+    ///
+    /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
+    /// default to 0.
+    /// This is useful to identify points within a single classification (which is identified
+    /// with `class_id`).
+    /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
+    /// detected skeleton.
     #[inline]
     pub fn with_keypoint_ids(
         mut self,

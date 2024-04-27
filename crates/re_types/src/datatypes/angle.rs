@@ -25,7 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Angle in either radians or degrees.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
+    /// Angle in radians. One turn is equal to 2π (or τ) radians.
     Radians(f32),
+
+    /// Angle in degrees. One turn is equal to 360 degrees.
     Degrees(f32),
 }
 

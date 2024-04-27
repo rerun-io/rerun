@@ -104,6 +104,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl ViewportBlueprint {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 6usize;
 }
 
@@ -252,6 +253,8 @@ impl ::re_types_core::AsComponents for ViewportBlueprint {
 }
 
 impl ViewportBlueprint {
+    /// Create a new `ViewportBlueprint`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             root_container: None,
@@ -262,6 +265,7 @@ impl ViewportBlueprint {
         }
     }
 
+    /// The layout of the space-views
     #[inline]
     pub fn with_root_container(
         mut self,
@@ -271,6 +275,7 @@ impl ViewportBlueprint {
         self
     }
 
+    /// Show one tab as maximized?
     #[inline]
     pub fn with_maximized(
         mut self,
@@ -280,6 +285,10 @@ impl ViewportBlueprint {
         self
     }
 
+    /// Whether the viewport layout is determined automatically.
+    ///
+    /// If `true`, the container layout will be reset whenever a new space view is added or removed.
+    /// This defaults to `false` and is automatically set to `false` when there is user determined layout.
     #[inline]
     pub fn with_auto_layout(
         mut self,
@@ -289,6 +298,11 @@ impl ViewportBlueprint {
         self
     }
 
+    /// Whether or not space views should be created automatically.
+    ///
+    /// If `true`, the viewer will only add space views that it hasn't considered previously (as identified by `past_viewer_recommendations`)
+    /// and which aren't deemed redundant to existing space views.
+    /// This defaults to `false` and is automatically set to `false` when the user adds space views manually in the viewer.
     #[inline]
     pub fn with_auto_space_views(
         mut self,
@@ -298,6 +312,12 @@ impl ViewportBlueprint {
         self
     }
 
+    /// Hashes of all recommended space views the viewer has already added and that should not be added again.
+    ///
+    /// This is an internal field and should not be set usually.
+    /// If you want the viewer from stopping to add space views, you should set `auto_space_views` to `false`.
+    ///
+    /// The viewer uses this to determine whether it should keep adding space views.
     #[inline]
     pub fn with_past_viewer_recommendations(
         mut self,

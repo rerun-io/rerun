@@ -71,6 +71,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl ScalarAxis {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -168,6 +169,8 @@ impl ::re_types_core::AsComponents for ScalarAxis {
 }
 
 impl ScalarAxis {
+    /// Create a new `ScalarAxis`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             range: None,
@@ -175,12 +178,16 @@ impl ScalarAxis {
         }
     }
 
+    /// The range of the axis.
+    ///
+    /// If unset, the range well be automatically determined based on the queried data.
     #[inline]
     pub fn with_range(mut self, range: impl Into<crate::components::Range1D>) -> Self {
         self.range = Some(range.into());
         self
     }
 
+    /// Whether to lock the range of the axis during zoom.
     #[inline]
     pub fn with_lock_range_during_zoom(
         mut self,

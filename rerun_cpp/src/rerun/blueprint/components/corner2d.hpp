@@ -18,12 +18,16 @@ namespace rerun::blueprint::components {
     /// **Component**: One of four 2D corners, typically used to align objects.
     enum class Corner2D : uint8_t {
 
+        /// Left top corner.
         LeftTop = 1,
 
+        /// Right top corner.
         RightTop = 2,
 
+        /// Left bottom corner.
         LeftBottom = 3,
 
+        /// Right bottom corner.
         RightBottom = 4,
     };
 } // namespace rerun::blueprint::components

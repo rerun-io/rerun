@@ -21,15 +21,34 @@ class MarkerShape(Enum):
     """**Component**: Shape of a marker."""
 
     Circle = 1
+    """`⏺`"""
+
     Diamond = 2
+    """`◆`"""
+
     Square = 3
+    """`◼️`"""
+
     Cross = 4
+    """`x`"""
+
     Plus = 5
+    """`+`"""
+
     Up = 6
+    """`▲`"""
+
     Down = 7
+    """`▼`"""
+
     Left = 8
+    """`◀`"""
+
     Right = 9
+    """`▶`"""
+
     Asterisk = 10
+    """`*`"""
 
 
 MarkerShapeLike = Union[MarkerShape, str]

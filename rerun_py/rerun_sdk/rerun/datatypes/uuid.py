@@ -23,15 +23,26 @@ __all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike", "UuidType"]
 
 @define(init=False)
 class Uuid(UuidExt):
-    """**Datatype**: A 16-byte uuid."""
+    """**Datatype**: A 16-byte UUID."""
 
     def __init__(self: Any, bytes: UuidLike):
-        """Create a new instance of the Uuid datatype."""
+        """
+        Create a new instance of the Uuid datatype.
+
+        Parameters
+        ----------
+        bytes:
+            The raw bytes representing the UUID.
+
+        """
 
         # You can define your own __init__ function as a member of UuidExt in uuid_ext.py
         self.__attrs_init__(bytes=bytes)
 
     bytes: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    # The raw bytes representing the UUID.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
         # You can define your own __array__ function as a member of UuidExt in uuid_ext.py

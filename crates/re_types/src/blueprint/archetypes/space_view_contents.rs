@@ -98,6 +98,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl SpaceViewContents {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -179,6 +180,8 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
 }
 
 impl SpaceViewContents {
+    /// Create a new `SpaceViewContents`.
+    #[inline]
     pub fn new(
         query: impl IntoIterator<Item = impl Into<crate::blueprint::components::QueryExpression>>,
     ) -> Self {

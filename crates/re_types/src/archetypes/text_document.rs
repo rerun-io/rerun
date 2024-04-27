@@ -137,6 +137,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl TextDocument {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -231,6 +232,8 @@ impl ::re_types_core::AsComponents for TextDocument {
 }
 
 impl TextDocument {
+    /// Create a new `TextDocument`.
+    #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
             text: text.into(),
@@ -238,6 +241,13 @@ impl TextDocument {
         }
     }
 
+    /// The Media Type of the text.
+    ///
+    /// For instance:
+    /// * `text/plain`
+    /// * `text/markdown`
+    ///
+    /// If omitted, `text/plain` is assumed.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());

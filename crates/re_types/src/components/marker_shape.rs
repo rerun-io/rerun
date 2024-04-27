@@ -25,16 +25,35 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: Shape of a marker.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum MarkerShape {
+    /// `⏺`
     #[default]
     Circle = 1,
+
+    /// `◆`
     Diamond = 2,
+
+    /// `◼️`
     Square = 3,
+
+    /// `x`
     Cross = 4,
+
+    /// `+`
     Plus = 5,
+
+    /// `▲`
     Up = 6,
+
+    /// `▼`
     Down = 7,
+
+    /// `◀`
     Left = 8,
+
+    /// `▶`
     Right = 9,
+
+    /// `*`
     Asterisk = 10,
 }
 

@@ -32,8 +32,10 @@ namespace rerun::datatypes {
     /// For file formats, the shape is used as a hint, for chroma downsampled format
     /// the shape has to be the shape of the decoded image.
     struct TensorData {
+        /// The shape of the tensor, including optional names for each dimension.
         rerun::Collection<rerun::datatypes::TensorDimension> shape;
 
+        /// The content/data.
         rerun::datatypes::TensorBuffer buffer;
 
       public:

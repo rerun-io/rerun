@@ -129,6 +129,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     });
 
 impl ContainerBlueprint {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 7 optional
     pub const NUM_COMPONENTS: usize = 9usize;
 }
 
@@ -320,6 +321,8 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
 }
 
 impl ContainerBlueprint {
+    /// Create a new `ContainerBlueprint`.
+    #[inline]
     pub fn new(container_kind: impl Into<crate::blueprint::components::ContainerKind>) -> Self {
         Self {
             container_kind: container_kind.into(),
@@ -333,12 +336,14 @@ impl ContainerBlueprint {
         }
     }
 
+    /// The name of the container.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = Some(display_name.into());
         self
     }
 
+    /// `ContainerIds`s or `SpaceViewId`s that are children of this container.
     #[inline]
     pub fn with_contents(
         mut self,
@@ -348,6 +353,11 @@ impl ContainerBlueprint {
         self
     }
 
+    /// The layout shares of each column in the container.
+    ///
+    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Vertical` containers.
     #[inline]
     pub fn with_col_shares(
         mut self,
@@ -357,6 +367,11 @@ impl ContainerBlueprint {
         self
     }
 
+    /// The layout shares of each row of the container.
+    ///
+    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    ///
+    /// Ignored for `Horizontal` containers.
     #[inline]
     pub fn with_row_shares(
         mut self,
@@ -366,6 +381,9 @@ impl ContainerBlueprint {
         self
     }
 
+    /// Which tab is active.
+    ///
+    /// Only applies to `Tabs` containers.
     #[inline]
     pub fn with_active_tab(
         mut self,
@@ -375,6 +393,9 @@ impl ContainerBlueprint {
         self
     }
 
+    /// Whether this container is visible.
+    ///
+    /// Defaults to true if not specified.
     #[inline]
     pub fn with_visible(
         mut self,
@@ -384,6 +405,11 @@ impl ContainerBlueprint {
         self
     }
 
+    /// How many columns this grid should have.
+    ///
+    /// If unset, the grid layout will be auto.
+    ///
+    /// Ignored for `Horizontal`/`Vertical` containers.
     #[inline]
     pub fn with_grid_columns(
         mut self,

@@ -21,9 +21,16 @@ class Corner2D(Enum):
     """**Component**: One of four 2D corners, typically used to align objects."""
 
     LeftTop = 1
+    """Left top corner."""
+
     RightTop = 2
+    """Right top corner."""
+
     LeftBottom = 3
+    """Left bottom corner."""
+
     RightBottom = 4
+    """Right bottom corner."""
 
 
 Corner2DLike = Union[Corner2D, str]

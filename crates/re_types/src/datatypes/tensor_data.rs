@@ -37,7 +37,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// the shape has to be the shape of the decoded image.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TensorData {
+    /// The shape of the tensor, including optional names for each dimension.
     pub shape: Vec<crate::datatypes::TensorDimension>,
+
+    /// The content/data.
     pub buffer: crate::datatypes::TensorBuffer,
 }
 

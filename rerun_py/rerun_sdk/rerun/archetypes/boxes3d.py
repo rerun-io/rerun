@@ -99,6 +99,10 @@ class Boxes3D(Boxes3DExt, Archetype):
         default=None,
         converter=components.Rotation3DBatch._optional,  # type: ignore[misc]
     )
+    # Optional rotations of the boxes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,

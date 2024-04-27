@@ -93,6 +93,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     });
 
 impl SpaceViewBlueprint {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 5usize;
 }
 
@@ -219,6 +220,8 @@ impl ::re_types_core::AsComponents for SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
+    /// Create a new `SpaceViewBlueprint`.
+    #[inline]
     pub fn new(class_identifier: impl Into<crate::blueprint::components::SpaceViewClass>) -> Self {
         Self {
             class_identifier: class_identifier.into(),
@@ -228,12 +231,20 @@ impl SpaceViewBlueprint {
         }
     }
 
+    /// The name of the view.
     #[inline]
     pub fn with_display_name(mut self, display_name: impl Into<crate::components::Name>) -> Self {
         self.display_name = Some(display_name.into());
         self
     }
 
+    /// The "anchor point" of this space view.
+    ///
+    /// Defaults to the root path '/' if not specified.
+    ///
+    /// The transform at this path forms the reference point for all scene->world transforms in this space view.
+    /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+    /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     #[inline]
     pub fn with_space_origin(
         mut self,
@@ -243,6 +254,9 @@ impl SpaceViewBlueprint {
         self
     }
 
+    /// Whether this space view is visible.
+    ///
+    /// Defaults to true if not specified.
     #[inline]
     pub fn with_visible(
         mut self,

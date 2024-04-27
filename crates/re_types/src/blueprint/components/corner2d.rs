@@ -25,9 +25,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: One of four 2D corners, typically used to align objects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Corner2D {
+    /// Left top corner.
     LeftTop = 1,
+
+    /// Right top corner.
     RightTop = 2,
+
+    /// Left bottom corner.
     LeftBottom = 3,
+
+    /// Right bottom corner.
     #[default]
     RightBottom = 4,
 }

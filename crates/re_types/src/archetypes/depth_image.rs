@@ -123,6 +123,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     });
 
 impl DepthImage {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 4usize;
 }
 
@@ -233,6 +234,8 @@ impl ::re_types_core::AsComponents for DepthImage {
 }
 
 impl DepthImage {
+    /// Create a new `DepthImage`.
+    #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self {
             data: data.into(),
@@ -241,12 +244,19 @@ impl DepthImage {
         }
     }
 
+    /// An optional floating point value that specifies how long a meter is in the native depth units.
+    ///
+    /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+    /// and a range of up to ~65 meters (2^16 / 1000).
     #[inline]
     pub fn with_meter(mut self, meter: impl Into<crate::components::DepthMeter>) -> Self {
         self.meter = Some(meter.into());
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());

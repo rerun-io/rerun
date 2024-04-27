@@ -155,6 +155,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     });
 
 impl Mesh3D {
+    /// The total number of components in the archetype: 1 required, 3 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 9usize;
 }
 
@@ -344,6 +345,8 @@ impl ::re_types_core::AsComponents for Mesh3D {
 }
 
 impl Mesh3D {
+    /// Create a new `Mesh3D`.
+    #[inline]
     pub fn new(
         vertex_positions: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
     ) -> Self {
@@ -359,6 +362,7 @@ impl Mesh3D {
         }
     }
 
+    /// Optional properties for the mesh as a whole (including indexed drawing).
     #[inline]
     pub fn with_mesh_properties(
         mut self,
@@ -368,6 +372,9 @@ impl Mesh3D {
         self
     }
 
+    /// An optional normal for each vertex.
+    ///
+    /// If specified, this must have as many elements as `vertex_positions`.
     #[inline]
     pub fn with_vertex_normals(
         mut self,
@@ -377,6 +384,7 @@ impl Mesh3D {
         self
     }
 
+    /// An optional color for each vertex.
     #[inline]
     pub fn with_vertex_colors(
         mut self,
@@ -386,6 +394,7 @@ impl Mesh3D {
         self
     }
 
+    /// An optional uv texture coordinate for each vertex.
     #[inline]
     pub fn with_vertex_texcoords(
         mut self,
@@ -395,6 +404,7 @@ impl Mesh3D {
         self
     }
 
+    /// Optional material properties for the mesh as a whole.
     #[inline]
     pub fn with_mesh_material(
         mut self,
@@ -404,6 +414,11 @@ impl Mesh3D {
         self
     }
 
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords` on `Mesh3D`.
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     #[inline]
     pub fn with_albedo_texture(
         mut self,
@@ -413,6 +428,9 @@ impl Mesh3D {
         self
     }
 
+    /// Optional class Ids for the vertices.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

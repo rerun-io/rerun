@@ -2,7 +2,7 @@
 title: "Uuid"
 ---
 
-A 16-byte uuid.
+A 16-byte UUID.
 
 ## Fields
 

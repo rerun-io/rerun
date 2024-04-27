@@ -31,8 +31,10 @@ namespace rerun::datatypes {
 
         /// \private
         union Transform3DData {
+            /// Translation plus a 3x3 matrix for scale, rotation, scew, etc.
             rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
 
+            /// Translation, rotation and scale, decomposed.
             rerun::datatypes::TranslationRotationScale3D translation_rotation_scale;
 
             Transform3DData() {
@@ -84,15 +86,18 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
+        /// Translation plus a 3x3 matrix for scale, rotation, scew, etc.
         Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) : Transform3D() {
             *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
         }
 
+        /// Translation, rotation and scale, decomposed.
         Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale)
             : Transform3D() {
             *this = Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
         }
 
+        /// Translation plus a 3x3 matrix for scale, rotation, scew, etc.
         static Transform3D translation_and_mat3x3(
             rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3
         ) {
@@ -103,6 +108,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// Translation, rotation and scale, decomposed.
         static Transform3D translation_rotation_scale(
             rerun::datatypes::TranslationRotationScale3D translation_rotation_scale
         ) {

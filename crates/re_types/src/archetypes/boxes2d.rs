@@ -139,6 +139,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl Boxes2D {
+    /// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
@@ -315,6 +316,8 @@ impl ::re_types_core::AsComponents for Boxes2D {
 }
 
 impl Boxes2D {
+    /// Create a new `Boxes2D`.
+    #[inline]
     pub(crate) fn new(
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSizes2D>>,
     ) -> Self {
@@ -329,6 +332,7 @@ impl Boxes2D {
         }
     }
 
+    /// Optional center positions of the boxes.
     #[inline]
     pub fn with_centers(
         mut self,
@@ -338,6 +342,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional colors for the boxes.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -347,6 +352,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional radii for the lines that make up the boxes.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -356,6 +362,7 @@ impl Boxes2D {
         self
     }
 
+    /// Optional text labels for the boxes.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -365,12 +372,20 @@ impl Boxes2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
+    ///
+    /// The default for 2D boxes is 10.0.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional `ClassId`s for the boxes.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

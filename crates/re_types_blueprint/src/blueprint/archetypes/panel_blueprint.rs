@@ -59,6 +59,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl PanelBlueprint {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -140,10 +141,13 @@ impl ::re_types_core::AsComponents for PanelBlueprint {
 }
 
 impl PanelBlueprint {
+    /// Create a new `PanelBlueprint`.
+    #[inline]
     pub fn new() -> Self {
         Self { expanded: None }
     }
 
+    /// Whether or not the panel is expanded.
     #[inline]
     pub fn with_expanded(
         mut self,

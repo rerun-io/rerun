@@ -150,6 +150,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     });
 
 impl Arrows3D {
+    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 7usize;
 }
 
@@ -313,6 +314,8 @@ impl ::re_types_core::AsComponents for Arrows3D {
 }
 
 impl Arrows3D {
+    /// Create a new `Arrows3D`.
+    #[inline]
     pub(crate) fn new(
         vectors: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>,
     ) -> Self {
@@ -326,6 +329,9 @@ impl Arrows3D {
         }
     }
 
+    /// All the origin (base) positions for each arrow in the batch.
+    ///
+    /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
     #[inline]
     pub fn with_origins(
         mut self,
@@ -335,6 +341,10 @@ impl Arrows3D {
         self
     }
 
+    /// Optional radii for the arrows.
+    ///
+    /// The shaft is rendered as a line with `radius = 0.5 * radius`.
+    /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -344,6 +354,7 @@ impl Arrows3D {
         self
     }
 
+    /// Optional colors for the points.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -353,6 +364,7 @@ impl Arrows3D {
         self
     }
 
+    /// Optional text labels for the arrows.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -362,6 +374,9 @@ impl Arrows3D {
         self
     }
 
+    /// Optional class Ids for the points.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

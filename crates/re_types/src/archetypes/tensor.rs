@@ -88,6 +88,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl Tensor {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -170,6 +171,8 @@ impl ::re_types_core::AsComponents for Tensor {
 }
 
 impl Tensor {
+    /// Create a new `Tensor`.
+    #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self { data: data.into() }
     }

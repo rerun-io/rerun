@@ -28,7 +28,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// directly to `Transform3D::child_from_parent` or `Transform3D::parent_from_child`.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Transform3D {
+    /// Translation plus a 3x3 matrix for scale, rotation, scew, etc.
     TranslationAndMat3x3(crate::datatypes::TranslationAndMat3x3),
+
+    /// Translation, rotation and scale, decomposed.
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
 
