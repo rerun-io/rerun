@@ -1466,7 +1466,10 @@ fn quote_builder_from_obj(reporter: &Reporter, obj: &Object) -> TokenStream {
     } else {
         quote!(pub)
     };
+    let fn_new_docstring = quote_doc_line(&format!("Create a new `{name}`."));
     let fn_new = quote! {
+        #fn_new_docstring
+        #[inline]
         #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
             Self {
                 #(#quoted_required,)*
