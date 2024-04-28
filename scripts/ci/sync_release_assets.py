@@ -129,8 +129,6 @@ def fetch_binary_assets(
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
                 print(f"Found Rerun cross-platform bundle: {name}")
-                assets[name] = blob
-                # NOTE: Want a versioned one too.
                 assets[f"rerun_cpp_sdk-{tag}-multiplatform.zip"] = blob
             else:
                 all_found = False
