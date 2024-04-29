@@ -6,8 +6,9 @@ use re_data_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_view_property_or_default};
-use re_types::blueprint::datatypes::VisibleTimeRange;
-use re_types::{blueprint::components::Corner2D, components::Range1D};
+use re_types::{
+    blueprint::components::Corner2D, blueprint::datatypes::VisibleTimeRange, components::Range1D,
+};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
@@ -74,10 +75,6 @@ pub struct TimeSeriesSpaceView;
 
 const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
-impl TimeSeriesSpaceView {
-    pub const DEFAULT_QUERY_RANGE: QueryRange = QueryRange::TimeRange(VisibleTimeRange::EVERYTHING);
-}
-
 impl SpaceViewClass for TimeSeriesSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
         "TimeSeries".into()
@@ -142,7 +139,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn default_query_range(&self) -> QueryRange {
-        Self::DEFAULT_QUERY_RANGE.clone()
+        QueryRange::TimeRange(VisibleTimeRange::EVERYTHING)
     }
 
     fn selection_ui(
