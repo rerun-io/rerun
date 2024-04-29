@@ -1,8 +1,10 @@
 use re_entity_db::{EntityPath, InstancePathHash};
-use re_renderer::LineDrawableBuilder;
+use re_log_types::Instance;
+use re_query::range_zip_1x5;
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
-    components::{ClassId, Color, InstanceKey, KeypointId, LineStrip2D, Radius, Text},
+    components::{ClassId, Color, KeypointId, LineStrip2D, Radius, Text},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -17,9 +19,12 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    entity_iterator::clamped, filter_visualizable_2d_entities,
+    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
+
+// ---
 
 pub struct Lines2DVisualizer {
     /// If the number of arrows in the batch is > max_labels, don't render point labels.
@@ -36,24 +41,21 @@ impl Default for Lines2DVisualizer {
     }
 }
 
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
 impl Lines2DVisualizer {
     fn process_labels<'a>(
+        entity_path: &'a EntityPath,
         strips: &'a [LineStrip2D],
-        labels: &'a [Option<Text>],
-        instance_path_hashes: &'a [InstancePathHash],
+        labels: &'a [Text],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
     ) -> impl Iterator<Item = UiLabel> + 'a {
-        itertools::izip!(
-            annotation_infos.iter(),
-            strips,
-            labels,
-            colors,
-            instance_path_hashes,
-        )
-        .filter_map(
-            move |(annotation_info, strip, label, color, labeled_instance)| {
-                let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+        let labels = clamped(labels, strips.len());
+        itertools::izip!(annotation_infos.iter(), strips, labels, colors,)
+            .enumerate()
+            .filter_map(move |(i, (annotation_info, strip, label, color))| {
+                let label = annotation_info.label(Some(label.as_str()));
                 match (strip, label) {
                     (strip, Some(label)) => {
                         let midpoint = strip
@@ -68,107 +70,105 @@ impl Lines2DVisualizer {
                             text: label,
                             color: *color,
                             target: UiLabelTarget::Point2D(egui::pos2(midpoint.x, midpoint.y)),
-                            labeled_instance: *labeled_instance,
+                            labeled_instance: InstancePathHash::instance(
+                                entity_path,
+                                Instance::from(i as u64),
+                            ),
                         })
                     }
                     _ => None,
                 }
-            },
-        )
+            })
     }
 
-    fn process_data(
+    fn process_data<'a>(
         &mut self,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        data: &Lines2DComponentData<'_>,
-        ent_path: &EntityPath,
+        entity_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
-    ) -> Result<(), SpaceViewSystemExecutionError> {
-        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
-            query.latest_at,
-            data.instance_keys,
-            data.keypoint_ids,
-            data.class_ids,
-            data.strips.iter().map(|_| glam::Vec3::ZERO),
-            &ent_context.annotations,
-        );
+        data: impl Iterator<Item = Lines2DComponentData<'a>>,
+    ) {
+        for data in data {
+            let num_instances = data.strips.len();
+            if num_instances == 0 {
+                continue;
+            }
 
-        let radii = process_radius_slice(data.radii, data.strips.len(), ent_path);
-        let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
+            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+                query.latest_at,
+                num_instances,
+                data.strips.iter().map(|_| glam::Vec3::ZERO),
+                data.keypoint_ids,
+                data.class_ids,
+                &ent_context.annotations,
+            );
 
-        if data.instance_keys.len() <= self.max_labels {
-            re_tracing::profile_scope!("labels");
+            let radii = process_radius_slice(entity_path, num_instances, data.radii);
+            let colors =
+                process_color_slice(entity_path, num_instances, &annotation_infos, data.colors);
 
-            // Max labels is small enough that we can afford iterating on the colors again.
-            let colors = process_color_slice(data.colors, ent_path, &annotation_infos);
-
-            let instance_path_hashes_for_picking = {
-                re_tracing::profile_scope!("instance_hashes");
-                data.instance_keys
-                    .iter()
-                    .copied()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
-                    .collect::<Vec<_>>()
-            };
-
-            if let Some(labels) = data.labels {
+            if num_instances <= self.max_labels {
                 self.data.ui_labels.extend(Self::process_labels(
+                    entity_path,
                     data.strips,
-                    labels,
-                    &instance_path_hashes_for_picking,
+                    data.labels,
                     &colors,
                     &annotation_infos,
                 ));
             }
-        }
 
-        line_builder.reserve_strips(data.strips.len())?;
-        line_builder.reserve_vertices(data.strips.iter().map(|s| s.0.len()).sum())?;
+            let mut line_batch = line_builder
+                .batch(entity_path.to_string())
+                .depth_offset(ent_context.depth_offset)
+                .world_from_obj(ent_context.world_from_entity)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
-        let mut line_batch = line_builder
-            .batch(ent_path.to_string())
-            .depth_offset(ent_context.depth_offset)
-            .world_from_obj(ent_context.world_from_entity)
-            .outline_mask_ids(ent_context.highlight.overall)
-            .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+            let mut bounding_box = macaw::BoundingBox::nothing();
+            for (i, (strip, radius, color)) in
+                itertools::izip!(data.strips, radii, colors).enumerate()
+            {
+                let lines = line_batch
+                    .add_strip_2d(strip.0.iter().copied().map(Into::into))
+                    .color(color)
+                    .radius(radius)
+                    .picking_instance_id(PickingLayerInstanceId(i as _));
 
-        let mut bounding_box = macaw::BoundingBox::nothing();
-        for (instance_key, strip, radius, color) in
-            itertools::izip!(data.instance_keys, data.strips, radii, colors)
-        {
-            let lines = line_batch
-                .add_strip_2d(strip.0.iter().copied().map(Into::into))
-                .color(color)
-                .radius(radius)
-                .picking_instance_id(re_renderer::PickingLayerInstanceId(instance_key.0));
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
+                {
+                    lines.outline_mask_ids(*outline_mask_ids);
+                }
 
-            if let Some(outline_mask_ids) = ent_context.highlight.instances.get(instance_key) {
-                lines.outline_mask_ids(*outline_mask_ids);
+                for p in &strip.0 {
+                    bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
+                }
             }
 
-            for p in &strip.0 {
-                bounding_box.extend(glam::vec3(p.x(), p.y(), 0.0));
-            }
+            self.data.add_bounding_box(
+                entity_path.hash(),
+                bounding_box,
+                ent_context.world_from_entity,
+            );
         }
-
-        self.data
-            .add_bounding_box(ent_path.hash(), bounding_box, ent_context.world_from_entity);
-
-        Ok(())
     }
 }
 
 // ---
 
 struct Lines2DComponentData<'a> {
-    pub instance_keys: &'a [InstanceKey],
-    pub strips: &'a [LineStrip2D],
-    pub colors: Option<&'a [Option<Color>]>,
-    pub radii: Option<&'a [Option<Radius>]>,
-    pub labels: Option<&'a [Option<Text>]>,
-    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
-    pub class_ids: Option<&'a [Option<ClassId>]>,
+    // Point of views
+    strips: &'a [LineStrip2D],
+
+    // Clamped to edge
+    colors: &'a [Color],
+    radii: &'a [Radius],
+    labels: &'a [Text],
+    keypoint_ids: &'a [KeypointId],
+    class_ids: &'a [ClassId],
 }
 
 impl IdentifiedViewSystem for Lines2DVisualizer {
@@ -194,51 +194,80 @@ impl VisualizerSystem for Lines2DVisualizer {
     fn execute(
         &mut self,
         ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
+        view_query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        // Counting all lines (strips and vertices) ahead of time is a bit expensive since we need to do a full query for this.
-        // We choose a semi-dynamic approach here, where we reserve on every new line batch.
         let mut line_builder = re_renderer::LineDrawableBuilder::new(ctx.render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
 
-        super::entity_iterator::process_archetype_pov1_comp5::<
-            Lines2DVisualizer,
-            LineStrips2D,
-            LineStrip2D,
-            Color,
-            Radius,
-            Text,
-            KeypointId,
-            ClassId,
-            _,
-        >(
+        super::entity_iterator::process_archetype::<Lines2DVisualizer, LineStrips2D, _>(
             ctx,
-            query,
+            view_query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx,
-             ent_path,
-             _ent_props,
-             ent_context,
-             (_time, _row_id),
-             instance_keys,
-             strips,
-             colors,
-             radii,
-             labels,
-             keypoint_ids,
-             class_ids| {
-                let data = Lines2DComponentData {
-                    instance_keys,
-                    strips,
-                    colors,
-                    radii,
-                    labels,
-                    keypoint_ids,
-                    class_ids,
+            |ctx, entity_path, _entity_props, spatial_ctx, results| {
+                re_tracing::profile_scope!(format!("{entity_path}"));
+
+                use crate::visualizers::RangeResultsExt as _;
+
+                let resolver = ctx.recording().resolver();
+
+                let strips = match results.get_dense::<LineStrip2D>(resolver) {
+                    Some(strips) => strips?,
+                    _ => return Ok(()),
                 };
-                self.process_data(&mut line_builder, query, &data, ent_path, ent_context)
+
+                let num_strips = strips
+                    .range_indexed()
+                    .map(|(_, strips)| strips.len())
+                    .sum::<usize>();
+                if num_strips == 0 {
+                    return Ok(());
+                }
+                line_builder.reserve_strips(num_strips)?;
+
+                let num_vertices = strips
+                    .range_indexed()
+                    .map(|(_, strips)| strips.iter().map(|strip| strip.0.len()).sum::<usize>())
+                    .sum::<usize>();
+                line_builder.reserve_vertices(num_vertices)?;
+
+                let colors = results.get_or_empty_dense(resolver)?;
+                let radii = results.get_or_empty_dense(resolver)?;
+                let labels = results.get_or_empty_dense(resolver)?;
+                let class_ids = results.get_or_empty_dense(resolver)?;
+                let keypoint_ids = results.get_or_empty_dense(resolver)?;
+
+                let data = range_zip_1x5(
+                    strips.range_indexed(),
+                    colors.range_indexed(),
+                    radii.range_indexed(),
+                    labels.range_indexed(),
+                    class_ids.range_indexed(),
+                    keypoint_ids.range_indexed(),
+                )
+                .map(
+                    |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
+                        Lines2DComponentData {
+                            strips,
+                            colors: colors.unwrap_or_default(),
+                            radii: radii.unwrap_or_default(),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids.unwrap_or_default(),
+                            keypoint_ids: keypoint_ids.unwrap_or_default(),
+                        }
+                    },
+                );
+
+                self.process_data(
+                    &mut line_builder,
+                    view_query,
+                    entity_path,
+                    spatial_ctx,
+                    data,
+                );
+
+                Ok(())
             },
         )?;
 

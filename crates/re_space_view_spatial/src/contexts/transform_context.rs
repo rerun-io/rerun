@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertyMap, EntityTree};
 use re_types::{
-    components::{DisconnectedSpace, PinholeProjection, Resolution, Transform3D, ViewCoordinates},
+    components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
@@ -296,17 +296,9 @@ fn get_cached_transform(
     entity_db: &EntityDb,
     query: &LatestAtQuery,
 ) -> Option<Transform3D> {
-    let mut transform3d = None;
     entity_db
-        .query_caches()
-        .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::Transform3D, Transform3D, _>(
-            entity_db.store(),
-            query,
-            entity_path,
-            |(_, _, transforms)| transform3d = transforms.first().cloned(),
-        )
-        .ok();
-    transform3d
+        .latest_at_component::<Transform3D>(entity_path, query)
+        .map(|res| res.value)
 }
 
 fn get_cached_pinhole(
@@ -314,19 +306,16 @@ fn get_cached_pinhole(
     entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
 ) -> Option<(PinholeProjection, ViewCoordinates)> {
-    let mut result = None;
-    entity_db.query_caches()
-        .query_archetype_latest_at_pov1_comp2::<re_types::archetypes::Pinhole, PinholeProjection, Resolution, ViewCoordinates, _>(
-            entity_db.store(),
-            query,
-            entity_path,
-            |(_, _, image_from_camera, _resolution, camera_xyz)|  {
-                result = image_from_camera.first().map(|image_from_camera|
-                (*image_from_camera, camera_xyz.and_then(|c| c.first()).copied().flatten().unwrap_or(ViewCoordinates::RDF)));
-            }
-        )
-        .ok();
-    result
+    entity_db
+        .latest_at_archetype::<re_types::archetypes::Pinhole>(entity_path, query)
+        .ok()
+        .flatten()
+        .map(|(_, arch)| {
+            (
+                arch.image_from_camera,
+                arch.camera_xyz.unwrap_or(ViewCoordinates::RDF),
+            )
+        })
 }
 
 fn transform_at(
@@ -390,19 +379,9 @@ fn transform_at(
     });
 
     let is_disconnect_space = || {
-        let mut disconnected_space = false;
-        entity_db.query_caches()
-            .query_archetype_latest_at_pov1_comp0::<re_types::archetypes::DisconnectedSpace, DisconnectedSpace, _>(
-                entity_db.store(),
-                query,
-                entity_path,
-                |(_, _, disconnected_spaces)| {
-                    disconnected_space = disconnected_spaces
-                        .first() .map_or(false, |dp| dp.0);
-                },
-            )
-            .ok();
-        disconnected_space
+        entity_db
+            .latest_at_component::<DisconnectedSpace>(entity_path, query)
+            .map_or(false, |res| res.value.0)
     };
 
     // If there is any other transform, we ignore `DisconnectedSpace`.

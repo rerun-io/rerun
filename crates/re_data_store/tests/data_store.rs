@@ -10,15 +10,16 @@ use re_data_store::{
     DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
     LatestAtQuery, RangeQuery, TimeInt, TimeRange,
 };
-use re_log_types::{build_frame_nr, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline};
+use re_log_types::{
+    build_frame_nr, example_components::MyIndex, DataRow, DataTable, EntityPath, TableId, TimeType,
+    Timeline,
+};
 use re_types::{
-    components::{Color, InstanceKey, Position2D},
+    components::{Color, Position2D},
     testing::{build_some_large_structs, LargeStruct},
 };
 use re_types::{
-    datagen::{
-        build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
-    },
+    datagen::{build_some_colors, build_some_positions2d},
     ComponentNameSet,
 };
 use re_types_core::{ComponentName, Loggable as _};
@@ -41,7 +42,6 @@ fn all_components() {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-                store.cluster_key(),
                 store.config().clone(),
             );
             for table in store.to_data_tables(None) {
@@ -75,39 +75,35 @@ fn all_components() {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: u64::MAX,
                 ..Default::default()
             },
         );
-        let cluster_key = store.cluster_key();
 
         let components_a = &[
             Color::name(),       // added by test, static
             LargeStruct::name(), // added by test
-            cluster_key,         // always here
         ];
 
         let components_b = &[
             Color::name(),       // added by test, static
             Position2D::name(),  // added by test
             LargeStruct::name(), // added by test
-            cluster_key,         // always here
         ];
 
-        let row = test_row!(entity_path => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path => [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame1)] => [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
         let row = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => 2; [build_some_large_structs(2), build_some_positions2d(2)]);
+        ] => [build_some_large_structs(2), build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -119,13 +115,11 @@ fn all_components() {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: 0,
                 ..Default::default()
             },
         );
-        let cluster_key = store.cluster_key();
 
         // ┌──────────┬─────────────┬────────┬───────────┬──────────┐
         // │ frame_nr ┆ LargeStruct ┆ row_id ┆ insert_id ┆ instance │
@@ -143,32 +137,24 @@ fn all_components() {
         let components_a = &[
             Color::name(),       // added by test, static
             LargeStruct::name(), // added by test
-            cluster_key,         // always here
         ];
 
         let components_b = &[
             Color::name(),       // added by test, static
             LargeStruct::name(), // ⚠ inherited before the buckets got split apart!
             Position2D::name(),  // added by test
-            cluster_key,         // always here
         ];
 
-        let row = test_row!(entity_path => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path => [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame1)] => [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(entity_path @ [build_frame_nr(frame2)] => 2; [build_some_instances(2)]);
-        store.insert_row(&row).unwrap();
-
-        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
-
-        let row =
-            test_row!(entity_path @ [build_frame_nr(frame3)] => 2; [build_some_positions2d(2)]);
+        let row = test_row!(entity_path @ [build_frame_nr(frame3)] => [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -181,13 +167,11 @@ fn all_components() {
     {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: 0,
                 ..Default::default()
             },
         );
-        let cluster_key = store.cluster_key();
 
         // ┌──────────┬─────────────┬─────────┬────────┬───────────┬──────────┐
         // │ frame_nr ┆ LargeStruct ┆ point2d ┆ row_id ┆ insert_id ┆ instance │
@@ -207,39 +191,36 @@ fn all_components() {
         let components_a = &[
             Color::name(),       // added by test, static
             LargeStruct::name(), // added by test
-            cluster_key,         // always here
         ];
 
         let components_b = &[
             Color::name(),       // added by test, static
             Position2D::name(),  // added by test but not contained in the second bucket
             LargeStruct::name(), // added by test
-            cluster_key,         // always here
         ];
 
-        let row = test_row!(entity_path => 2; [build_some_colors(2)]);
+        let row = test_row!(entity_path => [build_some_colors(2)]);
         store.insert_row(&row).unwrap();
 
         let row =
-            test_row!(entity_path @ [build_frame_nr(frame2)] => 2; [build_some_large_structs(2)]);
-        store.insert_row(&row).unwrap();
-
-        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
-
-        let row =
-            test_row!(entity_path @ [build_frame_nr(frame3)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame2)] => [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
         let row =
-            test_row!(entity_path @ [build_frame_nr(frame4)] => 2; [build_some_large_structs(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame3)] => [build_some_large_structs(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
         let row =
-            test_row!(entity_path @ [build_frame_nr(frame1)] => 2; [build_some_positions2d(2)]);
+            test_row!(entity_path @ [build_frame_nr(frame4)] => [build_some_large_structs(2)]);
+        store.insert_row(&row).unwrap();
+
+        assert_latest_components_at(&mut store, &entity_path, Some(components_a));
+
+        let row = test_row!(entity_path @ [build_frame_nr(frame1)] => [build_some_positions2d(2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -257,7 +238,6 @@ fn latest_at() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         latest_at_impl(&mut store);
@@ -275,22 +255,21 @@ fn latest_at_impl(store: &mut DataStore) {
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 =
-        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
+    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
     let colors4 = build_some_colors(5);
-    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [colors4]);
 
     // injecting some static colors
     let colors5 = build_some_colors(3);
-    let row5 = test_row!(entity_path => 5; [colors5]);
+    let row5 = test_row!(entity_path => [colors5]);
 
     insert_table_with_retries(
         store,
@@ -309,7 +288,6 @@ fn latest_at_impl(store: &mut DataStore) {
     // Stress test save-to-disk & load-from-disk
     let mut store2 = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        store.cluster_key(),
         store.config().clone(),
     );
     for table in store.to_data_tables(None) {
@@ -382,7 +360,6 @@ fn range() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         range_impl(&mut store);
@@ -400,39 +377,37 @@ fn range_impl(store: &mut DataStore) {
     let frame4 = TimeInt::new_temporal(4);
     let frame5 = TimeInt::new_temporal(5);
 
-    let insts1 = build_some_instances(3);
+    let insts1 = MyIndex::from_iter(0..3);
     let colors1 = build_some_colors(3);
-    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [insts1.clone(), colors1]);
+    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [insts1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [insts1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [insts1, positions2]);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
-    let insts4_1 = build_some_instances_from(20..25);
+    let insts4_1 = MyIndex::from_iter(20..25);
     let colors4_1 = build_some_colors(5);
-    let row4_1 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_1, colors4_1]);
+    let row4_1 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_1, colors4_1]);
 
-    let insts4_2 = build_some_instances_from(25..30);
+    let insts4_2 = MyIndex::from_iter(25..30);
     let colors4_2 = build_some_colors(5);
-    let row4_2 =
-        test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_2.clone(), colors4_2]);
+    let row4_2 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), colors4_2]);
 
     let points4_25 = build_some_positions2d(5);
-    let row4_25 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_2, points4_25]);
+    let row4_25 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_2, points4_25]);
 
-    let insts4_3 = build_some_instances_from(30..35);
+    let insts4_3 = MyIndex::from_iter(30..35);
     let colors4_3 = build_some_colors(5);
-    let row4_3 =
-        test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_3.clone(), colors4_3]);
+    let row4_3 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), colors4_3]);
 
     let points4_4 = build_some_positions2d(5);
-    let row4_4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [insts4_3, points4_4]);
+    let row4_4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_3, points4_4]);
 
     // injecting some static colors
     let colors5 = build_some_colors(8);
-    let row5 = test_row!(entity_path => 8; [colors5]);
+    let row5 = test_row!(entity_path => [colors5]);
 
     insert_table_with_retries(
         store,
@@ -466,7 +441,6 @@ fn range_impl(store: &mut DataStore) {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(
                 re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-                store.cluster_key(),
                 store.config().clone(),
             );
             for table in store.to_data_tables(None) {
@@ -590,7 +564,6 @@ fn gc() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         gc_impl(&mut store);
@@ -611,7 +584,7 @@ fn gc_impl(store: &mut DataStore) {
                 let num_instances = rng.gen_range(0..=1_000);
                 let row = test_row!(entity_path @ [
                     build_frame_nr(frame_nr)
-                ] => num_instances; [
+                ] => [
                     build_some_large_structs(num_instances as _),
                 ]);
                 store.insert_row(&row).unwrap();
@@ -660,7 +633,6 @@ fn protected_gc() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         protected_gc_impl(&mut store);
@@ -677,18 +649,17 @@ fn protected_gc_impl(store: &mut DataStore) {
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 =
-        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
+    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
     let points3 = build_some_positions2d(10);
-    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 10; [points3]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
     let colors4 = build_some_colors(5);
-    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 5; [colors4]);
+    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [colors4]);
 
     store.insert_row(&row1).unwrap();
     store.insert_row(&row2).unwrap();
@@ -763,7 +734,6 @@ fn protected_gc_clear() {
     for config in re_data_store::test_util::all_configs() {
         let mut store = DataStore::new(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-            InstanceKey::name(),
             config.clone(),
         );
         protected_gc_clear_impl(&mut store);
@@ -781,18 +751,17 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
-    let row1 =
-        test_row!(entity_path @ [build_frame_nr(frame1)] => 3; [instances1.clone(), colors1]);
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
+    let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
     let positions2 = build_some_positions2d(3);
-    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => 3; [instances1, positions2]);
+    let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
     let colors2 = build_some_colors(0);
-    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => 0; [colors2]);
+    let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [colors2]);
 
     let points4 = build_some_positions2d(0);
-    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => 0; [points4]);
+    let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [points4]);
 
     // Insert the 3 rows as static
     let mut static_table =

@@ -6,4 +6,9 @@ namespace rerun.blueprint.views;
 table TimeSeriesView (
     "attr.rerun.view_identifier": "TimeSeries"
 ) {
+    /// Configures the vertical axis of the plot.
+    axis_y: rerun.blueprint.archetypes.ScalarAxis (order: 1000);
+
+    /// Configures the legend of the plot.
+    plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
 }

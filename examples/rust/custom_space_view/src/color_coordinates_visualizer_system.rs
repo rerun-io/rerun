@@ -1,9 +1,8 @@
 use re_viewer::external::{
     egui,
-    re_log_types::EntityPath,
-    re_query::query_archetype,
-    re_renderer,
-    re_types::{self, components::InstanceKey, ComponentName, Loggable as _},
+    re_log_types::{EntityPath, Instance},
+    re_query, re_renderer,
+    re_types::{self, components::Color, ComponentName, Loggable as _},
     re_viewer_context::{
         IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
         ViewSystemIdentifier, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
@@ -13,12 +12,12 @@ use re_viewer::external::{
 /// Our space view consist of single part which holds a list of egui colors for each entity path.
 #[derive(Default)]
 pub struct InstanceColorSystem {
-    pub colors: Vec<(EntityPath, Vec<ColorWithInstanceKey>)>,
+    pub colors: Vec<(EntityPath, Vec<ColorWithInstance>)>,
 }
 
-pub struct ColorWithInstanceKey {
+pub struct ColorWithInstance {
     pub color: egui::Color32,
-    pub instance_key: InstanceKey,
+    pub instance: Instance,
 }
 
 struct ColorArchetype;
@@ -32,6 +31,16 @@ impl re_types::Archetype for ColorArchetype {
 
     fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         vec![re_types::components::Color::name()].into()
+    }
+}
+
+impl re_query::ToArchetype<ColorArchetype> for re_query::LatestAtResults {
+    #[inline]
+    fn to_archetype(
+        &self,
+        _resolver: &re_query::PromiseResolver,
+    ) -> re_query::PromiseResult<re_query::Result<ColorArchetype>> {
+        re_query::PromiseResult::Ready(Ok(ColorArchetype))
     }
 }
 
@@ -56,30 +65,36 @@ impl VisualizerSystem for InstanceColorSystem {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.
-            if let Ok(arch_view) = query_archetype::<ColorArchetype>(
+
+            let results = ctx.recording().query_caches().latest_at(
                 ctx.recording_store(),
                 &ctx.current_query(),
                 &data_result.entity_path,
-            ) {
-                if let Ok(colors) =
-                    arch_view.iter_required_component::<re_types::components::Color>()
-                {
-                    self.colors.push((
-                        data_result.entity_path.clone(),
-                        arch_view
-                            .iter_instance_keys()
-                            .zip(colors)
-                            .map(|(instance_key, color)| {
-                                let [r, g, b, _] = color.to_array();
-                                ColorWithInstanceKey {
-                                    color: egui::Color32::from_rgb(r, g, b),
-                                    instance_key,
-                                }
-                            })
-                            .collect(),
-                    ));
-                }
-            }
+                [Color::name()],
+            );
+
+            let Some(colors) = results.get(Color::name()).and_then(|results| {
+                results
+                    .to_dense::<Color>(ctx.recording().resolver())
+                    .flatten()
+                    .ok()
+            }) else {
+                continue;
+            };
+
+            self.colors.push((
+                data_result.entity_path.clone(),
+                (0..)
+                    .zip(colors)
+                    .map(|(instance, color)| {
+                        let [r, g, b, _] = color.to_array();
+                        ColorWithInstance {
+                            color: egui::Color32::from_rgb(r, g, b),
+                            instance: instance.into(),
+                        }
+                    })
+                    .collect(),
+            ));
         }
 
         // We're not using `re_renderer` here, so return an empty vector.

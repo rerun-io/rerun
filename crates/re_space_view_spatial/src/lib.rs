@@ -20,12 +20,11 @@ mod ui_2d;
 mod ui_3d;
 mod visualizers;
 
+use re_types::blueprint::archetypes::Background;
 use re_types::components::{Resolution, TensorData};
+
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
-
-#[doc(hidden)] // Public for benchmarks
-pub use visualizers::{LoadedPoints, Points3DComponentData};
 
 // ---
 
@@ -54,8 +53,7 @@ fn resolution_from_tensor(
 
 /// Utility for querying a pinhole archetype instance.
 ///
-/// TODO(andreas): It should be possible to convert [`re_query::ArchetypeView`] to its corresponding Archetype for situations like this.
-/// TODO(andreas): This is duplicated into `re_viewport`
+// TODO(andreas): This is duplicated into `re_viewport`
 fn query_pinhole(
     entity_db: &re_entity_db::EntityDb,
     query: &re_data_store::LatestAtQuery,
@@ -74,4 +72,46 @@ fn query_pinhole(
                 .latest_at_component(entity_path, query)
                 .map(|c| c.value),
         })
+}
+
+pub(crate) fn configure_background(
+    ctx: &re_viewer_context::ViewerContext<'_>,
+    background: re_types::blueprint::archetypes::Background,
+) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
+    use re_renderer::renderer;
+    use re_types::blueprint::components::BackgroundKind;
+
+    let Background { kind, color } = background;
+
+    match kind {
+        BackgroundKind::GradientDark => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientDark,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::GradientBright => (
+            Some(
+                renderer::GenericSkyboxDrawData::new(
+                    ctx.render_ctx,
+                    renderer::GenericSkyboxType::GradientBright,
+                )
+                .into(),
+            ),
+            re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
+        ),
+
+        BackgroundKind::SolidColor => (
+            None,
+            // If the user has told us to use a solid color, but hasn't picked a specific color,
+            // we need to fall back to something. For dark mode, black makes sense.
+            // TODO(#3058): support light mode
+            color.unwrap_or(re_types::components::Color::BLACK).into(),
+        ),
+    }
 }

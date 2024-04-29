@@ -1,4 +1,4 @@
-use re_entity_db::InstancePath;
+use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use crate::{ContainerId, SpaceViewId};
@@ -78,26 +78,24 @@ impl std::str::FromStr for Item {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let DataPath {
             entity_path,
-            instance_key,
+            instance,
             component_name,
         } = DataPath::from_str(s)?;
 
-        match (instance_key, component_name) {
-            (Some(instance_key), Some(_component_name)) => {
+        match (instance, component_name) {
+            (Some(instance), Some(_component_name)) => {
                 // TODO(emilk): support selecting a specific component of a specific instance.
-                Err(re_log_types::PathParseError::UnexpectedInstanceKey(
-                    instance_key,
-                ))
+                Err(re_log_types::PathParseError::UnexpectedInstance(instance))
             }
-            (Some(instance_key), None) => Ok(Item::InstancePath(InstancePath::instance(
+            (Some(instance), None) => Ok(Item::InstancePath(InstancePath::instance(
                 entity_path,
-                instance_key,
+                instance,
             ))),
             (None, Some(component_name)) => Ok(Item::ComponentPath(ComponentPath {
                 entity_path,
                 component_name,
             })),
-            (None, None) => Ok(Item::InstancePath(InstancePath::entity_splat(entity_path))),
+            (None, None) => Ok(Item::InstancePath(InstancePath::entity_all(entity_path))),
         }
     }
 }
@@ -129,7 +127,7 @@ impl Item {
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
             Item::InstancePath(instance_path) => {
-                if instance_path.instance_key.is_specific() {
+                if instance_path.instance.is_specific() {
                     "Entity instance"
                 } else {
                     "Entity"
@@ -139,7 +137,7 @@ impl Item {
             Item::SpaceView(_) => "Space view",
             Item::Container(_) => "Container",
             Item::DataResult(_, instance_path) => {
-                if instance_path.instance_key.is_specific() {
+                if instance_path.instance.is_specific() {
                     "Data result instance"
                 } else {
                     "Data result entity"
@@ -149,20 +147,20 @@ impl Item {
     }
 }
 
-/// If the given item refers to the first element of an instance with a single element, resolve to a splatted entity path.
+/// If the given item refers to the first element of an instance with a single element, resolve to a unindexed entity path.
 pub fn resolve_mono_instance_path_item(
+    entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
     item: &Item,
 ) -> Item {
     // Resolve to entity path if there's only a single instance.
     match item {
         Item::InstancePath(instance_path) => {
-            Item::InstancePath(resolve_mono_instance_path(query, store, instance_path))
+            Item::InstancePath(resolve_mono_instance_path(entity_db, query, instance_path))
         }
         Item::DataResult(space_view_id, instance_path) => Item::DataResult(
             *space_view_id,
-            resolve_mono_instance_path(query, store, instance_path),
+            resolve_mono_instance_path(entity_db, query, instance_path),
         ),
         Item::AppId(_)
         | Item::DataSource(_)
@@ -173,35 +171,43 @@ pub fn resolve_mono_instance_path_item(
     }
 }
 
-/// If the given path refers to the first element of an instance with a single element, resolve to a splatted entity path.
+/// If the given path refers to the first element of an instance with a single element, resolve to a unindexed entity path.
 pub fn resolve_mono_instance_path(
+    entity_db: &EntityDb,
     query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
     instance: &re_entity_db::InstancePath,
 ) -> re_entity_db::InstancePath {
     re_tracing::profile_function!();
 
-    if instance.instance_key.0 == 0 {
-        let Some(components) = store.all_components(&query.timeline(), &instance.entity_path)
+    if instance.instance.get() == 0 {
+        // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
+        let Some(components) = entity_db
+            .store()
+            .all_components(&query.timeline(), &instance.entity_path)
         else {
-            // No components at all, return splatted entity.
-            return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
+            // No components at all, return unindexed entity.
+            return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };
+
         for component in components {
-            if let Some((_, _row_id, instances)) = re_query::get_component_with_instances(
-                store,
+            let results = entity_db.query_caches().latest_at(
+                entity_db.store(),
                 query,
                 &instance.entity_path,
-                component,
-            ) {
-                if instances.len() > 1 {
-                    return instance.clone();
+                [component],
+            );
+            if let Some(results) = results.get(component) {
+                if let re_query::PromiseResult::Ready(cell) = results.resolved(entity_db.resolver())
+                {
+                    if cell.num_instances() > 1 {
+                        return instance.clone();
+                    }
                 }
             }
         }
 
-        // All instances had only a single element or less, resolve to splatted entity.
-        return re_entity_db::InstancePath::entity_splat(instance.entity_path.clone());
+        // All instances had only a single element or less, resolve to unindexed entity.
+        return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
     }
 
     instance.clone()

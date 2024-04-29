@@ -1,6 +1,6 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
-use re_entity_db::external::re_query2::PromiseResult;
+use re_entity_db::external::re_query::PromiseResult;
 
 use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;
@@ -127,7 +127,7 @@ impl SpaceViewBlueprint {
                 // TODO(#5607): what should happen if the promise is still pending?
                 None
             }
-            PromiseResult::Ready(arch) => arch,
+            PromiseResult::Ready(arch) => arch.map(|(_, arch)| arch),
             PromiseResult::Error(err) => {
                 if cfg!(debug_assertions) {
                     re_log::error!("Failed to load SpaceView blueprint: {err}.");
@@ -236,7 +236,6 @@ impl SpaceViewBlueprint {
                     RowId::new(),
                     store_context.blueprint_timepoint_for_writes(),
                     sub_path,
-                    1,
                     info.components
                         .keys()
                         // It's important that we don't include the SpaceViewBlueprint's components
@@ -482,7 +481,6 @@ mod tests {
             RowId::new(),
             path.clone(),
             TimePoint::default(),
-            1,
             DataCell::from([component]),
         )
         .unwrap();

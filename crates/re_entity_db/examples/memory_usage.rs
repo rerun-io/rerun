@@ -112,7 +112,6 @@ fn log_messages() {
                 RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                1,
                 build_some_positions2d(1),
             )
             .unwrap()
@@ -139,7 +138,6 @@ fn log_messages() {
                 RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                NUM_POINTS as _,
                 build_some_positions2d(NUM_POINTS),
             )
             .unwrap()

@@ -3,25 +3,27 @@
 
 #pragma once
 
+#include "../datatypes/range1d.hpp"
 #include "../result.hpp"
 
 #include <array>
 #include <cstdint>
 #include <memory>
 
-namespace arrow {
-    class Array;
-    class DataType;
-    class FixedSizeListBuilder;
-} // namespace arrow
-
 namespace rerun::components {
     /// **Component**: A 1D range, specifying a lower and upper bound.
     struct Range1D {
-        std::array<double, 2> range;
+        rerun::datatypes::Range1D range;
 
       public:
         Range1D() = default;
+
+        Range1D(rerun::datatypes::Range1D range_) : range(range_) {}
+
+        Range1D& operator=(rerun::datatypes::Range1D range_) {
+            range = range_;
+            return *this;
+        }
 
         Range1D(std::array<double, 2> range_) : range(range_) {}
 
@@ -29,12 +31,16 @@ namespace rerun::components {
             range = range_;
             return *this;
         }
+
+        /// Cast to the underlying Range1D datatype
+        operator rerun::datatypes::Range1D() const {
+            return range;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Range1D) == sizeof(components::Range1D));
 
     /// \private
     template <>
@@ -42,17 +48,15 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.Range1D";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Range1D>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::Range1D` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Range1D* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const components::Range1D* elements,
-            size_t num_elements
-        );
+        ) {
+            return Loggable<rerun::datatypes::Range1D>::to_arrow(&instances->range, num_instances);
+        }
     };
 } // namespace rerun

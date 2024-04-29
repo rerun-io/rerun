@@ -15,7 +15,39 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class Spatial3DView(SpaceView):
-    """**View**: A Spatial 3D view."""
+    """
+    **View**: A Spatial 3D view.
+
+    Example
+    -------
+    ### Use a blueprint to customize a Spatial3DView:
+    ```python
+    import rerun as rr
+    import rerun.blueprint as rrb
+    from numpy.random import default_rng
+
+    rr.init("rerun_example_spatial_3d", spawn=True)
+
+    # Create some random points
+    rng = default_rng(12345)
+    positions = rng.uniform(-5, 5, size=[10, 3])
+    colors = rng.uniform(0, 255, size=[10, 3])
+    radii = rng.uniform(0, 1, size=[10])
+
+    rr.log("points", rr.Points3D(positions, colors=colors, radii=radii))
+
+    # Create a Spatial3D View
+    blueprint = rrb.Blueprint(
+        rrb.Spatial3DView(
+            origin="/points",
+            background=[80, 80, 80],
+        )
+    )
+
+    rr.send_blueprint(blueprint)
+    ```
+
+    """
 
     def __init__(
         self,
@@ -24,9 +56,9 @@ class Spatial3DView(SpaceView):
         contents: SpaceViewContentsLike = "$origin/**",
         name: Utf8Like | None = None,
         visible: blueprint_components.VisibleLike | None = None,
-        background: blueprint_archetypes.Background3D
+        background: blueprint_archetypes.Background
         | datatypes.Rgba32Like
-        | blueprint_components.Background3DKindLike
+        | blueprint_components.BackgroundKindLike
         | None = None,
     ) -> None:
         """
@@ -48,15 +80,15 @@ class Spatial3DView(SpaceView):
 
             Defaults to true if not specified.
         background:
-            Configuration for the background of the 3D space view.
+            Configuration for the background of the space view.
 
         """
 
         properties: dict[str, AsComponents] = {}
         if background is not None:
-            if not isinstance(background, blueprint_archetypes.Background3D):
-                background = blueprint_archetypes.Background3D(background)
-            properties["Background3D"] = background
+            if not isinstance(background, blueprint_archetypes.Background):
+                background = blueprint_archetypes.Background(background)
+            properties["Background"] = background
 
         super().__init__(
             class_identifier="3D", origin=origin, contents=contents, name=name, visible=visible, properties=properties

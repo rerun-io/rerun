@@ -33,7 +33,7 @@ pub use self::recording_stream::{
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 
 pub use re_log_types::{
-    entity_path, ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind,
+    entity_path, ApplicationId, EntityPath, EntityPathPart, Instance, StoreId, StoreKind,
 };
 
 pub use re_memory::MemoryLimit;
@@ -182,7 +182,6 @@ pub fn new_store_info(
             rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
             llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
         },
-        store_kind: re_log_types::StoreKind::Recording,
     }
 }
 

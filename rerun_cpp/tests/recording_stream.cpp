@@ -457,7 +457,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
+                        stream.try_log_data_row(path, 1, &cell, true).code ==
                         rerun::ErrorCode::UnexpectedNullArgument
                     );
                 }
@@ -470,7 +470,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
                 THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
                     CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
+                        stream.try_log_data_row(path, 1, &cell, true).code ==
                         rerun::ErrorCode::InvalidComponentTypeHandle
                     );
                 }

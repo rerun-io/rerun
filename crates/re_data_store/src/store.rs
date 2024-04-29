@@ -5,8 +5,8 @@ use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_log_types::{
-    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstances,
-    NumInstancesVec, RowId, RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, RowId, RowIdVec, StoreId,
+    TimeInt, TimePoint, TimeRange, Timeline,
 };
 use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 
@@ -123,27 +123,6 @@ impl<T: Clone> std::ops::DerefMut for MetadataRegistry<T> {
     }
 }
 
-/// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …) so that they
-/// can be properly deduplicated on insertion.
-#[derive(Debug, Default, Clone)]
-pub struct ClusterCellCache(pub IntMap<u32, DataCell>);
-
-impl std::ops::Deref for ClusterCellCache {
-    type Target = IntMap<u32, DataCell>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ClusterCellCache {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 // ---
 
 /// Incremented on each edit.
@@ -164,20 +143,6 @@ pub struct StoreGeneration {
 pub struct DataStore {
     pub(crate) id: StoreId,
 
-    /// The cluster key specifies a column/component that is guaranteed to always be present for
-    /// every single row of data within the store.
-    ///
-    /// In addition to always being present, the payload of the cluster key..:
-    /// - is always increasingly sorted,
-    /// - is always dense (no validity bitmap),
-    /// - and never contains duplicate entries.
-    ///
-    /// This makes the cluster key a perfect candidate for joining query results together, and
-    /// doing so as efficiently as possible.
-    ///
-    /// See [`Self::insert_row`] for more information.
-    pub(crate) cluster_key: ComponentName,
-
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
@@ -191,10 +156,6 @@ pub struct DataStore {
 
     /// Keeps track of arbitrary per-row metadata.
     pub(crate) metadata_registry: MetadataRegistry<(TimePoint, EntityPathHash)>,
-
-    /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …)
-    /// so that they can be properly deduplicated on insertion.
-    pub(crate) cluster_cell_cache: ClusterCellCache,
 
     /// All temporal [`IndexedTable`]s for all entities on all timelines.
     ///
@@ -227,11 +188,9 @@ impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
             id: self.id.clone(),
-            cluster_key: self.cluster_key,
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
             metadata_registry: self.metadata_registry.clone(),
-            cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
             static_tables: self.static_tables.clone(),
             insert_id: Default::default(),
@@ -243,13 +202,10 @@ impl Clone for DataStore {
 }
 
 impl DataStore {
-    /// See [`Self::cluster_key`] for more information about the cluster key.
-    pub fn new(id: StoreId, cluster_key: ComponentName, config: DataStoreConfig) -> Self {
+    pub fn new(id: StoreId, config: DataStoreConfig) -> Self {
         Self {
             id,
-            cluster_key,
             config,
-            cluster_cell_cache: Default::default(),
             type_registry: Default::default(),
             metadata_registry: Default::default(),
             tables: Default::default(),
@@ -281,11 +237,6 @@ impl DataStore {
             insert_id: self.insert_id,
             gc_id: self.gc_id,
         }
-    }
-
-    /// See [`Self::cluster_key`] for more information about the cluster key.
-    pub fn cluster_key(&self) -> ComponentName {
-        self.cluster_key
     }
 
     /// See [`DataStoreConfig`] for more information about configuration.
@@ -355,10 +306,6 @@ pub struct IndexedTable {
     /// The entity this table is related to, for debugging purposes.
     pub entity_path: EntityPath,
 
-    /// Carrying the cluster key around to help with assertions and sanity checks all over the
-    /// place.
-    pub cluster_key: ComponentName,
-
     /// The actual buckets, where the data is stored.
     ///
     /// The keys of this `BTreeMap` represent the lower bounds of the time-ranges covered by
@@ -388,14 +335,13 @@ pub struct IndexedTable {
 }
 
 impl IndexedTable {
-    pub fn new(cluster_key: ComponentName, timeline: Timeline, entity_path: EntityPath) -> Self {
-        let bucket = IndexedBucket::new(cluster_key, timeline);
+    pub fn new(timeline: Timeline, entity_path: EntityPath) -> Self {
+        let bucket = IndexedBucket::new(timeline);
         let buckets_size_bytes = bucket.total_size_bytes();
         Self {
             timeline,
             entity_path,
             buckets: [(TimeInt::MIN, bucket)].into(),
-            cluster_key,
             all_components: Default::default(),
             buckets_num_rows: 0,
             buckets_size_bytes,
@@ -412,14 +358,13 @@ impl IndexedTable {
             let Self {
                 timeline,
                 entity_path: _,
-                cluster_key,
                 buckets,
                 all_components: _, // keep the history on purpose
                 buckets_num_rows,
                 buckets_size_bytes,
             } = self;
 
-            let bucket = IndexedBucket::new(*cluster_key, *timeline);
+            let bucket = IndexedBucket::new(*timeline);
             let size_bytes = bucket.total_size_bytes();
 
             *buckets = [(TimeInt::MIN, bucket)].into();
@@ -441,10 +386,6 @@ pub struct IndexedBucket {
     /// The timeline the bucket's parent table operates in, for debugging purposes.
     pub timeline: Timeline,
 
-    /// Carrying the cluster key around to help with assertions and sanity checks all over the
-    /// place.
-    pub cluster_key: ComponentName,
-
     // To simplify interior mutability.
     pub inner: RwLock<IndexedBucketInner>,
 }
@@ -453,18 +394,16 @@ impl Clone for IndexedBucket {
     fn clone(&self) -> Self {
         Self {
             timeline: self.timeline,
-            cluster_key: self.cluster_key,
             inner: RwLock::new(self.inner.read().clone()),
         }
     }
 }
 
 impl IndexedBucket {
-    pub(crate) fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
+    pub(crate) fn new(timeline: Timeline) -> Self {
         Self {
             timeline,
             inner: RwLock::new(IndexedBucketInner::default()),
-            cluster_key,
         }
     }
 }
@@ -503,11 +442,6 @@ pub struct IndexedBucketInner {
     /// `RowId::ZERO` for empty buckets.
     pub max_row_id: RowId,
 
-    /// The entire column of `num_instances`.
-    ///
-    /// Keeps track of the expected number of instances in each row.
-    pub col_num_instances: NumInstancesVec,
-
     /// All the rows for all the component columns.
     ///
     /// The cells are optional since not all rows will have data for every single component
@@ -533,7 +467,6 @@ impl Default for IndexedBucketInner {
             col_insert_id: Default::default(),
             col_row_id: Default::default(),
             max_row_id: RowId::ZERO,
-            col_num_instances: Default::default(),
             columns: Default::default(),
             size_bytes: 0, // NOTE: computed below
         };
@@ -550,10 +483,6 @@ pub struct StaticTable {
     /// The entity this table is related to, for debugging purposes.
     pub entity_path: EntityPath,
 
-    /// Carrying the cluster key around to help with assertions and sanity checks all over the
-    /// place.
-    pub cluster_key: ComponentName,
-
     /// Keeps track of one and only one [`StaticCell`] per component.
     ///
     /// Last-write-wins semantics apply, where ordering is defined by `RowId`.
@@ -562,10 +491,9 @@ pub struct StaticTable {
 
 impl StaticTable {
     #[inline]
-    pub fn new(cluster_key: ComponentName, entity_path: EntityPath) -> Self {
+    pub fn new(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            cluster_key,
             cells: Default::default(),
         }
     }
@@ -577,10 +505,5 @@ pub struct StaticCell {
     pub insert_id: Option<u64>,
 
     pub row_id: RowId,
-    pub num_instances: NumInstances,
     pub cell: DataCell,
-
-    // TODO(#5303): We keep track of cluster keys for each static cell for backwards
-    // compatibility with the legacy instance-key model. This will go away next.
-    pub cluster_key: DataCell,
 }

@@ -30,7 +30,6 @@ from .disconnected_space import (
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
 from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
 from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
-from .instance_key import InstanceKey, InstanceKeyArrayLike, InstanceKeyBatch, InstanceKeyLike, InstanceKeyType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
@@ -45,7 +44,7 @@ from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, Pinho
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
-from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
+from .range1d import Range1D, Range1DBatch, Range1DType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
 from .scalar import Scalar, ScalarArrayLike, ScalarBatch, ScalarLike, ScalarType
@@ -122,11 +121,6 @@ __all__ = [
     "HalfSizes3D",
     "HalfSizes3DBatch",
     "HalfSizes3DType",
-    "InstanceKey",
-    "InstanceKeyArrayLike",
-    "InstanceKeyBatch",
-    "InstanceKeyLike",
-    "InstanceKeyType",
     "KeypointId",
     "KeypointIdBatch",
     "KeypointIdType",
@@ -180,9 +174,7 @@ __all__ = [
     "RadiusLike",
     "RadiusType",
     "Range1D",
-    "Range1DArrayLike",
     "Range1DBatch",
-    "Range1DLike",
     "Range1DType",
     "Resolution",
     "ResolutionBatch",

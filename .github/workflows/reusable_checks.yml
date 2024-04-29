@@ -129,6 +129,9 @@ jobs:
       - name: Check Python example thumbnails
         run: pixi run ./scripts/ci/thumbnails.py check
 
+      - name: Check example manifest coverage
+        run: pixi run ./scripts/check_example_manifest_coverage.py
+
   # ---------------------------------------------------------------------------
 
   spell-check:

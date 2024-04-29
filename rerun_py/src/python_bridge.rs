@@ -1062,7 +1062,7 @@ fn send_blueprint(
 
         recording.send_blueprint(blueprint.inner.take(), activation_cmd);
     } else {
-        re_log::warn!("Provided `default_blueprint` has no store info, cannot send it.");
+        re_log::warn!("Provided `blueprint` has no store info, cannot send it.");
     }
 }
 

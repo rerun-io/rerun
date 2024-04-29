@@ -5,8 +5,7 @@ use egui_extras::Column;
 use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::{EntityProperties, InstancePath};
-use re_log_types::{EntityPath, Timeline};
-use re_query::get_component_with_instances;
+use re_log_types::{EntityPath, Instance, Timeline};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
@@ -33,10 +32,7 @@ impl SpaceViewClass for DataframeSpaceView {
 
     fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
         "Show the data contained in entities in a table.\n\n\
-        Each entity is represented by as many rows as it has instances. This includes out-of-bound \
-        instances—instances from secondary components that cannot be joined to the primary \
-        component—that are typically not represented in other space views. Also, splats are merged \
-        into the entity's instance."
+        Each entity is represented by as many rows as it has instances."
             .into()
     }
 
@@ -148,19 +144,13 @@ impl SpaceViewClass for DataframeSpaceView {
         let row_ui = |mut row: egui_extras::TableRow<'_, '_>| {
             let instance = &sorted_instance_paths[row.index()];
 
-            // TODO(#4466): make it explicit if that instance key is "out
-            // of bounds" (aka cannot be joined to a primary component).
-
             row.col(|ui| {
                 instance_path_button(ctx, &latest_at_query, ctx.recording(), ui, None, instance);
             });
 
             for component_name in &sorted_components {
                 row.col(|ui| {
-                    // TODO(#4466): make it explicit if that value results
-                    // from a splat joint.
-
-                    let results = ctx.recording().query_caches2().latest_at(
+                    let results = ctx.recording().query_caches().latest_at(
                         ctx.recording_store(),
                         &latest_at_query,
                         &instance.entity_path,
@@ -180,7 +170,7 @@ impl SpaceViewClass for DataframeSpaceView {
                             ctx.recording(),
                             &instance.entity_path,
                             results,
-                            &instance.instance_key,
+                            &instance.instance,
                         );
                     } else {
                         ui.weak("-");
@@ -228,9 +218,6 @@ impl SpaceViewClass for DataframeSpaceView {
 }
 
 /// Returns a sorted, deduplicated iterator of all instance paths for a given entity.
-///
-/// This includes _any_ instance key in all components logged under this entity path, excluding
-/// splats.
 fn sorted_instance_paths_for<'a>(
     entity_path: &'a EntityPath,
     store: &'a DataStore,
@@ -243,12 +230,14 @@ fn sorted_instance_paths_for<'a>(
         .into_iter()
         .filter(|comp| !comp.is_indicator_component())
         .flat_map(|comp| {
-            get_component_with_instances(store, latest_at_query, entity_path, comp)
-                .map(|(_, _, comp_inst)| comp_inst.instance_keys())
-                .unwrap_or_default()
+            let num_instances = store
+                .latest_at(latest_at_query, entity_path, comp, &[comp])
+                .map_or(0, |(_, _, cells)| {
+                    cells[0].as_ref().map_or(0, |cell| cell.num_instances())
+                });
+            (0..num_instances).map(|i| Instance::from(i as u64))
         })
-        .filter(|instance_key| !instance_key.is_splat())
         .collect::<BTreeSet<_>>() // dedup and sort
         .into_iter()
-        .map(|instance_key| InstancePath::instance(entity_path.clone(), instance_key))
+        .map(|instance| InstancePath::instance(entity_path.clone(), instance))
 }

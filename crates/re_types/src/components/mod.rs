@@ -44,6 +44,7 @@ mod position3d_ext;
 mod radius;
 mod radius_ext;
 mod range1d;
+mod range1d_ext;
 mod resolution;
 mod rotation3d;
 mod rotation3d_ext;

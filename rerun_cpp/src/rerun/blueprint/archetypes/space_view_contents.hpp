@@ -71,11 +71,6 @@ namespace rerun::blueprint::archetypes {
 
         explicit SpaceViewContents(Collection<rerun::blueprint::components::QueryExpression> _query)
             : query(std::move(_query)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return query.size();
-        }
     };
 
 } // namespace rerun::blueprint::archetypes

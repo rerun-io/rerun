@@ -107,7 +107,6 @@ impl StoreBundle {
                     is_official_example: false,
                     started: re_log_types::Time::now(),
                     store_source: re_log_types::StoreSource::Other("viewer".to_owned()),
-                    store_kind: StoreKind::Blueprint,
                 },
             });
 

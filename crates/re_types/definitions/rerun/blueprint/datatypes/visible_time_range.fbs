@@ -34,22 +34,17 @@ struct VisibleTimeRangeBoundary (
   time: rerun.datatypes.TimeInt (order: 200);
 }
 
-/// Visible time range bounds.
+/// Visible time range bounds for a timelines.
+///
+/// This datatype does not specify whether it's a time or sequence based timeline.
 struct VisibleTimeRange (
   "attr.rerun.scope": "blueprint",
   "attr.rust.derive": "PartialEq, Eq"
 ) {
-  // TODO(andreas): Split this up into two separate components.
-
   /// Low time boundary for sequence timeline.
-  from_sequence: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 100);
+  // Can't call it `from` because it's a reserved keyword in Python.
+  start: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 100);
 
   /// High time boundary for sequence timeline.
-  to_sequence: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 200);
-
-  /// Low time boundary for time timeline.
-  from_time: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 300);
-
-  /// High time boundary for time timeline.
-  to_time: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 400);
+  end: rerun.blueprint.datatypes.VisibleTimeRangeBoundary (order: 200);
 }

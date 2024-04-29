@@ -106,7 +106,7 @@ where
 
 impl ItemCollection {
     /// For each item in this selection, if it refers to the first element of an instance with a
-    /// single element, resolve it to a splatted entity path.
+    /// single element, resolve it to a unindexed entity path.
     pub fn into_mono_instance_path_items(self, ctx: &ViewerContext<'_>) -> Self {
         ItemCollection(
             self.0
@@ -114,8 +114,8 @@ impl ItemCollection {
                 .map(|(item, space_ctx)| {
                     (
                         resolve_mono_instance_path_item(
+                            ctx.recording(),
                             &ctx.current_query(),
-                            ctx.recording_store(),
                             &item,
                         ),
                         space_ctx,
@@ -376,7 +376,7 @@ impl ApplicationSelectionState {
                     }
 
                     Item::InstancePath(test_instance_path) => {
-                        !test_instance_path.instance_key.is_specific()
+                        !test_instance_path.instance.is_specific()
                             && test_instance_path.entity_path == component_path.entity_path
                     }
                     Item::DataResult(_, test_instance_path) => {
@@ -396,8 +396,8 @@ impl ApplicationSelectionState {
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance_key.specific_index(),
-                                &test_instance_path.instance_key.specific_index(),
+                                &current_instance_path.instance.specific_index(),
+                                &test_instance_path.instance.specific_index(),
                             )
                     }
                 },
@@ -414,8 +414,8 @@ impl ApplicationSelectionState {
                     | Item::DataResult(_, test_instance_path) => {
                         current_instance_path.entity_path == test_instance_path.entity_path
                             && either_none_or_same(
-                                &current_instance_path.instance_key.specific_index(),
-                                &test_instance_path.instance_key.specific_index(),
+                                &current_instance_path.instance.specific_index(),
+                                &test_instance_path.instance.specific_index(),
                             )
                     }
                 },

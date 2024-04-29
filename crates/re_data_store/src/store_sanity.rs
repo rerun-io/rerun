@@ -1,6 +1,4 @@
-use re_log_types::{
-    DataCellColumn, NumInstances, RowId, TimeInt, TimeRange, VecDequeSortingExt as _,
-};
+use re_log_types::{RowId, TimeInt, TimeRange, VecDequeSortingExt as _};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
@@ -42,12 +40,6 @@ pub enum SanityError {
         expected: u64,
         got: u64,
     },
-
-    #[error("Couldn't find any column for the configured cluster key ('{cluster_key}')")]
-    ClusterColumnMissing { cluster_key: ComponentName },
-
-    #[error("The cluster column must be dense, found holes: {cluster_column:?}")]
-    ClusterColumnSparse { cluster_column: Box<DataCellColumn> },
 
     #[error("Found overlapping indexed buckets: {t1_max_formatted} ({t1_max}) <-> {t2_max_formatted} ({t2_max})")]
     OverlappingBuckets {
@@ -150,11 +142,7 @@ impl IndexedBucket {
     pub fn sanity_check(&self) -> SanityResult<()> {
         re_tracing::profile_function!();
 
-        let Self {
-            timeline: _,
-            cluster_key,
-            inner,
-        } = self;
+        let Self { timeline: _, inner } = self;
 
         {
             let IndexedBucketInner {
@@ -164,7 +152,6 @@ impl IndexedBucket {
                 col_insert_id,
                 col_row_id,
                 max_row_id,
-                col_num_instances,
                 columns,
                 size_bytes: _,
             } = &*inner.read();
@@ -216,7 +203,6 @@ impl IndexedBucket {
                         .then(|| (DataStore::insert_id_component_name(), col_insert_id.len())), //
                     Some((COLUMN_TIMEPOINT.into(), col_time.len())),
                     Some((RowId::name(), col_row_id.len())),
-                    Some((NumInstances::name(), col_num_instances.len())),
                 ]
                 .into_iter()
                 .flatten()
@@ -235,21 +221,6 @@ impl IndexedBucket {
                             got: len,
                         });
                     }
-                }
-            }
-
-            // The cluster column must be fully dense.
-            if self.num_rows() > 0 {
-                let cluster_column =
-                    columns
-                        .get(cluster_key)
-                        .ok_or(SanityError::ClusterColumnMissing {
-                            cluster_key: *cluster_key,
-                        })?;
-                if !cluster_column.iter().all(|cell| cell.is_some()) {
-                    return Err(SanityError::ClusterColumnSparse {
-                        cluster_column: cluster_column.clone().into(),
-                    });
                 }
             }
         }

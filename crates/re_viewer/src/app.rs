@@ -1415,9 +1415,7 @@ impl eframe::App for App {
 
         // NOTE: Store and caching stats are very costly to compute: only do so if the memory panel
         // is opened.
-        let store_stats = self
-            .memory_panel_open
-            .then(|| store_hub.stats(self.memory_panel.primary_cache_detailed_stats_enabled()));
+        let store_stats = self.memory_panel_open.then(|| store_hub.stats());
 
         // do early, before doing too many allocations
         self.memory_panel

@@ -17,7 +17,7 @@ impl ContextMenuAction for RemoveAction {
             Item::Container(container_id) => {
                 ctx.viewport_blueprint.root_container != Some(*container_id)
             }
-            Item::DataResult(_, instance_path) => instance_path.is_splat(),
+            Item::DataResult(_, instance_path) => instance_path.is_all(),
             _ => false,
         }
     }

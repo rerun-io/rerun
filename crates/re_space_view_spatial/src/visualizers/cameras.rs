@@ -1,9 +1,10 @@
 use glam::vec3;
 use re_entity_db::{EntityPath, EntityProperties};
+use re_log_types::Instance;
 use re_renderer::renderer::LineStripFlags;
 use re_types::{
     archetypes::Pinhole,
-    components::{InstanceKey, Transform3D, ViewCoordinates},
+    components::{Transform3D, ViewCoordinates},
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
@@ -55,7 +56,7 @@ impl CamerasVisualizer {
         pinhole_view_coordinates: ViewCoordinates,
         entity_highlight: &SpaceViewOutlineMasks,
     ) {
-        let instance_key = InstanceKey(0);
+        let instance = Instance::from(0);
 
         let frustum_length = *props.pinhole_image_plane_distance;
 
@@ -152,7 +153,7 @@ impl CamerasVisualizer {
 
         let radius = re_renderer::Size::new_points(1.0);
         let instance_path_for_picking =
-            re_entity_db::InstancePathHash::instance(ent_path, instance_key);
+            re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
@@ -172,7 +173,7 @@ impl CamerasVisualizer {
             .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
             .picking_instance_id(instance_layer_id.instance);
 
-        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
+        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
 

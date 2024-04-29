@@ -12,8 +12,8 @@ use re_log_types::{
     EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
     TimeRange, TimeRangeF, Timeline,
 };
-use re_query2::PromiseResult;
-use re_types_core::{components::InstanceKey, Archetype, Loggable};
+use re_query::PromiseResult;
+use re_types_core::{Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
@@ -116,27 +116,20 @@ pub struct EntityDb {
     /// Stores all components for all entities for all timelines.
     data_store: DataStore,
 
-    /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query_cache::Caches,
-
     /// The active promise resolver for this DB.
-    resolver: re_query2::PromiseResolver,
+    resolver: re_query::PromiseResolver,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches2: re_query_cache2::Caches,
+    query_caches: re_query::Caches,
 
     stats: IngestionStatistics,
 }
 
 impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
-        let data_store = re_data_store::DataStore::new(
-            store_id.clone(),
-            InstanceKey::name(),
-            DataStoreConfig::default(),
-        );
-        let query_caches = re_query_cache::Caches::new(&data_store);
-        let query_caches2 = re_query_cache2::Caches::new(&data_store);
+        let data_store =
+            re_data_store::DataStore::new(store_id.clone(), DataStoreConfig::default());
+        let query_caches = re_query::Caches::new(&data_store);
         Self {
             data_source: None,
             set_store_info: None,
@@ -146,9 +139,8 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store,
+            resolver: re_query::PromiseResolver::default(),
             query_caches,
-            resolver: re_query2::PromiseResolver::default(),
-            query_caches2,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -197,17 +189,12 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query_cache::Caches {
+    pub fn query_caches(&self) -> &re_query::Caches {
         &self.query_caches
     }
 
     #[inline]
-    pub fn query_caches2(&self) -> &re_query_cache2::Caches {
-        &self.query_caches2
-    }
-
-    #[inline]
-    pub fn resolver(&self) -> &re_query2::PromiseResolver {
+    pub fn resolver(&self) -> &re_query::PromiseResolver {
         &self.resolver
     }
 
@@ -217,29 +204,40 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> PromiseResult<Option<A>>
+    ) -> PromiseResult<Option<((re_log_types::TimeInt, RowId), A)>>
     where
-        re_query_cache2::CachedLatestAtResults: re_query_cache2::ToArchetype<A>,
+        re_query::LatestAtResults: re_query::ToArchetype<A>,
     {
-        let results = self.query_caches2().latest_at(
+        let results = self.query_caches().latest_at(
             self.store(),
             query,
             entity_path,
             A::all_components().iter().copied(), // no generics!
         );
 
-        use re_query_cache2::ToArchetype as _;
+        use re_query::ToArchetype as _;
         match results.to_archetype(self.resolver()).flatten() {
             PromiseResult::Pending => PromiseResult::Pending,
             PromiseResult::Error(err) => {
-                if let Some(err) = err.downcast_ref::<re_query_cache2::QueryError>() {
-                    if matches!(err, re_query_cache2::QueryError::PrimaryNotFound(_)) {
+                // Primary component has never been logged.
+                if let Some(err) = err.downcast_ref::<re_query::QueryError>() {
+                    if matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
                         return PromiseResult::Ready(None);
                     }
                 }
+
+                // Primary component has been cleared.
+                if let Some(err) = err.downcast_ref::<re_types_core::DeserializationError>() {
+                    if matches!(err, re_types_core::DeserializationError::MissingData { .. }) {
+                        return PromiseResult::Ready(None);
+                    }
+                }
+
                 PromiseResult::Error(err)
             }
-            PromiseResult::Ready(arch) => PromiseResult::Ready(Some(arch)),
+            PromiseResult::Ready(arch) => {
+                PromiseResult::Ready(Some((results.compound_index, arch)))
+            }
         }
     }
 
@@ -248,8 +246,8 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
-        self.query_caches2().latest_at_component::<C>(
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
+        self.query_caches().latest_at_component::<C>(
             self.store(),
             self.resolver(),
             entity_path,
@@ -262,8 +260,8 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<re_query_cache2::CachedLatestAtMonoResult<C>> {
-        self.query_caches2().latest_at_component_quiet::<C>(
+    ) -> Option<re_query::LatestAtMonoResult<C>> {
+        self.query_caches().latest_at_component_quiet::<C>(
             self.store(),
             self.resolver(),
             entity_path,
@@ -276,8 +274,8 @@ impl EntityDb {
         &self,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
-    ) -> Option<(EntityPath, re_query_cache2::CachedLatestAtMonoResult<C>)> {
-        self.query_caches2()
+    ) -> Option<(EntityPath, re_query::LatestAtMonoResult<C>)> {
+        self.query_caches()
             .latest_at_component_at_closest_ancestor::<C>(
                 self.store(),
                 self.resolver(),
@@ -477,7 +475,6 @@ impl EntityDb {
         let original_store_events = &[store_event];
         self.times_per_timeline.on_events(original_store_events);
         self.query_caches.on_events(original_store_events);
-        self.query_caches2.on_events(original_store_events);
         let clear_cascade = self.tree.on_store_additions(original_store_events);
 
         // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
@@ -487,7 +484,6 @@ impl EntityDb {
         let new_store_events = self.on_clear_cascade(clear_cascade);
         self.times_per_timeline.on_events(&new_store_events);
         self.query_caches.on_events(&new_store_events);
-        self.query_caches2.on_events(&new_store_events);
         let clear_cascade = self.tree.on_store_additions(&new_store_events);
 
         // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
@@ -541,7 +537,7 @@ impl EntityDb {
                 // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
                 //    these rows! This flaky ordering will in turn leak through the public
                 //    API (e.g. range queries)!
-                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
+                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, cells) {
                     Ok(row) => {
                         let res = insert_row_with_retries(
                             &mut self.data_store,
@@ -643,15 +639,13 @@ impl EntityDb {
             times_per_timeline,
             tree,
             data_store: _,
-            query_caches,
             resolver: _,
-            query_caches2,
+            query_caches,
             stats: _,
         } = self;
 
         times_per_timeline.on_events(store_events);
         query_caches.on_events(store_events);
-        query_caches2.on_events(store_events);
 
         let store_events = store_events.iter().collect_vec();
         let compacted = CompactedStoreEvents::new(&store_events);

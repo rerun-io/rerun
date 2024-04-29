@@ -3,7 +3,7 @@ use super::validation::validate_component;
 pub use re_entity_db::blueprint::components::EntityPropertiesComponent;
 use re_entity_db::EntityDb;
 pub use re_types::blueprint::components::ActiveTab;
-pub use re_types::blueprint::components::Background3DKind;
+pub use re_types::blueprint::components::BackgroundKind;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::IncludedContent;
@@ -15,7 +15,8 @@ pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
-pub use re_types::blueprint::components::VisibleTimeRange;
+pub use re_types::blueprint::components::VisibleTimeRangeSequence;
+pub use re_types::blueprint::components::VisibleTimeRangeTime;
 pub use re_types_blueprint::blueprint::components::AutoLayout;
 pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
 pub use re_types_blueprint::blueprint::components::ContainerKind;
@@ -31,7 +32,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
     validate_component::<ActiveTab>(blueprint)
         && validate_component::<AutoLayout>(blueprint)
         && validate_component::<AutoSpaceViews>(blueprint)
-        && validate_component::<Background3DKind>(blueprint)
+        && validate_component::<BackgroundKind>(blueprint)
         && validate_component::<ColumnShare>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
@@ -49,5 +50,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)
-        && validate_component::<VisibleTimeRange>(blueprint)
+        && validate_component::<VisibleTimeRangeSequence>(blueprint)
+        && validate_component::<VisibleTimeRangeTime>(blueprint)
 }

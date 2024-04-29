@@ -23,9 +23,9 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 1D range, specifying a lower and upper bound.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
-pub struct Range1D(pub [f64; 2usize]);
+pub struct Range1D(pub crate::datatypes::Range1D);
 
 impl ::re_types_core::SizeBytes for Range1D {
     #[inline]
@@ -35,21 +35,29 @@ impl ::re_types_core::SizeBytes for Range1D {
 
     #[inline]
     fn is_pod() -> bool {
-        <[f64; 2usize]>::is_pod()
+        <crate::datatypes::Range1D>::is_pod()
     }
 }
 
-impl From<[f64; 2usize]> for Range1D {
-    #[inline]
-    fn from(range: [f64; 2usize]) -> Self {
-        Self(range)
+impl<T: Into<crate::datatypes::Range1D>> From<T> for Range1D {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<Range1D> for [f64; 2usize] {
+impl std::borrow::Borrow<crate::datatypes::Range1D> for Range1D {
     #[inline]
-    fn from(value: Range1D) -> Self {
-        value.0
+    fn borrow(&self) -> &crate::datatypes::Range1D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Range1D {
+    type Target = crate::datatypes::Range1D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Range1D {
+        &self.0
     }
 }
 
@@ -102,12 +110,15 @@ impl ::re_types_core::Loggable for Range1D {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
-                    .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.iter().cloned()),
-                        None => itertools::Either::Right(
-                            std::iter::repeat(Default::default()).take(2usize),
-                        ),
+                    .map(|datum| {
+                        datum
+                            .map(|datum| {
+                                let crate::datatypes::Range1D(data0) = datum;
+                                data0
+                            })
+                            .unwrap_or_default()
                     })
+                    .flatten()
                     .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -200,6 +211,9 @@ impl ::re_types_core::Loggable for Range1D {
                     })
                     .transpose()
                 })
+                .map(|res_or_opt| {
+                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Range1D(v)))
+                })
                 .collect::<DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
@@ -254,7 +268,12 @@ impl ::re_types_core::Loggable for Range1D {
                 )
             };
             {
-                slice.iter().copied().map(|v| Self(v)).collect::<Vec<_>>()
+                slice
+                    .iter()
+                    .copied()
+                    .map(|v| crate::datatypes::Range1D(v))
+                    .map(|v| Self(v))
+                    .collect::<Vec<_>>()
             }
         })
     }

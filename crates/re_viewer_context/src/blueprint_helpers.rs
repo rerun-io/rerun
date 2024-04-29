@@ -1,5 +1,5 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
-use re_types::{components::InstanceKey, AsComponents, ComponentBatch, ComponentName};
+use re_types::{AsComponents, ComponentBatch, ComponentName};
 
 use crate::{StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext};
 
@@ -78,26 +78,12 @@ impl ViewerContext<'_> {
             entity_path
         );
 
-        let data_row_result = if num_instances == 1 {
-            let mut splat_cell: DataCell = [InstanceKey::SPLAT].into();
-            splat_cell.compute_size_bytes();
-
-            DataRow::from_cells(
-                RowId::new(),
-                timepoint.clone(),
-                entity_path.clone(),
-                num_instances,
-                [splat_cell, data_cell],
-            )
-        } else {
-            DataRow::from_cells(
-                RowId::new(),
-                timepoint.clone(),
-                entity_path.clone(),
-                num_instances,
-                [data_cell],
-            )
-        };
+        let data_row_result = DataRow::from_cells(
+            RowId::new(),
+            timepoint.clone(),
+            entity_path.clone(),
+            [data_cell],
+        );
 
         match data_row_result {
             Ok(row) => self
@@ -139,13 +125,7 @@ impl ViewerContext<'_> {
         let timepoint = self.store_context.blueprint_timepoint_for_writes();
         let cell = DataCell::from_arrow_empty(component_name, datatype.clone());
 
-        match DataRow::from_cells1(
-            RowId::new(),
-            entity_path.clone(),
-            timepoint.clone(),
-            cell.num_instances(),
-            cell,
-        ) {
+        match DataRow::from_cells1(RowId::new(), entity_path.clone(), timepoint.clone(), cell) {
             Ok(row) => self
                 .command_sender
                 .send_system(SystemCommand::UpdateBlueprint(

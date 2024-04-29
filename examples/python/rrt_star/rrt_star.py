@@ -270,7 +270,7 @@ def main() -> None:
     args = parser.parse_args()
 
     blueprint = rrb.Horizontal(
-        rrb.Spatial2DView(name="Map", origin="/map"),
+        rrb.Spatial2DView(name="Map", origin="/map", background=[32, 0, 16]),
         rrb.TextDocumentView(name="Description", origin="/description"),
         column_shares=[3, 1],
     )

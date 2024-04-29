@@ -430,7 +430,7 @@ fn what_is_selected_ui(
                 &format!("{typ} '{instance_path}'"),
             );
 
-            let is_instance = !instance_path.instance_key.is_splat();
+            let is_instance = !instance_path.instance.is_all();
             let parent = if is_instance {
                 Some(instance_path.entity_path.clone())
             } else {
@@ -466,7 +466,7 @@ fn what_is_selected_ui(
                     ),
                 );
 
-                let is_instance = !instance_path.instance_key.is_splat();
+                let is_instance = !instance_path.instance.is_all();
                 let parent = if is_instance {
                     Some(instance_path.entity_path.clone())
                 } else {
@@ -948,8 +948,8 @@ fn blueprint_ui_for_data_result(
     instance_path: &InstancePath,
 ) {
     if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
-        if instance_path.instance_key.is_splat() {
-            // splat - the whole entity
+        if instance_path.instance.is_all() {
+            // the whole entity
             let space_view_class = *space_view.class_identifier();
             let entity_path = &instance_path.entity_path;
 

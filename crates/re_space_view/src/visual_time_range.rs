@@ -9,9 +9,8 @@
 
 use re_log_types::TimeRange;
 use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
-use re_types::blueprint::{
-    components::VisibleTimeRange,
-    datatypes::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind},
+use re_types::blueprint::datatypes::{
+    VisibleTimeRange, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind,
 };
 use re_viewer_context::ViewerContext;
 
@@ -48,19 +47,12 @@ pub fn visible_history_boundary_to_time_range_boundary(
 
 pub fn visible_time_range_to_time_range(
     range: &VisibleTimeRange,
-    time_type: re_log_types::TimeType,
     cursor: re_log_types::TimeInt,
 ) -> re_log_types::TimeRange {
     let cursor = cursor.as_i64().into();
 
-    let mut min = match time_type {
-        re_log_types::TimeType::Sequence => range.0.from_sequence.start_boundary_time(cursor),
-        re_log_types::TimeType::Time => range.0.from_time.start_boundary_time(cursor),
-    };
-    let mut max = match time_type {
-        re_log_types::TimeType::Sequence => range.0.to_sequence.end_boundary_time(cursor),
-        re_log_types::TimeType::Time => range.0.to_time.end_boundary_time(cursor),
-    };
+    let mut min = range.start.start_boundary_time(cursor);
+    let mut max = range.end.end_boundary_time(cursor);
 
     if min > max {
         std::mem::swap(&mut min, &mut max);
@@ -76,33 +68,31 @@ pub fn query_visual_history(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
 ) -> ExtraQueryHistory {
-    let visual_time_range_component =
-        data_result.lookup_override::<re_types::blueprint::components::VisibleTimeRange>(ctx);
-    if let Some(visual_time_range_component) = visual_time_range_component {
-        ExtraQueryHistory {
-            enabled: true,
-            nanos: VisibleHistory {
-                from: time_range_boundary_to_visible_history_boundary(
-                    &visual_time_range_component.0.from_time,
-                ),
-                to: time_range_boundary_to_visible_history_boundary(
-                    &visual_time_range_component.0.to_time,
-                ),
-            },
-            sequences: VisibleHistory {
-                from: time_range_boundary_to_visible_history_boundary(
-                    &visual_time_range_component.0.from_sequence,
-                ),
-                to: time_range_boundary_to_visible_history_boundary(
-                    &visual_time_range_component.0.to_sequence,
-                ),
-            },
-        }
-    } else {
-        ExtraQueryHistory {
-            enabled: false,
-            nanos: VisibleHistory::default(),
-            sequences: VisibleHistory::default(),
-        }
+    let time_range =
+        data_result.lookup_override::<re_types::blueprint::components::VisibleTimeRangeTime>(ctx);
+    let sequence_range = data_result
+        .lookup_override::<re_types::blueprint::components::VisibleTimeRangeSequence>(ctx);
+
+    let mut history = ExtraQueryHistory {
+        enabled: false,
+        nanos: Default::default(),
+        sequences: Default::default(),
+    };
+
+    if let Some(time_range) = time_range {
+        history.enabled = true;
+        history.nanos = VisibleHistory {
+            from: time_range_boundary_to_visible_history_boundary(&time_range.0.start),
+            to: time_range_boundary_to_visible_history_boundary(&time_range.0.end),
+        };
     }
+    if let Some(sequence_range) = sequence_range {
+        history.enabled = true;
+        history.sequences = VisibleHistory {
+            from: time_range_boundary_to_visible_history_boundary(&sequence_range.0.start),
+            to: time_range_boundary_to_visible_history_boundary(&sequence_range.0.end),
+        };
+    }
+
+    history
 }

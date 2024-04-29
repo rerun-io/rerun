@@ -9,7 +9,7 @@ from typing import Any
 
 from attrs import define, field
 
-from ... import components
+from ... import components, datatypes
 from ..._baseclasses import Archetype
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -24,8 +24,8 @@ class ScalarAxis(Archetype):
     def __init__(
         self: Any,
         *,
-        range: components.Range1DLike | None = None,
-        lock_range_during_zoom: blueprint_components.LockRangeDuringZoomLike | None = None,
+        range: datatypes.Range1DLike | None = None,
+        lock_range_during_zoom: datatypes.BoolLike | None = None,
     ):
         """
         Create a new instance of the ScalarAxis archetype.

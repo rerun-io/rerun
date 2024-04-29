@@ -25,7 +25,7 @@ pub trait Archetype {
     ///
     /// ## Internal representation
     ///
-    /// Indicator components are always-splatted null arrays.
+    /// Indicator components are always unit-length null arrays.
     /// Their names follow the pattern `rerun.components.{ArchetypeName}Indicator`, e.g.
     /// `rerun.components.Points3DIndicator`.
     ///

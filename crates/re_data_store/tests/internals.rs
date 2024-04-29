@@ -3,9 +3,9 @@
 //! They're awful, but sometimes you just have to…
 
 use re_data_store::{DataStore, DataStoreConfig};
-use re_log_types::{build_frame_nr, DataRow, EntityPath, RowId, TimePoint};
-use re_types::{components::InstanceKey, datagen::build_some_instances};
-use re_types_core::Loggable as _;
+use re_log_types::{
+    build_frame_nr, example_components::MyIndex, DataRow, EntityPath, RowId, TimePoint,
+};
 
 // --- Internals ---
 
@@ -24,7 +24,6 @@ fn pathological_bucket_topology() {
 
     let mut store_forward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 10,
             ..Default::default()
@@ -32,7 +31,6 @@ fn pathological_bucket_topology() {
     );
     let mut store_backward = DataStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 10,
             ..Default::default()
@@ -54,8 +52,7 @@ fn pathological_bucket_topology() {
                 RowId::new(),
                 entity_path.clone(),
                 timepoint.clone(),
-                num_instances,
-                build_some_instances(num_instances as _),
+                MyIndex::from_iter(0..num_instances),
             )
             .unwrap();
             store_forward.insert_row(&row).unwrap();
@@ -64,8 +61,7 @@ fn pathological_bucket_topology() {
                 RowId::new(),
                 entity_path.clone(),
                 timepoint.clone(),
-                num_instances,
-                build_some_instances(num_instances as _),
+                MyIndex::from_iter(0..num_instances),
             )
             .unwrap();
             store_backward.insert_row(&row).unwrap();
@@ -87,8 +83,7 @@ fn pathological_bucket_topology() {
                     RowId::new(),
                     entity_path.clone(),
                     timepoint,
-                    num_instances,
-                    build_some_instances(num_instances as _),
+                    MyIndex::from_iter(0..num_instances),
                 )
                 .unwrap()
             })

@@ -77,11 +77,6 @@ namespace rerun::archetypes {
 
         explicit AnnotationContext(rerun::components::AnnotationContext _context)
             : context(std::move(_context)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes

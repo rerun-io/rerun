@@ -24,51 +24,39 @@ __all__ = [
 
 @define(init=False)
 class VisibleTimeRange:
-    """**Datatype**: Visible time range bounds."""
+    """
+    **Datatype**: Visible time range bounds for a timelines.
+
+    This datatype does not specify whether it's a time or sequence based timeline.
+    """
 
     def __init__(
         self: Any,
-        from_sequence: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
-        to_sequence: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
-        from_time: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
-        to_time: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
+        start: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
+        end: blueprint_datatypes.VisibleTimeRangeBoundaryLike,
     ):
         """
         Create a new instance of the VisibleTimeRange datatype.
 
         Parameters
         ----------
-        from_sequence:
+        start:
             Low time boundary for sequence timeline.
-        to_sequence:
+        end:
             High time boundary for sequence timeline.
-        from_time:
-            Low time boundary for time timeline.
-        to_time:
-            High time boundary for time timeline.
 
         """
 
         # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
-        self.__attrs_init__(from_sequence=from_sequence, to_sequence=to_sequence, from_time=from_time, to_time=to_time)
+        self.__attrs_init__(start=start, end=end)
 
-    from_sequence: blueprint_datatypes.VisibleTimeRangeBoundary = field()
+    start: blueprint_datatypes.VisibleTimeRangeBoundary = field()
     # Low time boundary for sequence timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    to_sequence: blueprint_datatypes.VisibleTimeRangeBoundary = field()
+    end: blueprint_datatypes.VisibleTimeRangeBoundary = field()
     # High time boundary for sequence timeline.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    from_time: blueprint_datatypes.VisibleTimeRangeBoundary = field()
-    # Low time boundary for time timeline.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    to_time: blueprint_datatypes.VisibleTimeRangeBoundary = field()
-    # High time boundary for time timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -88,7 +76,7 @@ class VisibleTimeRangeType(BaseExtensionType):
             self,
             pa.struct([
                 pa.field(
-                    "from_sequence",
+                    "start",
                     pa.struct([
                         pa.field(
                             "kind",
@@ -107,45 +95,7 @@ class VisibleTimeRangeType(BaseExtensionType):
                     metadata={},
                 ),
                 pa.field(
-                    "to_sequence",
-                    pa.struct([
-                        pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "from_time",
-                    pa.struct([
-                        pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "to_time",
+                    "end",
                     pa.struct([
                         pa.field(
                             "kind",

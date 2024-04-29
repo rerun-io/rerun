@@ -39,7 +39,8 @@ impl CodeGenerator for DocsCodeGenerator {
 
         let mut files_to_write = GeneratedFiles::default();
 
-        let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
+        let (mut archetypes, mut components, mut datatypes, mut views) =
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
         for object in object_map.values() {
             // skip test-only archetypes
@@ -48,7 +49,7 @@ impl CodeGenerator for DocsCodeGenerator {
             }
 
             // Skip blueprint stuff, too early
-            if object.scope() == Some("blueprint".to_owned()) {
+            if object.scope() == Some("blueprint".to_owned()) && object.kind != ObjectKind::View {
                 continue;
             }
 
@@ -56,10 +57,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
-                ObjectKind::View => {
-                    // TODO(#6082): Implement view docs generation.
-                    continue;
-                }
+                ObjectKind::View => views.push(object),
             }
 
             let page = object_page(reporter, object, object_map);
@@ -95,6 +93,12 @@ on [Entities and Components](../../concepts/entity-component.md).",
                 3,
                 r"Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.",
                 &datatypes,
+            ),
+            (
+                ObjectKind::View,
+                4,
+                r"Views are the panels shown in the viewer's viewport and the primary means of inspecting & visualizing previously logged data. This page lists all built-in views.",
+                &views,
             ),
         ] {
             let page = index_page(kind, order, prelude, objects);
@@ -216,7 +220,8 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         }
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
         ObjectKind::View => {
-            // TODO(#6082): Implement view docs generation.
+            // TODO(#6082): Views should include the archetypes they know how to show
+            write_view_properties(reporter, &mut page, object, object_map);
         }
     }
 
@@ -226,48 +231,65 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         } else {
             ""
         };
+
         putln!(page);
         putln!(page, "## Links");
 
-        let cpp_link = if object.is_enum() {
-            // Can't link to enums directly 🤷
-            format!(
-                "https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1{}.html",
-                object.kind.plural_snake_case()
-            )
-        } else {
-            // `_1` is doxygen's replacement for ':'
-            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
-            format!(
-                "https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html",
+        if object.kind == ObjectKind::View {
+            // More complicated link due to scope
+            putln!(
+                page,
+                " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}{}#rerun.{}.{}.{})",
+                object.name,
+                object.scope().unwrap_or_default(),
+                object.kind.plural_snake_case(),
+                speculative_marker,
+                object.scope().unwrap_or_default(),
                 object.kind.plural_snake_case(),
                 object.name
-            )
-        };
+            );
+        } else {
+            let cpp_link = if object.is_enum() {
+                // Can't link to enums directly 🤷
+                format!(
+                    "https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1{}.html",
+                    object.kind.plural_snake_case()
+                )
+            } else {
+                // `_1` is doxygen's replacement for ':'
+                // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
+                format!(
+                    "https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html",
+                    object.kind.plural_snake_case(),
+                    object.name
+                )
+            };
 
-        // In alphabetical order by language.
-        putln!(
-            page,
-            " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
-            object.name,
-        );
-        putln!(
-            page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
-            object.name,
-            object.kind.plural_snake_case(),
-            speculative_marker,
-            object.kind.plural_snake_case(),
-            object.name
-        );
-        putln!(
-            page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
-            object.name,
-            object.kind.plural_snake_case(),
-            if object.is_struct() { "struct" } else { "enum" },
-            object.name,
-        );
+            // In alphabetical order by language.
+            putln!(
+                page,
+                " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
+                object.name,
+            );
+            putln!(
+                page,
+                " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
+                object.name,
+                object.kind.plural_snake_case(),
+                speculative_marker,
+                object.kind.plural_snake_case(),
+                object.name
+            );
+
+            putln!(
+                page,
+                " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+                object.name,
+                object.kind.plural_snake_case(),
+                if object.is_struct() { "struct" } else { "enum" },
+                object.name,
+            );
+        }
     }
 
     putln!(page);
@@ -473,6 +495,74 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
     if !optional.is_empty() {
         putln!(o);
         putln!(o, "**Optional**: {}", optional.join(", "));
+    }
+}
+
+fn write_view_properties(
+    reporter: &Reporter,
+    o: &mut String,
+    object: &Object,
+    object_map: &ObjectMap,
+) {
+    if object.fields.is_empty() {
+        return;
+    }
+
+    putln!(o, "## Properties");
+    putln!(o);
+
+    // Each field in a view should be a property
+    for field in &object.fields {
+        let Some(fqname) = field.typ.fqname() else {
+            continue;
+        };
+        let Some(ty) = object_map.get(fqname) else {
+            continue;
+        };
+        write_view_property(reporter, o, ty, object_map);
+    }
+}
+
+fn write_view_property(
+    reporter: &Reporter,
+    o: &mut String,
+    object: &Object,
+    _object_map: &ObjectMap,
+) {
+    putln!(o, "### `{}`", object.name);
+
+    let top_level_docs = object.docs.untagged();
+
+    if top_level_docs.is_empty() {
+        reporter.error(
+            &object.virtpath,
+            &object.fqname,
+            "Undocumented view property",
+        );
+    }
+
+    for line in top_level_docs {
+        putln!(o, "{line}");
+    }
+
+    if object.fields.is_empty() {
+        return;
+    }
+
+    let mut fields = Vec::new();
+    for field in &object.fields {
+        fields.push(format!(
+            "* {}: {}",
+            field.name,
+            field.docs.first_line().unwrap_or_default()
+        ));
+    }
+
+    if !fields.is_empty() {
+        putln!(o);
+        for field in fields {
+            putln!(o, "{field}");
+        }
     }
 }
 

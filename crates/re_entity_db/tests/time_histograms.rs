@@ -4,16 +4,10 @@ use re_data_store::GarbageCollectionOptions;
 use re_entity_db::EntityDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
-    example_components::{MyColor, MyPoint},
+    example_components::{MyColor, MyIndex, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{
-    components::{ClearIsRecursive, InstanceKey},
-    ComponentName, Loggable,
-};
-
-// TODO(cmc): This should also test for the timeless counts but right now they're a bit all over
-// the place, so need to land new reworked EntityTree etc first.
+use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable};
 
 // ---
 
@@ -31,7 +25,7 @@ fn time_histograms() -> anyhow::Result<()> {
     let entity_grandchild: EntityPath = "parent/child/grandchild".into();
     let entity_unrelated: EntityPath = "very/unrelated".into();
 
-    // Single top-level entity, explicitly logged `InstanceKey`s.
+    // Single top-level entity, explicitly logged `MyIndex`s.
     {
         let row = DataRow::from_component_batches(
             RowId::new(),
@@ -41,7 +35,7 @@ fn time_histograms() -> anyhow::Result<()> {
                 (timeline_yet_another, 1), //
             ]),
             entity_parent.clone(),
-            [&InstanceKey::from_iter(0..10) as _],
+            [&MyIndex::from_iter(0..10) as _],
         )?;
 
         db.add_data_row(row)?;
@@ -72,7 +66,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -81,7 +75,7 @@ fn time_histograms() -> anyhow::Result<()> {
         );
     }
 
-    // Grand-child, multiple components, auto-generated `InstanceKey`s.
+    // Grand-child, multiple components, auto-generated `MyIndex`s.
     {
         let row = {
             let num_instances = 3;
@@ -128,7 +122,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -162,7 +156,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -212,7 +206,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -245,7 +239,7 @@ fn time_histograms() -> anyhow::Result<()> {
                 TimePoint::default(),
                 "entity".into(),
                 [
-                    &InstanceKey::from_iter(0..num_instances as _) as _,
+                    &MyIndex::from_iter(0..num_instances as _) as _,
                     &colors as _,
                 ],
             )?
@@ -299,7 +293,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(
@@ -339,7 +333,7 @@ fn time_histograms() -> anyhow::Result<()> {
                 ]),
                 entity_unrelated.clone(),
                 [
-                    &InstanceKey::from_iter(0..num_instances) as _,
+                    &MyIndex::from_iter(0..num_instances) as _,
                     &points as _,
                     &colors as _,
                 ],
@@ -382,7 +376,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(42, 42), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
@@ -415,7 +409,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_unrelated,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[(RangeI64::new(1234, 1234), 1)])),
                 (&timeline_other, Some(&[(RangeI64::new(1235, 1235), 1)])),
@@ -487,8 +481,8 @@ fn time_histograms() -> anyhow::Result<()> {
                     &timeline_frame,
                     Some(&[
                         (RangeI64::new(42, 42), 5),
-                        // We're clearing the parent's `InstanceKey` as well as the grandchild's
-                        // `MyPoint`, `MyColor` and `InstanceKey`. That's four.
+                        // We're clearing the parent's `MyIndex` as well as the grandchild's
+                        // `MyPoint`, `MyColor` and `MyIndex`. That's four.
                         (RangeI64::new(1000, 1000), 4),
                         (RangeI64::new(1234, 1234), 3),
                     ]),
@@ -508,7 +502,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (
                     &timeline_frame,
@@ -523,7 +517,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, None),
                 (&timeline_other, None),
@@ -533,7 +527,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         // NOTE: even though the component was logged twice at the same timestamp, the clear will
@@ -593,7 +587,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_parent,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, Some(&[])),
                 (&timeline_other, Some(&[])),
@@ -605,7 +599,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [
                 (&timeline_frame, None),
                 (&timeline_other, None),
@@ -615,7 +609,7 @@ fn time_histograms() -> anyhow::Result<()> {
         assert_histogram_for_component(
             &db,
             &entity_grandchild,
-            InstanceKey::name(),
+            MyIndex::name(),
             [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
         );
         assert_histogram_for_component(

@@ -126,11 +126,6 @@ namespace rerun::archetypes {
               fuzz1020(std::move(_fuzz1020)),
               fuzz1021(std::move(_fuzz1021)),
               fuzz1022(std::move(_fuzz1022)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes

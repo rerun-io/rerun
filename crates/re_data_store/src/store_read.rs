@@ -87,6 +87,24 @@ impl RangeQuery {
     pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
         Self { timeline, range }
     }
+
+    #[inline]
+    pub const fn everything(timeline: Timeline) -> Self {
+        Self {
+            timeline,
+            range: TimeRange::EVERYTHING,
+        }
+    }
+
+    #[inline]
+    pub fn timeline(&self) -> Timeline {
+        self.timeline
+    }
+
+    #[inline]
+    pub fn range(&self) -> TimeRange {
+        self.range
+    }
 }
 
 // --- Data store ---
@@ -197,10 +215,6 @@ impl DataStore {
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let entity_path_hash = entity_path.hash();
-        let cluster_comp_pos = component_names
-            .iter()
-            .find_position(|component_name| **component_name == self.cluster_key)
-            .map(|(pos, _)| pos);
         let Some(primary_comp_pos) = component_names
             .iter()
             .find_position(|component_name| **component_name == primary)
@@ -215,12 +229,9 @@ impl DataStore {
         // querying for their temporal data.
         let mut component_names_opt = [(); N].map(|_| None);
         for (i, component_name) in component_names.iter().copied().enumerate() {
-            // TODO(#5303): We let the cluster key slip through for backwards compatibility with
-            // the legacy instance-key model. This will go away next.
-            let has_static_data = component_name != self.cluster_key
-                && static_table.map_or(false, |static_table| {
-                    static_table.cells.contains_key(&component_name)
-                });
+            let has_static_data = static_table.map_or(false, |static_table| {
+                static_table.cells.contains_key(&component_name)
+            });
             component_names_opt[i] = (!has_static_data).then_some(component_name);
         }
 
@@ -244,12 +255,6 @@ impl DataStore {
                     if *component_name == primary {
                         data_time = TimeInt::STATIC;
                         max_row_id = RowId::max(max_row_id, static_cell.row_id);
-
-                        // TODO(#5303): We let the cluster key slip through for backwards compatibility with
-                        // the legacy instance-key model. This will go away next.
-                        if let Some(cluster_comp_pos) = cluster_comp_pos {
-                            results[cluster_comp_pos] = Some(static_cell.cluster_key.clone());
-                        }
                     }
                 }
             }
@@ -288,10 +293,6 @@ impl DataStore {
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let entity_path_hash = entity_path.hash();
-        let cluster_comp_pos = component_names
-            .iter()
-            .find_position(|component_name| **component_name == self.cluster_key)
-            .map(|(pos, _)| pos);
 
         let static_table = self.static_tables.get(&entity_path_hash);
 
@@ -299,12 +300,9 @@ impl DataStore {
         // querying for their temporal data.
         let mut component_names_opt = [(); N].map(|_| None);
         for (i, component_name) in component_names.iter().copied().enumerate() {
-            // TODO(#5303): We let the cluster key slip through for backwards compatibility with
-            // the legacy instance-key model. This will go away next.
-            let has_static_data = component_name != self.cluster_key
-                && static_table.map_or(false, |static_table| {
-                    static_table.cells.contains_key(&component_name)
-                });
+            let has_static_data = static_table.map_or(false, |static_table| {
+                static_table.cells.contains_key(&component_name)
+            });
             component_names_opt[i] = (!has_static_data).then_some(component_name);
         }
 
@@ -322,12 +320,6 @@ impl DataStore {
                     // the returned index.
                     if static_cell.row_id > max_row_id {
                         max_row_id = RowId::max(max_row_id, static_cell.row_id);
-
-                        // TODO(#5303): We let the cluster key slip through for backwards compatibility with
-                        // the legacy instance-key model. This will go away next.
-                        if let Some(cluster_comp_pos) = cluster_comp_pos {
-                            results[cluster_comp_pos] = Some(static_cell.cluster_key.clone());
-                        }
                     }
                 }
             }
@@ -584,7 +576,6 @@ impl IndexedBucket {
             col_insert_id: _,
             col_row_id,
             max_row_id: _,
-            col_num_instances: _,
             columns,
             size_bytes: _,
         } = &*self.inner.read();
@@ -708,7 +699,6 @@ impl IndexedBucket {
             col_insert_id: _,
             col_row_id,
             max_row_id: _,
-            col_num_instances: _,
             columns,
             size_bytes: _,
         } = &*self.inner.read();
@@ -827,7 +817,6 @@ impl IndexedBucketInner {
             col_insert_id,
             col_row_id,
             max_row_id: _,
-            col_num_instances,
             columns,
             size_bytes: _,
         } = self;
@@ -880,7 +869,6 @@ impl IndexedBucketInner {
                 reshuffle_control_column(col_insert_id, &swaps);
             }
             reshuffle_control_column(col_row_id, &swaps);
-            reshuffle_control_column(col_num_instances, &swaps);
         }
 
         {

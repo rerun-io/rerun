@@ -242,11 +242,6 @@ namespace rerun::archetypes {
 
         explicit Transform3D(rerun::components::Transform3D _transform)
             : transform(std::move(_transform)) {}
-
-        /// Returns the number of primary instances of this archetype.
-        size_t num_instances() const {
-            return 1;
-        }
     };
 
 } // namespace rerun::archetypes
