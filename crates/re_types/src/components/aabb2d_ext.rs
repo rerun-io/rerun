@@ -4,8 +4,8 @@ impl From<AABB2D> for emath::Rect {
     #[inline]
     fn from(v: AABB2D) -> Self {
         Self {
-            min: emath::pos2(v.min[0] as f32, v.min[1] as f32),
-            max: emath::pos2(v.max[0] as f32, v.max[1] as f32),
+            min: emath::pos2(v.min[0], v.min[1]),
+            max: emath::pos2(v.max[0], v.max[1]),
         }
     }
 }
