@@ -17,12 +17,14 @@ from .archetypes import (
     PlotLegend,
     ScalarAxis,
     VisualBounds,
+    VisibleTimeRange,
 )
 from .components import (
     BackgroundKind,
     Corner2D,
     LockRangeDuringZoom,
 )
+from .datatypes import VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (
     BarChartView,
