@@ -82,5 +82,5 @@ class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of TensorDimension not implemented: We lack codegen for arrow-serialization of structs"
+            "Arrow serialization of TensorDimension not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py

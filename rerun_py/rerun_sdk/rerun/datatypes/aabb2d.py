@@ -12,7 +12,6 @@ from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .aabb2d_ext import AABB2DExt
 
 __all__ = ["AABB2D", "AABB2DArrayLike", "AABB2DBatch", "AABB2DLike", "AABB2DType"]
 
@@ -32,7 +31,7 @@ def _aabb2d__max__special_field_converter_override(x: datatypes.Vec2DLike) -> da
 
 
 @define(init=False)
-class AABB2D(AABB2DExt):
+class AABB2D:
     """**Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners."""
 
     def __init__(self: Any, min: datatypes.Vec2DLike, max: datatypes.Vec2DLike):
@@ -98,4 +97,15 @@ class AABB2DBatch(BaseBatch[AABB2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AABB2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return AABB2DExt.native_to_pa_array_override(data, data_type)
+        from rerun.datatypes import Vec2DBatch
+
+        if isinstance(data, AABB2D):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                Vec2DBatch([x.min for x in data]).as_arrow_array().storage,
+                Vec2DBatch([x.max for x in data]).as_arrow_array().storage,
+            ],
+            fields=list(data_type),
+        )

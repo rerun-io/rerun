@@ -337,6 +337,14 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer5ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer5 not implemented: We lack codegen for arrow-serialization of structs"
-        )  # You need to implement native_to_pa_array_override in affix_fuzzer5_ext.py
+        from rerun.testing.datatypes import AffixFuzzer4Batch
+
+        if isinstance(data, AffixFuzzer5):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                AffixFuzzer4Batch([x.single_optional_union for x in data]).as_arrow_array().storage,
+            ],
+            fields=list(data_type),
+        )
