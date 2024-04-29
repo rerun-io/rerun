@@ -115,6 +115,7 @@ fn update_ui_from_scene_impl(
     RectTransform::from_to(letterboxed_bounds, response.rect)
 }
 
+/// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
     space_view_id: SpaceViewId,
@@ -129,9 +130,15 @@ fn ui_from_scene(
         ctx,
         space_view_id,
         |aabb: &mut Option<re_types::components::AABB2D>| {
+            // Convert to a Rect
             let mut rect: Rect = aabb.map_or(default_scene_rect, Rect::from);
+
+            // Apply pan and zoom based on input
             let ui_from_scene = update_ui_from_scene_impl(&mut rect, response, default_scene_rect);
+
+            // Store back the results
             *aabb = Some(rect.into());
+
             ui_from_scene
         },
     )

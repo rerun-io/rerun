@@ -99,11 +99,8 @@ pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component +
     let ret = edit_component(&mut edited);
 
     if edited != original {
-        if let Some(edited) = edited {
-            ctx.save_blueprint_component(&path, &edited);
-        } else {
-            ctx.save_empty_blueprint_component::<C>(&path);
-        }
+        // Will store an empty list of components if `edited` is `None`.
+        ctx.save_blueprint_component(&path, &edited);
     }
 
     ret
