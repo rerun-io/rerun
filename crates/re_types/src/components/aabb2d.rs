@@ -123,12 +123,12 @@ impl ::re_types_core::Loggable for AABB2D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::AABB2D::from_arrow_opt(arrow_data)
-            .with_context("rerun.components.AABB2D#vector")?
+            .with_context("rerun.components.AABB2D#aabb")?
             .into_iter()
             .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
             .collect::<DeserializationResult<Vec<Option<_>>>>()
-            .with_context("rerun.components.AABB2D#vector")
+            .with_context("rerun.components.AABB2D#aabb")
             .with_context("rerun.components.AABB2D")?)
     }
 }

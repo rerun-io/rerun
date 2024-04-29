@@ -12,21 +12,21 @@
 namespace rerun::components {
     /// **Component**: An Axis-Aligned Bounding Box in 2D space.
     struct AABB2D {
-        rerun::datatypes::AABB2D vector;
+        rerun::datatypes::AABB2D aabb;
 
       public:
         AABB2D() = default;
 
-        AABB2D(rerun::datatypes::AABB2D vector_) : vector(vector_) {}
+        AABB2D(rerun::datatypes::AABB2D aabb_) : aabb(aabb_) {}
 
-        AABB2D& operator=(rerun::datatypes::AABB2D vector_) {
-            vector = vector_;
+        AABB2D& operator=(rerun::datatypes::AABB2D aabb_) {
+            aabb = aabb_;
             return *this;
         }
 
         /// Cast to the underlying AABB2D datatype
         operator rerun::datatypes::AABB2D() const {
-            return vector;
+            return aabb;
         }
     };
 } // namespace rerun::components
@@ -48,7 +48,7 @@ namespace rerun {
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AABB2D* instances, size_t num_instances
         ) {
-            return Loggable<rerun::datatypes::AABB2D>::to_arrow(&instances->vector, num_instances);
+            return Loggable<rerun::datatypes::AABB2D>::to_arrow(&instances->aabb, num_instances);
         }
     };
 } // namespace rerun

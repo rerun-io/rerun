@@ -14,5 +14,5 @@ struct AABB2D (
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
-  vector: rerun.datatypes.AABB2D (order: 100);
+  aabb: rerun.datatypes.AABB2D (order: 100);
 }
