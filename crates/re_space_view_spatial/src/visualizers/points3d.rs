@@ -7,6 +7,7 @@ use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, Text},
+    Loggable,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ResolvedAnnotationInfos,
@@ -219,6 +220,8 @@ impl VisualizerSystem for Points3DVisualizer {
 
                 use crate::visualizers::RangeResultsExt as _;
 
+                // ctx.recording().query_caches().clear(); // TODO
+
                 let resolver = ctx.recording().resolver();
 
                 let positions = match results.get_dense::<Position3D>(resolver) {
@@ -230,8 +233,32 @@ impl VisualizerSystem for Points3DVisualizer {
                     .range_indexed()
                     .map(|(_, positions)| positions.len())
                     .sum::<usize>();
+                // if num_positions == 0 {
+                //     return Ok(());
+                // }
+
                 if num_positions == 0 {
-                    return Ok(());
+                    eprintln!("ALERT!!!");
+                    // eprintln!("ALERT!!!\n{:?}", ctx.recording().query_caches());
+                    // unreachable!();
+                    // match results {
+                    //     re_query::Results::LatestAt(query, _) => {
+                    //         let res = ctx.recording_store().latest_at(
+                    //             query,
+                    //             entity_path,
+                    //             Position3D::name(),
+                    //             &[Position3D::name()],
+                    //         );
+                    //         dbg!(res);
+                    //     }
+                    //     re_query::Results::Range(query, _) => {
+                    //         let res = ctx
+                    //             .recording_store()
+                    //             .range(query, entity_path, [Position3D::name()])
+                    //             .collect_vec();
+                    //         dbg!(res);
+                    //     }
+                    // }
                 }
 
                 point_builder.reserve(num_positions)?;

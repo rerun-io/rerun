@@ -57,7 +57,7 @@ pub fn query_archetype_with_history<A: Archetype>(
     let store = entity_db.store();
     let caches = entity_db.query_caches();
 
-    if !history.enabled || time_range.min() == time_range.max() {
+    if !history.enabled {
         let latest_query = LatestAtQuery::new(*timeline, time_range.min());
         let results = caches.latest_at(
             store,

@@ -235,11 +235,14 @@ impl VisualizerSystem for Points2DVisualizer {
                     _ => return Ok(()),
                 };
 
+                let xx = positions.range_indexed().count();
+                dbg!(xx);
+
                 let num_positions = positions
                     .range_indexed()
                     .map(|(_, positions)| positions.len())
                     .sum::<usize>();
-                if num_positions == 0 {
+                if dbg!(num_positions) == 0 {
                     return Ok(());
                 }
 

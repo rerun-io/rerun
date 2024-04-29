@@ -5,6 +5,7 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
+use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -104,7 +105,6 @@ thread_local! {
 }
 
 /// Lazily cached results for a particular component when using a cached range query.
-#[derive(Debug)]
 pub struct RangeComponentResults {
     /// The [`TimeRange`] of the query that was used in order to retrieve these results in the
     /// first place.
@@ -113,6 +113,19 @@ pub struct RangeComponentResults {
     pub(crate) time_range: TimeRange,
 
     pub(crate) inner: Arc<RwLock<RangeComponentResultsInner>>,
+}
+
+impl std::fmt::Debug for RangeComponentResults {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RangeComponentResults")
+            .field("time_range", &self.time_range)
+            .field(
+                "inner",
+                &self.inner.read_recursive().debug_repr(self.time_range),
+            )
+            .finish()
+    }
 }
 
 impl RangeComponentResults {
@@ -593,6 +606,10 @@ impl RangeComponentResults {
 
 /// Lazily cached results for a particular component when using a cached range query.
 pub struct RangeComponentResultsInner {
+    // TODO: explain (also -> non overlapping) (no need for rowids because we invalidate one range
+    // at a time anyhow).
+    pub(crate) time_ranges: VecDeque<TimeRange>,
+
     pub(crate) indices: VecDeque<(TimeInt, RowId)>,
 
     /// All the pending promises that must resolved in order to fill the missing data on the
@@ -624,6 +641,7 @@ impl SizeBytes for RangeComponentResultsInner {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
+            time_ranges,
             indices,
             promises_front,
             promises_back,
@@ -632,7 +650,8 @@ impl SizeBytes for RangeComponentResultsInner {
             cached_dense,
         } = self;
 
-        indices.total_size_bytes()
+        time_ranges.total_size_bytes()
+            + indices.total_size_bytes()
             + promises_front.total_size_bytes()
             + promises_back.total_size_bytes()
             + cached_dense
@@ -641,31 +660,52 @@ impl SizeBytes for RangeComponentResultsInner {
     }
 }
 
-impl std::fmt::Debug for RangeComponentResultsInner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl RangeComponentResultsInner {
+    // TODO: probably don't need that shit anymore, just display the different time ranges?
+    // TODO: explain wtf
+    fn debug_repr(&self, time_range: TimeRange) -> String {
         let Self {
+            time_ranges,
             indices,
-            promises_front: _,
-            promises_back: _,
+            promises_front,
+            promises_back,
             front_status: _,
             back_status: _,
             cached_dense: _, // we can't, we don't know the type
         } = self;
 
         if indices.is_empty() {
-            f.write_str("<empty>")
+            "<empty>".to_owned()
         } else {
-            // Unwrap: checked above.
-            let index_start = indices.front().unwrap();
-            let index_end = indices.back().unwrap();
-            f.write_fmt(format_args!(
-                "[{:?}#{} .. {:?}#{}] {}",
+            let entry_range = self.entry_range(time_range);
+            if entry_range.is_empty() {
+                return format!(
+                    "<empty> ({:?}, {:?}) [{entry_range:?}] ||| ({}, {}) ||| ({:?}, {:?}) ||| {:?}",
+                    indices.front(),
+                    indices.back(),
+                    indices.partition_point(|(data_time, _)| { *data_time < time_range.min() }),
+                    indices.partition_point(|(data_time, _)| { *data_time <= time_range.max() }),
+                    indices.binary_search_by_key(&time_range.min(), |(t, _)| *t),
+                    indices.binary_search_by_key(&time_range.max(), |(t, _)| *t),
+                    indices.iter().map(|(t, _)| t).collect_vec(),
+                );
+            }
+            // dbg!((
+            //     &entry_range,
+            //     indices.len(),
+            //     promises_front.len(),
+            //     promises_back.len()
+            // ));
+            let index_start = indices[entry_range.start];
+            let index_end = indices[entry_range.end.saturating_sub(1)]; // TODO
+            format!(
+                "[{:?}#{} .. {:?}#{}] {} entries",
                 index_start.0,
                 index_start.1,
                 index_end.0,
                 index_end.1,
-                re_format::format_bytes(self.total_size_bytes() as _)
-            ))
+                entry_range.len(),
+            )
         }
     }
 }
@@ -674,6 +714,7 @@ impl RangeComponentResultsInner {
     #[inline]
     pub const fn empty() -> Self {
         Self {
+            time_ranges: VecDeque::new(),
             indices: VecDeque::new(),
             promises_front: Vec::new(),
             promises_back: Vec::new(),
@@ -691,6 +732,7 @@ impl RangeComponentResultsInner {
         }
 
         let Self {
+            time_ranges,
             indices,
             promises_front,
             promises_back,
@@ -698,6 +740,24 @@ impl RangeComponentResultsInner {
             back_status: _,
             cached_dense,
         } = self;
+
+        assert!(
+            time_ranges
+                .iter()
+                .tuple_windows::<(_, _)>()
+                .all(|(tr1, tr2)| tr1.max() < tr2.min()),
+            "time ranges must be non-overlapping and ascendingly sorted ({time_ranges:?})"
+        );
+        for (data_time, _) in indices {
+            assert!(
+                time_ranges
+                    .iter()
+                    .filter(|tr| tr.contains(*data_time))
+                    .exactly_one()
+                    .is_ok(),
+                "every index in the cache must belong to one and only one time range"
+            );
+        }
 
         assert!(
             promises_front.windows(2).all(|promises| {
@@ -739,14 +799,12 @@ impl RangeComponentResultsInner {
         }
     }
 
-    /// Returns the time range covered by the cached data.
+    /// Returns the time ranges covered by the cached data.
     ///
     /// Reminder: [`TimeInt::STATIC`] is never included in [`TimeRange`]s.
     #[inline]
-    pub fn time_range(&self) -> Option<TimeRange> {
-        let first_time = self.indices.front().map(|(t, _)| *t)?;
-        let last_time = self.indices.back().map(|(t, _)| *t)?;
-        Some(TimeRange::new(first_time, last_time))
+    pub fn time_ranges(&self) -> impl Iterator<Item = TimeRange> + '_ {
+        self.time_ranges.iter().copied()
     }
 
     #[inline]
@@ -764,9 +822,8 @@ impl RangeComponentResultsInner {
     pub fn truncate_at_time(&mut self, threshold: TimeInt) {
         re_tracing::profile_function!();
 
-        let time_range = self.time_range();
-
         let Self {
+            time_ranges,
             indices,
             promises_front,
             promises_back,
@@ -776,11 +833,13 @@ impl RangeComponentResultsInner {
         } = self;
 
         if front_status.0 >= threshold {
-            let time_min = time_range.map_or(TimeInt::MIN, |range| range.min());
+            let time_min = time_ranges
+                .front()
+                .map_or(TimeInt::MIN, |range| range.min());
             *front_status = (time_min, PromiseResult::Ready(()));
         }
         if back_status.0 >= threshold {
-            let time_max = time_range.map_or(TimeInt::MAX, |range| range.max());
+            let time_max = time_ranges.back().map_or(TimeInt::MAX, |range| range.max());
             *back_status = (time_max, PromiseResult::Ready(()));
         }
 
@@ -795,8 +854,14 @@ impl RangeComponentResultsInner {
             promises_back.truncate(threshold_idx);
         }
 
-        let threshold_idx = indices.partition_point(|(data_time, _)| data_time < &threshold);
         {
+            let threshold_idx =
+                time_ranges.partition_point(|time_range| time_range.min() < threshold);
+            time_ranges.truncate(threshold_idx);
+        }
+
+        {
+            let threshold_idx = indices.partition_point(|(data_time, _)| data_time < &threshold);
             indices.truncate(threshold_idx);
             if let Some(data) = cached_dense {
                 data.dyn_truncate(threshold_idx);
@@ -809,5 +874,27 @@ impl RangeComponentResultsInner {
     #[inline]
     pub fn clear(&mut self) {
         *self = Self::empty();
+    }
+
+    // TODO: yeye, the duplication kinda suck...
+    #[inline]
+    fn entry_range(&self, time_range: TimeRange) -> Range<usize> {
+        // If there's any static data cached, make sure to look for it explicitly.
+        //
+        // Remember: `TimeRange`s can never contain `TimeInt::STATIC`.
+        let static_override = if matches!(self.indices.front(), Some((TimeInt::STATIC, _))) {
+            TimeInt::STATIC
+        } else {
+            TimeInt::MAX
+        };
+
+        let start_index = self.indices.partition_point(|(data_time, _)| {
+            *data_time < TimeInt::min(time_range.min(), static_override)
+        });
+        let end_index = self.indices.partition_point(|(data_time, _)| {
+            *data_time <= TimeInt::min(time_range.max(), static_override)
+        });
+
+        start_index..end_index
     }
 }

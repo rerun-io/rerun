@@ -31,7 +31,10 @@ impl Caches {
 
         let mut results = LatestAtResults::default();
 
-        for component_name in component_names {
+        // TODO
+        let component_names = component_names.into_iter().collect_vec();
+
+        for component_name in component_names.clone() {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = if crate::cacheable(component_name) {
@@ -53,6 +56,13 @@ impl Caches {
                 results.add(component_name, cached);
             }
         }
+
+        // TODO: who is emitting this query?! -> transforms, viewcoordinates, etc
+        // if cfg!(debug_assertions) && entity_path == &"random".into() {
+        //     dbg!((query, component_names, &results));
+        // }
+
+        // TODO: here and in range, we need to add the raw query and automatically compare in debug mode.
 
         results
     }

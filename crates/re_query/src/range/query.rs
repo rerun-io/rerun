@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use parking_lot::RwLock;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
@@ -30,7 +31,10 @@ impl Caches {
 
         let mut results = RangeResults::new(query.clone());
 
-        for component_name in component_names {
+        // TODO
+        let component_names = component_names.into_iter().collect_vec();
+
+        for component_name in component_names.clone() {
             let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = if crate::cacheable(component_name) {
@@ -50,6 +54,11 @@ impl Caches {
             cache.handle_pending_invalidation();
             let cached = cache.range(store, query, entity_path, component_name);
             results.add(component_name, cached);
+        }
+
+        if cfg!(debug_assertions) && entity_path == &"random".into() {
+            eprintln!("querying {query:?}");
+            // dbg!((query, component_names, &results));
         }
 
         results
@@ -114,14 +123,19 @@ impl std::fmt::Debug for RangeCache {
             }
         }
 
-        strings.push(format!(
-            "{} ({})",
-            cache_key
-                .timeline
-                .typ()
-                .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
-            re_format::format_bytes(per_data_time.total_size_bytes() as _),
-        ));
+        {
+            let per_data_time = per_data_time.inner.read_recursive();
+            strings.push(format!(
+                "{}: {} indices / {} instances ({})",
+                cache_key
+                    .timeline
+                    .typ()
+                    .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
+                re_format::format_uint(per_data_time.num_indices()),
+                re_format::format_uint(per_data_time.num_instances()),
+                re_format::format_bytes(per_data_time.total_size_bytes() as _),
+            ));
+        }
 
         if strings.is_empty() {
             return f.write_str("<empty>");
@@ -231,6 +245,8 @@ impl RangeCache {
             return;
         };
 
+        eprintln!("handling {pending_invalidation:?}");
+
         per_data_time.write().truncate_at_time(pending_invalidation);
     }
 }
@@ -299,7 +315,7 @@ impl RangeComponentResultsInner {
                 t.as_i64().saturating_sub(1)
             });
 
-        if let Some(time_range) = self.time_range() {
+        if let Some(time_range) = self.time_ranges.front() {
             let time_range_min = i64::min(
                 time_range.min().as_i64().saturating_sub(1),
                 pending_front_min,
@@ -364,7 +380,7 @@ impl RangeComponentResultsInner {
                 t.as_i64().saturating_add(1)
             });
 
-        if let Some(time_range) = self.time_range() {
+        if let Some(time_range) = self.time_ranges.back() {
             let time_range_max = i64::max(
                 time_range.max().as_i64().saturating_add(1),
                 pending_back_max,
