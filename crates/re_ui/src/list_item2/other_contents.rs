@@ -17,6 +17,7 @@ impl ListItemContent for EmptyContent {
 }
 
 /// [`ListItemContent`] that delegates to a closure.
+#[allow(clippy::type_complexity)]
 pub struct CustomContent {
     ui: Box<dyn FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>) -> Option<egui::Response>>,
 }
@@ -49,11 +50,13 @@ pub struct DebugContent {
 }
 
 impl DebugContent {
+    #[inline]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
 
+    #[inline]
     pub fn with_desired_width(mut self, desired_width: DesiredWidth) -> Self {
         self.desired_width = desired_width;
         self

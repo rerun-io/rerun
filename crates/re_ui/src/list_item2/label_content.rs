@@ -4,7 +4,8 @@ use eframe::emath::{Align, Align2};
 use eframe::epaint::text::TextWrapping;
 use egui::Ui;
 
-///
+/// [`ListItemContent`] that displays a simple label with optional icon and buttons.
+#[allow(clippy::type_complexity)]
 pub struct LabelContent<'a> {
     text: egui::WidgetText,
 
@@ -245,7 +246,7 @@ impl ListItemContent for LabelContent<'_> {
             let mut desired_width = galley.size().x;
 
             if self.icon_fn.is_some() {
-                desired_width += ReUi::small_icon_size().x + ReUi::text_to_icon_padding()
+                desired_width += ReUi::small_icon_size().x + ReUi::text_to_icon_padding();
             }
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being

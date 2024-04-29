@@ -89,7 +89,7 @@ impl StateStack {
 /// Given the above, `list_item_scope` can be used for two potentially distinct use-cases:
 /// 1) Store a suitable `background_x_range` value for use by nested `ListItem`s. This happens,
 ///    e.g., close to the top of the `egui::SidePanel::show` closure, where the panel size
-///    information is readily available (e.g. ui.max_rect().x_range()`).
+///    information is readily available (e.g. `ui.max_rect().x_range()`).
 /// 2) Limit state sharing for a subgroup of `ListItem`s. This makes it possible to independently
 ///    align the columns of two `ListItem`s subgroups, for which a single, global alignment would
 ///    be detrimental. This may happen in deeply nested UI code.
@@ -123,7 +123,7 @@ pub fn list_item_scope<R>(
         ui.clip_rect().x_range()
     };
 
-    // push, run, pop...
+    // push, run, pop
     StateStack::push(ui.ctx(), state.clone());
     let result = content(ui);
     let state = StateStack::pop(ui.ctx());

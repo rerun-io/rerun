@@ -236,10 +236,10 @@ impl<'a> ListItem<'a> {
         bg_rect.set_right(state.background_x_range.max);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
-        // entire background rect. But...
+        // entire background rect. But…
         let mut response = ui.interact(bg_rect, allocated_id, sense);
 
-        // ...we must not "leak" rects that span beyond `ui.available_width()` (which is typically
+        // …we must not "leak" rects that span beyond `ui.available_width()` (which is typically
         // the case for `bg_rect`), because that can have unwanted side effect. For example, it
         // could trigger `show_body_indented` (in `Self::show_hierarchical_with_children`) to
         // allocate past the available width.
