@@ -70,6 +70,15 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer20 not implemented: We lack codegen for arrow-serialization of structs"
-        )  # You need to implement native_to_pa_array_override in affix_fuzzer20_ext.py
+        from rerun.testing.datatypes import PrimitiveComponentBatch, StringComponentBatch
+
+        if isinstance(data, AffixFuzzer20):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array().storage,
+                StringComponentBatch([x.s for x in data]).as_arrow_array().storage,
+            ],
+            fields=list(data_type),
+        )

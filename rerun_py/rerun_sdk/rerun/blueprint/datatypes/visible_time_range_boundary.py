@@ -97,6 +97,16 @@ class VisibleTimeRangeBoundaryBatch(BaseBatch[VisibleTimeRangeBoundaryArrayLike]
 
     @staticmethod
     def _native_to_pa_array(data: VisibleTimeRangeBoundaryArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of VisibleTimeRangeBoundary not implemented: We lack codegen for arrow-serialization of structs"
-        )  # You need to implement native_to_pa_array_override in visible_time_range_boundary_ext.py
+        from rerun.blueprint.datatypes import VisibleTimeRangeBoundaryKindBatch
+        from rerun.datatypes import TimeIntBatch
+
+        if isinstance(data, VisibleTimeRangeBoundary):
+            data = [data]
+
+        return pa.StructArray.from_arrays(
+            [
+                VisibleTimeRangeBoundaryKindBatch([x.kind for x in data]).as_arrow_array().storage,
+                TimeIntBatch([x.time for x in data]).as_arrow_array().storage,
+            ],
+            fields=list(data_type),
+        )

@@ -1841,7 +1841,7 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
 /// Only implemented for some cases.
 fn quote_arrow_serialization(
     reporter: &Reporter,
-    _objects: &Objects,
+    objects: &Objects,
     obj: &Object,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
@@ -1888,7 +1888,51 @@ fn quote_arrow_serialization(
                 }
             }
 
-            Err("We lack codegen for arrow-serialization of structs".to_owned())
+            let mut code = String::new();
+
+            for field in &obj.fields {
+                let Type::Object(field_fqname) = &field.typ else {
+                    return Err(
+                        "We lack codegen for arrow-serialization of general structs".to_owned()
+                    );
+                };
+                if let Some(last_dot) = field_fqname.rfind('.') {
+                    let mod_path = &field_fqname[..last_dot];
+                    let field_type_name = &field_fqname[last_dot + 1..];
+                    code.push_indented(
+                        0,
+                        format!("from {mod_path} import {field_type_name}Batch"),
+                        2,
+                    );
+                }
+            }
+
+            code.push_indented(0, &format!("if isinstance(data, {name}):"), 1);
+            code.push_indented(1, "data = [data]", 2);
+
+            code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
+            code.push_indented(1, "[", 1);
+            for field in &obj.fields {
+                let Type::Object(field_fqname) = &field.typ else {
+                    return Err(
+                        "We lack codegen for arrow-serialization of general structs".to_owned()
+                    );
+                };
+                let field_obj = &objects[field_fqname];
+                let field_type_name = &field_obj.name;
+                let field_name = &field.name;
+                let field_batch_type = format!("{field_type_name}Batch");
+                // let field_batch_type = format!("datatypes.{field_type_name}Batch");
+                let field_array = format!("[x.{field_name} for x in data]");
+                let field_fwd =
+                    format!("{field_batch_type}({field_array}).as_arrow_array().storage,");
+                code.push_indented(2, &field_fwd, 1);
+            }
+            code.push_indented(1, "],", 1);
+            code.push_indented(1, "fields=list(data_type),", 1);
+            code.push_indented(0, ")", 1);
+
+            Ok(code)
         }
 
         ObjectClass::Enum => {

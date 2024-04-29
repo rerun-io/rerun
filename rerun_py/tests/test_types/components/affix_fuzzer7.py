@@ -88,5 +88,5 @@ class AffixFuzzer7Batch(BaseBatch[AffixFuzzer7ArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer7ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer7 not implemented: We lack codegen for arrow-serialization of structs"
+            "Arrow serialization of AffixFuzzer7 not implemented: We lack codegen for arrow-serialization of general structs"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer7_ext.py
