@@ -18,8 +18,7 @@ use crate::{
     format_path,
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField,
-    ObjectKind, Objects, Reporter, Type, ATTR_ARROW_TRANSPARENT, ATTR_PYTHON_ALIASES,
-    ATTR_PYTHON_ARRAY_ALIASES,
+    ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use self::views::code_for_view;
@@ -1849,17 +1848,15 @@ fn quote_arrow_serialization(
 
     match obj.class {
         ObjectClass::Struct => {
-            if obj.fields.len() == 1 {
-                if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if !obj.is_arrow_transparent() {
-                        if !obj.is_testing() {
-                            reporter.warn(
-                                &obj.virtpath,
-                                &obj.fqname,
-                                format!("Expected this to have {ATTR_ARROW_TRANSPARENT} set"),
-                            );
-                        }
-                    } else if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
+            if obj.is_arrow_transparent() {
+                if obj.fields.len() != 1 {
+                    reporter.error(
+                        &obj.virtpath,
+                        &obj.fqname,
+                        "Arrow-transparent structs must have exactly one field",
+                    );
+                } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
+                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
                         if !obj.is_testing() {
                             reporter.warn(
                                 &obj.virtpath,
