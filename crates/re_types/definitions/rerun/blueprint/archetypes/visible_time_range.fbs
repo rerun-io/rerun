@@ -9,8 +9,6 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-// TODO: Clarify if an empty range means latest-at.
-
 /// Configures what range of the timeline is shown on a view.
 ///
 /// Whenever no visual time range applies, queries are done with "latest at" semantics.

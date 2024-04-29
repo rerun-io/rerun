@@ -146,7 +146,7 @@ fn visual_time_range_ui(
             if has_individual_range {
                 re_log::error_once!("Visible time range is set but no time range is provided");
             }
-            // TODO: should show something else.
+            // TODO(andreas): Should print a string that we're using the latest time.
             re_types::blueprint::datatypes::VisibleTimeRange {
                 start: VisibleTimeRangeBoundary::AT_CURSOR,
                 end: VisibleTimeRangeBoundary::AT_CURSOR,
