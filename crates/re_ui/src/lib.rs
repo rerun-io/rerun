@@ -10,6 +10,7 @@ mod toggle_switch;
 pub mod drag_and_drop;
 pub mod icons;
 pub mod list_item;
+pub mod list_item2;
 pub mod modal;
 pub mod toasts;
 

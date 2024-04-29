@@ -31,6 +31,7 @@ default = []
 [dependencies]
 re_entity_db.workspace = true # syntax-highlighting for InstancePath. TODO(emilk): move InstancePath
 re_format.workspace = true
+re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
 
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
@@ -42,9 +43,8 @@ serde_json.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 sublime_fuzzy.workspace = true
+once_cell = "1.19.0"
 
-[dev-dependencies]
-re_log.workspace = true
 
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_tiles.workspace = true
