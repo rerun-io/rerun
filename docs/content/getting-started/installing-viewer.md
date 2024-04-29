@@ -37,7 +37,7 @@ Make sure that your library version matches the version of the Viewer you're usi
 
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 
--   Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/)
+-   Download `rerun-cli` for your platform from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/).
 -   Via Cargo
     -   `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
     -   `cargo install rerun-cli` - build it from source (this requires Rust 1.76+)
