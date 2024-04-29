@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +37,11 @@ class TimeInt:
         return int(self.value)
 
 
-TimeIntLike = TimeInt
+if TYPE_CHECKING:
+    TimeIntLike = Union[TimeInt, int]
+else:
+    TimeIntLike = Any
+
 TimeIntArrayLike = Union[
     TimeInt,
     Sequence[TimeIntLike],
@@ -56,6 +60,5 @@ class TimeIntBatch(BaseBatch[TimeIntArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeIntArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of TimeInt not implemented: We lack codegen for arrow-serialization of structs"
-        )  # You need to implement native_to_pa_array_override in time_int_ext.py
+        array = np.asarray(data, dtype=np.int64).flatten()
+        return pa.array(array, type=data_type)

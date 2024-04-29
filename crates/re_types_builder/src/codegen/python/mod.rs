@@ -1852,17 +1852,21 @@ fn quote_arrow_serialization(
             if obj.fields.len() == 1 {
                 if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
                     if !obj.is_arrow_transparent() {
-                        reporter.warn(
-                            &obj.virtpath,
-                            &obj.fqname,
-                            format!("Expected this to have {ATTR_ARROW_TRANSPARENT} set"),
-                        );
+                        if !obj.is_testing() {
+                            reporter.warn(
+                                &obj.virtpath,
+                                &obj.fqname,
+                                format!("Expected this to have {ATTR_ARROW_TRANSPARENT} set"),
+                            );
+                        }
                     } else if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
-                        reporter.warn(
-                            &obj.virtpath,
-                            &obj.fqname,
-                            format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
-                        );
+                        if !obj.is_testing() {
+                            reporter.warn(
+                                &obj.virtpath,
+                                &obj.fqname,
+                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                            );
+                        }
                     } else {
                         return Ok(unindent(&format!(
                             r##"
