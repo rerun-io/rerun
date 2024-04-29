@@ -7,6 +7,3 @@ rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255,
 
 # Log a batch of 2 rectangles with different `class_ids`
 rr.log("detections", rr.Boxes2D(mins=[[-2, -2], [0, 0]], sizes=[[3, 3], [2, 2]], class_ids=[1, 2]))
-
-# Log an extra rect to set the view bounds
-rr.log("bounds", rr.Boxes2D(half_sizes=[2.5, 2.5]))

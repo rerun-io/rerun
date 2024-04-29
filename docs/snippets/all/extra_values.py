@@ -1,6 +1,7 @@
 """Log extra values with a Points2D."""
 
 import rerun as rr
+import rerun.blueprint as rrb
 
 rr.init("rerun_example_extra_values", spawn=True)
 
@@ -12,5 +13,5 @@ rr.log(
     ),
 )
 
-# Log an extra rect to set the view bounds
-rr.log("bounds", rr.Boxes2D(sizes=[3, 3]))
+# Set view bounds:
+rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(min=[-1.5, -1.5], max=[1.5, 1.5])))
