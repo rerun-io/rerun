@@ -27,10 +27,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(C)]
 pub struct AABB2D {
     /// The minimum bounds; usually left-top corner.
-    pub min: [f64; 2usize],
+    pub min: crate::datatypes::Vec2D,
 
     /// The maximum bounds; usually right-bottom corner.
-    pub max: [f64; 2usize],
+    pub max: crate::datatypes::Vec2D,
 }
 
 impl ::re_types_core::SizeBytes for AABB2D {
@@ -41,7 +41,7 @@ impl ::re_types_core::SizeBytes for AABB2D {
 
     #[inline]
     fn is_pod() -> bool {
-        <[f64; 2usize]>::is_pod() && <[f64; 2usize]>::is_pod()
+        <crate::datatypes::Vec2D>::is_pod() && <crate::datatypes::Vec2D>::is_pod()
     }
 }
 
@@ -60,22 +60,8 @@ impl ::re_types_core::Loggable for AABB2D {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
-            Field::new(
-                "min",
-                DataType::FixedSizeList(
-                    std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
-                    2usize,
-                ),
-                false,
-            ),
-            Field::new(
-                "max",
-                DataType::FixedSizeList(
-                    std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
-                    2usize,
-                ),
-                false,
-            ),
+            Field::new("min", <crate::datatypes::Vec2D>::arrow_datatype(), false),
+            Field::new("max", <crate::datatypes::Vec2D>::arrow_datatype(), false),
         ]))
     }
 
@@ -122,12 +108,15 @@ impl ::re_types_core::Loggable for AABB2D {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let min_inner_data: Vec<_> = min
                                 .iter()
-                                .flat_map(|v| match v {
-                                    Some(v) => itertools::Either::Left(v.iter().cloned()),
-                                    None => itertools::Either::Right(
-                                        std::iter::repeat(Default::default()).take(2usize),
-                                    ),
+                                .map(|datum| {
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Vec2D(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
                                 })
+                                .flatten()
                                 .map(Some)
                                 .collect();
                             let min_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -143,13 +132,13 @@ impl ::re_types_core::Loggable for AABB2D {
                                 DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
                                         "item",
-                                        DataType::Float64,
+                                        DataType::Float32,
                                         false,
                                     )),
                                     2usize,
                                 ),
                                 PrimitiveArray::new(
-                                    DataType::Float64,
+                                    DataType::Float32,
                                     min_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -181,12 +170,15 @@ impl ::re_types_core::Loggable for AABB2D {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let max_inner_data: Vec<_> = max
                                 .iter()
-                                .flat_map(|v| match v {
-                                    Some(v) => itertools::Either::Left(v.iter().cloned()),
-                                    None => itertools::Either::Right(
-                                        std::iter::repeat(Default::default()).take(2usize),
-                                    ),
+                                .map(|datum| {
+                                    datum
+                                        .map(|datum| {
+                                            let crate::datatypes::Vec2D(data0) = datum;
+                                            data0
+                                        })
+                                        .unwrap_or_default()
                                 })
+                                .flatten()
                                 .map(Some)
                                 .collect();
                             let max_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -202,13 +194,13 @@ impl ::re_types_core::Loggable for AABB2D {
                                 DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
                                         "item",
-                                        DataType::Float64,
+                                        DataType::Float32,
                                         false,
                                     )),
                                     2usize,
                                 ),
                                 PrimitiveArray::new(
-                                    DataType::Float64,
+                                    DataType::Float32,
                                     max_inner_data
                                         .into_iter()
                                         .map(|v| v.unwrap_or_default())
@@ -274,7 +266,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
                                         "item",
-                                        DataType::Float64,
+                                        DataType::Float32,
                                         false,
                                     )),
                                     2usize,
@@ -293,9 +285,9 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
                                     .as_any()
-                                    .downcast_ref::<Float64Array>()
+                                    .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        let expected = DataType::Float64;
+                                        let expected = DataType::Float32;
                                         let actual = arrow_data_inner.data_type().clone();
                                         DeserializationError::datatype_mismatch(expected, actual)
                                     })
@@ -328,6 +320,11 @@ impl ::re_types_core::Loggable for AABB2D {
                                 })
                                 .transpose()
                             })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec2D(v))
+                                })
+                            })
                             .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
@@ -350,7 +347,7 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new(
                                         "item",
-                                        DataType::Float64,
+                                        DataType::Float32,
                                         false,
                                     )),
                                     2usize,
@@ -369,9 +366,9 @@ impl ::re_types_core::Loggable for AABB2D {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
                                     .as_any()
-                                    .downcast_ref::<Float64Array>()
+                                    .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        let expected = DataType::Float64;
+                                        let expected = DataType::Float32;
                                         let actual = arrow_data_inner.data_type().clone();
                                         DeserializationError::datatype_mismatch(expected, actual)
                                     })
@@ -403,6 +400,11 @@ impl ::re_types_core::Loggable for AABB2D {
                                     Ok(arr)
                                 })
                                 .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec2D(v))
+                                })
                             })
                             .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }

@@ -4,8 +4,8 @@ impl From<emath::Rect> for AABB2D {
     #[inline]
     fn from(v: emath::Rect) -> Self {
         Self {
-            min: [v.min.x as f64, v.min.y as f64],
-            max: [v.max.x as f64, v.max.y as f64],
+            min: [v.min.x, v.min.y].into(),
+            max: [v.max.x, v.max.y].into(),
         }
     }
 }

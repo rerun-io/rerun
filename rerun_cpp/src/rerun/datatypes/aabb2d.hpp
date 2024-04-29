@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../result.hpp"
+#include "vec2d.hpp"
 
-#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -19,10 +19,10 @@ namespace rerun::datatypes {
     /// **Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
     struct AABB2D {
         /// The minimum bounds; usually left-top corner.
-        std::array<double, 2> min;
+        rerun::datatypes::Vec2D min;
 
         /// The maximum bounds; usually right-bottom corner.
-        std::array<double, 2> max;
+        rerun::datatypes::Vec2D max;
 
       public:
         AABB2D() = default;

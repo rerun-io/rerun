@@ -3,6 +3,8 @@
 
 #include "aabb2d.hpp"
 
+#include "vec2d.hpp"
+
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -11,16 +13,8 @@ namespace rerun::datatypes {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::AABB2D>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field(
-                "min",
-                arrow::fixed_size_list(arrow::field("item", arrow::float64(), false), 2),
-                false
-            ),
-            arrow::field(
-                "max",
-                arrow::fixed_size_list(arrow::field("item", arrow::float64(), false), 2),
-                false
-            ),
+            arrow::field("min", Loggable<rerun::datatypes::Vec2D>::arrow_datatype(), false),
+            arrow::field("max", Loggable<rerun::datatypes::Vec2D>::arrow_datatype(), false),
         });
         return datatype;
     }
@@ -61,28 +55,26 @@ namespace rerun {
         {
             auto field_builder =
                 static_cast<arrow::FixedSizeListBuilder*>(builder->field_builder(0));
-            auto value_builder = static_cast<arrow::DoubleBuilder*>(field_builder->value_builder());
-
-            ARROW_RETURN_NOT_OK(field_builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].min) == sizeof(elements[0]));
-            ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].min.data(),
-                static_cast<int64_t>(num_elements * 2),
-                nullptr
-            ));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].min,
+                    1
+                ));
+            }
         }
         {
             auto field_builder =
                 static_cast<arrow::FixedSizeListBuilder*>(builder->field_builder(1));
-            auto value_builder = static_cast<arrow::DoubleBuilder*>(field_builder->value_builder());
-
-            ARROW_RETURN_NOT_OK(field_builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].max) == sizeof(elements[0]));
-            ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].max.data(),
-                static_cast<int64_t>(num_elements * 2),
-                nullptr
-            ));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].max,
+                    1
+                ));
+            }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 

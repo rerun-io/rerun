@@ -7,24 +7,35 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Union
 
-import numpy as np
-import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .._converters import (
-    to_np_float64,
-)
+from .aabb2d_ext import AABB2DExt
 
 __all__ = ["AABB2D", "AABB2DArrayLike", "AABB2DBatch", "AABB2DLike", "AABB2DType"]
 
 
+def _aabb2d__min__special_field_converter_override(x: datatypes.Vec2DLike) -> datatypes.Vec2D:
+    if isinstance(x, datatypes.Vec2D):
+        return x
+    else:
+        return datatypes.Vec2D(x)
+
+
+def _aabb2d__max__special_field_converter_override(x: datatypes.Vec2DLike) -> datatypes.Vec2D:
+    if isinstance(x, datatypes.Vec2D):
+        return x
+    else:
+        return datatypes.Vec2D(x)
+
+
 @define(init=False)
-class AABB2D:
+class AABB2D(AABB2DExt):
     """**Datatype**: An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners."""
 
-    def __init__(self: Any, min: npt.ArrayLike, max: npt.ArrayLike):
+    def __init__(self: Any, min: datatypes.Vec2DLike, max: datatypes.Vec2DLike):
         """
         Create a new instance of the AABB2D datatype.
 
@@ -40,12 +51,12 @@ class AABB2D:
         # You can define your own __init__ function as a member of AABB2DExt in aabb2d_ext.py
         self.__attrs_init__(min=min, max=max)
 
-    min: npt.NDArray[np.float64] = field(converter=to_np_float64)
+    min: datatypes.Vec2D = field(converter=_aabb2d__min__special_field_converter_override)
     # The minimum bounds; usually left-top corner.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    max: npt.NDArray[np.float64] = field(converter=to_np_float64)
+    max: datatypes.Vec2D = field(converter=_aabb2d__max__special_field_converter_override)
     # The maximum bounds; usually right-bottom corner.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -67,13 +78,13 @@ class AABB2DType(BaseExtensionType):
             pa.struct([
                 pa.field(
                     "min",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2),
                     nullable=False,
                     metadata={},
                 ),
                 pa.field(
                     "max",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2),
                     nullable=False,
                     metadata={},
                 ),
@@ -87,4 +98,4 @@ class AABB2DBatch(BaseBatch[AABB2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AABB2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in aabb2d_ext.py
+        return AABB2DExt.native_to_pa_array_override(data, data_type)

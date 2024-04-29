@@ -4,6 +4,8 @@ include "fbs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
+include "./vec2d.fbs";
+
 namespace rerun.datatypes;
 
 // ---
@@ -14,8 +16,8 @@ struct AABB2D (
   "attr.rust.repr": "C"
 ) {
   /// The minimum bounds; usually left-top corner.
-  min: [double: 2] (order: 100);
+  min: rerun.datatypes.Vec2D (order: 100);
 
   /// The maximum bounds; usually right-bottom corner.
-  max: [double: 2] (order: 200);
+  max: rerun.datatypes.Vec2D (order: 200);
 }

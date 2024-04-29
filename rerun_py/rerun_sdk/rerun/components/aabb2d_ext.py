@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..datatypes import AABB2D, Vec2DLike
+from ..datatypes import Vec2DLike
 
 
 class AABB2DExt:
@@ -28,4 +28,4 @@ class AABB2DExt:
 
         """
 
-        self.__attrs_init__(AABB2D(min=min, max=max))
+        self.__attrs_init__(min=min, max=max)

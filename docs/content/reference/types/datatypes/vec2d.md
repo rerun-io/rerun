@@ -22,3 +22,5 @@ A vector in 2D space.
 * [`Resolution`](../components/resolution.md)
 * [`Texcoord2D`](../components/texcoord2d.md)
 * [`Vector2D`](../components/vector2d.md)
+* [`AABB2D`](../datatypes/aabb2d.md)
+* [`AABB2D`](../datatypes/aabb2d.md)
