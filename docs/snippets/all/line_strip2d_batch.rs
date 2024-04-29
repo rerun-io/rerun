@@ -14,11 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_labels(["one strip here", "and one strip there"]),
     )?;
 
-    // Log an extra rect to set the view bounds
-    rec.log(
-        "bounds",
-        &rerun::Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
-    )?;
+    // TODO(#5521): log VisualBounds
 
     Ok(())
 }

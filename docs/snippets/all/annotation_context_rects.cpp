@@ -23,7 +23,4 @@ int main() {
             {{3.0f, 3.0f}, {2.0f, 2.0f}}
         ).with_class_ids({1, 2})
     );
-
-    // Log an extra rect to set the view bounds
-    rec.log("bounds", rerun::Boxes2D::from_half_sizes({{2.5f, 2.5f}}));
 }

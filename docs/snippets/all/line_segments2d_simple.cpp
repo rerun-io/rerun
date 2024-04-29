@@ -12,6 +12,5 @@ int main() {
     };
     rec.log("segments", rerun::LineStrips2D(points));
 
-    // Log an extra rect to set the view bounds
-    rec.log("bounds", rerun::Boxes2D::from_centers_and_sizes({{3.0f, 0.0f}}, {{8.0f, 6.0f}}));
+    // TODO(#5520): log VisualBounds
 }
