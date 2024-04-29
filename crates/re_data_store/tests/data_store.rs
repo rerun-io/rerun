@@ -15,11 +15,8 @@ use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
 };
+use re_types::testing::{build_some_large_structs, LargeStruct};
 use re_types::ComponentNameSet;
-use re_types::{
-    components::{Color, Position2D},
-    testing::{build_some_large_structs, LargeStruct},
-};
 use re_types_core::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
@@ -80,13 +77,13 @@ fn all_components() {
         );
 
         let components_a = &[
-            Color::name(),       // added by test, static
+            MyColor::name(),     // added by test, static
             LargeStruct::name(), // added by test
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, static
-            Position2D::name(),  // added by test
+            MyColor::name(),     // added by test, static
+            MyPoint::name(),     // added by test
             LargeStruct::name(), // added by test
         ];
 
@@ -133,14 +130,14 @@ fn all_components() {
         // └──────────┴─────────────┴─────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Color::name(),       // added by test, static
+            MyColor::name(),     // added by test, static
             LargeStruct::name(), // added by test
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, static
+            MyColor::name(),     // added by test, static
             LargeStruct::name(), // ⚠ inherited before the buckets got split apart!
-            Position2D::name(),  // added by test
+            MyPoint::name(),     // added by test
         ];
 
         let row = test_row!(entity_path => [MyColor::from_iter(0..2)]);
@@ -187,13 +184,13 @@ fn all_components() {
         // └──────────┴─────────────┴────────┴───────────┴──────────┘
 
         let components_a = &[
-            Color::name(),       // added by test, static
+            MyColor::name(),     // added by test, static
             LargeStruct::name(), // added by test
         ];
 
         let components_b = &[
-            Color::name(),       // added by test, static
-            Position2D::name(),  // added by test but not contained in the second bucket
+            MyColor::name(),     // added by test, static
+            MyPoint::name(),     // added by test but not contained in the second bucket
             LargeStruct::name(), // added by test
         ];
 
@@ -326,26 +323,26 @@ fn latest_at_impl(store: &mut DataStore) {
     assert_latest_components(
         frame0,
         &[
-            (Color::name(), &row5), // static
+            (MyColor::name(), &row5), // static
         ],
     );
     assert_latest_components(
         frame1,
         &[
-            (Color::name(), &row5), // static
+            (MyColor::name(), &row5), // static
         ],
     );
     assert_latest_components(
         frame2,
-        &[(Color::name(), &row5), (Position2D::name(), &row2)],
+        &[(MyColor::name(), &row5), (MyPoint::name(), &row2)],
     );
     assert_latest_components(
         frame3,
-        &[(Color::name(), &row5), (Position2D::name(), &row3)],
+        &[(MyColor::name(), &row5), (MyPoint::name(), &row3)],
     );
     assert_latest_components(
         frame4,
-        &[(Color::name(), &row5), (Position2D::name(), &row3)],
+        &[(MyColor::name(), &row5), (MyPoint::name(), &row3)],
     );
 }
 
@@ -486,41 +483,41 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame1),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
         ],
     );
     assert_range_components(
         TimeRange::new(frame2, frame2),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
-            (frame2, &[(Position2D::name(), &row2)]),     //
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
+            (frame2, &[(MyPoint::name(), &row2)]),          //
         ],
     );
     assert_range_components(
         TimeRange::new(frame3, frame3),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
-            (frame3, &[(Position2D::name(), &row3)]),     //
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
+            (frame3, &[(MyPoint::name(), &row3)]),          //
         ],
     );
     assert_range_components(
         TimeRange::new(frame4, frame4),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
-            (frame4, &[(Position2D::name(), &row4_25)]),
-            (frame4, &[(Position2D::name(), &row4_4)]),
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
+            (frame4, &[(MyPoint::name(), &row4_25)]),
+            (frame4, &[(MyPoint::name(), &row4_4)]),
         ],
     );
     assert_range_components(
         TimeRange::new(frame5, frame5),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
         ],
     );
 
@@ -528,13 +525,13 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(frame1, frame5),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
-            (frame2, &[(Position2D::name(), &row2)]),     //
-            (frame3, &[(Position2D::name(), &row3)]),     //
-            (frame4, &[(Position2D::name(), &row4_25)]),
-            (frame4, &[(Position2D::name(), &row4_4)]),
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
+            (frame2, &[(MyPoint::name(), &row2)]),          //
+            (frame3, &[(MyPoint::name(), &row3)]),          //
+            (frame4, &[(MyPoint::name(), &row4_25)]),
+            (frame4, &[(MyPoint::name(), &row4_4)]),
         ],
     );
 
@@ -542,13 +539,13 @@ fn range_impl(store: &mut DataStore) {
 
     assert_range_components(
         TimeRange::new(TimeInt::MIN, TimeInt::MAX),
-        [Color::name(), Position2D::name()],
+        [MyColor::name(), MyPoint::name()],
         &[
-            (TimeInt::STATIC, &[(Color::name(), &row5)]), //
-            (frame2, &[(Position2D::name(), &row2)]),     //
-            (frame3, &[(Position2D::name(), &row3)]),     //
-            (frame4, &[(Position2D::name(), &row4_25)]),
-            (frame4, &[(Position2D::name(), &row4_4)]),
+            (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
+            (frame2, &[(MyPoint::name(), &row2)]),          //
+            (frame3, &[(MyPoint::name(), &row3)]),          //
+            (frame4, &[(MyPoint::name(), &row4_25)]),
+            (frame4, &[(MyPoint::name(), &row4_4)]),
         ],
     );
 }
@@ -705,22 +702,22 @@ fn protected_gc_impl(store: &mut DataStore) {
     // The static data was preserved
     assert_latest_components(
         TimeInt::STATIC,
-        &[(Color::name(), &row1), (Position2D::name(), &row2)], // static
+        &[(MyColor::name(), &row1), (MyPoint::name(), &row2)], // static
     );
 
     assert_latest_components(
         frame3,
         &[
-            (Color::name(), &row1),      // static
-            (Position2D::name(), &row2), // static
+            (MyColor::name(), &row1), // static
+            (MyPoint::name(), &row2), // static
         ],
     );
 
     assert_latest_components(
         frame4,
         &[
-            (Color::name(), &row1),      // static
-            (Position2D::name(), &row2), // static
+            (MyColor::name(), &row1), // static
+            (MyPoint::name(), &row2), // static
         ],
     );
 }
@@ -801,7 +798,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     assert_latest_components(
         frame0,
-        &[(Color::name(), &row3), (Position2D::name(), &row2)],
+        &[(MyColor::name(), &row3), (MyPoint::name(), &row2)],
     );
 
     // The 3 static cells should still be around.
