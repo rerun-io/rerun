@@ -16,11 +16,10 @@ A vector in 2D space.
 
 ## Used by
 
+* [`AABB2D`](../datatypes/aabb2d.md)
 * [`HalfSizes2D`](../components/half_sizes2d.md)
 * [`LineStrip2D`](../components/line_strip2d.md)
 * [`Position2D`](../components/position2d.md)
 * [`Resolution`](../components/resolution.md)
 * [`Texcoord2D`](../components/texcoord2d.md)
 * [`Vector2D`](../components/vector2d.md)
-* [`AABB2D`](../datatypes/aabb2d.md)
-* [`AABB2D`](../datatypes/aabb2d.md)

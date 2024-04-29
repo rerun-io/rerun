@@ -19,6 +19,6 @@ byte is `R` and the least significant byte is `A`.
 
 ## Used by
 
-* [`Color`](../components/color.md)
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
+* [`Color`](../components/color.md)
 * [`Material`](../datatypes/material.md)

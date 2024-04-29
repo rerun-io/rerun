@@ -433,6 +433,8 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
             }
         }
     }
+    used_by.sort();
+    used_by.dedup(); // The same datatype can be used multiple times by the same component
 
     if used_by.is_empty() {
         // NOTE: there are some false positives here, because unions can only
