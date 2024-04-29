@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use re_ui::list_item2;
+
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
 
@@ -20,6 +22,9 @@ impl Default for ExampleDragAndDrop {
 }
 
 impl ExampleDragAndDrop {
+    /// Draw the drag-and-drop demo.
+    ///
+    /// Note: this function uses `ListItem` and must be wrapped in a `ListItemContent`.
     pub fn ui(&mut self, re_ui: &crate::ReUi, ui: &mut egui::Ui) {
         let mut swap: Option<(usize, usize)> = None;
 
@@ -29,11 +34,10 @@ impl ExampleDragAndDrop {
             //
 
             let label = format!("Item {}", item_id.0);
-            let response = re_ui
-                .list_item(label.as_str())
+            let response = list_item2::ListItem::new(re_ui)
                 .selected(self.selected_items.contains(item_id))
                 .draggable(true)
-                .show_flat(ui);
+                .show_flat(ui, list_item2::BasicListItemContent::new(&label));
 
             //
             // Handle item selection

@@ -114,7 +114,7 @@ impl ListItemContent for BasicListItemContent<'_> {
             mut text,
             subdued,
             weak,
-            mut italics,
+            italics,
             label_style,
             icon_fn,
             buttons_fn,
@@ -126,7 +126,9 @@ impl ListItemContent for BasicListItemContent<'_> {
         );
 
         let mut text_rect = context.rect;
-        text_rect.min.x += icon_rect.width() + ReUi::text_to_icon_padding();
+        if icon_fn.is_some() {
+            text_rect.min.x += icon_rect.width() + ReUi::text_to_icon_padding();
+        }
 
         // text styling
         if italics || label_style == LabelStyle::Unnamed {

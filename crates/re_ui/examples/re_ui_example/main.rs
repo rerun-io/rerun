@@ -311,7 +311,15 @@ impl eframe::App for ExampleApp {
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
-                self.right_panel.ui(&self.re_ui, ui);
+                // define the hover/selection background highlight range for all nested `ListItem`s
+                re_ui::list_item2::list_item_scope(
+                    ui,
+                    "right_panel_list_item_scope",
+                    Some(ui.max_rect().x_range()),
+                    |ui| {
+                        self.right_panel.ui(&self.re_ui, ui);
+                    },
+                );
             });
 
         egui::CentralPanel::default()

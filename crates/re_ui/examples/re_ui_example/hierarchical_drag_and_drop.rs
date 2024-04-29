@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use egui::NumExt;
 
-use re_ui::ReUi;
+use re_ui::{list_item2, ReUi};
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
 struct ItemId(u32);
@@ -276,15 +276,20 @@ impl HierarchicalDragAndDrop {
         item_id: ItemId,
         children: &Vec<ItemId>,
     ) {
-        let response = re_ui
-            .list_item(format!("Container {item_id:?}"))
-            .subdued(true)
+        let response = list_item2::ListItem::new(re_ui)
             .selected(self.selected(item_id))
             .draggable(true)
             .drop_target_style(self.target_container == Some(item_id))
-            .show_hierarchical_with_content(ui, item_id, true, |re_ui, ui| {
-                self.container_children_ui(re_ui, ui, children);
-            });
+            .show_hierarchical_with_children(
+                ui,
+                item_id,
+                true,
+                list_item2::BasicListItemContent::new(format!("Container {item_id:?}"))
+                    .subdued(true),
+                |re_ui, ui| {
+                    self.container_children_ui(re_ui, ui, children);
+                },
+            );
 
         self.handle_interaction(
             ui,
@@ -315,11 +320,10 @@ impl HierarchicalDragAndDrop {
     }
 
     fn leaf_ui(&self, re_ui: &crate::ReUi, ui: &mut egui::Ui, item_id: ItemId, label: &str) {
-        let response = re_ui
-            .list_item(label)
+        let response = list_item2::ListItem::new(re_ui)
             .selected(self.selected(item_id))
             .draggable(true)
-            .show_hierarchical(ui);
+            .show_hierarchical(ui, list_item2::BasicListItemContent::new(label));
 
         self.handle_interaction(ui, item_id, false, &response, None);
     }

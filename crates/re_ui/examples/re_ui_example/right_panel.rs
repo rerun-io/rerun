@@ -84,44 +84,40 @@ impl RightPanel {
                 .auto_shrink([false, true])
                 .show(ui, |ui| {
                     re_ui.panel_content(ui, |re_ui, ui| {
-                        list_item2::ListItemContainer::new(background_x_range).ui(
-                            ui,
-                            "list_item_container",
-                            |ui| {
-                                for i in 0..10 {
-                                    let response = if i == 6 {
-                                        list_item2::ListItem::new(re_ui)
-                                            .selected(Some(i) == self.selected_list_item)
-                                            .show_hierarchical_with_children(
-                                                ui,
-                                                "item_with_children",
-                                                true,
-                                                list_item2::CustomListItemContent::new(|_, ui, context| ui.ctx().debug_painter().debug_rect(context.rect, egui::Color32::LIGHT_RED, "proudly produced by a CustomListItemContent's closure")),
-                                                |re_ui, ui| {
-                                                    for _ in 0..3 {
-                                                        list_item2::ListItem::new(re_ui)
-                                                            .interactive(false)
-                                                            .show_hierarchical(
-                                                                ui,
-                                                                list_item2::BasicListItemContent::new("look ma a BasicListItemContent").with_icon(&re_ui::icons::SPACE_VIEW_2D),
-                                                            );
-                                                    }
-                                                },
-                                            )
-                                            .item_response
-                                    } else {
-                                        list_item2::ListItem::new(re_ui)
-                                            .selected(Some(i) == self.selected_list_item)
-                                            .show_hierarchical(ui, list_item2::DebugContent::default())
-                                    };
 
-                                    if response.clicked() {
-                                        self.selected_list_item = Some(i);
-                                    }
-                                }
-                            },
-                        );
+                        for i in 0..10 {
+                            let response = if i == 6 {
+                                list_item2::ListItem::new(re_ui)
+                                    .selected(Some(i) == self.selected_list_item)
+                                    .show_hierarchical_with_children(
+                                        ui,
+                                        "item_with_children",
+                                        true,
+                                        list_item2::CustomListItemContent::new(|_, ui, context| ui.ctx().debug_painter().debug_rect(context.rect, egui::Color32::LIGHT_RED, "proudly produced by a CustomListItemContent's closure")),
+                                        |re_ui, ui| {
+                                            for _ in 0..3 {
+                                                list_item2::ListItem::new(re_ui)
+                                                    .interactive(false)
+                                                    .show_hierarchical(
+                                                        ui,
+                                                        list_item2::BasicListItemContent::new("look ma a BasicListItemContent").with_icon(&re_ui::icons::SPACE_VIEW_2D),
+                                                    );
+                                            }
+                                        },
+                                    )
+                                    .item_response
+                            } else {
+                                list_item2::ListItem::new(re_ui)
+                                    .selected(Some(i) == self.selected_list_item)
+                                    .show_hierarchical(ui, list_item2::DebugContent::default())
+                            };
 
+                            if response.clicked() {
+                                self.selected_list_item = Some(i);
+                            }
+                        }
+
+                        
                         // for i in 0..10 {
                         //     let label = if i == 4 {
                         //         "That's one heck of a loooooooong label!".to_owned()
