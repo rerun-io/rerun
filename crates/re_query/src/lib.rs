@@ -124,21 +124,25 @@ impl From<(RangeQuery, RangeResults)> for Results {
 ///
 /// Used internally to avoid unnecessarily caching components that are already cached in other
 /// places, for historical reasons.
-pub fn cacheable(component_name: re_types::ComponentName) -> bool {
+pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     use std::sync::OnceLock;
-    static NOT_CACHEABLE: OnceLock<re_types::ComponentNameSet> = OnceLock::new();
+    static NOT_CACHEABLE: OnceLock<re_types_core::ComponentNameSet> = OnceLock::new();
 
+    #[cfg(feature = "to_archetype")]
     use re_types_core::Loggable as _;
     let not_cacheable = NOT_CACHEABLE.get_or_init(|| {
         [
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
             // want yet another copy.
+            #[cfg(feature = "to_archetype")]
             re_types::components::TensorData::name(),
             // TODO(#5974): meshes are already cached in the ad-hoc mesh cache, we don't
             // want yet another copy.
+            #[cfg(feature = "to_archetype")]
             re_types::components::MeshProperties::name(),
             // TODO(#5974): blobs are used for assets, which are themselves already cached in
             // the ad-hoc mesh cache -- we don't want yet another copy.
+            #[cfg(feature = "to_archetype")]
             re_types::components::Blob::name(),
         ]
         .into()
