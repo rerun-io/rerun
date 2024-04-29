@@ -20,7 +20,6 @@ impl Quaternion {
     }
 
     /// From WXYZ.
-
     #[inline]
     pub const fn from_wxyz([w, x, y, z]: [f32; 4]) -> Self {
         Self([x, y, z, w])
