@@ -84,23 +84,43 @@ pub fn get_blueprint_component<A: re_types::Archetype, C: re_types::Component>(
 }
 
 /// Edit a single component of a blueprint archetype in a space view.
+///
+/// Set to `None` to reset the value to the value in the default blueprint, if any,
+/// else will just store `None` (an empty component list) in the store.
 pub fn edit_blueprint_component<A: re_types::Archetype, C: re_types::Component + PartialEq, R>(
     ctx: &ViewerContext<'_>,
     space_view_id: SpaceViewId,
     edit_component: impl FnOnce(&mut Option<C>) -> R,
 ) -> R {
-    let blueprint_db = ctx.store_context.blueprint;
-    let query = ctx.blueprint_query;
-    let path = entity_path_for_space_view_sub_archetype::<A>(space_view_id, blueprint_db.tree());
-    let original = blueprint_db.latest_at_component::<C>(&path, query);
-    let original: Option<C> = original.map(|x| x.value);
+    let active_blueprint = ctx.store_context.blueprint;
+    let active_path =
+        entity_path_for_space_view_sub_archetype::<A>(space_view_id, active_blueprint.tree());
+    let original_value: Option<C> = active_blueprint
+        .latest_at_component::<C>(&active_path, ctx.blueprint_query)
+        .map(|x| x.value);
 
-    let mut edited = original.clone();
-    let ret = edit_component(&mut edited);
+    let mut edited_value = original_value.clone();
+    let ret = edit_component(&mut edited_value);
 
-    if edited != original {
-        // Will store an empty list of components if `edited` is `None`.
-        ctx.save_blueprint_component(&path, &edited);
+    if edited_value != original_value {
+        if let Some(edited) = edited_value {
+            ctx.save_blueprint_component(&active_path, &edited);
+        } else {
+            // Reset to the value in the default blueprint, if any.
+            let default_value = ctx
+                .store_context
+                .default_blueprint
+                .and_then(|default_blueprint| {
+                    let default_path = entity_path_for_space_view_sub_archetype::<A>(
+                        space_view_id,
+                        default_blueprint.tree(),
+                    );
+                    default_blueprint
+                        .latest_at_component::<C>(&default_path, ctx.blueprint_query)
+                        .map(|x| x.value)
+                });
+            ctx.save_blueprint_component(&active_path, &default_value);
+        }
     }
 
     ret

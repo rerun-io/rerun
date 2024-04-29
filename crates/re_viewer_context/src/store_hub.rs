@@ -178,15 +178,22 @@ impl StoreHub {
             }
         }
 
-        // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
-        let active_blueprint_id = self
-            .active_blueprint_by_app_id
-            .entry(app_id.clone())
-            .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
+        let active_blueprint = {
+            // Get the id is of whatever blueprint is now active, falling back on the "app blueprint" if needed.
+            let active_blueprint_id = self
+                .active_blueprint_by_app_id
+                .entry(app_id.clone())
+                .or_insert_with(|| StoreId::from_string(StoreKind::Blueprint, app_id.clone().0));
 
-        // Get or create the blueprint:
-        self.store_bundle.blueprint_entry(active_blueprint_id);
-        let blueprint = self.store_bundle.get(active_blueprint_id)?;
+            // Get or create the blueprint:
+            self.store_bundle.blueprint_entry(active_blueprint_id);
+            self.store_bundle.get(active_blueprint_id)?
+        };
+
+        let default_blueprint = self
+            .default_blueprint_by_app_id
+            .get(&app_id)
+            .and_then(|id| self.store_bundle.get(id));
 
         let recording = self
             .active_rec_id
@@ -199,7 +206,8 @@ impl StoreHub {
 
         Some(StoreContext {
             app_id,
-            blueprint,
+            blueprint: active_blueprint,
+            default_blueprint,
             recording: recording.unwrap_or(&EMPTY_ENTITY_DB),
             bundle: &self.store_bundle,
             hub: self,

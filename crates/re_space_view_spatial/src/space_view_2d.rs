@@ -290,7 +290,7 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
         space_view_id,
         |aabb: &mut Option<re_types::components::AABB2D>| {
             ctx.re_ui
-                .grid_left_hand_label(ui, "Bounds")
+                .grid_left_hand_label(ui, "Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
@@ -302,7 +302,7 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
                     ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
                 }
 
-                if ui.button("Reset bounds").clicked() {
+                if ui.button("Reset visible bounds").clicked() {
                     *aabb = None;
                 }
             });

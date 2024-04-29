@@ -27,101 +27,97 @@ use crate::{
 // ---
 
 /// Pan and zoom, and return the current transform.
-fn update_ui_from_scene_impl(
-    visual_bounds: &mut Rect,
-    response: &egui::Response,
-    default_scene_rect: Rect,
-) -> RectTransform {
-    fn valid_bound(rect: &Rect) -> bool {
-        rect.is_finite() && rect.is_positive()
-    }
-
-    if response.double_clicked() {
-        *visual_bounds = default_scene_rect; // double-click to reset
-    }
-
-    if !valid_bound(visual_bounds) {
-        *visual_bounds = default_scene_rect;
-    }
-    if !valid_bound(visual_bounds) {
-        // Nothing in scene, probably.
-        // Just return something that isn't NaN.
-        let fake_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0));
-        return RectTransform::from_to(fake_bounds, response.rect);
-    }
-
-    // --------------------------------------------------------------------------
-    // Expand bounds for uniform scaling (letterboxing):
-
-    let mut letterboxed_bounds = *visual_bounds;
-
-    // Temporary before applying letterboxing:
-    let ui_from_scene = RectTransform::from_to(*visual_bounds, response.rect);
-
-    let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
-    if scale_aspect < 1.0 {
-        // Letterbox top/bottom:
-        let add = visual_bounds.height() * (1.0 / scale_aspect - 1.0);
-        letterboxed_bounds.min.y -= 0.5 * add;
-        letterboxed_bounds.max.y += 0.5 * add;
-    } else {
-        // Letterbox sides:
-        let add = visual_bounds.width() * (scale_aspect - 1.0);
-        letterboxed_bounds.min.x -= 0.5 * add;
-        letterboxed_bounds.max.x += 0.5 * add;
-    }
-
-    // --------------------------------------------------------------------------
-
-    // Temporary before applying panning/zooming delta:
-    let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
-
-    // --------------------------------------------------------------------------
-
-    let mut pan_delta_in_ui = response.drag_delta();
-    if response.hovered() {
-        // NOTE: we use `raw_scroll` instead of `smooth_scroll_delta` to avoid the
-        // added latency of smoothing, which is really annoying on Mac trackpads.
-        // The smoothing is only useful for users with discreet scroll wheels,
-        // and they are likely to pan with dragging instead.
-        // TODO(egui#4401): https://github.com/emilk/egui/issues/4401
-        pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
-    }
-    if pan_delta_in_ui != Vec2::ZERO {
-        *visual_bounds = visual_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale());
-    }
-
-    if response.hovered() {
-        let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
-
-        if zoom_delta != Vec2::splat(1.0) {
-            let zoom_center_in_ui = response
-                .hover_pos()
-                .unwrap_or_else(|| response.rect.center());
-            let zoom_center_in_scene = ui_from_scene
-                .inverse()
-                .transform_pos(zoom_center_in_ui)
-                .to_vec2();
-            *visual_bounds = scale_rect(
-                visual_bounds.translate(-zoom_center_in_scene),
-                Vec2::splat(1.0) / zoom_delta,
-            )
-            .translate(zoom_center_in_scene);
-        }
-    }
-
-    // --------------------------------------------------------------------------
-
-    RectTransform::from_to(letterboxed_bounds, response.rect)
-}
-
-/// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
     space_view_id: SpaceViewId,
     response: &egui::Response,
     default_scene_rect: Rect,
 ) -> RectTransform {
+    /// Pan and zoom, and return the current transform.
+    fn update_ui_from_scene_impl(
+        visual_bounds: &mut Rect,
+        response: &egui::Response,
+        default_scene_rect: Rect,
+    ) -> RectTransform {
+        fn valid_bound(rect: &Rect) -> bool {
+            rect.is_finite() && rect.is_positive()
+        }
+
+        if !valid_bound(visual_bounds) {
+            *visual_bounds = default_scene_rect;
+        }
+        if !valid_bound(visual_bounds) {
+            // Nothing in scene, probably.
+            // Just return something that isn't NaN.
+            let fake_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0));
+            return RectTransform::from_to(fake_bounds, response.rect);
+        }
+
+        // --------------------------------------------------------------------------
+        // Expand bounds for uniform scaling (letterboxing):
+
+        let mut letterboxed_bounds = *visual_bounds;
+
+        // Temporary before applying letterboxing:
+        let ui_from_scene = RectTransform::from_to(*visual_bounds, response.rect);
+
+        let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
+        if scale_aspect < 1.0 {
+            // Letterbox top/bottom:
+            let add = visual_bounds.height() * (1.0 / scale_aspect - 1.0);
+            letterboxed_bounds.min.y -= 0.5 * add;
+            letterboxed_bounds.max.y += 0.5 * add;
+        } else {
+            // Letterbox sides:
+            let add = visual_bounds.width() * (scale_aspect - 1.0);
+            letterboxed_bounds.min.x -= 0.5 * add;
+            letterboxed_bounds.max.x += 0.5 * add;
+        }
+
+        // --------------------------------------------------------------------------
+
+        // Temporary before applying panning/zooming delta:
+        let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
+
+        // --------------------------------------------------------------------------
+
+        let mut pan_delta_in_ui = response.drag_delta();
+        if response.hovered() {
+            // NOTE: we use `raw_scroll` instead of `smooth_scroll_delta` to avoid the
+            // added latency of smoothing, which is really annoying on Mac trackpads.
+            // The smoothing is only useful for users with discreet scroll wheels,
+            // and they are likely to pan with dragging instead.
+            // TODO(egui#4401): https://github.com/emilk/egui/issues/4401
+            pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
+        }
+        if pan_delta_in_ui != Vec2::ZERO {
+            *visual_bounds = visual_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale());
+        }
+
+        if response.hovered() {
+            let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
+
+            if zoom_delta != Vec2::splat(1.0) {
+                let zoom_center_in_ui = response
+                    .hover_pos()
+                    .unwrap_or_else(|| response.rect.center());
+                let zoom_center_in_scene = ui_from_scene
+                    .inverse()
+                    .transform_pos(zoom_center_in_ui)
+                    .to_vec2();
+                *visual_bounds = scale_rect(
+                    visual_bounds.translate(-zoom_center_in_scene),
+                    Vec2::splat(1.0) / zoom_delta,
+                )
+                .translate(zoom_center_in_scene);
+            }
+        }
+
+        // --------------------------------------------------------------------------
+
+        RectTransform::from_to(letterboxed_bounds, response.rect)
+    }
+
     re_space_view::edit_blueprint_component::<
         VisualBounds,
         re_types::components::AABB2D,
@@ -138,6 +134,13 @@ fn ui_from_scene(
 
             // Store back the results
             *aabb = Some(rect.into());
+
+            if response.double_clicked() {
+                // Double-click to reset.
+                // We put it last so that we reset to the value in the default blueprint
+                // (which is not the same as `default_scene_rect`).
+                *aabb = None;
+            }
 
             ui_from_scene
         },
