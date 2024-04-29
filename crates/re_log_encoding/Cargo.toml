@@ -66,7 +66,7 @@ wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window"] }
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen", "serde"] }
+re_types = { workspace = true, features = ["serde"] }
 
 criterion.workspace = true
 mimalloc.workspace = true
