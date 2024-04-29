@@ -20,8 +20,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_class_ids([1, 2]),
     )?;
 
-    // Log an extra rect to set the view bounds
-    rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(2.5, 2.5)]))?;
-
     Ok(())
 }

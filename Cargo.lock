@@ -4858,6 +4858,7 @@ dependencies = [
  "document-features",
  "ecolor",
  "egui_plot",
+ "emath",
  "glam",
  "half 2.3.1",
  "image",

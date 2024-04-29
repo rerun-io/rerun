@@ -16,6 +16,7 @@ from .archetypes import (
     Background,
     PlotLegend,
     ScalarAxis,
+    VisualBounds,
 )
 from .components import (
     BackgroundKind,

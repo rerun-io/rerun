@@ -5,11 +5,12 @@ use re_entity_db::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{
-    archetypes::Pinhole, blueprint::archetypes::Background, components::ViewCoordinates,
+    archetypes::Pinhole, blueprint::archetypes::Background, blueprint::archetypes::VisualBounds,
+    components::ViewCoordinates,
 };
 use re_viewer_context::{
-    gpu_bridge, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    gpu_bridge, ItemSpaceContext, SpaceViewId, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use super::{
@@ -25,32 +26,16 @@ use crate::{
 
 // ---
 
-#[derive(Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct View2DState {
-    /// The visible parts of the scene, in the coordinate space of the scene.
-    ///
-    /// Everything within these bounds are guaranteed to be visible.
-    /// Some thing outside of these bounds may also be visible due to letterboxing.
-    ///
-    /// Default: [`Rect::NAN`] (invalid).
-    /// Invalid bound will be set to the default on the next frame.
-    /// The default is usually the scene bounding box.
-    pub visual_bounds: Rect,
-}
-
-impl Default for View2DState {
-    fn default() -> Self {
-        Self {
-            visual_bounds: Rect::NAN,
-        }
-    }
-}
-
-impl View2DState {
+/// Pan and zoom, and return the current transform.
+fn ui_from_scene(
+    ctx: &ViewerContext<'_>,
+    space_view_id: SpaceViewId,
+    response: &egui::Response,
+    default_scene_rect: Rect,
+) -> RectTransform {
     /// Pan and zoom, and return the current transform.
-    fn ui_from_scene(
-        &mut self,
+    fn update_ui_from_scene_impl(
+        visual_bounds: &mut Rect,
         response: &egui::Response,
         default_scene_rect: Rect,
     ) -> RectTransform {
@@ -58,15 +43,10 @@ impl View2DState {
             rect.is_finite() && rect.is_positive()
         }
 
-        if response.double_clicked() {
-            self.visual_bounds = default_scene_rect; // double-click to reset
+        if !valid_bound(visual_bounds) {
+            *visual_bounds = default_scene_rect;
         }
-
-        let bounds = &mut self.visual_bounds;
-        if !valid_bound(bounds) {
-            *bounds = default_scene_rect;
-        }
-        if !valid_bound(bounds) {
+        if !valid_bound(visual_bounds) {
             // Nothing in scene, probably.
             // Just return something that isn't NaN.
             let fake_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0));
@@ -76,20 +56,20 @@ impl View2DState {
         // --------------------------------------------------------------------------
         // Expand bounds for uniform scaling (letterboxing):
 
-        let mut letterboxed_bounds = *bounds;
+        let mut letterboxed_bounds = *visual_bounds;
 
         // Temporary before applying letterboxing:
-        let ui_from_scene = RectTransform::from_to(*bounds, response.rect);
+        let ui_from_scene = RectTransform::from_to(*visual_bounds, response.rect);
 
         let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
         if scale_aspect < 1.0 {
             // Letterbox top/bottom:
-            let add = bounds.height() * (1.0 / scale_aspect - 1.0);
+            let add = visual_bounds.height() * (1.0 / scale_aspect - 1.0);
             letterboxed_bounds.min.y -= 0.5 * add;
             letterboxed_bounds.max.y += 0.5 * add;
         } else {
             // Letterbox sides:
-            let add = bounds.width() * (scale_aspect - 1.0);
+            let add = visual_bounds.width() * (scale_aspect - 1.0);
             letterboxed_bounds.min.x -= 0.5 * add;
             letterboxed_bounds.max.x += 0.5 * add;
         }
@@ -111,7 +91,7 @@ impl View2DState {
             pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
         }
         if pan_delta_in_ui != Vec2::ZERO {
-            *bounds = bounds.translate(-pan_delta_in_ui / ui_from_scene.scale());
+            *visual_bounds = visual_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale());
         }
 
         if response.hovered() {
@@ -125,8 +105,8 @@ impl View2DState {
                     .inverse()
                     .transform_pos(zoom_center_in_ui)
                     .to_vec2();
-                *bounds = scale_rect(
-                    bounds.translate(-zoom_center_in_scene),
+                *visual_bounds = scale_rect(
+                    visual_bounds.translate(-zoom_center_in_scene),
                     Vec2::splat(1.0) / zoom_delta,
                 )
                 .translate(zoom_center_in_scene);
@@ -137,6 +117,34 @@ impl View2DState {
 
         RectTransform::from_to(letterboxed_bounds, response.rect)
     }
+
+    re_space_view::edit_blueprint_component::<
+        VisualBounds,
+        re_types::components::AABB2D,
+        RectTransform,
+    >(
+        ctx,
+        space_view_id,
+        |aabb: &mut Option<re_types::components::AABB2D>| {
+            // Convert to a Rect
+            let mut rect: Rect = aabb.map_or(default_scene_rect, Rect::from);
+
+            // Apply pan and zoom based on input
+            let ui_from_scene = update_ui_from_scene_impl(&mut rect, response, default_scene_rect);
+
+            // Store back the results
+            *aabb = Some(rect.into());
+
+            if response.double_clicked() {
+                // Double-click to reset.
+                // We put it last so that we reset to the value in the default blueprint
+                // (which is not the same as `default_scene_rect`).
+                *aabb = None;
+            }
+
+            ui_from_scene
+        },
+    )
 }
 
 fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
@@ -212,7 +220,7 @@ pub fn view_2d(
         ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
     // Convert ui coordinates to/from scene coordinates.
-    let ui_from_scene = state.state_2d.ui_from_scene(&response, default_scene_rect);
+    let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, default_scene_rect);
     let scene_from_ui = ui_from_scene.inverse();
 
     // TODO(andreas): Use the same eye & transformations as in `setup_target_config`.

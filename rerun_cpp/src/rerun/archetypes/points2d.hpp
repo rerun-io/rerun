@@ -63,8 +63,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
     ///
-    ///     // Log an extra rect to set the view bounds
-    ///     rec.log("bounds", rerun::Boxes2D::from_half_sizes({{4.0f, 3.0f}}));
+    ///     // TODO(#5520): log VisualBounds
     /// }
     /// ```
     struct Points2D {

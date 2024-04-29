@@ -1,3 +1,4 @@
+include "./datatypes/aabb2d.fbs";
 include "./datatypes/angle.fbs";
 include "./datatypes/annotation_info.fbs";
 include "./datatypes/bool.fbs";

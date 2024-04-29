@@ -8,6 +8,5 @@ int main() {
 
     rec.log("points", rerun::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
 
-    // Log an extra rect to set the view bounds
-    rec.log("bounds", rerun::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
+    // TODO(#5520): log VisualBounds
 }

@@ -1,6 +1,7 @@
 """Log a batch of 2D line strips."""
 
 import rerun as rr
+import rerun.blueprint as rrb
 
 rr.init("rerun_example_line_strip2d_batch", spawn=True)
 
@@ -17,5 +18,5 @@ rr.log(
     ),
 )
 
-# Log an extra rect to set the view bounds
-rr.log("bounds", rr.Boxes2D(centers=[3, 1.5], half_sizes=[4.0, 4.5]))
+# Set view bounds:
+rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(min=[-1, -3], max=[7, 6])))

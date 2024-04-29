@@ -62,7 +62,7 @@ impl LatestAtComponentResults {
 
     /// Returns the component data of the single instance.
     ///
-    /// This assumes that the row we get from the store only contains a single instance for this
+    /// This assumes that the row we get from the store contains at most one instance for this
     /// component; it will log a warning otherwise.
     ///
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
@@ -77,14 +77,19 @@ impl LatestAtComponentResults {
                 re_log::debug_once!("Couldn't deserialize {component_name}: promise still pending",);
                 None
             }
-            PromiseResult::Ready(data) if data.len() == 1 => Some(data[0].clone()),
             PromiseResult::Ready(data) => {
-                re_log::log_once!(
-                    level,
-                    "Couldn't deserialize {component_name}: not a mono-batch (length: {})",
-                    data.len(),
-                );
-                None
+                match data.len() {
+                    0 => {
+                        None // Empty list = no data.
+                    }
+                    1 => Some(data[0].clone()),
+                    len => {
+                        re_log::log_once!(level,
+                            "Couldn't deserialize {component_name}: not a mono-batch (length: {len})"
+                        );
+                        None
+                    }
+                }
             }
             PromiseResult::Error(err) => {
                 re_log::log_once!(
@@ -99,7 +104,7 @@ impl LatestAtComponentResults {
 
     /// Returns the component data of the single instance as an arrow array.
     ///
-    /// This assumes that the row we get from the store only contains a single instance for this
+    /// This assumes that the row we get from the store contains at most one instance for this
     /// component; it will log a warning otherwise.
     ///
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
@@ -118,16 +123,20 @@ impl LatestAtComponentResults {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
             }
-            PromiseResult::Ready(cell) if cell.as_arrow_ref().len() == 1 => {
-                Some(cell.as_arrow_ref().sliced(0, 1))
-            }
             PromiseResult::Ready(cell) => {
-                re_log::log_once!(
-                    level,
-                    "Couldn't get {component_name}: not a mono-batch (length: {})",
-                    cell.as_arrow_ref().len(),
-                );
-                None
+                match cell.as_arrow_ref().len() {
+                    0 => {
+                        None // Empty list = no data.
+                    }
+                    1 => Some(cell.as_arrow_ref().sliced(0, 1)),
+                    len => {
+                        re_log::log_once!(
+                            level,
+                            "Couldn't get {component_name}: not a mono-batch (length: {len})",
+                        );
+                        None
+                    }
+                }
             }
             PromiseResult::Error(err) => {
                 re_log::log_once!(
@@ -272,7 +281,7 @@ impl Caches {
     ///
     /// Returns `None` if the data is a promise that has yet to be resolved.
     ///
-    /// This assumes that the row we get from the store only contains a single instance for this
+    /// This assumes that the row we get from the store contains at most one instance for this
     /// component; it will generate a log message of `level` otherwise.
     ///
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
@@ -303,18 +312,24 @@ impl Caches {
                 );
                 None
             }
-            PromiseResult::Ready(data) if data.len() == 1 => Some(LatestAtMonoResult {
-                index,
-                value: data[0].clone(),
-            }),
             PromiseResult::Ready(data) => {
-                re_log::log_once!(
-                    level,
-                    "Couldn't deserialize {entity_path}:{} @ {data_time:?}#{row_id}: not a mono-batch (length: {})",
-                    C::name(),
-                    data.len(),
-                );
-                None
+                match data.len() {
+                    0 => {
+                        None // Empty list = no data.
+                    }
+                    1 => Some(LatestAtMonoResult {
+                        index,
+                        value: data[0].clone(),
+                    }),
+                    len => {
+                        re_log::log_once!(
+                            level,
+                            "Couldn't deserialize {entity_path}:{} @ {data_time:?}#{row_id}: not a mono-batch (length: {len})",
+                            C::name(),
+                        );
+                        None
+                    }
+                }
             }
             PromiseResult::Error(err) => {
                 re_log::log_once!(
@@ -330,7 +345,7 @@ impl Caches {
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
     ///
-    /// This assumes that the row we get from the store only contains a single instance for this
+    /// This assumes that the row we get from the store contains at most one instance for this
     /// component; it will log a warning otherwise.
     ///
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
@@ -355,7 +370,7 @@ impl Caches {
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
     ///
-    /// This assumes that the row we get from the store only contains a single instance for this
+    /// This assumes that the row we get from the store contains at most one instance for this
     /// component; it will return None and log a debug message otherwise.
     ///
     /// This should only be used for "mono-components" such as `Transform` and `Tensor`.

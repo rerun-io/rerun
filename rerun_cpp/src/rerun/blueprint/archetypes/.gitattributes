@@ -17,3 +17,5 @@ space_view_contents.cpp linguist-generated=true
 space_view_contents.hpp linguist-generated=true
 viewport_blueprint.cpp linguist-generated=true
 viewport_blueprint.hpp linguist-generated=true
+visual_bounds.cpp linguist-generated=true
+visual_bounds.hpp linguist-generated=true

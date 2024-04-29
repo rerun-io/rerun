@@ -48,8 +48,7 @@ namespace rerun::archetypes {
     ///             .with_labels({"one strip here", "and one strip there"})
     ///     );
     ///
-    ///     // Log an extra rect to set the view bounds
-    ///     rec.log("bounds", rerun::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}}, {{8.0f, 9.0f}}));
+    ///     // TODO(#5520): log VisualBounds
     /// }
     /// ```
     struct LineStrips2D {

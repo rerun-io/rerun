@@ -6,11 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     rec.log("strip", &rerun::LineStrips2D::new([points]))?;
 
-    // Log an extra rect to set the view bounds
-    rec.log(
-        "bounds",
-        &rerun::Boxes2D::from_centers_and_sizes([(3., 0.)], [(8., 6.)]),
-    )?;
+    // TODO(#5521): log VisualBounds
 
     Ok(())
 }

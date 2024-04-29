@@ -22,4 +22,3 @@ The id refers either to a class or key-point id
 ## Used by
 
 * [`ClassDescription`](../datatypes/class_description.md)
-* [`ClassDescription`](../datatypes/class_description.md)

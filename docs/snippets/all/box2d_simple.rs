@@ -8,8 +8,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
     )?;
 
-    // Log an extra rect to set the view bounds
-    rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
-
     Ok(())
 }

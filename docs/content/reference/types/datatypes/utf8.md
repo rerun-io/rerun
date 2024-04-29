@@ -16,8 +16,8 @@ A string of text, encoded as UTF-8.
 
 ## Used by
 
+* [`AnnotationInfo`](../datatypes/annotation_info.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
-* [`Text`](../components/text.md)
 * [`TextLogLevel`](../components/text_log_level.md)
-* [`AnnotationInfo`](../datatypes/annotation_info.md)
+* [`Text`](../components/text.md)

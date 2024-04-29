@@ -43,8 +43,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_radii((0..10).map(|_| rng.gen::<f32>())),
 ///     )?;
 ///
-///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(4., 3.)]))?;
+///     // TODO(#5521): log VisualBounds
 ///
 ///     Ok(())
 /// }

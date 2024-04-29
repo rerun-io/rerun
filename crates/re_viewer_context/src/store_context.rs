@@ -11,6 +11,9 @@ pub struct StoreContext<'a> {
     /// The current active blueprint.
     pub blueprint: &'a EntityDb,
 
+    /// The default blueprint (i.e. the one logged from code), if any.
+    pub default_blueprint: Option<&'a EntityDb>,
+
     /// The current active recording.
     ///
     /// If none is active, this will point to a dummy empty recording.

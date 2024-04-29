@@ -8,6 +8,7 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
+* [`AABB2D`](datatypes/aabb2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 * [`Angle`](datatypes/angle.md): Angle in either radians or degrees.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Bool`](datatypes/bool.md): A single boolean.

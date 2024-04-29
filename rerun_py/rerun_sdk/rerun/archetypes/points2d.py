@@ -24,6 +24,7 @@ class Points2D(Points2DExt, Archetype):
     ### Randomly distributed 2D points with varying color and radius:
     ```python
     import rerun as rr
+    import rerun.blueprint as rrb
     from numpy.random import default_rng
 
     rr.init("rerun_example_points2d_random", spawn=True)
@@ -35,8 +36,8 @@ class Points2D(Points2DExt, Archetype):
 
     rr.log("random", rr.Points2D(positions, colors=colors, radii=radii))
 
-    # Log an extra rect to set the view bounds
-    rr.log("bounds", rr.Boxes2D(half_sizes=[4, 3]))
+    # Set view bounds:
+    rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(min=[-4, -4], max=[4, 4])))
     ```
     <center>
     <picture>

@@ -695,6 +695,7 @@ mod tests {
         let ctx = StoreContext {
             app_id: re_log_types::ApplicationId::unknown(),
             blueprint: &blueprint,
+            default_blueprint: None,
             recording: &recording,
             bundle: &Default::default(),
             hub: &StoreHub::test_hub(),
