@@ -13,7 +13,6 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .clear_is_recursive_ext import ClearIsRecursiveExt
 
 __all__ = [
     "ClearIsRecursive",
@@ -25,7 +24,7 @@ __all__ = [
 
 
 @define(init=False)
-class ClearIsRecursive(ClearIsRecursiveExt):
+class ClearIsRecursive:
     """**Component**: Configures how a clear operation should behave - recursive or not."""
 
     def __init__(self: Any, recursive: ClearIsRecursiveLike):
@@ -71,4 +70,5 @@ class ClearIsRecursiveBatch(BaseBatch[ClearIsRecursiveArrayLike], ComponentBatch
 
     @staticmethod
     def _native_to_pa_array(data: ClearIsRecursiveArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ClearIsRecursiveExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)

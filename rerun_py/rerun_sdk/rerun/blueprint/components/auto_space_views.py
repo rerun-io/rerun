@@ -7,11 +7,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .auto_space_views_ext import AutoSpaceViewsExt
 
 __all__ = [
     "AutoSpaceViews",
@@ -23,7 +23,7 @@ __all__ = [
 
 
 @define(init=False)
-class AutoSpaceViews(AutoSpaceViewsExt):
+class AutoSpaceViews:
     """**Component**: Whether or not space views should be created automatically."""
 
     def __init__(self: Any, auto_space_views: AutoSpaceViewsLike):
@@ -61,4 +61,5 @@ class AutoSpaceViewsBatch(BaseBatch[AutoSpaceViewsArrayLike], ComponentBatchMixi
 
     @staticmethod
     def _native_to_pa_array(data: AutoSpaceViewsArrayLike, data_type: pa.DataType) -> pa.Array:
-        return AutoSpaceViewsExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)
