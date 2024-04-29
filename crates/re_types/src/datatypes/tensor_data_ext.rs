@@ -123,7 +123,7 @@ impl TensorData {
 
     /// Query with x, y, channel indices.
     ///
-    /// Allows to query values for any image like tensor even if it has more or less dimensions than 3.
+    /// Allows to query values for any image-like tensor even if it has more or less dimensions than 3.
     /// (useful for sampling e.g. `N x M x C x 1` tensor which is a valid image)
     #[inline]
     pub fn get_with_image_coords(&self, x: u64, y: u64, channel: u64) -> Option<TensorElement> {
@@ -195,10 +195,7 @@ impl TensorData {
                     let [y, x] = index else {
                         return None;
                     };
-                    if let Some(
-                        [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
-                    ) = self.get_nv12_pixel(*x, *y)
-                    {
+                    if let Some([r, g, b]) = self.get_nv12_pixel(*x, *y) {
                         let mut rgba = 0;
                         rgba |= (r as u32) << 24;
                         rgba |= (g as u32) << 16;
@@ -217,10 +214,7 @@ impl TensorData {
                         return None;
                     };
 
-                    if let Some(
-                        [TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)],
-                    ) = self.get_yuy2_pixel(*x, *y)
-                    {
+                    if let Some([r, g, b]) = self.get_yuy2_pixel(*x, *y) {
                         let mut rgba = 0;
                         rgba |= (r as u32) << 24;
                         rgba |= (g as u32) << 16;
@@ -240,7 +234,7 @@ impl TensorData {
     /// If the tensos is not [`Self::Nv12`], `None` is returned.
     ///
     /// It is undefined what happens if the coordinate is out-of-bounds.
-    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+    pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
         let TensorBuffer::Nv12(buf) = &self.buffer else {
             return None;
         };
@@ -251,13 +245,7 @@ impl TensorData {
                 let u = buf[(uv_offset + (y / 2) * w + x) as usize];
                 let v = buf[(uv_offset + (y / 2) * w + x) as usize + 1];
 
-                let (r, g, b) = Self::set_color_standard(luma, u, v);
-
-                Some([
-                    TensorElement::U8(r),
-                    TensorElement::U8(g),
-                    TensorElement::U8(b),
-                ])
+                Some(Self::set_color_standard(luma, u, v))
             }
             _ => None,
         }
@@ -268,7 +256,7 @@ impl TensorData {
     /// If the tensos is not [`Self::Yuy2`], `None` is returned.
     ///
     /// It is undefined what happens if the coordinate is out-of-bounds.
-    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[TensorElement; 3]> {
+    pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
         let TensorBuffer::Yuy2(buf) = &self.buffer else {
             return None;
         };
@@ -283,13 +271,7 @@ impl TensorData {
                     (buf[index], buf[index - 1], buf[index + 1])
                 };
 
-                let (r, g, b) = Self::set_color_standard(luma, u, v);
-
-                Some([
-                    TensorElement::U8(r),
-                    TensorElement::U8(g),
-                    TensorElement::U8(b),
-                ])
+                Some(Self::set_color_standard(luma, u, v))
             }
             _ => None,
         }
@@ -300,7 +282,7 @@ impl TensorData {
     /// This conversion mirrors the function of the same name in `crates/re_renderer/shader/decodings.wgsl`
     ///
     /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-    fn set_color_standard(y: u8, u: u8, v: u8) -> (u8, u8, u8) {
+    fn set_color_standard(y: u8, u: u8, v: u8) -> [u8; 3] {
         let (y, u, v) = (y as f32, u as f32, v as f32);
 
         // rescale YUV values
@@ -318,11 +300,11 @@ impl TensorData {
         // let g = y - 0.187 * u - 0.468 * v;
         // let b = y + 1.856 * u;
 
-        (
+        [
             (255.0 * r).clamp(0.0, 255.0) as u8,
             (255.0 * g).clamp(0.0, 255.0) as u8,
             (255.0 * b).clamp(0.0, 255.0) as u8,
-        )
+        ]
     }
 
     /// The datatype of the tensor.

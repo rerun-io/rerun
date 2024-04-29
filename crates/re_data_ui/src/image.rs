@@ -714,8 +714,12 @@ fn tensor_pixel_value_ui(
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
                 if let Some([r, g, b]) = match &tensor.buffer {
-                    TensorBuffer::Nv12(_) => tensor.get_nv12_pixel(x, y),
-                    TensorBuffer::Yuy2(_) => tensor.get_yuy2_pixel(x, y),
+                    TensorBuffer::Nv12(_) => tensor
+                        .get_nv12_pixel(x, y)
+                        .map(|rgb| rgb.map(TensorElement::U8)),
+                    TensorBuffer::Yuy2(_) => tensor
+                        .get_yuy2_pixel(x, y)
+                        .map(|rgb| rgb.map(TensorElement::U8)),
                     _ => {
                         if let [Some(r), Some(g), Some(b)] = [
                             tensor.get_with_image_coords(x, y, 0),
