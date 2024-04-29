@@ -89,4 +89,6 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in scale3d_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of Scale3D not implemented: We lack codegen for arrow-serialization of unions"
+        )  # You need to implement native_to_pa_array_override in scale3d_ext.py

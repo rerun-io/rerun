@@ -123,4 +123,6 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: VisibleTimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in visible_time_range_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of VisibleTimeRange not implemented: We lack codegen for arrow-serialization of structs"
+        )  # You need to implement native_to_pa_array_override in visible_time_range_ext.py

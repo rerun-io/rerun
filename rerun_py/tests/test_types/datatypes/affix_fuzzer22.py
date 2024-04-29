@@ -64,4 +64,6 @@ class AffixFuzzer22Batch(BaseBatch[AffixFuzzer22ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer22ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in affix_fuzzer22_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of AffixFuzzer22 not implemented: We lack codegen for arrow-serialization of structs"
+        )  # You need to implement native_to_pa_array_override in affix_fuzzer22_ext.py
