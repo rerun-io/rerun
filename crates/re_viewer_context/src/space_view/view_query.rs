@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
+use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::StoreKind;
-use re_types::{blueprint::datatypes::VisibleTimeRange, ComponentName};
-use smallvec::SmallVec;
+use re_types::ComponentName;
 
 use crate::{
-    DataResultTree, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier, ViewerContext,
+    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier,
+    ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -63,8 +64,8 @@ pub struct PropertyOverrides {
     /// for properties that apply to the individual entity only.
     pub individual_override_path: EntityPath,
 
-    /// Resolved time range.
-    pub visible_time_range: VisibleTimeRange,
+    /// What range is queried on the data store.
+    pub query_range: QueryRange,
 }
 
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
@@ -386,6 +387,14 @@ impl DataResult {
         self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
             .unwrap_or_default()
             .0
+    }
+
+    /// Returns the query range for this data result.
+    pub fn query_range(&self) -> &QueryRange {
+        const DEFAULT_RANGE: QueryRange = QueryRange::LatestAt;
+        self.property_overrides
+            .as_ref()
+            .map_or(&DEFAULT_RANGE, |p| &p.query_range)
     }
 }
 

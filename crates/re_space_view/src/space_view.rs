@@ -9,14 +9,13 @@ use re_types::{
     blueprint::{
         archetypes::{self as blueprint_archetypes},
         components::{SpaceViewOrigin, Visible},
-        datatypes as blueprint_datatypes,
     },
     components::Name,
 };
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, DataResult, PerSystemEntities, RecommendedSpaceView, SpaceViewClass,
+    ContentsName, DataResult, PerSystemEntities, QueryRange, RecommendedSpaceView, SpaceViewClass,
     SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext,
     SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
@@ -416,13 +415,13 @@ impl SpaceViewBlueprint {
         ctx.save_blueprint_component(&individual_override_path, &EntityPropertiesComponent(props));
     }
 
-    pub fn visible_time_range(
+    pub fn query_range(
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
-    ) -> blueprint_datatypes::VisibleTimeRange {
+    ) -> QueryRange {
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
         // * default does not vary per visualizer
@@ -443,11 +442,14 @@ impl SpaceViewBlueprint {
             }
         }
         .flatten()
-        .unwrap_or_else(|| {
-            let space_view_class =
-                space_view_class_registry.get_class_or_log_error(&self.class_identifier);
-            space_view_class.default_visible_time_range()
-        })
+        .map_or_else(
+            || {
+                let space_view_class =
+                    space_view_class_registry.get_class_or_log_error(&self.class_identifier);
+                space_view_class.default_query_range()
+            },
+            QueryRange::TimeRange,
+        )
     }
 }
 

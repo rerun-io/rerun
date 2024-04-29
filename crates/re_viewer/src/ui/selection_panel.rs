@@ -904,7 +904,7 @@ fn blueprint_ui_for_space_view(
             &class_identifier,
         );
 
-        visual_time_range_ui_space_view(ctx, ui, class_identifier, space_view_id);
+        visual_time_range_ui_space_view(ctx, ui, space_view);
 
         // Space View don't inherit (legacy) properties.
         let mut props =

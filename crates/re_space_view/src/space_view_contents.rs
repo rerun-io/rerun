@@ -396,7 +396,7 @@ impl DataQueryPropertyResolver<'_> {
             .space_view
             .legacy_properties(blueprint, blueprint_query);
 
-        let default_visible_time_range = self.space_view.visible_time_range(
+        let default_query_range = self.space_view.query_range(
             blueprint,
             blueprint_query,
             active_timeline,
@@ -406,7 +406,7 @@ impl DataQueryPropertyResolver<'_> {
         // TODO(#4194): Once supported, default entity properties should be passe through here.
         EntityOverrideContext {
             legacy_space_view_properties,
-            default_visible_time_range,
+            default_query_range,
         }
     }
 
@@ -548,7 +548,7 @@ impl DataQueryPropertyResolver<'_> {
             }
 
             // Figure out relevant visual time range.
-            let visible_time_range = override_context.default_visible_time_range.clone(); // TODO:
+            let query_range = override_context.default_query_range.clone(); // TODO:
 
             node.data_result.property_overrides = Some(PropertyOverrides {
                 accumulated_properties: accumulated_legacy_properties,
@@ -557,7 +557,7 @@ impl DataQueryPropertyResolver<'_> {
                 resolved_component_overrides,
                 recursive_override_path,
                 individual_override_path,
-                visible_time_range,
+                query_range,
             });
 
             (

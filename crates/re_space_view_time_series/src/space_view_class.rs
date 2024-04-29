@@ -12,7 +12,7 @@ use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedSpaceView,
+    IdentifiedViewSystem, IndicatedEntities, PerVisualizer, QueryRange, RecommendedSpaceView,
     SmallVisualizerSet, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
@@ -75,7 +75,7 @@ pub struct TimeSeriesSpaceView;
 const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
 impl TimeSeriesSpaceView {
-    pub const DEFAULT_TIME_RANGE: VisibleTimeRange = VisibleTimeRange::EVERYTHING;
+    pub const DEFAULT_QUERY_RANGE: QueryRange = QueryRange::TimeRange(VisibleTimeRange::EVERYTHING);
 }
 
 impl SpaceViewClass for TimeSeriesSpaceView {
@@ -141,8 +141,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         re_viewer_context::SpaceViewClassLayoutPriority::Low
     }
 
-    fn default_visible_time_range(&self) -> VisibleTimeRange {
-        Self::DEFAULT_TIME_RANGE.clone()
+    fn default_query_range(&self) -> QueryRange {
+        Self::DEFAULT_QUERY_RANGE.clone()
     }
 
     fn selection_ui(

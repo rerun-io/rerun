@@ -1,6 +1,9 @@
 use re_log_types::{EntityPath, TimeRange};
 use re_space_view::visible_time_range_to_time_range;
-use re_types::datatypes::Utf8;
+use re_types::{
+    blueprint::datatypes::{VisibleTimeRange, VisibleTimeRangeBoundary},
+    datatypes::Utf8,
+};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
@@ -35,18 +38,24 @@ pub fn determine_time_range(
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
 ) -> TimeRange {
-    let visible_time_range_override = match query.timeline.typ() {
-        re_log_types::TimeType::Time => data_result
-            .lookup_override::<re_types::blueprint::components::VisibleTimeRangeTime>(ctx)
-            .map(|v| v.0),
-        re_log_types::TimeType::Sequence => data_result
-            .lookup_override::<re_types::blueprint::components::VisibleTimeRangeSequence>(ctx)
-            .map(|v| v.0),
-    }
-    .unwrap_or(TimeSeriesSpaceView::DEFAULT_TIME_RANGE);
+    let query_range = data_result.query_range();
 
-    let mut time_range =
-        visible_time_range_to_time_range(&visible_time_range_override, query.latest_at);
+    // Latest-at doesn't make sense for time series and should also never happen.
+    let visible_time_range = match query_range {
+        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
+        re_viewer_context::QueryRange::LatestAt => {
+            re_log::error_once!(
+                "Unexexpected LatestAt query for time series data result at path {:?}",
+                data_result.entity_path
+            );
+            VisibleTimeRange {
+                start: VisibleTimeRangeBoundary::AT_CURSOR,
+                end: VisibleTimeRangeBoundary::AT_CURSOR,
+            }
+        }
+    };
+
+    let mut time_range = visible_time_range_to_time_range(&visible_time_range, query.latest_at);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

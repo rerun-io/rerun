@@ -1,13 +1,15 @@
 use re_entity_db::{external::re_data_store::LatestAtQuery, EntityDb, EntityProperties};
 use re_log_types::Timeline;
 use re_viewer_context::{
-    DataQueryResult, PerVisualizer, SpaceViewClassRegistry, StoreContext, VisualizableEntities,
+    DataQueryResult, PerVisualizer, QueryRange, SpaceViewClassRegistry, StoreContext,
+    VisualizableEntities,
 };
 
 pub struct EntityOverrideContext {
     pub legacy_space_view_properties: EntityProperties,
 
-    pub default_visible_time_range: re_types::blueprint::datatypes::VisibleTimeRange,
+    /// Query range that data results should fall back to if they don't specify their own.
+    pub default_query_range: QueryRange,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]

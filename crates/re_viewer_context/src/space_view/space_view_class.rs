@@ -1,10 +1,10 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
-use re_types::{blueprint::datatypes::VisibleTimeRange, ComponentName};
+use re_types::ComponentName;
 
 use crate::{
-    IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,
+    IndicatedEntities, PerSystemEntities, PerVisualizer, QueryRange, SmallVisualizerSet,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext, VisualizableEntities,
@@ -105,10 +105,9 @@ pub trait SpaceViewClass: Send + Sync {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
-    /// Determines the default time range for this space view class.
-    // TODO(#4194): This should be generalized to allow arbitrary property defaults.
-    fn default_visible_time_range(&self) -> VisibleTimeRange {
-        VisibleTimeRange::EMPTY.clone()
+    /// Default query range for this space view.
+    fn default_query_range(&self) -> QueryRange {
+        QueryRange::LatestAt
     }
 
     /// Determines a suitable origin given the provided set of entities.

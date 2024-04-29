@@ -8,16 +8,18 @@ use re_log_types::{EntityPath, TimeInt, TimeType, TimeZone};
 use re_space_view::{
     query_view_property, time_range_boundary_to_visible_history_boundary,
     visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
+    SpaceViewBlueprint,
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::{
     archetypes::VisibleTimeRange,
     components::{VisibleTimeRangeSequence, VisibleTimeRangeTime},
+    datatypes::VisibleTimeRangeBoundary,
 };
 use re_types_core::Loggable as _;
 use re_ui::{markdown_ui, ReUi};
-use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, ViewerContext};
+use re_viewer_context::{QueryRange, SpaceViewClass, SpaceViewClassIdentifier, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
@@ -41,10 +43,9 @@ fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -
 pub fn visual_time_range_ui_space_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    space_view_class: SpaceViewClassIdentifier,
-    space_view_id: SpaceViewId,
+    space_view: &SpaceViewBlueprint,
 ) {
-    if !space_view_with_visible_history(space_view_class) {
+    if !space_view_with_visible_history(*space_view.class_identifier()) {
         return;
     }
 
@@ -52,30 +53,36 @@ pub fn visual_time_range_ui_space_view(
     let time_type = time_ctrl.timeline().typ();
 
     let (property, property_path) = query_view_property::<VisibleTimeRange>(
-        space_view_id,
+        space_view.id,
         ctx.store_context.blueprint,
         ctx.blueprint_query,
     );
 
-    let mut has_individual_range = true;
-    let active_time_range_override = match time_type {
-        TimeType::Time => property.ok().flatten().map(|v| v.time.map(|v| v.0)),
-        TimeType::Sequence => property.ok().flatten().map(|v| v.sequence.map(|v| v.0)),
-    }
-    .flatten()
-    .unwrap_or_else(|| {
-        has_individual_range = false;
-        let space_view_class = ctx
-            .space_view_class_registry
-            .get_class_or_log_error(&space_view_class);
-        space_view_class.default_visible_time_range()
-    });
+    let has_individual_range = match time_type {
+        TimeType::Time => property
+            .ok()
+            .flatten()
+            .map(|v| v.time)
+            .map_or(false, |v| v.is_some()),
+        TimeType::Sequence => property
+            .ok()
+            .flatten()
+            .map(|v| v.sequence)
+            .map_or(false, |v| v.is_some()),
+    };
+
+    let query_range = space_view.query_range(
+        ctx.store_context.blueprint,
+        ctx.blueprint_query,
+        ctx.rec_cfg.time_ctrl.read().timeline(),
+        ctx.space_view_class_registry,
+    );
 
     let is_space_view = true;
     visual_time_range_ui(
         ctx,
         ui,
-        active_time_range_override,
+        &query_range,
         has_individual_range,
         is_space_view,
         &property_path,
@@ -112,7 +119,7 @@ pub fn visual_time_range_ui_data_result(
     visual_time_range_ui(
         ctx,
         ui,
-        overrides.visible_time_range.clone(),
+        &overrides.query_range,
         has_individual_range,
         is_space_view,
         override_path,
@@ -122,7 +129,7 @@ pub fn visual_time_range_ui_data_result(
 fn visual_time_range_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    mut resolved_range: re_types::blueprint::datatypes::VisibleTimeRange,
+    resolved_range: &QueryRange,
     mut has_individual_range: bool,
     is_space_view: bool,
     property_override_path: &EntityPath,
@@ -132,6 +139,20 @@ fn visual_time_range_ui(
     let time_type = time_ctrl.timeline().typ();
 
     let mut interacting_with_controls = false;
+
+    let mut resolved_range = match resolved_range {
+        QueryRange::TimeRange(range) => range.clone(),
+        QueryRange::LatestAt => {
+            if has_individual_range {
+                re_log::error_once!("Visible time range is set but no time range is provided");
+            }
+            // TODO: should show something else.
+            re_types::blueprint::datatypes::VisibleTimeRange {
+                start: VisibleTimeRangeBoundary::AT_CURSOR,
+                end: VisibleTimeRangeBoundary::AT_CURSOR,
+            }
+        }
+    };
 
     let collapsing_response = ctx
         .re_ui
