@@ -13,7 +13,7 @@ struct ListItemResponse {
     collapse_response: Option<Response>,
 }
 
-/// Responses returned by [`ListItem::show_hierarchical_with_content`].
+/// Responses returned by [`ListItem::show_hierarchical_with_children`].
 pub struct ShowCollapsingResponse<R> {
     /// Response from the item itself.
     pub item_response: Response,
@@ -88,7 +88,7 @@ impl<'a> ListItem<'a> {
     ///
     /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
     /// the [`egui::Response`] returned by [`Self::show_flat`], [`Self::show_hierarchical`], and
-    /// [`Self::show_hierarchical_with_content`] will still reflect the actual hover state.
+    /// [`Self::show_hierarchical_with_children`] will still reflect the actual hover state.
     #[inline]
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
