@@ -311,7 +311,7 @@ impl eframe::App for ExampleApp {
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
-                self.right_panel.ui(&self.re_ui, ui)
+                self.right_panel.ui(&self.re_ui, ui);
             });
 
         egui::CentralPanel::default()
