@@ -5,7 +5,13 @@ use egui::Ui;
 pub struct EmptyContent;
 
 impl ListItemContent for EmptyContent {
-    fn ui(&mut self, _re_ui: &crate::ReUi, _ui: &egui::Ui, _context: &ContentContext<'_>) {}
+    fn ui(
+        self: Box<Self>,
+        _re_ui: &crate::ReUi,
+        _ui: &mut egui::Ui,
+        _context: &ContentContext<'_>,
+    ) {
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -14,7 +20,7 @@ pub struct DebugContent {
 }
 
 impl ListItemContent for DebugContent {
-    fn ui(&mut self, _re_ui: &crate::ReUi, ui: &egui::Ui, context: &ContentContext<'_>) {
+    fn ui(self: Box<Self>, _re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>) {
         ui.ctx()
             .debug_painter()
             .debug_rect(context.rect, egui::Color32::DARK_GREEN, "")

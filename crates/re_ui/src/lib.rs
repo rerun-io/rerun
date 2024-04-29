@@ -72,7 +72,7 @@ use egui::{
     Vec2, Widget,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ReUi {
     pub egui_ctx: egui::Context,
 

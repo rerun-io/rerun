@@ -1,7 +1,9 @@
+mod basic;
 mod container;
 mod debug;
 mod list_item;
 
+pub use basic::*;
 pub use container::*;
 pub use debug::*;
 pub use list_item::*;
@@ -20,8 +22,17 @@ pub struct ContentContext<'a> {
     /// Background area
     pub bg_rect: egui::Rect,
 
+    /// List item response.
+    ///
+    /// Note: this response reflects the hover state when [`ListItem::force_hovered`] is used,
+    /// regardless of the actual mouse position.
+    pub response: &'a egui::Response,
+
+    /// The current list item.
+    pub list_item: &'a ListItem<'a>,
+
+    /// The frame-over-frame state for this list item.
     pub state: &'a State,
-    //TODO: provide a way to affect ListItem background, e.g. current button hover behaviour
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -47,7 +58,7 @@ impl Default for DesiredWidth {
 
 pub trait ListItemContent {
     /// UI for everything that is after the indent and the collapsing triangle (if any)
-    fn ui(&mut self, re_ui: &crate::ReUi, ui: &egui::Ui, context: &ContentContext<'_>);
+    fn ui(self: Box<Self>, re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>);
 
     fn desired_width(&self, _re_ui: &crate::ReUi, _ui: &egui::Ui) -> DesiredWidth {
         DesiredWidth::AtLeast(0.0)
@@ -60,17 +71,24 @@ pub trait ListItemContent {
 }
 
 pub struct CustomListItemContent {
-    ui: Box<dyn FnMut(&crate::ReUi, &egui::Ui, &ContentContext<'_>)>,
+    ui: Box<dyn FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>)>,
 }
 
 impl CustomListItemContent {
-    pub fn new(ui: impl FnMut(&crate::ReUi, &egui::Ui, &ContentContext<'_>) + 'static) -> Self {
+    pub fn new(
+        ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>) + 'static,
+    ) -> Self {
         Self { ui: Box::new(ui) }
     }
 }
 
 impl ListItemContent for CustomListItemContent {
-    fn ui(&mut self, re_ui: &crate::ReUi, ui: &egui::Ui, context: &ContentContext<'_>) {
+    fn ui(
+        mut self: Box<Self>,
+        re_ui: &crate::ReUi,
+        ui: &mut egui::Ui,
+        context: &ContentContext<'_>,
+    ) {
         (self.ui)(re_ui, ui, context)
     }
 }

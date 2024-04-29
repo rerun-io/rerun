@@ -22,15 +22,15 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<egui::InnerResponse<R>>,
 }
 
-#[allow(clippy::type_complexity)]
+#[derive(Debug, Clone)]
 pub struct ListItem<'a> {
     re_ui: &'a ReUi,
-    interactive: bool,
-    selected: bool,
-    draggable: bool,
-    drag_target: bool,
-    force_hovered: bool,
-    collapse_openness: Option<f32>,
+    pub interactive: bool,
+    pub selected: bool,
+    pub draggable: bool,
+    pub drag_target: bool,
+    pub force_hovered: bool,
+    pub collapse_openness: Option<f32>,
     height: f32,
 }
 
@@ -283,6 +283,8 @@ impl<'a> ListItem<'a> {
             let content_ctx = ContentContext {
                 rect: content_rect,
                 bg_rect,
+                response: &style_response,
+                list_item: &self,
                 state: &state,
             };
             content.ui(re_ui, ui, &content_ctx);
