@@ -39,7 +39,7 @@ impl TensorData {
 
     /// The number of dimensions of the tensor.
     ///
-    /// An image tensor will either have two (height, width) or three (height, width, channels) dimensions.
+    /// An image tensor will usually have two (height, width) or three (height, width, channels) dimensions.
     #[inline]
     pub fn num_dim(&self) -> usize {
         self.shape.len()
