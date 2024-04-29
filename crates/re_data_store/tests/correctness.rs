@@ -13,7 +13,6 @@ use re_log_types::{
     build_frame_nr, build_log_time, DataRow, Duration, EntityPath, RowId, Time, TimeInt, TimePoint,
     TimeType, Timeline,
 };
-use re_types::datagen::build_some_positions2d;
 use re_types_core::Loggable as _;
 
 // ---
@@ -206,7 +205,7 @@ fn write_errors() {
         let mut row = test_row!(entity_path @ [
             build_frame_nr(1),
             build_log_time(Time::now()),
-        ] => [ build_some_positions2d(1) ]);
+        ] => [ MyPoint::from_iter(0..1) ]);
 
         row.row_id = re_log_types::RowId::new();
         store.insert_row(&row).unwrap();

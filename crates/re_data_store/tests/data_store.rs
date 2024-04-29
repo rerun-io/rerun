@@ -12,14 +12,14 @@ use re_data_store::{
 };
 use re_log_types::{
     build_frame_nr,
-    example_components::{MyColor, MyIndex},
+    example_components::{MyColor, MyIndex, MyPoint},
     DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
 };
+use re_types::ComponentNameSet;
 use re_types::{
     components::{Color, Position2D},
     testing::{build_some_large_structs, LargeStruct},
 };
-use re_types::{datagen::build_some_positions2d, ComponentNameSet};
 use re_types_core::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
@@ -101,7 +101,7 @@ fn all_components() {
 
         let row = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => [build_some_large_structs(2), build_some_positions2d(2)]);
+        ] => [build_some_large_structs(2), MyPoint::from_iter(0..2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -152,7 +152,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(entity_path @ [build_frame_nr(frame3)] => [build_some_positions2d(2)]);
+        let row = test_row!(entity_path @ [build_frame_nr(frame3)] => [MyPoint::from_iter(0..2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -218,7 +218,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_a));
 
-        let row = test_row!(entity_path @ [build_frame_nr(frame1)] => [build_some_positions2d(2)]);
+        let row = test_row!(entity_path @ [build_frame_nr(frame1)] => [MyPoint::from_iter(0..2)]);
         store.insert_row(&row).unwrap();
 
         assert_latest_components_at(&mut store, &entity_path, Some(components_b));
@@ -256,10 +256,10 @@ fn latest_at_impl(store: &mut DataStore) {
     let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
     let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..3);
     let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
-    let points3 = build_some_positions2d(10);
+    let points3 = MyPoint::from_iter(0..10);
     let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
     let colors4 = MyColor::from_iter(0..5);
@@ -379,10 +379,10 @@ fn range_impl(store: &mut DataStore) {
     let colors1 = MyColor::from_iter(0..3);
     let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [insts1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..3);
     let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [insts1, positions2]);
 
-    let points3 = build_some_positions2d(10);
+    let points3 = MyPoint::from_iter(0..10);
     let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
     let insts4_1 = MyIndex::from_iter(20..25);
@@ -393,14 +393,14 @@ fn range_impl(store: &mut DataStore) {
     let colors4_2 = MyColor::from_iter(0..5);
     let row4_2 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_2.clone(), colors4_2]);
 
-    let points4_25 = build_some_positions2d(5);
+    let points4_25 = MyPoint::from_iter(0..5);
     let row4_25 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_2, points4_25]);
 
     let insts4_3 = MyIndex::from_iter(30..35);
     let colors4_3 = MyColor::from_iter(0..5);
     let row4_3 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_3.clone(), colors4_3]);
 
-    let points4_4 = build_some_positions2d(5);
+    let points4_4 = MyPoint::from_iter(0..5);
     let row4_4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [insts4_3, points4_4]);
 
     // injecting some static colors
@@ -650,10 +650,10 @@ fn protected_gc_impl(store: &mut DataStore) {
     let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
     let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..3);
     let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
-    let points3 = build_some_positions2d(10);
+    let points3 = MyPoint::from_iter(0..10);
     let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [points3]);
 
     let colors4 = MyColor::from_iter(0..5);
@@ -752,13 +752,13 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
     let row1 = test_row!(entity_path @ [build_frame_nr(frame1)] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..3);
     let row2 = test_row!(entity_path @ [build_frame_nr(frame2)] => [instances1, positions2]);
 
     let colors2 = MyColor::from_iter(0..0);
     let row3 = test_row!(entity_path @ [build_frame_nr(frame3)] => [colors2]);
 
-    let points4 = build_some_positions2d(0);
+    let points4 = MyPoint::from_iter(0..0);
     let row4 = test_row!(entity_path @ [build_frame_nr(frame4)] => [points4]);
 
     // Insert the 3 rows as static

@@ -8,10 +8,9 @@ use re_data_store::{
 };
 use re_log_types::{
     build_frame_nr, build_log_time,
-    example_components::{MyColor, MyIndex},
+    example_components::{MyColor, MyIndex, MyPoint},
     DataRow, DataTable, EntityPath, RowId, TableId, TimePoint,
 };
-use re_types::datagen::build_some_positions2d;
 
 // ---
 
@@ -281,12 +280,12 @@ fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
             build_frame_nr(frame1),
         ] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..2);
     let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => [instances1, positions2.clone()]);
 
-    let positions3 = build_some_positions2d(10);
+    let positions3 = MyPoint::from_iter(0..10);
     let row3 = test_row!(entity_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
         ] => [positions3]);
@@ -337,7 +336,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
                 build_frame_nr(frame1),
             ] => [instances1, colors1]);
 
-        let (instances2, positions2) = (MyIndex::from_iter(0..3), build_some_positions2d(3));
+        let (instances2, positions2) = (MyIndex::from_iter(0..3), MyPoint::from_iter(0..2));
         let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => [instances2, positions2]);
