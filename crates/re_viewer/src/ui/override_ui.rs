@@ -110,7 +110,7 @@ pub fn override_ui(
                     component_name,
                     OverridePath {
                         store_kind,
-                        path: entity_path_overriden,
+                        path: entity_path_overridden,
                     },
                 )) = components.get(row.index())
                 {
@@ -148,7 +148,7 @@ pub fn override_ui(
                                     .latest_at(
                                         store,
                                         query,
-                                        entity_path_overriden,
+                                        entity_path_overridden,
                                         [*component_name],
                                     )
                                     .components
@@ -161,7 +161,7 @@ pub fn override_ui(
                                     .latest_at(
                                         ctx.recording_store(),
                                         &query,
-                                        entity_path_overriden,
+                                        entity_path_overridden,
                                         [*component_name],
                                     )
                                     .components
@@ -177,7 +177,7 @@ pub fn override_ui(
                                 UiVerbosity::Small,
                                 &query,
                                 ctx.recording(),
-                                entity_path_overriden,
+                                entity_path_overridden,
                                 &overrides.individual_override_path,
                                 &results,
                                 instance,
