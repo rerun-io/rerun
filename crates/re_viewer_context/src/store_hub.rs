@@ -8,6 +8,7 @@ use re_data_store::{DataStoreConfig, DataStoreStats};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_query::CachesStats;
+use re_types::SizeBytes;
 
 use crate::StoreContext;
 
@@ -525,11 +526,9 @@ impl StoreHub {
             return; // unreachable
         };
 
-        let store_size_before =
-            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+        let store_size_before = entity_db.heap_size_bytes();
         entity_db.purge_fraction_of_ram(fraction_to_purge);
-        let store_size_after =
-            entity_db.store().static_size_bytes() + entity_db.store().temporal_size_bytes();
+        let store_size_after = entity_db.heap_size_bytes();
 
         // No point keeping an empty recording around.
         if entity_db.is_empty() {
@@ -697,37 +696,41 @@ impl StoreHub {
             .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
-        let blueprint_stats = blueprint
-            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
-            .unwrap_or_default();
+        // TODO: well, that's annoying.
 
-        let blueprint_config = blueprint
-            .map(|entity_db| entity_db.store().config().clone())
-            .unwrap_or_default();
+        todo!()
 
-        let recording = self
-            .active_rec_id
-            .as_ref()
-            .and_then(|rec_id| self.store_bundle.get(rec_id));
-
-        let recording_stats = recording
-            .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
-            .unwrap_or_default();
-
-        let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().stats())
-            .unwrap_or_default();
-
-        let recording_config = recording
-            .map(|entity_db| entity_db.store().config().clone())
-            .unwrap_or_default();
-
-        StoreHubStats {
-            blueprint_stats,
-            blueprint_config,
-            recording_stats,
-            recording_cached_stats,
-            recording_config,
-        }
+        // let blueprint_stats = blueprint
+        //     .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
+        //     .unwrap_or_default();
+        //
+        // let blueprint_config = blueprint
+        //     .map(|entity_db| entity_db.store().config().clone())
+        //     .unwrap_or_default();
+        //
+        // let recording = self
+        //     .active_rec_id
+        //     .as_ref()
+        //     .and_then(|rec_id| self.store_bundle.get(rec_id));
+        //
+        // let recording_stats = recording
+        //     .map(|entity_db| DataStoreStats::from_store(entity_db.store()))
+        //     .unwrap_or_default();
+        //
+        // let recording_cached_stats = recording
+        //     .map(|entity_db| entity_db.query_caches().stats())
+        //     .unwrap_or_default();
+        //
+        // let recording_config = recording
+        //     .map(|entity_db| entity_db.store().config().clone())
+        //     .unwrap_or_default();
+        //
+        // StoreHubStats {
+        //     blueprint_stats,
+        //     blueprint_config,
+        //     recording_stats,
+        //     recording_cached_stats,
+        //     recording_config,
+        // }
     }
 }

@@ -24,7 +24,7 @@ impl DataUi for EntityLatestAtResults {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!(self.component_name);

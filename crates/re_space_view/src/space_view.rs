@@ -1,11 +1,10 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
-use re_entity_db::external::re_query::PromiseResult;
 
-use crate::SpaceViewContents;
-use re_data_store::LatestAtQuery;
+use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
-use re_log_types::{DataRow, EntityPathSubs, RowId};
+use re_log_types::{DataCell, DataRow, EntityPathSubs, RowId};
+use re_query::LatestAtQuery;
 use re_types::blueprint::archetypes as blueprint_archetypes;
 use re_types::{
     blueprint::components::{SpaceViewOrigin, Visible},
@@ -19,6 +18,8 @@ use re_viewer_context::{
     StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
     ViewerContext,
 };
+
+use crate::SpaceViewContents;
 
 /// A view of a space.
 ///
@@ -246,10 +247,15 @@ impl SpaceViewBlueprint {
                                     .contains(component)
                         })
                         .filter_map(|component| {
-                            blueprint
-                                .store()
-                                .latest_at(query, path, *component, &[*component])
-                                .and_then(|(_, _, cells)| cells[0].clone())
+                            let res = blueprint.query_caches().latest_at(
+                                blueprint.store(),
+                                query,
+                                path,
+                                [*component],
+                            );
+                            res.get(*component)
+                                .and_then(|data| data.raw(blueprint.resolver(), *component))
+                                .map(|data| DataCell::from_arrow(*component, data))
                         }),
                 ) {
                     if row.num_cells() > 0 {
@@ -426,12 +432,18 @@ impl SpaceViewBlueprint {
             ctx.blueprint.tree().subtree(&recursive_override_path)
         {
             for component in recursive_override_subtree.entity.components.keys() {
-                if let Some(component_data) = ctx
-                    .blueprint
-                    .store()
-                    .latest_at(query, &recursive_override_path, *component, &[*component])
-                    .and_then(|(_, _, cells)| cells[0].clone())
-                {
+                let res = ctx.blueprint.query_caches().latest_at(
+                    ctx.blueprint.store(),
+                    query,
+                    &recursive_override_path,
+                    [*component],
+                );
+                let component_data = res
+                    .get(*component)
+                    .and_then(|data| data.raw(ctx.blueprint.resolver(), *component))
+                    .map(|data| DataCell::from_arrow(*component, data));
+
+                if let Some(component_data) = component_data {
                     if !component_data.is_empty() {
                         recursive_component_overrides.insert(
                             *component,

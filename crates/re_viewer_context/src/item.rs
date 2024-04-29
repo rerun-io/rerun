@@ -180,11 +180,11 @@ pub fn resolve_mono_instance_path(
     re_tracing::profile_function!();
 
     if instance.instance.get() == 0 {
-        // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(components) = entity_db
-            .store()
-            .all_components(&query.timeline(), &instance.entity_path)
-        else {
+        let Some(components) = entity_db.query_caches().all_components(
+            entity_db.store(),
+            &query.timeline(),
+            &instance.entity_path,
+        ) else {
             // No components at all, return unindexed entity.
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
         };

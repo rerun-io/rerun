@@ -9,7 +9,7 @@ impl DataUi for re_entity_db::EntityPath {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         InstancePath::entity_all(self.clone()).data_ui(ctx, ui, verbosity, query, db);

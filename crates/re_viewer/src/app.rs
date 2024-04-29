@@ -649,7 +649,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDataStore => {
                 if let Some(ctx) = store_context {
-                    let table = ctx.recording.store().to_data_table();
+                    let table = ctx.recording.store_to_table();
                     match table {
                         Ok(table) => {
                             let text = format!("{table}");
@@ -667,7 +667,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
-                    let table = ctx.blueprint.store().to_data_table();
+                    let table = ctx.blueprint.store_to_table();
                     match table {
                         Ok(table) => {
                             let text = format!("{table}");

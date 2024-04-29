@@ -509,7 +509,7 @@ pub fn picking(
             let meaning = image_meaning_for_entity(
                 &instance_path.entity_path,
                 &query.latest_at_query(),
-                store,
+                ctx.recording(),
             );
 
             // TODO(#5607): what should happen if the promise is still pending?

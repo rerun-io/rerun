@@ -218,7 +218,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
-        if !ctx.recording_store().entity_has_component(
+        if !ctx.recording().query_caches().entity_has_component(
+            ctx.recording_store(),
             &ctx.current_query().timeline(),
             entity_path,
             &Image::indicator().name(),
@@ -310,7 +311,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.recording_store().entity_has_component(
+        if !ctx.recording().query_caches().entity_has_component(
+            ctx.recording_store(),
             &ctx.current_query().timeline(),
             entity_path,
             &SegmentationImage::indicator().name(),
@@ -401,7 +403,8 @@ impl ImageVisualizer {
     ) {
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
-        if !ctx.recording_store().entity_has_component(
+        if !ctx.recording().query_caches().entity_has_component(
+            ctx.recording_store(),
             &ctx.current_query().timeline(),
             entity_path,
             &DepthImage::indicator().name(),

@@ -6,7 +6,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{entity_path, DataRow, EntityPath, RowId, TimeInt, TimeType, Timeline};
-use re_query::{clamped_zip_1x1, PromiseResolver};
+use re_query::{clamped_zip_1x1, DataStoreRef, PromiseResolver};
 use re_query::{Caches, LatestAtResults};
 use re_types::{
     archetypes::Points2D,
@@ -77,7 +77,7 @@ fn mono_points(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&caches, &store, &paths));
+            b.iter(|| query_and_visit_points(&caches, (&store).into(), &paths));
         });
     }
 }
@@ -105,7 +105,7 @@ fn mono_strings(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, (&store).into(), &paths));
         });
     }
 }
@@ -130,7 +130,7 @@ fn batch_points(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&caches, &store, &paths));
+            b.iter(|| query_and_visit_points(&caches, (&store).into(), &paths));
         });
     }
 }
@@ -155,7 +155,7 @@ fn batch_strings(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
         let (caches, store) = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, (&store).into(), &paths));
         });
     }
 }
@@ -258,7 +258,7 @@ fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> (Caches, DataStor
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     msgs.for_each(|row| {
         caches.on_events(&[store.insert_row(row).unwrap()]);
@@ -274,7 +274,7 @@ struct SavePoint {
 
 fn query_and_visit_points(
     caches: &Caches,
-    store: &DataStore,
+    store: DataStoreRef<'_>,
     paths: &[EntityPath],
 ) -> Vec<SavePoint> {
     let resolver = PromiseResolver::default();
@@ -326,7 +326,7 @@ struct SaveString {
 
 fn query_and_visit_strings(
     caches: &Caches,
-    store: &DataStore,
+    store: DataStoreRef<'_>,
     paths: &[EntityPath],
 ) -> Vec<SaveString> {
     let resolver = PromiseResolver::default();

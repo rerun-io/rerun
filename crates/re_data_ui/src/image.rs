@@ -33,7 +33,7 @@ impl EntityDataUi for re_types::components::TensorData {
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         entity_path: &re_log_types::EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         re_tracing::profile_function!();
@@ -73,7 +73,7 @@ impl EntityDataUi for re_types::components::TensorData {
 #[allow(clippy::too_many_arguments)]
 pub fn tensor_ui(
     ctx: &ViewerContext<'_>,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_query::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
@@ -90,7 +90,7 @@ pub fn tensor_ui(
         .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let debug_name = entity_path.to_string();
 
-    let meaning = image_meaning_for_entity(entity_path, query, db.store());
+    let meaning = image_meaning_for_entity(entity_path, query, db);
 
     let meter = if meaning == TensorDataMeaning::Depth {
         // TODO(#5607): what should happen if the promise is still pending?

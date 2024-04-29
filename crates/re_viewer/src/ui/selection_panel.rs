@@ -1273,7 +1273,7 @@ fn depth_props_ui(
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
 
-    let meaning = image_meaning_for_entity(entity_path, &query, db.store());
+    let meaning = image_meaning_for_entity(entity_path, &query, db);
 
     if meaning != TensorDataMeaning::Depth {
         return Some(());

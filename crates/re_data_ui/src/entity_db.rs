@@ -11,7 +11,7 @@ impl crate::DataUi for EntityDb {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_query::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let re_ui = &ctx.re_ui;

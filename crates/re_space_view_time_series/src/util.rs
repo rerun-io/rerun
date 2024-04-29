@@ -1,7 +1,10 @@
 use re_log_types::{EntityPath, TimeRange};
 use re_space_view::visible_time_range_to_time_range;
 use re_types::datatypes::Utf8;
-use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
+use re_viewer_context::{
+    external::re_entity_db::{EntityDb, TimeSeriesAggregator},
+    ViewQuery, ViewerContext,
+};
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
@@ -74,7 +77,7 @@ pub fn points_to_series(
     data_result: &re_viewer_context::DataResult,
     time_per_pixel: f64,
     points: Vec<PlotPoint>,
-    store: &re_data_store::DataStore,
+    db: &EntityDb,
     query: &ViewQuery<'_>,
     series_name: Option<Utf8>,
     all_series: &mut Vec<PlotSeries>,
@@ -89,8 +92,9 @@ pub fn points_to_series(
         .time_series_aggregator
         .get();
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
-    let min_time = store
-        .entity_min_time(&query.timeline, &data_result.entity_path)
+    let min_time = db
+        .query_caches()
+        .entity_min_time(db.store(), &query.timeline, &data_result.entity_path)
         .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
     let series_label = series_name.unwrap_or_else(|| {

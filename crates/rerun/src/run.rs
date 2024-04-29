@@ -452,37 +452,36 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
         let rrd_file =
             std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
 
-        let mut stores: std::collections::HashMap<StoreId, EntityDb> = Default::default();
+        let mut dbs: std::collections::HashMap<StoreId, EntityDb> = Default::default();
         let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
         for msg in decoder {
             let msg = msg.context("decode rrd message")?;
-            stores
-                .entry(msg.store_id().clone())
+            dbs.entry(msg.store_id().clone())
                 .or_insert(re_entity_db::EntityDb::new(msg.store_id().clone()))
                 .add(&msg)
                 .context("decode rrd file contents")?;
         }
 
-        let mut stores = stores
+        let mut dbs = dbs
             .values()
             .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
             .collect_vec();
 
-        anyhow::ensure!(!stores.is_empty(), "no data recording found in rrd file");
+        anyhow::ensure!(!dbs.is_empty(), "no data recording found in rrd file");
         anyhow::ensure!(
-            stores.len() == 1,
+            dbs.len() == 1,
             "more than one data recording found in rrd file"
         );
 
-        let store = stores.pop().unwrap(); // safe, ensured above
+        let store = dbs.pop().unwrap(); // safe, ensured above
 
         Ok((
             store
                 .app_id()
                 .cloned()
                 .unwrap_or_else(re_log_types::ApplicationId::unknown),
-            store.store().to_data_table()?,
+            store.store_to_table()?,
         ))
     }
 
@@ -828,7 +827,7 @@ fn assert_receive_into_entity_db(
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")
                         } else if let Some(db) = rec {
-                            db.store().sanity_check()?;
+                            db.store_sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);

@@ -114,7 +114,10 @@ impl ViewerContext<'_> {
         component_name: ComponentName,
     ) {
         let blueprint = &self.store_context.blueprint;
-        let Some(datatype) = blueprint.store().lookup_datatype(&component_name) else {
+        let Some(datatype) = blueprint
+            .query_caches()
+            .lookup_datatype(blueprint.store(), &component_name)
+        else {
             re_log::error_once!(
                 "Tried to clear a component with unknown type: {}",
                 component_name

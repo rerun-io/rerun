@@ -6,7 +6,10 @@ use re_types_core::Component;
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     let query = LatestAtQuery::latest(Timeline::default());
 
-    if let Some(data_type) = blueprint.data_store().lookup_datatype(&C::name()) {
+    if let Some(data_type) = blueprint
+        .query_caches()
+        .lookup_datatype(blueprint.store(), &C::name())
+    {
         if data_type != &C::arrow_datatype() {
             // If the schemas don't match, we definitely have a problem
             re_log::debug!(
@@ -21,12 +24,13 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
             // this can go away once we stop using serde-fields.
             // Walk the blueprint and see if any cells fail to deserialize for this component type.
             for path in blueprint.entity_paths() {
-                if let Some([Some(cell)]) = blueprint
-                    .data_store()
-                    .latest_at(&query, path, C::name(), &[C::name()])
-                    .map(|(_, _, cells)| cells)
+                if let Some(res) = blueprint
+                    .query_caches()
+                    .latest_at(blueprint.store(), &query, path, [C::name()])
+                    .get(C::name())
+                    .and_then(|res| res.cell(blueprint.resolver(), C::name()))
                 {
-                    if let Err(err) = cell.try_to_native_mono::<C>() {
+                    if let Err(err) = res.try_to_native_mono::<C>() {
                         re_log::debug!(
                             "Failed to deserialize component {:?}: {:?}",
                             C::name(),

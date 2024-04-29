@@ -100,7 +100,7 @@ pub trait VisualizerSystem: Send + Sync + 'static {
         &self,
         _ctx: &ViewerContext<'_>,
         _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _store: re_query::DataStoreRef<'_>,
         _entity_path: &re_log_types::EntityPath,
         _component: &re_types::ComponentName,
     ) -> Option<re_log_types::DataCell> {

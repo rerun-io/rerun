@@ -6,11 +6,11 @@ use std::{
 use ahash::{HashMap, HashSet};
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
+use re_data_store::{StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
 use re_log_types::{EntityPath, StoreId, TimeRange, Timeline};
 use re_types_core::ComponentName;
 
-use crate::{LatestAtCache, RangeCache};
+use crate::{DataStoreRef, LatestAtCache, RangeCache};
 
 // ---
 
@@ -127,9 +127,9 @@ impl std::fmt::Debug for Caches {
 
 impl Caches {
     #[inline]
-    pub fn new(store: &DataStore) -> Self {
+    pub fn new(store: DataStoreRef<'_>) -> Self {
         Self {
-            store_id: store.id().clone(),
+            store_id: store.0.id().clone(),
             latest_at_per_cache_key: Default::default(),
             range_per_cache_key: Default::default(),
         }

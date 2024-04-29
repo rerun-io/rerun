@@ -4,8 +4,8 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimeInt, TimePoint,
 };
-use re_query::Caches;
 use re_query::PromiseResolver;
+use re_query::{Caches, DataStoreRef};
 use re_types::Archetype as _;
 use re_types_core::Loggable as _;
 
@@ -17,7 +17,8 @@ fn simple_query() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -38,7 +39,7 @@ fn simple_query() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -53,7 +54,7 @@ fn static_query() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -79,7 +80,7 @@ fn static_query() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -109,7 +110,7 @@ fn invalidation() {
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = Caches::new((&store).into());
 
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
         let row1 = DataRow::from_cells1_sized(
@@ -136,7 +137,7 @@ fn invalidation() {
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -162,7 +163,7 @@ fn invalidation() {
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -186,7 +187,7 @@ fn invalidation() {
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -216,7 +217,7 @@ fn invalidation() {
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -242,7 +243,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -270,7 +271,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -296,7 +297,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -356,7 +357,7 @@ fn invalidation_of_future_optionals() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "points";
 
@@ -377,7 +378,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -396,7 +397,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -415,7 +416,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -434,7 +435,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -449,7 +450,7 @@ fn static_invalidation() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "points";
 
@@ -469,7 +470,7 @@ fn static_invalidation() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -489,7 +490,7 @@ fn static_invalidation() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -508,7 +509,7 @@ fn static_invalidation() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -525,7 +526,7 @@ fn insert_and_react(store: &mut DataStore, caches: &mut Caches, row: &DataRow) {
 
 fn query_and_compare(
     caches: &Caches,
-    store: &DataStore,
+    store: DataStoreRef<'_>,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
     expected_compound_index: (TimeInt, RowId),

@@ -1,3 +1,4 @@
+use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, SegmentationImage},
@@ -7,13 +8,19 @@ use re_types::{
 
 pub fn image_meaning_for_entity(
     entity_path: &EntityPath,
-    query: &re_data_store::LatestAtQuery,
-    store: &re_data_store::DataStore,
+    query: &re_query::LatestAtQuery,
+    db: &EntityDb,
 ) -> TensorDataMeaning {
     let timeline = &query.timeline();
-    if store.entity_has_component(timeline, entity_path, &DepthImage::indicator().name()) {
+    if db.query_caches().entity_has_component(
+        db.store(),
+        timeline,
+        entity_path,
+        &DepthImage::indicator().name(),
+    ) {
         TensorDataMeaning::Depth
-    } else if store.entity_has_component(
+    } else if db.query_caches().entity_has_component(
+        db.store(),
         timeline,
         entity_path,
         &SegmentationImage::indicator().name(),

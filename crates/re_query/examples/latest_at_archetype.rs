@@ -15,6 +15,8 @@ fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{}", store.to_data_table()?);
 
+    let store = (&store).into();
+
     let resolver = PromiseResolver::default();
 
     let entity_path = "points";
@@ -22,14 +24,14 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    let caches = re_query::Caches::new(&store);
+    let caches = re_query::Caches::new(store);
 
     // First, get the results for this query.
     //
     // They might or might not already be cached. We won't know for sure until we try to access
     // each individual component's data below.
     let results: LatestAtResults = caches.latest_at(
-        &store,
+        store,
         &query,
         &entity_path.into(),
         Points2D::all_components().iter().copied(), // no generics!

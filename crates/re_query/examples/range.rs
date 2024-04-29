@@ -15,6 +15,7 @@ fn main() -> anyhow::Result<()> {
     let store = store()?;
     eprintln!("store:\n{}", store.to_data_table()?);
 
+    let store = (&store).into();
     let resolver = PromiseResolver::default();
 
     let entity_path = "points";
@@ -22,14 +23,14 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(timeline, TimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
-    let caches = re_query::Caches::new(&store);
+    let caches = re_query::Caches::new(store);
 
     // First, get the raw results for this query.
     //
     // They might or might not already be cached. We won't know for sure until we try to access
     // each individual component's data below.
     let results: RangeResults = caches.range(
-        &store,
+        store,
         &query,
         &entity_path.into(),
         MyPoints::all_components().iter().copied(), // no generics!

@@ -1,9 +1,9 @@
 // TODO(jleibs): Turn this into a trait
 
 use egui::NumExt as _;
-use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{EntityPath, Instance};
+use re_query::LatestAtQuery;
 use re_types::{
     components::{
         Color, MarkerShape, MarkerSize, Name, Radius, ScalarScattering, StrokeWidth, Text,

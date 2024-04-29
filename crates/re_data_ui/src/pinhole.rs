@@ -9,7 +9,7 @@ impl DataUi for PinholeProjection {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         if verbosity == UiVerbosity::Small {
@@ -39,7 +39,7 @@ impl DataUi for Resolution {
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_query::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;

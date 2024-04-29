@@ -5,12 +5,14 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, LatestAtQuery, TimeInt};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
-use crate::{CacheKey, Caches, LatestAtComponentResults, LatestAtResults, Promise};
+use crate::{
+    CacheKey, Caches, DataStoreRef, LatestAtComponentResults, LatestAtQuery, LatestAtResults,
+    Promise,
+};
 
 // ---
 
@@ -22,7 +24,7 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
@@ -198,7 +200,7 @@ impl LatestAtCache {
     /// Queries cached latest-at data for a single component.
     pub fn latest_at(
         &mut self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -222,7 +224,9 @@ impl LatestAtCache {
             std::collections::btree_map::Entry::Vacant(entry) => entry,
         };
 
-        let result = store.latest_at(query, entity_path, component_name, &[component_name]);
+        let result = store
+            .0
+            .latest_at(query, entity_path, component_name, &[component_name]);
 
         // NOTE: cannot `result.and_then(...)` or borrowck gets lost.
         if let Some((data_time, row_id, mut cells)) = result {

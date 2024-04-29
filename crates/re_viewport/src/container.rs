@@ -1,10 +1,10 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 
-use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::PromiseResult, EntityDb};
 use re_log::ResultExt;
 use re_log_types::{DataRow, EntityPath, RowId};
+use re_query::LatestAtQuery;
 use re_types::blueprint::components::Visible;
 use re_types::components::Name;
 use re_types_core::archetypes::Clear;

@@ -119,8 +119,7 @@ fn update_depth_cloud_property_heuristics(
             continue;
         };
 
-        let meaning =
-            image_meaning_for_entity(ent_path, &ctx.current_query(), ctx.recording().store());
+        let meaning = image_meaning_for_entity(ent_path, &ctx.current_query(), ctx.recording());
 
         // TODO(#5607): what should happen if the promise is still pending?
         let meter = ctx
@@ -193,8 +192,13 @@ fn update_transform3d_lines_heuristics(
             // By default show the transform if it is a camera extrinsic,
             // or if this entity only contains Transform3D components.
             let only_has_transform_components = ctx
-                .recording_store()
-                .all_components(&ctx.current_query().timeline(), ent_path)
+                .recording()
+                .query_caches()
+                .all_components(
+                    ctx.recording_store(),
+                    &ctx.current_query().timeline(),
+                    ent_path,
+                )
                 .map_or(false, |c| {
                     c.iter()
                         .all(|c| re_types::archetypes::Transform3D::all_components().contains(c))

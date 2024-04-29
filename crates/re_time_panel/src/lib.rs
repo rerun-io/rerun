@@ -804,10 +804,8 @@ impl TimePanel {
                         // Static components are not displayed at all on the timeline, so cannot be
                         // previewed there. So we display their content in this tooltip instead.
                         if is_static {
-                            let query = re_data_store::LatestAtQuery::new(
-                                *time_ctrl.timeline(),
-                                TimeInt::MAX,
-                            );
+                            let query =
+                                re_query::LatestAtQuery::new(*time_ctrl.timeline(), TimeInt::MAX);
                             let verbosity = UiVerbosity::Reduced;
                             component_path.data_ui(ctx, ui, verbosity, &query, entity_db);
                         }
@@ -952,8 +950,8 @@ fn collapsed_time_marker_and_time(
     time_ctrl: &mut TimeControl,
 ) {
     let space_needed_for_current_time = match time_ctrl.timeline().typ() {
-        re_data_store::TimeType::Time => 220.0,
-        re_data_store::TimeType::Sequence => 100.0,
+        re_log_types::TimeType::Time => 220.0,
+        re_log_types::TimeType::Sequence => 100.0,
     };
 
     {
@@ -1044,7 +1042,7 @@ fn help_button(ui: &mut egui::Ui) {
 // TODO(#5264): remove time panel hack once we migrate to the new static UI
 fn is_time_safe_to_show(
     entity_db: &re_entity_db::EntityDb,
-    timeline: &re_data_store::Timeline,
+    timeline: &re_log_types::Timeline,
     time: TimeReal,
 ) -> bool {
     if entity_db.num_static_messages() == 0 {
@@ -1054,8 +1052,8 @@ fn is_time_safe_to_show(
     if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
-                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000.try_into().unwrap()),
-                re_data_store::TimeType::Sequence => {
+                re_log_types::TimeType::Time => TimeInt::from_seconds(10_000.try_into().unwrap()),
+                re_log_types::TimeType::Sequence => {
                     TimeInt::from_sequence(1_000.try_into().unwrap())
                 }
             };

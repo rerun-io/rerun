@@ -12,7 +12,7 @@ impl crate::DataUi for ApplicationId {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_query::LatestAtQuery,
         _db: &EntityDb,
     ) {
         egui::Grid::new("application_id")

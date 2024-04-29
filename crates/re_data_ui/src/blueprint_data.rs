@@ -9,7 +9,7 @@ impl<T: BlueprintIdRegistry> DataUi for BlueprintId<T> {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         entity_path_button_to(

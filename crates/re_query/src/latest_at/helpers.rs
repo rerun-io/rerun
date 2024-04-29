@@ -1,9 +1,10 @@
-use re_data_store::{DataStore, LatestAtQuery};
-use re_log_types::{EntityPath, RowId, TimeInt};
+use re_log_types::{DataCell, EntityPath, RowId, TimeInt};
 use re_types_core::Component;
 use re_types_core::{external::arrow2::array::Array, ComponentName};
 
-use crate::{Caches, LatestAtComponentResults, PromiseResolver, PromiseResult};
+use crate::{
+    Caches, DataStoreRef, LatestAtComponentResults, LatestAtQuery, PromiseResolver, PromiseResult,
+};
 
 // ---
 
@@ -32,15 +33,15 @@ impl LatestAtComponentResults {
         }
     }
 
-    /// Returns the component data as an arrow array.
+    /// Returns the component data as a cell.
     ///
     /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
     #[inline]
-    pub fn raw(
+    pub fn cell(
         &self,
         resolver: &PromiseResolver,
         component_name: impl Into<ComponentName>,
-    ) -> Option<Box<dyn Array>> {
+    ) -> Option<DataCell> {
         let component_name = component_name.into();
         let level = re_log::Level::Warn;
         match self.resolved(resolver) {
@@ -48,7 +49,7 @@ impl LatestAtComponentResults {
                 re_log::debug_once!("Couldn't get {component_name}: promise still pending");
                 None
             }
-            PromiseResult::Ready(cell) => Some(cell.to_arrow()),
+            PromiseResult::Ready(cell) => Some(cell),
             PromiseResult::Error(err) => {
                 re_log::log_once!(
                     level,
@@ -58,6 +59,19 @@ impl LatestAtComponentResults {
                 None
             }
         }
+    }
+
+    /// Returns the component data as an arrow array.
+    ///
+    /// Logs a warning and returns `None` if the component is missing or cannot be deserialized.
+    #[inline]
+    pub fn raw(
+        &self,
+        resolver: &PromiseResolver,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<Box<dyn Array>> {
+        self.cell(resolver, component_name)
+            .map(|cell| cell.to_arrow())
     }
 
     /// Returns the component data of the single instance.
@@ -282,7 +296,7 @@ impl Caches {
     // TODO(#5607): what should happen if the promise is still pending?
     pub fn latest_at_component_with_log_level<C: Component>(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -339,7 +353,7 @@ impl Caches {
     #[inline]
     pub fn latest_at_component<C: Component>(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -364,7 +378,7 @@ impl Caches {
     #[inline]
     pub fn latest_at_component_quiet<C: Component>(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,
@@ -381,7 +395,7 @@ impl Caches {
     /// Call [`Self::latest_at_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn latest_at_component_at_closest_ancestor<C: Component>(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         resolver: &PromiseResolver,
         entity_path: &EntityPath,
         query: &LatestAtQuery,

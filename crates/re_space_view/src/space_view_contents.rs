@@ -7,7 +7,7 @@ use re_entity_db::{
     EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
-    path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs,
+    path::RuleEffect, DataCell, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs,
 };
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
@@ -547,12 +547,18 @@ impl DataQueryPropertyResolver<'_> {
                     ctx.blueprint.tree().subtree(&recursive_override_path)
                 {
                     for component in recursive_override_subtree.entity.components.keys() {
-                        if let Some(component_data) = ctx
-                            .blueprint
-                            .store()
-                            .latest_at(query, &recursive_override_path, *component, &[*component])
-                            .and_then(|(_, _, cells)| cells[0].clone())
-                        {
+                        let res = ctx.blueprint.query_caches().latest_at(
+                            ctx.blueprint.store(),
+                            query,
+                            &recursive_override_path,
+                            [*component],
+                        );
+                        let component_data = res
+                            .get(*component)
+                            .and_then(|data| data.raw(ctx.blueprint.resolver(), *component))
+                            .map(|data| DataCell::from_arrow(*component, data));
+
+                        if let Some(component_data) = component_data {
                             if !component_data.is_empty() {
                                 recursive_property_overrides.to_mut().insert(
                                     *component,
@@ -570,12 +576,18 @@ impl DataQueryPropertyResolver<'_> {
                     ctx.blueprint.tree().subtree(&individual_override_path)
                 {
                     for component in individual_override_subtree.entity.components.keys() {
-                        if let Some(component_data) = ctx
+                        let component_data = ctx
                             .blueprint
-                            .store()
-                            .latest_at(query, &individual_override_path, *component, &[*component])
-                            .and_then(|(_, _, cells)| cells[0].clone())
-                        {
+                            .query_caches()
+                            .latest_at(
+                                ctx.blueprint.store(),
+                                query,
+                                &recursive_override_path,
+                                [*component],
+                            )
+                            .get(*component)
+                            .and_then(|data| data.cell(ctx.blueprint.resolver(), *component));
+                        if let Some(component_data) = component_data {
                             if !component_data.is_empty() {
                                 resolved_component_overrides.insert(
                                     *component,

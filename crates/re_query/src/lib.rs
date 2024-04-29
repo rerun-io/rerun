@@ -2,6 +2,7 @@
 
 mod cache;
 mod cache_stats;
+mod data_store_ref;
 mod flat_vec_deque;
 mod latest_at;
 mod promise;
@@ -14,12 +15,15 @@ pub mod range_zip;
 pub use self::cache::{CacheKey, Caches};
 pub use self::cache_stats::{CachedComponentStats, CachesStats};
 pub use self::clamped_zip::*;
+pub use self::data_store_ref::DataStoreRef;
 pub use self::flat_vec_deque::{ErasedFlatVecDeque, FlatVecDeque};
 pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAtResults};
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
 pub use self::range::{RangeComponentResults, RangeData, RangeResults};
 pub use self::range_zip::*;
 pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
+
+pub use re_data_store::{LatestAtQuery, RangeQuery};
 
 pub(crate) use self::latest_at::LatestAtCache;
 pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};
@@ -95,8 +99,6 @@ pub trait ToArchetype<A: re_types_core::Archetype> {
 }
 
 // ---
-
-use re_data_store::{LatestAtQuery, RangeQuery};
 
 #[derive(Debug)]
 pub enum Results {

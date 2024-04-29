@@ -13,7 +13,7 @@ impl DataUi for InstancePath {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         let Self {
@@ -21,11 +21,11 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let Some(components) = ctx
-            .recording_store()
-            .all_components(&query.timeline(), entity_path)
+        let Some(components) =
+            db.query_caches()
+                .all_components(db.store(), &query.timeline(), entity_path)
         else {
-            if ctx.recording().is_known_entity(entity_path) {
+            if db.is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
                 ui.label(format!(
                     "No components logged on timeline {:?}",

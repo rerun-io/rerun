@@ -76,8 +76,8 @@ impl VisualizerSystem for SeriesPointSystem {
     fn initial_override_value(
         &self,
         _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _query: &re_query::LatestAtQuery,
+        _store: re_query::DataStoreRef<'_>,
         entity_path: &re_log_types::EntityPath,
         component: &re_types::ComponentName,
     ) -> Option<re_log_types::DataCell> {
@@ -147,7 +147,7 @@ impl SeriesPointSystem {
                 re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
                 let entity_path = &data_result.entity_path;
-                let query = re_data_store::RangeQuery::new(query.timeline, time_range);
+                let query = re_query::RangeQuery::new(query.timeline, time_range);
 
                 let results = ctx.recording().query_caches().range(
                     ctx.recording_store(),
@@ -325,7 +325,7 @@ impl SeriesPointSystem {
                 data_result,
                 time_per_pixel,
                 points,
-                ctx.recording_store(),
+                ctx.recording(),
                 query,
                 series_name,
                 &mut self.all_series,

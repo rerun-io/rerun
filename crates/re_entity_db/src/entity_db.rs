@@ -8,11 +8,11 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult, EntityPath,
-    EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
-    TimeRange, TimeRangeF, Timeline,
+    ApplicationId, ComponentPath, DataCell, DataReadResult, DataRow, DataTable, DataTableResult,
+    EntityPath, EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    TimePoint, TimeRange, TimeRangeF, Timeline,
 };
-use re_query::PromiseResult;
+use re_query::{DataStoreRef, PromiseResult};
 use re_types_core::{Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
@@ -129,7 +129,7 @@ impl EntityDb {
     pub fn new(store_id: StoreId) -> Self {
         let data_store =
             re_data_store::DataStore::new(store_id.clone(), DataStoreConfig::default());
-        let query_caches = re_query::Caches::new(&data_store);
+        let query_caches = re_query::Caches::new((&data_store).into());
         Self {
             data_source: None,
             set_store_info: None,
@@ -172,8 +172,33 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn data_store(&self) -> &DataStore {
+    pub(crate) fn data_store(&self) -> &DataStore {
         &self.data_store
+    }
+
+    #[inline]
+    pub fn store_to_table(&self) -> DataReadResult<DataTable> {
+        self.data_store.to_data_table()
+    }
+
+    #[inline]
+    pub fn store_sanity_check(&self) -> re_data_store::SanityResult<()> {
+        self.data_store.sanity_check()
+    }
+
+    #[inline]
+    pub fn store(&self) -> DataStoreRef<'_> {
+        (&self.data_store).into()
+    }
+
+    #[inline]
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_id().kind
+    }
+
+    #[inline]
+    pub fn store_id(&self) -> &StoreId {
+        self.data_store.id()
     }
 
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
@@ -282,21 +307,6 @@ impl EntityDb {
                 entity_path,
                 query,
             )
-    }
-
-    #[inline]
-    pub fn store(&self) -> &DataStore {
-        &self.data_store
-    }
-
-    #[inline]
-    pub fn store_kind(&self) -> StoreKind {
-        self.store_id().kind
-    }
-
-    #[inline]
-    pub fn store_id(&self) -> &StoreId {
-        self.data_store.id()
     }
 
     /// If this entity db is the result of a clone, which store was it cloned from?
@@ -668,7 +678,7 @@ impl EntityDb {
     ) -> DataTableResult<Vec<LogMsg>> {
         re_tracing::profile_function!();
 
-        self.store().sort_indices_if_needed();
+        self.data_store().sort_indices_if_needed();
 
         let set_store_info_msg = self
             .store_info_msg()
@@ -681,7 +691,7 @@ impl EntityDb {
             )
         });
 
-        let data_messages = self.store().to_data_tables(time_filter).map(|table| {
+        let data_messages = self.data_store().to_data_tables(time_filter).map(|table| {
             table
                 .to_arrow_msg()
                 .map(|msg| LogMsg::ArrowMsg(self.store_id().clone(), msg))
@@ -715,7 +725,7 @@ impl EntityDb {
     pub fn clone_with_new_id(&self, new_id: StoreId) -> Result<EntityDb, Error> {
         re_tracing::profile_function!();
 
-        self.store().sort_indices_if_needed();
+        self.data_store().sort_indices_if_needed();
 
         let mut new_db = EntityDb::new(new_id.clone());
 
@@ -741,7 +751,7 @@ impl EntityDb {
             });
         }
 
-        for row in self.store().to_rows()? {
+        for row in self.data_store().to_rows()? {
             new_db.add_data_row(row)?;
         }
 
@@ -750,6 +760,7 @@ impl EntityDb {
 }
 
 impl re_types_core::SizeBytes for EntityDb {
+    #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // TODO(emilk): size of entire EntityDb, including secondary indices etc
         self.data_store.heap_size_bytes()

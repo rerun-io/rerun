@@ -16,7 +16,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let annotations = crate::annotations(ctx, query, entity_path);
@@ -62,7 +62,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         ui: &mut egui::Ui,
         _verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
-        query: &re_data_store::LatestAtQuery,
+        query: &re_query::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, query, self.0) {
@@ -83,7 +83,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
 fn annotation_info(
     ctx: &re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
-    query: &re_data_store::LatestAtQuery,
+    query: &re_query::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     // TODO(#5607): what should happen if the promise is still pending?
@@ -101,7 +101,7 @@ impl DataUi for AnnotationContext {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
+        _query: &re_query::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {

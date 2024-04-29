@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use re_data_store::{DataStore, RangeQuery, TimeInt};
+use re_data_store::{RangeQuery, TimeInt};
 use re_log_types::{EntityPath, TimeRange};
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
+use crate::DataStoreRef;
 use crate::{
     CacheKey, Caches, Promise, RangeComponentResults, RangeComponentResultsInner, RangeResults,
 };
@@ -21,7 +22,7 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn range(
         &self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
@@ -150,7 +151,7 @@ impl RangeCache {
     /// Queries cached range data for a single component.
     pub fn range(
         &mut self,
-        store: &DataStore,
+        store: DataStoreRef<'_>,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -170,7 +171,7 @@ impl RangeCache {
             re_tracing::profile_scope!("front");
 
             for (data_time, row_id, mut cells) in
-                store.range(query_front, entity_path, [component_name])
+                store.0.range(query_front, entity_path, [component_name])
             {
                 // Soundness:
                 // * `cells[0]` is guaranteed to exist since we passed in `&[component_name]`
@@ -193,6 +194,7 @@ impl RangeCache {
             re_tracing::profile_scope!("back");
 
             for (data_time, row_id, mut cells) in store
+                .0
                 .range(&query_back, entity_path, [component_name])
                 // If there's static data to be found, the front query will take care of it already.
                 .filter(|(data_time, _, _)| !data_time.is_static())

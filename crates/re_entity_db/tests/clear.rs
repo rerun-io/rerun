@@ -1,27 +1,21 @@
-use re_data_store::{DataStore, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{
     example_components::{MyColor, MyIndex, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
+use re_query::LatestAtQuery;
 use re_types_core::{archetypes::Clear, components::ClearIsRecursive, AsComponents};
 
 // ---
 
 fn query_latest_component<C: re_types_core::Component>(
-    store: &DataStore,
+    entity_db: &EntityDb,
     entity_path: &EntityPath,
     query: &LatestAtQuery,
 ) -> Option<(TimeInt, RowId, C)> {
-    re_tracing::profile_function!();
-
-    let (data_time, row_id, cells) =
-        store.latest_at(query, entity_path, C::name(), &[C::name()])?;
-    let cell = cells.first()?.as_ref()?;
-
-    cell.try_to_native_mono::<C>()
-        .ok()?
-        .map(|c| (data_time, row_id, c))
+    entity_db
+        .latest_at_component(entity_path, query)
+        .map(|res| (res.index.0, res.index.1, res.value))
 }
 
 /// Complete test suite for the clear & pending clear paths.
@@ -57,9 +51,9 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
             let (_, _, got_point) =
-                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query).unwrap();
+                query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).unwrap();
             let (_, _, got_color) =
-                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query).unwrap();
+                query_latest_component::<MyColor>(&db, &entity_path_parent, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
@@ -84,7 +78,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
             let (_, _, got_point) =
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query).unwrap();
+                query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
         }
@@ -108,7 +102,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
             let (_, _, got_color) =
-                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query).unwrap();
+                query_latest_component::<MyColor>(&db, &entity_path_child2, &query).unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
@@ -135,31 +129,19 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(timeline_frame, 11);
 
             // parent
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query)
-                    .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(db.store(), &entity_path_parent, &query)
+                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
                     .unwrap();
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
-                    .is_some()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_some());
 
             // child2
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
-                    .is_some()
-            );
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_some());
         }
     }
 
@@ -184,31 +166,19 @@ fn clears() -> anyhow::Result<()> {
             let query = LatestAtQuery::new(timeline_frame, 11);
 
             // parent
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_parent, &query)
-                    .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_parent, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_parent, &query).is_none());
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_parent, &query).is_none());
             // the `Clear` component itself doesn't get cleared!
             let (_, _, got_clear) =
-                query_latest_component::<ClearIsRecursive>(db.store(), &entity_path_parent, &query)
+                query_latest_component::<ClearIsRecursive>(&db, &entity_path_parent, &query)
                     .unwrap();
             similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_none());
 
             // child2
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_none());
         }
     }
 
@@ -231,16 +201,13 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
             let (_, _, got_instance) =
-                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query).unwrap();
+                query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).unwrap();
             similar_asserts::assert_eq!(instance, got_instance);
         }
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
-            assert!(
-                query_latest_component::<MyIndex>(db.store(), &entity_path_parent, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyIndex>(&db, &entity_path_parent, &query).is_none());
         }
     }
 
@@ -265,9 +232,9 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
             let (_, _, got_point) =
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query).unwrap();
+                query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).unwrap();
             let (_, _, got_color) =
-                query_latest_component::<MyColor>(db.store(), &entity_path_child1, &query).unwrap();
+                query_latest_component::<MyColor>(&db, &entity_path_child1, &query).unwrap();
 
             similar_asserts::assert_eq!(point, got_point);
             similar_asserts::assert_eq!(color, got_color);
@@ -275,14 +242,8 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child1, &query)
-                    .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_child1, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child1, &query).is_none());
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_child1, &query).is_none());
         }
     }
 
@@ -307,9 +268,9 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
             let (_, _, got_point) =
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child2, &query).unwrap();
+                query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).unwrap();
             let (_, _, got_color) =
-                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query).unwrap();
+                query_latest_component::<MyColor>(&db, &entity_path_child2, &query).unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
             similar_asserts::assert_eq!(point, got_point);
@@ -317,14 +278,8 @@ fn clears() -> anyhow::Result<()> {
 
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
-            assert!(
-                query_latest_component::<MyPoint>(db.store(), &entity_path_child2, &query)
-                    .is_none()
-            );
-            assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_child2, &query)
-                    .is_none()
-            );
+            assert!(query_latest_component::<MyPoint>(&db, &entity_path_child2, &query).is_none());
+            assert!(query_latest_component::<MyColor>(&db, &entity_path_child2, &query).is_none());
         }
     }
 
@@ -347,8 +302,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 9);
             let (_, _, got_color) =
-                query_latest_component::<MyColor>(db.store(), &entity_path_grandchild, &query)
-                    .unwrap();
+                query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).unwrap();
 
             similar_asserts::assert_eq!(color, got_color);
         }
@@ -356,8 +310,7 @@ fn clears() -> anyhow::Result<()> {
         {
             let query = LatestAtQuery::new(timeline_frame, 11);
             assert!(
-                query_latest_component::<MyColor>(db.store(), &entity_path_grandchild, &query)
-                    .is_none()
+                query_latest_component::<MyColor>(&db, &entity_path_grandchild, &query).is_none()
             );
         }
     }

@@ -2,10 +2,10 @@ use std::collections::BTreeSet;
 
 use egui_extras::Column;
 
-use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
-use re_entity_db::{EntityProperties, InstancePath};
+use re_entity_db::{EntityDb, EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Instance, Timeline};
+use re_query::LatestAtQuery;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewState,
     SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
@@ -105,7 +105,7 @@ impl SpaceViewClass for DataframeSpaceView {
                 .flat_map(|entity_path| {
                     sorted_instance_paths_for(
                         entity_path,
-                        ctx.recording_store(),
+                        ctx.recording(),
                         &query.timeline,
                         &latest_at_query,
                     )
@@ -117,8 +117,9 @@ impl SpaceViewClass for DataframeSpaceView {
             sorted_components = sorted_entity_paths
                 .iter()
                 .flat_map(|entity_path| {
-                    ctx.recording_store()
-                        .all_components(&query.timeline, entity_path)
+                    ctx.recording()
+                        .query_caches()
+                        .all_components(ctx.recording_store(), &query.timeline, entity_path)
                         .unwrap_or_default()
                 })
                 // TODO(#4466): make showing/hiding indicators components an explicit optional
@@ -220,22 +221,22 @@ impl SpaceViewClass for DataframeSpaceView {
 /// Returns a sorted, deduplicated iterator of all instance paths for a given entity.
 fn sorted_instance_paths_for<'a>(
     entity_path: &'a EntityPath,
-    store: &'a DataStore,
+    db: &EntityDb,
     timeline: &'a Timeline,
     latest_at_query: &'a LatestAtQuery,
 ) -> impl Iterator<Item = InstancePath> + 'a {
-    store
-        .all_components(timeline, entity_path)
+    db.query_caches()
+        .all_components(db.store(), timeline, entity_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|comp| !comp.is_indicator_component())
         .flat_map(|comp| {
-            let num_instances = store
-                .latest_at(latest_at_query, entity_path, comp, &[comp])
-                .map_or(0, |(_, _, cells)| {
-                    cells[0].as_ref().map_or(0, |cell| cell.num_instances())
-                });
-            (0..num_instances).map(|i| Instance::from(i as u64))
+            let num_instances = db
+                .query_caches()
+                .latest_at(db.store(), latest_at_query, entity_path, [comp])
+                .get_or_empty(comp)
+                .num_instances();
+            (0..num_instances).map(Instance::from)
         })
         .collect::<BTreeSet<_>>() // dedup and sort
         .into_iter()

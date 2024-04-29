@@ -6,7 +6,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     DataRow, EntityPath, RowId, TimePoint,
 };
-use re_query::{Caches, PromiseResolver, PromiseResult};
+use re_query::{Caches, DataStoreRef, PromiseResolver, PromiseResult};
 use re_types::Archetype;
 use re_types_core::Loggable as _;
 
@@ -18,7 +18,7 @@ fn simple_range() -> anyhow::Result<()> {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path: EntityPath = "point".into();
 
@@ -81,7 +81,7 @@ fn simple_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path,
         expected_points,
@@ -117,7 +117,7 @@ fn simple_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path,
         expected_points,
@@ -133,7 +133,7 @@ fn static_range() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path: EntityPath = "point".into();
 
@@ -216,7 +216,7 @@ fn static_range() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path,
         expected_points,
@@ -247,7 +247,7 @@ fn static_range() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path,
         expected_points,
@@ -262,7 +262,7 @@ fn static_range() {
     // same expectations
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path,
         expected_points,
@@ -295,7 +295,7 @@ fn invalidation() {
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = Caches::new((&store).into());
 
         let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
         let row1 = DataRow::from_cells1_sized(
@@ -325,7 +325,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -354,7 +354,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -382,7 +382,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -421,7 +421,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -454,7 +454,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -490,7 +490,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -524,7 +524,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            (&store).into(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -583,7 +583,7 @@ fn invalidation_of_future_optionals() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "points";
 
@@ -604,7 +604,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -624,7 +624,7 @@ fn invalidation_of_future_optionals() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -648,7 +648,7 @@ fn invalidation_of_future_optionals() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -676,7 +676,7 @@ fn invalidation_of_future_optionals() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -690,7 +690,7 @@ fn invalidation_static() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = Caches::new((&store).into());
 
     let entity_path = "points";
 
@@ -711,7 +711,7 @@ fn invalidation_static() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -729,7 +729,7 @@ fn invalidation_static() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -746,7 +746,7 @@ fn invalidation_static() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        (&store).into(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -762,7 +762,7 @@ fn insert_and_react(store: &mut DataStore, caches: &mut Caches, row: &DataRow) {
 
 fn query_and_compare(
     caches: &Caches,
-    store: &DataStore,
+    store: DataStoreRef<'_>,
     query: &RangeQuery,
     entity_path: &EntityPath,
     expected_all_points_indexed: &[((TimeInt, RowId), &[MyPoint])],

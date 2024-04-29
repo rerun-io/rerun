@@ -80,7 +80,7 @@ impl<'a> ViewerContext<'a> {
 
     /// The data store of the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_data_store::DataStore {
+    pub fn recording_store(&self) -> re_query::DataStoreRef<'_> {
         self.store_context.recording.store()
     }
 

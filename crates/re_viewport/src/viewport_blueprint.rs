@@ -6,9 +6,9 @@ use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
-use re_data_store::LatestAtQuery;
 use re_entity_db::external::re_query::PromiseResult;
 use re_entity_db::EntityPath;
+use re_query::LatestAtQuery;
 use re_space_view::SpaceViewBlueprint;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::components::{

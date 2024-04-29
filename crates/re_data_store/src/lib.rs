@@ -36,6 +36,7 @@ pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
 pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::store_read::{LatestAtQuery, RangeQuery};
+pub use self::store_sanity::{SanityError, SanityResult};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
 pub use self::store_subscriber::{StoreSubscriber, StoreSubscriberHandle};
 pub use self::store_write::{WriteError, WriteResult};

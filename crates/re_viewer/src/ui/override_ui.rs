@@ -247,9 +247,10 @@ pub fn add_new_override(
                         let components = [*component];
 
                         let Some(mut initial_data) = db
-                            .store()
-                            .latest_at(query, &data_result.entity_path, *component, &components)
-                            .and_then(|result| result.2[0].clone())
+                            .query_caches()
+                            .latest_at(db.store(), query, &data_result.entity_path, [*component])
+                            .get(*component)
+                            .and_then(|res| res.cell(db.resolver(), *component))
                             .or_else(|| {
                                 view_systems.get_by_identifier(*viz).ok().and_then(|sys| {
                                     sys.initial_override_value(

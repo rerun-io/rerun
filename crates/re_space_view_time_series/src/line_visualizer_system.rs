@@ -73,8 +73,8 @@ impl VisualizerSystem for SeriesLineSystem {
     fn initial_override_value(
         &self,
         _ctx: &ViewerContext<'_>,
-        _query: &re_data_store::LatestAtQuery,
-        _store: &re_data_store::DataStore,
+        _query: &re_query::LatestAtQuery,
+        _store: re_query::DataStoreRef<'_>,
         entity_path: &re_log_types::EntityPath,
         component: &re_types::ComponentName,
     ) -> Option<re_log_types::DataCell> {
@@ -193,7 +193,7 @@ fn load_series(
         re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
 
         let entity_path = &data_result.entity_path;
-        let query = re_data_store::RangeQuery::new(query.timeline, time_range);
+        let query = re_query::RangeQuery::new(query.timeline, time_range);
 
         let results = ctx.recording().query_caches().range(
             ctx.recording_store(),
@@ -329,7 +329,7 @@ fn load_series(
         data_result,
         time_per_pixel,
         points,
-        ctx.recording_store(),
+        ctx.recording(),
         query,
         series_name,
         all_series,

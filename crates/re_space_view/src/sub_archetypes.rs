@@ -1,9 +1,9 @@
-use re_data_store::LatestAtQuery;
 use re_entity_db::{
     external::re_query::{LatestAtResults, PromiseResult, ToArchetype},
     EntityDb,
 };
 use re_log_types::EntityPath;
+use re_query::LatestAtQuery;
 use re_types::Archetype;
 use re_viewer_context::{external::re_entity_db::EntityTree, SpaceViewId};
 
