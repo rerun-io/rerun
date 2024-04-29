@@ -62,6 +62,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl VisualBounds {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -142,12 +143,18 @@ impl ::re_types_core::AsComponents for VisualBounds {
 }
 
 impl VisualBounds {
+    /// Create a new `VisualBounds`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             visual_bounds: None,
         }
     }
 
+    /// The visible parts of a 2D space view, in the coordinate space of the scene.
+    ///
+    /// Everything within these bounds are guaranteed to be visible.
+    /// Somethings outside of these bounds may also be visible due to letterboxing.
     #[inline]
     pub fn with_visual_bounds(
         mut self,
