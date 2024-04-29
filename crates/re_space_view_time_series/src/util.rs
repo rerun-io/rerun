@@ -8,7 +8,7 @@ use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery,
 
 use crate::{
     aggregation::{AverageAggregator, MinMaxAggregator},
-    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs, TimeSeriesSpaceView,
+    PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs,
 };
 
 /// Find the plot bounds and the per-ui-point delta from egui.
@@ -32,8 +32,7 @@ pub fn determine_plot_bounds_and_time_per_pixel(
 }
 
 pub fn determine_time_range(
-    ctx: &ViewerContext<'_>,
-    query: &ViewQuery<'_>,
+    time_cursor: re_log_types::TimeInt,
     data_result: &re_viewer_context::DataResult,
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
@@ -55,7 +54,7 @@ pub fn determine_time_range(
         }
     };
 
-    let mut time_range = visible_time_range_to_time_range(&visible_time_range, query.latest_at);
+    let mut time_range = visible_time_range_to_time_range(&visible_time_range, time_cursor);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

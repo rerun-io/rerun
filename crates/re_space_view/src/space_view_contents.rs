@@ -10,14 +10,18 @@ use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
 use re_types::{
-    blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
+    blueprint::{
+        archetypes as blueprint_archetypes, components as blueprint_components,
+        components::QueryExpression,
+    },
     Archetype as _,
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
-    SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
+    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
+    SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{
@@ -419,6 +423,7 @@ impl DataQueryPropertyResolver<'_> {
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
+        active_timeline: &Timeline,
         query_result: &mut DataQueryResult,
         override_context: &EntityOverrideContext,
         recursive_accumulated_legacy_properties: &EntityProperties,
@@ -548,7 +553,24 @@ impl DataQueryPropertyResolver<'_> {
             }
 
             // Figure out relevant visual time range.
-            let query_range = override_context.default_query_range.clone(); // TODO:
+            let visual_time_range_overrides = match active_timeline.typ() {
+                re_log_types::TimeType::Time => blueprint
+                    .latest_at_component_quiet::<blueprint_components::VisibleTimeRangeTime>(
+                        &recursive_override_path,
+                        blueprint_query,
+                    )
+                    .map(|result| result.value.0),
+                re_log_types::TimeType::Sequence => blueprint
+                    .latest_at_component_quiet::<blueprint_components::VisibleTimeRangeSequence>(
+                        &recursive_override_path,
+                        blueprint_query,
+                    )
+                    .map(|result| result.value.0),
+            };
+            let query_range = visual_time_range_overrides.map_or_else(
+                || override_context.default_query_range.clone(),
+                QueryRange::TimeRange,
+            );
 
             node.data_result.property_overrides = Some(PropertyOverrides {
                 accumulated_properties: accumulated_legacy_properties,
@@ -570,6 +592,7 @@ impl DataQueryPropertyResolver<'_> {
                 self.update_overrides_recursive(
                     blueprint,
                     blueprint_query,
+                    active_timeline,
                     query_result,
                     override_context,
                     &recursive_accumulated_legacy_properties,
@@ -606,6 +629,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
             self.update_overrides_recursive(
                 blueprint,
                 blueprint_query,
+                active_timeline,
                 query_result,
                 &override_context,
                 &accumulated_legacy_properties,
