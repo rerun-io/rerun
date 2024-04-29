@@ -37,7 +37,7 @@ impl ExampleDragAndDrop {
             let response = list_item2::ListItem::new(re_ui)
                 .selected(self.selected_items.contains(item_id))
                 .draggable(true)
-                .show_flat(ui, list_item2::BasicListItemContent::new(&label));
+                .show_flat(ui, list_item2::LabelContent::new(&label));
 
             //
             // Handle item selection

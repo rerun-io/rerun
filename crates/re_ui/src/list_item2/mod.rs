@@ -1,17 +1,16 @@
-mod basic;
-mod debug;
+//! Second-generation list item.
+//!
+//! TODO(ab): provide some top-level documentation here.
+
+mod label_content;
 mod list_item;
+mod other_contents;
 mod scope;
 
-pub use basic::*;
-pub use debug::*;
+pub use label_content::*;
 pub use list_item::*;
+pub use other_contents::*;
 pub use scope::*;
-
-struct ContentResponse<ContRet> {
-    data: ContRet,
-    response: egui::Response,
-}
 
 /// Context provided to [`ListItemContent`] implementations
 #[derive(Debug, Clone)]
@@ -57,38 +56,21 @@ impl Default for DesiredWidth {
 }
 
 pub trait ListItemContent {
-    /// UI for everything that is after the indent and the collapsing triangle (if any)
-    fn ui(self: Box<Self>, re_ui: &crate::ReUi, ui: &mut egui::Ui, context: &ContentContext<'_>);
-
-    fn desired_width(&self, _re_ui: &crate::ReUi, _ui: &egui::Ui) -> DesiredWidth {
-        DesiredWidth::AtLeast(0.0)
-    }
-
-    /// Only required for hierarchical items?
-    fn id(&self) -> egui::Id {
-        egui::Id::NULL
-    }
-}
-
-pub struct CustomListItemContent {
-    ui: Box<dyn FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>)>,
-}
-
-impl CustomListItemContent {
-    pub fn new(
-        ui: impl FnOnce(&crate::ReUi, &mut egui::Ui, &ContentContext<'_>) + 'static,
-    ) -> Self {
-        Self { ui: Box::new(ui) }
-    }
-}
-
-impl ListItemContent for CustomListItemContent {
+    /// UI for everything that is after the indent and the collapsing triangle (if any).
+    ///
+    /// The content should render within the provided `context.rect`.
+    ///
+    /// If the content has some interactive elements, it should return its response. In particular,
+    /// if the response is hovered, the list item will show a dimmer background highlight.
     fn ui(
-        mut self: Box<Self>,
+        self: Box<Self>,
         re_ui: &crate::ReUi,
         ui: &mut egui::Ui,
         context: &ContentContext<'_>,
-    ) {
-        (self.ui)(re_ui, ui, context)
+    ) -> Option<egui::Response>;
+
+    /// The desired width of the content.
+    fn desired_width(&self, _re_ui: &crate::ReUi, _ui: &egui::Ui) -> DesiredWidth {
+        DesiredWidth::AtLeast(0.0)
     }
 }

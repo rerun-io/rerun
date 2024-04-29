@@ -1,22 +1,26 @@
-use crate::list_item2::{ContentContext, ListItemContent};
+use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, LabelStyle, ReUi};
 use eframe::emath::{Align, Align2};
 use eframe::epaint::text::TextWrapping;
 use egui::Ui;
 
-pub struct BasicListItemContent<'a> {
+///
+pub struct LabelContent<'a> {
     text: egui::WidgetText,
 
     //TODO(ab): these should probably go as WidgetText already implements that
     subdued: bool,
     weak: bool,
     italics: bool,
+
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
+
+    exact_width: bool,
 }
 
-impl<'a> BasicListItemContent<'a> {
+impl<'a> LabelContent<'a> {
     pub fn new(text: impl Into<egui::WidgetText>) -> Self {
         Self {
             text: text.into(),
@@ -26,6 +30,7 @@ impl<'a> BasicListItemContent<'a> {
             label_style: Default::default(),
             icon_fn: None,
             buttons_fn: None,
+            exact_width: false,
         }
     }
 
@@ -70,6 +75,17 @@ impl<'a> BasicListItemContent<'a> {
         self
     }
 
+    /// Allocate the exact width required for the label.
+    ///
+    /// By default, [`LabelContent`] uses the available width. By setting `exact_width` to true,
+    /// the exact width required by the label (and the icon if any) is allocated instead. See
+    /// [`super::DesiredWidth::Exact`].
+    #[inline]
+    pub fn exact_width(mut self, exact_width: bool) -> Self {
+        self.exact_width = exact_width;
+        self
+    }
+
     /// Provide an [`Icon`] to be displayed on the left of the item.
     #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
@@ -108,8 +124,13 @@ impl<'a> BasicListItemContent<'a> {
     }
 }
 
-impl ListItemContent for BasicListItemContent<'_> {
-    fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
+impl ListItemContent for LabelContent<'_> {
+    fn ui(
+        self: Box<Self>,
+        re_ui: &ReUi,
+        ui: &mut Ui,
+        context: &ContentContext<'_>,
+    ) -> Option<egui::Response> {
         let Self {
             mut text,
             subdued,
@@ -118,6 +139,7 @@ impl ListItemContent for BasicListItemContent<'_> {
             label_style,
             icon_fn,
             buttons_fn,
+            exact_width: _,
         } = *self;
 
         let icon_rect = egui::Rect::from_center_size(
@@ -203,5 +225,34 @@ impl ListItemContent for BasicListItemContent<'_> {
             .min;
 
         ui.painter().galley(text_pos, galley, visuals.text_color());
+
+        button_response
+    }
+
+    fn desired_width(&self, _re_ui: &ReUi, ui: &Ui) -> DesiredWidth {
+        if self.exact_width {
+            //TODO(ab): ideally there wouldn't be as much code duplication with `Self::ui`
+            let mut text = self.text.clone();
+            if self.italics || self.label_style == LabelStyle::Unnamed {
+                text = text.italics();
+            }
+
+            let layout_job =
+                text.clone()
+                    .into_layout_job(ui.style(), egui::FontSelection::Default, Align::LEFT);
+            let galley = ui.fonts(|fonts| fonts.layout_job(layout_job));
+
+            let mut desired_width = galley.size().x;
+
+            if self.icon_fn.is_some() {
+                desired_width += ReUi::small_icon_size().x + ReUi::text_to_icon_padding()
+            }
+
+            // The `ceil()` is needed to avoid some rounding errors which leads to text being
+            // truncated even though we allocated enough space.
+            DesiredWidth::Exact(desired_width.ceil())
+        } else {
+            DesiredWidth::default()
+        }
     }
 }

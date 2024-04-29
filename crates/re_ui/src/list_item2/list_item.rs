@@ -22,6 +22,7 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<egui::InnerResponse<R>>,
 }
 
+/// Generic list item that delegates its content to a [`ListItemContent`] implementation.
 #[derive(Debug, Clone)]
 pub struct ListItem<'a> {
     re_ui: &'a ReUi,
@@ -184,7 +185,7 @@ impl<'a> ListItem<'a> {
         ui: &mut Ui,
         id: Option<egui::Id>,
         extra_indent: f32,
-        mut content: Box<dyn ListItemContent>,
+        content: Box<dyn ListItemContent>,
     ) -> ListItemResponse {
         let Self {
             re_ui,
@@ -287,7 +288,7 @@ impl<'a> ListItem<'a> {
                 list_item: &self,
                 state: &state,
             };
-            content.ui(re_ui, ui, &content_ctx);
+            let content_response = content.ui(re_ui, ui, &content_ctx);
 
             // Draw background on interaction.
             if drag_target {
@@ -296,8 +297,9 @@ impl<'a> ListItem<'a> {
                     Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
                 );
             } else {
-                let bg_fill = if false {
-                    //TODO: should be overrideable by content
+                let bg_fill = if content_response.map_or(false, |r| r.hovered()) {
+                    // if some part of the content is active and hovered, our background should
+                    // become dimmer
                     Some(visuals.bg_fill)
                 } else if selected
                     || style_response.hovered()

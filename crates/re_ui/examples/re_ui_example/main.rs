@@ -311,12 +311,16 @@ impl eframe::App for ExampleApp {
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
+                // TODO(#6156): this is still needed for some full-span widgets
+                ui.set_clip_rect(ui.max_rect());
+
                 // define the hover/selection background highlight range for all nested `ListItem`s
                 re_ui::list_item2::list_item_scope(
                     ui,
                     "right_panel_list_item_scope",
                     Some(ui.max_rect().x_range()),
                     |ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
                         self.right_panel.ui(&self.re_ui, ui);
                     },
                 );
@@ -436,41 +440,6 @@ fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
     UICommand::SaveRecordingSelection.menu_button_ui(ui, command_sender);
     UICommand::Open.menu_button_ui(ui, command_sender);
     UICommand::Quit.menu_button_ui(ui, command_sender);
-}
-
-fn selection_buttons(ui: &mut egui::Ui) {
-    use egui_extras::{Size, StripBuilder};
-
-    const BUTTON_SIZE: f32 = 20.0;
-    const MIN_COMBOBOX_SIZE: f32 = 100.0;
-
-    ui.horizontal(|ui| {
-        StripBuilder::new(ui)
-            .cell_layout(egui::Layout::centered_and_justified(
-                egui::Direction::TopDown, // whatever
-            ))
-            .size(Size::exact(BUTTON_SIZE)) // prev
-            .size(Size::remainder().at_least(MIN_COMBOBOX_SIZE)) // browser
-            .size(Size::exact(BUTTON_SIZE)) // next
-            .horizontal(|mut strip| {
-                strip.cell(|ui| {
-                    let _ = ui.small_button("⏴");
-                });
-
-                strip.cell(|ui| {
-                    egui::ComboBox::from_id_source("foo")
-                        .width(ui.available_width())
-                        .selected_text("ComboBox")
-                        .show_ui(ui, |ui| {
-                            ui.label("contents");
-                        });
-                });
-
-                strip.cell(|ui| {
-                    let _ = ui.small_button("⏵");
-                });
-            });
-    });
 }
 
 fn tabs_ui(ui: &mut egui::Ui, tree: &mut egui_tiles::Tree<Tab>) {

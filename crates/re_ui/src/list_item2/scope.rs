@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 
 // TODO(ab): the state is currently very boring, its main purpose is to support the upcoming two-
-//           column ListItemContent.
+// column ListItemContent.
 #[derive(Debug, Clone)]
 pub struct State {
     /// X coordinate span to use for hover/selection highlight.
@@ -9,6 +9,9 @@ pub struct State {
     /// Note: this field is not, strictly speaking, part of the state, as it's overwritten with each
     /// call of `list_item_scope`. Still, it's convenient to have it here to pass it from the scope
     /// to the inner `ListItem`.
+    // TODO(#6156): this being here is a (temporary) hack (see docstring). In the future, this will
+    // be generalized to some `full_span_scope` mechanism to be used by all full-span widgets beyond
+    // `ListItem`.
     pub(crate) background_x_range: egui::Rangef,
 }
 
@@ -90,6 +93,9 @@ impl StateStack {
 /// 2) Limit state sharing for a subgroup of `ListItem`s. This makes it possible to independently
 ///    align the columns of two `ListItem`s subgroups, for which a single, global alignment would
 ///    be detrimental. This may happen in deeply nested UI code.
+///
+/// TODO(#6156): the background X range stuff is to be split off and generalised for all full-span
+/// widgets.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id: impl Into<egui::Id>,

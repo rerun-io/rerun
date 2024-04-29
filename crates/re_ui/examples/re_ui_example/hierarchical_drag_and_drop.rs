@@ -284,8 +284,7 @@ impl HierarchicalDragAndDrop {
                 ui,
                 item_id,
                 true,
-                list_item2::BasicListItemContent::new(format!("Container {item_id:?}"))
-                    .subdued(true),
+                list_item2::LabelContent::new(format!("Container {item_id:?}")).subdued(true),
                 |re_ui, ui| {
                     self.container_children_ui(re_ui, ui, children);
                 },
@@ -323,7 +322,7 @@ impl HierarchicalDragAndDrop {
         let response = list_item2::ListItem::new(re_ui)
             .selected(self.selected(item_id))
             .draggable(true)
-            .show_hierarchical(ui, list_item2::BasicListItemContent::new(label));
+            .show_hierarchical(ui, list_item2::LabelContent::new(label));
 
         self.handle_interaction(ui, item_id, false, &response, None);
     }

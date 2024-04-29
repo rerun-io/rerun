@@ -1004,6 +1004,11 @@ impl ReUi {
         ListItem::new(self, text)
     }
 
+    /// Convenience function to create a [`list_item2::ListItem`].
+    pub fn list_item2(&self) -> list_item2::ListItem<'_> {
+        list_item2::ListItem::new(self)
+    }
+
     #[allow(clippy::unused_self)]
     pub fn selectable_label_with_icon(
         &self,
