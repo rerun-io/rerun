@@ -44,7 +44,7 @@ pub fn query_archetype_with_history<A: Archetype>(
     entity_db: &EntityDb,
     timeline: &Timeline,
     time: &TimeInt,
-    history: &ExtraQueryHistory,
+    history: &ExtraQueryHistory, // TODO: don't take extra history, take time range component
     entity_path: &EntityPath,
 ) -> Results {
     let visible_history = match timeline.typ() {

@@ -16,3 +16,9 @@ impl VisibleTimeRange {
         end: VisibleTimeRangeBoundary::INFINITE,
     };
 }
+
+impl Default for VisibleTimeRange {
+    fn default() -> Self {
+        Self::EMPTY
+    }
+}

@@ -57,61 +57,54 @@ pub fn visual_time_range_ui_space_view(
         ctx.blueprint_query,
     );
 
+    let mut has_individual_range = true;
     let active_time_range_override = match time_type {
         TimeType::Time => property.ok().flatten().map(|v| v.time.map(|v| v.0)),
         TimeType::Sequence => property.ok().flatten().map(|v| v.sequence.map(|v| v.0)),
     }
-    .flatten();
+    .flatten()
+    .unwrap_or_else(|| {
+        has_individual_range = false;
+        let space_view_class = ctx
+            .space_view_class_registry
+            .get_class_or_log_error(&space_view_class);
+        space_view_class.default_visible_time_range()
+    });
 
-    let has_individual_range = active_time_range_override.is_some();
     let is_space_view = true;
     visual_time_range_ui(
         ctx,
         ui,
         active_time_range_override,
-        space_view_class,
         has_individual_range,
         is_space_view,
         &property_path,
     );
 }
 
-pub fn visual_time_range_ui_entity(
+pub fn visual_time_range_ui_data_result(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    data_result_tree: Option<&re_viewer_context::DataResultTree>,
+    data_result_tree: &re_viewer_context::DataResultTree,
     data_result: &re_viewer_context::DataResult,
-    space_view_class: SpaceViewClassIdentifier,
 ) {
-    let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
-    let time_type = time_ctrl.timeline().typ();
+    let time_type = ctx.rec_cfg.time_ctrl.read().timeline().typ();
 
-    let active_time_range_override = match time_type {
-        TimeType::Time => data_result
-            .lookup_override::<VisibleTimeRangeTime>(ctx)
-            .map(|v| v.0),
+    let has_individual_range = match time_type {
+        TimeType::Time => {
+            data_result.component_override_source(data_result_tree, &VisibleTimeRangeTime::name())
+        }
         TimeType::Sequence => data_result
-            .lookup_override::<VisibleTimeRangeSequence>(ctx)
-            .map(|v| v.0),
-    };
-
-    let has_individual_range = if let Some(data_result_tree) = data_result_tree {
-        // If there is a data-tree, we know we have individual settings if we are our own source.
-        let component_override_source = match time_type {
-            TimeType::Time => data_result
-                .component_override_source(data_result_tree, &VisibleTimeRangeTime::name()),
-            TimeType::Sequence => data_result
-                .component_override_source(data_result_tree, &VisibleTimeRangeSequence::name()),
-        };
-
-        component_override_source.as_ref() == Some(&data_result.entity_path)
-    } else {
-        // Otherwise we can inspect directly.
-        active_time_range_override.is_some()
-    };
+            .component_override_source(data_result_tree, &VisibleTimeRangeSequence::name()),
+    }
+    .is_some();
 
     let Some(override_path) = data_result.recursive_override_path() else {
-        re_log::warn_once!("No override path for entity with visible time range");
+        re_log::error_once!("No override computed yet for entity");
+        return;
+    };
+    let Some(overrides) = data_result.property_overrides.as_ref() else {
+        re_log::error_once!("No override computed yet for entity");
         return;
     };
 
@@ -119,8 +112,7 @@ pub fn visual_time_range_ui_entity(
     visual_time_range_ui(
         ctx,
         ui,
-        active_time_range_override,
-        space_view_class,
+        overrides.visible_time_range.clone(),
         has_individual_range,
         is_space_view,
         override_path,
@@ -130,23 +122,16 @@ pub fn visual_time_range_ui_entity(
 fn visual_time_range_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    time_range: Option<re_types::blueprint::datatypes::VisibleTimeRange>,
-    space_view_class: SpaceViewClassIdentifier,
+    mut resolved_range: re_types::blueprint::datatypes::VisibleTimeRange,
     mut has_individual_range: bool,
     is_space_view: bool,
     property_override_path: &EntityPath,
 ) {
-    let space_view_class = ctx
-        .space_view_class_registry
-        .get_class_or_log_error(&space_view_class);
-
     let re_ui = ctx.re_ui;
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
     let time_type = time_ctrl.timeline().typ();
 
     let mut interacting_with_controls = false;
-
-    let mut resolved_range = time_range.unwrap_or(space_view_class.default_visible_time_range());
 
     let collapsing_response = ctx
         .re_ui

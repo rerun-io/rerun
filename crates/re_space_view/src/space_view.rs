@@ -1,25 +1,24 @@
 use itertools::{FoldWhile, Itertools};
-use nohash_hasher::IntMap;
-use re_entity_db::external::re_query::PromiseResult;
-use re_types::blueprint::components::VisibleTimeRangeTime;
+use re_entity_db::{external::re_query::PromiseResult, EntityProperties};
 
-use crate::{query_view_property, SpaceViewContents};
+use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath, EntityPropertiesComponent, EntityPropertyMap};
-use re_log_types::{DataRow, EntityPathSubs, RowId};
-use re_types::blueprint::archetypes as blueprint_archetypes;
+use re_log_types::{DataRow, EntityPathSubs, RowId, Timeline};
 use re_types::{
-    blueprint::components::{SpaceViewOrigin, Visible},
+    blueprint::{
+        archetypes::{self as blueprint_archetypes},
+        components::{SpaceViewOrigin, Visible},
+        datatypes as blueprint_datatypes,
+    },
     components::Name,
-    Loggable as _,
 };
 use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, DataResult, OverridePath, PerSystemEntities, PropertyOverrides,
-    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
-    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    ContentsName, DataResult, PerSystemEntities, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext,
+    SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 /// A view of a space.
@@ -370,12 +369,7 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let space_view_data_result =
-            self.space_view_data_result(ctx.store_context, ctx.blueprint_query);
-        let props = space_view_data_result
-            .individual_properties()
-            .cloned()
-            .unwrap_or_default();
+        let props = self.legacy_properties(ctx.store_context.blueprint, ctx.blueprint_query);
 
         ui.scope(|ui| {
             class
@@ -395,94 +389,65 @@ impl SpaceViewBlueprint {
         self.id.as_entity_path()
     }
 
-    /// A special data result for the space view that sits "above" the [`SpaceViewContents`].
-    ///
-    /// This allows us to use interfaces that take a [`DataResult`] to modify things on the
-    /// space view that can then be inherited into the contents. For example, controlling
-    /// visible history.
-    pub fn space_view_data_result(
+    /// Legacy `EntityProperties` used by a hand ful of view properties that aren't blueprint view properties yet.
+    pub fn legacy_properties(
         &self,
-        ctx: &StoreContext<'_>,
-        query: &LatestAtQuery,
-    ) -> DataResult {
+        blueprint: &EntityDb,
+        blueprint_query: &LatestAtQuery,
+    ) -> EntityProperties {
         let base_override_root = self.entity_path();
         let individual_override_path =
             base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
-        let recursive_override_path =
-            base_override_root.join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
-        // TODO(#5607): what should happen if the promise is still pending?
-        let individual_properties = ctx
-            .blueprint
+        blueprint
             .latest_at_component_quiet::<EntityPropertiesComponent>(
                 &individual_override_path,
-                query,
+                blueprint_query,
             )
-            .map(|result| result.value.0);
-        let accumulated_properties = individual_properties.clone().unwrap_or_default();
+            .map(|result| result.value.0)
+            .unwrap_or_default()
+    }
 
-        // Gather recursive component overrides.
-        // Ignore individual overrides on SpaceView root.
-        let mut recursive_component_overrides = IntMap::default();
-        if let Some(recursive_override_subtree) =
-            ctx.blueprint.tree().subtree(&recursive_override_path)
-        {
-            for component in recursive_override_subtree.entity.components.keys() {
-                if let Some(component_data) = ctx
-                    .blueprint
-                    .store()
-                    .latest_at(query, &recursive_override_path, *component, &[*component])
-                    .and_then(|(_, _, cells)| cells[0].clone())
-                {
-                    if !component_data.is_empty() {
-                        recursive_component_overrides.insert(
-                            *component,
-                            OverridePath::blueprint_path(recursive_override_path.clone()),
-                        );
-                    }
-                }
+    pub fn save_legacy_properties(&self, ctx: &ViewerContext<'_>, props: EntityProperties) {
+        let base_override_root = self.entity_path();
+        let individual_override_path =
+            base_override_root.join(&DataResult::INDIVIDUAL_OVERRIDES_PREFIX.into());
+
+        ctx.save_blueprint_component(&individual_override_path, &EntityPropertiesComponent(props));
+    }
+
+    pub fn visible_time_range(
+        &self,
+        blueprint: &EntityDb,
+        blueprint_query: &LatestAtQuery,
+        active_timeline: &Timeline,
+        space_view_class_registry: &SpaceViewClassRegistry,
+    ) -> blueprint_datatypes::VisibleTimeRange {
+        // Visual time range works with regular overrides for the most part but it's a bit special:
+        // * we need it for all entities unconditionally
+        // * default does not vary per visualizer
+        // * can't be specified in the data store
+        // Here, we query the visual time range that serves as the default for all entities in this space.
+        let (visible_time_range_archetype, _) = crate::query_view_property::<
+            blueprint_archetypes::VisibleTimeRange,
+        >(self.id, blueprint, blueprint_query); // Don't need to query the entire archetype but doesn't cost much and is convenient.
+
+        let visible_time_range_archetype = visible_time_range_archetype.ok().flatten();
+
+        match active_timeline.typ() {
+            re_log_types::TimeType::Time => {
+                visible_time_range_archetype.map(|arch| arch.time.map(|s| s.0))
+            }
+            re_log_types::TimeType::Sequence => {
+                visible_time_range_archetype.map(|arch| arch.sequence.map(|s| s.0))
             }
         }
-
-        // Special case: VisibleTimeRange is a view property that inherits down to entity properties.
-        // Insert it into the recursive component overrides, so that it's inherited by all entities.
-        // TODO(andreas): Rather than inheriting down the tree, this should be handled as a default value on
-        let (visible_time_range, visible_time_range_path) = query_view_property::<
-            blueprint_archetypes::VisibleTimeRange,
-        >(self.id, ctx.blueprint, query);
-        let visible_time_range = visible_time_range.ok().flatten();
-        if visible_time_range
-            .as_ref()
-            .map_or(false, |r| r.time.is_some())
-        {
-            recursive_component_overrides.insert(
-                VisibleTimeRangeTime::name(),
-                OverridePath::blueprint_path(visible_time_range_path.clone()),
-            );
-        }
-        if visible_time_range
-            .as_ref()
-            .map_or(false, |r| r.sequence.is_some())
-        {
-            recursive_component_overrides.insert(
-                VisibleTimeRangeTime::name(),
-                OverridePath::blueprint_path(visible_time_range_path.clone()),
-            );
-        }
-
-        DataResult {
-            entity_path: base_override_root,
-            visualizers: Default::default(),
-            tree_prefix_only: false,
-            property_overrides: Some(PropertyOverrides {
-                accumulated_properties,
-                individual_properties,
-                recursive_properties: Default::default(),
-                resolved_component_overrides: recursive_component_overrides,
-                recursive_override_path,
-                individual_override_path,
-            }),
-        }
+        .flatten()
+        .unwrap_or_else(|| {
+            let space_view_class =
+                space_view_class_registry.get_class_or_log_error(&self.class_identifier);
+            space_view_class.default_visible_time_range()
+        })
     }
 }
 
@@ -519,6 +484,7 @@ mod tests {
     #[test]
     fn test_entity_properties() {
         let space_view_class_registry = SpaceViewClassRegistry::default();
+        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
 
@@ -540,8 +506,6 @@ mod tests {
         );
 
         let space_view = SpaceViewBlueprint::new("3D".into(), recommended);
-
-        let auto_properties = Default::default();
 
         let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
         visualizable_entities
@@ -571,7 +535,6 @@ mod tests {
         let resolver = contents.build_resolver(
             &space_view_class_registry,
             &space_view,
-            &auto_properties,
             &visualizable_entities,
             &indicated_entities_per_visualizer,
         );
@@ -588,7 +551,13 @@ mod tests {
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
+            resolver.update_overrides(
+                &blueprint,
+                &blueprint_query,
+                &timeline,
+                &space_view_class_registry,
+                &mut query_result,
+            );
 
             let parent = query_result
                 .tree
@@ -633,7 +602,13 @@ mod tests {
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
+            resolver.update_overrides(
+                &blueprint,
+                &blueprint_query,
+                &timeline,
+                &space_view_class_registry,
+                &mut query_result,
+            );
 
             let parent_group = query_result
                 .tree
@@ -684,7 +659,13 @@ mod tests {
             };
 
             let mut query_result = contents.execute_query(&ctx, &visualizable_entities);
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
+            resolver.update_overrides(
+                &blueprint,
+                &blueprint_query,
+                &timeline,
+                &space_view_class_registry,
+                &mut query_result,
+            );
 
             let parent = query_result
                 .tree
@@ -708,6 +689,7 @@ mod tests {
     #[test]
     fn test_component_overrides() {
         let space_view_class_registry = SpaceViewClassRegistry::default();
+        let timeline = Timeline::new("time", re_log_types::TimeType::Time);
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut visualizable_entities_per_visualizer =
             PerVisualizer::<VisualizableEntities>::default();
@@ -749,12 +731,10 @@ mod tests {
             .join(&DataResult::RECURSIVE_OVERRIDES_PREFIX.into());
 
         // Things needed to resolve properties:
-        let auto_properties = EntityPropertyMap::default();
         let indicated_entities_per_visualizer = PerVisualizer::<IndicatedEntities>::default(); // Don't care about indicated entities.
         let resolver = space_view.contents.build_resolver(
             &space_view_class_registry,
             &space_view,
-            &auto_properties,
             &visualizable_entities_per_visualizer,
             &indicated_entities_per_visualizer,
         );
@@ -960,7 +940,13 @@ mod tests {
                 .contents
                 .execute_query(&ctx, &visualizable_entities_per_visualizer);
             let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
-            resolver.update_overrides(&ctx, &blueprint_query, &mut query_result);
+            resolver.update_overrides(
+                &blueprint,
+                &blueprint_query,
+                &timeline,
+                &space_view_class_registry,
+                &mut query_result,
+            );
 
             // Extract component overrides for testing.
             let mut visited: HashMap<EntityPath, HashMap<ComponentName, EntityPath>> =

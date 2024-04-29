@@ -68,6 +68,9 @@ pub fn query_visual_history(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
 ) -> ExtraQueryHistory {
+    // TODO: use something like this here. Don't ever query for the property directly.
+    //let overrides = data_result.property_overrides.unwrap().visible_time_range
+
     let time_range =
         data_result.lookup_override::<re_types::blueprint::components::VisibleTimeRangeTime>(ctx);
     let sequence_range = data_result
