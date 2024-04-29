@@ -329,7 +329,7 @@ pub enum TensorElement {
 impl TensorElement {
     /// Get the value as a 64-bit floating point number.
     ///
-    /// Note that this may caus rounding for large 64-bit integers,
+    /// Note that this may cause rounding for large 64-bit integers,
     /// as `f64` can only represent integers up to 2^53 exactly.
     #[inline]
     pub fn as_f64(&self) -> f64 {
