@@ -8,7 +8,7 @@ impl Position3D {
     /// The origin.
     pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
 
-    /// Create a new positions.
+    /// Create a new position.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self(Vec3D::new(x, y, z))
