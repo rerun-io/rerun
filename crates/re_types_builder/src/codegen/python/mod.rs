@@ -1855,6 +1855,19 @@ fn quote_arrow_serialization(
                         &obj.fqname,
                         "Arrow-transparent structs must have exactly one field",
                     );
+                } else if obj.fields[0].typ == Type::String {
+                    return Ok(unindent(
+                        r##"
+                            if isinstance(data, str):
+                                array = [data]
+                            elif isinstance(data, Sequence):
+                                array = [str(datum) for datum in data]
+                            else:
+                                array = [str(data)]
+
+                            return pa.array(array, type=data_type)
+                        "##,
+                    ));
                 } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
                     if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
                         if !obj.is_testing() {
@@ -1867,8 +1880,8 @@ fn quote_arrow_serialization(
                     } else {
                         return Ok(unindent(&format!(
                             r##"
-array = np.asarray(data, dtype={np_dtype}).flatten()
-return pa.array(array, type=data_type)
+                                array = np.asarray(data, dtype={np_dtype}).flatten()
+                                return pa.array(array, type=data_type)
                             "##
                         )));
                     }
