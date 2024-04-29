@@ -1851,7 +1851,7 @@ fn quote_arrow_serialization(
         ObjectClass::Struct => {
             if obj.fields.len() == 1 {
                 if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if !obj.is_attr_set(ATTR_ARROW_TRANSPARENT) {
+                    if !obj.is_arrow_transparent() {
                         reporter.warn(
                             &obj.virtpath,
                             &obj.fqname,
