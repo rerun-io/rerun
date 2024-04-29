@@ -232,6 +232,14 @@ impl EntityDb {
         }
     }
 
+    /// Get the latest index and value for a given dense [`re_types_core::Component`].
+    ///
+    /// This assumes that the row we get from the store contains at most one instance for this
+    /// component; it will log a warning otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, it will merely log errors on failure.
     #[inline]
     pub fn latest_at_component<C: re_types_core::Component>(
         &self,
@@ -246,6 +254,14 @@ impl EntityDb {
         )
     }
 
+    /// Get the latest index and value for a given dense [`re_types_core::Component`].
+    ///
+    /// This assumes that the row we get from the store contains at most one instance for this
+    /// component; it will log a warning otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, and will quietly swallow any errors.
     #[inline]
     pub fn latest_at_component_quiet<C: re_types_core::Component>(
         &self,
