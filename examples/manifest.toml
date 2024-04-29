@@ -34,6 +34,7 @@ examples = [
   # display order, most interesting first
   "ros_node",
   "nuscenes",
+  "ros2_bridge",
   "ros_bridge",
   "kiss-icp",
   "urdf_loader",
@@ -102,6 +103,7 @@ Integration with 3rd party tools, formats, libraries, and APIs.
 examples = [
   # display order, most interesting first
   "ros_node",
+  "ros2_bridge",
   "ros_bridge",
   "urdf_loader",
   "vrs",
