@@ -59,7 +59,15 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
 
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
-        """Create a new instance of the ViewCoordinates archetype."""
+        """
+        Create a new instance of the ViewCoordinates archetype.
+
+        Parameters
+        ----------
+        xyz:
+            The directions of the [x, y, z] axes.
+
+        """
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -84,6 +92,10 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         metadata={"component": "required"},
         converter=components.ViewCoordinatesBatch._required,  # type: ignore[misc]
     )
+    # The directions of the [x, y, z] axes.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 

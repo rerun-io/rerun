@@ -109,6 +109,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl AnnotationContext {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -191,6 +192,8 @@ impl ::re_types_core::AsComponents for AnnotationContext {
 }
 
 impl AnnotationContext {
+    /// Create a new `AnnotationContext`.
+    #[inline]
     pub fn new(context: impl Into<crate::components::AnnotationContext>) -> Self {
         Self {
             context: context.into(),

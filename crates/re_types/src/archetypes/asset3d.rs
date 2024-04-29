@@ -119,6 +119,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     });
 
 impl Asset3D {
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 4usize;
 }
 
@@ -230,6 +231,8 @@ impl ::re_types_core::AsComponents for Asset3D {
 }
 
 impl Asset3D {
+    /// Create a new `Asset3D`.
+    #[inline]
     pub fn new(blob: impl Into<crate::components::Blob>) -> Self {
         Self {
             blob: blob.into(),
@@ -238,12 +241,25 @@ impl Asset3D {
         }
     }
 
+    /// The Media Type of the asset.
+    ///
+    /// Supported values:
+    /// * `model/gltf-binary`
+    /// * `model/gltf+json`
+    /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
+    /// * `model/stl`
+    ///
+    /// If omitted, the viewer will try to guess from the data blob.
+    /// If it cannot guess, it won't be able to render the asset.
     #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
         self
     }
 
+    /// An out-of-tree transform.
+    ///
+    /// Applies a transformation to the asset itself without impacting its children.
     #[inline]
     pub fn with_transform(
         mut self,

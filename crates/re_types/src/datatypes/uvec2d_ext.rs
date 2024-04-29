@@ -1,19 +1,25 @@
 use super::UVec2D;
 
 impl UVec2D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Self = Self([0; 2]);
+
+    /// The unit vector `[1, 1]`, i.e. the multiplicative identity.
     pub const ONE: Self = Self([1; 2]);
 
+    /// Create a new vector.
     #[inline]
     pub const fn new(x: u32, y: u32) -> Self {
         Self([x, y])
     }
 
+    /// The x-coordinate, i.e. index 0.
     #[inline]
     pub fn x(&self) -> u32 {
         self.0[0]
     }
 
+    /// The y-coordinate, i.e. index 1.
     #[inline]
     pub fn y(&self) -> u32 {
         self.0[1]

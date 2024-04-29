@@ -28,8 +28,10 @@ class Transform3D(Transform3DExt):
     Must be one of:
 
     * TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
+        Translation plus a 3x3 matrix for scale, rotation, skew, etc.
 
     * TranslationRotationScale (datatypes.TranslationRotationScale3D):
+        Translation, rotation and scale, decomposed.
     """
 
 

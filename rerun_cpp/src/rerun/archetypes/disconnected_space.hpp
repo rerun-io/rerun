@@ -43,6 +43,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct DisconnectedSpace {
+        /// Whether the entity path at which this is logged is disconnected from its parent.
         rerun::components::DisconnectedSpace disconnected_space;
 
       public:

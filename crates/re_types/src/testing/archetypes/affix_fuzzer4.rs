@@ -146,6 +146,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
     });
 
 impl AffixFuzzer4 {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 18 optional
     pub const NUM_COMPONENTS: usize = 19usize;
 }
 
@@ -521,6 +522,8 @@ impl ::re_types_core::AsComponents for AffixFuzzer4 {
 }
 
 impl AffixFuzzer4 {
+    /// Create a new `AffixFuzzer4`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             fuzz2101: None,

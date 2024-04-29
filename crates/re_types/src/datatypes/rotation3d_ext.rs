@@ -3,6 +3,7 @@ use crate::datatypes::Quaternion;
 use super::Rotation3D;
 
 impl Rotation3D {
+    /// The identity rotation, representing no rotation.
     pub const IDENTITY: Rotation3D = Rotation3D::Quaternion(Quaternion::IDENTITY);
 }
 

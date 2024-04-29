@@ -2,6 +2,7 @@ use super::Name;
 
 // TODO(#4536): These should come for free
 impl Name {
+    /// Returns the name as a string slice.
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()

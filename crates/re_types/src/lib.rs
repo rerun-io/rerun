@@ -171,6 +171,8 @@
 #![doc = document_features::document_features!()]
 //!
 
+#![warn(missing_docs)] // Let's keep the this crate well-documented!
+
 // ---
 
 /// Number of decimals shown for all vector display methods.
@@ -257,6 +259,7 @@ pub use re_types_core::*;
 
 // ---
 
+/// Re-exports of external crates that are used throughout the codebase.
 pub mod external {
     pub use re_types_core;
 

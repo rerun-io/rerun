@@ -115,6 +115,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     });
 
 impl TextLog {
+    /// The total number of components in the archetype: 1 required, 2 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 4usize;
 }
 
@@ -221,6 +222,8 @@ impl ::re_types_core::AsComponents for TextLog {
 }
 
 impl TextLog {
+    /// Create a new `TextLog`.
+    #[inline]
     pub fn new(text: impl Into<crate::components::Text>) -> Self {
         Self {
             text: text.into(),
@@ -229,12 +232,16 @@ impl TextLog {
         }
     }
 
+    /// The verbosity level of the message.
+    ///
+    /// This can be used to filter the log messages in the Rerun Viewer.
     #[inline]
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
         self.level = Some(level.into());
         self
     }
 
+    /// Optional color to use for the log line in the Rerun Viewer.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

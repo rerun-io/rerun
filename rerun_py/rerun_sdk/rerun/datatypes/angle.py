@@ -27,10 +27,12 @@ class Angle(AngleExt):
     Must be one of:
 
     * Radians (float):
-        3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+        Angle in radians. One turn is equal to 2π (or τ) radians.
+        Only one of `degrees` or `radians` should be set.
 
     * Degrees (float):
-        3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
+        Angle in degrees. One turn is equal to 360 degrees.
+        Only one of `degrees` or `radians` should be set.
     """
 
     kind: Literal["radians", "degrees"] = field(default="radians")
@@ -38,10 +40,12 @@ class Angle(AngleExt):
     Possible values:
 
     * "Radians":
-        3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+        Angle in radians. One turn is equal to 2π (or τ) radians.
+        Only one of `degrees` or `radians` should be set.
 
     * "Degrees":
-        3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
+        Angle in degrees. One turn is equal to 360 degrees.
+        Only one of `degrees` or `radians` should be set.
     """
 
 

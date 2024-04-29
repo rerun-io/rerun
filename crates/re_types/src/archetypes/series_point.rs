@@ -140,6 +140,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     });
 
 impl SeriesPoint {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 5usize;
 }
 
@@ -261,6 +262,8 @@ impl ::re_types_core::AsComponents for SeriesPoint {
 }
 
 impl SeriesPoint {
+    /// Create a new `SeriesPoint`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             color: None,
@@ -270,24 +273,30 @@ impl SeriesPoint {
         }
     }
 
+    /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
     }
 
+    /// What shape to use to represent the point
     #[inline]
     pub fn with_marker(mut self, marker: impl Into<crate::components::MarkerShape>) -> Self {
         self.marker = Some(marker.into());
         self
     }
 
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = Some(name.into());
         self
     }
 
+    /// Size of the marker.
     #[inline]
     pub fn with_marker_size(
         mut self,

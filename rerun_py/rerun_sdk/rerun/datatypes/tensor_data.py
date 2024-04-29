@@ -46,7 +46,14 @@ class TensorData(TensorDataExt):
     # __init__ can be found in tensor_data_ext.py
 
     shape: list[datatypes.TensorDimension] = field()
+    # The shape of the tensor, including optional names for each dimension.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     buffer: datatypes.TensorBuffer = field(converter=_tensor_data__buffer__special_field_converter_override)
+    # The content/data.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:

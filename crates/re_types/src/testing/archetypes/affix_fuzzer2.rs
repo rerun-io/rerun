@@ -151,6 +151,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
     });
 
 impl AffixFuzzer2 {
+    /// The total number of components in the archetype: 19 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 20usize;
 }
 
@@ -486,6 +487,8 @@ impl ::re_types_core::AsComponents for AffixFuzzer2 {
 }
 
 impl AffixFuzzer2 {
+    /// Create a new `AffixFuzzer2`.
+    #[inline]
     pub fn new(
         fuzz1101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
         fuzz1102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,

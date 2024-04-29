@@ -10,14 +10,33 @@ namespace rerun.components;
 /// Shape of a marker.
 enum MarkerShape: byte
  {
+    /// `⏺`
     Circle (default),
+
+    /// `◆`
     Diamond,
+
+    /// `◼️`
     Square,
+
+    /// `x`
     Cross,
+
+    /// `+`
     Plus,
+
+    /// `▲`
     Up,
+
+    /// `▼`
     Down,
+
+    /// `◀`
     Left,
+
+    /// `▶`
     Right,
+
+    /// `*`
     Asterisk,
 }

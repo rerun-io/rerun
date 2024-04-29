@@ -129,6 +129,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     });
 
 impl SeriesLine {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 4usize;
 }
 
@@ -233,6 +234,8 @@ impl ::re_types_core::AsComponents for SeriesLine {
 }
 
 impl SeriesLine {
+    /// Create a new `SeriesLine`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             color: None,
@@ -241,18 +244,23 @@ impl SeriesLine {
         }
     }
 
+    /// Color for the corresponding series.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
     }
 
+    /// Stroke width for the corresponding series.
     #[inline]
     pub fn with_width(mut self, width: impl Into<crate::components::StrokeWidth>) -> Self {
         self.width = Some(width.into());
         self
     }
 
+    /// Display name of the series.
+    ///
+    /// Used in the legend.
     #[inline]
     pub fn with_name(mut self, name: impl Into<crate::components::Name>) -> Self {
         self.name = Some(name.into());

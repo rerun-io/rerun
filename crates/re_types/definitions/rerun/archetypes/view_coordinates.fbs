@@ -21,5 +21,6 @@ table ViewCoordinates (
   "attr.rust.repr": "transparent",
   "attr.docs.category": "Spatial 3D"
 ) {
+  /// The directions of the [x, y, z] axes.
   xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);
 }

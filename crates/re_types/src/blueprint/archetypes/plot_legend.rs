@@ -73,6 +73,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl PlotLegend {
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -167,6 +168,8 @@ impl ::re_types_core::AsComponents for PlotLegend {
 }
 
 impl PlotLegend {
+    /// Create a new `PlotLegend`.
+    #[inline]
     pub fn new() -> Self {
         Self {
             corner: None,
@@ -174,6 +177,9 @@ impl PlotLegend {
         }
     }
 
+    /// To what corner the legend is aligned.
+    ///
+    /// Defaults to the right bottom corner.
     #[inline]
     pub fn with_corner(
         mut self,
@@ -183,6 +189,9 @@ impl PlotLegend {
         self
     }
 
+    /// Whether the legend is shown at all.
+    ///
+    /// True by default.
     #[inline]
     pub fn with_visible(
         mut self,

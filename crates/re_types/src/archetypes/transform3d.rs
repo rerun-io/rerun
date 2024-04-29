@@ -102,6 +102,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl Transform3D {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -184,6 +185,8 @@ impl ::re_types_core::AsComponents for Transform3D {
 }
 
 impl Transform3D {
+    /// Create a new `Transform3D`.
+    #[inline]
     pub fn new(transform: impl Into<crate::components::Transform3D>) -> Self {
         Self {
             transform: transform.into(),

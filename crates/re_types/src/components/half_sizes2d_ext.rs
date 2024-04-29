@@ -3,9 +3,10 @@ use crate::datatypes::Vec2D;
 use super::HalfSizes2D;
 
 impl HalfSizes2D {
+    /// Create a new half-extent from half-width and half-height.
     #[inline]
-    pub const fn new(x: f32, y: f32) -> Self {
-        Self(Vec2D::new(x, y))
+    pub const fn new(half_width: f32, half_height: f32) -> Self {
+        Self(Vec2D::new(half_width, half_height))
     }
 
     /// Width of a box using this half-extent.

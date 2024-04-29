@@ -16,5 +16,6 @@ namespace rerun.archetypes;
 table DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
+  /// Whether the entity path at which this is logged is disconnected from its parent.
   disconnected_space: rerun.components.DisconnectedSpace ("attr.rerun.component_required", order: 1000);
 }

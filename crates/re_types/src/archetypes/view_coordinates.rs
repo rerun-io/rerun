@@ -62,6 +62,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ViewCoordinates {
+    /// The directions of the [x, y, z] axes.
     pub xyz: crate::components::ViewCoordinates,
 }
 
@@ -95,6 +96,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl ViewCoordinates {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -177,6 +179,8 @@ impl ::re_types_core::AsComponents for ViewCoordinates {
 }
 
 impl ViewCoordinates {
+    /// Create a new `ViewCoordinates`.
+    #[inline]
     pub fn new(xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
         Self { xyz: xyz.into() }
     }

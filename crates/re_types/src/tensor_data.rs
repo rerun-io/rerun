@@ -1,3 +1,6 @@
+//! Internal helpers; not part of the public API.
+#![allow(missing_docs)]
+
 use half::f16;
 
 use crate::datatypes::{TensorBuffer, TensorData};
@@ -146,11 +149,13 @@ impl TensorDataType {
         }
     }
 
+    /// Is this datatype an integer?
     #[inline]
     pub fn is_integer(&self) -> bool {
         !self.is_float()
     }
 
+    /// Is this datatype a floating point number?
     #[inline]
     pub fn is_float(&self) -> bool {
         match self {
@@ -166,6 +171,7 @@ impl TensorDataType {
         }
     }
 
+    /// What is the minimum value representable by this datatype?
     #[inline]
     pub fn min_value(&self) -> f64 {
         match self {
@@ -185,6 +191,7 @@ impl TensorDataType {
         }
     }
 
+    /// What is the maximum value representable by this datatype?
     #[inline]
     pub fn max_value(&self) -> f64 {
         match self {
@@ -320,6 +327,10 @@ pub enum TensorElement {
 }
 
 impl TensorElement {
+    /// Get the value as a 64-bit floating point number.
+    ///
+    /// Note that this may cause rounding for large 64-bit integers,
+    /// as `f64` can only represent integers up to 2^53 exactly.
     #[inline]
     pub fn as_f64(&self) -> f64 {
         match self {
@@ -339,6 +350,8 @@ impl TensorElement {
         }
     }
 
+    /// Convert the value to a `u16`, but only if it can be represented
+    /// exactly as a `u16`, without any rounding or clamping.
     #[inline]
     pub fn try_as_u16(&self) -> Option<u16> {
         fn u16_from_f64(f: f64) -> Option<u16> {
@@ -518,6 +531,8 @@ impl DecodedTensor {
         Ok(DecodedTensor(tensor))
     }
 
+    /// Try to decode this tensor, if it was encoded as a JPEG,
+    /// otherwise just return the tensor.
     pub fn try_decode(maybe_encoded_tensor: TensorData) -> Result<Self, TensorImageLoadError> {
         match &maybe_encoded_tensor.buffer {
             TensorBuffer::U8(_)
@@ -543,13 +558,16 @@ impl DecodedTensor {
                         )
                     })?;
 
-                Self::decode_jpeg_bytes(jpeg_bytes, [h, w, c])
+                Self::decode_jpeg_bytes(jpeg_bytes.as_slice(), [h, w, c])
             }
         }
     }
 
-    pub fn decode_jpeg_bytes(
-        jpeg_bytes: &::re_types_core::ArrowBuffer<u8>,
+    /// Decode the contents of a JPEG file, with the given expected size.
+    ///
+    /// Returns an error if the size does not match.
+    fn decode_jpeg_bytes(
+        jpeg_bytes: &[u8],
         [expected_height, expected_width, expected_channels]: [u64; 3],
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!(format!("{expected_width}x{expected_height}"));
@@ -569,7 +587,7 @@ impl DecodedTensor {
             4
         };
 
-        let mut decoder = JpegDecoder::new_with_options(jpeg_bytes.as_slice(), options);
+        let mut decoder = JpegDecoder::new_with_options(jpeg_bytes, options);
         let pixels = decoder.decode()?;
         let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode
 

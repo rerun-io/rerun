@@ -3,6 +3,7 @@ use crate::datatypes::Vec2D;
 use super::PinholeProjection;
 
 impl PinholeProjection {
+    /// Create a new pinhole projection matrix from a focal length and principal point.
     #[inline]
     pub fn from_focal_length_and_principal_point(
         focal_length: impl Into<Vec2D>,

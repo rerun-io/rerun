@@ -95,6 +95,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl Scalar {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -177,6 +178,8 @@ impl ::re_types_core::AsComponents for Scalar {
 }
 
 impl Scalar {
+    /// Create a new `Scalar`.
+    #[inline]
     pub fn new(scalar: impl Into<crate::components::Scalar>) -> Self {
         Self {
             scalar: scalar.into(),

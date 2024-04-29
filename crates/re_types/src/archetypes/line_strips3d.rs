@@ -135,6 +135,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     });
 
 impl LineStrips3D {
+    /// The total number of components in the archetype: 1 required, 3 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 6usize;
 }
 
@@ -282,6 +283,8 @@ impl ::re_types_core::AsComponents for LineStrips3D {
 }
 
 impl LineStrips3D {
+    /// Create a new `LineStrips3D`.
+    #[inline]
     pub fn new(
         strips: impl IntoIterator<Item = impl Into<crate::components::LineStrip3D>>,
     ) -> Self {
@@ -294,6 +297,7 @@ impl LineStrips3D {
         }
     }
 
+    /// Optional radii for the line strips.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -303,6 +307,7 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional colors for the line strips.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -312,6 +317,7 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional text labels for the line strips.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -321,6 +327,9 @@ impl LineStrips3D {
         self
     }
 
+    /// Optional `ClassId`s for the lines.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

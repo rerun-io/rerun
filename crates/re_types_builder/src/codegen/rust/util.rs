@@ -72,6 +72,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
     let mut output = String::default();
     let mut is_in_docstring = false;
+    let mut prev_line_was_docstring = false;
     let mut prev_line_was_attr = false;
 
     for line in string.split('\n') {
@@ -94,6 +95,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
                 prev_line_was_attr = false;
                 is_in_docstring = true;
+                prev_line_was_docstring = true;
 
                 continue;
             }
@@ -106,7 +108,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
         let line_is_attr = trimmed.starts_with("#[allow(") || trimmed.starts_with("#[inline]");
 
-        if !prev_line_was_attr && line_is_attr {
+        if line_is_attr && (!prev_line_was_attr && !prev_line_was_docstring) {
             output.push('\n');
         }
 
@@ -125,6 +127,7 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
         output.push_str(line);
         output.push('\n');
         prev_line_was_attr = line_is_attr;
+        prev_line_was_docstring = false;
     }
 
     output

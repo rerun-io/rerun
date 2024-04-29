@@ -70,6 +70,8 @@ pub struct Boxes3D {
 
     /// Optional center positions of the boxes.
     pub centers: Option<Vec<crate::components::Position3D>>,
+
+    /// Optional rotations of the boxes.
     pub rotations: Option<Vec<crate::components::Rotation3D>>,
 
     /// Optional colors for the boxes.
@@ -148,6 +150,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     });
 
 impl Boxes3D {
+    /// The total number of components in the archetype: 1 required, 4 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
@@ -327,6 +330,8 @@ impl ::re_types_core::AsComponents for Boxes3D {
 }
 
 impl Boxes3D {
+    /// Create a new `Boxes3D`.
+    #[inline]
     pub(crate) fn new(
         half_sizes: impl IntoIterator<Item = impl Into<crate::components::HalfSizes3D>>,
     ) -> Self {
@@ -341,6 +346,7 @@ impl Boxes3D {
         }
     }
 
+    /// Optional center positions of the boxes.
     #[inline]
     pub fn with_centers(
         mut self,
@@ -350,6 +356,7 @@ impl Boxes3D {
         self
     }
 
+    /// Optional rotations of the boxes.
     #[inline]
     pub fn with_rotations(
         mut self,
@@ -359,6 +366,7 @@ impl Boxes3D {
         self
     }
 
+    /// Optional colors for the boxes.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -368,6 +376,7 @@ impl Boxes3D {
         self
     }
 
+    /// Optional radii for the lines that make up the boxes.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -377,6 +386,7 @@ impl Boxes3D {
         self
     }
 
+    /// Optional text labels for the boxes.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -386,6 +396,9 @@ impl Boxes3D {
         self
     }
 
+    /// Optional `ClassId`s for the boxes.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

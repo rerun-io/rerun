@@ -391,7 +391,7 @@ fn quote_struct(
 
     let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
 
-    let quoted_builder = quote_builder_from_obj(obj);
+    let quoted_builder = quote_builder_from_obj(reporter, obj);
 
     let quoted_heap_size_bytes = if obj
         .fields
@@ -789,6 +789,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
     lines
 }
 
+fn quote_doc_line(line: &str) -> TokenStream {
+    let line = format!(" {line}"); // add space between `///` and comment
+    quote!(# [doc = #line])
+}
+
 fn quote_doc_lines(lines: &[String]) -> TokenStream {
     struct DocCommentTokenizer<'a>(&'a [String]);
 
@@ -1081,6 +1086,9 @@ fn quote_trait_impls_from_obj(
             let (num_optional, optional) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
+            let num_components_docstring  = quote_doc_line(&format!(
+                "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
+            ));
             let num_all = num_required + num_recommended + num_optional;
 
             let quoted_field_names = obj
@@ -1206,6 +1214,7 @@ fn quote_trait_impls_from_obj(
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
+                    #num_components_docstring
                     pub const NUM_COMPONENTS: usize = #num_all;
                 }
 
@@ -1404,7 +1413,7 @@ fn quote_from_impl_from_obj(obj: &Object) -> TokenStream {
 }
 
 /// Only makes sense for archetypes.
-fn quote_builder_from_obj(obj: &Object) -> TokenStream {
+fn quote_builder_from_obj(reporter: &Reporter, obj: &Object) -> TokenStream {
     if obj.kind != ObjectKind::Archetype {
         return TokenStream::new();
     }
@@ -1457,7 +1466,10 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
     } else {
         quote!(pub)
     };
+    let fn_new_docstring = quote_doc_line(&format!("Create a new `{name}`."));
     let fn_new = quote! {
+        #fn_new_docstring
+        #[inline]
         #fn_new_pub fn new(#(#quoted_params,)*) -> Self {
             Self {
                 #(#quoted_required,)*
@@ -1472,10 +1484,12 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         let field_name = format_ident!("{}", field.name);
         let method_name = format_ident!("with_{field_name}");
         let (typ, unwrapped) = quote_field_type_from_typ(&field.typ, true);
+        let docstring = quote_field_docs(reporter, field);
 
         if unwrapped {
             // This was originally a vec/array!
             quote! {
+                #docstring
                 #[inline]
                 pub fn #method_name(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
                     self.#field_name = Some(#field_name.into_iter().map(Into::into).collect());
@@ -1484,6 +1498,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
             }
         } else {
             quote! {
+                #docstring
                 #[inline]
                 pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
                     self.#field_name = Some(#field_name.into());

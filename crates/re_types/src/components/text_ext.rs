@@ -1,6 +1,7 @@
 use super::Text;
 
 impl Text {
+    /// The text as a string slice.
     #[inline]
     pub fn as_str(&self) -> &str {
         self.0.as_str()

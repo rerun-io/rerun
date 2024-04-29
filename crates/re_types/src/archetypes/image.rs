@@ -111,6 +111,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl Image {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -205,6 +206,8 @@ impl ::re_types_core::AsComponents for Image {
 }
 
 impl Image {
+    /// Create a new `Image`.
+    #[inline]
     pub fn new(data: impl Into<crate::components::TensorData>) -> Self {
         Self {
             data: data.into(),
@@ -212,6 +215,9 @@ impl Image {
         }
     }
 
+    /// An optional floating point value that specifies the 2D drawing order.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());

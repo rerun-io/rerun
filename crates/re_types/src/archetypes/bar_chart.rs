@@ -90,6 +90,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl BarChart {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -184,6 +185,8 @@ impl ::re_types_core::AsComponents for BarChart {
 }
 
 impl BarChart {
+    /// Create a new `BarChart`.
+    #[inline]
     pub fn new(values: impl Into<crate::components::TensorData>) -> Self {
         Self {
             values: values.into(),
@@ -191,6 +194,7 @@ impl BarChart {
         }
     }
 
+    /// The color of the bar chart
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

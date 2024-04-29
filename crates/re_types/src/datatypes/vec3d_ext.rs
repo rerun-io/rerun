@@ -1,24 +1,31 @@
 use super::Vec3D;
 
 impl Vec3D {
+    /// The zero vector, i.e. the additive identity.
     pub const ZERO: Vec3D = Vec3D([0.0; 3]);
+
+    /// `[1, 1, 1]`, i.e. the multiplicative identity.
     pub const ONE: Vec3D = Vec3D([1.0; 3]);
 
+    /// Create a new vector.
     #[inline]
     pub const fn new(x: f32, y: f32, z: f32) -> Self {
         Self([x, y, z])
     }
 
+    /// The x-coordinate, i.e. index 0.
     #[inline]
     pub fn x(&self) -> f32 {
         self.0[0]
     }
 
+    /// The y-coordinate, i.e. index 1.
     #[inline]
     pub fn y(&self) -> f32 {
         self.0[1]
     }
 
+    /// The z-coordinate, i.e. index 2.
     #[inline]
     pub fn z(&self) -> f32 {
         self.0[2]

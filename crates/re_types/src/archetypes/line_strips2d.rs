@@ -138,6 +138,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     });
 
 impl LineStrips2D {
+    /// The total number of components in the archetype: 1 required, 3 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 7usize;
 }
 
@@ -298,6 +299,8 @@ impl ::re_types_core::AsComponents for LineStrips2D {
 }
 
 impl LineStrips2D {
+    /// Create a new `LineStrips2D`.
+    #[inline]
     pub fn new(
         strips: impl IntoIterator<Item = impl Into<crate::components::LineStrip2D>>,
     ) -> Self {
@@ -311,6 +314,7 @@ impl LineStrips2D {
         }
     }
 
+    /// Optional radii for the line strips.
     #[inline]
     pub fn with_radii(
         mut self,
@@ -320,6 +324,7 @@ impl LineStrips2D {
         self
     }
 
+    /// Optional colors for the line strips.
     #[inline]
     pub fn with_colors(
         mut self,
@@ -329,6 +334,7 @@ impl LineStrips2D {
         self
     }
 
+    /// Optional text labels for the line strips.
     #[inline]
     pub fn with_labels(
         mut self,
@@ -338,12 +344,18 @@ impl LineStrips2D {
         self
     }
 
+    /// An optional floating point value that specifies the 2D drawing order of each line strip.
+    ///
+    /// Objects with higher values are drawn on top of those with lower values.
     #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    /// Optional `ClassId`s for the lines.
+    ///
+    /// The class ID provides colors and labels if not specified explicitly.
     #[inline]
     pub fn with_class_ids(
         mut self,

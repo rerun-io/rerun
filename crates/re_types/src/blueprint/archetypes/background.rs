@@ -66,6 +66,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     });
 
 impl Background {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
@@ -160,6 +161,8 @@ impl ::re_types_core::AsComponents for Background {
 }
 
 impl Background {
+    /// Create a new `Background`.
+    #[inline]
     pub fn new(kind: impl Into<crate::blueprint::components::BackgroundKind>) -> Self {
         Self {
             kind: kind.into(),
@@ -167,6 +170,9 @@ impl Background {
         }
     }
 
+    /// Color used for BackgroundKind.SolidColor.
+    ///
+    /// Defaults to White.
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());

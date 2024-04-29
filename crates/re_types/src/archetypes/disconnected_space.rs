@@ -67,6 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace {
+    /// Whether the entity path at which this is logged is disconnected from its parent.
     pub disconnected_space: crate::components::DisconnectedSpace,
 }
 
@@ -100,6 +101,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     });
 
 impl DisconnectedSpace {
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
@@ -182,6 +184,8 @@ impl ::re_types_core::AsComponents for DisconnectedSpace {
 }
 
 impl DisconnectedSpace {
+    /// Create a new `DisconnectedSpace`.
+    #[inline]
     pub fn new(disconnected_space: impl Into<crate::components::DisconnectedSpace>) -> Self {
         Self {
             disconnected_space: disconnected_space.into(),

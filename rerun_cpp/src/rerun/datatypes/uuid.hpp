@@ -16,8 +16,9 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: A 16-byte uuid.
+    /// **Datatype**: A 16-byte UUID.
     struct Uuid {
+        /// The raw bytes representing the UUID.
         std::array<uint8_t, 16> bytes;
 
       public:
