@@ -16,7 +16,7 @@ impl TranslationAndMat3x3 {
         from_parent: false,
     };
 
-    /// Create a new [`TranslationAndMat3`] from a translation and a 3x3 matrix.
+    /// Create a new [`TranslationAndMat3x3`] from a translation and a 3x3 matrix.
     #[inline]
     pub fn new<T: Into<Vec3D>, M: Into<Mat3x3>>(translation: T, mat3x3: M) -> Self {
         Self {
@@ -26,7 +26,7 @@ impl TranslationAndMat3x3 {
         }
     }
 
-    /// Create a new [`TranslationAndMat3`] with just the translation.
+    /// Create a new [`TranslationAndMat3x3`] with just the translation.
     #[inline]
     pub fn from_translation<T: Into<Vec3D>>(translation: T) -> Self {
         Self {
@@ -36,7 +36,7 @@ impl TranslationAndMat3x3 {
         }
     }
 
-    /// Create a new [`TranslationAndMat3`] with just the 3x3 matrix.
+    /// Create a new [`TranslationAndMat3x3`] with just the 3x3 matrix.
     #[inline]
     pub fn from_mat3x3<M: Into<Mat3x3>>(mat3x3: M) -> Self {
         Self {

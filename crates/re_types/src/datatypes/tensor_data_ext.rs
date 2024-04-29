@@ -164,7 +164,7 @@ impl TensorData {
 
     /// Get the value of the element at the given index.
     ///
-    /// Return `None` if out-of-bounds, or if the tensor is encoded (e.g. [`Self::Jpeg`]).
+    /// Return `None` if out-of-bounds, or if the tensor is encoded (e.g. [`TensorBuffer::Jpeg`]).
     pub fn get(&self, index: &[u64]) -> Option<TensorElement> {
         let mut stride: usize = 1;
         let mut offset: usize = 0;
@@ -231,7 +231,7 @@ impl TensorData {
 
     /// Returns decoded RGB8 value at the given image coordinates if this tensor is a NV12 image.
     ///
-    /// If the tensos is not [`Self::Nv12`], `None` is returned.
+    /// If the tensor is not [`TensorBuffer::Nv12`], `None` is returned.
     ///
     /// It is undefined what happens if the coordinate is out-of-bounds.
     pub fn get_nv12_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
@@ -253,7 +253,7 @@ impl TensorData {
 
     /// Returns decoded RGB8 value at the given image coordinates if this tensor is a YUY2 image.
     ///
-    /// If the tensos is not [`Self::Yuy2`], `None` is returned.
+    /// If the tensor is not [`TensorBuffer::Yuy2`], `None` is returned.
     ///
     /// It is undefined what happens if the coordinate is out-of-bounds.
     pub fn get_yuy2_pixel(&self, x: u64, y: u64) -> Option<[u8; 3]> {
