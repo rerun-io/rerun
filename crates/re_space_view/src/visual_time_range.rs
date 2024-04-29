@@ -68,34 +68,40 @@ pub fn query_visual_history(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
 ) -> ExtraQueryHistory {
-    // TODO: use something like this here. Don't ever query for the property directly.
-    //let overrides = data_result.property_overrides.unwrap().visible_time_range
-
-    let time_range =
-        data_result.lookup_override::<re_types::blueprint::components::VisibleTimeRangeTime>(ctx);
-    let sequence_range = data_result
-        .lookup_override::<re_types::blueprint::components::VisibleTimeRangeSequence>(ctx);
-
-    let mut history = ExtraQueryHistory {
-        enabled: false,
-        nanos: Default::default(),
-        sequences: Default::default(),
+    let Some(overrides) = data_result.property_overrides.as_ref() else {
+        re_log::error!("No overrides found for visual history");
+        return ExtraQueryHistory {
+            enabled: false,
+            nanos: Default::default(),
+            sequences: Default::default(),
+        };
     };
 
-    if let Some(time_range) = time_range {
-        history.enabled = true;
-        history.nanos = VisibleHistory {
-            from: time_range_boundary_to_visible_history_boundary(&time_range.0.start),
-            to: time_range_boundary_to_visible_history_boundary(&time_range.0.end),
-        };
+    match &overrides.query_range {
+        re_viewer_context::QueryRange::TimeRange(time_range) => {
+            match ctx.rec_cfg.time_ctrl.read().time_type() {
+                re_log_types::TimeType::Time => ExtraQueryHistory {
+                    enabled: true,
+                    nanos: VisibleHistory {
+                        from: time_range_boundary_to_visible_history_boundary(&time_range.start),
+                        to: time_range_boundary_to_visible_history_boundary(&time_range.end),
+                    },
+                    sequences: Default::default(),
+                },
+                re_log_types::TimeType::Sequence => ExtraQueryHistory {
+                    enabled: true,
+                    nanos: Default::default(),
+                    sequences: VisibleHistory {
+                        from: time_range_boundary_to_visible_history_boundary(&time_range.start),
+                        to: time_range_boundary_to_visible_history_boundary(&time_range.end),
+                    },
+                },
+            }
+        }
+        re_viewer_context::QueryRange::LatestAt => ExtraQueryHistory {
+            enabled: false,
+            nanos: Default::default(),
+            sequences: Default::default(),
+        },
     }
-    if let Some(sequence_range) = sequence_range {
-        history.enabled = true;
-        history.sequences = VisibleHistory {
-            from: time_range_boundary_to_visible_history_boundary(&sequence_range.0.start),
-            to: time_range_boundary_to_visible_history_boundary(&sequence_range.0.end),
-        };
-    }
-
-    history
 }
