@@ -219,11 +219,20 @@ impl EntityDb {
         match results.to_archetype(self.resolver()).flatten() {
             PromiseResult::Pending => PromiseResult::Pending,
             PromiseResult::Error(err) => {
+                // Primary component has never been logged.
                 if let Some(err) = err.downcast_ref::<re_query::QueryError>() {
                     if matches!(err, re_query::QueryError::PrimaryNotFound(_)) {
                         return PromiseResult::Ready(None);
                     }
                 }
+
+                // Primary component has been cleared.
+                if let Some(err) = err.downcast_ref::<re_types_core::DeserializationError>() {
+                    if matches!(err, re_types_core::DeserializationError::MissingData { .. }) {
+                        return PromiseResult::Ready(None);
+                    }
+                }
+
                 PromiseResult::Error(err)
             }
             PromiseResult::Ready(arch) => {
