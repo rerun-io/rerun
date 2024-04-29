@@ -106,8 +106,13 @@ pub fn override_ui(
             re_ui::ReUi::setup_table_body(&mut body);
             let row_height = re_ui::ReUi::table_line_height();
             body.rows(row_height, components.len(), |mut row| {
-                if let Some((component_name, OverridePath { store_kind, path })) =
-                    components.get(row.index())
+                if let Some((
+                    component_name,
+                    OverridePath {
+                        store_kind,
+                        path: entity_path_overridden,
+                    },
+                )) = components.get(row.index())
                 {
                     // Remove button
                     row.col(|ui| {
@@ -140,7 +145,12 @@ pub fn override_ui(
                                 ctx.store_context
                                     .blueprint
                                     .query_caches()
-                                    .latest_at(store, query, entity_path, [*component_name])
+                                    .latest_at(
+                                        store,
+                                        query,
+                                        entity_path_overridden,
+                                        [*component_name],
+                                    )
                                     .components
                                     .get(component_name)
                                     .cloned() /* arc */
@@ -151,7 +161,7 @@ pub fn override_ui(
                                     .latest_at(
                                         ctx.recording_store(),
                                         &query,
-                                        entity_path,
+                                        entity_path_overridden,
                                         [*component_name],
                                     )
                                     .components
@@ -167,7 +177,7 @@ pub fn override_ui(
                                 UiVerbosity::Small,
                                 &query,
                                 ctx.recording(),
-                                path,
+                                entity_path_overridden,
                                 &overrides.individual_override_path,
                                 &results,
                                 instance,
