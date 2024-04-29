@@ -29,8 +29,10 @@ namespace rerun::datatypes {
 
         /// \private
         union AngleData {
+            /// Angle in radians. One turn is equal to 2π (or τ) radians.
             float radians;
 
+            /// Angle in degrees. One turn is equal to 360 degrees.
             float degrees;
 
             AngleData() {
@@ -82,6 +84,7 @@ namespace rerun::datatypes {
             this->_data.swap(other._data);
         }
 
+        /// Angle in radians. One turn is equal to 2π (or τ) radians.
         static Angle radians(float radians) {
             Angle self;
             self._tag = detail::AngleTag::Radians;
@@ -89,6 +92,7 @@ namespace rerun::datatypes {
             return self;
         }
 
+        /// Angle in degrees. One turn is equal to 360 degrees.
         static Angle degrees(float degrees) {
             Angle self;
             self._tag = detail::AngleTag::Degrees;
