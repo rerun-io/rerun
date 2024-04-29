@@ -26,7 +26,7 @@ The default visual time range depends on the type of view this property applies 
 - For time series views, the default is to show the entire timeline.
 - For any other view, the default is to apply latest-at semantics.
 
-The visual time range can be overriden also individually per entity.
+The visual time range can be overridden also individually per entity.
 
 * sequence: The range of time to show for timelines based on sequence numbers.
 * time: The range of time to show for timelines based on time.
