@@ -42,6 +42,7 @@ examples = [
   "rrt_star",
   "rgbd",
   "nv12",
+  "droid_dataset",
 ]
 
 [categories.generative-vision]
