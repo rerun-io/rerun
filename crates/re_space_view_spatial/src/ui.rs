@@ -52,7 +52,7 @@ impl From<AutoSizeUnit> for WidgetText {
     }
 }
 
-/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View2DState`]/[`View3DState`], not the other way round.
+/// TODO(andreas): Should turn this "inside out" - [`SpatialSpaceViewState`] should be used by [`View3DState`], not the other way round.
 #[derive(Clone, Default)]
 pub struct SpatialSpaceViewState {
     pub bounding_boxes: SceneBoundingBoxes,
