@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +37,11 @@ class Float32:
         return float(self.value)
 
 
-Float32Like = Float32
+if TYPE_CHECKING:
+    Float32Like = Union[Float32, float]
+else:
+    Float32Like = Any
+
 Float32ArrayLike = Union[
     Float32,
     Sequence[Float32Like],
@@ -56,6 +60,5 @@ class Float32Batch(BaseBatch[Float32ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Float32ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of Float32 not implemented: We lack codegen for arrow-serialization of structs"
-        )  # You need to implement native_to_pa_array_override in float32_ext.py
+        array = np.asarray(data, dtype=np.float32).flatten()
+        return pa.array(array, type=data_type)

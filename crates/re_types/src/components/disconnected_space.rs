@@ -31,6 +31,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace(
     /// Whether the entity path at which this is logged is disconnected from its parent.
+    ///
+    /// Set to true to disconnect the entity from its parent.
+    /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
     pub bool,
 );
 

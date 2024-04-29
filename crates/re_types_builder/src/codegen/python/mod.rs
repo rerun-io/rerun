@@ -1818,16 +1818,78 @@ fn quote_arrow_support_from_obj(
     }
 }
 
+fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
+    match t {
+        Type::UInt8 => Some("np.uint8"),
+        Type::UInt16 => Some("np.uint16"),
+        Type::UInt32 => Some("np.uint32"),
+        Type::UInt64 => Some("np.uint64"),
+        Type::Int8 => Some("np.int8"),
+        Type::Int16 => Some("np.int16"),
+        Type::Int32 => Some("np.int32"),
+        Type::Int64 => Some("np.int64"),
+        Type::Bool => Some("np.bool_"),
+        Type::Float16 => Some("np.float16"),
+        Type::Float32 => Some("np.float32"),
+        Type::Float64 => Some("np.float64"),
+        Type::Unit | Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
+            None
+        }
+    }
+}
+
 /// Only implemented for some cases.
 fn quote_arrow_serialization(
-    _reporter: &Reporter,
+    reporter: &Reporter,
     _objects: &Objects,
     obj: &Object,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
     match obj.class {
-        ObjectClass::Struct => Err("We lack codegen for arrow-serialization of structs".to_owned()),
+        ObjectClass::Struct => {
+            if obj.is_arrow_transparent() {
+                if obj.fields.len() != 1 {
+                    reporter.error(
+                        &obj.virtpath,
+                        &obj.fqname,
+                        "Arrow-transparent structs must have exactly one field",
+                    );
+                } else if obj.fields[0].typ == Type::String {
+                    return Ok(unindent(
+                        r##"
+                            if isinstance(data, str):
+                                array = [data]
+                            elif isinstance(data, Sequence):
+                                array = [str(datum) for datum in data]
+                            else:
+                                array = [str(data)]
+
+                            return pa.array(array, type=data_type)
+                        "##,
+                    ));
+                } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
+                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
+                        if !obj.is_testing() {
+                            reporter.warn(
+                                &obj.virtpath,
+                                &obj.fqname,
+                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                            );
+                        }
+                    } else {
+                        return Ok(unindent(&format!(
+                            r##"
+                                array = np.asarray(data, dtype={np_dtype}).flatten()
+                                return pa.array(array, type=data_type)
+                            "##
+                        )));
+                    }
+                }
+            }
+
+            Err("We lack codegen for arrow-serialization of structs".to_owned())
+        }
 
         ObjectClass::Enum => {
             // Generate case-insensitive string-to-enum conversion:

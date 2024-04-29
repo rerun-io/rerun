@@ -43,6 +43,9 @@ class DisconnectedSpace(DisconnectedSpaceExt):
     is_disconnected: bool = field(converter=bool)
     # Whether the entity path at which this is logged is disconnected from its parent.
     #
+    # Set to true to disconnect the entity from its parent.
+    # Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
@@ -66,4 +69,5 @@ class DisconnectedSpaceBatch(BaseBatch[DisconnectedSpaceArrayLike], ComponentBat
 
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
-        return DisconnectedSpaceExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)

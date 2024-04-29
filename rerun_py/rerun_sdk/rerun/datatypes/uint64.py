@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .uint64_ext import UInt64Ext
 
 __all__ = ["UInt64", "UInt64ArrayLike", "UInt64Batch", "UInt64Like", "UInt64Type"]
 
 
 @define(init=False)
-class UInt64(UInt64Ext):
+class UInt64:
     """**Datatype**: A 64bit unsigned integer."""
 
     def __init__(self: Any, value: UInt64Like):
@@ -58,4 +57,5 @@ class UInt64Batch(BaseBatch[UInt64ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UInt64ArrayLike, data_type: pa.DataType) -> pa.Array:
-        return UInt64Ext.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.uint64).flatten()
+        return pa.array(array, type=data_type)

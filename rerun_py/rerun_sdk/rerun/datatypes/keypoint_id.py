@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .keypoint_id_ext import KeypointIdExt
 
 __all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike", "KeypointIdType"]
 
 
 @define(init=False)
-class KeypointId(KeypointIdExt):
+class KeypointId:
     """
     **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
 
@@ -65,4 +64,5 @@ class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:
-        return KeypointIdExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.uint16).flatten()
+        return pa.array(array, type=data_type)

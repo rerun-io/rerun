@@ -7,17 +7,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
 from ..._baseclasses import BaseBatch, BaseExtensionType, ComponentBatchMixin
-from .auto_layout_ext import AutoLayoutExt
 
 __all__ = ["AutoLayout", "AutoLayoutArrayLike", "AutoLayoutBatch", "AutoLayoutLike", "AutoLayoutType"]
 
 
 @define(init=False)
-class AutoLayout(AutoLayoutExt):
+class AutoLayout:
     """**Component**: Whether the viewport layout is determined automatically."""
 
     def __init__(self: Any, auto_layout: AutoLayoutLike):
@@ -55,4 +55,5 @@ class AutoLayoutBatch(BaseBatch[AutoLayoutArrayLike], ComponentBatchMixin):
 
     @staticmethod
     def _native_to_pa_array(data: AutoLayoutArrayLike, data_type: pa.DataType) -> pa.Array:
-        return AutoLayoutExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)

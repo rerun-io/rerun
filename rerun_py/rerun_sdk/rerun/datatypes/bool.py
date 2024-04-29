@@ -7,17 +7,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
 import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .bool_ext import BoolExt
 
 __all__ = ["Bool", "BoolArrayLike", "BoolBatch", "BoolLike", "BoolType"]
 
 
 @define(init=False)
-class Bool(BoolExt):
+class Bool:
     """**Datatype**: A single boolean."""
 
     def __init__(self: Any, value: BoolLike):
@@ -55,4 +55,5 @@ class BoolBatch(BaseBatch[BoolArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: BoolArrayLike, data_type: pa.DataType) -> pa.Array:
-        return BoolExt.native_to_pa_array_override(data, data_type)
+        array = np.asarray(data, dtype=np.bool_).flatten()
+        return pa.array(array, type=data_type)
