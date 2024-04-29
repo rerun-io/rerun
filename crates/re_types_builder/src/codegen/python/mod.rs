@@ -778,7 +778,7 @@ fn code_for_struct(
         ObjectKind::Datatype | ObjectKind::Component => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -860,63 +860,6 @@ fn code_for_enum(
         2,
     );
 
-    // Generate case-insensitive string-to-enum conversion:
-    let match_names = obj
-        .fields
-        .iter()
-        .map(|f| {
-            let newline = '\n';
-            let variant = f.pascal_case_name();
-            let lowercase_variant = variant.to_lowercase();
-            format!(
-                r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
-            )
-        })
-        .format("\n")
-        .to_string();
-
-    let match_names = indent::indent_all_by(8, match_names);
-
-    let num_variants = obj.fields.len();
-
-    let native_to_pa_array_impl = unindent(&format!(
-        r##"
-if isinstance(data, ({name}, int, str)):
-    data = [data]
-
-types: list[int] = []
-
-for value in data:
-    if value is None:
-        types.append(0)
-    elif isinstance(value, {name}):
-        types.append(value.value) # Actual enum value
-    elif isinstance(value, int):
-        types.append(value) # By number
-    elif isinstance(value, str):
-        if hasattr({name}, value):
-            types.append({name}[value].value) # fast path
-{match_names}
-        else:
-            raise ValueError(f"Unknown {name} kind: {{value}}")
-    else:
-        raise ValueError(f"Unknown {name} kind: {{value}}")
-
-buffers = [
-    None,
-    pa.array(types, type=pa.int8()).buffers()[1],
-]
-children = (1 + {num_variants}) * [pa.nulls(len(data))]
-
-return pa.UnionArray.from_buffers(
-    type=data_type,
-    length=len(data),
-    buffers=buffers,
-    children=children,
-)
-        "##
-    ));
-
     match obj.kind {
         ObjectKind::Archetype => {
             reporter.error(&obj.virtpath, &obj.fqname, "An archetype cannot be an enum");
@@ -924,13 +867,7 @@ return pa.UnionArray.from_buffers(
         ObjectKind::Component | ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(
-                    arrow_registry,
-                    ext_class,
-                    objects,
-                    obj,
-                    Some(native_to_pa_array_impl),
-                ),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1090,7 +1027,7 @@ fn code_for_union(
         ObjectKind::Datatype => {
             code.push_indented(
                 0,
-                quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj, None),
+                quote_arrow_support_from_obj(reporter, arrow_registry, ext_class, objects, obj),
                 1,
             );
         }
@@ -1762,11 +1699,11 @@ fn quote_type_from_element_type(typ: &ElementType) -> String {
 /// Generated for Components using native types and Datatypes. Components using a Datatype instead
 /// delegate to the Datatype's arrow support.
 fn quote_arrow_support_from_obj(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     ext_class: &ExtensionClass,
     objects: &Objects,
     obj: &Object,
-    native_to_pa_array_impl: Option<String>,
 ) -> String {
     let Object { fqname, name, .. } = obj;
 
@@ -1807,19 +1744,32 @@ fn quote_arrow_support_from_obj(
     let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
 
-    let native_to_pa_array_impl = native_to_pa_array_impl.unwrap_or_else(|| {
-        if ext_class.has_native_to_pa_array {
-            format!(
-                "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
-                ext_class.name
-            )
-        } else {
-            format!(
-                "raise NotImplementedError # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}",
-                ext_class.file_name
-            )
+    let native_to_pa_array_impl = match quote_arrow_serialization(reporter, objects, obj) {
+        Ok(automatic_arrow_serialization) => {
+            if ext_class.has_native_to_pa_array {
+                reporter.warn(&obj.virtpath, &obj.fqname, format!("No need to manually implement {NATIVE_TO_PA_ARRAY_METHOD} in {} - we can autogenerate the code for this", ext_class.file_name));
+                format!(
+                    "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+                    ext_class.name
+                )
+            } else {
+                automatic_arrow_serialization
+            }
         }
-    });
+        Err(err) => {
+            if ext_class.has_native_to_pa_array {
+                format!(
+                    "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
+                    ext_class.name
+                )
+            } else {
+                format!(
+                    r#"raise NotImplementedError("Arrow serialization of {name} not implemented: {err}") # You need to implement {NATIVE_TO_PA_ARRAY_METHOD} in {}"#,
+                    ext_class.file_name
+                )
+            }
+        }
+    };
 
     let type_superclass_decl = if type_superclasses.is_empty() {
         String::new()
@@ -1865,6 +1815,79 @@ fn quote_arrow_support_from_obj(
                 _ARROW_TYPE = {extension_type}()
             "#
         ))
+    }
+}
+
+/// Only implemented for some cases.
+fn quote_arrow_serialization(
+    _reporter: &Reporter,
+    _objects: &Objects,
+    obj: &Object,
+) -> Result<String, String> {
+    let Object { name, .. } = obj;
+
+    match obj.class {
+        ObjectClass::Struct => Err("We lack codegen for arrow-serialization of structs".to_owned()),
+
+        ObjectClass::Enum => {
+            // Generate case-insensitive string-to-enum conversion:
+            let match_names = obj
+                .fields
+                .iter()
+                .map(|f| {
+                    let newline = '\n';
+                    let variant = f.pascal_case_name();
+                    let lowercase_variant = variant.to_lowercase();
+                    format!(
+                        r#"elif value.lower() == "{lowercase_variant}":{newline}    types.append({name}.{variant}.value)"#
+                    )
+                })
+                .format("\n")
+                .to_string();
+
+            let match_names = indent::indent_all_by(8, match_names);
+            let num_variants = obj.fields.len();
+
+            Ok(unindent(&format!(
+                r##"
+if isinstance(data, ({name}, int, str)):
+    data = [data]
+
+types: list[int] = []
+
+for value in data:
+    if value is None:
+        types.append(0)
+    elif isinstance(value, {name}):
+        types.append(value.value) # Actual enum value
+    elif isinstance(value, int):
+        types.append(value) # By number
+    elif isinstance(value, str):
+        if hasattr({name}, value):
+            types.append({name}[value].value) # fast path
+{match_names}
+        else:
+            raise ValueError(f"Unknown {name} kind: {{value}}")
+    else:
+        raise ValueError(f"Unknown {name} kind: {{value}}")
+
+buffers = [
+    None,
+    pa.array(types, type=pa.int8()).buffers()[1],
+]
+children = (1 + {num_variants}) * [pa.nulls(len(data))]
+
+return pa.UnionArray.from_buffers(
+    type=data_type,
+    length=len(data),
+    buffers=buffers,
+    children=children,
+)
+        "##
+            )))
+        }
+
+        ObjectClass::Union => Err("We lack codegen for arrow-serialization of unions".to_owned()),
     }
 }
 

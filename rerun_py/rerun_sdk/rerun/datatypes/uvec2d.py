@@ -61,4 +61,6 @@ class UVec2DBatch(BaseBatch[UVec2DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UVec2DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in uvec2d_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of UVec2D not implemented: We lack codegen for arrow-serialization of structs"
+        )  # You need to implement native_to_pa_array_override in uvec2d_ext.py

@@ -284,4 +284,6 @@ class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions"
+        )  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py

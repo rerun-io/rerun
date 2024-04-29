@@ -56,4 +56,6 @@ class TimeIntBatch(BaseBatch[TimeIntArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeIntArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in time_int_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of TimeInt not implemented: We lack codegen for arrow-serialization of structs"
+        )  # You need to implement native_to_pa_array_override in time_int_ext.py

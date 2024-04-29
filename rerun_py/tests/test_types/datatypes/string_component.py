@@ -53,4 +53,6 @@ class StringComponentBatch(BaseBatch[StringComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: StringComponentArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError  # You need to implement native_to_pa_array_override in string_component_ext.py
+        raise NotImplementedError(
+            "Arrow serialization of StringComponent not implemented: We lack codegen for arrow-serialization of structs"
+        )  # You need to implement native_to_pa_array_override in string_component_ext.py
