@@ -134,6 +134,14 @@ impl Loggable for MyPoint {
 pub struct MyColor(pub u32);
 
 impl MyColor {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        it.into_iter().map(Self).collect()
+    }
+}
+
+impl MyColor {
     #[inline]
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self(u32::from_le_bytes([r, g, b, 255]))

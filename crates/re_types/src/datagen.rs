@@ -1,13 +1,7 @@
 //! Generate random data for tests and benchmarks.
 
+// TODO
 // TODO(#1810): It really is time for whole module to disappear.
-
-/// Create `len` dummy colors
-pub fn build_some_colors(len: usize) -> Vec<crate::components::Color> {
-    (0..len)
-        .map(|i| crate::components::Color::from(i as u32))
-        .collect()
-}
 
 /// Create `len` dummy `Position2D`
 pub fn build_some_positions2d(len: usize) -> Vec<crate::components::Position2D> {

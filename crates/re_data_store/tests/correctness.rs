@@ -8,12 +8,12 @@ use re_data_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
-use re_log_types::example_components::{MyIndex, MyPoint};
+use re_log_types::example_components::{MyColor, MyIndex, MyPoint};
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, Duration, EntityPath, RowId, Time, TimeInt, TimePoint,
     TimeType, Timeline,
 };
-use re_types::datagen::{build_some_colors, build_some_positions2d};
+use re_types::datagen::build_some_positions2d;
 use re_types_core::Loggable as _;
 
 // ---
@@ -368,7 +368,7 @@ fn gc_correct() {
             let row = test_row!(entity_path @ [
                 build_frame_nr(frame_nr),
             ] => [
-                build_some_colors(num_instances as _),
+                MyColor::from_iter(0..num_instances),
             ]);
             store.insert_row(&row).unwrap();
         }
