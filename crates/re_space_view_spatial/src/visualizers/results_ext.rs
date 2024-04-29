@@ -1,3 +1,4 @@
+use re_log_types::{RowId, TimeInt};
 use re_query::{LatestAtResults, PromiseResolver, PromiseResult, RangeData, RangeResults, Results};
 use re_types::Component;
 
@@ -92,7 +93,7 @@ impl RangeResultsExt for LatestAtResults {
         resolver: &PromiseResolver,
     ) -> Option<re_query::Result<RangeData<'a, C>>> {
         let results = self.get(C::name())?;
-        let data = RangeData::from_latest_at(resolver, results);
+        let data = RangeData::from_latest_at(resolver, results, None);
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
@@ -114,7 +115,12 @@ impl RangeResultsExt for LatestAtResults {
         resolver: &PromiseResolver,
     ) -> re_query::Result<RangeData<'a, C>> {
         let results = self.get_or_empty(C::name());
-        let data = RangeData::from_latest_at(resolver, results);
+        // With latest-at semantics, we just want to join the secondary components onto the primary
+        // ones, irrelevant of their indices.
+        // In particular, it is pretty common to have a secondary component be more recent than the
+        // associated primary component in latest-at contexts, e.g. colors in an otherwise fixed
+        // point cloud being changed each frame.
+        let data = RangeData::from_latest_at(resolver, results, Some((TimeInt::MIN, RowId::ZERO)));
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();
