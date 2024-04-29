@@ -12,11 +12,11 @@ namespace rerun.datatypes;
 union Angle (
   "attr.rust.derive": "Copy, PartialEq"
 ) {
-  /// \rs Angle in radians. One turn is equal to 2π (or τ) radians.
-  /// \py 3D rotation angle in radians. Only one of `degrees` or `radians` should be set.
+  /// Angle in radians. One turn is equal to 2π (or τ) radians.
+  /// \py Only one of `degrees` or `radians` should be set.
   Radians: rerun.datatypes.Float32 (transparent),
 
-  /// \rs Angle in degrees. One turn is equal to 360 degrees.
-  /// \py 3D rotation angle in degrees. Only one of `degrees` or `radians` should be set.
+  /// Angle in degrees. One turn is equal to 360 degrees.
+  /// \py Only one of `degrees` or `radians` should be set.
   Degrees: rerun.datatypes.Float32 (transparent),
 }
