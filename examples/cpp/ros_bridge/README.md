@@ -6,6 +6,8 @@ thumbnail = "https://static.rerun.io/ros_bridge/121f72ebaea57a1b895196a5587fd1a4
 thumbnail_dimensions = [480, 480]
 -->
 
+A proof-of-concept Rerun bridge for ROS 1 that subscribes to all supported topics and visualizes the messages in Rerun.
+
 ## Background
 
 This is an example that shows how to use Rerun's C++ API to log and visualize [ROS](https://www.ros.org/) messages.
@@ -28,7 +30,7 @@ This is an external example, check the [repository](https://github.com/rerun-io/
 In a nutshell, clone the repo and run a demo with:
 
 ```
-pixi run example
+pixi run {spot_,drone_}example
 ```
 
 Note that this example currently supports Linux only.
