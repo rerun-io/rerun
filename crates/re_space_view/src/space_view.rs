@@ -553,6 +553,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
+                default_blueprint: None,
                 recording: &recording,
                 bundle: &Default::default(),
                 hub: &re_viewer_context::StoreHub::test_hub(),
@@ -597,6 +598,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
+                default_blueprint: None,
                 recording: &recording,
                 bundle: &Default::default(),
                 hub: &re_viewer_context::StoreHub::test_hub(),
@@ -647,6 +649,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
+                default_blueprint: None,
                 recording: &recording,
                 bundle: &Default::default(),
                 hub: &re_viewer_context::StoreHub::test_hub(),
@@ -920,6 +923,7 @@ mod tests {
             let ctx = StoreContext {
                 app_id: re_log_types::ApplicationId::unknown(),
                 blueprint: &blueprint,
+                default_blueprint: None,
                 recording: &recording,
                 bundle: &Default::default(),
                 hub: &re_viewer_context::StoreHub::test_hub(),
