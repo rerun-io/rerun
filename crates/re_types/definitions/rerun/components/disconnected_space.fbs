@@ -21,5 +21,8 @@ struct DisconnectedSpace (
   "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
   /// Whether the entity path at which this is logged is disconnected from its parent.
+  ///
+  /// Set to true to disconnect the entity from its parent.
+  /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
   is_disconnected: bool (order: 100);
 }

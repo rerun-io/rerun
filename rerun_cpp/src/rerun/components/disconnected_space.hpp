@@ -23,6 +23,9 @@ namespace rerun::components {
     /// This is useful for specifying that a subgraph is independent of the rest of the scene.
     struct DisconnectedSpace {
         /// Whether the entity path at which this is logged is disconnected from its parent.
+        ///
+        /// Set to true to disconnect the entity from its parent.
+        /// Set to false to disable the effects of this component, (re-)connecting the entity to its parent again.
         bool is_disconnected;
 
       public:
