@@ -1,9 +1,6 @@
 use re_log_types::{EntityPath, TimeRange};
 use re_space_view::time_range_from_visible_time_range;
-use re_types::{
-    blueprint::datatypes::{VisibleTimeRange, VisibleTimeRangeBoundary},
-    datatypes::Utf8,
-};
+use re_types::datatypes::{Utf8, VisibleTimeRange, VisibleTimeRangeBoundary};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{

@@ -36,5 +36,6 @@ include "./datatypes/uvec4d.fbs";
 include "./datatypes/vec2d.fbs";
 include "./datatypes/vec3d.fbs";
 include "./datatypes/vec4d.fbs";
+include "./datatypes/visible_time_range.fbs";
 
 namespace rerun.datatypes;

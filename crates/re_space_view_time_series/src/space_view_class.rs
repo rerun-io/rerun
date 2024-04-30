@@ -7,8 +7,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_view_property_or_default};
 use re_types::{
-    blueprint::{components::Corner2D, datatypes::VisibleTimeRange},
-    components::Range1D,
+    blueprint::components::Corner2D, components::Range1D, datatypes::VisibleTimeRange,
     SpaceViewClassIdentifier, View,
 };
 use re_viewer_context::external::re_entity_db::{

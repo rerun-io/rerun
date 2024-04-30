@@ -16,8 +16,8 @@ use re_types::{
     blueprint::{
         archetypes::VisibleTimeRange,
         components::{VisibleTimeRangeSequence, VisibleTimeRangeTime},
-        datatypes::VisibleTimeRangeBoundary,
     },
+    datatypes::VisibleTimeRangeBoundary,
     SpaceViewClassIdentifier,
 };
 use re_types_core::Loggable as _;
@@ -145,7 +145,7 @@ fn visual_time_range_ui(
                 re_log::error_once!("Visible time range is set but no time range is provided");
             }
             // TODO(andreas): Should print a string that we're using the latest time.
-            re_types::blueprint::datatypes::VisibleTimeRange {
+            re_types::datatypes::VisibleTimeRange {
                 start: VisibleTimeRangeBoundary::AT_CURSOR,
                 end: VisibleTimeRangeBoundary::AT_CURSOR,
             }

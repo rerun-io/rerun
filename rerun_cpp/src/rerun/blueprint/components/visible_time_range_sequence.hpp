@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../blueprint/datatypes/visible_time_range.hpp"
+#include "../../datatypes/visible_time_range.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -12,21 +12,20 @@
 namespace rerun::blueprint::components {
     /// **Component**: The range of values on time timelines that will be included in a space view query.
     struct VisibleTimeRangeSequence {
-        rerun::blueprint::datatypes::VisibleTimeRange value;
+        rerun::datatypes::VisibleTimeRange value;
 
       public:
         VisibleTimeRangeSequence() = default;
 
-        VisibleTimeRangeSequence(rerun::blueprint::datatypes::VisibleTimeRange value_)
-            : value(value_) {}
+        VisibleTimeRangeSequence(rerun::datatypes::VisibleTimeRange value_) : value(value_) {}
 
-        VisibleTimeRangeSequence& operator=(rerun::blueprint::datatypes::VisibleTimeRange value_) {
+        VisibleTimeRangeSequence& operator=(rerun::datatypes::VisibleTimeRange value_) {
             value = value_;
             return *this;
         }
 
         /// Cast to the underlying VisibleTimeRange datatype
-        operator rerun::blueprint::datatypes::VisibleTimeRange() const {
+        operator rerun::datatypes::VisibleTimeRange() const {
             return value;
         }
     };
@@ -34,7 +33,7 @@ namespace rerun::blueprint::components {
 
 namespace rerun {
     static_assert(
-        sizeof(rerun::blueprint::datatypes::VisibleTimeRange) ==
+        sizeof(rerun::datatypes::VisibleTimeRange) ==
         sizeof(blueprint::components::VisibleTimeRangeSequence)
     );
 
@@ -45,14 +44,14 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::arrow_datatype();
+            return Loggable<rerun::datatypes::VisibleTimeRange>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::VisibleTimeRangeSequence` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::components::VisibleTimeRangeSequence* instances, size_t num_instances
         ) {
-            return Loggable<rerun::blueprint::datatypes::VisibleTimeRange>::to_arrow(
+            return Loggable<rerun::datatypes::VisibleTimeRange>::to_arrow(
                 &instances->value,
                 num_instances
             );

@@ -1,5 +1,4 @@
-use super::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
-use re_types_core::datatypes::TimeInt;
+use super::{TimeInt, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
 
 impl VisibleTimeRangeBoundary {
     /// Put the boundary at the current time cursor.

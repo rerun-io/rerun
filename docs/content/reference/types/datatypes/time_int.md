@@ -14,3 +14,6 @@ A 64-bit number describing either nanoseconds OR sequence numbers.
  * 🦀 [Rust API docs for `TimeInt`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TimeInt.html)
 
 
+## Used by
+
+* [`VisibleTimeRangeBoundary`](../datatypes/visible_time_range_boundary.md)

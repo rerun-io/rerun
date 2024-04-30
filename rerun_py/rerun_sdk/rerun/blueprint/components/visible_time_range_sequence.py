@@ -5,13 +5,13 @@
 
 from __future__ import annotations
 
+from ... import datatypes
 from ..._baseclasses import ComponentBatchMixin
-from ...blueprint import datatypes as blueprint_datatypes
 
 __all__ = ["VisibleTimeRangeSequence", "VisibleTimeRangeSequenceBatch", "VisibleTimeRangeSequenceType"]
 
 
-class VisibleTimeRangeSequence(blueprint_datatypes.VisibleTimeRange):
+class VisibleTimeRangeSequence(datatypes.VisibleTimeRange):
     """**Component**: The range of values on time timelines that will be included in a space view query."""
 
     # You can define your own __init__ function as a member of VisibleTimeRangeSequenceExt in visible_time_range_sequence_ext.py
@@ -20,9 +20,9 @@ class VisibleTimeRangeSequence(blueprint_datatypes.VisibleTimeRange):
     pass
 
 
-class VisibleTimeRangeSequenceType(blueprint_datatypes.VisibleTimeRangeType):
+class VisibleTimeRangeSequenceType(datatypes.VisibleTimeRangeType):
     _TYPE_NAME: str = "rerun.blueprint.components.VisibleTimeRangeSequence"
 
 
-class VisibleTimeRangeSequenceBatch(blueprint_datatypes.VisibleTimeRangeBatch, ComponentBatchMixin):
+class VisibleTimeRangeSequenceBatch(datatypes.VisibleTimeRangeBatch, ComponentBatchMixin):
     _ARROW_TYPE = VisibleTimeRangeSequenceType()

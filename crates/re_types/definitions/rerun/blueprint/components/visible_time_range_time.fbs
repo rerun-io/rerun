@@ -16,5 +16,5 @@ table VisibleTimeRangeTime (
   "attr.rust.repr": "transparent",
   "attr.rust.derive": "PartialEq, Eq"
 ) {
-  value: rerun.blueprint.datatypes.VisibleTimeRange (order: 100);
+  value: rerun.datatypes.VisibleTimeRange (order: 100);
 }

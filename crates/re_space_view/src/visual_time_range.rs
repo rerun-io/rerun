@@ -9,7 +9,7 @@
 
 use re_log_types::TimeRange;
 use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
-use re_types::blueprint::datatypes::{
+use re_types::datatypes::{
     VisibleTimeRange, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind,
 };
 use re_viewer_context::ViewerContext;
