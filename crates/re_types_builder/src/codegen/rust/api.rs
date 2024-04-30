@@ -25,8 +25,8 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
@@ -384,7 +384,7 @@ fn quote_struct(
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_builder = quote_builder_from_obj(reporter, obj);
 
@@ -493,7 +493,7 @@ fn quote_union(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_heap_size_bytes = if obj
         .fields
@@ -613,7 +613,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let count = Literal::usize_unsuffixed(fields.len());
     let all = fields.iter().map(|field| {
@@ -937,6 +937,7 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
 }
 
 fn quote_trait_impls_from_obj(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -1297,8 +1298,23 @@ fn quote_trait_impls_from_obj(
             }
         }
         ObjectKind::View => {
+            let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER)
+            else {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+                );
+                return TokenStream::new();
+            };
+
             quote! {
-                impl #name {
+                impl ::re_types_core::View for #name {
+                    #[inline]
+                    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+                        #identifier .into()
+                    }
+
                 }
             }
         }
