@@ -120,26 +120,26 @@ fn ui_from_scene(
 
     re_space_view::edit_blueprint_component::<
         VisualBounds,
-        re_types::components::AABB2D,
+        re_types::components::Range2D,
         RectTransform,
     >(
         ctx,
         space_view_id,
-        |aabb: &mut Option<re_types::components::AABB2D>| {
+        |range2d: &mut Option<re_types::components::Range2D>| {
             // Convert to a Rect
-            let mut rect: Rect = aabb.map_or(default_scene_rect, Rect::from);
+            let mut rect: Rect = range2d.map_or(default_scene_rect, Rect::from);
 
             // Apply pan and zoom based on input
             let ui_from_scene = update_ui_from_scene_impl(&mut rect, response, default_scene_rect);
 
             // Store back the results
-            *aabb = Some(rect.into());
+            *range2d = Some(rect.into());
 
             if response.double_clicked() {
                 // Double-click to reset.
                 // We put it last so that we reset to the value in the default blueprint
                 // (which is not the same as `default_scene_rect`).
-                *aabb = None;
+                *range2d = None;
             }
 
             ui_from_scene

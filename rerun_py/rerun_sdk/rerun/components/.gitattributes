@@ -2,7 +2,6 @@
 
 .gitattributes linguist-generated=true
 __init__.py linguist-generated=true
-aabb2d.py linguist-generated=true
 annotation_context.py linguist-generated=true
 blob.py linguist-generated=true
 class_id.py linguist-generated=true
@@ -28,6 +27,7 @@ position2d.py linguist-generated=true
 position3d.py linguist-generated=true
 radius.py linguist-generated=true
 range1d.py linguist-generated=true
+range2d.py linguist-generated=true
 resolution.py linguist-generated=true
 rotation3d.py linguist-generated=true
 scalar.py linguist-generated=true

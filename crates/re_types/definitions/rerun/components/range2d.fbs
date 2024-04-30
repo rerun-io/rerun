@@ -3,16 +3,16 @@ include "python/attributes.fbs";
 include "fbs/attributes.fbs";
 include "rust/attributes.fbs";
 
-include "../datatypes/aabb2d.fbs";
+include "../datatypes/range2d.fbs";
 
 namespace rerun.components;
 
 // ---
 
 /// An Axis-Aligned Bounding Box in 2D space.
-struct AABB2D (
+struct Range2D (
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
-  aabb: rerun.datatypes.AABB2D (order: 100);
+  range2d: rerun.datatypes.Range2D (order: 100);
 }

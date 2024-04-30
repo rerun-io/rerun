@@ -14,7 +14,7 @@ Configuration for the background of a view.
 ### `VisualBounds`
 Controls the visual bounds of a 2D space view.
 
-* visual_bounds: The visible parts of a 2D space view, in the coordinate space of the scene.
+* range2d: The visible parts of a 2D space view, in the coordinate space of the scene.
 ### `VisibleTimeRange`
 Configures what range of the timeline is shown on a view.
 

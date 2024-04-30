@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from .aabb2d import AABB2D, AABB2DArrayLike, AABB2DBatch, AABB2DLike, AABB2DType
 from .angle import Angle, AngleArrayLike, AngleBatch, AngleLike, AngleType
 from .annotation_info import (
     AnnotationInfo,
@@ -43,6 +42,7 @@ from .mesh_properties import (
 )
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
 from .range1d import Range1D, Range1DArrayLike, Range1DBatch, Range1DLike, Range1DType
+from .range2d import Range2D, Range2DArrayLike, Range2DBatch, Range2DLike, Range2DType
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
 from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -90,11 +90,6 @@ from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
 
 __all__ = [
-    "AABB2D",
-    "AABB2DArrayLike",
-    "AABB2DBatch",
-    "AABB2DLike",
-    "AABB2DType",
     "Angle",
     "AngleArrayLike",
     "AngleBatch",
@@ -175,6 +170,11 @@ __all__ = [
     "Range1DBatch",
     "Range1DLike",
     "Range1DType",
+    "Range2D",
+    "Range2DArrayLike",
+    "Range2DBatch",
+    "Range2DLike",
+    "Range2DType",
     "Rgba32",
     "Rgba32ArrayLike",
     "Rgba32Batch",

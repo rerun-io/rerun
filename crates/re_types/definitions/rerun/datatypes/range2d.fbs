@@ -11,13 +11,13 @@ namespace rerun.datatypes;
 // ---
 
 /// An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
-struct AABB2D (
+struct Range2D (
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "C"
 ) {
-  /// The minimum bounds; usually left-top corner.
-  min: rerun.datatypes.Vec2D (order: 100);
+  /// The range of the X-axis (usually left and right bounds).
+  x_range: rerun.datatypes.Range1D (order: 100);
 
-  /// The maximum bounds; usually right-bottom corner.
-  max: rerun.datatypes.Vec2D (order: 200);
+  /// The range of the Y-axis (usually top and bottom bounds).
+  y_range: rerun.datatypes.Range1D (order: 200);
 }

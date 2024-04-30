@@ -21,3 +21,10 @@ impl Range1D {
         self.0 .0[1]
     }
 }
+
+impl From<Range1D> for emath::Rangef {
+    #[inline]
+    fn from(range2d: Range1D) -> Self {
+        Self::from(range2d.0)
+    }
+}

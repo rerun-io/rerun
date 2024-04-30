@@ -5,7 +5,7 @@
 
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
-#include "../../components/aabb2d.hpp"
+#include "../../components/range2d.hpp"
 #include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
@@ -22,7 +22,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Everything within these bounds are guaranteed to be visible.
         /// Somethings outside of these bounds may also be visible due to letterboxing.
-        std::optional<rerun::components::AABB2D> visual_bounds;
+        std::optional<rerun::components::Range2D> range2d;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -39,8 +39,8 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Everything within these bounds are guaranteed to be visible.
         /// Somethings outside of these bounds may also be visible due to letterboxing.
-        VisualBounds with_visual_bounds(rerun::components::AABB2D _visual_bounds) && {
-            visual_bounds = std::move(_visual_bounds);
+        VisualBounds with_range2d(rerun::components::Range2D _range2d) && {
+            range2d = std::move(_range2d);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
