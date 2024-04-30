@@ -26,8 +26,8 @@ impl Default for State {
 /// Stack of [`State`]s.
 ///
 /// The stack is stored in `egui`'s memory and its API directly wraps the relevant calls.
-/// Calls to [`list_item_scope`] push new states to the stack so that [`ListItem`]s can always
-/// access the correct state from the top of the stack.
+/// Calls to [`list_item_scope`] push new states to the stack so that [`super::ListItem`]s can
+/// always access the correct state from the top of the stack.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct StateStack(Vec<State>);
 
