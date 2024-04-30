@@ -27,41 +27,21 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Spatial3DView {
     /// Configuration for the background of the space view.
     pub background: crate::blueprint::archetypes::Background,
+
+    /// Configures the range on the timeline shown by this view (unless specified differently per entity).
+    pub time_range: crate::blueprint::archetypes::VisibleTimeRange,
 }
 
 impl ::re_types_core::SizeBytes for Spatial3DView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.background.heap_size_bytes()
+        self.background.heap_size_bytes() + self.time_range.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::archetypes::Background>> From<T> for Spatial3DView {
-    fn from(v: T) -> Self {
-        Self {
-            background: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::Background> for Spatial3DView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::Background {
-        &self.background
-    }
-}
-
-impl std::ops::Deref for Spatial3DView {
-    type Target = crate::blueprint::archetypes::Background;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::Background {
-        &self.background
+            && <crate::blueprint::archetypes::VisibleTimeRange>::is_pod()
     }
 }
 

@@ -261,15 +261,19 @@ impl AppState {
                         &space_view.space_origin,
                     );
 
-                    let props = viewport.state.space_view_props(space_view.id);
                     let resolver = space_view.contents.build_resolver(
                         space_view_class_registry,
                         space_view,
-                        props,
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
-                    resolver.update_overrides(store_context, &blueprint_query, query_result);
+                    resolver.update_overrides(
+                        store_context.blueprint,
+                        &blueprint_query,
+                        rec_cfg.time_ctrl.read().timeline(),
+                        space_view_class_registry,
+                        query_result,
+                    );
                 }
             }
         };

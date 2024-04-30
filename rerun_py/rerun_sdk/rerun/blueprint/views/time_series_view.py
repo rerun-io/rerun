@@ -25,6 +25,7 @@ class TimeSeriesView(SpaceView):
         visible: blueprint_components.VisibleLike | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
+        time_range: blueprint_archetypes.VisibleTimeRange | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TimeSeriesView view.
@@ -48,6 +49,8 @@ class TimeSeriesView(SpaceView):
             Configures the vertical axis of the plot.
         plot_legend:
             Configures the legend of the plot.
+        time_range:
+            Configures the time range the plot covers (unless specified differently per entity).
 
         """
 
@@ -61,6 +64,11 @@ class TimeSeriesView(SpaceView):
             if not isinstance(plot_legend, blueprint_archetypes.PlotLegend):
                 plot_legend = blueprint_archetypes.PlotLegend(plot_legend)
             properties["PlotLegend"] = plot_legend
+
+        if time_range is not None:
+            if not isinstance(time_range, blueprint_archetypes.VisibleTimeRange):
+                time_range = blueprint_archetypes.VisibleTimeRange(time_range)
+            properties["VisibleTimeRange"] = time_range
 
         super().__init__(
             class_identifier="TimeSeries",

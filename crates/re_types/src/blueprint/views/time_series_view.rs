@@ -30,18 +30,24 @@ pub struct TimeSeriesView {
 
     /// Configures the legend of the plot.
     pub plot_legend: crate::blueprint::archetypes::PlotLegend,
+
+    /// Configures the time range the plot covers (unless specified differently per entity).
+    pub time_range: crate::blueprint::archetypes::VisibleTimeRange,
 }
 
 impl ::re_types_core::SizeBytes for TimeSeriesView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.axis_y.heap_size_bytes() + self.plot_legend.heap_size_bytes()
+        self.axis_y.heap_size_bytes()
+            + self.plot_legend.heap_size_bytes()
+            + self.time_range.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::ScalarAxis>::is_pod()
             && <crate::blueprint::archetypes::PlotLegend>::is_pod()
+            && <crate::blueprint::archetypes::VisibleTimeRange>::is_pod()
     }
 }
 

@@ -11,4 +11,7 @@ table TimeSeriesView (
 
     /// Configures the legend of the plot.
     plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
+
+    /// Configures the time range the plot covers (unless specified differently per entity).
+    time_range: rerun.blueprint.archetypes.VisibleTimeRange (order: 3000);
 }

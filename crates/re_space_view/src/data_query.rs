@@ -1,18 +1,15 @@
-use nohash_hasher::IntMap;
-
-use re_entity_db::{external::re_data_store::LatestAtQuery, EntityProperties, EntityPropertyMap};
-use re_types::ComponentName;
+use re_entity_db::{external::re_data_store::LatestAtQuery, EntityDb, EntityProperties};
+use re_log_types::Timeline;
 use re_viewer_context::{
-    DataQueryResult, OverridePath, PerVisualizer, StoreContext, VisualizableEntities,
+    DataQueryResult, PerVisualizer, QueryRange, SpaceViewClassRegistry, StoreContext,
+    VisualizableEntities,
 };
 
 pub struct EntityOverrideContext {
-    pub root: EntityProperties,
-    pub individual: EntityPropertyMap,
-    pub recursive: EntityPropertyMap,
+    pub legacy_space_view_properties: EntityProperties,
 
-    /// Base component overrides that are inherited by all entities.
-    pub root_component_overrides: IntMap<ComponentName, OverridePath>,
+    /// Query range that data results should fall back to if they don't specify their own.
+    pub default_query_range: QueryRange,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]
@@ -22,8 +19,10 @@ pub struct EntityOverrideContext {
 pub trait PropertyResolver {
     fn update_overrides(
         &self,
-        ctx: &StoreContext<'_>,
-        query: &LatestAtQuery,
+        blueprint: &EntityDb,
+        blueprint_query: &LatestAtQuery,
+        active_timeline: &Timeline,
+        space_view_class_registry: &SpaceViewClassRegistry,
         query_result: &mut DataQueryResult,
     );
 }

@@ -18,13 +18,13 @@ pub use screenshot::ScreenshotMode;
 pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
 pub use sub_archetypes::{
-    edit_blueprint_component, entity_path_for_space_view_sub_archetype, get_blueprint_component,
-    query_space_view_sub_archetype, query_space_view_sub_archetype_or_default,
-    space_view_sub_archetype,
+    edit_blueprint_component, entity_path_for_view_property, get_blueprint_component,
+    query_view_property, query_view_property_or_default, view_property,
 };
 pub use visual_time_range::{
-    query_visual_history, time_range_boundary_to_visible_history_boundary,
-    visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
+    query_visual_history, time_range_from_visible_time_range,
+    visible_history_boundary_from_time_range_boundary,
+    visible_history_boundary_to_time_range_boundary,
 };
 pub use visualizable::determine_visualizable_entities;
 

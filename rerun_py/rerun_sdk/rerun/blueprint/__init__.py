@@ -16,6 +16,7 @@ from .archetypes import (
     Background,
     PlotLegend,
     ScalarAxis,
+    VisibleTimeRange,
     VisualBounds,
 )
 from .components import (
@@ -24,6 +25,7 @@ from .components import (
     LockRangeDuringZoom,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
+from .datatypes import VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind
 from .views import (
     BarChartView,
     Spatial2DView,

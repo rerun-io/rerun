@@ -13,6 +13,7 @@ mod component_ui_registry;
 mod contents;
 mod item;
 mod query_context;
+mod query_range;
 mod selection_history;
 mod selection_state;
 mod space_view;
@@ -42,6 +43,7 @@ pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
+pub use query_range::QueryRange;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
