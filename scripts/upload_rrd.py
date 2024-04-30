@@ -29,7 +29,7 @@ Use the script:
 
     python3 scripts/upload_rrd.py --help
 
-or the just command:
+or the pixi command:
 
     pixi run upload-rrd --help
 """
