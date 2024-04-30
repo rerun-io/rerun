@@ -106,7 +106,11 @@ impl ErrorTracker {
             wgpu::Error::OutOfMemory { source: _ } => {
                 re_log::error!("A wgpu operation caused out-of-memory: {error}");
             }
-            wgpu::Error::Validation {
+            wgpu::Error::Internal {
+                source: _source,
+                description,
+            }
+            | wgpu::Error::Validation {
                 source: _source,
                 description,
             } => {
