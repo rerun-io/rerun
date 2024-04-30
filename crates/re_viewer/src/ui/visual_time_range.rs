@@ -4,10 +4,9 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeInt, TimeType, TimeZone};
+use re_log_types::{EntityPath, TimeInt, TimeRange, TimeType, TimeZone};
 use re_space_view::{
-    query_view_property, time_range_from_visible_time_range,
-    visible_history_boundary_from_time_range_boundary,
+    query_view_property, visible_history_boundary_from_time_range_boundary,
     visible_history_boundary_to_time_range_boundary, SpaceViewBlueprint,
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
@@ -355,7 +354,7 @@ fn visual_time_range_ui(
 
     if should_display_visible_history {
         if let Some(current_time) = time_ctrl.time_int() {
-            let range = time_range_from_visible_time_range(&resolved_range, current_time);
+            let range = TimeRange::from_visible_time_range(&resolved_range, current_time);
             ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(range);
         }
     }

@@ -22,7 +22,6 @@ pub use sub_archetypes::{
     query_view_property, query_view_property_or_default, view_property,
 };
 pub use visual_time_range::{
-    query_visual_history, time_range_from_visible_time_range,
     visible_history_boundary_from_time_range_boundary,
     visible_history_boundary_to_time_range_boundary,
 };

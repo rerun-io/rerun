@@ -7,12 +7,8 @@
 //! The intent is to eventually remove the old types, but this bridge here is there in order
 //! to reduce the amount of changes in code that is likely to be refactored soon anyways.
 
-use re_log_types::TimeRange;
-use re_query::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
-use re_types::datatypes::{
-    VisibleTimeRange, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind,
-};
-use re_viewer_context::ViewerContext;
+use re_query::VisibleHistoryBoundary;
+use re_types::datatypes::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
 
 pub fn visible_history_boundary_from_time_range_boundary(
     boundary: &VisibleTimeRangeBoundary,
@@ -41,67 +37,6 @@ pub fn visible_history_boundary_to_time_range_boundary(
         VisibleHistoryBoundary::Infinite => VisibleTimeRangeBoundary {
             kind: VisibleTimeRangeBoundaryKind::Infinite,
             time: 0.into(),
-        },
-    }
-}
-
-pub fn time_range_from_visible_time_range(
-    range: &VisibleTimeRange,
-    cursor: re_log_types::TimeInt,
-) -> re_log_types::TimeRange {
-    let cursor = cursor.as_i64().into();
-
-    let mut min = range.start.start_boundary_time(cursor);
-    let mut max = range.end.end_boundary_time(cursor);
-
-    if min > max {
-        std::mem::swap(&mut min, &mut max);
-    }
-
-    let min: re_log_types::TimeInt = min.into();
-    let max: re_log_types::TimeInt = max.into();
-
-    TimeRange::new(min, max)
-}
-
-pub fn query_visual_history(
-    ctx: &ViewerContext<'_>,
-    data_result: &re_viewer_context::DataResult,
-) -> ExtraQueryHistory {
-    let Some(overrides) = data_result.property_overrides.as_ref() else {
-        re_log::error!("No overrides found for visual history");
-        return ExtraQueryHistory {
-            enabled: false,
-            nanos: Default::default(),
-            sequences: Default::default(),
-        };
-    };
-
-    match &overrides.query_range {
-        re_viewer_context::QueryRange::TimeRange(time_range) => {
-            match ctx.rec_cfg.time_ctrl.read().time_type() {
-                re_log_types::TimeType::Time => ExtraQueryHistory {
-                    enabled: true,
-                    nanos: VisibleHistory {
-                        from: visible_history_boundary_from_time_range_boundary(&time_range.start),
-                        to: visible_history_boundary_from_time_range_boundary(&time_range.end),
-                    },
-                    sequences: Default::default(),
-                },
-                re_log_types::TimeType::Sequence => ExtraQueryHistory {
-                    enabled: true,
-                    nanos: Default::default(),
-                    sequences: VisibleHistory {
-                        from: visible_history_boundary_from_time_range_boundary(&time_range.start),
-                        to: visible_history_boundary_from_time_range_boundary(&time_range.end),
-                    },
-                },
-            }
-        }
-        re_viewer_context::QueryRange::LatestAt => ExtraQueryHistory {
-            enabled: false,
-            nanos: Default::default(),
-            sequences: Default::default(),
         },
     }
 }
