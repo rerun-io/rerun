@@ -123,7 +123,7 @@ def main() -> None:
         version = args.version
 
         # Check if user put `v0.15.0` instead of `0.15.0`:
-        if m := re.match(r"v(\d+\.v\d+\..*)", version):
+        if m := re.match(r"v(\d+\.\d+\..*)", version):
             version = m.group(1)
             raise RuntimeError("Version should be in the format '{version}', without a leading 'v'")
 
