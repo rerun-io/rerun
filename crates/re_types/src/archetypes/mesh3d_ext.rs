@@ -1,10 +1,9 @@
+use crate::{components::UVector3D, datatypes::UVec3D};
+
 use super::Mesh3D;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Mesh3DError {
-    #[error("Indices array length must be divisible by 3 (triangle list), got {0}")]
-    IndicesNotDivisibleBy3(usize),
-
     #[error("No indices were specified, so the number of positions must be divisible by 9 [(xyz xyz xyz), …], got {0}")]
     PositionsAreNotTriangles(usize),
 
@@ -24,19 +23,23 @@ impl Mesh3D {
     pub fn sanity_check(&self) -> Result<(), Mesh3DError> {
         let num_vertices = self.num_vertices();
 
-        if let Some(indices) = self
-            .mesh_properties
-            .as_ref()
-            .and_then(|props| props.indices.as_ref())
-        {
-            if indices.len() % 3 != 0 {
-                return Err(Mesh3DError::IndicesNotDivisibleBy3(indices.len()));
-            }
-
-            for &index in indices.iter() {
-                if num_vertices <= index as usize {
+        if let Some(indices) = self.triangle_indices.as_ref() {
+            for &UVector3D(UVec3D([x, y, z])) in indices {
+                if num_vertices <= x as usize {
                     return Err(Mesh3DError::IndexOutOfBounds {
-                        index,
+                        index: x,
+                        num_vertices,
+                    });
+                }
+                if num_vertices <= y as usize {
+                    return Err(Mesh3DError::IndexOutOfBounds {
+                        index: y,
+                        num_vertices,
+                    });
+                }
+                if num_vertices <= z as usize {
+                    return Err(Mesh3DError::IndexOutOfBounds {
+                        index: z,
                         num_vertices,
                     });
                 }
@@ -68,12 +71,8 @@ impl Mesh3D {
     /// The total number of triangles.
     #[inline]
     pub fn num_triangles(&self) -> usize {
-        if let Some(indices) = self
-            .mesh_properties
-            .as_ref()
-            .and_then(|props| props.indices.as_ref())
-        {
-            indices.len() / 3
+        if let Some(indices) = self.triangle_indices.as_ref() {
+            indices.len()
         } else {
             self.num_vertices() / 3
         }

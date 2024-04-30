@@ -35,13 +35,13 @@ impl crate::ToArchetype<re_types::archetypes::Mesh3D> for LatestAtResults {
 
         // --- Recommended/Optional ---
 
-        use re_types::components::MeshProperties;
-        let mesh_properties = if let Some(mesh_properties) = self.get(<MeshProperties>::name()) {
-            match mesh_properties.to_dense::<MeshProperties>(resolver) {
+        use re_types::components::UVector3D;
+        let triangle_indices = if let Some(triangle_indices) = self.get(<UVector3D>::name()) {
+            match triangle_indices.to_dense::<UVector3D>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
                 PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
                 PromiseResult::Ready(query_res) => match query_res {
-                    Ok(data) => data.first().cloned(),
+                    Ok(data) => Some(data.to_vec()),
                     Err(query_err) => return PromiseResult::Ready(Err(query_err)),
                 },
             }
@@ -137,7 +137,7 @@ impl crate::ToArchetype<re_types::archetypes::Mesh3D> for LatestAtResults {
 
         let arch = re_types::archetypes::Mesh3D {
             vertex_positions,
-            mesh_properties,
+            triangle_indices,
             vertex_normals,
             vertex_colors,
             vertex_texcoords,

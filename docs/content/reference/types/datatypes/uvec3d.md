@@ -14,3 +14,6 @@ A uint32 vector in 3D space.
  * 🦀 [Rust API docs for `UVec3D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UVec3D.html)
 
 
+## Used by
+
+* [`UVector3D`](../components/uvector3d.md)

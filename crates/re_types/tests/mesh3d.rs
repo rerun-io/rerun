@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Mesh3D,
-    components::{ClassId, Position3D, Texcoord2D, Vector3D},
+    components::{ClassId, Position3D, Texcoord2D, UVector3D, Vector3D},
     datatypes::{
-        Material, MeshProperties, Rgba32, TensorBuffer, TensorData, TensorDimension, Vec2D, Vec3D,
+        Material, Rgba32, TensorBuffer, TensorData, TensorDimension, UVec3D, Vec2D, Vec3D,
     },
     Archetype as _, AsComponents as _,
 };
@@ -31,12 +31,10 @@ fn roundtrip() {
             Position3D(Vec3D([1.0, 2.0, 3.0])),
             Position3D(Vec3D([10.0, 20.0, 30.0])),
         ],
-        mesh_properties: Some(
-            MeshProperties {
-                indices: Some([1, 2, 3, 4, 5, 6].to_vec().into()),
-            }
-            .into(),
-        ),
+        triangle_indices: Some(vec![
+            UVector3D(UVec3D([1, 2, 3])), //
+            UVector3D(UVec3D([4, 5, 6])), //
+        ]),
         vertex_normals: Some(vec![
             Vector3D(Vec3D([4.0, 5.0, 6.0])),    //
             Vector3D(Vec3D([40.0, 50.0, 60.0])), //
@@ -63,10 +61,7 @@ fn roundtrip() {
     };
 
     let arch = Mesh3D::new([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]])
-        .with_mesh_properties(MeshProperties::from_triangle_indices([
-            (1, 2, 3),
-            (4, 5, 6),
-        ]))
+        .with_triangle_indices([[1, 2, 3], [4, 5, 6]])
         .with_vertex_normals([[4.0, 5.0, 6.0], [40.0, 50.0, 60.0]])
         .with_vertex_colors([0xAA0000CC, 0x00BB00DD])
         .with_vertex_texcoords([[0.0, 1.0], [2.0, 3.0]])

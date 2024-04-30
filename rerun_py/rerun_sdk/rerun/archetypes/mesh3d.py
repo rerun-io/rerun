@@ -35,7 +35,7 @@ class Mesh3D(Mesh3DExt, Archetype):
             vertex_positions=[[0.0, 1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             vertex_normals=[0.0, 0.0, 1.0],
             vertex_colors=[[0, 0, 255], [0, 255, 0], [255, 0, 0]],
-            indices=[2, 1, 0],
+            triangle_indices=[2, 1, 0],
         ),
     )
     ```
@@ -57,7 +57,7 @@ class Mesh3D(Mesh3DExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             vertex_positions=None,  # type: ignore[arg-type]
-            mesh_properties=None,  # type: ignore[arg-type]
+            triangle_indices=None,  # type: ignore[arg-type]
             vertex_normals=None,  # type: ignore[arg-type]
             vertex_colors=None,  # type: ignore[arg-type]
             vertex_texcoords=None,  # type: ignore[arg-type]
@@ -79,16 +79,16 @@ class Mesh3D(Mesh3DExt, Archetype):
     )
     # The positions of each vertex.
     #
-    # If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+    # If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    mesh_properties: components.MeshPropertiesBatch | None = field(
+    triangle_indices: components.UVector3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.MeshPropertiesBatch._optional,  # type: ignore[misc]
+        converter=components.UVector3DBatch._optional,  # type: ignore[misc]
     )
-    # Optional properties for the mesh as a whole (including indexed drawing).
+    # Optional indices for the triangles that make up the mesh.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -98,8 +98,6 @@ class Mesh3D(Mesh3DExt, Archetype):
         converter=components.Vector3DBatch._optional,  # type: ignore[misc]
     )
     # An optional normal for each vertex.
-    #
-    # If specified, this must have as many elements as `vertex_positions`.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

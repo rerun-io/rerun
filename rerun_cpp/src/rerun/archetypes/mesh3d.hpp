@@ -8,10 +8,10 @@
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/material.hpp"
-#include "../components/mesh_properties.hpp"
 #include "../components/position3d.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
+#include "../components/uvector3d.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -49,29 +49,27 @@ namespace rerun::archetypes {
     ///         {0, 255, 0},
     ///         {255, 0, 0},
     ///     };
-    ///     const std::vector<uint32_t> indices = {2, 1, 0};
+    ///     const rerun::UVector3D indices[1] = {{2, 1, 0}};
     ///
     ///     rec.log(
     ///         "triangle",
     ///         rerun::Mesh3D(vertex_positions)
     ///             .with_vertex_normals({{0.0, 0.0, 1.0}})
     ///             .with_vertex_colors(vertex_colors)
-    ///             .with_mesh_properties(rerun::components::MeshProperties::from_triangle_indices(indices))
+    ///             .with_triangle_indices(indices)
     ///     );
     /// }
     /// ```
     struct Mesh3D {
         /// The positions of each vertex.
         ///
-        /// If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+        /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
         Collection<rerun::components::Position3D> vertex_positions;
 
-        /// Optional properties for the mesh as a whole (including indexed drawing).
-        std::optional<rerun::components::MeshProperties> mesh_properties;
+        /// Optional indices for the triangles that make up the mesh.
+        std::optional<Collection<rerun::components::UVector3D>> triangle_indices;
 
         /// An optional normal for each vertex.
-        ///
-        /// If specified, this must have as many elements as `vertex_positions`.
         std::optional<Collection<rerun::components::Vector3D>> vertex_normals;
 
         /// An optional color for each vertex.
@@ -108,16 +106,15 @@ namespace rerun::archetypes {
         explicit Mesh3D(Collection<rerun::components::Position3D> _vertex_positions)
             : vertex_positions(std::move(_vertex_positions)) {}
 
-        /// Optional properties for the mesh as a whole (including indexed drawing).
-        Mesh3D with_mesh_properties(rerun::components::MeshProperties _mesh_properties) && {
-            mesh_properties = std::move(_mesh_properties);
+        /// Optional indices for the triangles that make up the mesh.
+        Mesh3D with_triangle_indices(Collection<rerun::components::UVector3D> _triangle_indices
+        ) && {
+            triangle_indices = std::move(_triangle_indices);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional normal for each vertex.
-        ///
-        /// If specified, this must have as many elements as `vertex_positions`.
         Mesh3D with_vertex_normals(Collection<rerun::components::Vector3D> _vertex_normals) && {
             vertex_normals = std::move(_vertex_normals);
             // See: https://github.com/rerun-io/rerun/issues/4027

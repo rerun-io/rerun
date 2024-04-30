@@ -22,19 +22,15 @@ table Mesh3D (
 
   /// The positions of each vertex.
   ///
-  /// If no `indices` are specified, then each triplet of positions is interpreted as a triangle.
+  /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
   vertex_positions: [rerun.components.Position3D] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
-  /// Optional properties for the mesh as a whole (including indexed drawing).
-  //
-  // NOTE: We cannot have triangle indices here as that would break our instance key rules (either 0, 1 or N).
-  mesh_properties: rerun.components.MeshProperties ("attr.rerun.component_recommended", nullable, order: 2000);
+  /// Optional indices for the triangles that make up the mesh.
+  triangle_indices: [rerun.components.UVector3D] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// An optional normal for each vertex.
-  ///
-  /// If specified, this must have as many elements as `vertex_positions`.
   vertex_normals: [rerun.components.Vector3D] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---

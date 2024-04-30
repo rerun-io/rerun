@@ -41,7 +41,7 @@ rr.log(
         vertex_normals=mesh.vertex_normals,
         vertex_texcoords=vertex_texcoords,
         albedo_texture=albedo_texture,
-        indices=mesh.faces,
+        triangle_indices=mesh.faces,
         mesh_material=mesh_material,
     ),
 )

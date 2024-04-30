@@ -36,13 +36,13 @@ namespace rerun {
     using components::LineStrip3D;
     using components::Material;
     using components::MediaType;
-    using components::MeshProperties;
     using components::OutOfTreeTransform3D;
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
     using components::Text;
     using components::TextLogLevel;
+    using components::UVector3D;
     using components::Vector2D;
     using components::Vector3D;
 

@@ -1,0 +1,18 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "fbs/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "../datatypes/uvec3d.fbs";
+
+namespace rerun.components;
+
+// ---
+
+/// A uint32 vector in 3D space.
+struct UVector3D (
+  "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  vector: rerun.datatypes.UVec3D (order: 100);
+}

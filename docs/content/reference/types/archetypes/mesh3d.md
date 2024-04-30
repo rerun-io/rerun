@@ -8,7 +8,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 **Required**: [`Position3D`](../components/position3d.md)
 
-**Recommended**: [`MeshProperties`](../components/mesh_properties.md), [`Vector3D`](../components/vector3d.md)
+**Recommended**: [`UVector3D`](../components/uvector3d.md), [`Vector3D`](../components/vector3d.md)
 
 **Optional**: [`Color`](../components/color.md), [`Texcoord2D`](../components/texcoord2d.md), [`Material`](../components/material.md), [`TensorData`](../components/tensor_data.md), [`ClassId`](../components/class_id.md)
 

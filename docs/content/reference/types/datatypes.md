@@ -21,7 +21,6 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Mat3x3`](datatypes/mat3x3.md): A 3x3 Matrix.
 * [`Mat4x4`](datatypes/mat4x4.md): A 4x4 Matrix.
 * [`Material`](datatypes/material.md): Material properties of a mesh.
-* [`MeshProperties`](datatypes/mesh_properties.md): Optional triangle indices for a mesh.
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
 * [`Range1D`](datatypes/range1d.md): A 1D range, specifying a lower and upper bound.
 * [`Range2D`](datatypes/range2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.

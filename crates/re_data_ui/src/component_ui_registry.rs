@@ -23,7 +23,6 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
     add_to_registry::<re_types::components::Resolution>(&mut registry);
     add_to_registry::<re_types::components::Rotation3D>(&mut registry);
     add_to_registry::<re_types::components::Material>(&mut registry);
-    add_to_registry::<re_types::components::MeshProperties>(&mut registry);
     add_to_registry::<re_types::components::TensorData>(&mut registry);
     add_to_registry::<re_types::components::Transform3D>(&mut registry);
     add_to_registry::<re_types::components::OutOfTreeTransform3D>(&mut registry);

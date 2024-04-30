@@ -4,15 +4,14 @@ import itertools
 from typing import Any, Optional, cast
 
 import rerun as rr
-from rerun.components import MaterialBatch, MeshPropertiesBatch, Position3DBatch, Vector3DBatch
+from rerun.components import MaterialBatch, Position3DBatch, UVector3DBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
     Material,
     MaterialLike,
-    MeshProperties,
-    MeshPropertiesLike,
     Rgba32ArrayLike,
+    UVec3DArrayLike,
     Vec2DArrayLike,
     Vec3DArrayLike,
 )
@@ -23,23 +22,13 @@ from .common_arrays import (
     colors_arrays,
     colors_expected,
     none_empty_or_value,
+    uvec3ds_arrays,
+    uvec3ds_expected,
     vec2ds_arrays,
     vec2ds_expected,
     vec3ds_arrays,
     vec3ds_expected,
 )
-
-mesh_properties_objects: list[MeshPropertiesLike | None] = [
-    None,
-    MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
-]
-
-
-def mesh_properties_expected(obj: Any) -> Any:
-    expected = none_empty_or_value(obj, MeshProperties(indices=[1, 2, 3, 4, 5, 6]))
-
-    return MeshPropertiesBatch._optional(expected)
-
 
 mesh_materials: list[MaterialLike | None] = [
     None,
@@ -58,13 +47,14 @@ def test_mesh3d() -> None:
     vertex_normals_arrays = vec3ds_arrays
     vertex_colors_arrays = colors_arrays
     vertex_texcoord_arrays = vec2ds_arrays
+    triangle_indices_arrays = uvec3ds_arrays
 
     all_arrays = itertools.zip_longest(
         vertex_positions_arrays,
         vertex_normals_arrays,
         vertex_colors_arrays,
         vertex_texcoord_arrays,
-        mesh_properties_objects,
+        triangle_indices_arrays,
         mesh_materials,
         class_ids_arrays,
     )
@@ -74,7 +64,7 @@ def test_mesh3d() -> None:
         vertex_normals,
         vertex_colors,
         vertex_texcoords,
-        mesh_properties,
+        triangle_indices,
         mesh_material,
         class_ids,
     ) in all_arrays:
@@ -85,7 +75,7 @@ def test_mesh3d() -> None:
         vertex_normals = cast(Optional[Vec3DArrayLike], vertex_normals)
         vertex_colors = cast(Optional[Rgba32ArrayLike], vertex_colors)
         vertex_texcoords = cast(Optional[Vec2DArrayLike], vertex_texcoords)
-        mesh_properties = cast(Optional[MeshPropertiesLike], mesh_properties)
+        triangle_indices = cast(Optional[UVec3DArrayLike], triangle_indices)
         mesh_material = cast(Optional[MaterialLike], mesh_material)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
 
@@ -95,7 +85,7 @@ def test_mesh3d() -> None:
             f"    vertex_normals={vertex_normals}\n"
             f"    vertex_colors={vertex_colors}\n"
             f"    vertex_texcoords={vertex_texcoords}\n"
-            f"    mesh_properties={mesh_properties_objects}\n"
+            f"    triangle_indices={triangle_indices}\n"
             f"    mesh_material={mesh_material}\n"
             f"    class_ids={class_ids}\n"
             f")"
@@ -105,7 +95,7 @@ def test_mesh3d() -> None:
             vertex_normals=vertex_normals,
             vertex_colors=vertex_colors,
             vertex_texcoords=vertex_texcoords,
-            mesh_properties=mesh_properties,
+            triangle_indices=triangle_indices,
             mesh_material=mesh_material,
             class_ids=class_ids,
         )
@@ -115,7 +105,7 @@ def test_mesh3d() -> None:
         assert arch.vertex_normals == vec3ds_expected(vertex_normals, Vector3DBatch)
         assert arch.vertex_colors == colors_expected(vertex_colors)
         assert arch.vertex_texcoords == vec2ds_expected(vertex_texcoords, Texcoord2DBatch)
-        assert arch.mesh_properties == mesh_properties_expected(mesh_properties)
+        assert arch.triangle_indices == uvec3ds_expected(triangle_indices, UVector3DBatch)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
         assert arch.class_ids == class_ids_expected(class_ids)
 
@@ -137,25 +127,6 @@ def test_nullable_albedo_factor() -> None:
             ])
         )
         == 1
-    )
-
-
-def test_nullable_indices() -> None:
-    # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
-    assert (
-        len(
-            MeshPropertiesBatch([
-                MeshProperties(indices=[1, 2, 3, 4, 5, 6]),
-                MeshProperties(),
-            ])
-        )
-        == 2
-    )
-
-
-def test_indices_parameter() -> None:
-    assert rr.Mesh3D(vertex_positions=[(0, 0, 0)] * 3, indices=[0, 1, 2]) == rr.Mesh3D(
-        vertex_positions=[(0, 0, 0)] * 3, mesh_properties=MeshProperties(indices=[0, 1, 2])
     )
 
 

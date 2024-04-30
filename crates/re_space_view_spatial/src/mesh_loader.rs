@@ -96,10 +96,10 @@ impl LoadedMesh {
 
         let Mesh3D {
             vertex_positions,
-            mesh_properties,
             vertex_normals,
             vertex_colors,
             vertex_texcoords,
+            triangle_indices,
             mesh_material,
             class_ids: _,
             albedo_texture,
@@ -108,12 +108,8 @@ impl LoadedMesh {
         let vertex_positions: &[glam::Vec3] = bytemuck::cast_slice(vertex_positions.as_slice());
         let num_positions = vertex_positions.len();
 
-        let triangle_indices = if let Some(indices) = mesh_properties
-            .as_ref()
-            .and_then(|props| props.indices.as_ref())
-        {
+        let triangle_indices = if let Some(indices) = triangle_indices {
             re_tracing::profile_scope!("copy_indices");
-            anyhow::ensure!(indices.len() % 3 == 0);
             let indices: &[glam::UVec3] = bytemuck::cast_slice(indices);
             indices.to_vec()
         } else {

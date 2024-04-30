@@ -18,13 +18,13 @@ int main() {
         {0, 255, 0},
         {255, 0, 0},
     };
-    const std::vector<uint32_t> indices = {2, 1, 0};
+    const rerun::UVector3D indices[1] = {{2, 1, 0}};
 
     rec.log(
         "triangle",
         rerun::Mesh3D(vertex_positions)
             .with_vertex_normals({{0.0, 0.0, 1.0}})
             .with_vertex_colors(vertex_colors)
-            .with_mesh_properties(rerun::components::MeshProperties::from_triangle_indices(indices))
+            .with_triangle_indices(indices)
     );
 }
