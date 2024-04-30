@@ -37,7 +37,7 @@ class Points2D(Points2DExt, Archetype):
     rr.log("random", rr.Points2D(positions, colors=colors, radii=radii))
 
     # Set view bounds:
-    rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(min=[-4, -4], max=[4, 4])))
+    rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(x_range=[-4, 4], y_range=[-4, 4])))
     ```
     <center>
     <picture>

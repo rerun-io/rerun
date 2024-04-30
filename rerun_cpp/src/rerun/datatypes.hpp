@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "datatypes/aabb2d.hpp"
 #include "datatypes/angle.hpp"
 #include "datatypes/annotation_info.hpp"
 #include "datatypes/bool.hpp"
@@ -19,6 +18,7 @@
 #include "datatypes/mesh_properties.hpp"
 #include "datatypes/quaternion.hpp"
 #include "datatypes/range1d.hpp"
+#include "datatypes/range2d.hpp"
 #include "datatypes/rgba32.hpp"
 #include "datatypes/rotation3d.hpp"
 #include "datatypes/rotation_axis_angle.hpp"

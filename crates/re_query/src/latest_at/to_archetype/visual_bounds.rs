@@ -21,9 +21,9 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::VisualBounds> for Lates
 
         // --- Recommended/Optional ---
 
-        use re_types::components::AABB2D;
-        let visual_bounds = if let Some(visual_bounds) = self.get(<AABB2D>::name()) {
-            match visual_bounds.to_dense::<AABB2D>(resolver) {
+        use re_types::components::Range2D;
+        let range2d = if let Some(range2d) = self.get(<Range2D>::name()) {
+            match range2d.to_dense::<Range2D>(resolver) {
                 PromiseResult::Pending => return PromiseResult::Pending,
                 PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
                 PromiseResult::Ready(query_res) => match query_res {
@@ -37,7 +37,7 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::VisualBounds> for Lates
 
         // ---
 
-        let arch = re_types::blueprint::archetypes::VisualBounds { visual_bounds };
+        let arch = re_types::blueprint::archetypes::VisualBounds { range2d };
 
         PromiseResult::Ready(Ok(arch))
     }

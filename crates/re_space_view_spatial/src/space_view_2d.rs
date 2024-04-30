@@ -285,25 +285,25 @@ impl SpaceViewClass for SpatialSpaceView2D {
 fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mut egui::Ui) {
     let tooltip = "The area guaranteed to be visible.\n\
                    Depending on the view's current aspect ratio the actually visible area might be larger either horizontally or vertically.";
-    re_space_view::edit_blueprint_component::<VisualBounds, re_types::components::AABB2D, ()>(
+    re_space_view::edit_blueprint_component::<VisualBounds, re_types::components::Range2D, ()>(
         ctx,
         space_view_id,
-        |aabb: &mut Option<re_types::components::AABB2D>| {
+        |range2d: &mut Option<re_types::components::Range2D>| {
             ctx.re_ui
                 .grid_left_hand_label(ui, "Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
 
-                if let Some(aabb) = aabb {
-                    let rect = egui::Rect::from(*aabb);
+                if let Some(range2d) = range2d {
+                    let rect = egui::Rect::from(*range2d);
                     let (min, max) = (rect.min, rect.max);
                     ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                     ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
                 }
 
                 if ui.button("Reset visible bounds").clicked() {
-                    *aabb = None;
+                    *range2d = None;
                 }
             });
             ui.end_row();

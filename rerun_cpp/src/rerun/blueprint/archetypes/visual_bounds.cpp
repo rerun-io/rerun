@@ -16,8 +16,8 @@ namespace rerun {
         std::vector<DataCell> cells;
         cells.reserve(2);
 
-        if (archetype.visual_bounds.has_value()) {
-            auto result = DataCell::from_loggable(archetype.visual_bounds.value());
+        if (archetype.range2d.has_value()) {
+            auto result = DataCell::from_loggable(archetype.range2d.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

@@ -1,4 +1,3 @@
-include "./components/aabb2d.fbs";
 include "./components/annotation_context.fbs";
 include "./components/blob.fbs";
 include "./components/class_id.fbs";
@@ -24,6 +23,7 @@ include "./components/position2d.fbs";
 include "./components/position3d.fbs";
 include "./components/radius.fbs";
 include "./components/range1d.fbs";
+include "./components/range2d.fbs";
 include "./components/resolution.fbs";
 include "./components/rotation3d.fbs";
 include "./components/scalar_scattering.fbs";

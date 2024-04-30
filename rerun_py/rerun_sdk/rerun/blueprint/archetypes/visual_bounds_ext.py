@@ -12,24 +12,22 @@ class VisualBoundsExt:
     def __init__(
         self: Any,
         *,
-        min: datatypes.Vec2DLike,
-        max: datatypes.Vec2DLike,
+        x_range: datatypes.Range1DLike,
+        y_range: datatypes.Range1DLike,
     ):
         """
         Create a new instance of the VisualBounds archetype.
 
         Parameters
         ----------
-        min:
-            The minimum point of the visible parts of a 2D space view, in the coordinate space of the scene.
-            Usually the left-top corner.
-        max:
-            The maximum point of the visible parts of a 2D space view, in the coordinate space of the scene.
-            Usually the right-bottom corner.
+        x_range:
+            The minimum visible range of the X-axis (usually left and right bounds).
+        y_range:
+            The minimum visible range of the Y-axis (usually left and right bounds).
 
         """
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(visual_bounds=components.AABB2D(min=min, max=max))
+            self.__attrs_init__(range2d=components.Range2D(x_range=x_range, y_range=y_range))
             return
         self.__attrs_clear__()

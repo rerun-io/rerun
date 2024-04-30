@@ -29,18 +29,18 @@ pub struct VisualBounds {
     ///
     /// Everything within these bounds are guaranteed to be visible.
     /// Somethings outside of these bounds may also be visible due to letterboxing.
-    pub visual_bounds: Option<crate::components::AABB2D>,
+    pub range2d: Option<crate::components::Range2D>,
 }
 
 impl ::re_types_core::SizeBytes for VisualBounds {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.visual_bounds.heap_size_bytes()
+        self.range2d.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::components::AABB2D>>::is_pod()
+        <Option<crate::components::Range2D>>::is_pod()
     }
 }
 
@@ -51,13 +51,13 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisualBoundsIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.AABB2D".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.components.Range2D".into()]);
 
 static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.VisualBoundsIndicator".into(),
-            "rerun.components.AABB2D".into(),
+            "rerun.components.Range2D".into(),
         ]
     });
 
@@ -113,16 +113,16 @@ impl ::re_types_core::Archetype for VisualBounds {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let visual_bounds = if let Some(array) = arrays_by_name.get("rerun.components.AABB2D") {
-            <crate::components::AABB2D>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisualBounds#visual_bounds")?
+        let range2d = if let Some(array) = arrays_by_name.get("rerun.components.Range2D") {
+            <crate::components::Range2D>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.VisualBounds#range2d")?
                 .into_iter()
                 .next()
                 .flatten()
         } else {
             None
         };
-        Ok(Self { visual_bounds })
+        Ok(Self { range2d })
     }
 }
 
@@ -132,7 +132,7 @@ impl ::re_types_core::AsComponents for VisualBounds {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.visual_bounds
+            self.range2d
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -146,9 +146,7 @@ impl VisualBounds {
     /// Create a new `VisualBounds`.
     #[inline]
     pub fn new() -> Self {
-        Self {
-            visual_bounds: None,
-        }
+        Self { range2d: None }
     }
 
     /// The visible parts of a 2D space view, in the coordinate space of the scene.
@@ -156,11 +154,8 @@ impl VisualBounds {
     /// Everything within these bounds are guaranteed to be visible.
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     #[inline]
-    pub fn with_visual_bounds(
-        mut self,
-        visual_bounds: impl Into<crate::components::AABB2D>,
-    ) -> Self {
-        self.visual_bounds = Some(visual_bounds.into());
+    pub fn with_range2d(mut self, range2d: impl Into<crate::components::Range2D>) -> Self {
+        self.range2d = Some(range2d.into());
         self
     }
 }

@@ -14,7 +14,7 @@ Configuration for the background of a view.
 ### `VisualBounds`
 Controls the visual bounds of a 2D space view.
 
-* visual_bounds: The visible parts of a 2D space view, in the coordinate space of the scene.
+* range2d: The visible parts of a 2D space view, in the coordinate space of the scene.
 
 ## Links
  * 🐍 [Python API docs for `Spatial2DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial2DView)

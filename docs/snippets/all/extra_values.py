@@ -14,4 +14,4 @@ rr.log(
 )
 
 # Set view bounds:
-rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(min=[-1.5, -1.5], max=[1.5, 1.5])))
+rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds(x_range=[-1.5, 1.5], y_range=[-1.5, 1.5])))

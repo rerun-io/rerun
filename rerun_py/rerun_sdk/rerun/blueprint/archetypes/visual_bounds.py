@@ -23,7 +23,7 @@ class VisualBounds(VisualBoundsExt, Archetype):
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            visual_bounds=None,  # type: ignore[arg-type]
+            range2d=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -33,10 +33,10 @@ class VisualBounds(VisualBoundsExt, Archetype):
         inst.__attrs_clear__()
         return inst
 
-    visual_bounds: components.AABB2DBatch | None = field(
+    range2d: components.Range2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.AABB2DBatch._optional,  # type: ignore[misc]
+        converter=components.Range2DBatch._optional,  # type: ignore[misc]
     )
     # The visible parts of a 2D space view, in the coordinate space of the scene.
     #

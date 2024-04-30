@@ -8,7 +8,6 @@ order: 3
 Data types are the lowest layer of the data model hierarchy. They are re-usable types used by the components.
 
 
-* [`AABB2D`](datatypes/aabb2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 * [`Angle`](datatypes/angle.md): Angle in either radians or degrees.
 * [`AnnotationInfo`](datatypes/annotation_info.md): Annotation info annotating a class id or key-point id.
 * [`Bool`](datatypes/bool.md): A single boolean.
@@ -25,6 +24,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`MeshProperties`](datatypes/mesh_properties.md): Optional triangle indices for a mesh.
 * [`Quaternion`](datatypes/quaternion.md): A Quaternion represented by 4 real numbers.
 * [`Range1D`](datatypes/range1d.md): A 1D range, specifying a lower and upper bound.
+* [`Range2D`](datatypes/range2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 * [`Rgba32`](datatypes/rgba32.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`Rotation3D`](datatypes/rotation3d.md): A 3D rotation.
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
