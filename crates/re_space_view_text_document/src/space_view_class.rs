@@ -1,8 +1,8 @@
 use egui::Label;
 
 use re_space_view::suggest_space_view_for_each_entity;
+use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::external::re_entity_db::EntityProperties;
-use re_viewer_context::SpaceViewClassIdentifier;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery,
@@ -46,9 +46,12 @@ impl SpaceViewState for TextDocumentSpaceViewState {
 #[derive(Default)]
 pub struct TextDocumentSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::TextDocumentView;
+
 impl SpaceViewClass for TextDocumentSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "TextDocument".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

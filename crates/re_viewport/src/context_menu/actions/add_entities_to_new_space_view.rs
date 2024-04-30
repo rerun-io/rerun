@@ -4,7 +4,8 @@ use nohash_hasher::IntSet;
 
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
-use re_viewer_context::{Item, RecommendedSpaceView, SpaceViewClassIdentifier};
+use re_types::SpaceViewClassIdentifier;
+use re_viewer_context::{Item, RecommendedSpaceView};
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
 

@@ -12,19 +12,23 @@ use re_renderer::Colormap;
 use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
+    SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
     gpu_bridge::{self, colormap_dropdown_button_ui},
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery,
-    ViewerContext, VisualizableEntities,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, TensorStatsCache, ViewQuery, ViewerContext,
+    VisualizableEntities,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem};
 
 #[derive(Default)]
 pub struct TensorSpaceView;
+
+use re_types::View;
+type ViewType = re_types::blueprint::views::TensorView;
 
 #[derive(Default)]
 pub struct ViewTensorState {
@@ -138,7 +142,7 @@ impl PerTensorState {
 
 impl SpaceViewClass for TensorSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Tensor".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

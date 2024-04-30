@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_types::components::TextLogLevel;
+use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
 use re_viewer_context::{
     level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -39,9 +39,12 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::TextLogView;
+
 impl SpaceViewClass for TextSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "TextLog".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

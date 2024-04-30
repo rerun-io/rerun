@@ -124,12 +124,27 @@ impl From<(RangeQuery, RangeResults)> for Results {
 ///
 /// Used internally to avoid unnecessarily caching components that are already cached in other
 /// places, for historical reasons.
-pub fn cacheable(component_name: re_types::ComponentName) -> bool {
+pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     use std::sync::OnceLock;
-    static NOT_CACHEABLE: OnceLock<re_types::ComponentNameSet> = OnceLock::new();
+    static NOT_CACHEABLE: OnceLock<re_types_core::ComponentNameSet> = OnceLock::new();
 
-    use re_types_core::Loggable as _;
-    let not_cacheable = NOT_CACHEABLE.get_or_init(|| {
+    #[cfg(feature = "to_archetype")]
+    let component_names = {
+        // Make sure to break if these names change, so people know to update the fallback path below.
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                re_types::components::TensorData::name(),
+                "rerun.components.TensorData"
+            );
+            assert_eq!(
+                re_types::components::MeshProperties::name(),
+                "rerun.components.MeshProperties"
+            );
+            assert_eq!(re_types::components::Blob::name(), "rerun.components.Blob");
+        }
+
+        use re_types_core::Loggable as _;
         [
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
             // want yet another copy.
@@ -141,8 +156,18 @@ pub fn cacheable(component_name: re_types::ComponentName) -> bool {
             // the ad-hoc mesh cache -- we don't want yet another copy.
             re_types::components::Blob::name(),
         ]
-        .into()
-    });
+    };
+
+    // Horrible hack so we can still make this work when features are disabled.
+    // Not great, but this all a hack anyhow.
+    #[cfg(not(feature = "to_archetype"))]
+    let component_names = [
+        "rerun.components.TensorData".into(),
+        "rerun.components.MeshProperties".into(),
+        "rerun.components.Blob".into(),
+    ];
+
+    let not_cacheable = NOT_CACHEABLE.get_or_init(|| component_names.into());
 
     !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
 }

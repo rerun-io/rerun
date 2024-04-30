@@ -3,12 +3,11 @@ use nohash_hasher::IntSet;
 
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::EntityPath;
-use re_types::{components::ViewCoordinates, Loggable};
+use re_types::{components::ViewCoordinates, Loggable, SpaceViewClassIdentifier};
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
@@ -38,9 +37,12 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial3DView;
+
 impl SpaceViewClass for SpatialSpaceView3D {
     fn identifier() -> SpaceViewClassIdentifier {
-        "3D".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

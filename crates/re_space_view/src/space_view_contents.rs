@@ -14,14 +14,13 @@ use re_types::{
         archetypes as blueprint_archetypes, components as blueprint_components,
         components::QueryExpression,
     },
-    Archetype as _,
+    Archetype as _, SpaceViewClassIdentifier,
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, QueryRange,
-    SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewId, ViewerContext,
-    VisualizableEntities,
+    SpaceViewClassRegistry, SpaceViewId, ViewerContext, VisualizableEntities,
 };
 
 use crate::{
