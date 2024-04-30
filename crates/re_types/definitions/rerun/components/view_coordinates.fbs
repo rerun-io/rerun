@@ -10,6 +10,7 @@ namespace rerun.components;
 // TODO(#3384)
 /*
 enum ViewDir: byte {
+    Unused = 0,
     Up = 1,
     Down = 2,
     Right = 3,
@@ -29,6 +30,7 @@ enum ViewDir: byte {
 /// down, and the Z axis points forward.
 ///
 /// The following constants are used to represent the different directions:
+///  * Unused = 0
 ///  * Up = 1
 ///  * Down = 2
 ///  * Right = 3

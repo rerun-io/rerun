@@ -32,6 +32,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// down, and the Z axis points forward.
 ///
 /// The following constants are used to represent the different directions:
+///  * Unused = 0
 ///  * Up = 1
 ///  * Down = 2
 ///  * Right = 3

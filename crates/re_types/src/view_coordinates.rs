@@ -3,6 +3,7 @@
 /// The six cardinal directions for 3D view-space and image-space.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewDir {
+    Unused = 0,
     Up = 1,
     Down = 2,
     Right = 3,
@@ -17,6 +18,7 @@ impl TryFrom<u8> for ViewDir {
     #[inline]
     fn try_from(i: u8) -> Result<Self, String> {
         match i {
+            0 => Ok(Self::Unused),
             1 => Ok(Self::Up),
             2 => Ok(Self::Down),
             3 => Ok(Self::Right),
@@ -61,6 +63,7 @@ impl ViewDir {
     #[inline]
     pub fn short(&self) -> &'static str {
         match self {
+            Self::Unused => "",
             Self::Up => "U",
             Self::Down => "D",
             Self::Right => "R",
@@ -74,6 +77,7 @@ impl ViewDir {
     #[inline]
     pub fn long(&self) -> &'static str {
         match self {
+            Self::Unused => "Unused",
             Self::Up => "Up",
             Self::Down => "Down",
             Self::Right => "Right",

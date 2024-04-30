@@ -27,6 +27,7 @@ namespace rerun::components {
     /// down, and the Z axis points forward.
     ///
     /// The following constants are used to represent the different directions:
+    ///  * Unused = 0
     ///  * Up = 1
     ///  * Down = 2
     ///  * Right = 3
@@ -41,6 +42,7 @@ namespace rerun::components {
         // Extensions to generated type defined in 'view_coordinates_ext.cpp'
 
         enum ViewDir : uint8_t {
+            Unused = 0,
             Up = 1,
             Down = 2,
             Right = 3,

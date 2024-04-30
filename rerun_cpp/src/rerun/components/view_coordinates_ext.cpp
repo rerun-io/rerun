@@ -19,6 +19,7 @@ namespace rerun {
             // <CODEGEN_COPY_TO_HEADER>
 
             enum ViewDir : uint8_t {
+                Unused = 0,
                 Up = 1,
                 Down = 2,
                 Right = 3,

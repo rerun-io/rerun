@@ -39,12 +39,14 @@ impl ViewCoordinates {
     pub fn sanity_check(&self) -> Result<(), String> {
         let mut dims = [false; 3];
         for dir in self.0 {
-            let dim = match ViewDir::try_from(dir)? {
-                ViewDir::Up | ViewDir::Down => 0,
-                ViewDir::Right | ViewDir::Left => 1,
-                ViewDir::Forward | ViewDir::Back => 2,
-            };
-            dims[dim] = true;
+            if let Some(dim) = match ViewDir::try_from(dir)? {
+                ViewDir::Up | ViewDir::Down => Some(0),
+                ViewDir::Right | ViewDir::Left => Some(1),
+                ViewDir::Forward | ViewDir::Back => Some(2),
+                ViewDir::Unused => None,
+            } {
+                dims[dim] = true;
+            }
         }
         if dims == [true; 3] {
             Ok(())
@@ -139,7 +141,7 @@ impl ViewCoordinates {
                 Some(ViewDir::Forward) => [0.0, 0.0, 1.0],
                 // TODO(jleibs): Is there a better value to return here?
                 // this means the ViewCoordinates aren't valid.
-                None => [0.0, 0.0, 0.0],
+                _ => [0.0, 0.0, 0.0],
             }
         }
 
@@ -175,7 +177,7 @@ impl ViewCoordinates {
                 Some(ViewDir::Forward) => [0.0, 0.0, -1.0],
                 // TODO(jleibs): Is there a better value to return here?
                 // this means the ViewCoordinates aren't valid.
-                None => [0.0, 0.0, 0.0],
+                _ => [0.0, 0.0, 0.0],
             }
         }
 

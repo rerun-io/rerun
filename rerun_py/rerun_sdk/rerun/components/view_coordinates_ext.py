@@ -16,6 +16,7 @@ class ViewCoordinatesExt:
     """Extension for [ViewCoordinates][rerun.components.ViewCoordinates]."""
 
     class ViewDir(IntEnum):
+        Unused = 0
         Up = 1
         Down = 2
         Right = 3
