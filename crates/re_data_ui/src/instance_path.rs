@@ -40,10 +40,7 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let mut components = crate::ui_visible_components(&components);
-
-        // Put indicator components first:
-        components.sort_by_key(|c| !c.is_indicator_component());
+        let mut components = crate::component_list_for_ui(&components);
 
         let split = components.partition_point(|c| c.is_indicator_component());
         let normal_components = components.split_off(split);

@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use itertools::Itertools;
 
 use re_data_store::LatestAtQuery;
-use re_data_ui::is_component_visible_in_ui;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{DataRow, RowId, StoreKind};
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
@@ -93,7 +92,7 @@ pub fn override_ui(
         .resolved_component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c)
-        .filter(|(c, _)| component_to_vis.contains_key(c) && is_component_visible_in_ui(c))
+        .filter(|(c, _)| component_to_vis.contains_key(c))
         .collect();
 
     egui_extras::TableBuilder::new(ui)
