@@ -39,9 +39,12 @@ impl SpaceViewState for TextSpaceViewState {
 #[derive(Default)]
 pub struct TextSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::TextLogView;
+
 impl SpaceViewClass for TextSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "TextLog".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

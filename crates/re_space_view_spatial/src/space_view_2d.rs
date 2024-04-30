@@ -43,9 +43,12 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial2DView;
+
 impl SpaceViewClass for SpatialSpaceView2D {
     fn identifier() -> SpaceViewClassIdentifier {
-        "2D".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

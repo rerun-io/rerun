@@ -27,6 +27,9 @@ use crate::{tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::Te
 #[derive(Default)]
 pub struct TensorSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::TensorView;
+
 #[derive(Default)]
 pub struct ViewTensorState {
     /// Selects in [`Self::state_tensors`].
@@ -139,7 +142,7 @@ impl PerTensorState {
 
 impl SpaceViewClass for TensorSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "Tensor".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

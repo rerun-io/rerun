@@ -14,9 +14,12 @@ use super::visualizer_system::BarChartVisualizerSystem;
 #[derive(Default)]
 pub struct BarChartSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::BarChartView;
+
 impl SpaceViewClass for BarChartSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "BarChart".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

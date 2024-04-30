@@ -37,9 +37,12 @@ impl VisualizableFilterContext for VisualizableFilterContext3D {
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial3DView;
+
 impl SpaceViewClass for SpatialSpaceView3D {
     fn identifier() -> SpaceViewClassIdentifier {
-        "3D".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {
