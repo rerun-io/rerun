@@ -3,20 +3,16 @@ use std::ops::RangeInclusive;
 
 use egui::{NumExt as _, Response, Ui};
 
-use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeInt, TimeRange, TimeType, TimeZone};
-use re_space_view::{
-    query_view_property, visible_history_boundary_from_time_range_boundary,
-    visible_history_boundary_to_time_range_boundary, SpaceViewBlueprint,
-};
+use re_entity_db::TimeHistogram;
+use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
+use re_space_view::{query_view_property, SpaceViewBlueprint};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    blueprint::{
-        archetypes::VisibleTimeRange,
-        components::{VisibleTimeRangeSequence, VisibleTimeRangeTime},
+    blueprint::components::{VisibleTimeRangeSequence, VisibleTimeRangeTime},
+    datatypes::{
+        TimeInt, VisibleTimeRange, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind,
     },
-    datatypes::VisibleTimeRangeBoundary,
     SpaceViewClassIdentifier,
 };
 use re_types_core::Loggable as _;
@@ -54,11 +50,12 @@ pub fn visual_time_range_ui_space_view(
     let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
     let time_type = time_ctrl.timeline().typ();
 
-    let (property, property_path) = query_view_property::<VisibleTimeRange>(
-        space_view.id,
-        ctx.store_context.blueprint,
-        ctx.blueprint_query,
-    );
+    let (property, property_path) =
+        query_view_property::<re_types::blueprint::archetypes::VisibleTimeRange>(
+            space_view.id,
+            ctx.store_context.blueprint,
+            ctx.blueprint_query,
+        );
 
     let has_individual_range = match time_type {
         TimeType::Time => property.ok().flatten().map_or(false, |v| v.time.is_some()),
@@ -182,79 +179,65 @@ fn visual_time_range_ui(
                     TimelineSpec::from_time_range(0..=0)
                 };
 
-            let current_time = time_ctrl
-                .time_i64()
-                .unwrap_or_default()
-                .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::MIN)
-
-            let from = &mut resolved_range.start;
-            let to = &mut resolved_range.end;
-
-            // Convert to legacy visual history type.
-            let mut visible_history = VisibleHistory {
-                from: visible_history_boundary_from_time_range_boundary(from),
-                to: visible_history_boundary_from_time_range_boundary(to),
-            };
+            let current_time = TimeInt(
+                time_ctrl
+                    .time_i64()
+                    .unwrap_or_default()
+                    .at_least(*timeline_spec.range.start()),
+            ); // accounts for timeless time (TimeInt::MIN)
 
             if has_individual_range {
-                let current_from = visible_history
-                    .range_start_from_cursor(TimeInt::new_temporal(current_time))
-                    .as_i64();
-                let current_to = visible_history
-                    .range_end_from_cursor(TimeInt::new_temporal(current_time))
-                    .as_i64();
+                let current_start = resolved_range.start.start_boundary_time(current_time);
+                let current_end = resolved_range.end.end_boundary_time(current_time);
 
                 egui::Grid::new("from_to_editable").show(ui, |ui| {
-                    re_ui.grid_left_hand_label(ui, "From");
+                    re_ui.grid_left_hand_label(ui, "Start");
                     interacting_with_controls |= ui
                         .horizontal(|ui| {
                             visible_history_boundary_ui(
                                 ctx,
                                 ui,
-                                &mut visible_history.from,
+                                &mut resolved_range.start,
                                 time_type,
                                 current_time,
                                 &timeline_spec,
                                 true,
-                                current_to,
+                                current_end,
                             )
                         })
                         .inner;
                     ui.end_row();
 
-                    re_ui.grid_left_hand_label(ui, "To");
+                    re_ui.grid_left_hand_label(ui, "End");
                     interacting_with_controls |= ui
                         .horizontal(|ui| {
                             visible_history_boundary_ui(
                                 ctx,
                                 ui,
-                                &mut visible_history.to,
+                                &mut resolved_range.end,
                                 time_type,
                                 current_time,
                                 &timeline_spec,
                                 false,
-                                current_from,
+                                current_start,
                             )
                         })
                         .inner;
                     ui.end_row();
                 });
 
-                current_range_ui(ctx, ui, current_time, time_type, &visible_history);
+                current_range_ui(ctx, ui, current_time, time_type, &resolved_range);
             } else {
                 // Show the resolved visible range as labels (user can't edit them):
 
-                if visible_history.from == VisibleHistoryBoundary::Infinite
-                    && visible_history.to == VisibleHistoryBoundary::Infinite
+                if resolved_range.start.kind == VisibleTimeRangeBoundaryKind::Infinite
+                    && resolved_range.end.kind == VisibleTimeRangeBoundaryKind::Infinite
                 {
                     ui.label("Entire timeline");
-                } else if visible_history.from == VisibleHistoryBoundary::AT_CURSOR
-                    && visible_history.to == VisibleHistoryBoundary::AT_CURSOR
+                } else if resolved_range.start == VisibleTimeRangeBoundary::AT_CURSOR
+                    && resolved_range.end == VisibleTimeRangeBoundary::AT_CURSOR
                 {
-                    let current_time = time_type.format(
-                        TimeInt::new_temporal(current_time),
-                        ctx.app_options.time_zone,
-                    );
+                    let current_time = time_type.format(current_time, ctx.app_options.time_zone);
                     match time_type {
                         TimeType::Time => {
                             ui.label(format!("At current time: {current_time}"));
@@ -269,7 +252,7 @@ fn visual_time_range_ui(
                         resolved_visible_history_boundary_ui(
                             ctx,
                             ui,
-                            &visible_history.from,
+                            &resolved_range.start,
                             time_type,
                             true,
                         );
@@ -279,20 +262,16 @@ fn visual_time_range_ui(
                         resolved_visible_history_boundary_ui(
                             ctx,
                             ui,
-                            &visible_history.to,
+                            &resolved_range.end,
                             time_type,
                             false,
                         );
                         ui.end_row();
                     });
 
-                    current_range_ui(ctx, ui, current_time, time_type, &visible_history);
+                    current_range_ui(ctx, ui, current_time, time_type, &resolved_range);
                 }
             }
-
-            // Convert back from visual history type.
-            *from = visible_history_boundary_to_time_range_boundary(&visible_history.from);
-            *to = visible_history_boundary_to_time_range_boundary(&visible_history.to);
 
             // Save to blueprint store if anything has changed.
             if has_individual_range != has_individual_range_before
@@ -382,11 +361,11 @@ Notes that the data current as of the time range starting time is included.",
 fn current_range_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
-    current_time: i64,
+    current_time: TimeInt,
     time_type: TimeType,
-    visible_history: &VisibleHistory,
+    visible_range: &VisibleTimeRange,
 ) {
-    let time_range = visible_history.time_range(TimeInt::new_temporal(current_time));
+    let time_range = TimeRange::from_visible_time_range(visible_range, current_time);
     let from_formatted = time_type.format(time_range.min(), ctx.app_options.time_zone);
     let to_formatted = time_type.format(time_range.max(), ctx.app_options.time_zone);
 
@@ -398,20 +377,20 @@ fn current_range_ui(
 fn resolved_visible_history_boundary_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    visible_history_boundary: &VisibleHistoryBoundary,
+    visible_history_boundary: &VisibleTimeRangeBoundary,
     time_type: TimeType,
     low_bound: bool,
 ) {
-    let boundary_type = match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(_) => match time_type {
+    let boundary_type = match visible_history_boundary.kind {
+        VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => match time_type {
             TimeType::Time => "current time",
             TimeType::Sequence => "current frame",
         },
-        VisibleHistoryBoundary::Absolute(_) => match time_type {
+        VisibleTimeRangeBoundaryKind::Absolute => match time_type {
             TimeType::Time => "absolute time",
             TimeType::Sequence => "frame",
         },
-        VisibleHistoryBoundary::Infinite => {
+        VisibleTimeRangeBoundaryKind::Infinite => {
             if low_bound {
                 "beginning of timeline"
             } else {
@@ -422,9 +401,10 @@ fn resolved_visible_history_boundary_ui(
 
     let mut label = boundary_type.to_owned();
 
-    match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(offset) => {
-            if *offset != 0 {
+    match visible_history_boundary.kind {
+        VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => {
+            let offset = visible_history_boundary.time.0;
+            if offset != 0 {
                 match time_type {
                     TimeType::Time => {
                         // This looks like it should be generically handled somewhere like re_format,
@@ -441,7 +421,7 @@ fn resolved_visible_history_boundary_ui(
                             ("ns", 1.)
                         };
 
-                        label += &format!(" with {} {} offset", *offset as f64 / factor, unit);
+                        label += &format!(" with {} {} offset", offset as f64 / factor, unit);
                     }
                     TimeType::Sequence => {
                         label += &format!(
@@ -452,33 +432,31 @@ fn resolved_visible_history_boundary_ui(
                 }
             }
         }
-        VisibleHistoryBoundary::Absolute(time) => {
-            label += &format!(
-                " {}",
-                time_type.format(TimeInt::new_temporal(*time), ctx.app_options.time_zone)
-            );
+        VisibleTimeRangeBoundaryKind::Absolute => {
+            let time = visible_history_boundary.time;
+            label += &format!(" {}", time_type.format(time, ctx.app_options.time_zone));
         }
-        VisibleHistoryBoundary::Infinite => {}
+        VisibleTimeRangeBoundaryKind::Infinite => {}
     }
 
     ui.label(label);
 }
 
 fn visible_history_boundary_combo_label(
-    boundary: &VisibleHistoryBoundary,
+    boundary: VisibleTimeRangeBoundaryKind,
     time_type: TimeType,
     low_bound: bool,
 ) -> &'static str {
     match boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(_) => match time_type {
+        VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => match time_type {
             TimeType::Time => "current time with offset",
             TimeType::Sequence => "current frame with offset",
         },
-        VisibleHistoryBoundary::Absolute(_) => match time_type {
+        VisibleTimeRangeBoundaryKind::Absolute => match time_type {
             TimeType::Time => "absolute time",
             TimeType::Sequence => "absolute frame",
         },
-        VisibleHistoryBoundary::Infinite => {
+        VisibleTimeRangeBoundaryKind::Infinite => {
             if low_bound {
                 "beginning of timeline"
             } else {
@@ -492,20 +470,26 @@ fn visible_history_boundary_combo_label(
 fn visible_history_boundary_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    visible_history_boundary: &mut VisibleHistoryBoundary,
+    visible_history_boundary: &mut VisibleTimeRangeBoundary,
     time_type: TimeType,
-    current_time: i64,
+    current_time: TimeInt,
     timeline_spec: &TimelineSpec,
     low_bound: bool,
-    other_boundary_absolute: i64,
+    other_boundary_absolute: TimeInt,
 ) -> bool {
-    let (abs_time, rel_time) = match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(value) => (*value + current_time, *value),
-        VisibleHistoryBoundary::Absolute(value) => (*value, *value - current_time),
-        VisibleHistoryBoundary::Infinite => (current_time, 0),
+    let (abs_time, rel_time) = match visible_history_boundary.kind {
+        VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => (
+            visible_history_boundary.time + current_time,
+            visible_history_boundary.time,
+        ),
+        VisibleTimeRangeBoundaryKind::Absolute => (
+            visible_history_boundary.time,
+            visible_history_boundary.time - current_time,
+        ),
+        VisibleTimeRangeBoundaryKind::Infinite => (current_time, TimeInt(0)),
     };
-    let abs_time = VisibleHistoryBoundary::Absolute(abs_time);
-    let rel_time = VisibleHistoryBoundary::RelativeToTimeCursor(rel_time);
+    let abs_time = VisibleTimeRangeBoundary::absolute(abs_time);
+    let rel_time = VisibleTimeRangeBoundary::relative_to_time_cursor(rel_time);
 
     egui::ComboBox::from_id_source(if low_bound {
         "time_history_low_bound"
@@ -513,7 +497,7 @@ fn visible_history_boundary_ui(
         "time_history_high_bound"
     })
     .selected_text(visible_history_boundary_combo_label(
-        visible_history_boundary,
+        visible_history_boundary.kind,
         time_type,
         low_bound,
     ))
@@ -523,7 +507,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             rel_time,
-            visible_history_boundary_combo_label(&rel_time, time_type, low_bound),
+            visible_history_boundary_combo_label(rel_time.kind, time_type, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from a time point relative to the current time."
@@ -533,7 +517,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             abs_time,
-            visible_history_boundary_combo_label(&abs_time, time_type, low_bound),
+            visible_history_boundary_combo_label(abs_time.kind, time_type, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from an absolute time point."
@@ -541,10 +525,10 @@ fn visible_history_boundary_ui(
             "Show data until an absolute time point."
         });
         ui.selectable_value(
-            visible_history_boundary,
-            VisibleHistoryBoundary::Infinite,
+            &mut visible_history_boundary.kind,
+            VisibleTimeRangeBoundaryKind::Infinite,
             visible_history_boundary_combo_label(
-                &VisibleHistoryBoundary::Infinite,
+                VisibleTimeRangeBoundaryKind::Infinite,
                 time_type,
                 low_bound,
             ),
@@ -563,14 +547,15 @@ fn visible_history_boundary_ui(
     // both boundaries fighting each other in some corner cases (when the user interacts with the
     // current time cursor)
 
-    let response = match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+    let response = match visible_history_boundary.kind {
+        VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => {
             // see note above
             let low_bound_override = if low_bound {
                 None
             } else {
-                Some(other_boundary_absolute.saturating_sub(current_time))
+                Some(other_boundary_absolute - current_time)
             };
+            let value = &mut visible_history_boundary.time;
 
             match time_type {
                 TimeType::Time => Some(
@@ -598,13 +583,14 @@ fn visible_history_boundary_ui(
                 ),
             }
         }
-        VisibleHistoryBoundary::Absolute(value) => {
+        VisibleTimeRangeBoundaryKind::Absolute => {
             // see note above
             let low_bound_override = if low_bound {
                 None
             } else {
                 Some(other_boundary_absolute)
             };
+            let value = &mut visible_history_boundary.time;
 
             match time_type {
                 TimeType::Time => {
@@ -629,7 +615,7 @@ fn visible_history_boundary_ui(
                 ),
             }
         }
-        VisibleHistoryBoundary::Infinite => None,
+        VisibleTimeRangeBoundaryKind::Infinite => None,
     };
 
     response.map_or(false, |r| r.dragged() || r.has_focus())
@@ -697,9 +683,9 @@ impl TimelineSpec {
     fn sequence_drag_value(
         &self,
         ui: &mut egui::Ui,
-        value: &mut i64,
+        value: &mut TimeInt,
         absolute: bool,
-        low_bound_override: Option<i64>,
+        low_bound_override: Option<TimeInt>,
     ) -> Response {
         let mut time_range = if absolute {
             self.abs_range.clone()
@@ -712,11 +698,11 @@ impl TimelineSpec {
         let speed = (span as f32 * 0.005).at_least(1.0);
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.at_least(*time_range.start())..=*time_range.end();
+            time_range = low_bound_override.0.at_least(*time_range.start())..=*time_range.end();
         }
 
         ui.add(
-            egui::DragValue::new(value)
+            egui::DragValue::new(&mut value.0)
                 .clamp_range(time_range)
                 .speed(speed),
         )
@@ -734,9 +720,9 @@ impl TimelineSpec {
     fn temporal_drag_value(
         &self,
         ui: &mut egui::Ui,
-        value: &mut i64,
+        value: &mut TimeInt,
         absolute: bool,
-        low_bound_override: Option<i64>,
+        low_bound_override: Option<TimeInt>,
         time_zone_for_timestamps: TimeZone,
     ) -> (Response, Option<Response>) {
         let mut time_range = if absolute {
@@ -756,10 +742,10 @@ impl TimelineSpec {
         let speed = (time_range.end() - time_range.start()) as f32 / factor * 0.005;
 
         if let Some(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.at_least(*time_range.start())..=*time_range.end();
+            time_range = low_bound_override.0.at_least(*time_range.start())..=*time_range.end();
         }
 
-        let mut time_unit = (*value - offset) as f32 / factor;
+        let mut time_unit = (value.0 - offset) as f32 / factor;
 
         let time_range = (*time_range.start() - offset) as f32 / factor
             ..=(*time_range.end() - offset) as f32 / factor;
@@ -768,8 +754,7 @@ impl TimelineSpec {
             self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
-                    TimeType::Time
-                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
+                    TimeType::Time.format(TimeInt(base_time), time_zone_for_timestamps)
                 ))
             })
         } else {
@@ -783,7 +768,7 @@ impl TimelineSpec {
                 .suffix(self.unit_symbol),
         );
 
-        *value = (time_unit * factor).round() as i64 + offset;
+        *value = TimeInt((time_unit * factor).round() as i64 + offset);
 
         (drag_value_response, base_time_response)
     }

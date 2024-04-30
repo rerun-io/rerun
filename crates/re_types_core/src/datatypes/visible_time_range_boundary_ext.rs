@@ -33,6 +33,22 @@ impl VisibleTimeRangeBoundary {
             VisibleTimeRangeBoundaryKind::Infinite => TimeInt::MAX,
         }
     }
+
+    /// Creates a new absolute boundary.
+    pub fn absolute(time: TimeInt) -> Self {
+        Self {
+            kind: VisibleTimeRangeBoundaryKind::Absolute,
+            time,
+        }
+    }
+
+    /// Creates a new cursor relative boundary.
+    pub fn relative_to_time_cursor(time: TimeInt) -> Self {
+        Self {
+            kind: VisibleTimeRangeBoundaryKind::RelativeToTimeCursor,
+            time,
+        }
+    }
 }
 
 impl PartialEq for VisibleTimeRangeBoundary {

@@ -128,7 +128,12 @@ impl TimeType {
     }
 
     #[inline]
-    pub fn format(&self, time_int: TimeInt, time_zone_for_timestamps: TimeZone) -> String {
+    pub fn format(
+        &self,
+        time_int: impl Into<TimeInt>,
+        time_zone_for_timestamps: TimeZone,
+    ) -> String {
+        let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
             // TODO(#5264): remove time panel hack once we migrate to the new static UI

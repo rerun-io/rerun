@@ -23,7 +23,7 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Type of boundary for visible history.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct VisibleTimeRangeBoundary {
     /// Type of the boundary.
     pub kind: crate::datatypes::VisibleTimeRangeBoundaryKind,

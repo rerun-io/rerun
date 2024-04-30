@@ -104,9 +104,9 @@ impl TimeRange {
 
     pub fn from_visible_time_range(
         range: &re_types_core::datatypes::VisibleTimeRange,
-        cursor: TimeInt,
+        cursor: impl Into<re_types_core::datatypes::TimeInt>,
     ) -> Self {
-        let cursor = cursor.as_i64().into();
+        let cursor = cursor.into();
 
         let mut min = range.start.start_boundary_time(cursor);
         let mut max = range.end.end_boundary_time(cursor);

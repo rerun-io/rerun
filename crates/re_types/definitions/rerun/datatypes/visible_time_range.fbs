@@ -25,6 +25,7 @@ enum VisibleTimeRangeBoundaryKind: byte (
 
 /// Type of boundary for visible history.
 struct VisibleTimeRangeBoundary (
+  "attr.rust.derive": "Copy",
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// Type of the boundary.
