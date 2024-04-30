@@ -130,6 +130,20 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
 
     #[cfg(feature = "to_archetype")]
     let component_names = {
+        // Make sure to break if these names change, so people know to update the fallback path below.
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                re_types::components::TensorData::name(),
+                "rerun.components.TensorData"
+            );
+            assert_eq!(
+                re_types::components::MeshProperties::name(),
+                "rerun.components.MeshProperties"
+            );
+            assert_eq!(re_types::components::Blob::name(), "rerun.components.Blob");
+        }
+
         use re_types_core::Loggable as _;
         [
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
