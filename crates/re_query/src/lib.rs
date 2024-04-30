@@ -129,24 +129,31 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     static NOT_CACHEABLE: OnceLock<re_types_core::ComponentNameSet> = OnceLock::new();
 
     #[cfg(feature = "to_archetype")]
-    use re_types_core::Loggable as _;
-    let not_cacheable = NOT_CACHEABLE.get_or_init(|| {
+    let component_names = {
+        use re_types_core::Loggable as _;
         [
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
             // want yet another copy.
-            #[cfg(feature = "to_archetype")]
             re_types::components::TensorData::name(),
             // TODO(#5974): meshes are already cached in the ad-hoc mesh cache, we don't
             // want yet another copy.
-            #[cfg(feature = "to_archetype")]
             re_types::components::MeshProperties::name(),
             // TODO(#5974): blobs are used for assets, which are themselves already cached in
             // the ad-hoc mesh cache -- we don't want yet another copy.
-            #[cfg(feature = "to_archetype")]
             re_types::components::Blob::name(),
         ]
-        .into()
-    });
+    };
+
+    // Horrible hack so we can still make this work when features are disabled.
+    // Not great, but this all a hack anyhow.
+    #[cfg(not(feature = "to_archetype"))]
+    let component_names = [
+        "rerun.components.TensorData".into(),
+        "rerun.components.MeshProperties".into(),
+        "rerun.components.Blob".into(),
+    ];
+
+    let not_cacheable = NOT_CACHEABLE.get_or_init(|| component_names.into());
 
     !component_name.is_indicator_component() && !not_cacheable.contains(&component_name)
 }
