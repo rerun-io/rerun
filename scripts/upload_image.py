@@ -29,7 +29,7 @@ Use the script:
 
     python3 scripts/upload_image.py --help
 
-or the just command:
+or the pixi command:
 
     pixi run upload-image --help
 
