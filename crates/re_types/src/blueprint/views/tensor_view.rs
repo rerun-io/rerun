@@ -38,4 +38,9 @@ impl ::re_types_core::SizeBytes for TensorView {
     }
 }
 
-impl TensorView {}
+impl ::re_types_core::View for TensorView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Tensor".into()
+    }
+}

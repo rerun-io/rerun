@@ -45,4 +45,9 @@ impl ::re_types_core::SizeBytes for TimeSeriesView {
     }
 }
 
-impl TimeSeriesView {}
+impl ::re_types_core::View for TimeSeriesView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "TimeSeries".into()
+    }
+}

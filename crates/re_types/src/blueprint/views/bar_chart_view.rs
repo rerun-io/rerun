@@ -38,4 +38,9 @@ impl ::re_types_core::SizeBytes for BarChartView {
     }
 }
 
-impl BarChartView {}
+impl ::re_types_core::View for BarChartView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "BarChart".into()
+    }
+}

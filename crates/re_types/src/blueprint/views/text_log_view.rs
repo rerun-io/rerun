@@ -38,4 +38,9 @@ impl ::re_types_core::SizeBytes for TextLogView {
     }
 }
 
-impl TextLogView {}
+impl ::re_types_core::View for TextLogView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "TextLog".into()
+    }
+}

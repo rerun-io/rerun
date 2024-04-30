@@ -48,4 +48,9 @@ impl ::re_types_core::SizeBytes for Spatial2DView {
     }
 }
 
-impl Spatial2DView {}
+impl ::re_types_core::View for Spatial2DView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "2D".into()
+    }
+}

@@ -65,4 +65,9 @@ impl std::ops::Deref for Spatial3DView {
     }
 }
 
-impl Spatial3DView {}
+impl ::re_types_core::View for Spatial3DView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "3D".into()
+    }
+}

@@ -38,4 +38,9 @@ impl ::re_types_core::SizeBytes for TextDocumentView {
     }
 }
 
-impl TextDocumentView {}
+impl ::re_types_core::View for TextDocumentView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "TextDocument".into()
+    }
+}
