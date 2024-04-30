@@ -32,6 +32,7 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 """
 examples = [
   # display order, most interesting first
+  "droid_dataset",
   "ros_node",
   "nuscenes_dataset",
   "ros_bridge",
@@ -42,7 +43,6 @@ examples = [
   "rrt_star",
   "rgbd",
   "nv12",
-  "droid_dataset",
 ]
 
 [categories.generative-vision]
