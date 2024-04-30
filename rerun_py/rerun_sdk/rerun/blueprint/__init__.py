@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from . import archetypes, components, datatypes
+from . import archetypes, components
 from .api import (
     Blueprint,
     BlueprintLike,
@@ -25,7 +25,6 @@ from .components import (
     LockRangeDuringZoom,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
-from .datatypes import VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind
 from .views import (
     BarChartView,
     Spatial2DView,
