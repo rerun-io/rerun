@@ -28,7 +28,7 @@ table Mesh3D (
   // --- Recommended ---
 
   /// Optional indices for the triangles that make up the mesh.
-  triangle_indices: [rerun.components.UVector3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+  triangle_indices: [rerun.components.TriangleIndices] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// An optional normal for each vertex.
   vertex_normals: [rerun.components.Vector3D] ("attr.rerun.component_recommended", nullable, order: 2100);

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_types::{
     archetypes::Mesh3D,
-    components::{ClassId, Position3D, Texcoord2D, UVector3D, Vector3D},
+    components::{ClassId, Position3D, Texcoord2D, TriangleIndices, Vector3D},
     datatypes::{
         Material, Rgba32, TensorBuffer, TensorData, TensorDimension, UVec3D, Vec2D, Vec3D,
     },
@@ -32,8 +32,8 @@ fn roundtrip() {
             Position3D(Vec3D([10.0, 20.0, 30.0])),
         ],
         triangle_indices: Some(vec![
-            UVector3D(UVec3D([1, 2, 3])), //
-            UVector3D(UVec3D([4, 5, 6])), //
+            TriangleIndices(UVec3D([1, 2, 3])), //
+            TriangleIndices(UVec3D([4, 5, 6])), //
         ]),
         vertex_normals: Some(vec![
             Vector3D(Vec3D([4.0, 5.0, 6.0])),    //

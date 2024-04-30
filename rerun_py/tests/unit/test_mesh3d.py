@@ -4,7 +4,7 @@ import itertools
 from typing import Any, Optional, cast
 
 import rerun as rr
-from rerun.components import MaterialBatch, Position3DBatch, UVector3DBatch, Vector3DBatch
+from rerun.components import MaterialBatch, Position3DBatch, TriangleIndicesBatch, Vector3DBatch
 from rerun.components.texcoord2d import Texcoord2DBatch
 from rerun.datatypes import (
     ClassIdArrayLike,
@@ -105,7 +105,7 @@ def test_mesh3d() -> None:
         assert arch.vertex_normals == vec3ds_expected(vertex_normals, Vector3DBatch)
         assert arch.vertex_colors == colors_expected(vertex_colors)
         assert arch.vertex_texcoords == vec2ds_expected(vertex_texcoords, Texcoord2DBatch)
-        assert arch.triangle_indices == uvec3ds_expected(triangle_indices, UVector3DBatch)
+        assert arch.triangle_indices == uvec3ds_expected(triangle_indices, TriangleIndicesBatch)
         assert arch.mesh_material == mesh_material_expected(mesh_material)
         assert arch.class_ids == class_ids_expected(class_ids)
 

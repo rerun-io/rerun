@@ -6,7 +6,7 @@ use re_renderer::renderer::MeshInstance;
 use re_types::{
     archetypes::Mesh3D,
     components::{
-        ClassId, Color, Material, Position3D, TensorData, Texcoord2D, UVector3D, Vector3D,
+        ClassId, Color, Material, Position3D, TensorData, Texcoord2D, TriangleIndices, Vector3D,
     },
 };
 use re_viewer_context::{
@@ -44,7 +44,7 @@ struct Mesh3DComponentData<'a> {
     vertex_colors: &'a [Color],
     vertex_texcoords: &'a [Texcoord2D],
 
-    triangle_indices: Option<&'a [UVector3D]>,
+    triangle_indices: Option<&'a [TriangleIndices]>,
     mesh_material: Option<&'a Material>,
     albedo_texture: Option<&'a TensorData>,
 

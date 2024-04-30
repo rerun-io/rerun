@@ -1,4 +1,4 @@
-use crate::{components::UVector3D, datatypes::UVec3D};
+use crate::{components::TriangleIndices, datatypes::UVec3D};
 
 use super::Mesh3D;
 
@@ -24,7 +24,7 @@ impl Mesh3D {
         let num_vertices = self.num_vertices();
 
         if let Some(indices) = self.triangle_indices.as_ref() {
-            for &UVector3D(UVec3D([x, y, z])) in indices {
+            for &TriangleIndices(UVec3D([x, y, z])) in indices {
                 if num_vertices <= x as usize {
                     return Err(Mesh3DError::IndexOutOfBounds {
                         index: x,

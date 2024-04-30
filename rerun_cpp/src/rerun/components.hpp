@@ -37,7 +37,7 @@
 #include "components/text.hpp"
 #include "components/text_log_level.hpp"
 #include "components/transform3d.hpp"
-#include "components/uvector3d.hpp"
+#include "components/triangle_indices.hpp"
 #include "components/vector2d.hpp"
 #include "components/vector3d.hpp"
 #include "components/view_coordinates.hpp"

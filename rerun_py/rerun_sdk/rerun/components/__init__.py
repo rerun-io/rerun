@@ -61,7 +61,7 @@ from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
-from .uvector3d import UVector3D, UVector3DBatch, UVector3DType
+from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .view_coordinates import (
@@ -213,9 +213,9 @@ __all__ = [
     "Transform3D",
     "Transform3DBatch",
     "Transform3DType",
-    "UVector3D",
-    "UVector3DBatch",
-    "UVector3DType",
+    "TriangleIndices",
+    "TriangleIndicesBatch",
+    "TriangleIndicesType",
     "Vector2D",
     "Vector2DBatch",
     "Vector2DType",

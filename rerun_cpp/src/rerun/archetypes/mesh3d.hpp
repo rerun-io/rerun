@@ -11,7 +11,7 @@
 #include "../components/position3d.hpp"
 #include "../components/tensor_data.hpp"
 #include "../components/texcoord2d.hpp"
-#include "../components/uvector3d.hpp"
+#include "../components/triangle_indices.hpp"
 #include "../components/vector3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
@@ -49,7 +49,7 @@ namespace rerun::archetypes {
     ///         {0, 255, 0},
     ///         {255, 0, 0},
     ///     };
-    ///     const rerun::UVector3D indices[1] = {{2, 1, 0}};
+    ///     const rerun::TriangleIndices indices[1] = {{2, 1, 0}};
     ///
     ///     rec.log(
     ///         "triangle",
@@ -67,7 +67,7 @@ namespace rerun::archetypes {
         Collection<rerun::components::Position3D> vertex_positions;
 
         /// Optional indices for the triangles that make up the mesh.
-        std::optional<Collection<rerun::components::UVector3D>> triangle_indices;
+        std::optional<Collection<rerun::components::TriangleIndices>> triangle_indices;
 
         /// An optional normal for each vertex.
         std::optional<Collection<rerun::components::Vector3D>> vertex_normals;
@@ -107,7 +107,8 @@ namespace rerun::archetypes {
             : vertex_positions(std::move(_vertex_positions)) {}
 
         /// Optional indices for the triangles that make up the mesh.
-        Mesh3D with_triangle_indices(Collection<rerun::components::UVector3D> _triangle_indices
+        Mesh3D with_triangle_indices(
+            Collection<rerun::components::TriangleIndices> _triangle_indices
         ) && {
             triangle_indices = std::move(_triangle_indices);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -18,7 +18,7 @@ int main() {
         {0, 255, 0},
         {255, 0, 0},
     };
-    const rerun::UVector3D indices[1] = {{2, 1, 0}};
+    const rerun::TriangleIndices indices[1] = {{2, 1, 0}};
 
     rec.log(
         "triangle",

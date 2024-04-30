@@ -33,7 +33,7 @@ include "./components/texcoord2d.fbs";
 include "./components/text.fbs";
 include "./components/text_log_level.fbs";
 include "./components/transform3d.fbs";
-include "./components/uvector3d.fbs";
+include "./components/triangle_indices.fbs";
 include "./components/vector2d.fbs";
 include "./components/vector3d.fbs";
 include "./components/view_coordinates.fbs";

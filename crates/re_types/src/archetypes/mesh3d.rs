@@ -61,7 +61,7 @@ pub struct Mesh3D {
     pub vertex_positions: Vec<crate::components::Position3D>,
 
     /// Optional indices for the triangles that make up the mesh.
-    pub triangle_indices: Option<Vec<crate::components::UVector3D>>,
+    pub triangle_indices: Option<Vec<crate::components::TriangleIndices>>,
 
     /// An optional normal for each vertex.
     pub vertex_normals: Option<Vec<crate::components::Vector3D>>,
@@ -104,7 +104,7 @@ impl ::re_types_core::SizeBytes for Mesh3D {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::Position3D>>::is_pod()
-            && <Option<Vec<crate::components::UVector3D>>>::is_pod()
+            && <Option<Vec<crate::components::TriangleIndices>>>::is_pod()
             && <Option<Vec<crate::components::Vector3D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
@@ -121,7 +121,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Mesh3DIndicator".into(),
-            "rerun.components.UVector3D".into(),
+            "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
         ]
     });
@@ -142,7 +142,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
         [
             "rerun.components.Position3D".into(),
             "rerun.components.Mesh3DIndicator".into(),
-            "rerun.components.UVector3D".into(),
+            "rerun.components.TriangleIndices".into(),
             "rerun.components.Vector3D".into(),
             "rerun.components.ClassId".into(),
             "rerun.components.Color".into(),
@@ -216,19 +216,19 @@ impl ::re_types_core::Archetype for Mesh3D {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
         };
-        let triangle_indices = if let Some(array) = arrays_by_name.get("rerun.components.UVector3D")
-        {
-            Some({
-                <crate::components::UVector3D>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
-            })
-        } else {
-            None
-        };
+        let triangle_indices =
+            if let Some(array) = arrays_by_name.get("rerun.components.TriangleIndices") {
+                Some({
+                    <crate::components::TriangleIndices>::from_arrow_opt(&**array)
+                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
+                        .into_iter()
+                        .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                        .collect::<DeserializationResult<Vec<_>>>()
+                        .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
+                })
+            } else {
+                None
+            };
         let vertex_normals = if let Some(array) = arrays_by_name.get("rerun.components.Vector3D") {
             Some({
                 <crate::components::Vector3D>::from_arrow_opt(&**array)
@@ -367,7 +367,7 @@ impl Mesh3D {
     #[inline]
     pub fn with_triangle_indices(
         mut self,
-        triangle_indices: impl IntoIterator<Item = impl Into<crate::components::UVector3D>>,
+        triangle_indices: impl IntoIterator<Item = impl Into<crate::components::TriangleIndices>>,
     ) -> Self {
         self.triangle_indices = Some(triangle_indices.into_iter().map(Into::into).collect());
         self

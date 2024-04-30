@@ -9,10 +9,10 @@ namespace rerun.components;
 
 // ---
 
-/// A uint32 vector in 3D space.
-struct UVector3D (
+/// The three indices of a triangle mesh.
+struct TriangleIndices (
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {
-  vector: rerun.datatypes.UVec3D (order: 100);
+  indices: rerun.datatypes.UVec3D (order: 100);
 }

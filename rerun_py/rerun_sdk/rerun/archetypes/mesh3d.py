@@ -83,10 +83,10 @@ class Mesh3D(Mesh3DExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    triangle_indices: components.UVector3DBatch | None = field(
+    triangle_indices: components.TriangleIndicesBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.UVector3DBatch._optional,  # type: ignore[misc]
+        converter=components.TriangleIndicesBatch._optional,  # type: ignore[misc]
     )
     # Optional indices for the triangles that make up the mesh.
     #
