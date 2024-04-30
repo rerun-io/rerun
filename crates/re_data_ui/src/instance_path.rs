@@ -1,11 +1,8 @@
-use std::sync::Arc;
-
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, UiLayout, ViewerContext};
 
-use super::DataUi;
-use crate::item_ui;
+use super::{label_for_ui_layout, DataUi};
 
 impl DataUi for InstancePath {
     fn data_ui(
@@ -27,12 +24,18 @@ impl DataUi for InstancePath {
         else {
             if ctx.recording().is_known_entity(entity_path) {
                 // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
-                ui.label(format!(
-                    "No components logged on timeline {:?}",
-                    query.timeline().name()
-                ));
+                label_for_ui_layout(
+                    ui,
+                    ui_layout,
+                    format!(
+                        "No components logged on timeline {:?}",
+                        query.timeline().name()
+                    ),
+                );
             } else {
-                ui.label(
+                label_for_ui_layout(
+                    ui,
+                    ui_layout,
                     ctx.re_ui
                         .error_text(format!("Unknown entity: {entity_path:?}")),
                 );
@@ -40,39 +43,69 @@ impl DataUi for InstancePath {
             return;
         };
 
-        let mut components = crate::component_list_for_ui(&components);
+        let components = crate::component_list_for_ui(&components);
+        let indicator_count = components
+            .iter()
+            .filter(|c| c.is_indicator_component())
+            .count();
 
-        let split = components.partition_point(|c| c.is_indicator_component());
-        let normal_components = components.split_off(split);
-        let indicator_components = components;
-
-        let show_indicator_comps = match ui_layout {
-            UiLayout::List | UiLayout::Tooltip => {
-                // Skip indicator components in hover ui (unless there are no other
-                // types of components).
-                !normal_components.is_empty()
-            }
-            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => true,
-        };
-
-        // First show indicator components, outside the grid:
-        if show_indicator_comps {
-            for component_name in indicator_components {
-                item_ui::component_path_button(
-                    ctx,
-                    ui,
-                    &ComponentPath::new(entity_path.clone(), component_name),
-                    db,
-                );
-            }
+        if ui_layout == UiLayout::List {
+            label_for_ui_layout(
+                ui,
+                ui_layout,
+                format!(
+                    "{} component{} (including {} indicator component{})",
+                    components.len(),
+                    if components.len() > 1 { "s" } else { "" },
+                    indicator_count,
+                    if indicator_count > 1 { "s" } else { "" }
+                ),
+            );
+            return;
         }
 
-        // Now show the rest of the components:
-        egui::Grid::new("components")
-            .spacing(ui.spacing().item_spacing)
-            .num_columns(2)
-            .show(ui, |ui| {
-                for component_name in normal_components {
+        let show_indicator_comps = match ui_layout {
+            UiLayout::Tooltip => {
+                // Skip indicator components in hover ui (unless there are no other
+                // types of components).
+                indicator_count == components.len()
+            }
+            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => true,
+            UiLayout::List => false, // unreachable
+        };
+
+        let interactive = ui_layout != UiLayout::Tooltip;
+
+        re_ui::list_item2::list_item_scope(ui, "component list", |ui| {
+            for component_name in components {
+                if !show_indicator_comps && component_name.is_indicator_component() {
+                    continue;
+                }
+
+                let component_path = ComponentPath::new(entity_path.clone(), component_name);
+                let is_static = db.is_component_static(&component_path).unwrap_or_default();
+                let icon = if is_static {
+                    &re_ui::icons::COMPONENT_STATIC
+                } else {
+                    &re_ui::icons::COMPONENT
+                };
+                let item = Item::ComponentPath(component_path);
+
+                let mut list_item = ctx.re_ui.list_item2().interactive(interactive);
+
+                if interactive {
+                    let is_hovered = ctx.selection_state().highlight_for_ui_element(&item)
+                        == HoverHighlight::Hovered;
+                    list_item = list_item.force_hovered(is_hovered);
+                }
+
+                let response = if component_name.is_indicator_component() {
+                    list_item.show_flat(
+                        ui,
+                        re_ui::list_item2::LabelContent::new(component_name.short_name())
+                            .with_icon(icon),
+                    )
+                } else {
                     let results = db.query_caches().latest_at(
                         db.store(),
                         query,
@@ -83,36 +116,44 @@ impl DataUi for InstancePath {
                         continue; // no need to show components that are unset at this point in time
                     };
 
-                    item_ui::component_path_button(
-                        ctx,
+                    list_item.show_flat(
                         ui,
-                        &ComponentPath::new(entity_path.clone(), component_name),
-                        db,
-                    );
+                        re_ui::list_item2::PropertyContent::new(component_name.short_name())
+                            .with_icon(icon)
+                            .value_fn(|_, ui, _| {
+                                if instance.is_all() {
+                                    crate::EntityLatestAtResults {
+                                        entity_path: entity_path.clone(),
+                                        component_name,
+                                        results: std::sync::Arc::clone(results),
+                                    }
+                                    .data_ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                    );
+                                } else {
+                                    ctx.component_ui_registry.ui(
+                                        ctx,
+                                        ui,
+                                        UiLayout::List,
+                                        query,
+                                        db,
+                                        entity_path,
+                                        results,
+                                        instance,
+                                    );
+                                }
+                            }),
+                    )
+                };
 
-                    if instance.is_all() {
-                        crate::EntityLatestAtResults {
-                            entity_path: entity_path.clone(),
-                            component_name,
-                            results: Arc::clone(results),
-                        }
-                        .data_ui(ctx, ui, UiLayout::List, query, db);
-                    } else {
-                        ctx.component_ui_registry.ui(
-                            ctx,
-                            ui,
-                            UiLayout::List,
-                            query,
-                            db,
-                            entity_path,
-                            results,
-                            instance,
-                        );
-                    }
-
-                    ui.end_row();
+                if interactive {
+                    ctx.select_hovered_on_click(&response, item);
                 }
-                Some(())
-            });
+            }
+        });
     }
 }
