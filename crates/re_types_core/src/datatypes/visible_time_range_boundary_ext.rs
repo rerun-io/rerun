@@ -1,5 +1,4 @@
-use super::{VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
-use re_types_core::datatypes::TimeInt;
+use super::{TimeInt, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
 
 impl VisibleTimeRangeBoundary {
     /// Put the boundary at the current time cursor.
@@ -32,6 +31,22 @@ impl VisibleTimeRangeBoundary {
             VisibleTimeRangeBoundaryKind::Absolute => self.time,
             VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => TimeInt(cursor.0 + self.time.0),
             VisibleTimeRangeBoundaryKind::Infinite => TimeInt::MAX,
+        }
+    }
+
+    /// Creates a new absolute boundary.
+    pub fn absolute(time: TimeInt) -> Self {
+        Self {
+            kind: VisibleTimeRangeBoundaryKind::Absolute,
+            time,
+        }
+    }
+
+    /// Creates a new cursor relative boundary.
+    pub fn relative_to_time_cursor(time: TimeInt) -> Self {
+        Self {
+            kind: VisibleTimeRangeBoundaryKind::RelativeToTimeCursor,
+            time,
         }
     }
 }

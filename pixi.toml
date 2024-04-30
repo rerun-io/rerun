@@ -201,6 +201,7 @@ fetch-artifact = "python scripts/ci/fetch_artifact.py"
 search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
+# TODO(#6060): Put this in an environment and remove the requirements file.
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 [feature.cpp.tasks]

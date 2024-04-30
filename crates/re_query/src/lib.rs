@@ -6,7 +6,6 @@ mod flat_vec_deque;
 mod latest_at;
 mod promise;
 mod range;
-mod visible_history;
 
 pub mod clamped_zip;
 pub mod range_zip;
@@ -19,7 +18,6 @@ pub use self::latest_at::{LatestAtComponentResults, LatestAtMonoResult, LatestAt
 pub use self::promise::{Promise, PromiseId, PromiseResolver, PromiseResult};
 pub use self::range::{RangeComponentResults, RangeData, RangeResults};
 pub use self::range_zip::*;
-pub use self::visible_history::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
 
 pub(crate) use self::latest_at::LatestAtCache;
 pub(crate) use self::range::{RangeCache, RangeComponentResultsInner};

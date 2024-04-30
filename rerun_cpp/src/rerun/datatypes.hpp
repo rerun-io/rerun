@@ -40,3 +40,6 @@
 #include "datatypes/vec2d.hpp"
 #include "datatypes/vec3d.hpp"
 #include "datatypes/vec4d.hpp"
+#include "datatypes/visible_time_range.hpp"
+#include "datatypes/visible_time_range_boundary.hpp"
+#include "datatypes/visible_time_range_boundary_kind.hpp"

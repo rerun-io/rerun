@@ -46,4 +46,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.
 * [`Vec4D`](datatypes/vec4d.md): A vector in 4D space.
+* [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a timelines.
+* [`VisibleTimeRangeBoundary`](datatypes/visible_time_range_boundary.md): Type of boundary for visible history.
+* [`VisibleTimeRangeBoundaryKind`](datatypes/visible_time_range_boundary_kind.md): Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
 

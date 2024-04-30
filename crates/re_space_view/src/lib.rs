@@ -9,7 +9,6 @@ mod screenshot;
 mod space_view;
 mod space_view_contents;
 mod sub_archetypes; // TODO(andreas): better name before `sub_archetype` sticks around?
-mod visual_time_range;
 mod visualizable;
 
 pub use data_query::{DataQuery, EntityOverrideContext, PropertyResolver};
@@ -20,11 +19,6 @@ pub use space_view_contents::SpaceViewContents;
 pub use sub_archetypes::{
     edit_blueprint_component, entity_path_for_view_property, get_blueprint_component,
     query_view_property, query_view_property_or_default, view_property,
-};
-pub use visual_time_range::{
-    query_visual_history, time_range_from_visible_time_range,
-    visible_history_boundary_from_time_range_boundary,
-    visible_history_boundary_to_time_range_boundary,
 };
 pub use visualizable::determine_visualizable_entities;
 

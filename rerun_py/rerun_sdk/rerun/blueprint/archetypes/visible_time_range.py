@@ -9,9 +9,9 @@ from typing import Any
 
 from attrs import define, field
 
+from ... import datatypes
 from ..._baseclasses import Archetype
 from ...blueprint import components as blueprint_components
-from ...blueprint import datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
 
 __all__ = ["VisibleTimeRange"]
@@ -36,8 +36,8 @@ class VisibleTimeRange(Archetype):
     def __init__(
         self: Any,
         *,
-        sequence: blueprint_datatypes.VisibleTimeRangeLike | None = None,
-        time: blueprint_datatypes.VisibleTimeRangeLike | None = None,
+        sequence: datatypes.VisibleTimeRangeLike | None = None,
+        time: datatypes.VisibleTimeRangeLike | None = None,
     ):
         """
         Create a new instance of the VisibleTimeRange archetype.

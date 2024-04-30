@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: The range of values on sequence timelines that will be included in a space view query.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct VisibleTimeRangeTime(pub crate::blueprint::datatypes::VisibleTimeRange);
+pub struct VisibleTimeRangeTime(pub crate::datatypes::VisibleTimeRange);
 
 impl ::re_types_core::SizeBytes for VisibleTimeRangeTime {
     #[inline]
@@ -35,28 +35,28 @@ impl ::re_types_core::SizeBytes for VisibleTimeRangeTime {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::datatypes::VisibleTimeRange>::is_pod()
+        <crate::datatypes::VisibleTimeRange>::is_pod()
     }
 }
 
-impl<T: Into<crate::blueprint::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRangeTime {
+impl<T: Into<crate::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRangeTime {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::blueprint::datatypes::VisibleTimeRange> for VisibleTimeRangeTime {
+impl std::borrow::Borrow<crate::datatypes::VisibleTimeRange> for VisibleTimeRangeTime {
     #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::VisibleTimeRange {
+    fn borrow(&self) -> &crate::datatypes::VisibleTimeRange {
         &self.0
     }
 }
 
 impl std::ops::Deref for VisibleTimeRangeTime {
-    type Target = crate::blueprint::datatypes::VisibleTimeRange;
+    type Target = crate::datatypes::VisibleTimeRange;
 
     #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::VisibleTimeRange {
+    fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
         &self.0
     }
 }
@@ -78,12 +78,12 @@ impl ::re_types_core::Loggable for VisibleTimeRangeTime {
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "start",
-                <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
+                <crate::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "end",
-                <crate::blueprint::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
+                <crate::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -116,7 +116,7 @@ impl ::re_types_core::Loggable for VisibleTimeRangeTime {
             };
             {
                 _ = data0_bitmap;
-                crate::blueprint::datatypes::VisibleTimeRange::to_arrow_opt(data0)?
+                crate::datatypes::VisibleTimeRange::to_arrow_opt(data0)?
             }
         })
     }
@@ -131,7 +131,7 @@ impl ::re_types_core::Loggable for VisibleTimeRangeTime {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::blueprint::datatypes::VisibleTimeRange::from_arrow_opt(arrow_data)
+            crate::datatypes::VisibleTimeRange::from_arrow_opt(arrow_data)
                 .with_context("rerun.blueprint.components.VisibleTimeRangeTime#value")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))

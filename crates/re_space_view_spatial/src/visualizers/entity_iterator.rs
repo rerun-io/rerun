@@ -2,13 +2,12 @@ use itertools::Either;
 use re_data_store::{LatestAtQuery, RangeQuery};
 use re_entity_db::{EntityDb, EntityProperties};
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_query::{ExtraQueryHistory, Results};
+use re_query::Results;
 use re_renderer::DepthOffset;
-use re_space_view::query_visual_history;
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewerContext,
+    IdentifiedViewSystem, QueryRange, SpaceViewClass, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -43,38 +42,37 @@ pub fn clamped<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> 
 pub fn query_archetype_with_history<A: Archetype>(
     entity_db: &EntityDb,
     timeline: &Timeline,
-    time: &TimeInt,
-    history: &ExtraQueryHistory, // TODO(andreas): don't take extra history, take something like `re_viewer_context::QueryRange` so we don't need to convert.
+    timeline_cursor: TimeInt,
+    query_range: &QueryRange,
     entity_path: &EntityPath,
 ) -> Results {
-    let visible_history = match timeline.typ() {
-        re_log_types::TimeType::Time => history.nanos,
-        re_log_types::TimeType::Sequence => history.sequences,
-    };
-
-    let time_range = visible_history.time_range(*time);
-
     let store = entity_db.store();
     let caches = entity_db.query_caches();
 
-    if !history.enabled || time_range.min() == time_range.max() {
-        let latest_query = LatestAtQuery::new(*timeline, time_range.min());
-        let results = caches.latest_at(
-            store,
-            &latest_query,
-            entity_path,
-            A::all_components().iter().copied(),
-        );
-        (latest_query, results).into()
-    } else {
-        let range_query = RangeQuery::new(*timeline, time_range);
-        let results = caches.range(
-            store,
-            &range_query,
-            entity_path,
-            A::all_components().iter().copied(),
-        );
-        (range_query, results).into()
+    match query_range {
+        QueryRange::TimeRange(time_range) => {
+            let range_query = RangeQuery::new(
+                *timeline,
+                re_log_types::TimeRange::from_visible_time_range(time_range, timeline_cursor),
+            );
+            let results = caches.range(
+                store,
+                &range_query,
+                entity_path,
+                A::all_components().iter().copied(),
+            );
+            (range_query, results).into()
+        }
+        QueryRange::LatestAt => {
+            let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
+            let results = caches.latest_at(
+                store,
+                &latest_query,
+                entity_path,
+                A::all_components().iter().copied(),
+            );
+            (latest_query, results).into()
+        }
     }
 }
 
@@ -133,13 +131,11 @@ where
             space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
-        let extra_history = query_visual_history(ctx, data_result);
-
         let results = query_archetype_with_history::<A>(
             ctx.recording(),
             &query.timeline,
-            &query.latest_at,
-            &extra_history,
+            query.latest_at,
+            data_result.query_range(),
             &data_result.entity_path,
         );
 

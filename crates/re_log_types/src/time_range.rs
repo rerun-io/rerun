@@ -101,6 +101,22 @@ impl TimeRange {
             max: self.max.max(other.max),
         }
     }
+
+    pub fn from_visible_time_range(
+        range: &re_types_core::datatypes::VisibleTimeRange,
+        cursor: impl Into<re_types_core::datatypes::TimeInt>,
+    ) -> Self {
+        let cursor = cursor.into();
+
+        let mut min = range.start.start_boundary_time(cursor);
+        let mut max = range.end.end_boundary_time(cursor);
+
+        if min > max {
+            std::mem::swap(&mut min, &mut max);
+        }
+
+        Self::new(min, max)
+    }
 }
 
 impl re_types_core::SizeBytes for TimeRange {
