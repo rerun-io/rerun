@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
+use re_data_store::LatestAtQuery;
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, TimeRange};
 use re_types_core::ComponentName;
@@ -47,7 +48,65 @@ impl Caches {
             };
 
             let mut cache = cache.write();
+
+            // TODO(#4810): Get rid of this once we have proper bucketing in place.
+            //
+            // Detects the case where the user loads a piece of data at the end of the time range, then a piece
+            // at the beginning of the range, and finally a piece right in the middle.
+            //
+            // DATA = ###################################################
+            //          |      |     |       |            \_____/
+            //          \______/     |       |            query #1
+            //          query #2     \_______/
+            //                       query #3
+            //
+            // and coarsly invalidates the whole range in that case, to avoid the kind of bugs
+            // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
+            {
+                let time_range = cache.per_data_time.read_recursive().time_range();
+                if let Some(time_range) = time_range {
+                    {
+                        let hole_start = time_range.max();
+                        let hole_end =
+                            TimeInt::new_temporal(query.range().min().as_i64().saturating_sub(1));
+                        if hole_start < hole_end {
+                            if let Some((data_time, _, _)) = store.latest_at(
+                                &LatestAtQuery::new(query.timeline(), hole_end),
+                                entity_path,
+                                component_name,
+                                &[component_name],
+                            ) {
+                                if data_time != hole_start {
+                                    re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
+                                    cache.pending_invalidation = Some(TimeInt::MIN);
+                                }
+                            }
+                        }
+                    }
+
+                    {
+                        let hole_start = query.range().max();
+                        let hole_end =
+                            TimeInt::new_temporal(time_range.min().as_i64().saturating_sub(1));
+                        if hole_start < hole_end {
+                            if let Some((data_time, _, _)) = store.latest_at(
+                                &LatestAtQuery::new(query.timeline(), hole_end),
+                                entity_path,
+                                component_name,
+                                &[component_name],
+                            ) {
+                                if data_time != hole_start {
+                                    re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
+                                    cache.pending_invalidation = Some(TimeInt::MIN);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             cache.handle_pending_invalidation();
+
             let cached = cache.range(store, query, entity_path, component_name);
             results.add(component_name, cached);
         }
