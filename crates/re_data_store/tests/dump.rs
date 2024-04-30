@@ -8,7 +8,7 @@ use re_data_store::{
 };
 use re_log_types::{
     build_frame_nr, build_log_time, example_components::MyIndex, DataRow, DataTable, EntityPath,
-    RowId, TableId,
+    RowId, TableId, TimePoint,
 };
 use re_types::datagen::{build_some_colors, build_some_positions2d};
 
@@ -269,6 +269,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
     let entity_path = entity_path.into();
 
+    let timeless = TimePoint::default();
     let frame1 = TimeInt::new_temporal(1);
     let frame2 = TimeInt::new_temporal(2);
     let frame3 = TimeInt::new_temporal(3);
@@ -282,7 +283,7 @@ fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
     let positions2 = build_some_positions2d(3);
     let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
-        ] => [instances1, positions2]);
+        ] => [instances1, positions2.clone()]);
 
     let positions3 = build_some_positions2d(10);
     let row3 = test_row!(entity_path @ [
@@ -292,9 +293,11 @@ fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
     let colors4 = build_some_colors(5);
     let row4 = test_row!(entity_path @ [
             build_frame_nr(frame4),
-        ] => [colors4]);
+        ] => [colors4.clone()]);
 
-    let mut table = DataTable::from_rows(TableId::new(), [row1, row2, row3, row4]);
+    let row0 = test_row!(entity_path @ timeless => [positions2, colors4]);
+
+    let mut table = DataTable::from_rows(TableId::new(), [row0, row1, row2, row3, row4]);
     table.compute_all_size_bytes();
 
     table
