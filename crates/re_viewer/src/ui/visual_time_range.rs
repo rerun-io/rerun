@@ -6,9 +6,9 @@ use egui::{NumExt as _, Response, Ui};
 use re_entity_db::{TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeInt, TimeType, TimeZone};
 use re_space_view::{
-    query_view_property, time_range_boundary_to_visible_history_boundary,
-    visible_history_boundary_to_time_range_boundary, visible_time_range_to_time_range,
-    SpaceViewBlueprint,
+    query_view_property, time_range_from_visible_time_range,
+    visible_history_boundary_from_time_range_boundary,
+    visible_history_boundary_to_time_range_boundary, SpaceViewBlueprint,
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -59,16 +59,11 @@ pub fn visual_time_range_ui_space_view(
     );
 
     let has_individual_range = match time_type {
-        TimeType::Time => property
-            .ok()
-            .flatten()
-            .map(|v| v.time)
-            .map_or(false, |v| v.is_some()),
+        TimeType::Time => property.ok().flatten().map_or(false, |v| v.time.is_some()),
         TimeType::Sequence => property
             .ok()
             .flatten()
-            .map(|v| v.sequence)
-            .map_or(false, |v| v.is_some()),
+            .map_or(false, |v| v.sequence.is_some()),
     };
 
     let query_range = space_view.query_range(
@@ -195,8 +190,8 @@ fn visual_time_range_ui(
 
             // Convert to legacy visual history type.
             let mut visible_history = VisibleHistory {
-                from: time_range_boundary_to_visible_history_boundary(from),
-                to: time_range_boundary_to_visible_history_boundary(to),
+                from: visible_history_boundary_from_time_range_boundary(from),
+                to: visible_history_boundary_from_time_range_boundary(to),
             };
 
             if has_individual_range {
@@ -357,7 +352,7 @@ fn visual_time_range_ui(
 
     if should_display_visible_history {
         if let Some(current_time) = time_ctrl.time_int() {
-            let range = visible_time_range_to_time_range(&resolved_range, current_time);
+            let range = time_range_from_visible_time_range(&resolved_range, current_time);
             ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(range);
         }
     }

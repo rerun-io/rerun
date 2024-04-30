@@ -124,7 +124,7 @@ pub struct EntityProperties {
     // To consider: Make a TransformAxis archetype whose indicator is what enables the visualizer
     // -> size etc. are now part of this archetype, not the `Transform` archetype
     // -> `TransformAxis` itself doesn't have a required component, but the visualizer has. Just like in SeriesLines & Scalar.
-    // TODO(andreas/jleibs): There's a pattern here that we should capture & formalize in the API / codegen / definitions.
+    // TODO(andreas)/TODO(jleibs): There's a pattern here that we should capture & formalize in the API / codegen / definitions.
     pub transform_3d_visible: EditableAutoValue<bool>,
 
     /// The length of the arrows in the entity's own coordinate system (space).

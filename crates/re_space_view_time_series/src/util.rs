@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, TimeRange};
-use re_space_view::visible_time_range_to_time_range;
+use re_space_view::time_range_from_visible_time_range;
 use re_types::{
     blueprint::datatypes::{VisibleTimeRange, VisibleTimeRangeBoundary},
     datatypes::Utf8,
@@ -54,7 +54,7 @@ pub fn determine_time_range(
         }
     };
 
-    let mut time_range = visible_time_range_to_time_range(&visible_time_range, time_cursor);
+    let mut time_range = time_range_from_visible_time_range(&visible_time_range, time_cursor);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

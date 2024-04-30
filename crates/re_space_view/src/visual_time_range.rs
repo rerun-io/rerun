@@ -14,7 +14,7 @@ use re_types::blueprint::datatypes::{
 };
 use re_viewer_context::ViewerContext;
 
-pub fn time_range_boundary_to_visible_history_boundary(
+pub fn visible_history_boundary_from_time_range_boundary(
     boundary: &VisibleTimeRangeBoundary,
 ) -> VisibleHistoryBoundary {
     match boundary.kind {
@@ -45,7 +45,7 @@ pub fn visible_history_boundary_to_time_range_boundary(
     }
 }
 
-pub fn visible_time_range_to_time_range(
+pub fn time_range_from_visible_time_range(
     range: &VisibleTimeRange,
     cursor: re_log_types::TimeInt,
 ) -> re_log_types::TimeRange {
@@ -83,8 +83,8 @@ pub fn query_visual_history(
                 re_log_types::TimeType::Time => ExtraQueryHistory {
                     enabled: true,
                     nanos: VisibleHistory {
-                        from: time_range_boundary_to_visible_history_boundary(&time_range.start),
-                        to: time_range_boundary_to_visible_history_boundary(&time_range.end),
+                        from: visible_history_boundary_from_time_range_boundary(&time_range.start),
+                        to: visible_history_boundary_from_time_range_boundary(&time_range.end),
                     },
                     sequences: Default::default(),
                 },
@@ -92,8 +92,8 @@ pub fn query_visual_history(
                     enabled: true,
                     nanos: Default::default(),
                     sequences: VisibleHistory {
-                        from: time_range_boundary_to_visible_history_boundary(&time_range.start),
-                        to: time_range_boundary_to_visible_history_boundary(&time_range.end),
+                        from: visible_history_boundary_from_time_range_boundary(&time_range.start),
+                        to: visible_history_boundary_from_time_range_boundary(&time_range.end),
                     },
                 },
             }
