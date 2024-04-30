@@ -5,11 +5,13 @@
 mod label_content;
 mod list_item;
 mod other_contents;
+mod property_content;
 mod scope;
 
 pub use label_content::*;
 pub use list_item::*;
 pub use other_contents::*;
+pub use property_content::*;
 pub use scope::*;
 
 /// Context provided to [`ListItemContent`] implementations
@@ -62,6 +64,7 @@ pub trait ListItemContent {
     ///
     /// If the content has some interactive elements, it should return its response. In particular,
     /// if the response is hovered, the list item will show a dimmer background highlight.
+    //TODO(ab): could the return type be just a bool meaning "inner interactive widget was hovered"?
     fn ui(
         self: Box<Self>,
         re_ui: &crate::ReUi,

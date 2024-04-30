@@ -13,6 +13,8 @@ pub struct State {
     // be generalized to some `full_span_scope` mechanism to be used by all full-span widgets beyond
     // `ListItem`.
     pub(crate) background_x_range: egui::Rangef,
+    // TODO(ab): record the use of right action button in all PropertyContent such as to not reserve
+    // right gutter space if none have it.
 }
 
 impl Default for State {

@@ -106,7 +106,7 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item as part of a flat list.
-    pub fn show_flat(self, ui: &mut Ui, content: impl ListItemContent + 'static) -> Response {
+    pub fn show_flat(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
             .inner
@@ -114,11 +114,7 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item as a leaf node from a hierarchical list.
-    pub fn show_hierarchical(
-        self,
-        ui: &mut Ui,
-        content: impl ListItemContent + 'static,
-    ) -> Response {
+    pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
             self.ui(
@@ -138,7 +134,7 @@ impl<'a> ListItem<'a> {
         ui: &mut Ui,
         id: impl Into<egui::Id>,
         default_open: bool,
-        content: impl ListItemContent + 'static,
+        content: impl ListItemContent + 'a,
         add_childrens: impl FnOnce(&ReUi, &mut egui::Ui) -> R,
     ) -> ShowCollapsingResponse<R> {
         let id = id.into();
@@ -185,7 +181,7 @@ impl<'a> ListItem<'a> {
         ui: &mut Ui,
         id: Option<egui::Id>,
         extra_indent: f32,
-        content: Box<dyn ListItemContent>,
+        content: Box<dyn ListItemContent + 'a>,
     ) -> ListItemResponse {
         let Self {
             re_ui,
