@@ -4,21 +4,12 @@ use eframe::emath::{Align, Align2};
 use eframe::epaint::text::TextWrapping;
 use egui::{NumExt, Response, Ui};
 
-/// Closure to draw the property value (right column).
-pub trait PropertyValueFn:
-    FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response>
-{
-}
-
-impl<F: FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response>>
-    PropertyValueFn for F
-{
-}
-
 /// Closure to draw an icon left of the label.
-pub trait IconFn: FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) {}
+type IconFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
 
-impl<F: FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals)> IconFn for F {}
+/// Closure to draw the right column of the property.
+type PropertyValueFn<'a> =
+    dyn FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response> + 'a;
 
 struct PropertyActionButton<'a> {
     icon: &'static crate::icons::Icon,
@@ -30,9 +21,9 @@ struct PropertyActionButton<'a> {
 /// value (which may be editable).
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
-    icon_fn: Option<Box<dyn IconFn + 'a>>,
+    icon_fn: Option<Box<IconFn<'a>>>,
     summary_only: bool,
-    value_fn: Option<Box<dyn PropertyValueFn + 'a>>,
+    value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
     action_buttons: Option<PropertyActionButton<'a>>,
     /**/
@@ -61,7 +52,10 @@ impl<'a> PropertyContent<'a> {
 
     /// Provide a custom closure to draw an icon on the left of the item.
     #[inline]
-    pub fn with_icon_fn(mut self, icon_fn: impl IconFn + 'a) -> Self {
+    pub fn with_icon_fn<F>(mut self, icon_fn: F) -> Self
+    where
+        F: FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
+    {
         self.icon_fn = Some(Box::new(icon_fn));
         self
     }
@@ -101,7 +95,10 @@ impl<'a> PropertyContent<'a> {
 
     /// Provide a closure to draw the content of the right column.
     #[inline]
-    pub fn value_fn(mut self, value_fn: impl PropertyValueFn + 'a) -> Self {
+    pub fn value_fn<F>(mut self, value_fn: F) -> Self
+    where
+        F: FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response> + 'a,
+    {
         self.value_fn = Some(Box::new(value_fn));
         self
     }
