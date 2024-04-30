@@ -46,6 +46,11 @@ def generate_view_permutations() -> Iterable[ViewCoordinates]:
                 for x, y, z in itertools.permutations([i, j, k]):
                     name = f"{x[0]}{y[0]}{z[0]}"
                     yield ViewCoordinates(name, x, y, z)
+    for i in D1:
+        for j in D2:
+            for x, y in itertools.permutations([i, j]):
+                name = f"{x[0]}{y[0]}"
+                yield ViewCoordinates(name, x, y, "Unused")
 
 
 def generate_up_handed_permutations() -> Iterable[ViewCoordinates]:
