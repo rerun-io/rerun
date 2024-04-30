@@ -741,7 +741,7 @@ impl TimePanel {
         if !tree.entity.components.is_empty() {
             let clip_rect_save = ui.clip_rect();
 
-            for component_name in re_data_ui::ui_visible_components(tree.entity.components.keys()) {
+            for component_name in re_data_ui::component_list_for_ui(tree.entity.components.keys()) {
                 let data = &tree.entity.components[&component_name];
 
                 let is_static = data.is_static();

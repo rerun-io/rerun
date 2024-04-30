@@ -40,27 +40,16 @@ pub use component::EntityLatestAtResults;
 pub use component_ui_registry::{add_to_registry, create_component_ui_registry};
 pub use image_meaning::image_meaning_for_entity;
 
-/// Filter out components that should not be shown in the UI,
-/// and order the other components in a cosnsiten way.
-pub fn ui_visible_components<'a>(
+/// Sort components for display in the UI.
+pub fn component_list_for_ui<'a>(
     iter: impl IntoIterator<Item = &'a ComponentName> + 'a,
 ) -> Vec<ComponentName> {
-    let mut components: Vec<ComponentName> = iter
-        .into_iter()
-        .copied()
-        .filter(is_component_visible_in_ui)
-        .collect();
+    let mut components: Vec<ComponentName> = iter.into_iter().copied().collect();
 
     // Put indicator components first:
     components.sort_by_key(|c| (!c.is_indicator_component(), c.full_name()));
 
     components
-}
-
-/// Show this component in the UI.
-pub fn is_component_visible_in_ui(component_name: &ComponentName) -> bool {
-    const HIDDEN_COMPONENTS: &[&str] = &[];
-    !HIDDEN_COMPONENTS.contains(&component_name.as_ref())
 }
 
 /// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
