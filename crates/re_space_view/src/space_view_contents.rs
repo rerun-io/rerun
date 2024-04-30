@@ -11,13 +11,13 @@ use re_log_types::{
 };
 use re_types::{
     blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
-    Archetype as _,
+    Archetype as _, SpaceViewClassIdentifier,
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
     DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, SpaceViewClassIdentifier,
-    SpaceViewId, StoreContext, ViewerContext, VisualizableEntities,
+    IndicatedEntities, OverridePath, PerVisualizer, PropertyOverrides, SpaceViewId, StoreContext,
+    ViewerContext, VisualizableEntities,
 };
 
 use crate::{

@@ -3,13 +3,14 @@ use re_viewer::external::{
     re_data_ui::{item_ui, DataUi},
     re_entity_db::{EntityProperties, InstancePath},
     re_log_types::EntityPath,
+    re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
         HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority,
-        SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-        SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-        SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+        UiVerbosity, ViewQuery, ViewerContext,
     },
 };
 

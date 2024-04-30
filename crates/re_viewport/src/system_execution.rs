@@ -4,9 +4,10 @@ use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_log_types::TimeInt;
+use re_types::SpaceViewClassIdentifier;
 use re_viewer_context::{
-    PerSystemDataResults, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    PerSystemDataResults, SpaceViewHighlights, SpaceViewId, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 use crate::space_view_highlights::highlights_for_space_view;

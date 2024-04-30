@@ -11,10 +11,13 @@ use re_space_view::{
 };
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
-use re_types::blueprint::components::{VisibleTimeRangeSequence, VisibleTimeRangeTime};
+use re_types::{
+    blueprint::components::{VisibleTimeRangeSequence, VisibleTimeRangeTime},
+    SpaceViewClassIdentifier,
+};
 use re_types_core::Loggable as _;
 use re_ui::{markdown_ui, ReUi};
-use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, ViewerContext};
+use re_viewer_context::{SpaceViewClass, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<

@@ -6,14 +6,14 @@ use std::sync::atomic::AtomicUsize;
 
 pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
+use re_types::SpaceViewClassIdentifier;
 pub use transform_context::TransformContext;
 
 // -----------------------------------------------------------------------------
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
-    ViewContextSystem,
+    Annotations, IdentifiedViewSystem, SpaceViewClassRegistryError, ViewContextSystem,
 };
 
 /// Context objects for a single entity in a spatial scene.

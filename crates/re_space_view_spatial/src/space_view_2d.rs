@@ -7,13 +7,12 @@ use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, VisualBounds},
-    Archetype, ComponentName,
+    Archetype, ComponentName, SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{

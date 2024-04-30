@@ -13,13 +13,13 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
+    SpaceViewClassIdentifier,
 };
 use re_ui::{icons, list_item::ListItem};
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
