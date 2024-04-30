@@ -8,11 +8,11 @@ use once_cell::sync::Lazy;
 
 use re_entity_db::EntityPropertyMap;
 use re_renderer::ScreenshotProcessor;
+use re_types::SpaceViewClassIdentifier;
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier,
-    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassRegistry, SpaceViewId,
+    SpaceViewState, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 use crate::screenshot::handle_pending_space_view_screenshots;

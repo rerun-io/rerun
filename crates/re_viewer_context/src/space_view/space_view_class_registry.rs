@@ -1,10 +1,11 @@
 use ahash::{HashMap, HashSet};
 use re_data_store::DataStore;
+use re_types::SpaceViewClassIdentifier;
 
 use crate::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassIdentifier, ViewContextCollection, ViewContextSystem, ViewSystemIdentifier,
-    VisualizerCollection, VisualizerSystem,
+    ViewContextCollection, ViewContextSystem, ViewSystemIdentifier, VisualizerCollection,
+    VisualizerSystem,
 };
 
 use super::{

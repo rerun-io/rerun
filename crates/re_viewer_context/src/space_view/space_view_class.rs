@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 use re_entity_db::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
-use re_types::{blueprint::datatypes::VisibleTimeRange, ComponentName};
+use re_types::{blueprint::datatypes::VisibleTimeRange, ComponentName, SpaceViewClassIdentifier};
 
 use crate::{
     IndicatedEntities, PerSystemEntities, PerVisualizer, SmallVisualizerSet,
@@ -9,18 +9,6 @@ use crate::{
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext, VisualizableEntities,
 };
-
-re_string_interner::declare_new_type!(
-    /// The unique name of a space view type.
-    #[derive(serde::Deserialize, serde::Serialize)]
-    pub struct SpaceViewClassIdentifier;
-);
-
-impl SpaceViewClassIdentifier {
-    pub fn invalid() -> Self {
-        Self::from("invalid")
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 pub enum SpaceViewClassLayoutPriority {

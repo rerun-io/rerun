@@ -1,9 +1,10 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_entity_db::EntityProperties;
+use re_types::SpaceViewClassIdentifier;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]

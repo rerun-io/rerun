@@ -1,6 +1,5 @@
 use re_log_types::{hash::Hash64, EntityPath, EntityPathFilter, EntityPathSubs};
-
-use crate::SpaceViewClassIdentifier;
+use re_types::SpaceViewClassIdentifier;
 
 /// Properties of a space view that as recommended to be spawned by default via space view spawn heuristics.
 #[derive(Debug, Clone)]

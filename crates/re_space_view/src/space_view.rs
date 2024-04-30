@@ -1,6 +1,7 @@
 use itertools::{FoldWhile, Itertools};
 use nohash_hasher::IntMap;
 use re_entity_db::external::re_query::PromiseResult;
+use re_types::SpaceViewClassIdentifier;
 
 use crate::SpaceViewContents;
 use re_data_store::LatestAtQuery;
@@ -15,9 +16,8 @@ use re_types_core::archetypes::Clear;
 use re_types_core::Archetype as _;
 use re_viewer_context::{
     ContentsName, DataResult, OverridePath, PerSystemEntities, PropertyOverrides,
-    RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, SpaceViewState,
-    StoreContext, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    RecommendedSpaceView, SpaceViewClass, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 /// A view of a space.

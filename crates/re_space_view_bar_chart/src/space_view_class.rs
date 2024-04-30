@@ -2,11 +2,11 @@ use egui::{ahash::HashMap, util::hash};
 use re_entity_db::{EditableAutoValue, EntityProperties, LegendCorner};
 use re_log_types::EntityPath;
 use re_space_view::{controls, suggest_space_view_for_each_entity};
-use re_types::datatypes::TensorBuffer;
+use re_types::{datatypes::TensorBuffer, SpaceViewClassIdentifier};
 use re_viewer_context::{
     auto_color, IdentifiedViewSystem as _, IndicatedEntities, PerVisualizer, SpaceViewClass,
-    SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableEntities,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    ViewQuery, ViewerContext, VisualizableEntities,
 };
 
 use super::visualizer_system::BarChartVisualizerSystem;
@@ -14,9 +14,12 @@ use super::visualizer_system::BarChartVisualizerSystem;
 #[derive(Default)]
 pub struct BarChartSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::BarChartView;
+
 impl SpaceViewClass for BarChartSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "BarChart".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

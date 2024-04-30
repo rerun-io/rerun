@@ -7,14 +7,15 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_space_view_sub_archetype_or_default};
 use re_types::blueprint::datatypes::VisibleTimeRange;
+use re_types::SpaceViewClassIdentifier;
 use re_types::{blueprint::components::Corner2D, components::Range1D};
 use re_viewer_context::external::re_entity_db::{
     EditableAutoValue, EntityProperties, TimeSeriesAggregator,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, IndicatedEntities, PerVisualizer, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewSystemIdentifier,
     ViewerContext, VisualizableEntities,
 };
@@ -72,6 +73,9 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::TimeSeriesView;
+
 const DEFAULT_LEGEND_CORNER: egui_plot::Corner = egui_plot::Corner::RightBottom;
 
 impl TimeSeriesSpaceView {
@@ -80,7 +84,7 @@ impl TimeSeriesSpaceView {
 
 impl SpaceViewClass for TimeSeriesSpaceView {
     fn identifier() -> SpaceViewClassIdentifier {
-        "TimeSeries".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {
