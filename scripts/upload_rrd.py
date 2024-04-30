@@ -44,8 +44,6 @@ import sys
 from io import BytesIO
 from pathlib import Path
 
-import requests
-import tqdm
 from google.cloud import storage
 
 
@@ -89,21 +87,6 @@ class Uploader:
 def data_hash(data: bytes) -> str:
     """Compute a sha1 hash digest of some data."""
     return hashlib.sha1(data).hexdigest()
-
-
-def download_file(url: str, path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    logging.info("Downloading %s to %s", url, path)
-    response = requests.get(url, stream=True)
-    with tqdm.tqdm.wrapattr(
-        open(path, "wb"),
-        "write",
-        miniters=1,
-        total=int(response.headers.get("content-length", 0)),
-        desc=f"Downloading {path.name}",
-    ) as f:
-        for chunk in response.iter_content(chunk_size=4096):
-            f.write(chunk)
 
 
 DESCRIPTION = """Upload an .rrd to static.rerun.io.
