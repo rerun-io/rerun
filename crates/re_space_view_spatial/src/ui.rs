@@ -779,7 +779,7 @@ pub fn background_ui(
     let blueprint_db = ctx.store_context.blueprint;
     let blueprint_query = ctx.blueprint_query;
     let (archetype, blueprint_path) =
-        re_space_view::query_space_view_sub_archetype(space_view_id, blueprint_db, blueprint_query);
+        re_space_view::query_view_property(space_view_id, blueprint_db, blueprint_query);
 
     let Background { color, mut kind } = archetype.ok().flatten().unwrap_or(default_background);
 

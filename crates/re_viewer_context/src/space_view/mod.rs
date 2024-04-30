@@ -19,8 +19,8 @@ mod visualizer_system;
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::{
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
-    SpaceViewStateExt, VisualizableFilterContext,
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewState, SpaceViewStateExt,
+    VisualizableFilterContext,
 };
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistrator,

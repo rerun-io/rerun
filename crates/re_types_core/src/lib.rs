@@ -77,6 +77,7 @@ mod loggable_batch;
 mod result;
 mod size_bytes;
 mod tuid;
+mod view;
 
 pub use self::archetype::{
     Archetype, ArchetypeName, GenericIndicatorComponent, NamedIndicatorComponent,
@@ -92,6 +93,7 @@ pub use self::result::{
     SerializationResult, _Backtrace,
 };
 pub use self::size_bytes::SizeBytes;
+pub use self::view::{SpaceViewClassIdentifier, View};
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.

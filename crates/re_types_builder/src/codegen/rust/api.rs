@@ -25,8 +25,8 @@ use crate::{
     objects::ObjectClass,
     ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
     Reporter, Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
-    ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RUST_CUSTOM_CLAUSE,
+    ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
 
 use super::{
@@ -62,11 +62,6 @@ impl CodeGenerator for RustCodeGenerator {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
-            if object_kind == ObjectKind::View {
-                // TODO(#5521): Implement view codegen for Rust.
-                continue;
-            }
-
             self.generate_folder(
                 reporter,
                 objects,
@@ -389,7 +384,7 @@ fn quote_struct(
 
     let quoted_from_impl = quote_from_impl_from_obj(obj);
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_builder = quote_builder_from_obj(reporter, obj);
 
@@ -403,6 +398,8 @@ fn quote_struct(
     } else {
         let heap_size_bytes_impl = if is_tuple_struct_from_obj(obj) {
             quote!(self.0.heap_size_bytes())
+        } else if obj.fields.is_empty() {
+            quote!(0)
         } else {
             let quoted_heap_size_bytes = obj.fields.iter().map(|obj_field| {
                 let field_name = format_ident!("{}", obj_field.name);
@@ -411,7 +408,9 @@ fn quote_struct(
             quote!(#(#quoted_heap_size_bytes)+*)
         };
 
-        let is_pod_impl = {
+        let is_pod_impl = if obj.fields.is_empty() {
+            quote!(true)
+        } else {
             let quoted_is_pods = obj.fields.iter().map(|obj_field| {
                 let quoted_field_type = quote_field_type_from_object_field(obj_field);
                 quote!(<#quoted_field_type>::is_pod())
@@ -494,7 +493,7 @@ fn quote_union(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let quoted_heap_size_bytes = if obj
         .fields
@@ -614,7 +613,7 @@ fn quote_enum(
         }
     });
 
-    let quoted_trait_impls = quote_trait_impls_from_obj(arrow_registry, objects, obj);
+    let quoted_trait_impls = quote_trait_impls_from_obj(reporter, arrow_registry, objects, obj);
 
     let count = Literal::usize_unsuffixed(fields.len());
     let all = fields.iter().map(|field| {
@@ -723,9 +722,13 @@ fn quote_obj_docs(reporter: &Reporter, obj: &Object) -> TokenStream {
 fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) -> Vec<String> {
     let mut lines = docs.doc_lines_for_untagged_and("rs");
 
-    let examples = collect_snippets_for_api_docs(docs, "rs", true)
-        .map_err(|err| reporter.error(virtpath, fqname, err))
-        .unwrap_or_default();
+    let examples = if !fqname.starts_with("rerun.blueprint.views") {
+        collect_snippets_for_api_docs(docs, "rs", true)
+            .map_err(|err| reporter.error(virtpath, fqname, err))
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
 
     if !examples.is_empty() {
         lines.push(Default::default());
@@ -934,6 +937,7 @@ fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenSt
 }
 
 fn quote_trait_impls_from_obj(
+    reporter: &Reporter,
     arrow_registry: &ArrowRegistry,
     objects: &Objects,
     obj: &Object,
@@ -1293,7 +1297,27 @@ fn quote_trait_impls_from_obj(
                 }
             }
         }
-        ObjectKind::View => unimplemented!(),
+        ObjectKind::View => {
+            let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER)
+            else {
+                reporter.error(
+                    &obj.virtpath,
+                    &obj.fqname,
+                    format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+                );
+                return TokenStream::new();
+            };
+
+            quote! {
+                impl ::re_types_core::View for #name {
+                    #[inline]
+                    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+                        #identifier .into()
+                    }
+
+                }
+            }
+        }
     }
 }
 

@@ -183,8 +183,7 @@ fn load_series(
     let mut points;
 
     let time_range = determine_time_range(
-        ctx,
-        query,
+        query.latest_at,
         data_result,
         plot_bounds,
         ctx.app_options.experimental_plot_query_clamping,

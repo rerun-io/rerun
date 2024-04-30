@@ -6,9 +6,10 @@ use re_data_store::{DataStore, LatestAtQuery};
 use re_data_ui::item_ui::instance_path_button;
 use re_entity_db::{EntityProperties, InstancePath};
 use re_log_types::{EntityPath, Instance, Timeline};
+use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassRegistryError, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewState, SpaceViewSystemExecutionError,
+    SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::EmptySystem;

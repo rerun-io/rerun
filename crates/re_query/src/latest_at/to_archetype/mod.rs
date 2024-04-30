@@ -34,4 +34,5 @@ mod text_log;
 mod transform3d;
 mod view_coordinates;
 mod viewport_blueprint;
+mod visible_time_range;
 mod visual_bounds;

@@ -3,15 +3,16 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
+use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::StoreKind;
 use re_types::ComponentName;
-use smallvec::SmallVec;
 
 use crate::{
-    DataResultTree, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier, ViewerContext,
+    DataResultTree, QueryRange, SpaceViewHighlights, SpaceViewId, ViewSystemIdentifier,
+    ViewerContext,
 };
 
 /// Path to a specific entity in a specific store used for overrides.
@@ -62,6 +63,9 @@ pub struct PropertyOverrides {
     /// `EntityPath` in the Blueprint store where updated overrides should be written back
     /// for properties that apply to the individual entity only.
     pub individual_override_path: EntityPath,
+
+    /// What range is queried on the data store.
+    pub query_range: QueryRange,
 }
 
 pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
@@ -70,9 +74,6 @@ pub type SmallVisualizerSet = SmallVec<[ViewSystemIdentifier; 4]>;
 ///
 /// It contains everything necessary to properly use this data in the context of the
 /// `ViewSystem`s that it is a part of.
-///
-/// In the future `accumulated_properties` will be replaced by a `StoreView` that contains
-/// the relevant data overrides for the given query.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DataResult {
     /// Where to retrieve the data from.
@@ -332,14 +333,6 @@ impl DataResult {
             .map(|c| c.value)
     }
 
-    #[inline]
-    pub fn lookup_override_or_default<C: re_types::Component + Default>(
-        &self,
-        ctx: &ViewerContext<'_>,
-    ) -> C {
-        self.lookup_override(ctx).unwrap_or_default()
-    }
-
     /// Returns from which entity path an override originates from.
     ///
     /// Returns None if there was no override at all.
@@ -391,8 +384,17 @@ impl DataResult {
     // TODO(andreas): Should the result be cached, this might be a very common operation?
     #[inline]
     pub fn is_visible(&self, ctx: &ViewerContext<'_>) -> bool {
-        self.lookup_override_or_default::<re_types::blueprint::components::Visible>(ctx)
+        self.lookup_override::<re_types::blueprint::components::Visible>(ctx)
+            .unwrap_or_default()
             .0
+    }
+
+    /// Returns the query range for this data result.
+    pub fn query_range(&self) -> &QueryRange {
+        const DEFAULT_RANGE: QueryRange = QueryRange::LatestAt;
+        self.property_overrides
+            .as_ref()
+            .map_or(&DEFAULT_RANGE, |p| &p.query_range)
     }
 }
 

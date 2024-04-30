@@ -9,11 +9,9 @@ use re_log_types::EntityPath;
 use re_types::{
     components::{DepthMeter, TensorData},
     tensor_data::TensorDataMeaning,
-    Archetype as _,
+    Archetype as _, SpaceViewClassIdentifier,
 };
-use re_viewer_context::{
-    IdentifiedViewSystem, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
-};
+use re_viewer_context::{IdentifiedViewSystem, PerSystemEntities, ViewerContext};
 
 use crate::{
     query_pinhole,

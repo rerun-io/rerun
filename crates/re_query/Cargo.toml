@@ -85,11 +85,13 @@ required-features = ["to_archetype"]
 [[bin]]
 name = "clamped_zip"
 required-features = ["codegen"]
+bench = false
 
 
 [[bin]]
 name = "range_zip"
 required-features = ["codegen"]
+bench = false
 
 
 [[bench]]

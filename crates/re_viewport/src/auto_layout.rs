@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_viewer_context::{SpaceViewClassIdentifier, SpaceViewId};
+use re_types::SpaceViewClassIdentifier;
+use re_viewer_context::SpaceViewId;
 
 use re_space_view::SpaceViewBlueprint;
 

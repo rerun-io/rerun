@@ -7,13 +7,12 @@ use re_log_types::EntityPath;
 use re_types::{
     archetypes::{DepthImage, Image},
     blueprint::archetypes::{Background, VisualBounds},
-    Archetype, ComponentName,
+    Archetype, ComponentName, SpaceViewClassIdentifier,
 };
 use re_viewer_context::{
-    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassIdentifier,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
-    VisualizableFilterContext,
+    PerSystemEntities, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext, VisualizableFilterContext,
 };
 
 use crate::{
@@ -44,9 +43,12 @@ impl VisualizableFilterContext for VisualizableFilterContext2D {
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
+use re_types::View;
+type ViewType = re_types::blueprint::views::Spatial2DView;
+
 impl SpaceViewClass for SpatialSpaceView2D {
     fn identifier() -> SpaceViewClassIdentifier {
-        "2D".into()
+        ViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {

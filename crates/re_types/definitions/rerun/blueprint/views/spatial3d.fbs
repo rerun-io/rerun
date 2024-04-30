@@ -10,4 +10,7 @@ table Spatial3DView (
 ) {
     /// Configuration for the background of the space view.
     background: rerun.blueprint.archetypes.Background (order: 1000);
+
+    /// Configures the range on the timeline shown by this view (unless specified differently per entity).
+    time_range: rerun.blueprint.archetypes.VisibleTimeRange (order: 2000);
 }

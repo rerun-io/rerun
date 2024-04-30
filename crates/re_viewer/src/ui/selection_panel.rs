@@ -18,8 +18,7 @@ use re_ui::{icons, list_item::ListItem};
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewClassIdentifier, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiVerbosity, ViewerContext,
 };
 use re_viewport::{
     contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
@@ -29,7 +28,10 @@ use re_viewport::{
 use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
 
-use super::{selection_history_ui::SelectionHistoryUi, visible_history::visual_time_range_ui};
+use super::{
+    selection_history_ui::SelectionHistoryUi, visual_time_range::visual_time_range_ui_data_result,
+    visual_time_range::visual_time_range_ui_space_view,
+};
 
 // ---
 
@@ -902,23 +904,12 @@ fn blueprint_ui_for_space_view(
             &class_identifier,
         );
 
-        // Space View don't inherit properties.
-        let space_view_data_result =
-            space_view.space_view_data_result(ctx.store_context, ctx.blueprint_query);
+        visual_time_range_ui_space_view(ctx, ui, space_view);
 
-        visual_time_range_ui(
-            ctx,
-            ui,
-            None, // There is no tree above the space view yet
-            &space_view_data_result,
-            class_identifier,
-            true,
-        );
-
-        let mut props = space_view_data_result
-            .individual_properties()
-            .cloned()
-            .unwrap_or_default();
+        // Space View don't inherit (legacy) properties.
+        let mut props =
+            space_view.legacy_properties(ctx.store_context.blueprint, ctx.blueprint_query);
+        let props_before = props.clone();
 
         let space_view_class = space_view.class(ctx.space_view_class_registry);
         if let Err(err) = space_view_class.selection_ui(
@@ -936,7 +927,9 @@ fn blueprint_ui_for_space_view(
             );
         }
 
-        space_view_data_result.save_individual_override_properties(ctx, Some(props));
+        if props_before != props {
+            space_view.save_legacy_properties(ctx, props);
+        }
     }
 }
 
@@ -950,7 +943,6 @@ fn blueprint_ui_for_data_result(
     if let Some(space_view) = viewport.blueprint.space_view(&space_view_id) {
         if instance_path.instance.is_all() {
             // the whole entity
-            let space_view_class = *space_view.class_identifier();
             let entity_path = &instance_path.entity_path;
 
             let query_result = ctx.lookup_query_result(space_view.id);
@@ -968,7 +960,6 @@ fn blueprint_ui_for_data_result(
                     ctx,
                     ui,
                     ctx.lookup_query_result(space_view_id),
-                    &space_view_class,
                     entity_path,
                     &mut props,
                 );
@@ -1143,7 +1134,6 @@ fn entity_props_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     query_result: &DataQueryResult,
-    space_view_class: &SpaceViewClassIdentifier,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,
 ) {
@@ -1156,7 +1146,7 @@ fn entity_props_ui(
     };
 
     {
-        let visible_before = data_result.lookup_override_or_default::<Visible>(ctx);
+        let visible_before = data_result.is_visible(ctx);
         let mut visible = visible_before;
 
         let override_source =
@@ -1165,7 +1155,7 @@ fn entity_props_ui(
             override_source.is_some() && override_source.as_ref() != Some(entity_path);
 
         ui.horizontal(|ui| {
-            re_ui.checkbox(ui, &mut visible.0, "Visible");
+            re_ui.checkbox(ui, &mut visible, "Visible");
             if is_inherited {
                 ui.label("(inherited)");
             }
@@ -1175,7 +1165,7 @@ fn entity_props_ui(
             data_result.save_recursive_override_or_clear_if_redundant(
                 ctx,
                 &query_result.tree,
-                &visible,
+                &Visible(visible),
             );
         }
     }
@@ -1184,14 +1174,7 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    visual_time_range_ui(
-        ctx,
-        ui,
-        Some(&query_result.tree),
-        data_result,
-        *space_view_class,
-        false,
-    );
+    visual_time_range_ui_data_result(ctx, ui, &query_result.tree, data_result);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)

@@ -44,7 +44,7 @@ pub fn query_archetype_with_history<A: Archetype>(
     entity_db: &EntityDb,
     timeline: &Timeline,
     time: &TimeInt,
-    history: &ExtraQueryHistory,
+    history: &ExtraQueryHistory, // TODO(andreas): don't take extra history, take something like `re_viewer_context::QueryRange` so we don't need to convert.
     entity_path: &EntityPath,
 ) -> Results {
     let visible_history = match timeline.typ() {

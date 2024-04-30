@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
+use re_types::SpaceViewClassIdentifier;
 use smallvec::SmallVec;
 
 use re_data_store::LatestAtQuery;
@@ -15,8 +16,8 @@ use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewClassIdentifier, SpaceViewId,
-    SpaceViewSpawnHeuristics, ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, SpaceViewSpawnHeuristics,
+    ViewerContext,
 };
 
 use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
