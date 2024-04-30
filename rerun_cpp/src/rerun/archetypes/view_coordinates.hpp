@@ -208,6 +208,30 @@ namespace rerun::archetypes {
         /// X=Back, Y=Right, Z=Down
         RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates BRD;
 
+        /// X=Up, Y=Left, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates UL;
+
+        /// X=Left, Y=Up, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates LU;
+
+        /// X=Up, Y=Right, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates UR;
+
+        /// X=Right, Y=Up, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RU;
+
+        /// X=Down, Y=Left, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates DL;
+
+        /// X=Left, Y=Down, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates LD;
+
+        /// X=Down, Y=Right, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates DR;
+
+        /// X=Right, Y=Down, Z=Unused
+        RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RD;
+
         /// X=Up, Y=Right, Z=Forward
         RERUN_SDK_EXPORT static const rerun::archetypes::ViewCoordinates RIGHT_HAND_X_UP;
 
