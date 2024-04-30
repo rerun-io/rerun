@@ -29,7 +29,7 @@ Use the script:
 
     python3 scripts/upload_image.py --help
 
-or the just command:
+or the pixi command:
 
     pixi run upload-image --help
 
@@ -305,7 +305,7 @@ class Uploader:
         destination.content_encoding = content_encoding
 
         if destination.exists():
-            logging.warn(f"blob {path} already exists in GCS, skipping upload")
+            logging.warning(f"blob {path} already exists in GCS, skipping upload")
             return
 
         stream = BytesIO(data)
