@@ -218,14 +218,18 @@ impl ListItemContent for PropertyContent<'_> {
             ReUi::small_icon_size(),
         );
 
-        // TODO(#6179): don't reserve space for action button if none are ever used in the current
-        // scope.
         let action_button_rect = egui::Rect::from_center_size(
             context.rect.right_center() - egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
             ReUi::small_icon_size() + egui::vec2(1.0, 1.0), // padding is needed for the buttons
         );
 
-        let action_button_extra = action_button_rect.width() + ReUi::text_to_icon_padding();
+        let reserve_action_button_space =
+            action_buttons.is_some() || state.reserve_action_button_space;
+        let action_button_extra = if reserve_action_button_space {
+            action_button_rect.width() + ReUi::text_to_icon_padding()
+        } else {
+            0.0
+        };
 
         let label_rect = egui::Rect::from_x_y_ranges(
             (content_left_x + icon_extra)..=(mid_point_x - Self::COLUMN_SPACING / 2.0),
@@ -258,6 +262,7 @@ impl ListItemContent for PropertyContent<'_> {
 
         super::StateStack::top_mut(ui.ctx(), |state| {
             state.register_desired_left_column_width(desired_width);
+            state.reserve_action_button_space(action_buttons.is_some());
         });
 
         let galley = if desired_galley.size().x <= label_rect.width() {

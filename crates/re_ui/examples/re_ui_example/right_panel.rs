@@ -7,6 +7,7 @@ pub struct RightPanel {
     drag_and_drop: drag_and_drop::ExampleDragAndDrop,
     hierarchical_drag_and_drop: hierarchical_drag_and_drop::HierarchicalDragAndDrop,
     selected_list_item: Option<usize>,
+    use_action_button: bool,
 
     // dummy data
     text: String,
@@ -22,6 +23,7 @@ impl Default for RightPanel {
             hierarchical_drag_and_drop:
                 hierarchical_drag_and_drop::HierarchicalDragAndDrop::default(),
             selected_list_item: None,
+            use_action_button: false,
             // dummy data
             text: "Hello world".to_owned(),
             color: [128, 0, 0, 255],
@@ -230,6 +232,49 @@ impl RightPanel {
                             })
                             .value_color_mut(&mut self.color),
                     );
+                });
+            },
+        );
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "property content right button reserve",
+            true,
+            list_item2::PropertyContent::new("PropertyContent action button:")
+                .value_text("demo of right gutter"),
+            |re_ui, ui| {
+                // By using an inner scope, we allow the nested properties to not align themselves
+                // to the parent property, which in this particular case looks better.
+                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                    fn demo_item(re_ui: &ReUi, ui: &mut egui::Ui) {
+                        re_ui.list_item2().show_hierarchical(
+                            ui,
+                            list_item2::PropertyContent::new("Some item:").value_fn(|_, ui, _| {
+                                ui.ctx().debug_painter().debug_rect(
+                                    ui.max_rect(),
+                                    egui::Color32::LIGHT_BLUE,
+                                    "space for value",
+                                );
+                            }),
+                        );
+                    }
+
+                    for _ in 0..3 {
+                        demo_item(re_ui, ui);
+                    }
+
+                    let mut content = list_item2::PropertyContent::new("Use action button");
+                    if self.use_action_button {
+                        content = content.action_button(&re_ui::icons::ADD, || {
+                            re_log::warn!("Add button clicked");
+                        });
+                    }
+                    content = content.value_bool_mut(&mut self.use_action_button);
+                    re_ui.list_item2().show_hierarchical(ui, content);
+
+                    for _ in 0..3 {
+                        demo_item(re_ui, ui);
+                    }
                 });
             },
         );

@@ -34,9 +34,12 @@ pub struct State {
     ///
     /// The semantics are exactly the same as for `left_column_width`.
     max_desired_left_column_width: f32,
-    /**/
-    // TODO(#6179): record the use of right action button in all PropertyContent such as to not
-    // unnecessarily reserve right gutter space if none have it.
+
+    /// If true, right-aligned space should be reserved for the action button, even if not used.
+    pub(crate) reserve_action_button_space: bool,
+
+    /// Track whether the action button space should be reserved.
+    should_reserve_action_button_space: bool,
 }
 
 impl Default for State {
@@ -46,6 +49,8 @@ impl Default for State {
             left_x: f32::NEG_INFINITY,
             left_column_width: None,
             max_desired_left_column_width: f32::NEG_INFINITY,
+            reserve_action_button_space: true,
+            should_reserve_action_button_space: true,
         }
     }
 }
@@ -57,6 +62,11 @@ impl State {
     /// call this function once in their [`super::ListItemContent::ui`] method.
     pub(crate) fn register_desired_left_column_width(&mut self, desired_width: f32) {
         self.max_desired_left_column_width = self.max_desired_left_column_width.max(desired_width);
+    }
+
+    /// Indicate whether right-aligned space should be reserved for the action button.
+    pub(crate) fn reserve_action_button_space(&mut self, reserve: bool) {
+        self.should_reserve_action_button_space |= reserve;
     }
 }
 
@@ -153,6 +163,7 @@ impl StateStack {
 ///    align the columns of two `ListItem`s subgroups, for which a single, global alignment would
 ///    be detrimental. This may happen in deeply nested UI code.
 ///
+/// Note: `id` needs to be unique only with a given `Ui` instance.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id: impl Into<egui::Id>,
@@ -165,7 +176,7 @@ pub fn list_item_scope<R>(
     - a global state stack that is read by actual list items
      */
 
-    let id = id.into();
+    let id = ui.id().with(id.into());
 
     // read the state for this container, if any
     let state: Option<State> = ui.data(|reader| reader.get_temp(id));
@@ -196,6 +207,8 @@ pub fn list_item_scope<R>(
         None
     };
     state.max_desired_left_column_width = f32::NEG_INFINITY;
+    state.reserve_action_button_space = state.should_reserve_action_button_space;
+    state.should_reserve_action_button_space = false;
 
     // push, run, pop
     StateStack::push(ui.ctx(), state.clone());
