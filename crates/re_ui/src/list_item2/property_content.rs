@@ -2,14 +2,13 @@ use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, ReUi};
 use eframe::emath::{Align, Align2};
 use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, Response, Ui};
+use egui::{NumExt, Ui};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
 
 /// Closure to draw the right column of the property.
-type PropertyValueFn<'a> =
-    dyn FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response> + 'a;
+type PropertyValueFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) + 'a;
 
 struct PropertyActionButton<'a> {
     icon: &'static crate::icons::Icon,
@@ -99,7 +98,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_fn<F>(mut self, value_fn: F) -> Self
     where
-        F: FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) -> Option<egui::Response> + 'a,
+        F: FnOnce(&ReUi, &mut egui::Ui, egui::style::WidgetVisuals) + 'a,
     {
         self.value_fn = Some(Box::new(value_fn));
         self
@@ -113,7 +112,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_bool(self, mut b: bool) -> Self {
         self.value_fn(move |_, ui: &mut Ui, _| {
-            Some(ui.add_enabled(false, crate::toggle_switch(15.0, &mut b)))
+            ui.add_enabled(false, crate::toggle_switch(15.0, &mut b));
         })
     }
 
@@ -124,20 +123,24 @@ impl<'a> PropertyContent<'a> {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.active.expansion = 0.0;
 
-            Some(ui.add(crate::toggle_switch(15.0, b)))
+            ui.add(crate::toggle_switch(15.0, b));
         })
     }
 
     /// Show a static text in the value column.
     #[inline]
     pub fn value_text(self, text: impl Into<egui::WidgetText> + 'a) -> Self {
-        self.value_fn(move |_, ui, _| Some(ui.label(text.into())))
+        self.value_fn(move |_, ui, _| {
+            ui.label(text.into());
+        })
     }
 
     /// Show an editable text in the value column.
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
-        self.value_fn(|_, ui, _| Some(ui.text_edit_singleline(text)))
+        self.value_fn(|_, ui, _| {
+            ui.text_edit_singleline(text);
+        })
     }
 
     /// Show a read-only color in the value column.
@@ -148,7 +151,6 @@ impl<'a> PropertyContent<'a> {
             let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
             let response = egui::color_picker::show_color(ui, color, ui.spacing().interact_size);
             response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
-            None
         })
     }
 
@@ -158,18 +160,13 @@ impl<'a> PropertyContent<'a> {
         self.value_fn(|_, ui: &mut egui::Ui, _| {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.active.expansion = 0.0;
-            Some(ui.color_edit_button_srgba_unmultiplied(color))
+            ui.color_edit_button_srgba_unmultiplied(color);
         })
     }
 }
 
 impl ListItemContent for PropertyContent<'_> {
-    fn ui(
-        self: Box<Self>,
-        re_ui: &ReUi,
-        ui: &mut Ui,
-        context: &ContentContext<'_>,
-    ) -> Option<Response> {
+    fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
         let Self {
             label,
             icon_fn,
@@ -250,20 +247,6 @@ impl ListItemContent for PropertyContent<'_> {
             icon_fn(re_ui, ui, icon_rect, visuals);
         }
 
-        let button_response = if let Some(action_button) = action_buttons {
-            let mut child_ui = ui.child_ui(
-                action_button_rect.expand(2.0),
-                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
-            );
-            let button_response = re_ui.small_icon_button(&mut child_ui, action_button.icon);
-            if button_response.clicked() {
-                (action_button.on_click)();
-            }
-            Some(button_response)
-        } else {
-            None
-        };
-
         // Prepare the label galley. We first go for an un-truncated version to register our desired
         // column width. If it doesn't fit the available space, we recreate it with truncation.
         let mut layout_job =
@@ -274,7 +257,7 @@ impl ListItemContent for PropertyContent<'_> {
                 .ceil();
 
         super::StateStack::top_mut(ui.ctx(), |state| {
-            state.register_desired_left_column_width(desired_width)
+            state.register_desired_left_column_width(desired_width);
         });
 
         let galley = if desired_galley.size().x <= label_rect.width() {
@@ -305,23 +288,24 @@ impl ListItemContent for PropertyContent<'_> {
             .collapse_openness
             .map_or(true, |o| o == 0.0)
             || !summary_only;
-        let value_response = if let Some(value_fn) = value_fn {
+        if let Some(value_fn) = value_fn {
             if should_show_value {
                 let mut child_ui =
                     ui.child_ui(value_rect, egui::Layout::left_to_right(egui::Align::Center));
-                value_fn(re_ui, &mut child_ui, visuals)
-            } else {
-                None
+                value_fn(re_ui, &mut child_ui, visuals);
             }
-        } else {
-            None
-        };
+        }
 
-        // Make a union of all (possibly) interactive elements
-        match (value_response, button_response) {
-            (Some(a), Some(b)) => Some(a | b),
-            (Some(a), None) | (None, Some(a)) => Some(a),
-            (None, None) => None,
+        // Draw action button
+        if let Some(action_button) = action_buttons {
+            let mut child_ui = ui.child_ui(
+                action_button_rect.expand(2.0),
+                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+            );
+            let button_response = re_ui.small_icon_button(&mut child_ui, action_button.icon);
+            if button_response.clicked() {
+                (action_button.on_click)();
+            }
         }
     }
 

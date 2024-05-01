@@ -284,7 +284,7 @@ impl<'a> ListItem<'a> {
                 response: &style_response,
                 list_item: &self,
             };
-            let content_response = content.ui(re_ui, ui, &content_ctx);
+            content.ui(re_ui, ui, &content_ctx);
 
             // Draw background on interaction.
             if drag_target {
@@ -293,7 +293,7 @@ impl<'a> ListItem<'a> {
                     Shape::rect_stroke(bg_rect, 0.0, (1.0, ui.visuals().selection.bg_fill)),
                 );
             } else {
-                let bg_fill = if content_response.map_or(false, |r| r.hovered()) {
+                let bg_fill = if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
                     // if some part of the content is active and hovered, our background should
                     // become dimmer
                     Some(visuals.bg_fill)

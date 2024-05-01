@@ -265,8 +265,6 @@ impl RightPanel {
                             egui::Color32::LIGHT_RED,
                             "CustomContent delegates to a closure",
                         );
-
-                        None
                     }),
                 )
             },

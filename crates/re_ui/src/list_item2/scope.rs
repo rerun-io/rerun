@@ -120,7 +120,7 @@ impl StateStack {
                     `list_item_scope`."
                 );
             }
-        })
+        });
     }
 
     fn peek(ctx: &egui::Context) -> Option<State> {
