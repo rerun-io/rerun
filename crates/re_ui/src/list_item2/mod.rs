@@ -31,9 +31,6 @@ pub struct ContentContext<'a> {
 
     /// The current list item.
     pub list_item: &'a ListItem<'a>,
-
-    /// The frame-over-frame state for this list item.
-    pub state: &'a State,
 }
 
 #[derive(Debug, Clone, Copy)]

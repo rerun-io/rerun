@@ -1,8 +1,7 @@
+use egui::NumExt;
 use once_cell::sync::Lazy;
 
-// TODO(ab): the state is currently very boring, its main purpose is to support the upcoming two-
-// column ListItemContent.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct State {
     /// X coordinate span to use for hover/selection highlight.
     ///
@@ -13,15 +12,51 @@ pub struct State {
     // be generalized to some `full_span_scope` mechanism to be used by all full-span widgets beyond
     // `ListItem`.
     pub(crate) background_x_range: egui::Rangef,
-    // TODO(ab): record the use of right action button in all PropertyContent such as to not reserve
-    // right gutter space if none have it.
+
+    /// Left-most X coordinate for the scope.
+    ///
+    /// This is the reference point for tracking column width. This is set by [`list_item_scope`]
+    /// based on `ui.max_rect()`.
+    pub(crate) left_x: f32,
+
+    /// Column width to be used this frame.
+    ///
+    /// The column width has `left_x` as reference, so it includes:
+    /// - All the indentation on the left side of the list item.
+    /// - Any extra indentation added by the list item itself.
+    /// - The list item's collapsing triangle, if any.
+    ///
+    /// The effective left column width for a given [`super::ListItemContent`] implementation can be
+    /// calculated as `left_column_width - (context.rect.left() - left_x)`.
+    pub(crate) left_column_width: Option<f32>,
+
+    /// Maximum desired column width, to be updated this frame.
+    ///
+    /// The semantics are exactly the same as for `left_column_width`.
+    max_desired_left_column_width: f32,
+    /**/
+    // TODO(#6179): record the use of right action button in all PropertyContent such as to not
+    // unnecessarily reserve right gutter space if none have it.
 }
 
 impl Default for State {
     fn default() -> Self {
         Self {
             background_x_range: egui::Rangef::NOTHING,
+            left_x: f32::NEG_INFINITY,
+            left_column_width: None,
+            max_desired_left_column_width: f32::NEG_INFINITY,
         }
+    }
+}
+
+impl State {
+    /// Register the desired width of the left column.
+    ///
+    /// All [`super::ListItemContent`] implementation that attempt to align on the two-column system should
+    /// call this function once in their [`super::ListItemContent::ui`] method.
+    pub(crate) fn register_desired_left_column_width(&mut self, desired_width: f32) {
+        self.max_desired_left_column_width = self.max_desired_left_column_width.max(desired_width);
     }
 }
 
@@ -50,7 +85,7 @@ impl StateStack {
         })
     }
 
-    /// Returns the current [`State`] to be used by `[ListItem]`s.
+    /// Returns the current [`State`] to be used by [`super::ListItemContent`] implementation.
     ///
     /// For ergonomic reasons, this function will fail by returning a default state if the stack is
     /// empty. This is an error condition that should be addressed by wrapping `ListItem` code in a
@@ -69,8 +104,30 @@ impl StateStack {
         })
     }
 
-    fn peek(ctx: &egui::Context) -> Option<&State> {
-        ctx.data(|reader| reader.get_temp(*STATE_STACK_ID))
+    /// Provides mutable access to the current [`State`].
+    ///
+    /// The closure is called with a mutable reference to the current state, if any. If the stack is
+    /// empty, the closure is not called and a warning is logged.
+    pub(crate) fn top_mut(ctx: &egui::Context, state_writer: impl FnOnce(&mut State)) {
+        ctx.data_mut(|writer| {
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let state = stack.0.last_mut();
+            if let Some(state) = state {
+                state_writer(state);
+            } else {
+                re_log::warn_once!(
+                    "Failed to mutable access empty ListItem state stack. Wrap in a \
+                    `list_item_scope`."
+                );
+            }
+        })
+    }
+
+    fn peek(ctx: &egui::Context) -> Option<State> {
+        ctx.data_mut(|writer| {
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            stack.0.last().cloned()
+        })
     }
 }
 
@@ -96,8 +153,6 @@ impl StateStack {
 ///    align the columns of two `ListItem`s subgroups, for which a single, global alignment would
 ///    be detrimental. This may happen in deeply nested UI code.
 ///
-/// TODO(#6156): the background X range stuff is to be split off and generalised for all full-span
-/// widgets.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id: impl Into<egui::Id>,
@@ -117,6 +172,8 @@ pub fn list_item_scope<R>(
     let mut state = state.unwrap_or_default();
 
     // determine the background x range to use
+    // TODO(#6156): the background X range stuff is to be split off and generalised for all full-span
+    // widgets.
     state.background_x_range = if let Some(background_x_range) = background_x_range {
         background_x_range
     } else if let Some(parent_state) = StateStack::peek(ui.ctx()) {
@@ -124,6 +181,21 @@ pub fn list_item_scope<R>(
     } else {
         ui.clip_rect().x_range()
     };
+
+    // Set up the state for this scope.
+    state.left_x = ui.max_rect().left();
+    state.left_column_width = if state.max_desired_left_column_width > 0.0 {
+        Some(
+            // TODO(ab): this heuristics can certainly be improved, to be done with more hindsight
+            // from real-world usage.
+            state
+                .max_desired_left_column_width
+                .at_most(0.7 * ui.max_rect().width()),
+        )
+    } else {
+        None
+    };
+    state.max_desired_left_column_width = f32::NEG_INFINITY;
 
     // push, run, pop
     StateStack::push(ui.ctx(), state.clone());

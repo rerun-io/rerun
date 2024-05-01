@@ -186,47 +186,51 @@ impl RightPanel {
             list_item2::PropertyContent::new("PropertyContent features:")
                 .value_text("bunch of properties"),
             |re_ui, ui| {
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
-                );
+                // By using an inner scope, we allow the nested properties to not align themselves
+                // to the parent property, which in this particular case looks better.
+                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
+                    );
 
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Bool (editable)")
-                        .value_bool_mut(&mut self.boolean),
-                );
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Bool (editable)")
+                            .value_bool_mut(&mut self.boolean),
+                    );
 
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Text").value_text(&self.text),
-                );
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Text").value_text(&self.text),
+                    );
 
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Text (editable)")
-                        .value_text_mut(&mut self.text),
-                );
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Text (editable)")
+                            .value_text_mut(&mut self.text),
+                    );
 
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Color")
-                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                        .action_button(&re_ui::icons::ADD, || {
-                            re_log::warn!("Add button clicked");
-                        })
-                        .value_color(&self.color),
-                );
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Color")
+                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .action_button(&re_ui::icons::ADD, || {
+                                re_log::warn!("Add button clicked");
+                            })
+                            .value_color(&self.color),
+                    );
 
-                re_ui.list_item2().show_hierarchical(
-                    ui,
-                    list_item2::PropertyContent::new("Color (editable)")
-                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                        .action_button(&re_ui::icons::ADD, || {
-                            re_log::warn!("Add button clicked");
-                        })
-                        .value_color_mut(&mut self.color),
-                );
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Color (editable)")
+                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .action_button(&re_ui::icons::ADD, || {
+                                re_log::warn!("Add button clicked");
+                            })
+                            .value_color_mut(&mut self.color),
+                    );
+                });
             },
         );
 

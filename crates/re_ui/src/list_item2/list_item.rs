@@ -277,12 +277,12 @@ impl<'a> ListItem<'a> {
             if collapse_openness.is_some() {
                 content_rect.min.x += extra_indent + collapse_extra;
             }
+
             let content_ctx = ContentContext {
                 rect: content_rect,
                 bg_rect,
                 response: &style_response,
                 list_item: &self,
-                state: &state,
             };
             let content_response = content.ui(re_ui, ui, &content_ctx);
 
