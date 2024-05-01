@@ -220,7 +220,6 @@ def _patch(funcs):  # type: ignore[no-untyped-def]
     """Adds the given functions as methods to the `RecordingStream` class; injects `recording=self` in passing."""
     import functools
     import os
-    from typing import Any
 
     # If this is a special RERUN_APP_ONLY context (launched via .spawn), we
     # can bypass everything else, which keeps us from monkey patching methods

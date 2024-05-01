@@ -59,7 +59,7 @@ class MemoryRecording:
 
         This will flush the current sink before returning.
         """
-        return self.storage.drain_as_bytes()
+        return self.storage.drain_as_bytes()  # type: ignore[no-any-return]
 
     @deprecated("Please use rerun.notebook_show() instead.")
     def as_html(
