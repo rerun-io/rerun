@@ -755,7 +755,7 @@ struct PyMemorySinkStorage {
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    /// Concatenate the contents of the [`MemorySinkStorage`] as byes.
+    /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
     fn concat_as_bytes<'p>(
@@ -791,6 +791,22 @@ impl PyMemorySinkStorage {
         });
 
         self.inner.num_msgs()
+    }
+
+    /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
+    ///
+    /// This will do a blocking flush before returning!
+    fn drain<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.rec.flush_blocking();
+            flush_garbage_queue();
+        });
+
+        self.inner
+            .drain_memory_sink_as_bytes()
+            .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
 

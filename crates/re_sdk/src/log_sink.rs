@@ -245,6 +245,29 @@ impl MemorySinkStorage {
         Ok(buffer.into_inner())
     }
 
+    /// Drain the stored messages and return them as an in-memory RRD.
+    #[inline]
+    pub fn drain_memory_sink_as_bytes(
+        &self,
+    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+        let mut buffer = std::io::Cursor::new(Vec::new());
+
+        {
+            let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+            let mut encoder =
+                re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
+
+            let mut inner = self.inner.lock();
+            inner.has_been_used = true;
+
+            for message in &std::mem::take(&mut inner.msgs) {
+                encoder.append(message)?;
+            }
+        }
+
+        Ok(buffer.into_inner())
+    }
+
     #[inline]
     /// Get the [`StoreId`] from the associated `RecordingStream` if it exists.
     pub fn store_id(&self) -> Option<StoreId> {
