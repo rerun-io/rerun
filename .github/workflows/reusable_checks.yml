@@ -136,7 +136,12 @@ jobs:
     name: Lint markdown
     runs-on: ubuntu-latest
     steps:
-      - run: |
+      - uses: prefix-dev/setup-pixi@v0.6.0
+        with:
+          pixi-version: v0.20.0
+
+      - name: Run linter
+        run: |
           # double quoting because pixi does its own glob expansion
           pixi run ./scripts/ci/mdlint.py --glob "'docs/content/**/*.md'"
           pixi run ./scripts/ci/mdlint.py --glob "'examples/python/*/README.md'"
