@@ -82,114 +82,92 @@ pub fn override_ui(
         &data_result,
     );
 
-    ui.end_row();
-
     let Some(overrides) = data_result.property_overrides else {
         return;
     };
 
-    let components: Vec<_> = overrides
+    let components = overrides
         .resolved_component_overrides
         .into_iter()
         .sorted_by_key(|(c, _)| *c)
-        .filter(|(c, _)| component_to_vis.contains_key(c))
-        .collect();
+        .filter(|(c, _)| component_to_vis.contains_key(c));
 
-    egui_extras::TableBuilder::new(ui)
-        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .auto_shrink([false, true])
-        .column(egui_extras::Column::auto())
-        .column(egui_extras::Column::auto())
-        .column(egui_extras::Column::remainder())
-        .body(|mut body| {
-            re_ui::ReUi::setup_table_body(&mut body);
-            let row_height = re_ui::ReUi::table_line_height();
-            body.rows(row_height, components.len(), |mut row| {
-                if let Some((
-                    component_name,
-                    OverridePath {
-                        store_kind,
-                        path: entity_path_overridden,
-                    },
-                )) = components.get(row.index())
-                {
-                    // Remove button
-                    row.col(|ui| {
-                        if ctx
-                            .re_ui
-                            .small_icon_button(ui, &re_ui::icons::CLOSE)
-                            .clicked()
-                        {
-                            // Note: need to use the blueprint store since the data might
-                            // not exist in the recording store.
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        for (
+            ref component_name,
+            OverridePath {
+                ref store_kind,
+                path: ref entity_path_overridden,
+            },
+        ) in components
+        {
+            let value_fn = |ui: &mut egui::Ui| {
+                // TODO(ab): we should use the built in value feature of PropertyContent instead of
+                // reinventing the wheel.
+                let component_data = match store_kind {
+                    StoreKind::Blueprint => {
+                        let store = ctx.store_context.blueprint.store();
+                        let query = ctx.blueprint_query;
+                        ctx.store_context
+                            .blueprint
+                            .query_caches()
+                            .latest_at(store, query, entity_path_overridden, [*component_name])
+                            .components
+                            .get(component_name)
+                            .cloned() /* arc */
+                    }
+                    StoreKind::Recording => {
+                        ctx.recording()
+                            .query_caches()
+                            .latest_at(
+                                ctx.recording_store(),
+                                &query,
+                                entity_path_overridden,
+                                [*component_name],
+                            )
+                            .components
+                            .get(component_name)
+                            .cloned() /* arc */
+                    }
+                };
+
+                if let Some(results) = component_data {
+                    ctx.component_ui_registry.edit_ui(
+                        ctx,
+                        ui,
+                        UiVerbosity::Small,
+                        &query,
+                        ctx.recording(),
+                        entity_path_overridden,
+                        &overrides.individual_override_path,
+                        &results,
+                        instance,
+                    );
+                } else {
+                    // TODO(jleibs): Is it possible to set an override to empty and not confuse
+                    // the situation with "not-overridden?". Maybe we hit this in cases of `[]` vs `[null]`.
+                    ui.weak("(empty)");
+                }
+            };
+
+            ctx.re_ui
+                .list_item2()
+                .interactive(false)
+                .show_flat(
+                    ui,
+                    re_ui::list_item2::PropertyContent::new(component_name.short_name())
+                        .action_button(&re_ui::icons::CLOSE, || {
                             ctx.save_empty_blueprint_component_name(
                                 &overrides.individual_override_path,
                                 *component_name,
                             );
-                        }
-                    });
-                    // Component label
-                    row.col(|ui| {
-                        //  NOTE: this is not a component button because it is not a component that exists in the recording, just in the blueprint.
-                        // So we don't allow users to select it.
-                        ui.label(component_name.short_name())
-                            .on_hover_text(component_name.full_name());
-                    });
-                    // Editor last to take up remainder of space
-                    row.col(|ui| {
-                        let component_data = match store_kind {
-                            StoreKind::Blueprint => {
-                                let store = ctx.store_context.blueprint.store();
-                                let query = ctx.blueprint_query;
-                                ctx.store_context
-                                    .blueprint
-                                    .query_caches()
-                                    .latest_at(
-                                        store,
-                                        query,
-                                        entity_path_overridden,
-                                        [*component_name],
-                                    )
-                                    .components
-                                    .get(component_name)
-                                    .cloned() /* arc */
-                            }
-                            StoreKind::Recording => {
-                                ctx.recording()
-                                    .query_caches()
-                                    .latest_at(
-                                        ctx.recording_store(),
-                                        &query,
-                                        entity_path_overridden,
-                                        [*component_name],
-                                    )
-                                    .components
-                                    .get(component_name)
-                                    .cloned() /* arc */
-                            }
-                        };
-
-                        if let Some(results) = component_data {
-                            ctx.component_ui_registry.edit_ui(
-                                ctx,
-                                ui,
-                                UiVerbosity::Small,
-                                &query,
-                                ctx.recording(),
-                                entity_path_overridden,
-                                &overrides.individual_override_path,
-                                &results,
-                                instance,
-                            );
-                        } else {
-                            // TODO(jleibs): Is it possible to set an override to empty and not confuse
-                            // the situation with "not-overridden?". Maybe we hit this in cases of `[]` vs `[null]`.
-                            ui.weak("(empty)");
-                        }
-                    });
-                }
-            });
-        });
+                        })
+                        .value_fn(|_, ui, _| value_fn(ui)),
+                )
+                .on_hover_text(component_name.full_name());
+        }
+    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -353,43 +331,31 @@ pub fn override_visualizer_ui(
             &active_visualizers,
         );
 
-        ui.end_row();
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
 
-        egui_extras::TableBuilder::new(ui)
-            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .auto_shrink([false, true])
-            .column(egui_extras::Column::auto())
-            .column(egui_extras::Column::remainder())
-            .body(|mut body| {
-                re_ui::ReUi::setup_table_body(&mut body);
-                let row_height = re_ui::ReUi::table_line_height();
-                body.rows(row_height, active_visualizers.len(), |mut row| {
-                    if let Some(vis_name) = active_visualizers.get(row.index()) {
-                        // Remove button
-                        row.col(|ui| {
-                            if ctx
-                                .re_ui
-                                .small_icon_button(ui, &re_ui::icons::CLOSE)
-                                .clicked()
-                            {
-                                let component = VisualizerOverrides::from(
-                                    active_visualizers
-                                        .iter()
-                                        .filter(|v| *v != vis_name)
-                                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                                        .collect::<Vec<_>>(),
-                                );
+            for viz_name in &active_visualizers {
+                ctx.re_ui.list_item2().interactive(false).show_flat(
+                    ui,
+                    // TODO(ab): use LabelContent instead, but it needs to have an option for the
+                    // same action button as PropertyContent.
+                    re_ui::list_item2::PropertyContent::new(viz_name.as_str()).action_button(
+                        &re_ui::icons::CLOSE,
+                        || {
+                            let component = VisualizerOverrides::from(
+                                active_visualizers
+                                    .iter()
+                                    .filter(|v| *v != viz_name)
+                                    .map(|v| re_types_core::ArrowString::from(v.as_str()))
+                                    .collect::<Vec<_>>(),
+                            );
 
-                                ctx.save_blueprint_component(override_path, &component);
-                            }
-                        });
-                        // Visualizer label
-                        row.col(|ui| {
-                            ui.label(vis_name.as_str());
-                        });
-                    }
-                });
-            });
+                            ctx.save_blueprint_component(override_path, &component);
+                        },
+                    ),
+                );
+            }
+        });
     });
 }
 
