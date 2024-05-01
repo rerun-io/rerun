@@ -247,9 +247,7 @@ impl MemorySinkStorage {
 
     /// Drain the stored messages and return them as an in-memory RRD.
     #[inline]
-    pub fn drain_memory_sink_as_bytes(
-        &self,
-    ) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+    pub fn drain_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
         let mut buffer = std::io::Cursor::new(Vec::new());
 
         {

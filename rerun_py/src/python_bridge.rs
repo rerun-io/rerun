@@ -796,7 +796,7 @@ impl PyMemorySinkStorage {
     /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
     ///
     /// This will do a blocking flush before returning!
-    fn drain<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+    fn drain_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
             self.rec.flush_blocking();
@@ -804,7 +804,7 @@ impl PyMemorySinkStorage {
         });
 
         self.inner
-            .drain_memory_sink_as_bytes()
+            .drain_as_bytes()
             .map(|bytes| PyBytes::new(py, bytes.as_slice()))
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
