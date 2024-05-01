@@ -32,6 +32,7 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 """
 examples = [
   # display order, most interesting first
+  "droid_dataset",
   "ros_node",
   "nuscenes_dataset",
   "ros2_bridge",
