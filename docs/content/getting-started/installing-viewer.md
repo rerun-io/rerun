@@ -39,7 +39,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
 
 -   Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/)
 -   Via Cargo
-    -   `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
+    -   `cargo install rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
     -   `cargo install rerun-cli` - build it from source (this requires Rust 1.74+)
 -   Together with the Rerun [Python SDK](./quick-start/python.md):
     -   `pip3 install rerun-sdk` - download it via pip
