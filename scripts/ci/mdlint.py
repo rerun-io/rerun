@@ -348,36 +348,28 @@ def explain(error_code: str):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Markdown linter")
-    cmds = parser.add_subparsers(title="cmds", dest="cmd", required=False)
-    explain = cmds.add_parser("explain", help="Explain an error")
-    explain.add_argument(
-        "error_code",
-        type=str,
-        help="one of the error codes reported by the linter",
-    )
-    lint = cmds.add_parser("lint", help="Run the linter")
-    lint.add_argument(
-        "glob",
+    parser.add_argument(
+        "--glob",
         type=str,
         default="**/*.md",
         help="glob pattern of files to lint, e.g. '**/*.md'",
     )
+    parser.add_argument(
+        "--explain",
+        type=str,
+        help="explain an error code",
+    )
 
-    args = parser.parse_args()
-    if args.cmd is None:
-        args.cmd = "lint"  # default command
-        args.glob = "**/*.md"
-
-    return args
+    return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    if args.cmd == "lint":
+    if args.explain is not None:
+        explain(args.explain.upper())
+    else:
         lint(args.glob)
-    elif args.cmd == "explain":
-        explain(args.error_code.upper())
 
 
 if __name__ == "__main__":

@@ -132,6 +132,16 @@ jobs:
       - name: Check example manifest coverage
         run: pixi run ./scripts/check_example_manifest_coverage.py
 
+  lint-md:
+    name: Lint markdown
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          pixi run ./scripts/ci/mdlint.py --glob "'docs/content/**/*.md'"
+          pixi run ./scripts/ci/mdlint.py --glob "'examples/python/*/README.md'"
+          pixi run ./scripts/ci/mdlint.py --glob "'examples/cpp/*/README.md'"
+          pixi run ./scripts/ci/mdlint.py --glob "'examples/rust/*/README.md'"
+
   # ---------------------------------------------------------------------------
 
   spell-check:
