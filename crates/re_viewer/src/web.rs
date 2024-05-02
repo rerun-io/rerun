@@ -2,6 +2,7 @@
 
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use ahash::HashMap;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
@@ -22,7 +23,7 @@ pub struct WebHandle {
     ///
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
-    bytes_tx: Option<re_smart_channel::Sender<re_log_types::LogMsg>>,
+    tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
 }
 
 #[wasm_bindgen]
@@ -34,7 +35,7 @@ impl WebHandle {
 
         Self {
             runner: eframe::WebRunner::new(),
-            bytes_tx: None,
+            tx_channels: Default::default(),
         }
     }
 
@@ -115,25 +116,48 @@ impl WebHandle {
         }
     }
 
-    /// Add an rrd to the viewer directly from a byte array.
+    /// Open a new channel for streaming data.
+    ///
+    /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
-    pub fn add_rrd_from_bytes(&mut self, data: &[u8]) {
-        use std::{ops::ControlFlow, sync::Arc};
+    pub fn open_channel(&mut self, id: &str, _channel_name: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
 
-        // TODO(jleibs): Should we provide a mechanism of the javascript signalling we're done?
-        if self.bytes_tx.is_none() {
-            let (tx, rx) = re_smart_channel::smart_channel(
-                re_smart_channel::SmartMessageSource::JsBytes,
-                re_smart_channel::SmartChannelSource::JsBytes,
-            );
-            self.bytes_tx = Some(tx);
-            app.add_receiver(rx);
+        if self.tx_channels.contains_key(id) {
+            re_log::warn!("Channel with id '{}' already exists.", id);
+            return;
         }
 
-        if let Some(tx) = self.bytes_tx.clone() {
+        let (tx, rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::JsBytes,
+            re_smart_channel::SmartChannelSource::JsBytes,
+        );
+
+        app.add_receiver(rx);
+        self.tx_channels.insert(id.to_owned(), tx);
+    }
+
+    /// Open a new channel for streaming data.
+    ///
+    /// No-op if the channel is already closed.
+    #[wasm_bindgen]
+    pub fn close_channel(&mut self, id: &str) {
+        if let Some(tx) = self.tx_channels.remove(id) {
+            tx.quit(None).warn_on_err_once("Failed to send quit marker");
+        }
+    }
+
+    /// Add an rrd to the viewer directly from a byte array.
+    #[wasm_bindgen]
+    pub fn push_data_to_channel(&mut self, id: &str, data: &[u8]) {
+        use std::{ops::ControlFlow, sync::Arc};
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(tx) = self.tx_channels.get(id).cloned() {
             let data: Vec<u8> = data.to_vec();
 
             let egui_ctx = app.re_ui.egui_ctx.clone();

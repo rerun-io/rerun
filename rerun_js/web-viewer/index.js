@@ -57,6 +57,8 @@ export class WebViewer {
       throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
 
+    this.#state = "ready";
+
     if (rrd) {
       this.open(rrd);
     }
@@ -133,14 +135,71 @@ export class WebViewer {
   }
 
   /**
-   * Add an rrd to the viewer from a byte array.
+   * Creates a new log message stream.
    *
-   * @param {Uint8Array} rrd stored in a byte array, received via some other side channel.
+   * The stream can be used to incrementally push `rrd` log messages into the viewer.
+   *
+   * @returns {LogStream}
    */
-  add_rrd_from_bytes(rrd) {
-    if (!this.#handle) {
-      throw new Error(`attempted to add bytes to a stopped viewer`);
-    }
-    this.#handle.add_rrd_from_bytes(rrd);
+  stream(channel_name = "rerun-io/web-viewer") {
+    if (!this.#handle) throw new Error("...");
+    const id = crypto.randomUUID();
+    this.#handle.open_channel(id, channel_name);
+    const on_send = (/** @type {Uint8Array} */ data) => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.push_data_to_channel(id, data)
+    };
+    const on_close = () => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.close_channel(id);
+    };
+    const get_state = () => this.#state;
+    return new LogStream(on_send, on_close, get_state);
+  }
+}
+
+export class LogStream {
+  #on_send;
+  #on_close;
+  #get_state;
+  #closed = false;
+
+  /** @internal
+   *
+   * @param {(data: Uint8Array) => void} on_send
+   * @param {() => void} on_close
+   * @param {() => 'ready' | 'starting' | 'stopped'} get_state
+  */
+  constructor(on_send, on_close, get_state) {
+    this.#on_send = on_send;
+    this.#on_close = on_close;
+    this.#get_state = get_state;
+  }
+
+  get ready() {
+    return !this.#closed && this.#get_state() === "ready";
+  }
+
+  /**
+   * Send an `rrd` log message to the viewer.
+   *
+   * Does nothing if `!this.ready`.
+   *
+   * @param {Uint8Array} rrd_bytes stored in a byte array, received via some other side channel.
+   */
+  push(rrd_bytes) {
+    if (!this.ready) return;
+    this.#on_send(rrd_bytes);
+  }
+
+  /**
+   * Close the stream.
+   *
+   * Does nothing if `!this.ready`.
+   */
+  close() {
+    if (!this.ready) return;
+    this.#on_close();
+    this.#closed = true;
   }
 }
