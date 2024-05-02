@@ -2,7 +2,7 @@
 
 use egui::{NumExt, Response, Shape, Ui};
 
-use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent, StateStack};
+use crate::list_item2::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::ReUi;
 
 struct ListItemResponse {
@@ -238,10 +238,10 @@ impl<'a> ListItem<'a> {
 
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
-        let state = StateStack::top(ui.ctx());
+        let layout_info = LayoutInfoStack::top(ui.ctx());
         let mut bg_rect = rect;
-        bg_rect.set_left(state.background_x_range.min);
-        bg_rect.set_right(state.background_x_range.max);
+        bg_rect.set_left(layout_info.background_x_range.min);
+        bg_rect.set_right(layout_info.background_x_range.max);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
@@ -295,6 +295,7 @@ impl<'a> ListItem<'a> {
                 bg_rect,
                 response: &style_response,
                 list_item: &self,
+                layout_info,
             };
             content.ui(re_ui, ui, &content_ctx);
 

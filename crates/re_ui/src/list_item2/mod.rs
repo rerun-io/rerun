@@ -34,6 +34,9 @@ pub struct ContentContext<'a> {
 
     /// The current list item.
     pub list_item: &'a ListItem<'a>,
+
+    /// Layout information to use for rendering.
+    pub layout_info: LayoutInfo,
 }
 
 #[derive(Debug, Clone, Copy)]

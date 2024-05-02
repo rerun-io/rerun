@@ -179,9 +179,9 @@ impl ListItemContent for PropertyContent<'_> {
         } = *self;
 
         // │                                                                              │
-        // │◀─────────────────────────────background_x_range─────────────────────────────▶│
+        // │◀─────────────────────layout_info.background_x_range─────────────────────────▶│
         // │                                                                              │
-        // │ ◀───────────state.left_column_width────────────▶│┌──COLUMN_SPACING           │
+        // │ ◀────────layout_info.left_column_width─────────▶│┌──COLUMN_SPACING           │
         // │                                                  ▼                           │
         // │                       ◀─────────────────────────┼────────context.rect──────▶ │
         // │ ┌ ─ ─ ─ ─ ┬ ─ ─ ─ ─ ┬ ┬────────┬─┬─────────────┬─┬─────────────┬─┬─────────┐ │
@@ -192,18 +192,17 @@ impl ListItemContent for PropertyContent<'_> {
         // │                       │        │ │             │││             │ │         │ │
         // │ └ ─ ─ ─ ─ ┴ ─ ─ ─ ─ ┴ ┴────────┴─┴─────────────┴─┴─────────────┴─┴─────────┘ │
         // │ ▲                     ▲         ▲               │               ▲            │
-        // │ └──state.left_x       │         └───────────────────────────────┤            │
+        // │ └──layout_info.left   │         └───────────────────────────────┤            │
         // │                       │                         ▲               │            │
-        // │       content_left_x──┘           mid_point_x───┘     text_to_icon_padding   │
+        // │       content_left_x──┘           mid_point_x───┘    text_to_icon_padding()  │
         // │                                                                              │
-
-        let state = super::StateStack::top(ui.ctx());
 
         let content_left_x = context.rect.left();
         // Total indent left of the content rect. This is part of the left column width.
-        let content_indent = content_left_x - state.left_x;
-        let mid_point_x = state.left_x
-            + state
+        let content_indent = content_left_x - context.layout_info.left_x;
+        let mid_point_x = context.layout_info.left_x
+            + context
+                .layout_info
                 .left_column_width
                 .unwrap_or_else(|| content_indent + (context.rect.width() / 2.).at_least(0.0));
 
@@ -217,7 +216,7 @@ impl ListItemContent for PropertyContent<'_> {
         let action_button_dimension =
             ReUi::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
         let reserve_action_button_space =
-            action_buttons.is_some() || state.reserve_action_button_space;
+            action_buttons.is_some() || context.layout_info.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
             action_button_dimension + ReUi::text_to_icon_padding()
         } else {
@@ -258,10 +257,12 @@ impl ListItemContent for PropertyContent<'_> {
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
                 .ceil();
 
-        super::StateStack::top_mut(ui.ctx(), |state| {
-            state.register_desired_left_column_width(desired_width);
-            state.reserve_action_button_space(action_buttons.is_some());
-        });
+        context
+            .layout_info
+            .register_desired_left_column_width(ui.ctx(), desired_width);
+        context
+            .layout_info
+            .reserve_action_button_space(ui.ctx(), action_buttons.is_some());
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
