@@ -275,19 +275,22 @@ impl RecordingStreamBuilder {
     pub fn memory(
         self,
     ) -> RecordingStreamResult<(RecordingStream, crate::log_sink::MemorySinkStorage)> {
-        let sink = crate::log_sink::MemorySink::default();
-        let mut storage = sink.buffer();
-
         let (enabled, store_info, batcher_config) = self.into_args();
-        if enabled {
-            RecordingStream::new(store_info, batcher_config, Box::new(sink)).map(|rec| {
-                storage.rec = Some(rec.clone());
-                (rec, storage)
-            })
+        let rec = if enabled {
+            RecordingStream::new(
+                store_info,
+                batcher_config,
+                Box::new(crate::log_sink::BufferedSink::new()),
+            )
         } else {
             re_log::debug!("Rerun disabled - call to memory() ignored");
-            Ok((RecordingStream::disabled(), Default::default()))
-        }
+            Ok(RecordingStream::disabled())
+        }?;
+
+        let sink = crate::log_sink::MemorySink::new(rec.clone());
+        let storage = sink.buffer();
+        rec.set_sink(Box::new(sink));
+        Ok((rec, storage))
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -1581,12 +1584,9 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn memory(&self) -> MemorySinkStorage {
-        let sink = crate::sink::MemorySink::default();
-        let mut storage = sink.buffer();
-
+        let sink = crate::sink::MemorySink::new(self.clone());
+        let storage = sink.buffer();
         self.set_sink(Box::new(sink));
-        storage.rec = Some(self.clone());
-
         storage
     }
 
