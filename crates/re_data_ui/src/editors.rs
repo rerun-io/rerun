@@ -264,10 +264,7 @@ fn edit_marker_shape_ui(
             ui.spacing_mut().item_spacing.y = 0.0;
 
             // Hack needed for ListItem to click its highlight bg rect correctly:
-            ui.set_clip_rect(
-                ui.clip_rect()
-                    .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
-            );
+            ui.set_clip_rect(ui.spacing().menu_margin.expand_rect(ui.max_rect()));
 
             for marker in MarkerShape::ALL {
                 let list_item = re_ui::ListItem::new(ctx.re_ui, marker.to_string())
