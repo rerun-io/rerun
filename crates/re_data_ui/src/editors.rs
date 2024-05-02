@@ -257,7 +257,7 @@ fn edit_marker_shape_ui(
 
     egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
-        .width(100.0)
+        .width(ui.available_width().at_most(100.0))
         .height(320.0)
         .show_ui(ui, |ui| {
             // no spacing between list items
