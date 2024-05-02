@@ -4,6 +4,8 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
+use crate::RecordingStream;
+
 /// Where the SDK sends its log messages.
 pub trait LogSink: Send + Sync + 'static {
     /// Send this log message.
@@ -126,10 +128,15 @@ impl fmt::Debug for BufferedSink {
 ///
 /// Additionally the raw storage can be accessed and used to create an in-memory RRD.
 /// This is useful for things like the inline rrd-viewer in Jupyter notebooks.
-#[derive(Default)]
 pub struct MemorySink(MemorySinkStorage);
 
 impl MemorySink {
+    /// Create a new [`MemorySink`] with an associated [`RecordingStream`].
+    #[inline]
+    pub fn new(rec: RecordingStream) -> Self {
+        Self(MemorySinkStorage::new(rec))
+    }
+
     /// Access the raw `MemorySinkStorage`
     #[inline]
     pub fn buffer(&self) -> MemorySinkStorage {
@@ -153,7 +160,11 @@ impl LogSink for MemorySink {
 
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
-        self.0.take()
+        // Note that When draining the backlog, we don't call `take` since that would flush
+        // the stream. But drain_backlog is being called as part of `set_sink`, which has already queued
+        // a flush of the batcher. Queueing a second flush here seems to lead to a deadlock
+        // at shutdown.
+        std::mem::take(&mut (self.0.write()))
     }
 }
 
@@ -170,10 +181,10 @@ struct MemorySinkStorageInner {
 }
 
 /// The storage used by [`MemorySink`].
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct MemorySinkStorage {
     inner: Arc<Mutex<MemorySinkStorageInner>>,
-    pub(crate) rec: Option<crate::RecordingStream>,
+    pub(crate) rec: RecordingStream,
 }
 
 impl Drop for MemorySinkStorage {
@@ -194,6 +205,14 @@ impl Drop for MemorySinkStorage {
 }
 
 impl MemorySinkStorage {
+    /// Create a new [`MemorySinkStorage`] with an associated [`RecordingStream`].
+    fn new(rec: RecordingStream) -> Self {
+        Self {
+            inner: Default::default(),
+            rec,
+        }
+    }
+
     /// Write access to the inner array of [`LogMsg`].
     #[inline]
     fn write(&self) -> parking_lot::MappedMutexGuard<'_, Vec<LogMsg>> {
@@ -203,8 +222,14 @@ impl MemorySinkStorage {
     }
 
     /// How many messages are currently written to this memory sink
+    ///
+    /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn num_msgs(&self) -> usize {
+        // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+        // in this flush; it's just a matter of making the table batcher tick early.
+        self.rec.flush_blocking();
+
         self.inner.lock().msgs.len()
     }
 
@@ -213,15 +238,15 @@ impl MemorySinkStorage {
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn take(&self) -> Vec<LogMsg> {
-        if let Some(rec) = self.rec.as_ref() {
-            // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
-            // in this flush; it's just a matter of making the table batcher tick early.
-            rec.flush_blocking();
-        }
+        // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+        // in this flush; it's just a matter of making the table batcher tick early.
+        self.rec.flush_blocking();
         std::mem::take(&mut (self.write()))
     }
 
     /// Convert the stored messages into an in-memory Rerun log file.
+    ///
+    /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn concat_memory_sinks_as_bytes(
         sinks: &[&Self],
@@ -233,6 +258,9 @@ impl MemorySinkStorage {
             let mut encoder =
                 re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
             for sink in sinks {
+                // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+                // in this flush; it's just a matter of making the table batcher tick early.
+                sink.rec.flush_blocking();
                 let mut inner = sink.inner.lock();
                 inner.has_been_used = true;
 
@@ -245,12 +273,36 @@ impl MemorySinkStorage {
         Ok(buffer.into_inner())
     }
 
+    /// Drain the stored messages and return them as an in-memory RRD.
+    ///
+    /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
+    #[inline]
+    pub fn drain_as_bytes(&self) -> Result<Vec<u8>, re_log_encoding::encoder::EncodeError> {
+        // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
+        // in this flush; it's just a matter of making the table batcher tick early.
+        self.rec.flush_blocking();
+        let mut buffer = std::io::Cursor::new(Vec::new());
+
+        {
+            let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
+            let mut encoder =
+                re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
+
+            let mut inner = self.inner.lock();
+            inner.has_been_used = true;
+
+            for message in &std::mem::take(&mut inner.msgs) {
+                encoder.append(message)?;
+            }
+        }
+
+        Ok(buffer.into_inner())
+    }
+
     #[inline]
     /// Get the [`StoreId`] from the associated `RecordingStream` if it exists.
     pub fn store_id(&self) -> Option<StoreId> {
-        self.rec
-            .as_ref()
-            .and_then(|rec| rec.store_info().map(|info| info.store_id.clone()))
+        self.rec.store_info().map(|info| info.store_id.clone())
     }
 }
 // ----------------------------------------------------------------------------

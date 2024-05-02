@@ -53,6 +53,14 @@ class MemoryRecording:
         """
         return self.storage.num_msgs()  # type: ignore[no-any-return]
 
+    def drain_as_bytes(self) -> bytes:
+        """
+        Drains the MemoryRecording and returns the data as bytes.
+
+        This will flush the current sink before returning.
+        """
+        return self.storage.drain_as_bytes()  # type: ignore[no-any-return]
+
     @deprecated("Please use rerun.notebook_show() instead.")
     def as_html(
         self,

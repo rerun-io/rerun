@@ -85,8 +85,10 @@ from .recording_stream import (
     get_recording_id,
     get_thread_local_data_recording,
     is_enabled,
+    new_recording,
     set_global_data_recording,
     set_thread_local_data_recording,
+    thread_local_stream,
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
 from .sinks import connect, disconnect, save, send_blueprint, serve, spawn, stdout
@@ -253,133 +255,6 @@ def init(
         from rerun.sinks import spawn as _spawn
 
         _spawn(default_blueprint=default_blueprint)
-
-
-# TODO(#3793): defaulting recording_id to authkey should be opt-in
-def new_recording(
-    application_id: str,
-    *,
-    recording_id: str | UUID | None = None,
-    make_default: bool = False,
-    make_thread_default: bool = False,
-    spawn: bool = False,
-    default_enabled: bool = True,
-) -> RecordingStream:
-    """
-    Creates a new recording with a user-chosen application id (name) that can be used to log data.
-
-    If you only need a single global recording, [`rerun.init`][] might be simpler.
-
-    !!! Warning
-        If you don't specify a `recording_id`, it will default to a random value that is generated once
-        at the start of the process.
-        That value will be kept around for the whole lifetime of the process, and even inherited by all
-        its subprocesses, if any.
-
-        This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
-        that the following code will _not_ create two distinct recordings:
-        ```
-        rr.init("my_app")
-        rr.init("my_app")
-        ```
-
-        To create distinct recordings from the same process, specify distinct recording IDs:
-        ```
-        from uuid import uuid4
-        rec = rr.new_recording(application_id="test", recording_id=uuid4())
-        rec = rr.new_recording(application_id="test", recording_id=uuid4())
-        ```
-
-    Parameters
-    ----------
-    application_id : str
-        Your Rerun recordings will be categorized by this application id, so
-        try to pick a unique one for each application that uses the Rerun SDK.
-
-        For example, if you have one application doing object detection
-        and another doing camera calibration, you could have
-        `rerun.init("object_detector")` and `rerun.init("calibrator")`.
-    recording_id : Optional[str]
-        Set the recording ID that this process is logging to, as a UUIDv4.
-
-        The default recording_id is based on `multiprocessing.current_process().authkey`
-        which means that all processes spawned with `multiprocessing`
-        will have the same default recording_id.
-
-        If you are not using `multiprocessing` and still want several different Python
-        processes to log to the same Rerun instance (and be part of the same recording),
-        you will need to manually assign them all the same recording_id.
-        Any random UUIDv4 will work, or copy the recording id for the parent process.
-    make_default : bool
-        If true (_not_ the default), the newly initialized recording will replace the current
-        active one (if any) in the global scope.
-    make_thread_default : bool
-        If true (_not_ the default), the newly initialized recording will replace the current
-        active one (if any) in the thread-local scope.
-    spawn : bool
-        Spawn a Rerun Viewer and stream logging data to it.
-        Short for calling `spawn` separately.
-        If you don't call this, log events will be buffered indefinitely until
-        you call either `connect`, `show`, or `save`
-    default_enabled
-        Should Rerun logging be on by default?
-        Can be overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.
-
-    Returns
-    -------
-    RecordingStream
-        A handle to the [`rerun.RecordingStream`][]. Use it to log data to Rerun.
-
-    """
-
-    application_path = None
-
-    # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
-    # only need to be written once and just work for all languages out of the box… unfortunately
-    # we lose most of the details of the python part of the backtrace once we go over the bridge.
-    #
-    # Still, better than nothing!
-    try:
-        import inspect
-        import pathlib
-
-        # We're trying to grab the filesystem path of the example script that called `init()`.
-        # The tricky part is that we don't know how many layers are between this script and the
-        # original caller, so we have to walk the stack and look for anything that might look like
-        # an official Rerun example.
-
-        MAX_FRAMES = 10  # try the first 10 frames, should be more than enough
-        FRAME_FILENAME_INDEX = 1  # `FrameInfo` tuple has `filename` at index 1
-
-        stack = inspect.stack()
-        for frame in stack[:MAX_FRAMES]:
-            filename = frame[FRAME_FILENAME_INDEX]
-            path = pathlib.Path(str(filename)).resolve()  # normalize before comparison!
-            if "rerun/examples" in str(path):
-                application_path = path
-    except Exception:
-        pass
-
-    if recording_id is not None:
-        recording_id = str(recording_id)
-
-    recording = RecordingStream(
-        bindings.new_recording(
-            application_id=application_id,
-            recording_id=recording_id,
-            make_default=make_default,
-            make_thread_default=make_thread_default,
-            application_path=application_path,
-            default_enabled=default_enabled,
-        )
-    )
-
-    if spawn:
-        from rerun.sinks import spawn as _spawn
-
-        _spawn(recording=recording)
-
-    return recording
 
 
 def version() -> str:
