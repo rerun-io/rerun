@@ -7,6 +7,11 @@ pub struct RightPanel {
     drag_and_drop: drag_and_drop::ExampleDragAndDrop,
     hierarchical_drag_and_drop: hierarchical_drag_and_drop::HierarchicalDragAndDrop,
     selected_list_item: Option<usize>,
+
+    // dummy data
+    text: String,
+    color: [u8; 4],
+    boolean: bool,
 }
 
 impl Default for RightPanel {
@@ -17,6 +22,10 @@ impl Default for RightPanel {
             hierarchical_drag_and_drop:
                 hierarchical_drag_and_drop::HierarchicalDragAndDrop::default(),
             selected_list_item: None,
+            // dummy data
+            text: "Hello world".to_owned(),
+            color: [128, 0, 0, 255],
+            boolean: false,
         }
     }
 }
@@ -32,7 +41,7 @@ impl RightPanel {
 
         re_ui.panel_content(ui, |re_ui, ui| {
             re_ui.panel_title_bar_with_buttons(ui, "Demo: drag-and-drop", None, |ui| {
-                ui.add(re_ui::toggle_switch(&mut self.show_hierarchical_demo));
+                ui.add(re_ui::toggle_switch(8.0, &mut self.show_hierarchical_demo));
                 ui.label("Hierarchical:");
             });
 
@@ -51,7 +60,7 @@ impl RightPanel {
 
         re_ui.panel_content(ui, |re_ui, ui| {
             re_ui.panel_title_bar(ui, "Demo: ListItem APIs", None);
-            Self::list_item_api_demo(re_ui, ui);
+            self.list_item_api_demo(re_ui, ui);
         });
 
         ui.add_space(20.0);
@@ -93,7 +102,7 @@ impl RightPanel {
             });
     }
 
-    fn list_item_api_demo(re_ui: &ReUi, ui: &mut Ui) {
+    fn list_item_api_demo(&mut self, re_ui: &ReUi, ui: &mut Ui) {
         re_ui
             .list_item2()
             .show_hierarchical(ui, list_item2::LabelContent::new("Default"));
@@ -166,6 +175,57 @@ impl RightPanel {
                                 | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
                         },
                     ),
+                );
+            },
+        );
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "property content features",
+            true,
+            list_item2::PropertyContent::new("PropertyContent features:")
+                .value_text("bunch of properties"),
+            |re_ui, ui| {
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Bool (editable)")
+                        .value_bool_mut(&mut self.boolean),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Text").value_text(&self.text),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Text (editable)")
+                        .value_text_mut(&mut self.text),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Color")
+                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                        .action_button(&re_ui::icons::ADD, || {
+                            re_log::warn!("Add button clicked");
+                        })
+                        .value_color(&self.color),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::PropertyContent::new("Color (editable)")
+                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                        .action_button(&re_ui::icons::ADD, || {
+                            re_log::warn!("Add button clicked");
+                        })
+                        .value_color_mut(&mut self.color),
                 );
             },
         );

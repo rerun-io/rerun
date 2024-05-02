@@ -227,7 +227,7 @@ impl eframe::App for ExampleApp {
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 ui.label("Toggle switch:");
-                                ui.add(re_ui::toggle_switch(&mut self.dummy_bool));
+                                ui.add(re_ui::toggle_switch(8.0, &mut self.dummy_bool));
                             });
                             ui.label(format!("Latest command: {}", self.latest_cmd));
 
@@ -310,6 +310,7 @@ impl eframe::App for ExampleApp {
 
         egui::SidePanel::right("right_panel")
             .frame(panel_frame)
+            .min_width(0.0)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
                 // TODO(#6156): this is still needed for some full-span widgets
                 ui.set_clip_rect(ui.max_rect());
