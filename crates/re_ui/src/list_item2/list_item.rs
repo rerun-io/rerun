@@ -22,7 +22,19 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<egui::InnerResponse<R>>,
 }
 
-/// Generic list item that delegates its content to a [`ListItemContent`] implementation.
+/// Content-generic list item.
+///
+/// The following features are supported:
+/// - Flat or collapsible hierarchical lists.
+/// - Full-span background highlighting via [`super::list_item_scope`]. TODO(#6156): fix reference
+/// - Interactive or not.
+/// - Support for drag and drop with [`crate::drag_and_drop`].
+///
+/// Besides these core features, [`ListItem`] delegates all content to the [`ListItemContent`]
+/// implementations, such as [`super::LabelContent`] and [`super::PropertyContent`].
+///
+/// Usage example can be found in `re_ui_example`.
+
 #[derive(Debug, Clone)]
 pub struct ListItem<'a> {
     re_ui: &'a ReUi,

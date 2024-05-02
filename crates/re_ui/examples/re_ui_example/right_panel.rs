@@ -287,17 +287,6 @@ impl RightPanel {
             |re_ui, ui| {
                 re_ui.list_item2().show_hierarchical(
                     ui,
-                    list_item2::LabelContent::new("next line is a EmptyContent:")
-                        .subdued(true)
-                        .italics(true),
-                );
-
-                re_ui
-                    .list_item2()
-                    .show_hierarchical(ui, list_item2::EmptyContent);
-
-                re_ui.list_item2().show_hierarchical(
-                    ui,
                     list_item2::DebugContent::default()
                         .label("DebugContent just shows the content area"),
                 );

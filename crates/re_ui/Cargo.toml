@@ -34,16 +34,15 @@ re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
 
+egui.workspace = true
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true
-egui.workspace = true
 parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-strum_macros.workspace = true
 strum.workspace = true
+strum_macros.workspace = true
 sublime_fuzzy.workspace = true
-once_cell.workspace = true
 
 
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }

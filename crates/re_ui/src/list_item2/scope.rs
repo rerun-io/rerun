@@ -1,13 +1,11 @@
 use egui::NumExt;
-use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct State {
     /// X coordinate span to use for hover/selection highlight.
     ///
-    /// Note: this field is not, strictly speaking, part of the state, as it's overwritten with each
-    /// call of `list_item_scope`. Still, it's convenient to have it here to pass it from the scope
-    /// to the inner `ListItem`.
+    /// Note: `list_item_scope` always overwrite this field before pushing the [`State`] to the
+    /// stack.
     // TODO(#6156): this being here is a (temporary) hack (see docstring). In the future, this will
     // be generalized to some `full_span_scope` mechanism to be used by all full-span widgets beyond
     // `ListItem`.
@@ -78,19 +76,17 @@ impl State {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct StateStack(Vec<State>);
 
-static STATE_STACK_ID: Lazy<egui::Id> = Lazy::new(|| egui::Id::new("re_ui_list_item_state_stack"));
-
 impl StateStack {
     fn push(ctx: &egui::Context, state: State) {
         ctx.data_mut(|writer| {
-            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             stack.0.push(state);
         });
     }
 
     fn pop(ctx: &egui::Context) -> Option<State> {
         ctx.data_mut(|writer| {
-            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             stack.0.pop()
         })
     }
@@ -102,7 +98,7 @@ impl StateStack {
     /// [`super::list_item_scope`].
     pub(crate) fn top(ctx: &egui::Context) -> State {
         ctx.data_mut(|writer| {
-            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             let state = stack.0.last();
             if state.is_none() {
                 re_log::warn_once!(
@@ -120,7 +116,7 @@ impl StateStack {
     /// empty, the closure is not called and a warning is logged.
     pub(crate) fn top_mut(ctx: &egui::Context, state_writer: impl FnOnce(&mut State)) {
         ctx.data_mut(|writer| {
-            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             let state = stack.0.last_mut();
             if let Some(state) = state {
                 state_writer(state);
@@ -135,7 +131,7 @@ impl StateStack {
 
     fn peek(ctx: &egui::Context) -> Option<State> {
         ctx.data_mut(|writer| {
-            let stack: &mut StateStack = writer.get_temp_mut_or_default(*STATE_STACK_ID);
+            let stack: &mut StateStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             stack.0.last().cloned()
         })
     }

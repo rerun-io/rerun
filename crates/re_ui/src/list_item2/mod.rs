@@ -21,6 +21,9 @@ pub struct ContentContext<'a> {
     pub rect: egui::Rect,
 
     /// Background area
+    ///
+    /// This is the area covered by the full-span highlighting. Useful for testing if the cursor is
+    /// over the item.
     pub bg_rect: egui::Rect,
 
     /// List item response.
