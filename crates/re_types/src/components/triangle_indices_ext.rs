@@ -1,12 +1,5 @@
 use super::TriangleIndices;
 
-impl TriangleIndices {
-    /// The zero vector, i.e. the additive identity.
-    pub const ZERO: Self = Self(crate::datatypes::UVec3D::ZERO);
-
-    /// `[1, 1, 1]`, i.e. the multiplicative identity.
-    pub const ONE: Self = Self(crate::datatypes::UVec3D::ONE);
-}
 
 #[cfg(feature = "glam")]
 impl From<TriangleIndices> for glam::UVec3 {
