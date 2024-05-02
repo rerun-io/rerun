@@ -2,9 +2,7 @@ use egui::{emath::RectTransform, pos2, vec2, Align2, Color32, Pos2, Rect, Shape,
 use macaw::IsoTransform;
 
 use re_entity_db::EntityPath;
-use re_renderer::{
-    view_builder::{TargetConfiguration, ViewBuilder},
-};
+use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{
     archetypes::Pinhole, blueprint::archetypes::Background, blueprint::archetypes::VisualBounds,
