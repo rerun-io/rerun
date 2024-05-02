@@ -289,6 +289,11 @@ impl RecordingStreamBuilder {
 
         let sink = crate::log_sink::MemorySink::new(rec.clone());
         let storage = sink.buffer();
+        // Using set_sink here is necessary because the MemorySink needs to know
+        // it's own RecordingStream, which means we can't use `new` above.
+        // This has the downside of a bit of creation overhead and an extra StoreInfo
+        // message being sent to the sink.
+        // TODO(jleibs): Figure out a cleaner way to handle this.
         rec.set_sink(Box::new(sink));
         Ok((rec, storage))
     }
@@ -2216,6 +2221,16 @@ mod tests {
 
             // First message should be a set_store_info resulting from the original sink swap
             // to in-memory mode.
+            match msgs.pop().unwrap() {
+                LogMsg::SetStoreInfo(msg) => {
+                    assert!(msg.row_id != RowId::ZERO);
+                    similar_asserts::assert_eq!(store_info, msg.info);
+                }
+                _ => panic!("expected SetStoreInfo"),
+            }
+
+            // For reasons, MemorySink ends up with 2 StoreInfos.
+            // TODO(jleibs): Avoid a redundant StoreInfo message.
             match msgs.pop().unwrap() {
                 LogMsg::SetStoreInfo(msg) => {
                     assert!(msg.row_id != RowId::ZERO);
