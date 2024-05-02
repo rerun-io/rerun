@@ -21,6 +21,9 @@ pub struct ContentContext<'a> {
     pub rect: egui::Rect,
 
     /// Background area
+    ///
+    /// This is the area covered by the full-span highlighting. Useful for testing if the cursor is
+    /// over the item.
     pub bg_rect: egui::Rect,
 
     /// List item response.
@@ -31,6 +34,9 @@ pub struct ContentContext<'a> {
 
     /// The current list item.
     pub list_item: &'a ListItem<'a>,
+
+    /// Layout information to use for rendering.
+    pub layout_info: LayoutInfo,
 }
 
 #[derive(Debug, Clone, Copy)]

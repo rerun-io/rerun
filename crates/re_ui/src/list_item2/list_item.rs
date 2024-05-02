@@ -2,7 +2,7 @@
 
 use egui::{NumExt, Response, Shape, Ui};
 
-use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent, StateStack};
+use crate::list_item2::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::ReUi;
 
 struct ListItemResponse {
@@ -22,7 +22,19 @@ pub struct ShowCollapsingResponse<R> {
     pub body_response: Option<egui::InnerResponse<R>>,
 }
 
-/// Generic list item that delegates its content to a [`ListItemContent`] implementation.
+/// Content-generic list item.
+///
+/// The following features are supported:
+/// - Flat or collapsible hierarchical lists.
+/// - Full-span background highlighting via [`super::list_item_scope`]. TODO(#6156): fix reference
+/// - Interactive or not.
+/// - Support for drag and drop with [`crate::drag_and_drop`].
+///
+/// Besides these core features, [`ListItem`] delegates all content to the [`ListItemContent`]
+/// implementations, such as [`super::LabelContent`] and [`super::PropertyContent`].
+///
+/// Usage example can be found in `re_ui_example`.
+
 #[derive(Debug, Clone)]
 pub struct ListItem<'a> {
     re_ui: &'a ReUi,
@@ -226,10 +238,10 @@ impl<'a> ListItem<'a> {
 
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
-        let state = StateStack::top(ui.ctx());
+        let layout_info = LayoutInfoStack::top(ui.ctx());
         let mut bg_rect = rect;
-        bg_rect.set_left(state.background_x_range.min);
-        bg_rect.set_right(state.background_x_range.max);
+        bg_rect.set_left(layout_info.background_x_range.min);
+        bg_rect.set_right(layout_info.background_x_range.max);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
@@ -283,6 +295,7 @@ impl<'a> ListItem<'a> {
                 bg_rect,
                 response: &style_response,
                 list_item: &self,
+                layout_info,
             };
             content.ui(re_ui, ui, &content_ctx);
 

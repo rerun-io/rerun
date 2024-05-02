@@ -21,7 +21,7 @@ struct PropertyActionButton<'a> {
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
     icon_fn: Option<Box<IconFn<'a>>>,
-    summary_only: bool,
+    show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
     //TODO(ab): in the future, that should be a `Vec`, with some auto expanding mini-toolbar
     action_buttons: Option<PropertyActionButton<'a>>,
@@ -30,13 +30,14 @@ pub struct PropertyContent<'a> {
 }
 
 impl<'a> PropertyContent<'a> {
+    /// Spacing used between the two main columns
     const COLUMN_SPACING: f32 = 12.0;
 
     pub fn new(label: impl Into<egui::WidgetText>) -> Self {
         Self {
             label: label.into(),
             icon_fn: None,
-            summary_only: true,
+            show_only_when_collapsed: true,
             value_fn: None,
             action_buttons: None,
         }
@@ -64,16 +65,18 @@ impl<'a> PropertyContent<'a> {
     /// Right aligned action button.
     ///
     /// Note: for aesthetics, space is always reserved for the action button.
-    // TODO(ab): accept multiple calls for this function for multiple actions. In that case, a `…´
-    // button should be displayed that turns into a mini-popup with all available actions
-    // TODO(ab): if ALL item in a scope have no button active, then we could skip reserving the
-    // space in the right margin.
+    // TODO(#6191): accept multiple calls for this function for multiple actions.
     #[inline]
     pub fn action_button(
         mut self,
         icon: &'static crate::icons::Icon,
         on_click: impl FnOnce() + 'a,
     ) -> Self {
+        // TODO(#6191): support multiple action buttons
+        assert!(
+            self.action_buttons.is_none(),
+            "Only one action button supported right now"
+        );
         self.action_buttons = Some(PropertyActionButton {
             icon,
             on_click: Box::new(on_click),
@@ -89,8 +92,8 @@ impl<'a> PropertyContent<'a> {
     ///
     /// Enabled by default.
     #[inline]
-    pub fn summary_only(mut self, summary_only: bool) -> Self {
-        self.summary_only = summary_only;
+    pub fn show_only_when_collapsed(mut self, show_only_when_collapsed: bool) -> Self {
+        self.show_only_when_collapsed = show_only_when_collapsed;
         self
     }
 
@@ -145,9 +148,9 @@ impl<'a> PropertyContent<'a> {
 
     /// Show a read-only color in the value column.
     #[inline]
-    pub fn value_color(self, color: &'a [u8; 4]) -> Self {
+    pub fn value_color(self, rgba: &'a [u8; 4]) -> Self {
         self.value_fn(|_, ui, _| {
-            let [r, g, b, a] = color;
+            let [r, g, b, a] = rgba;
             let color = egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a);
             let response = egui::color_picker::show_color(ui, color, ui.spacing().interact_size);
             response.on_hover_text(format!("Color #{r:02x}{g:02x}{b:02x}{a:02x}"));
@@ -156,11 +159,11 @@ impl<'a> PropertyContent<'a> {
 
     /// Show an editable color in the value column.
     #[inline]
-    pub fn value_color_mut(self, color: &'a mut [u8; 4]) -> Self {
+    pub fn value_color_mut(self, rgba: &'a mut [u8; 4]) -> Self {
         self.value_fn(|_, ui: &mut egui::Ui, _| {
             ui.visuals_mut().widgets.hovered.expansion = 0.0;
             ui.visuals_mut().widgets.active.expansion = 0.0;
-            ui.color_edit_button_srgba_unmultiplied(color);
+            ui.color_edit_button_srgba_unmultiplied(rgba);
         })
     }
 }
@@ -170,17 +173,17 @@ impl ListItemContent for PropertyContent<'_> {
         let Self {
             label,
             icon_fn,
-            summary_only,
+            show_only_when_collapsed,
             value_fn,
             action_buttons,
         } = *self;
 
         // │                                                                              │
-        // │◀─────────────────────────────background_x_range─────────────────────────────▶│
+        // │◀─────────────────────layout_info.background_x_range─────────────────────────▶│
         // │                                                                              │
-        // │ ◀───────────state.left_column_width────────────▶│┌──COLUMN_SPACING           │
+        // │ ◀────────layout_info.left_column_width─────────▶│┌──COLUMN_SPACING           │
         // │                                                  ▼                           │
-        // │                       ◀──────────────CONTENT────┼──────────────────────────▶ │
+        // │                       ◀─────────────────────────┼────────context.rect──────▶ │
         // │ ┌ ─ ─ ─ ─ ┬ ─ ─ ─ ─ ┬ ┬────────┬─┬─────────────┬─┬─────────────┬─┬─────────┐ │
         // │                       │        │ │             │││             │ │         │ │
         // │ │         │         │ │        │ │             │ │             │ │         │ │
@@ -189,21 +192,17 @@ impl ListItemContent for PropertyContent<'_> {
         // │                       │        │ │             │││             │ │         │ │
         // │ └ ─ ─ ─ ─ ┴ ─ ─ ─ ─ ┴ ┴────────┴─┴─────────────┴─┴─────────────┴─┴─────────┘ │
         // │ ▲                     ▲         ▲               │               ▲            │
-        // │ └──state.left_x       │         └───────────────────────────────┤            │
+        // │ └──layout_info.left   │         └───────────────────────────────┤            │
         // │                       │                         ▲               │            │
-        // │       content_left_x──┘           mid_point_x───┘     text_to_icon_padding   │
+        // │       content_left_x──┘           mid_point_x───┘    text_to_icon_padding()  │
         // │                                                                              │
-        //
-        // content_indent = content_left_x - state.left_x
-        // left_column_width = content_indent + icon_extra + label_width + COLUMN_SPACING/2
-
-        let state = super::StateStack::top(ui.ctx());
 
         let content_left_x = context.rect.left();
         // Total indent left of the content rect. This is part of the left column width.
-        let content_indent = content_left_x - state.left_x;
-        let mid_point_x = state.left_x
-            + state
+        let content_indent = content_left_x - context.layout_info.left_x;
+        let mid_point_x = context.layout_info.left_x
+            + context
+                .layout_info
                 .left_column_width
                 .unwrap_or_else(|| content_indent + (context.rect.width() / 2.).at_least(0.0));
 
@@ -213,19 +212,16 @@ impl ListItemContent for PropertyContent<'_> {
             0.0
         };
 
-        let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
-            ReUi::small_icon_size(),
-        );
-
-        // TODO(#6179): don't reserve space for action button if none are ever used in the current
-        // scope.
-        let action_button_rect = egui::Rect::from_center_size(
-            context.rect.right_center() - egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
-            ReUi::small_icon_size() + egui::vec2(1.0, 1.0), // padding is needed for the buttons
-        );
-
-        let action_button_extra = action_button_rect.width() + ReUi::text_to_icon_padding();
+        // Based on egui::ImageButton::ui()
+        let action_button_dimension =
+            ReUi::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
+        let reserve_action_button_space =
+            action_buttons.is_some() || context.layout_info.reserve_action_button_space;
+        let action_button_extra = if reserve_action_button_space {
+            action_button_dimension + ReUi::text_to_icon_padding()
+        } else {
+            0.0
+        };
 
         let label_rect = egui::Rect::from_x_y_ranges(
             (content_left_x + icon_extra)..=(mid_point_x - Self::COLUMN_SPACING / 2.0),
@@ -244,6 +240,11 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
+            let icon_rect = egui::Rect::from_center_size(
+                context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
+                ReUi::small_icon_size(),
+            );
+
             icon_fn(re_ui, ui, icon_rect, visuals);
         }
 
@@ -256,9 +257,12 @@ impl ListItemContent for PropertyContent<'_> {
             (content_indent + icon_extra + desired_galley.size().x + Self::COLUMN_SPACING / 2.0)
                 .ceil();
 
-        super::StateStack::top_mut(ui.ctx(), |state| {
-            state.register_desired_left_column_width(desired_width);
-        });
+        context
+            .layout_info
+            .register_desired_left_column_width(ui.ctx(), desired_width);
+        context
+            .layout_info
+            .reserve_action_button_space(ui.ctx(), action_buttons.is_some());
 
         let galley = if desired_galley.size().x <= label_rect.width() {
             desired_galley
@@ -283,11 +287,15 @@ impl ListItemContent for PropertyContent<'_> {
         ui.painter().galley(text_pos, galley, visuals.text_color());
 
         // Draw value
-        let should_show_value = context
+        let is_completely_collapsed = context
             .list_item
             .collapse_openness
-            .map_or(true, |o| o == 0.0)
-            || !summary_only;
+            .map_or(true, |o| o == 0.0);
+        let should_show_value = if show_only_when_collapsed {
+            is_completely_collapsed
+        } else {
+            true
+        };
         if let Some(value_fn) = value_fn {
             if should_show_value {
                 let mut child_ui =
@@ -298,9 +306,16 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Draw action button
         if let Some(action_button) = action_buttons {
+            let action_button_rect = egui::Rect::from_center_size(
+                context.rect.right_center() - egui::vec2(action_button_dimension / 2.0, 0.0),
+                egui::Vec2::splat(action_button_dimension),
+            );
+
+            // the right to left layout is used to mimic LabelContent's buttons behavior and get a
+            // better alignment
             let mut child_ui = ui.child_ui(
-                action_button_rect.expand(2.0),
-                egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+                action_button_rect,
+                egui::Layout::right_to_left(egui::Align::Center),
             );
             let button_response = re_ui.small_icon_button(&mut child_ui, action_button.icon);
             if button_response.clicked() {
