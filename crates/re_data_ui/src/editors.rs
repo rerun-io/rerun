@@ -414,7 +414,7 @@ fn default_marker_size(
 
 // ----
 
-fn register_editor<'a, C: Component + Loggable + 'static>(
+fn register_editor<'a, C>(
     registry: &mut re_viewer_context::ComponentUiRegistry,
     default: fn(&ViewerContext<'_>, &LatestAtQuery, &EntityDb, &EntityPath) -> C,
     edit: fn(
@@ -429,7 +429,7 @@ fn register_editor<'a, C: Component + Loggable + 'static>(
         &Instance,
     ),
 ) where
-    C: Into<::std::borrow::Cow<'a, C>>,
+    C: Component + Loggable + 'static + Into<::std::borrow::Cow<'a, C>>,
 {
     registry.add_editor(
         C::name(),
