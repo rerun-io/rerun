@@ -135,13 +135,15 @@ export class WebViewer {
   }
 
   /**
-   * Creates a new log message stream.
+   * Opens a new channel for sending log messages.
    *
-   * The stream can be used to incrementally push `rrd` log messages into the viewer.
+   * The channel can be used to incrementally push `rrd` chunks into the viewer.
    *
-   * @returns {LogStream}
+   * @param {string} channel_name used to identify the channel.
+   *
+   * @returns {LogChannel}
    */
-  stream(channel_name = "rerun-io/web-viewer") {
+  open_channel(channel_name = "rerun-io/web-viewer") {
     if (!this.#handle) throw new Error("...");
     const id = crypto.randomUUID();
     this.#handle.open_channel(id, channel_name);
@@ -154,11 +156,11 @@ export class WebViewer {
       this.#handle.close_channel(id);
     };
     const get_state = () => this.#state;
-    return new LogStream(on_send, on_close, get_state);
+    return new LogChannel(on_send, on_close, get_state);
   }
 }
 
-export class LogStream {
+export class LogChannel {
   #on_send;
   #on_close;
   #get_state;
@@ -193,7 +195,7 @@ export class LogStream {
   }
 
   /**
-   * Close the stream.
+   * Close the channel.
    *
    * Does nothing if `!this.ready`.
    */
