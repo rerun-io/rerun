@@ -30,6 +30,7 @@ pub struct PropertyContent<'a> {
 }
 
 impl<'a> PropertyContent<'a> {
+    /// Spacing used between the two main columns
     const COLUMN_SPACING: f32 = 12.0;
 
     pub fn new(label: impl Into<egui::WidgetText>) -> Self {
@@ -182,7 +183,7 @@ impl ListItemContent for PropertyContent<'_> {
         // │                                                                              │
         // │ ◀───────────state.left_column_width────────────▶│┌──COLUMN_SPACING           │
         // │                                                  ▼                           │
-        // │                       ◀──────────────CONTENT────┼──────────────────────────▶ │
+        // │                       ◀─────────────────────────┼────────context.rect──────▶ │
         // │ ┌ ─ ─ ─ ─ ┬ ─ ─ ─ ─ ┬ ┬────────┬─┬─────────────┬─┬─────────────┬─┬─────────┐ │
         // │                       │        │ │             │││             │ │         │ │
         // │ │         │         │ │        │ │             │ │             │ │         │ │
@@ -195,9 +196,6 @@ impl ListItemContent for PropertyContent<'_> {
         // │                       │                         ▲               │            │
         // │       content_left_x──┘           mid_point_x───┘     text_to_icon_padding   │
         // │                                                                              │
-        //
-        // content_indent = content_left_x - state.left_x
-        // left_column_width = content_indent + icon_extra + label_width + COLUMN_SPACING/2
 
         let state = super::StateStack::top(ui.ctx());
 
@@ -215,22 +213,13 @@ impl ListItemContent for PropertyContent<'_> {
             0.0
         };
 
-        let icon_rect = egui::Rect::from_center_size(
-            context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
-            ReUi::small_icon_size(),
-        );
-
         // Based on egui::ImageButton::ui()
-        let button_dimension = ReUi::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
-        let action_button_rect = egui::Rect::from_center_size(
-            context.rect.right_center() - egui::vec2(button_dimension / 2.0, 0.0),
-            egui::Vec2::splat(button_dimension),
-        );
-
+        let action_button_dimension =
+            ReUi::small_icon_size().x + 2.0 * ui.spacing().button_padding.x;
         let reserve_action_button_space =
             action_buttons.is_some() || state.reserve_action_button_space;
         let action_button_extra = if reserve_action_button_space {
-            action_button_rect.width() + ReUi::text_to_icon_padding()
+            action_button_dimension + ReUi::text_to_icon_padding()
         } else {
             0.0
         };
@@ -252,6 +241,11 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Draw icon
         if let Some(icon_fn) = icon_fn {
+            let icon_rect = egui::Rect::from_center_size(
+                context.rect.left_center() + egui::vec2(ReUi::small_icon_size().x / 2., 0.0),
+                ReUi::small_icon_size(),
+            );
+
             icon_fn(re_ui, ui, icon_rect, visuals);
         }
 
@@ -311,6 +305,11 @@ impl ListItemContent for PropertyContent<'_> {
 
         // Draw action button
         if let Some(action_button) = action_buttons {
+            let action_button_rect = egui::Rect::from_center_size(
+                context.rect.right_center() - egui::vec2(action_button_dimension / 2.0, 0.0),
+                egui::Vec2::splat(action_button_dimension),
+            );
+
             // the right to left layout is used to mimic LabelContent's buttons behavior and get a
             // better alignment
             let mut child_ui = ui.child_ui(

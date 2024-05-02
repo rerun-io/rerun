@@ -17,7 +17,7 @@ pub struct State {
     /// based on `ui.max_rect()`.
     pub(crate) left_x: f32,
 
-    /// Column width to be used this frame.
+    /// Column width to be read this frame.
     ///
     /// The column width has `left_x` as reference, so it includes:
     /// - All the indentation on the left side of the list item.
@@ -26,6 +26,10 @@ pub struct State {
     ///
     /// The effective left column width for a given [`super::ListItemContent`] implementation can be
     /// calculated as `left_column_width - (context.rect.left() - left_x)`.
+    ///
+    /// This value is set to `None` during the first frame, when [`list_item_scope`] isn't able to
+    /// determine a suitable value. In that case, implementations should devise a suitable default
+    /// value.
     pub(crate) left_column_width: Option<f32>,
 
     /// Maximum desired column width, to be updated this frame.
