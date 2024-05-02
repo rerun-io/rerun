@@ -1204,7 +1204,7 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    query_range_ui_data_result(ctx, ui, &query_result.tree, data_result);
+    query_range_ui_data_result(ctx, ui, data_result);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)

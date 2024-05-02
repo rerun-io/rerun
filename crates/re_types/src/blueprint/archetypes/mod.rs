@@ -7,6 +7,7 @@ mod scalar_axis;
 mod space_view_blueprint;
 mod space_view_contents;
 mod visible_time_range;
+mod visible_time_range_ext;
 mod visual_bounds;
 
 pub use self::background::Background;

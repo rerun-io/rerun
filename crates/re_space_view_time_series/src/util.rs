@@ -1,5 +1,5 @@
 use re_log_types::{AbsoluteTimeRange, EntityPath};
-use re_types::datatypes::{Utf8, VisibleTimeRange, VisibleTimeRangeBoundary};
+use re_types::datatypes::{TimeRange, TimeRangeBoundary, Utf8};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
 use crate::{
@@ -43,15 +43,15 @@ pub fn determine_time_range(
                 "Unexexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
-            VisibleTimeRange {
-                start: VisibleTimeRangeBoundary::AT_CURSOR,
-                end: VisibleTimeRangeBoundary::AT_CURSOR,
+            TimeRange {
+                start: TimeRangeBoundary::AT_CURSOR,
+                end: TimeRangeBoundary::AT_CURSOR,
             }
         }
     };
 
     let mut time_range =
-        AbsoluteTimeRange::from_visible_time_range(&visible_time_range, time_cursor);
+        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,
