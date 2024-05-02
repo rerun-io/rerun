@@ -126,12 +126,7 @@ impl<'a> LabelContent<'a> {
 }
 
 impl ListItemContent for LabelContent<'_> {
-    fn ui(
-        self: Box<Self>,
-        re_ui: &ReUi,
-        ui: &mut Ui,
-        context: &ContentContext<'_>,
-    ) -> Option<egui::Response> {
+    fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
         let Self {
             mut text,
             subdued,
@@ -226,8 +221,6 @@ impl ListItemContent for LabelContent<'_> {
             .min;
 
         ui.painter().galley(text_pos, galley, visuals.text_color());
-
-        button_response
     }
 
     fn desired_width(&self, _re_ui: &ReUi, ui: &Ui) -> DesiredWidth {
