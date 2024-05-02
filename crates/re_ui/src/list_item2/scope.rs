@@ -6,6 +6,35 @@ use egui::NumExt;
 /// stored in this structure (via [`LayoutInfo`] methods). Then, it is saved in egui temporary memory
 /// against the scope id. On frame `n+1`, the accumulated values are used by [`list_item_scope`] to
 /// set up the [`LayoutInfo`] and the accumulator is reset to restart the process.
+///
+/// Here is an illustration of the layout statistics that are gathered:
+/// ```text
+/// │◀─────────────────────background_x_range───────────────────▶│
+/// │                                                            │
+/// │  ┌──left_x                                                 │
+/// │  ▼                                                         │
+/// │  │                       │                        │        │
+/// │  ┌───────────────────────────────────────────┐             │
+/// │  │                       │                   │    │        │
+/// │  └───┬────────────────────────────────────┬──┘             │
+/// │  │ ▼ │                   │                │       │        │
+/// │      └───┬─────────────────────────┬──────┘                │
+/// │  │       │               │         │              │        │
+/// │          ├─────────────────────────┴────┐                  │
+/// │  │     ▼ │               │              │         │        │
+/// │          └───┬──────────────────────────┴─────────┐        │
+/// │  │           │           │                        │        │
+/// │              ├─────────────────────┬──────────────┘        │
+/// │  │         ▶ │           │         │              │        │
+/// │  ┌───────────┴─────────────────────┴──┐                    │
+/// │  │                       │            │           │        │
+/// │  └────────────────────────────────────┘                    │
+/// │  │                       │                        │        │
+/// │                                                            │
+/// │  │◀──────────────────────▶ max_desired_left_column_width   │
+/// │                                                            │
+/// │  │◀───────────────max_item_width─────────────────▶│        │
+/// ```
 #[derive(Debug, Clone)]
 struct LayoutStatistics {
     /// Maximum desired column width.

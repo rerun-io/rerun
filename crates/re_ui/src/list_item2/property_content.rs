@@ -191,7 +191,7 @@ impl ListItemContent for PropertyContent<'_> {
         // │                       │        │ │             │││             │ │         │ │
         // │ └ ─ ─ ─ ─ ┴ ─ ─ ─ ─ ┴ ┴────────┴─┴─────────────┴─┴─────────────┴─┴─────────┘ │
         // │ ▲                     ▲         ▲               │               ▲            │
-        // │ └──layout_info.left   │         └───────────────────────────────┤            │
+        // │ └──layout_info.left_x │         └───────────────────────────────┤            │
         // │                       │                         ▲               │            │
         // │       content_left_x──┘           mid_point_x───┘    text_to_icon_padding()  │
         // │                                                                              │
