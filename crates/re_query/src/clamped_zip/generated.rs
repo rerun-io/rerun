@@ -1,4 +1,4 @@
-// This file was generated using `cargo r -p crate --all-features --bin clamped_zip`.
+// This file was generated using `cargo r -p re_query --all-features --bin clamped_zip`.
 // DO NOT EDIT.
 
 // ---
@@ -67,7 +67,7 @@ where
         let r0_next = self.r0.next()?;
         let o0_next = self.o0.next().or(self.o0_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
 
         Some((r0_next, o0_next.unwrap_or_else(|| (self.o0_default_fn)())))
     }
@@ -152,8 +152,8 @@ where
         let o0_next = self.o0.next().or(self.o0_latest_value.take());
         let o1_next = self.o1.next().or(self.o1_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
 
         Some((
             r0_next,
@@ -260,9 +260,9 @@ where
         let o1_next = self.o1.next().or(self.o1_latest_value.take());
         let o2_next = self.o2.next().or(self.o2_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
 
         Some((
             r0_next,
@@ -399,10 +399,10 @@ where
         let o2_next = self.o2.next().or(self.o2_latest_value.take());
         let o3_next = self.o3.next().or(self.o3_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
 
         Some((
             r0_next,
@@ -560,11 +560,11 @@ where
         let o3_next = self.o3.next().or(self.o3_latest_value.take());
         let o4_next = self.o4.next().or(self.o4_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
 
         Some((
             r0_next,
@@ -751,12 +751,12 @@ where
         let o4_next = self.o4.next().or(self.o4_latest_value.take());
         let o5_next = self.o5.next().or(self.o5_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
 
         Some((
             r0_next,
@@ -965,13 +965,13 @@ where
         let o5_next = self.o5.next().or(self.o5_latest_value.take());
         let o6_next = self.o6.next().or(self.o6_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
 
         Some((
             r0_next,
@@ -1202,14 +1202,14 @@ where
         let o6_next = self.o6.next().or(self.o6_latest_value.take());
         let o7_next = self.o7.next().or(self.o7_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
-        self.o7_latest_value = o7_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
+        self.o7_latest_value.clone_from(&o7_next);
 
         Some((
             r0_next,
@@ -1462,15 +1462,15 @@ where
         let o7_next = self.o7.next().or(self.o7_latest_value.take());
         let o8_next = self.o8.next().or(self.o8_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
-        self.o7_latest_value = o7_next.clone();
-        self.o8_latest_value = o8_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
+        self.o7_latest_value.clone_from(&o7_next);
+        self.o8_latest_value.clone_from(&o8_next);
 
         Some((
             r0_next,
@@ -1555,7 +1555,7 @@ where
         let r1_next = self.r1.next()?;
         let o0_next = self.o0.next().or(self.o0_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
 
         Some((
             r0_next,
@@ -1651,8 +1651,8 @@ where
         let o0_next = self.o0.next().or(self.o0_latest_value.take());
         let o1_next = self.o1.next().or(self.o1_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
 
         Some((
             r0_next,
@@ -1767,9 +1767,9 @@ where
         let o1_next = self.o1.next().or(self.o1_latest_value.take());
         let o2_next = self.o2.next().or(self.o2_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
 
         Some((
             r0_next,
@@ -1915,10 +1915,10 @@ where
         let o2_next = self.o2.next().or(self.o2_latest_value.take());
         let o3_next = self.o3.next().or(self.o3_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
 
         Some((
             r0_next,
@@ -2093,11 +2093,11 @@ where
         let o3_next = self.o3.next().or(self.o3_latest_value.take());
         let o4_next = self.o4.next().or(self.o4_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
 
         Some((
             r0_next,
@@ -2294,12 +2294,12 @@ where
         let o4_next = self.o4.next().or(self.o4_latest_value.take());
         let o5_next = self.o5.next().or(self.o5_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
 
         Some((
             r0_next,
@@ -2518,13 +2518,13 @@ where
         let o5_next = self.o5.next().or(self.o5_latest_value.take());
         let o6_next = self.o6.next().or(self.o6_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
 
         Some((
             r0_next,
@@ -2765,14 +2765,14 @@ where
         let o6_next = self.o6.next().or(self.o6_latest_value.take());
         let o7_next = self.o7.next().or(self.o7_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
-        self.o7_latest_value = o7_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
+        self.o7_latest_value.clone_from(&o7_next);
 
         Some((
             r0_next,
@@ -3097,15 +3097,15 @@ where
         let o7_next = self.o7.next().or(self.o7_latest_value.take());
         let o8_next = self.o8.next().or(self.o8_latest_value.take());
 
-        self.o0_latest_value = o0_next.clone();
-        self.o1_latest_value = o1_next.clone();
-        self.o2_latest_value = o2_next.clone();
-        self.o3_latest_value = o3_next.clone();
-        self.o4_latest_value = o4_next.clone();
-        self.o5_latest_value = o5_next.clone();
-        self.o6_latest_value = o6_next.clone();
-        self.o7_latest_value = o7_next.clone();
-        self.o8_latest_value = o8_next.clone();
+        self.o0_latest_value.clone_from(&o0_next);
+        self.o1_latest_value.clone_from(&o1_next);
+        self.o2_latest_value.clone_from(&o2_next);
+        self.o3_latest_value.clone_from(&o3_next);
+        self.o4_latest_value.clone_from(&o4_next);
+        self.o5_latest_value.clone_from(&o5_next);
+        self.o6_latest_value.clone_from(&o6_next);
+        self.o7_latest_value.clone_from(&o7_next);
+        self.o8_latest_value.clone_from(&o8_next);
 
         Some((
             r0_next,

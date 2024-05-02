@@ -271,7 +271,7 @@ fn generate_impl(params: &Params) -> String {
     let update_latest = params
         .to_optional_names()
         .into_iter()
-        .map(|o| format!("self.{o}_latest_value = {o}_next.clone();"))
+        .map(|o| format!("self.{o}_latest_value.clone_from(&{o}_next);"))
         .collect_vec()
         .join("\n");
 
@@ -340,7 +340,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p crate --all-features --bin clamped_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin clamped_zip`.
         // DO NOT EDIT.
 
         // ---

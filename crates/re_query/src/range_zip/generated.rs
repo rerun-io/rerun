@@ -1,4 +1,4 @@
-// This file was generated using `cargo r -p crate --all-features --bin range_zip`.
+// This file was generated using `cargo r -p re_query --all-features --bin range_zip`.
 // DO NOT EDIT.
 
 // ---
@@ -69,9 +69,7 @@ where
             o0_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -80,7 +78,7 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         Some((max_index, r0_data, o0_data))
     }
@@ -157,9 +155,7 @@ where
             o1_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -168,14 +164,14 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         Some((max_index, r0_data, o0_data, o1_data))
     }
@@ -264,9 +260,7 @@ where
             o2_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -275,21 +269,21 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         Some((max_index, r0_data, o0_data, o1_data, o2_data))
     }
@@ -401,9 +395,7 @@ where
             o3_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -412,28 +404,28 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         Some((max_index, r0_data, o0_data, o1_data, o2_data, o3_data))
     }
@@ -566,9 +558,7 @@ where
             o4_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -577,35 +567,35 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         Some((
             max_index, r0_data, o0_data, o1_data, o2_data, o3_data, o4_data,
@@ -754,9 +744,7 @@ where
             o5_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -765,42 +753,42 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         Some((
             max_index, r0_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data,
@@ -963,9 +951,7 @@ where
             o6_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -974,49 +960,49 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         Some((
             max_index, r0_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data, o6_data,
@@ -1252,9 +1238,7 @@ where
             o7_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -1263,56 +1247,56 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         let mut o7_data = None;
         while let Some((_, data)) = o7.next_if(|(index, _)| index <= &max_index) {
             o7_data = Some(data);
         }
         let o7_data = o7_data.or(o7_data_latest.take());
-        *o7_data_latest = o7_data.clone();
+        o7_data_latest.clone_from(&o7_data);
 
         Some((
             max_index, r0_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data, o6_data,
@@ -1591,9 +1575,7 @@ where
             o8_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
 
         let max_index = [r0_index].into_iter().max().unwrap();
 
@@ -1602,63 +1584,63 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         let mut o7_data = None;
         while let Some((_, data)) = o7.next_if(|(index, _)| index <= &max_index) {
             o7_data = Some(data);
         }
         let o7_data = o7_data.or(o7_data_latest.take());
-        *o7_data_latest = o7_data.clone();
+        o7_data_latest.clone_from(&o7_data);
 
         let mut o8_data = None;
         while let Some((_, data)) = o8.next_if(|(index, _)| index <= &max_index) {
             o8_data = Some(data);
         }
         let o8_data = o8_data.or(o8_data_latest.take());
-        *o8_data_latest = o8_data.clone();
+        o8_data_latest.clone_from(&o8_data);
 
         Some((
             max_index, r0_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data, o6_data,
@@ -1734,12 +1716,8 @@ where
             o0_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -1748,7 +1726,7 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         Some((max_index, r0_data, r1_data, o0_data))
     }
@@ -1833,12 +1811,8 @@ where
             o1_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -1847,14 +1821,14 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         Some((max_index, r0_data, r1_data, o0_data, o1_data))
     }
@@ -1962,12 +1936,8 @@ where
             o2_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -1976,21 +1946,21 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         Some((max_index, r0_data, r1_data, o0_data, o1_data, o2_data))
     }
@@ -2111,12 +2081,8 @@ where
             o3_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -2125,28 +2091,28 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data,
@@ -2291,12 +2257,8 @@ where
             o4_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -2305,35 +2267,35 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data, o4_data,
@@ -2492,12 +2454,8 @@ where
             o5_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -2506,42 +2464,42 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data,
@@ -2773,12 +2731,8 @@ where
             o6_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -2787,49 +2741,49 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data,
@@ -3104,12 +3058,8 @@ where
             o7_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -3118,56 +3068,56 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         let mut o7_data = None;
         while let Some((_, data)) = o7.next_if(|(index, _)| index <= &max_index) {
             o7_data = Some(data);
         }
         let o7_data = o7_data.or(o7_data_latest.take());
-        *o7_data_latest = o7_data.clone();
+        o7_data_latest.clone_from(&o7_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data,
@@ -3464,12 +3414,8 @@ where
             o8_data_latest,
         } = self;
 
-        let Some((r0_index, r0_data)) = r0.next() else {
-            return None;
-        };
-        let Some((r1_index, r1_data)) = r1.next() else {
-            return None;
-        };
+        let (r0_index, r0_data) = r0.next()?;
+        let (r1_index, r1_data) = r1.next()?;
 
         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 
@@ -3478,63 +3424,63 @@ where
             o0_data = Some(data);
         }
         let o0_data = o0_data.or(o0_data_latest.take());
-        *o0_data_latest = o0_data.clone();
+        o0_data_latest.clone_from(&o0_data);
 
         let mut o1_data = None;
         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
             o1_data = Some(data);
         }
         let o1_data = o1_data.or(o1_data_latest.take());
-        *o1_data_latest = o1_data.clone();
+        o1_data_latest.clone_from(&o1_data);
 
         let mut o2_data = None;
         while let Some((_, data)) = o2.next_if(|(index, _)| index <= &max_index) {
             o2_data = Some(data);
         }
         let o2_data = o2_data.or(o2_data_latest.take());
-        *o2_data_latest = o2_data.clone();
+        o2_data_latest.clone_from(&o2_data);
 
         let mut o3_data = None;
         while let Some((_, data)) = o3.next_if(|(index, _)| index <= &max_index) {
             o3_data = Some(data);
         }
         let o3_data = o3_data.or(o3_data_latest.take());
-        *o3_data_latest = o3_data.clone();
+        o3_data_latest.clone_from(&o3_data);
 
         let mut o4_data = None;
         while let Some((_, data)) = o4.next_if(|(index, _)| index <= &max_index) {
             o4_data = Some(data);
         }
         let o4_data = o4_data.or(o4_data_latest.take());
-        *o4_data_latest = o4_data.clone();
+        o4_data_latest.clone_from(&o4_data);
 
         let mut o5_data = None;
         while let Some((_, data)) = o5.next_if(|(index, _)| index <= &max_index) {
             o5_data = Some(data);
         }
         let o5_data = o5_data.or(o5_data_latest.take());
-        *o5_data_latest = o5_data.clone();
+        o5_data_latest.clone_from(&o5_data);
 
         let mut o6_data = None;
         while let Some((_, data)) = o6.next_if(|(index, _)| index <= &max_index) {
             o6_data = Some(data);
         }
         let o6_data = o6_data.or(o6_data_latest.take());
-        *o6_data_latest = o6_data.clone();
+        o6_data_latest.clone_from(&o6_data);
 
         let mut o7_data = None;
         while let Some((_, data)) = o7.next_if(|(index, _)| index <= &max_index) {
             o7_data = Some(data);
         }
         let o7_data = o7_data.or(o7_data_latest.take());
-        *o7_data_latest = o7_data.clone();
+        o7_data_latest.clone_from(&o7_data);
 
         let mut o8_data = None;
         while let Some((_, data)) = o8.next_if(|(index, _)| index <= &max_index) {
             o8_data = Some(data);
         }
         let o8_data = o8_data.or(o8_data_latest.take());
-        *o8_data_latest = o8_data.clone();
+        o8_data_latest.clone_from(&o8_data);
 
         Some((
             max_index, r0_data, r1_data, o0_data, o1_data, o2_data, o3_data, o4_data, o5_data,
