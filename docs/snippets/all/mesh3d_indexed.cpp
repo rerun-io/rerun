@@ -18,13 +18,12 @@ int main() {
         {0, 255, 0},
         {255, 0, 0},
     };
-    const rerun::TriangleIndices indices[1] = {{2, 1, 0}};
 
     rec.log(
         "triangle",
         rerun::Mesh3D(vertex_positions)
             .with_vertex_normals({{0.0, 0.0, 1.0}})
             .with_vertex_colors(vertex_colors)
-            .with_triangle_indices(indices)
+            .with_triangle_indices({{2, 1, 0}})
     );
 }

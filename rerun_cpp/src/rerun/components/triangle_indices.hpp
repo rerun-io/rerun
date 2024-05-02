@@ -18,23 +18,12 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'triangle_indices_ext.cpp'
 
-        /// Construct TriangleIndices from x/y/z values.
-        TriangleIndices(uint32_t x, uint32_t y, uint32_t z) : indices{x, y, z} {}
+        /// Construct TriangleIndices from v0/v1/v2 values.
+        TriangleIndices(uint32_t v0, uint32_t v1, uint32_t v2) : indices{v0, v1, v2} {}
 
-        /// Construct UVec3D from x/y/z uint32_t pointer.
-        explicit TriangleIndices(const uint32_t* xyz) : indices{xyz[0], xyz[1], xyz[2]} {}
-
-        uint32_t x() const {
-            return indices.x();
-        }
-
-        uint32_t y() const {
-            return indices.y();
-        }
-
-        uint32_t z() const {
-            return indices.z();
-        }
+        /// Construct UVec3D from v0/v1/v2 uint32_t pointer.
+        explicit TriangleIndices(const uint32_t* indices)
+            : indices{indices[0], indices[1], indices[2]} {}
 
       public:
         TriangleIndices() = default;

@@ -1,6 +1,5 @@
 use super::TriangleIndices;
 
-
 #[cfg(feature = "glam")]
 impl From<TriangleIndices> for glam::UVec3 {
     #[inline]
