@@ -33,35 +33,27 @@ class VisibleTimeRange(Archetype):
     The visual time range can be overridden also individually per entity.
     """
 
-    def __init__(
-        self: Any,
-        *,
-        sequence: datatypes.VisibleTimeRangeLike | None = None,
-        time: datatypes.VisibleTimeRangeLike | None = None,
-    ):
+    def __init__(self: Any, ranges: datatypes.VisibleTimeRangeArrayLike):
         """
         Create a new instance of the VisibleTimeRange archetype.
 
         Parameters
         ----------
-        sequence:
-            The range of time to show for timelines based on sequence numbers.
-        time:
-            The range of time to show for timelines based on time.
+        ranges:
+            The ranges of time to show for all given timelines based on sequence numbers.
 
         """
 
         # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(sequence=sequence, time=time)
+            self.__attrs_init__(ranges=ranges)
             return
         self.__attrs_clear__()
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
-            sequence=None,  # type: ignore[arg-type]
-            time=None,  # type: ignore[arg-type]
+            ranges=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -71,21 +63,11 @@ class VisibleTimeRange(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    sequence: blueprint_components.VisibleTimeRangeSequenceBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.VisibleTimeRangeSequenceBatch._optional,  # type: ignore[misc]
+    ranges: blueprint_components.VisibleTimeRangeBatch = field(
+        metadata={"component": "required"},
+        converter=blueprint_components.VisibleTimeRangeBatch._required,  # type: ignore[misc]
     )
-    # The range of time to show for timelines based on sequence numbers.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    time: blueprint_components.VisibleTimeRangeTimeBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.VisibleTimeRangeTimeBatch._optional,  # type: ignore[misc]
-    )
-    # The range of time to show for timelines based on time.
+    # The ranges of time to show for all given timelines based on sequence numbers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

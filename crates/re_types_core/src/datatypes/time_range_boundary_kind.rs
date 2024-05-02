@@ -22,9 +22,9 @@ use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
+/// **Datatype**: Kind of boundary for visible history, see `TimeRangeBoundary`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum VisibleTimeRangeBoundaryKind {
+pub enum TimeRangeBoundaryKind {
     /// Boundary is a value relative to the time cursor.
     RelativeToTimeCursor = 1,
 
@@ -35,12 +35,12 @@ pub enum VisibleTimeRangeBoundaryKind {
     Infinite = 3,
 }
 
-impl VisibleTimeRangeBoundaryKind {
+impl TimeRangeBoundaryKind {
     /// All the different enum variants.
     pub const ALL: [Self; 3] = [Self::RelativeToTimeCursor, Self::Absolute, Self::Infinite];
 }
 
-impl crate::SizeBytes for VisibleTimeRangeBoundaryKind {
+impl crate::SizeBytes for TimeRangeBoundaryKind {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -52,7 +52,7 @@ impl crate::SizeBytes for VisibleTimeRangeBoundaryKind {
     }
 }
 
-impl std::fmt::Display for VisibleTimeRangeBoundaryKind {
+impl std::fmt::Display for TimeRangeBoundaryKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::RelativeToTimeCursor => write!(f, "RelativeToTimeCursor"),
@@ -62,14 +62,14 @@ impl std::fmt::Display for VisibleTimeRangeBoundaryKind {
     }
 }
 
-crate::macros::impl_into_cow!(VisibleTimeRangeBoundaryKind);
+crate::macros::impl_into_cow!(TimeRangeBoundaryKind);
 
-impl crate::Loggable for VisibleTimeRangeBoundaryKind {
+impl crate::Loggable for TimeRangeBoundaryKind {
     type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.datatypes.VisibleTimeRangeBoundaryKind".into()
+        "rerun.datatypes.TimeRangeBoundaryKind".into()
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -118,7 +118,7 @@ impl crate::Loggable for VisibleTimeRangeBoundaryKind {
                     .take(1 + num_variants)
                     .collect();
             UnionArray::new(
-                <crate::datatypes::VisibleTimeRangeBoundaryKind>::arrow_datatype(),
+                <crate::datatypes::TimeRangeBoundaryKind>::arrow_datatype(),
                 types,
                 fields,
                 None,
@@ -145,15 +145,15 @@ impl crate::Loggable for VisibleTimeRangeBoundaryKind {
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.VisibleTimeRangeBoundaryKind")?;
+                .with_context("rerun.datatypes.TimeRangeBoundaryKind")?;
             let arrow_data_types = arrow_data.types();
             arrow_data_types
                 .iter()
                 .map(|typ| match typ {
                     0 => Ok(None),
-                    1 => Ok(Some(VisibleTimeRangeBoundaryKind::RelativeToTimeCursor)),
-                    2 => Ok(Some(VisibleTimeRangeBoundaryKind::Absolute)),
-                    3 => Ok(Some(VisibleTimeRangeBoundaryKind::Infinite)),
+                    1 => Ok(Some(TimeRangeBoundaryKind::RelativeToTimeCursor)),
+                    2 => Ok(Some(TimeRangeBoundaryKind::Absolute)),
+                    3 => Ok(Some(TimeRangeBoundaryKind::Infinite)),
                     _ => Err(DeserializationError::missing_union_arm(
                         Self::arrow_datatype(),
                         "<invalid>",
@@ -161,7 +161,7 @@ impl crate::Loggable for VisibleTimeRangeBoundaryKind {
                     )),
                 })
                 .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.VisibleTimeRangeBoundaryKind")?
+                .with_context("rerun.datatypes.TimeRangeBoundaryKind")?
         })
     }
 }

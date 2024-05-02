@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
+use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimeZone};
 use re_space_view::{query_view_property, SpaceViewBlueprint};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
@@ -272,7 +272,7 @@ fn query_range_ui(
     if should_display_visible_time_range {
         if let Some(current_time) = time_ctrl.time_int() {
             if let QueryRange::TimeRange(ref time_range) = &query_range {
-                let range = TimeRange::from_visible_time_range(time_range, current_time);
+                let range = AbsoluteTimeRange::from_visible_time_range(time_range, current_time);
                 ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(range);
             }
         }
@@ -395,7 +395,7 @@ fn current_range_ui(
     time_type: TimeType,
     visible_range: &VisibleTimeRange,
 ) {
-    let time_range = TimeRange::from_visible_time_range(visible_range, current_time);
+    let time_range = AbsoluteTimeRange::from_visible_time_range(visible_range, current_time);
     let from_formatted = time_type.format(time_range.min(), ctx.app_options.time_zone);
     let to_formatted = time_type.format(time_range.max(), ctx.app_options.time_zone);
 

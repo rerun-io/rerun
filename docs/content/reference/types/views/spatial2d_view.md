@@ -28,8 +28,7 @@ The default visual time range depends on the type of view this property applies 
 
 The visual time range can be overridden also individually per entity.
 
-* sequence: The range of time to show for timelines based on sequence numbers.
-* time: The range of time to show for timelines based on time.
+* ranges: The ranges of time to show for all given timelines based on sequence numbers.
 
 ## Links
  * 🐍 [Python API docs for `Spatial2DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial2DView)

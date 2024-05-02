@@ -35,52 +35,42 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The visual time range can be overridden also individually per entity.
 #[derive(Clone, Debug, Default)]
 pub struct VisibleTimeRange {
-    /// The range of time to show for timelines based on sequence numbers.
-    pub sequence: Option<crate::blueprint::components::VisibleTimeRangeSequence>,
-
-    /// The range of time to show for timelines based on time.
-    pub time: Option<crate::blueprint::components::VisibleTimeRangeTime>,
+    /// The ranges of time to show for all given timelines based on sequence numbers.
+    pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
 }
 
 impl ::re_types_core::SizeBytes for VisibleTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.sequence.heap_size_bytes() + self.time.heap_size_bytes()
+        self.ranges.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <Option<crate::blueprint::components::VisibleTimeRangeSequence>>::is_pod()
-            && <Option<crate::blueprint::components::VisibleTimeRangeTime>>::is_pod()
+        <Vec<crate::blueprint::components::VisibleTimeRange>>::is_pod()
     }
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisibleTimeRange".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisibleTimeRangeIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.blueprint.components.VisibleTimeRangeSequence".into(),
-            "rerun.blueprint.components.VisibleTimeRangeTime".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
+            "rerun.blueprint.components.VisibleTimeRange".into(),
             "rerun.blueprint.components.VisibleTimeRangeIndicator".into(),
-            "rerun.blueprint.components.VisibleTimeRangeSequence".into(),
-            "rerun.blueprint.components.VisibleTimeRangeTime".into(),
         ]
     });
 
 impl VisibleTimeRange {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 3usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
+    pub const NUM_COMPONENTS: usize = 2usize;
 }
 
 /// Indicator component for the [`VisibleTimeRange`] [`::re_types_core::Archetype`]
@@ -130,29 +120,19 @@ impl ::re_types_core::Archetype for VisibleTimeRange {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let sequence = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.VisibleTimeRangeSequence")
-        {
-            <crate::blueprint::components::VisibleTimeRangeSequence>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#sequence")?
+        let ranges = {
+            let array = arrays_by_name
+                .get("rerun.blueprint.components.VisibleTimeRange")
+                .ok_or_else(DeserializationError::missing_data)
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?;
+            <crate::blueprint::components::VisibleTimeRange>::from_arrow_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?
                 .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?
         };
-        let time = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.VisibleTimeRangeTime")
-        {
-            <crate::blueprint::components::VisibleTimeRangeTime>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#time")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { sequence, time })
+        Ok(Self { ranges })
     }
 }
 
@@ -162,12 +142,7 @@ impl ::re_types_core::AsComponents for VisibleTimeRange {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.sequence
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.time
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            Some((&self.ranges as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -178,30 +153,11 @@ impl ::re_types_core::AsComponents for VisibleTimeRange {
 impl VisibleTimeRange {
     /// Create a new `VisibleTimeRange`.
     #[inline]
-    pub fn new() -> Self {
+    pub fn new(
+        ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisibleTimeRange>>,
+    ) -> Self {
         Self {
-            sequence: None,
-            time: None,
+            ranges: ranges.into_iter().map(Into::into).collect(),
         }
-    }
-
-    /// The range of time to show for timelines based on sequence numbers.
-    #[inline]
-    pub fn with_sequence(
-        mut self,
-        sequence: impl Into<crate::blueprint::components::VisibleTimeRangeSequence>,
-    ) -> Self {
-        self.sequence = Some(sequence.into());
-        self
-    }
-
-    /// The range of time to show for timelines based on time.
-    #[inline]
-    pub fn with_time(
-        mut self,
-        time: impl Into<crate::blueprint::components::VisibleTimeRangeTime>,
-    ) -> Self {
-        self.time = Some(time.into());
-        self
     }
 }

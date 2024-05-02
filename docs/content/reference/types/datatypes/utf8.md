@@ -21,3 +21,4 @@ A string of text, encoded as UTF-8.
 * [`Name`](../components/name.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
+* [`VisibleTimeRange`](../datatypes/visible_time_range.md)

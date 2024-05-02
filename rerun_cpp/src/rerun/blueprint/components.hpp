@@ -23,5 +23,4 @@
 #include "blueprint/components/space_view_origin.hpp"
 #include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"
-#include "blueprint/components/visible_time_range_sequence.hpp"
-#include "blueprint/components/visible_time_range_time.hpp"
+#include "blueprint/components/visible_time_range.hpp"

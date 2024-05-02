@@ -24,15 +24,15 @@ use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Type of boundary for visible history.
 #[derive(Clone, Debug, Copy)]
-pub struct VisibleTimeRangeBoundary {
+pub struct TimeRangeBoundary {
     /// Type of the boundary.
-    pub kind: crate::datatypes::VisibleTimeRangeBoundaryKind,
+    pub kind: crate::datatypes::TimeRangeBoundaryKind,
 
     /// Value of the boundary (ignored for `Infinite` type).
     pub time: crate::datatypes::TimeInt,
 }
 
-impl crate::SizeBytes for VisibleTimeRangeBoundary {
+impl crate::SizeBytes for TimeRangeBoundary {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.kind.heap_size_bytes() + self.time.heap_size_bytes()
@@ -40,19 +40,18 @@ impl crate::SizeBytes for VisibleTimeRangeBoundary {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::VisibleTimeRangeBoundaryKind>::is_pod()
-            && <crate::datatypes::TimeInt>::is_pod()
+        <crate::datatypes::TimeRangeBoundaryKind>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }
 
-crate::macros::impl_into_cow!(VisibleTimeRangeBoundary);
+crate::macros::impl_into_cow!(TimeRangeBoundary);
 
-impl crate::Loggable for VisibleTimeRangeBoundary {
+impl crate::Loggable for TimeRangeBoundary {
     type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.datatypes.VisibleTimeRangeBoundary".into()
+        "rerun.datatypes.TimeRangeBoundary".into()
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -62,7 +61,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "kind",
-                <crate::datatypes::VisibleTimeRangeBoundaryKind>::arrow_datatype(),
+                <crate::datatypes::TimeRangeBoundaryKind>::arrow_datatype(),
                 false,
             ),
             Field::new("time", <crate::datatypes::TimeInt>::arrow_datatype(), false),
@@ -91,7 +90,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                <crate::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
+                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
                 vec![
                     {
                         let (somes, kind): (Vec<_>, Vec<_>) = data
@@ -110,7 +109,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                         };
                         {
                             _ = kind_bitmap;
-                            crate::datatypes::VisibleTimeRangeBoundaryKind::to_arrow_opt(kind)?
+                            crate::datatypes::TimeRangeBoundaryKind::to_arrow_opt(kind)?
                         }
                     },
                     {
@@ -169,7 +168,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.VisibleTimeRangeBoundary")?;
+                .with_context("rerun.datatypes.TimeRangeBoundary")?;
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
@@ -186,11 +185,11 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                             Self::arrow_datatype(),
                             "kind",
                         ))
-                        .with_context("rerun.datatypes.VisibleTimeRangeBoundary");
+                        .with_context("rerun.datatypes.TimeRangeBoundary");
                     }
                     let arrow_data = &**arrays_by_name["kind"];
-                    crate::datatypes::VisibleTimeRangeBoundaryKind::from_arrow_opt(arrow_data)
-                        .with_context("rerun.datatypes.VisibleTimeRangeBoundary#kind")?
+                    crate::datatypes::TimeRangeBoundaryKind::from_arrow_opt(arrow_data)
+                        .with_context("rerun.datatypes.TimeRangeBoundary#kind")?
                         .into_iter()
                 };
                 let time = {
@@ -199,7 +198,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                             Self::arrow_datatype(),
                             "time",
                         ))
-                        .with_context("rerun.datatypes.VisibleTimeRangeBoundary");
+                        .with_context("rerun.datatypes.TimeRangeBoundary");
                     }
                     let arrow_data = &**arrays_by_name["time"];
                     arrow_data
@@ -210,7 +209,7 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                             let actual = arrow_data.data_type().clone();
                             DeserializationError::datatype_mismatch(expected, actual)
                         })
-                        .with_context("rerun.datatypes.VisibleTimeRangeBoundary#time")?
+                        .with_context("rerun.datatypes.TimeRangeBoundary#time")?
                         .into_iter()
                         .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::TimeInt(v)))
@@ -224,16 +223,16 @@ impl crate::Loggable for VisibleTimeRangeBoundary {
                         Ok(Self {
                             kind: kind
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.VisibleTimeRangeBoundary#kind")?,
+                                .with_context("rerun.datatypes.TimeRangeBoundary#kind")?,
                             time: time
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.VisibleTimeRangeBoundary#time")?,
+                                .with_context("rerun.datatypes.TimeRangeBoundary#time")?,
                         })
                     })
                     .transpose()
                 })
                 .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.VisibleTimeRangeBoundary")?
+                .with_context("rerun.datatypes.TimeRangeBoundary")?
             }
         })
     }

@@ -19,39 +19,25 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::VisibleTimeRange> for L
 
         // --- Required ---
 
+        use re_types::blueprint::components::VisibleTimeRange;
+        let ranges = match self.get_required(<VisibleTimeRange>::name()) {
+            Ok(ranges) => ranges,
+            Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+        };
+        let ranges = match ranges.to_dense::<VisibleTimeRange>(resolver) {
+            PromiseResult::Pending => return PromiseResult::Pending,
+            PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
+            PromiseResult::Ready(query_res) => match query_res {
+                Ok(data) => data.to_vec(),
+                Err(query_err) => return PromiseResult::Ready(Err(query_err)),
+            },
+        };
+
         // --- Recommended/Optional ---
-
-        use re_types::blueprint::components::VisibleTimeRangeSequence;
-        let sequence = if let Some(sequence) = self.get(<VisibleTimeRangeSequence>::name()) {
-            match sequence.to_dense::<VisibleTimeRangeSequence>(resolver) {
-                PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
-                PromiseResult::Ready(query_res) => match query_res {
-                    Ok(data) => data.first().cloned(),
-                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
-                },
-            }
-        } else {
-            None
-        };
-
-        use re_types::blueprint::components::VisibleTimeRangeTime;
-        let time = if let Some(time) = self.get(<VisibleTimeRangeTime>::name()) {
-            match time.to_dense::<VisibleTimeRangeTime>(resolver) {
-                PromiseResult::Pending => return PromiseResult::Pending,
-                PromiseResult::Error(promise_err) => return PromiseResult::Error(promise_err),
-                PromiseResult::Ready(query_res) => match query_res {
-                    Ok(data) => data.first().cloned(),
-                    Err(query_err) => return PromiseResult::Ready(Err(query_err)),
-                },
-            }
-        } else {
-            None
-        };
 
         // ---
 
-        let arch = re_types::blueprint::archetypes::VisibleTimeRange { sequence, time };
+        let arch = re_types::blueprint::archetypes::VisibleTimeRange { ranges };
 
         PromiseResult::Ready(Ok(arch))
     }

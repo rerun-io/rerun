@@ -4,8 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
-#include "time_range.hpp"
-#include "utf8.hpp"
+#include "time_range_boundary.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -18,15 +17,15 @@ namespace arrow {
 
 namespace rerun::datatypes {
     /// **Datatype**: Visible time range bounds for a specific timeline.
-    struct VisibleTimeRange {
-        /// Time range to use for this timeline.
-        rerun::datatypes::TimeRange range;
+    struct TimeRange {
+        /// Low time boundary for sequence timeline.
+        rerun::datatypes::TimeRangeBoundary start;
 
-        /// Name of the timeline this applies to.
-        rerun::datatypes::Utf8 timeline;
+        /// High time boundary for sequence timeline.
+        rerun::datatypes::TimeRangeBoundary end;
 
       public:
-        VisibleTimeRange() = default;
+        TimeRange() = default;
     };
 } // namespace rerun::datatypes
 
@@ -36,21 +35,20 @@ namespace rerun {
 
     /// \private
     template <>
-    struct Loggable<datatypes::VisibleTimeRange> {
-        static constexpr const char Name[] = "rerun.datatypes.VisibleTimeRange";
+    struct Loggable<datatypes::TimeRange> {
+        static constexpr const char Name[] = "rerun.datatypes.TimeRange";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Serializes an array of `rerun::datatypes::VisibleTimeRange` into an arrow array.
+        /// Serializes an array of `rerun::datatypes::TimeRange` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::VisibleTimeRange* instances, size_t num_instances
+            const datatypes::TimeRange* instances, size_t num_instances
         );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const datatypes::VisibleTimeRange* elements,
-            size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::TimeRange* elements, size_t num_elements
         );
     };
 } // namespace rerun

@@ -5,7 +5,7 @@
 
 #include "../result.hpp"
 #include "time_int.hpp"
-#include "visible_time_range_boundary_kind.hpp"
+#include "time_range_boundary_kind.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -18,15 +18,15 @@ namespace arrow {
 
 namespace rerun::datatypes {
     /// **Datatype**: Type of boundary for visible history.
-    struct VisibleTimeRangeBoundary {
+    struct TimeRangeBoundary {
         /// Type of the boundary.
-        rerun::datatypes::VisibleTimeRangeBoundaryKind kind;
+        rerun::datatypes::TimeRangeBoundaryKind kind;
 
         /// Value of the boundary (ignored for `Infinite` type).
         rerun::datatypes::TimeInt time;
 
       public:
-        VisibleTimeRangeBoundary() = default;
+        TimeRangeBoundary() = default;
     };
 } // namespace rerun::datatypes
 
@@ -36,20 +36,20 @@ namespace rerun {
 
     /// \private
     template <>
-    struct Loggable<datatypes::VisibleTimeRangeBoundary> {
-        static constexpr const char Name[] = "rerun.datatypes.VisibleTimeRangeBoundary";
+    struct Loggable<datatypes::TimeRangeBoundary> {
+        static constexpr const char Name[] = "rerun.datatypes.TimeRangeBoundary";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Serializes an array of `rerun::datatypes::VisibleTimeRangeBoundary` into an arrow array.
+        /// Serializes an array of `rerun::datatypes::TimeRangeBoundary` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::VisibleTimeRangeBoundary* instances, size_t num_instances
+            const datatypes::TimeRangeBoundary* instances, size_t num_instances
         );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const datatypes::VisibleTimeRangeBoundary* elements,
+            arrow::StructBuilder* builder, const datatypes::TimeRangeBoundary* elements,
             size_t num_elements
         );
     };

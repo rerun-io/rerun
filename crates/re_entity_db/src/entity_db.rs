@@ -8,9 +8,9 @@ use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber,
 };
 use re_log_types::{
-    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult, EntityPath,
-    EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
-    TimeRange, TimeRangeF, Timeline,
+    AbsoluteTimeRange, ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult,
+    EntityPath, EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+    TimePoint, TimeRangeF, Timeline,
 };
 use re_query::PromiseResult;
 use re_types_core::{Archetype, Loggable};
@@ -693,7 +693,7 @@ impl EntityDb {
         let time_filter = time_selection.map(|(timeline, range)| {
             (
                 timeline,
-                TimeRange::new(range.min.floor(), range.max.ceil()),
+                AbsoluteTimeRange::new(range.min.floor(), range.max.ceil()),
             )
         });
 

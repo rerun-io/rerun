@@ -5,8 +5,8 @@ use arrow2::array::{Array as _, StructArray};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 use re_data_store::{
-    DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery,
-    RangeQuery, TimeInt, TimeRange,
+    AbsoluteTimeRange, DataStore, DataStoreConfig, GarbageCollectionOptions,
+    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
 };
 use re_log_types::{
     build_frame_nr, example_components::MyIndex, DataCell, DataRow, DataTable, EntityPath, RowId,
@@ -455,7 +455,10 @@ fn range_data<const N: usize>(
     components: [ComponentName; N],
 ) -> impl Iterator<Item = (TimeInt, [Option<DataCell>; N])> + '_ {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(timeline_frame_nr, TimeRange::new(TimeInt::ZERO, NUM_ROWS));
+    let query = RangeQuery::new(
+        timeline_frame_nr,
+        AbsoluteTimeRange::new(TimeInt::ZERO, NUM_ROWS),
+    );
     let entity_path = EntityPath::from("large_structs");
 
     store

@@ -3,16 +3,13 @@
 
 #pragma once
 
-#include "../../blueprint/components/visible_time_range_sequence.hpp"
-#include "../../blueprint/components/visible_time_range_time.hpp"
+#include "../../blueprint/components/visible_time_range.hpp"
 #include "../../collection.hpp"
-#include "../../compiler_utils.hpp"
 #include "../../data_cell.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 
@@ -29,11 +26,8 @@ namespace rerun::blueprint::archetypes {
     ///
     /// The visual time range can be overridden also individually per entity.
     struct VisibleTimeRange {
-        /// The range of time to show for timelines based on sequence numbers.
-        std::optional<rerun::blueprint::components::VisibleTimeRangeSequence> sequence;
-
-        /// The range of time to show for timelines based on time.
-        std::optional<rerun::blueprint::components::VisibleTimeRangeTime> time;
+        /// The ranges of time to show for all given timelines based on sequence numbers.
+        Collection<rerun::blueprint::components::VisibleTimeRange> ranges;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -46,21 +40,9 @@ namespace rerun::blueprint::archetypes {
         VisibleTimeRange() = default;
         VisibleTimeRange(VisibleTimeRange&& other) = default;
 
-        /// The range of time to show for timelines based on sequence numbers.
-        VisibleTimeRange with_sequence(
-            rerun::blueprint::components::VisibleTimeRangeSequence _sequence
-        ) && {
-            sequence = std::move(_sequence);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// The range of time to show for timelines based on time.
-        VisibleTimeRange with_time(rerun::blueprint::components::VisibleTimeRangeTime _time) && {
-            time = std::move(_time);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
+        explicit VisibleTimeRange(Collection<rerun::blueprint::components::VisibleTimeRange> _ranges
+        )
+            : ranges(std::move(_ranges)) {}
     };
 
 } // namespace rerun::blueprint::archetypes

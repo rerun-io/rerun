@@ -28,7 +28,7 @@ mod data_row;
 mod data_table;
 mod instance;
 mod time;
-mod time_range;
+mod absolute_time_range;
 mod time_real;
 mod vec_deque_ext;
 
@@ -54,7 +54,7 @@ pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{
     NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,
 };
-pub use self::time_range::{TimeRange, TimeRangeF};
+pub use self::absolute_time_range::{AbsoluteTimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 

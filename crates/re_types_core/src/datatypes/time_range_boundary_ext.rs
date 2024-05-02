@@ -1,9 +1,9 @@
-use super::{TimeInt, VisibleTimeRangeBoundary, VisibleTimeRangeBoundaryKind};
+use super::{TimeInt, TimeRangeBoundary, TimeRangeBoundaryKind};
 
-impl VisibleTimeRangeBoundary {
+impl TimeRangeBoundary {
     /// Put the boundary at the current time cursor.
     pub const AT_CURSOR: Self = Self {
-        kind: VisibleTimeRangeBoundaryKind::RelativeToTimeCursor,
+        kind: TimeRangeBoundaryKind::RelativeToTimeCursor,
         time: TimeInt(0),
     };
 
@@ -12,32 +12,32 @@ impl VisibleTimeRangeBoundary {
     /// For minimum bounds, this mean the minimum time (-∞),
     /// and for maximum bounds, this means the maximum time (+∞).
     pub const INFINITE: Self = Self {
-        kind: VisibleTimeRangeBoundaryKind::Infinite,
+        kind: TimeRangeBoundaryKind::Infinite,
         time: TimeInt(0),
     };
 
     /// Returns the time assuming this boundary is a start boundary.
     pub fn start_boundary_time(&self, cursor: TimeInt) -> TimeInt {
         match self.kind {
-            VisibleTimeRangeBoundaryKind::Absolute => self.time,
-            VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => TimeInt(cursor.0 + self.time.0),
-            VisibleTimeRangeBoundaryKind::Infinite => TimeInt::MIN,
+            TimeRangeBoundaryKind::Absolute => self.time,
+            TimeRangeBoundaryKind::RelativeToTimeCursor => TimeInt(cursor.0 + self.time.0),
+            TimeRangeBoundaryKind::Infinite => TimeInt::MIN,
         }
     }
 
     /// Returns the correct time assuming this boundary is an end boundary.
     pub fn end_boundary_time(&self, cursor: TimeInt) -> TimeInt {
         match self.kind {
-            VisibleTimeRangeBoundaryKind::Absolute => self.time,
-            VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => TimeInt(cursor.0 + self.time.0),
-            VisibleTimeRangeBoundaryKind::Infinite => TimeInt::MAX,
+            TimeRangeBoundaryKind::Absolute => self.time,
+            TimeRangeBoundaryKind::RelativeToTimeCursor => TimeInt(cursor.0 + self.time.0),
+            TimeRangeBoundaryKind::Infinite => TimeInt::MAX,
         }
     }
 
     /// Creates a new absolute boundary.
     pub fn absolute(time: TimeInt) -> Self {
         Self {
-            kind: VisibleTimeRangeBoundaryKind::Absolute,
+            kind: TimeRangeBoundaryKind::Absolute,
             time,
         }
     }
@@ -45,23 +45,22 @@ impl VisibleTimeRangeBoundary {
     /// Creates a new cursor relative boundary.
     pub fn relative_to_time_cursor(time: TimeInt) -> Self {
         Self {
-            kind: VisibleTimeRangeBoundaryKind::RelativeToTimeCursor,
+            kind: TimeRangeBoundaryKind::RelativeToTimeCursor,
             time,
         }
     }
 }
 
-impl PartialEq for VisibleTimeRangeBoundary {
+impl PartialEq for TimeRangeBoundary {
     fn eq(&self, other: &Self) -> bool {
         match self.kind {
-            VisibleTimeRangeBoundaryKind::Absolute
-            | VisibleTimeRangeBoundaryKind::RelativeToTimeCursor => {
+            TimeRangeBoundaryKind::Absolute | TimeRangeBoundaryKind::RelativeToTimeCursor => {
                 other.kind == self.kind && other.time == self.time
             }
             // Ignore the time value for infinite boundaries.
-            VisibleTimeRangeBoundaryKind::Infinite => other.kind == self.kind,
+            TimeRangeBoundaryKind::Infinite => other.kind == self.kind,
         }
     }
 }
 
-impl Eq for VisibleTimeRangeBoundary {}
+impl Eq for TimeRangeBoundary {}

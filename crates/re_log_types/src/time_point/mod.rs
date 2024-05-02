@@ -6,7 +6,7 @@ mod timeline;
 
 use crate::{
     time::{Time, TimeZone},
-    TimeRange,
+    AbsoluteTimeRange,
 };
 
 // Re-exports
@@ -154,7 +154,7 @@ impl TimeType {
     #[inline]
     pub fn format_range(
         &self,
-        time_range: TimeRange,
+        time_range: AbsoluteTimeRange,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
         format!(
@@ -165,7 +165,7 @@ impl TimeType {
     }
 
     #[inline]
-    pub fn format_range_utc(&self, time_range: TimeRange) -> String {
+    pub fn format_range_utc(&self, time_range: AbsoluteTimeRange) -> String {
         self.format_range(time_range, TimeZone::Utc)
     }
 }

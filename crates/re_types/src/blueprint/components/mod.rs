@@ -16,8 +16,7 @@ mod viewer_recommendation_hash;
 mod viewer_recommendation_hash_ext;
 mod visible;
 mod visible_ext;
-mod visible_time_range_sequence;
-mod visible_time_range_time;
+mod visible_time_range;
 
 pub use self::active_tab::ActiveTab;
 pub use self::background_kind::BackgroundKind;
@@ -32,5 +31,4 @@ pub use self::space_view_class::SpaceViewClass;
 pub use self::space_view_origin::SpaceViewOrigin;
 pub use self::viewer_recommendation_hash::ViewerRecommendationHash;
 pub use self::visible::Visible;
-pub use self::visible_time_range_sequence::VisibleTimeRangeSequence;
-pub use self::visible_time_range_time::VisibleTimeRangeTime;
+pub use self::visible_time_range::VisibleTimeRange;
