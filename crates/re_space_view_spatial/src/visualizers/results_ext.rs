@@ -120,7 +120,8 @@ impl RangeResultsExt for LatestAtResults {
         // In particular, it is pretty common to have a secondary component be more recent than the
         // associated primary component in latest-at contexts, e.g. colors in an otherwise fixed
         // point cloud being changed each frame.
-        let data = RangeData::from_latest_at(resolver, results, Some((TimeInt::MIN, RowId::ZERO)));
+        let data =
+            RangeData::from_latest_at(resolver, results, Some((TimeInt::STATIC, RowId::ZERO)));
 
         // TODO(#5607): what should happen if the promise is still pending?
         let (front_status, back_status) = data.status();

@@ -13,7 +13,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
     },
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialSpaceViewState},
@@ -278,15 +278,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_entity_db::EntityPropertyMap,
+        auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        update_object_property_heuristics(
+        *auto_properties = generate_auto_legacy_properties(
             ctx,
             ent_paths,
-            entity_properties,
             &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::ThreeD,
         );
