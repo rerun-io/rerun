@@ -1,8 +1,7 @@
-use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent};
+use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
+
+use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, ReUi};
-use eframe::emath::{Align, Align2};
-use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, Ui};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
@@ -325,7 +324,6 @@ impl ListItemContent for PropertyContent<'_> {
     }
 
     fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
-        // really no point having a two-column widget collapsed to 0 width
-        super::DesiredWidth::AtLeast(200.0)
+        DesiredWidth::STANDARD
     }
 }

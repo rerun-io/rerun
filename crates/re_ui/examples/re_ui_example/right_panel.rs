@@ -178,6 +178,16 @@ impl RightPanel {
                         },
                     ),
                 );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::LabelContent::new("LabelContent with buttons (always shown)")
+                        .with_buttons(|re_ui, ui| {
+                            re_ui.small_icon_button(ui, &re_ui::icons::ADD)
+                                | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
+                        })
+                        .always_show_buttons(true),
+                );
             },
         );
 

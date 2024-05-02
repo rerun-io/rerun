@@ -60,6 +60,13 @@ impl Default for DesiredWidth {
     }
 }
 
+impl DesiredWidth {
+    /// Reasonable suggested desired width to be used by [`ListItemContent`] implementations.
+    ///
+    /// Both [`PropertyContent`] and [`LabelContent`] use this value as a default.
+    pub const STANDARD: Self = Self::AtLeast(150.0);
+}
+
 pub trait ListItemContent {
     /// UI for everything that is after the indent and the collapsing triangle (if any).
     ///

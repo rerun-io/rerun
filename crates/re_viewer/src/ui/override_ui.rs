@@ -103,8 +103,6 @@ pub fn override_ui(
         ) in components
         {
             let value_fn = |ui: &mut egui::Ui| {
-                // TODO(ab): we should use the built in value feature of PropertyContent instead of
-                // reinventing the wheel.
                 let component_data = match store_kind {
                     StoreKind::Blueprint => {
                         let store = ctx.store_context.blueprint.store();
@@ -337,22 +335,23 @@ pub fn override_visualizer_ui(
             for viz_name in &active_visualizers {
                 ctx.re_ui.list_item2().interactive(false).show_flat(
                     ui,
-                    // TODO(ab): use LabelContent instead, but it needs to have an option for the
-                    // same action button as PropertyContent.
-                    re_ui::list_item2::PropertyContent::new(viz_name.as_str()).action_button(
-                        &re_ui::icons::CLOSE,
-                        || {
-                            let component = VisualizerOverrides::from(
-                                active_visualizers
-                                    .iter()
-                                    .filter(|v| *v != viz_name)
-                                    .map(|v| re_types_core::ArrowString::from(v.as_str()))
-                                    .collect::<Vec<_>>(),
-                            );
+                    re_ui::list_item2::LabelContent::new(viz_name.as_str())
+                        .with_buttons(|re_ui, ui| {
+                            let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
+                            if response.clicked() {
+                                let component = VisualizerOverrides::from(
+                                    active_visualizers
+                                        .iter()
+                                        .filter(|v| *v != viz_name)
+                                        .map(|v| re_types_core::ArrowString::from(v.as_str()))
+                                        .collect::<Vec<_>>(),
+                                );
 
-                            ctx.save_blueprint_component(override_path, &component);
-                        },
-                    ),
+                                ctx.save_blueprint_component(override_path, &component);
+                            }
+                            response
+                        })
+                        .always_show_buttons(true),
                 );
             }
         });
