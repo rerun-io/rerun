@@ -382,8 +382,8 @@ impl ContainerBlueprint {
             egui_tiles::ContainerKind::Grid => {
                 let mut grid = egui_tiles::Grid::new(children);
 
-                grid.col_shares = self.col_shares.clone();
-                grid.row_shares = self.row_shares.clone();
+                grid.col_shares.clone_from(&self.col_shares);
+                grid.row_shares.clone_from(&self.row_shares);
 
                 if let Some(cols) = self.grid_columns {
                     grid.layout = egui_tiles::GridLayout::Columns(cols as usize);
