@@ -267,11 +267,13 @@ impl AppState {
                         &visualizable_entities,
                         &indicated_entities_per_visualizer,
                     );
+
                     resolver.update_overrides(
                         store_context.blueprint,
                         &blueprint_query,
                         rec_cfg.time_ctrl.read().timeline(),
                         space_view_class_registry,
+                        viewport.state.legacy_auto_properties(space_view.id),
                         query_result,
                     );
                 }

@@ -75,7 +75,7 @@ impl ViewportState {
             })
     }
 
-    pub fn space_view_props(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
+    pub fn legacy_auto_properties(&self, space_view_id: SpaceViewId) -> &EntityPropertyMap {
         self.space_view_states
             .get(&space_view_id)
             .map_or(&DEFAULT_PROPS, |state| &state.auto_properties)
