@@ -41,6 +41,11 @@ let Some(first) = vec.get(0) else {
 };
 ```
 
+### Iterators
+Be careful when iterating over `HashSet`s and `HashMap`s, as the order is non-deterministic.
+Whenever you return a list or an iterator, sort it first.
+If you don't want to sort it for performance reasons, you MUST put `unsorted` in the  name as a warning.
+
 ### Error handling and logging
 We log problems using our own `re_log` crate (which is currently a wrapper around [`tracing`](https://crates.io/crates/tracing/)).
 

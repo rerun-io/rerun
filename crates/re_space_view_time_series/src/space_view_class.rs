@@ -227,9 +227,7 @@ It can greatly improve performance (and readability) in such situations as it pr
                 .iter()
                 .any(|(_, subtree)| indicated_entities.contains(&subtree.path))
         {
-            return SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView::root()],
-            };
+            return SpaceViewSpawnHeuristics::root();
         }
 
         // If there's other entities that have the right indicator & didn't match the above,
@@ -240,17 +238,11 @@ It can greatly improve performance (and readability) in such situations as it pr
                 child_of_root_entities.insert(child_of_root);
             }
         }
-        let recommended_space_views = child_of_root_entities
-            .into_iter()
-            .map(|path_part| {
-                let entity = EntityPath::new(vec![path_part.clone()]);
-                RecommendedSpaceView::new_subtree(entity)
-            })
-            .collect();
 
-        SpaceViewSpawnHeuristics {
-            recommended_space_views,
-        }
+        SpaceViewSpawnHeuristics::new(child_of_root_entities.into_iter().map(|path_part| {
+            let entity = EntityPath::new(vec![path_part.clone()]);
+            RecommendedSpaceView::new_subtree(entity)
+        }))
     }
 
     /// Choose the default visualizers to enable for this entity.

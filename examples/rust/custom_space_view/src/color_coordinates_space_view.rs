@@ -6,8 +6,8 @@ use re_viewer::external::{
     re_types::SpaceViewClassIdentifier,
     re_ui,
     re_viewer_context::{
-        HoverHighlight, IdentifiedViewSystem as _, Item, RecommendedSpaceView, SelectionHighlight,
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+        HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SpaceViewClass,
+        SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
         SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
         SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
         UiVerbosity, ViewQuery, ViewerContext,
@@ -115,9 +115,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         {
             SpaceViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView::root()],
-            }
+            SpaceViewSpawnHeuristics::root()
         }
     }
 

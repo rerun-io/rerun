@@ -742,20 +742,19 @@ fn memory_recording(
             flush_garbage_queue();
             storage
         });
-        PyMemorySinkStorage { rec: rec.0, inner }
+        PyMemorySinkStorage { inner }
     })
 }
 
 #[pyclass(frozen)]
 struct PyMemorySinkStorage {
     // So we can flush when needed!
-    rec: RecordingStream,
     inner: MemorySinkStorage,
 }
 
 #[pymethods]
 impl PyMemorySinkStorage {
-    /// Concatenate the contents of the [`MemorySinkStorage`] as byes.
+    /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
     fn concat_as_bytes<'p>(
@@ -765,17 +764,18 @@ impl PyMemorySinkStorage {
     ) -> PyResult<&'p PyBytes> {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
-            self.rec.flush_blocking();
-            flush_garbage_queue();
-        });
+            let concat_bytes = MemorySinkStorage::concat_memory_sinks_as_bytes(
+                [Some(&self.inner), concat.map(|c| &c.inner)]
+                    .iter()
+                    .filter_map(|s| *s)
+                    .collect_vec()
+                    .as_slice(),
+            );
 
-        MemorySinkStorage::concat_memory_sinks_as_bytes(
-            [Some(&self.inner), concat.map(|c| &c.inner)]
-                .iter()
-                .filter_map(|s| *s)
-                .collect_vec()
-                .as_slice(),
-        )
+            flush_garbage_queue();
+
+            concat_bytes
+        })
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
@@ -786,11 +786,28 @@ impl PyMemorySinkStorage {
     fn num_msgs(&self, py: Python<'_>) -> usize {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         py.allow_threads(|| {
-            self.rec.flush_blocking();
-            flush_garbage_queue();
-        });
+            let num = self.inner.num_msgs();
 
-        self.inner.num_msgs()
+            flush_garbage_queue();
+
+            num
+        })
+    }
+
+    /// Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
+    ///
+    /// This will do a blocking flush before returning!
+    fn drain_as_bytes<'p>(&self, py: Python<'p>) -> PyResult<&'p PyBytes> {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            let bytes = self.inner.drain_as_bytes();
+
+            flush_garbage_queue();
+
+            bytes
+        })
+        .map(|bytes| PyBytes::new(py, bytes.as_slice()))
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
 

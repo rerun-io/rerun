@@ -43,9 +43,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 
     fn spawn_heuristics(&self, _ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        SpaceViewSpawnHeuristics {
-            recommended_space_views: Vec::new(),
-        }
+        SpaceViewSpawnHeuristics::empty()
     }
 
     fn ui(

@@ -14,7 +14,7 @@ pub fn default_created_space_views(ctx: &ViewerContext<'_>) -> Vec<SpaceViewBlue
         .flat_map(|entry| {
             let spawn_heuristics = entry.class.spawn_heuristics(ctx);
             spawn_heuristics
-                .recommended_space_views
+                .into_vec()
                 .into_iter()
                 .map(|recommendation| SpaceViewBlueprint::new(entry.identifier, recommendation))
         })
