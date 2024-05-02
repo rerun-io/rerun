@@ -189,49 +189,46 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
-            recommended_space_views: topo
-                .iter_subspaces()
-                .flat_map(|subspace| {
-                    if !subspace.supports_2d_content()
-                        || subspace.entities.is_empty()
-                        || indicated_entities.is_disjoint(&subspace.entities)
-                    {
-                        return Vec::new();
-                    }
+        SpatialTopology::access(ctx.recording_id(), |topo| {
+            SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
+                if !subspace.supports_2d_content()
+                    || subspace.entities.is_empty()
+                    || indicated_entities.is_disjoint(&subspace.entities)
+                {
+                    return Vec::new();
+                }
 
-                    // Collect just the 2D-relevant entities in this subspace
-                    let relevant_entities: IntSet<EntityPath> = subspace
-                        .entities
-                        .iter()
-                        .filter(|e| indicated_entities.contains(e))
-                        .cloned()
-                        .collect();
+                // Collect just the 2D-relevant entities in this subspace
+                let relevant_entities: IntSet<EntityPath> = subspace
+                    .entities
+                    .iter()
+                    .filter(|e| indicated_entities.contains(e))
+                    .cloned()
+                    .collect();
 
-                    // For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
-                    // This generally avoids the `/` root entity unless it's required as a common ancestor.
-                    let recommended_root = if subspace
-                        .connection_to_parent
-                        .contains(SubSpaceConnectionFlags::Pinhole)
-                    {
-                        subspace.origin.clone()
-                    } else {
-                        EntityPath::common_ancestor_of(relevant_entities.iter())
-                    };
+                // For explicit 2D spaces with a pinhole at the origin, otherwise start at the common ancestor.
+                // This generally avoids the `/` root entity unless it's required as a common ancestor.
+                let recommended_root = if subspace
+                    .connection_to_parent
+                    .contains(SubSpaceConnectionFlags::Pinhole)
+                {
+                    subspace.origin.clone()
+                } else {
+                    EntityPath::common_ancestor_of(relevant_entities.iter())
+                };
 
-                    let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
+                let mut recommended_space_views = Vec::<RecommendedSpaceView>::new();
 
-                    recommended_space_views_with_image_splits(
-                        ctx,
-                        &image_dimensions,
-                        &recommended_root,
-                        &relevant_entities,
-                        &mut recommended_space_views,
-                    );
+                recommended_space_views_with_image_splits(
+                    ctx,
+                    &image_dimensions,
+                    &recommended_root,
+                    &relevant_entities,
+                    &mut recommended_space_views,
+                );
 
-                    recommended_space_views
-                })
-                .collect(),
+                recommended_space_views
+            }))
         })
         .unwrap_or_default()
     }

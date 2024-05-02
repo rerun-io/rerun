@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use re_entity_db::InstancePath;
@@ -129,7 +128,6 @@ fn action_list(
                     actions: ctx
                         .space_view_class_registry
                         .iter_registry()
-                        .sorted_by_key(|entry| entry.class.display_name())
                         .map(|entry| {
                             Box::new(AddSpaceViewAction(entry.identifier))
                                 as Box<dyn ContextMenuAction + Sync + Send>

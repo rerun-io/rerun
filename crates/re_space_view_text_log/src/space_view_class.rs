@@ -5,9 +5,9 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::{components::TextLogLevel, SpaceViewClassIdentifier};
 use re_viewer_context::{
-    level_to_rich_text, IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    level_to_rich_text, IdentifiedViewSystem as _, SpaceViewClass, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::visualizer_system::{Entry, TextLogSystem};
@@ -93,9 +93,7 @@ impl SpaceViewClass for TextSpaceView {
         {
             SpaceViewSpawnHeuristics::default()
         } else {
-            SpaceViewSpawnHeuristics {
-                recommended_space_views: vec![RecommendedSpaceView::root()],
-            }
+            SpaceViewSpawnHeuristics::root()
         }
     }
 

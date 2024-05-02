@@ -16,8 +16,7 @@ use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, SpaceViewSpawnHeuristics,
-    ViewerContext,
+    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
 
 use crate::{container::ContainerBlueprint, viewport::TreeAction, VIEWPORT_PATH};
@@ -321,9 +320,7 @@ impl ViewportBlueprint {
 
         for entry in ctx.space_view_class_registry.iter_registry() {
             let class_id = entry.identifier;
-            let SpaceViewSpawnHeuristics {
-                mut recommended_space_views,
-            } = entry.class.spawn_heuristics(ctx);
+            let mut recommended_space_views = entry.class.spawn_heuristics(ctx).into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
 
