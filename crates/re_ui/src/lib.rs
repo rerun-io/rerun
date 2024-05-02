@@ -10,6 +10,7 @@ mod toggle_switch;
 pub mod drag_and_drop;
 pub mod icons;
 pub mod list_item;
+pub mod list_item2;
 pub mod modal;
 pub mod toasts;
 
@@ -71,7 +72,7 @@ use egui::{
     Vec2, Widget,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ReUi {
     pub egui_ctx: egui::Context,
 
@@ -1001,6 +1002,11 @@ impl ReUi {
     /// Convenience function to create a [`ListItem`] with the given text.
     pub fn list_item(&self, text: impl Into<egui::WidgetText>) -> ListItem<'_> {
         ListItem::new(self, text)
+    }
+
+    /// Convenience function to create a [`list_item2::ListItem`].
+    pub fn list_item2(&self) -> list_item2::ListItem<'_> {
+        list_item2::ListItem::new(self)
     }
 
     #[allow(clippy::unused_self)]
