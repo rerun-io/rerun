@@ -149,7 +149,7 @@ export class WebViewer {
     this.#handle.open_channel(id, channel_name);
     const on_send = (/** @type {Uint8Array} */ data) => {
       if (!this.#handle) throw new Error("...");
-      this.#handle.send_rrd_to_channel(id, data)
+      this.#handle.send_rrd_to_channel(id, data);
     };
     const on_close = () => {
       if (!this.#handle) throw new Error("...");
@@ -171,7 +171,7 @@ export class LogChannel {
    * @param {(data: Uint8Array) => void} on_send
    * @param {() => void} on_close
    * @param {() => 'ready' | 'starting' | 'stopped'} get_state
-  */
+   */
   constructor(on_send, on_close, get_state) {
     this.#on_send = on_send;
     this.#on_close = on_close;
