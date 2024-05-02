@@ -34,6 +34,9 @@ pub enum SmartChannelSource {
     /// Used for the inline web viewer in a notebook.
     RrdWebEventListener,
 
+    /// The channel was created in the context of a javascript client submitting an RRD directly as bytes.
+    JsBytes,
+
     /// The channel was created in the context of loading data using a Rerun SDK sharing the same
     /// process.
     Sdk,
@@ -62,6 +65,7 @@ impl std::fmt::Display for SmartChannelSource {
             Self::File(path) => path.display().fmt(f),
             Self::RrdHttpStream { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
+            Self::JsBytes => "Javascript".fmt(f),
             Self::Sdk => "SDK".fmt(f),
             Self::WsClient { ws_server_url } => ws_server_url.fmt(f),
             Self::TcpServer { port } => write!(f, "TCP server, port {port}"),
@@ -74,7 +78,10 @@ impl SmartChannelSource {
     pub fn is_network(&self) -> bool {
         match self {
             Self::File(_) | Self::Sdk | Self::RrdWebEventListener | Self::Stdin => false,
-            Self::RrdHttpStream { .. } | Self::WsClient { .. } | Self::TcpServer { .. } => true,
+            Self::RrdHttpStream { .. }
+            | Self::WsClient { .. }
+            | Self::JsBytes
+            | Self::TcpServer { .. } => true,
         }
     }
 }
@@ -103,6 +110,9 @@ pub enum SmartMessageSource {
     ///
     /// Only applicable to web browser iframes.
     RrdWebEventCallback,
+
+    /// The sender is a javascript client submitting an RRD directly as bytes.
+    JsBytes,
 
     /// The sender is a Rerun SDK running from another thread in the same process.
     Sdk,
@@ -133,6 +143,7 @@ impl std::fmt::Display for SmartMessageSource {
             SmartMessageSource::File(path) => format!("file://{}", path.to_string_lossy()),
             SmartMessageSource::RrdHttpStream { url } => format!("http://{url}"),
             SmartMessageSource::RrdWebEventCallback => "web_callback".into(),
+            SmartMessageSource::JsBytes => "javascript".into(),
             SmartMessageSource::Sdk => "sdk".into(),
             SmartMessageSource::WsClient { ws_server_url } => ws_server_url.clone(),
             SmartMessageSource::TcpClient { addr } => format!(

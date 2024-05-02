@@ -157,7 +157,7 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
-mod web_decode {
+pub mod web_decode {
     use super::{HttpMessage, HttpMessageCallback};
     use std::sync::Arc;
 

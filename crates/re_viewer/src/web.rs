@@ -17,6 +17,12 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
+
+    /// A dedicated smart channel used by the [`WebHandle::add_rrd_from_bytes`] API.
+    ///
+    /// This exists because the direct bytes API is expected to submit many small RRD chunks
+    /// and allocating a new tx pair for each chunk doesn't make sense.
+    bytes_tx: Option<re_smart_channel::Sender<re_log_types::LogMsg>>,
 }
 
 #[wasm_bindgen]
@@ -28,6 +34,7 @@ impl WebHandle {
 
         Self {
             runner: eframe::WebRunner::new(),
+            bytes_tx: None,
         }
     }
 
@@ -105,6 +112,64 @@ impl WebHandle {
         app.msg_receive_set().remove_by_uri(url);
         if let Some(store_hub) = app.store_hub.as_mut() {
             store_hub.remove_recording_by_uri(url);
+        }
+    }
+
+    /// Add an rrd to the viewer directly from a byte array.
+    #[wasm_bindgen]
+    pub fn add_rrd_from_bytes(&mut self, data: &[u8]) {
+        use std::{ops::ControlFlow, sync::Arc};
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        // TODO(jleibs): Should we provide a mechanism of the javascript signalling we're done?
+        if self.bytes_tx.is_none() {
+            let (tx, rx) = re_smart_channel::smart_channel(
+                re_smart_channel::SmartMessageSource::JsBytes,
+                re_smart_channel::SmartChannelSource::JsBytes,
+            );
+            self.bytes_tx = Some(tx);
+            app.add_receiver(rx);
+        }
+
+        if let Some(tx) = self.bytes_tx.clone() {
+            let data: Vec<u8> = data.to_vec();
+
+            let egui_ctx = app.re_ui.egui_ctx.clone();
+
+            let ui_waker = Box::new(move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            });
+
+            re_log_encoding::stream_rrd_from_http::web_decode::decode_rrd(
+                data,
+                Arc::new({
+                    move |msg| {
+                        ui_waker();
+                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        match msg {
+                            HttpMessage::LogMsg(msg) => {
+                                if tx.send(msg).is_ok() {
+                                    ControlFlow::Continue(())
+                                } else {
+                                    re_log::info_once!("Failed to dispatch log message to viewer.");
+                                    ControlFlow::Break(())
+                                }
+                            }
+                            // TODO(jleibs): Unclear what we want to do here. More data is coming.
+                            HttpMessage::Success => ControlFlow::Continue(()),
+                            HttpMessage::Failure(err) => {
+                                tx.quit(Some(err))
+                                    .warn_on_err_once("Failed to send quit marker");
+                                ControlFlow::Break(())
+                            }
+                        }
+                    }
+                }),
+            );
         }
     }
 }
