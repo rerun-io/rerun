@@ -1,4 +1,6 @@
 use ahash::{HashMap, HashSet};
+use itertools::Itertools as _;
+
 use re_data_store::DataStore;
 use re_types::SpaceViewClassIdentifier;
 
@@ -273,9 +275,11 @@ impl SpaceViewClassRegistry {
         }
     }
 
-    /// Iterates over all registered Space View class types.
+    /// Iterates over all registered Space View class types, sorted by name.
     pub fn iter_registry(&self) -> impl Iterator<Item = &SpaceViewClassRegistryEntry> {
-        self.space_view_classes.values()
+        self.space_view_classes
+            .values()
+            .sorted_by_key(|entry| entry.class.display_name())
     }
 
     /// For each visualizer, return the set of entities that is applicable to it.
