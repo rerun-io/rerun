@@ -131,4 +131,16 @@ export class WebViewer {
     this.#canvas = null;
     this.#handle = null;
   }
+
+  /**
+   * Add an rrd to the viewer from a byte array.
+   *
+   * @param {Uint8Array} rrd stored in a byte array, received via some other side channel.
+   */
+  add_rrd_from_bytes(rrd) {
+    if (!this.#handle) {
+      throw new Error(`attempted to add bytes to a stopped viewer`);
+    }
+    this.#handle.add_rrd_from_bytes(rrd);
+  }
 }
