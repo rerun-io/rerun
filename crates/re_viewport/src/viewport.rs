@@ -112,6 +112,9 @@ pub enum TreeAction {
     /// Simplify the container with the provided options
     SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
 
+    /// Make all column and row shares the same for this container
+    MakeAllChildrenSameSize(ContainerId),
+
     /// Move some contents to a different container
     MoveContents {
         contents_to_move: Contents,
@@ -458,6 +461,24 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     re_log::trace!("Simplifying tree with options: {options:?}");
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     self.tree.simplify_children_of_tile(tile_id, &options);
+                    self.tree_edited = true;
+                }
+                TreeAction::MakeAllChildrenSameSize(container_id) => {
+                    let tile_id = blueprint_id_to_tile_id(&container_id);
+                    if let Some(egui_tiles::Tile::Container(container)) =
+                        self.tree.tiles.get_mut(tile_id)
+                    {
+                        match container {
+                            egui_tiles::Container::Tabs(_) => {}
+                            egui_tiles::Container::Linear(linear) => {
+                                linear.shares = Default::default();
+                            }
+                            egui_tiles::Container::Grid(grid) => {
+                                grid.col_shares = Default::default();
+                                grid.row_shares = Default::default();
+                            }
+                        }
+                    }
                     self.tree_edited = true;
                 }
                 TreeAction::MoveContents {
