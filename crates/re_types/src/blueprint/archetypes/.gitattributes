@@ -7,5 +7,5 @@ plot_legend.rs linguist-generated=true
 scalar_axis.rs linguist-generated=true
 space_view_blueprint.rs linguist-generated=true
 space_view_contents.rs linguist-generated=true
-visible_time_range.rs linguist-generated=true
+visible_time_ranges.rs linguist-generated=true
 visual_bounds.rs linguist-generated=true

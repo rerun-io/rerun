@@ -22,24 +22,16 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Configures what range of the timeline is shown on a view.
+/// **Archetype**: Configures what range of each timeline is shown on a view.
 ///
-/// Whenever no visual time range applies, queries are done with "latest at" semantics.
-/// This means that the view will, starting from the time cursor position,
-/// query the latest data available for each component type.
-///
-/// The default visual time range depends on the type of view this property applies to:
-/// - For time series views, the default is to show the entire timeline.
-/// - For any other view, the default is to apply latest-at semantics.
-///
-/// The visual time range can be overridden also individually per entity.
+/// Refer to [`VisibleTimeRange`] component for more information.
 #[derive(Clone, Debug, Default)]
-pub struct VisibleTimeRange {
+pub struct VisibleTimeRanges {
     /// The ranges of time to show for all given timelines based on sequence numbers.
     pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
 }
 
-impl ::re_types_core::SizeBytes for VisibleTimeRange {
+impl ::re_types_core::SizeBytes for VisibleTimeRanges {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.ranges.heap_size_bytes()
@@ -55,7 +47,7 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisibleTimeRange".into()]);
 
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisibleTimeRangeIndicator".into()]);
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.VisibleTimeRangesIndicator".into()]);
 
 static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
@@ -64,29 +56,29 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.VisibleTimeRange".into(),
-            "rerun.blueprint.components.VisibleTimeRangeIndicator".into(),
+            "rerun.blueprint.components.VisibleTimeRangesIndicator".into(),
         ]
     });
 
-impl VisibleTimeRange {
+impl VisibleTimeRanges {
     /// The total number of components in the archetype: 1 required, 1 recommended, 0 optional
     pub const NUM_COMPONENTS: usize = 2usize;
 }
 
-/// Indicator component for the [`VisibleTimeRange`] [`::re_types_core::Archetype`]
-pub type VisibleTimeRangeIndicator = ::re_types_core::GenericIndicatorComponent<VisibleTimeRange>;
+/// Indicator component for the [`VisibleTimeRanges`] [`::re_types_core::Archetype`]
+pub type VisibleTimeRangesIndicator = ::re_types_core::GenericIndicatorComponent<VisibleTimeRanges>;
 
-impl ::re_types_core::Archetype for VisibleTimeRange {
-    type Indicator = VisibleTimeRangeIndicator;
+impl ::re_types_core::Archetype for VisibleTimeRanges {
+    type Indicator = VisibleTimeRangesIndicator;
 
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisibleTimeRange".into()
+        "rerun.blueprint.archetypes.VisibleTimeRanges".into()
     }
 
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
-        static INDICATOR: VisibleTimeRangeIndicator = VisibleTimeRangeIndicator::DEFAULT;
+        static INDICATOR: VisibleTimeRangesIndicator = VisibleTimeRangesIndicator::DEFAULT;
         MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
@@ -124,19 +116,19 @@ impl ::re_types_core::Archetype for VisibleTimeRange {
             let array = arrays_by_name
                 .get("rerun.blueprint.components.VisibleTimeRange")
                 .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?;
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?;
             <crate::blueprint::components::VisibleTimeRange>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
                 .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.blueprint.archetypes.VisibleTimeRange#ranges")?
+                .with_context("rerun.blueprint.archetypes.VisibleTimeRanges#ranges")?
         };
         Ok(Self { ranges })
     }
 }
 
-impl ::re_types_core::AsComponents for VisibleTimeRange {
+impl ::re_types_core::AsComponents for VisibleTimeRanges {
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
@@ -150,8 +142,8 @@ impl ::re_types_core::AsComponents for VisibleTimeRange {
     }
 }
 
-impl VisibleTimeRange {
-    /// Create a new `VisibleTimeRange`.
+impl VisibleTimeRanges {
+    /// Create a new `VisibleTimeRanges`.
     #[inline]
     pub fn new(
         ranges: impl IntoIterator<Item = impl Into<crate::blueprint::components::VisibleTimeRange>>,

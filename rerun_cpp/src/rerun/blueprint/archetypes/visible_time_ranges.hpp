@@ -14,33 +14,26 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: Configures what range of the timeline is shown on a view.
+    /// **Archetype**: Configures what range of each timeline is shown on a view.
     ///
-    /// Whenever no visual time range applies, queries are done with "latest at" semantics.
-    /// This means that the view will, starting from the time cursor position,
-    /// query the latest data available for each component type.
-    ///
-    /// The default visual time range depends on the type of view this property applies to:
-    /// - For time series views, the default is to show the entire timeline.
-    /// - For any other view, the default is to apply latest-at semantics.
-    ///
-    /// The visual time range can be overridden also individually per entity.
-    struct VisibleTimeRange {
+    /// Refer to [`VisibleTimeRange`] component for more information.
+    struct VisibleTimeRanges {
         /// The ranges of time to show for all given timelines based on sequence numbers.
         Collection<rerun::blueprint::components::VisibleTimeRange> ranges;
 
       public:
         static constexpr const char IndicatorComponentName[] =
-            "rerun.blueprint.components.VisibleTimeRangeIndicator";
+            "rerun.blueprint.components.VisibleTimeRangesIndicator";
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
       public:
-        VisibleTimeRange() = default;
-        VisibleTimeRange(VisibleTimeRange&& other) = default;
+        VisibleTimeRanges() = default;
+        VisibleTimeRanges(VisibleTimeRanges&& other) = default;
 
-        explicit VisibleTimeRange(Collection<rerun::blueprint::components::VisibleTimeRange> _ranges
+        explicit VisibleTimeRanges(
+            Collection<rerun::blueprint::components::VisibleTimeRange> _ranges
         )
             : ranges(std::move(_ranges)) {}
     };
@@ -54,10 +47,10 @@ namespace rerun {
 
     /// \private
     template <>
-    struct AsComponents<blueprint::archetypes::VisibleTimeRange> {
+    struct AsComponents<blueprint::archetypes::VisibleTimeRanges> {
         /// Serialize all set component batches.
         static Result<std::vector<DataCell>> serialize(
-            const blueprint::archetypes::VisibleTimeRange& archetype
+            const blueprint::archetypes::VisibleTimeRanges& archetype
         );
     };
 } // namespace rerun

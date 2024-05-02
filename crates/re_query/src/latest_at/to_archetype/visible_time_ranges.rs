@@ -9,13 +9,13 @@ use crate::{LatestAtResults, PromiseResolver, PromiseResult};
 use re_types_core::{Archetype, Loggable as _};
 use std::sync::Arc;
 
-impl crate::ToArchetype<re_types::blueprint::archetypes::VisibleTimeRange> for LatestAtResults {
+impl crate::ToArchetype<re_types::blueprint::archetypes::VisibleTimeRanges> for LatestAtResults {
     #[inline]
     fn to_archetype(
         &self,
         resolver: &PromiseResolver,
-    ) -> PromiseResult<crate::Result<re_types::blueprint::archetypes::VisibleTimeRange>> {
-        re_tracing::profile_function!(<re_types::blueprint::archetypes::VisibleTimeRange>::name());
+    ) -> PromiseResult<crate::Result<re_types::blueprint::archetypes::VisibleTimeRanges>> {
+        re_tracing::profile_function!(<re_types::blueprint::archetypes::VisibleTimeRanges>::name());
 
         // --- Required ---
 
@@ -37,7 +37,7 @@ impl crate::ToArchetype<re_types::blueprint::archetypes::VisibleTimeRange> for L
 
         // ---
 
-        let arch = re_types::blueprint::archetypes::VisibleTimeRange { ranges };
+        let arch = re_types::blueprint::archetypes::VisibleTimeRanges { ranges };
 
         PromiseResult::Ready(Ok(arch))
     }

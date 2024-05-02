@@ -29,7 +29,7 @@ class Spatial2DView(SpaceView):
         | blueprint_components.BackgroundKindLike
         | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds | None = None,
-        time_range: blueprint_archetypes.VisibleTimeRange | None = None,
+        time_ranges: blueprint_archetypes.VisibleTimeRanges | None = None,
     ) -> None:
         """
         Construct a blueprint for a new Spatial2DView view.
@@ -56,8 +56,8 @@ class Spatial2DView(SpaceView):
 
             Everything within these bounds are guaranteed to be visible.
             Somethings outside of these bounds may also be visible due to letterboxing.
-        time_range:
-            Configures the range on the timeline shown by this view (unless specified differently per entity).
+        time_ranges:
+            Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
         """
 
@@ -72,10 +72,10 @@ class Spatial2DView(SpaceView):
                 visual_bounds = blueprint_archetypes.VisualBounds(visual_bounds)
             properties["VisualBounds"] = visual_bounds
 
-        if time_range is not None:
-            if not isinstance(time_range, blueprint_archetypes.VisibleTimeRange):
-                time_range = blueprint_archetypes.VisibleTimeRange(time_range)
-            properties["VisibleTimeRange"] = time_range
+        if time_ranges is not None:
+            if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):
+                time_ranges = blueprint_archetypes.VisibleTimeRanges(time_ranges)
+            properties["VisibleTimeRanges"] = time_ranges
 
         super().__init__(
             class_identifier="2D", origin=origin, contents=contents, name=name, visible=visible, properties=properties

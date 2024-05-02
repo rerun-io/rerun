@@ -16,18 +16,10 @@ Configuration for the legend of a plot.
 
 * corner: To what corner the legend is aligned.
 * visible: Whether the legend is shown at all.
-### `VisibleTimeRange`
-Configures what range of the timeline is shown on a view.
+### `VisibleTimeRanges`
+Configures what range of each timeline is shown on a view.
 
-Whenever no visual time range applies, queries are done with "latest at" semantics.
-This means that the view will, starting from the time cursor position,
-query the latest data available for each component type.
-
-The default visual time range depends on the type of view this property applies to:
-- For time series views, the default is to show the entire timeline.
-- For any other view, the default is to apply latest-at semantics.
-
-The visual time range can be overridden also individually per entity.
+Refer to [`VisibleTimeRange`] component for more information.
 
 * ranges: The ranges of time to show for all given timelines based on sequence numbers.
 

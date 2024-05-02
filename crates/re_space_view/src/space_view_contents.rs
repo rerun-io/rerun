@@ -557,7 +557,7 @@ impl DataQueryPropertyResolver<'_> {
 
             // Figure out relevant visual time range.
             let visible_time_range_archetype = blueprint
-                .latest_at_archetype::<blueprint_archetypes::VisibleTimeRange>(
+                .latest_at_archetype::<blueprint_archetypes::VisibleTimeRanges>(
                     &recursive_override_path,
                     blueprint_query,
                 )

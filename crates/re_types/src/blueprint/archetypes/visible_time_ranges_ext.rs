@@ -1,8 +1,8 @@
 use re_types_core::datatypes::TimeRange;
 
-use super::VisibleTimeRange;
+use super::VisibleTimeRanges;
 
-impl VisibleTimeRange {
+impl VisibleTimeRanges {
     /// Retrieves the time range for a given timeline.
     pub fn range_for_timeline(&self, timeline_name: &str) -> Option<&'_ TimeRange> {
         self.ranges

@@ -429,7 +429,7 @@ impl SpaceViewBlueprint {
         // * can't be specified in the data store
         // Here, we query the visual time range that serves as the default for all entities in this space.
         let (visible_time_range_archetype, _) = crate::query_view_property::<
-            blueprint_archetypes::VisibleTimeRange,
+            blueprint_archetypes::VisibleTimeRanges,
         >(self.id, blueprint, blueprint_query);
 
         let visible_time_range_archetype = visible_time_range_archetype.ok().flatten();

@@ -44,7 +44,7 @@ pub fn query_range_ui_space_view(
     }
 
     let property_path = entity_path_for_view_property::<
-        re_types::blueprint::archetypes::VisibleTimeRange,
+        re_types::blueprint::archetypes::VisibleTimeRanges,
     >(space_view.id, ctx.store_context.blueprint.tree());
 
     let query_range = space_view.query_range(
@@ -88,7 +88,7 @@ fn visible_time_range_ui(
     let visible_time_ranges = ctx
         .store_context
         .blueprint
-        .latest_at_archetype::<re_types::blueprint::archetypes::VisibleTimeRange>(
+        .latest_at_archetype::<re_types::blueprint::archetypes::VisibleTimeRanges>(
             time_range_override_path,
             ctx.blueprint_query,
         )
@@ -132,7 +132,7 @@ fn save_visible_time_ranges(
     has_individual_range: bool,
     query_range: QueryRange,
     property_path: EntityPath,
-    mut visible_time_ranges: re_types::blueprint::archetypes::VisibleTimeRange,
+    mut visible_time_ranges: re_types::blueprint::archetypes::VisibleTimeRanges,
 ) {
     if has_individual_range {
         let time_range = match query_range {

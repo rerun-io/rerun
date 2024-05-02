@@ -23,6 +23,16 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
+///
+/// Whenever no visual time range applies, queries are done with "latest at" semantics.
+/// This means that the view will, starting from the time cursor position,
+/// query the latest data available for each component type.
+///
+/// The default visual time range depends on the type of view this property applies to:
+/// - For time series views, the default is to show the entire timeline.
+/// - For any other view, the default is to apply latest-at semantics.
+///
+/// The visual time range(s) can be overridden also individually per entity.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
