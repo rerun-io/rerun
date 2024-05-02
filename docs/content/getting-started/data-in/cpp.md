@@ -6,6 +6,7 @@ order: 1
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.
 
 In a few lines of code, we'll go from a blank sheet to something you don't see every day: an animated, interactive, DNA-shaped abacus:
+
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/c4c4ef1e4a1b25002da7c44d4316b0e07ae8d6ed_logging_data1_result.webm" type="video/webm" />
 </video>
@@ -117,9 +118,9 @@ cmake --build build -j
 ```
 
 When everything finishes compiling, an empty Rerun viewer should be spawned:
-<picture>
-<img src="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/full.png" alt="">
 
+<picture>
+  <img src="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/1024w.png">

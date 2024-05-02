@@ -330,7 +330,7 @@ impl SpaceViewBlueprint {
         &self,
         ctx: &ViewerContext<'_>,
         view_state: &mut dyn SpaceViewState,
-        view_props: &mut EntityPropertyMap,
+        auto_properties: &mut EntityPropertyMap,
     ) {
         let query_result = ctx.lookup_query_result(self.id).clone();
 
@@ -353,7 +353,7 @@ impl SpaceViewBlueprint {
             ctx,
             view_state,
             &per_system_entities,
-            view_props,
+            auto_properties,
         );
     }
 
@@ -490,6 +490,7 @@ mod tests {
         let timeline = Timeline::new("time", re_log_types::TimeType::Time);
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = EntityDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+        let legacy_auto_properties = EntityPropertyMap::default();
 
         let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
 
@@ -559,6 +560,7 @@ mod tests {
                 &blueprint_query,
                 &timeline,
                 &space_view_class_registry,
+                &legacy_auto_properties,
                 &mut query_result,
             );
 
@@ -610,6 +612,7 @@ mod tests {
                 &blueprint_query,
                 &timeline,
                 &space_view_class_registry,
+                &legacy_auto_properties,
                 &mut query_result,
             );
 
@@ -667,6 +670,7 @@ mod tests {
                 &blueprint_query,
                 &timeline,
                 &space_view_class_registry,
+                &legacy_auto_properties,
                 &mut query_result,
             );
 
@@ -693,6 +697,7 @@ mod tests {
     fn test_component_overrides() {
         let space_view_class_registry = SpaceViewClassRegistry::default();
         let timeline = Timeline::new("time", re_log_types::TimeType::Time);
+        let legacy_auto_properties = EntityPropertyMap::default();
         let mut recording = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut visualizable_entities_per_visualizer =
             PerVisualizer::<VisualizableEntities>::default();
@@ -948,6 +953,7 @@ mod tests {
                 &blueprint_query,
                 &timeline,
                 &space_view_class_registry,
+                &legacy_auto_properties,
                 &mut query_result,
             );
 

@@ -16,7 +16,36 @@ pub struct RecommendedSpaceView {
 #[derive(Default)]
 pub struct SpaceViewSpawnHeuristics {
     /// The recommended space views to spawn
-    pub recommended_space_views: Vec<RecommendedSpaceView>,
+    recommended_space_views: Vec<RecommendedSpaceView>,
+}
+
+impl SpaceViewSpawnHeuristics {
+    #[inline]
+    pub fn empty() -> Self {
+        Self {
+            recommended_space_views: Vec::new(),
+        }
+    }
+
+    #[inline]
+    pub fn root() -> Self {
+        Self {
+            recommended_space_views: vec![RecommendedSpaceView::root()],
+        }
+    }
+
+    pub fn new(iter: impl IntoIterator<Item = RecommendedSpaceView>) -> Self {
+        let mut recommended_space_views: Vec<RecommendedSpaceView> = iter.into_iter().collect();
+        recommended_space_views.sort_by(|a, b| a.origin.cmp(&b.origin));
+        Self {
+            recommended_space_views,
+        }
+    }
+
+    #[inline]
+    pub fn into_vec(self) -> Vec<RecommendedSpaceView> {
+        self.recommended_space_views
+    }
 }
 
 impl RecommendedSpaceView {

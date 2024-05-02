@@ -4871,7 +4871,6 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "ply-rs",
- "rand",
  "rayon",
  "re_arrow2",
  "re_build_tools",

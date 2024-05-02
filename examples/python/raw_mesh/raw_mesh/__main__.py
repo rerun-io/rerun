@@ -92,7 +92,7 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
                     vertex_normals=mesh.vertex_normals,  # type: ignore[arg-type]
                     vertex_texcoords=vertex_texcoords,
                     albedo_texture=albedo_texture,
-                    indices=mesh.faces,
+                    triangle_indices=mesh.faces,
                     mesh_material=mesh_material,
                 ),
             )

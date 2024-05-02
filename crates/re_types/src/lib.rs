@@ -246,9 +246,6 @@ pub mod datatypes {
 /// The blueprint-specific components.
 pub mod blueprint;
 
-#[cfg(feature = "datagen")]
-pub mod datagen;
-
 // ---
 
 // One almost never uses `re_types` without `re_types_core`, so we reexport these core types

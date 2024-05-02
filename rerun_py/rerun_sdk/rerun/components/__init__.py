@@ -37,7 +37,6 @@ from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, M
 from .marker_size import MarkerSize, MarkerSizeArrayLike, MarkerSizeBatch, MarkerSizeLike, MarkerSizeType
 from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
-from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
 from .name import Name, NameBatch, NameType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
@@ -62,6 +61,7 @@ from .texcoord2d import Texcoord2D, Texcoord2DBatch, Texcoord2DType
 from .text import Text, TextBatch, TextType
 from .text_log_level import TextLogLevel, TextLogLevelBatch, TextLogLevelType
 from .transform3d import Transform3D, Transform3DBatch, Transform3DType
+from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .view_coordinates import (
@@ -151,9 +151,6 @@ __all__ = [
     "MediaType",
     "MediaTypeBatch",
     "MediaTypeType",
-    "MeshProperties",
-    "MeshPropertiesBatch",
-    "MeshPropertiesType",
     "Name",
     "NameBatch",
     "NameType",
@@ -216,6 +213,9 @@ __all__ = [
     "Transform3D",
     "Transform3DBatch",
     "Transform3DType",
+    "TriangleIndices",
+    "TriangleIndicesBatch",
+    "TriangleIndicesType",
     "Vector2D",
     "Vector2DBatch",
     "Vector2DType",

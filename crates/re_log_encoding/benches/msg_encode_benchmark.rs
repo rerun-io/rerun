@@ -5,10 +5,10 @@ compile_error!("msg_encode_benchmark requires 'decoder' and 'encoder' features."
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use re_log_types::{
-    entity_path, DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType,
-    Timeline,
+    entity_path,
+    example_components::{MyColor, MyPoint},
+    DataRow, DataTable, LogMsg, RowId, StoreId, StoreKind, TableId, TimeInt, TimeType, Timeline,
 };
-use re_types::datagen::{build_some_colors, build_some_positions2d};
 
 use criterion::{criterion_group, criterion_main, Criterion};
 
@@ -75,7 +75,7 @@ fn mono_points_arrow(c: &mut Criterion) {
                         RowId::ZERO,
                         entity_path!("points", i.to_string()),
                         [build_frame_nr(TimeInt::ZERO)],
-                        (build_some_positions2d(1), build_some_colors(1)),
+                        (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
                     )
                     .unwrap()],
                 )
@@ -132,7 +132,7 @@ fn mono_points_arrow_batched(c: &mut Criterion) {
                     RowId::ZERO,
                     entity_path!("points", i.to_string()),
                     [build_frame_nr(TimeInt::ZERO)],
-                    (build_some_positions2d(1), build_some_colors(1)),
+                    (MyPoint::from_iter(0..1), MyColor::from_iter(0..1)),
                 )
                 .unwrap()
             }),
@@ -188,8 +188,8 @@ fn batch_points_arrow(c: &mut Criterion) {
                 entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
                 (
-                    build_some_positions2d(NUM_POINTS),
-                    build_some_colors(NUM_POINTS),
+                    MyPoint::from_iter(0..NUM_POINTS as u32),
+                    MyColor::from_iter(0..NUM_POINTS as u32),
                 ),
             )
             .unwrap()],

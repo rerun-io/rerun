@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use re_entity_db::{
     external::{re_data_store::LatestAtQuery, re_query::PromiseResult},
-    EntityDb, EntityProperties, EntityPropertiesComponent, EntityTree,
+    EntityDb, EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree,
 };
 use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
@@ -386,13 +386,14 @@ impl DataQueryPropertyResolver<'_> {
     ///  may include properties from the `SpaceView` or `DataQuery`.
     ///  - The individual overrides are found by walking an override subtree under the `data_query/<id>/individual_overrides`
     ///  - The recursive overrides are found by walking an override subtree under the `data_query/<id>/recursive_overrides`
-    fn build_override_context(
+    fn build_override_context<'a>(
         &self,
         blueprint: &EntityDb,
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
-    ) -> EntityOverrideContext {
+        legacy_auto_properties: &'a EntityPropertyMap,
+    ) -> EntityOverrideContext<'a> {
         re_tracing::profile_function!();
 
         let legacy_space_view_properties = self
@@ -410,6 +411,7 @@ impl DataQueryPropertyResolver<'_> {
         EntityOverrideContext {
             legacy_space_view_properties,
             default_query_range,
+            legacy_auto_properties,
         }
     }
 
@@ -424,7 +426,7 @@ impl DataQueryPropertyResolver<'_> {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         query_result: &mut DataQueryResult,
-        override_context: &EntityOverrideContext,
+        override_context: &EntityOverrideContext<'_>,
         recursive_accumulated_legacy_properties: &EntityProperties,
         recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
@@ -461,11 +463,16 @@ impl DataQueryPropertyResolver<'_> {
                 } else {
                     recursive_accumulated_legacy_properties.clone()
                 };
+            let default_legacy_properties = override_context
+                .legacy_auto_properties
+                .get(&node.data_result.entity_path);
             let accumulated_legacy_properties =
                 if let Some(individual) = individual_legacy_properties.as_ref() {
-                    recursive_accumulated_legacy_properties.with_child(individual)
+                    recursive_accumulated_legacy_properties
+                        .with_child(individual)
+                        .with_child(&default_legacy_properties)
                 } else {
-                    recursive_accumulated_legacy_properties.clone()
+                    recursive_accumulated_legacy_properties.with_child(&default_legacy_properties)
                 };
 
             // Update visualizers from overrides.
@@ -611,6 +618,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
         blueprint_query: &LatestAtQuery,
         active_timeline: &Timeline,
         space_view_class_registry: &SpaceViewClassRegistry,
+        legacy_auto_properties: &EntityPropertyMap,
         query_result: &mut DataQueryResult,
     ) {
         re_tracing::profile_function!();
@@ -619,6 +627,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
             blueprint_query,
             active_timeline,
             space_view_class_registry,
+            legacy_auto_properties,
         );
 
         if let Some(root) = query_result.tree.root_handle() {

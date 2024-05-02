@@ -1,11 +1,18 @@
-use crate::{drag_and_drop, hierarchical_drag_and_drop, selection_buttons};
-use re_ui::ReUi;
+use crate::{drag_and_drop, hierarchical_drag_and_drop};
+use egui::Ui;
+use re_ui::{list_item2, ReUi};
 
 pub struct RightPanel {
     show_hierarchical_demo: bool,
     drag_and_drop: drag_and_drop::ExampleDragAndDrop,
     hierarchical_drag_and_drop: hierarchical_drag_and_drop::HierarchicalDragAndDrop,
     selected_list_item: Option<usize>,
+    use_action_button: bool,
+
+    // dummy data
+    text: String,
+    color: [u8; 4],
+    boolean: bool,
 }
 
 impl Default for RightPanel {
@@ -16,6 +23,11 @@ impl Default for RightPanel {
             hierarchical_drag_and_drop:
                 hierarchical_drag_and_drop::HierarchicalDragAndDrop::default(),
             selected_list_item: None,
+            use_action_button: false,
+            // dummy data
+            text: "Hello world".to_owned(),
+            color: [128, 0, 0, 255],
+            boolean: false,
         }
     }
 }
@@ -23,132 +35,273 @@ impl Default for RightPanel {
 impl RightPanel {
     /// Draw the right panel content.
     ///
-    /// Note: the panel's frame must have a zero inner margin!
+    /// Note: the panel's frame must have a zero inner margin and the vertical spacing set to 0.
     pub fn ui(&mut self, re_ui: &ReUi, ui: &mut egui::Ui) {
-        ui.set_clip_rect(ui.max_rect());
-
         //
         // First section - Drag and drop demos
         //
 
-        ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
-
-            re_ui.panel_content(ui, |re_ui, ui| {
-                re_ui.panel_title_bar_with_buttons(ui, "Drag-and-drop demo", None, |ui| {
-                    ui.add(re_ui::toggle_switch(&mut self.show_hierarchical_demo));
-                    ui.label("Hierarchical:");
-                });
-
-                if self.show_hierarchical_demo {
-                    self.hierarchical_drag_and_drop.ui(re_ui, ui);
-                } else {
-                    self.drag_and_drop.ui(re_ui, ui);
-                }
+        re_ui.panel_content(ui, |re_ui, ui| {
+            re_ui.panel_title_bar_with_buttons(ui, "Demo: drag-and-drop", None, |ui| {
+                ui.add(re_ui::toggle_switch(8.0, &mut self.show_hierarchical_demo));
+                ui.label("Hierarchical:");
             });
 
-            ReUi::full_span_separator(ui);
-            ui.add_space(20.0);
+            if self.show_hierarchical_demo {
+                self.hierarchical_drag_and_drop.ui(re_ui, ui);
+            } else {
+                self.drag_and_drop.ui(re_ui, ui);
+            }
         });
 
+        ui.add_space(20.0);
+
         //
-        // Second section - no scroll area, so a single outer "panel_content" can be used.
+        // Demo of `ListItem` API and features.
         //
 
         re_ui.panel_content(ui, |re_ui, ui| {
-            re_ui.large_collapsing_header(ui, "Full-Span UI examples", true, |ui| {
-                ui.label("Some data here");
-                ui.label("Some data there");
-
-                selection_buttons(ui);
-            });
+            re_ui.panel_title_bar(ui, "Demo: ListItem APIs", None);
+            self.list_item_api_demo(re_ui, ui);
         });
 
-        // From now on, it's only `list_items`, so we need to remove the default
-        // spacing.
-        ui.scope(|ui| {
-            ui.spacing_mut().item_spacing.y = 0.0;
+        ui.add_space(20.0);
 
-            //
-            // Nested scroll area demo. Multiple `panel_content` must be used.
-            //
+        //
+        // Nested scroll area demo. Multiple `panel_content` must be used to ensure the scroll
+        // bar appears nicely snug with the panel right border.
+        //
 
-            re_ui.panel_content(ui, |re_ui, ui| {
-                re_ui.panel_title_bar(ui, "Another section", None);
-            });
+        re_ui.panel_content(ui, |re_ui, ui| {
+            re_ui.panel_title_bar(ui, "Demo: ListItem in scroll area", None);
+        });
 
-            egui::ScrollArea::both()
-                .id_source("example_right_panel")
-                .auto_shrink([false, true])
-                .show(ui, |ui| {
-                    re_ui.panel_content(ui, |re_ui, ui| {
-                        for i in 0..10 {
-                            let label = if i == 4 {
-                                "That's one heck of a loooooooong label!".to_owned()
-                            } else {
-                                format!("Some item {i}")
-                            };
+        egui::ScrollArea::both()
+            .id_source("example_right_panel")
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                re_ui.panel_content(ui, |re_ui, ui| {
+                    for i in 0..10 {
+                        let label = if i == 4 {
+                            "That's one heck of a loooooooong label!".to_owned()
+                        } else {
+                            format!("Some item {i}")
+                        };
 
-                            let mut item = re_ui
-                                .list_item(label)
-                                .selected(Some(i) == self.selected_list_item)
-                                .interactive(i != 3)
-                                .with_buttons(|re_ui, ui| {
-                                    re_ui.small_icon_button(ui, &re_ui::icons::ADD)
-                                        | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
-                                });
-
-                            // demo custom icon
-                            item = if i == 6 {
-                                item.with_icon_fn(|_re_ui, ui, rect, visuals| {
-                                    ui.painter().circle(
-                                        rect.center(),
-                                        rect.width() / 2.0,
-                                        visuals.fg_stroke.color,
-                                        egui::Stroke::NONE,
-                                    );
-                                })
-                            } else {
-                                item.with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                            };
-
-                            if item.show_flat(ui).clicked() {
-                                self.selected_list_item = Some(i);
-                            }
+                        // Note: we use `exact_width(true)` here to force the item to allocate
+                        // as much as needed for the label, which in turn will trigger the
+                        // scroll area.
+                        if re_ui
+                            .list_item2()
+                            .selected(Some(i) == self.selected_list_item)
+                            .show_flat(ui, list_item2::LabelContent::new(&label).exact_width(true))
+                            .clicked()
+                        {
+                            self.selected_list_item = Some(i);
                         }
-                    });
+                    }
                 });
+            });
+    }
 
-            //
-            // Demo of `ListItem` features.
-            //
+    fn list_item_api_demo(&mut self, re_ui: &ReUi, ui: &mut Ui) {
+        re_ui
+            .list_item2()
+            .show_hierarchical(ui, list_item2::LabelContent::new("Default"));
 
-            re_ui.panel_content(ui, |re_ui, ui| {
-                re_ui.panel_title_bar(ui, "Another section", None);
+        re_ui
+            .list_item2()
+            .interactive(false)
+            .show_hierarchical(ui, list_item2::LabelContent::new("Not interactive item"));
+
+        re_ui
+            .list_item2()
+            .force_hovered(true)
+            .show_hierarchical(ui, list_item2::LabelContent::new("Perma-hovered item"));
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "label content features",
+            true,
+            list_item2::LabelContent::new("LabelContent features:"),
+            |re_ui, ui| {
+                re_ui
+                    .list_item2()
+                    .show_hierarchical(ui, list_item2::LabelContent::new("LabelContent"));
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::LabelContent::new("LabelContent with icon")
+                        .with_icon(&re_ui::icons::SPACE_VIEW_TEXT),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::LabelContent::new("LabelContent with custom icon code")
+                        .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                            ui.painter().circle(
+                                rect.center(),
+                                rect.width() / 2.0,
+                                visuals.fg_stroke.color,
+                                egui::Stroke::NONE,
+                            );
+                        }),
+                );
 
                 re_ui
-                    .list_item("Collapsing list item with icon")
-                    .with_icon(&re_ui::icons::SPACE_VIEW_2D)
-                    .show_hierarchical_with_content(
+                    .list_item2()
+                    .show_hierarchical(
                         ui,
-                        "collapsing example",
-                        true,
-                        |_re_ui, ui| {
-                            re_ui.list_item("Sub-item").show_hierarchical(ui);
-                            re_ui.list_item("Sub-item").show_hierarchical(ui);
-                            re_ui
-                                .list_item("Sub-item with icon")
-                                .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
-                                .show_hierarchical(ui);
-                            re_ui.list_item("Sub-item").show_hierarchical_with_content(
-                                ui,
-                                "sub-collapsing",
-                                true,
-                                |_re_ui, ui| re_ui.list_item("Sub-sub-item").show_hierarchical(ui),
-                            );
+                        list_item2::LabelContent::new("LabelContent with custom styling")
+                            .subdued(true)
+                            .italics(true)
+                            .with_icon(&re_ui::icons::SPACE_VIEW_2D),
+                    )
+                    .on_hover_text("The styling applies to the icon.");
+
+                re_ui
+                    .list_item2()
+                    .show_hierarchical(
+                        ui,
+                        list_item2::LabelContent::new("LabelContent with LabelStyle")
+                            .label_style(re_ui::LabelStyle::Unnamed)
+                            .with_icon(&re_ui::icons::SPACE_VIEW_2D),
+                    )
+                    .on_hover_text("The LabelStyle doesn't apply to the icon.");
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::LabelContent::new("LabelContent with buttons").with_buttons(
+                        |re_ui, ui| {
+                            re_ui.small_icon_button(ui, &re_ui::icons::ADD)
+                                | re_ui.small_icon_button(ui, &re_ui::icons::REMOVE)
                         },
+                    ),
+                );
+            },
+        );
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "property content features",
+            true,
+            list_item2::PropertyContent::new("PropertyContent features:")
+                .value_text("bunch of properties"),
+            |re_ui, ui| {
+                // By using an inner scope, we allow the nested properties to not align themselves
+                // to the parent property, which in this particular case looks better.
+                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
                     );
-            });
-        });
+
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Bool (editable)")
+                            .value_bool_mut(&mut self.boolean),
+                    );
+
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Text").value_text(&self.text),
+                    );
+
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Text (editable)")
+                            .value_text_mut(&mut self.text),
+                    );
+
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Color")
+                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .action_button(&re_ui::icons::ADD, || {
+                                re_log::warn!("Add button clicked");
+                            })
+                            .value_color(&self.color),
+                    );
+
+                    re_ui.list_item2().show_hierarchical(
+                        ui,
+                        list_item2::PropertyContent::new("Color (editable)")
+                            .with_icon(&re_ui::icons::SPACE_VIEW_TEXT)
+                            .action_button(&re_ui::icons::ADD, || {
+                                re_log::warn!("Add button clicked");
+                            })
+                            .value_color_mut(&mut self.color),
+                    );
+                });
+            },
+        );
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "property content right button reserve",
+            true,
+            list_item2::PropertyContent::new("PropertyContent action button:")
+                .value_text("demo of right gutter"),
+            |re_ui, ui| {
+                // By using an inner scope, we allow the nested properties to not align themselves
+                // to the parent property, which in this particular case looks better.
+                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                    fn demo_item(re_ui: &ReUi, ui: &mut egui::Ui) {
+                        re_ui.list_item2().show_hierarchical(
+                            ui,
+                            list_item2::PropertyContent::new("Some item:").value_fn(|_, ui, _| {
+                                ui.ctx().debug_painter().debug_rect(
+                                    ui.max_rect(),
+                                    egui::Color32::LIGHT_BLUE,
+                                    "space for value",
+                                );
+                            }),
+                        );
+                    }
+
+                    for _ in 0..3 {
+                        demo_item(re_ui, ui);
+                    }
+
+                    let mut content = list_item2::PropertyContent::new("Use action button");
+                    if self.use_action_button {
+                        content = content.action_button(&re_ui::icons::ADD, || {
+                            re_log::warn!("Add button clicked");
+                        });
+                    }
+                    content = content.value_bool_mut(&mut self.use_action_button);
+                    re_ui.list_item2().show_hierarchical(ui, content);
+
+                    for _ in 0..3 {
+                        demo_item(re_ui, ui);
+                    }
+                });
+            },
+        );
+
+        re_ui.list_item2().show_hierarchical_with_children(
+            ui,
+            "other features",
+            true,
+            list_item2::LabelContent::new("Other contents:"),
+            |re_ui, ui| {
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::DebugContent::default()
+                        .label("DebugContent just shows the content area"),
+                );
+
+                re_ui.list_item2().show_hierarchical(
+                    ui,
+                    list_item2::CustomContent::new(|_, ui, context| {
+                        ui.ctx().debug_painter().debug_rect(
+                            context.rect,
+                            egui::Color32::LIGHT_RED,
+                            "CustomContent delegates to a closure",
+                        );
+                    }),
+                )
+            },
+        );
     }
 }

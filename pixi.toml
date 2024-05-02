@@ -204,6 +204,9 @@ search-index = "cargo run --locked -p re_dev_tools -- search-index"
 # TODO(#6060): Put this in an environment and remove the requirements file.
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
+# Lint markdown
+mdlint = "python scripts/ci/mdlint.py"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"

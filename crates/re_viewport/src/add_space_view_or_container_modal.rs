@@ -1,13 +1,12 @@
 //! Modal for adding a new space view of container to an existing target container.
 
-use itertools::Itertools;
-
-use crate::{icon_for_container_kind, ViewportBlueprint};
 use re_space_view::SpaceViewBlueprint;
 use re_ui::ReUi;
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, RecommendedSpaceView, ViewerContext,
 };
+
+use crate::{icon_for_container_kind, ViewportBlueprint};
 
 #[derive(Default)]
 pub struct AddSpaceViewOrContainerModal {
@@ -111,7 +110,6 @@ fn modal_ui(
     for space_view in ctx
         .space_view_class_registry
         .iter_registry()
-        .sorted_by_key(|entry| entry.class.display_name())
         .map(|entry| SpaceViewBlueprint::new(entry.identifier, RecommendedSpaceView::root()))
     {
         let icon = space_view.class(ctx.space_view_class_registry).icon();

@@ -50,7 +50,7 @@ rr.log(
     rr.Mesh3D(
         vertex_positions=mesh.vertices,
         vertex_colors=mesh.visual.vertex_colors,
-        indices=mesh.faces,
+        triangle_indices=mesh.faces,
     ),
     timeless=True,
 )

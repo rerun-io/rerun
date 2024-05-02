@@ -20,6 +20,7 @@ Rerun is used by engineers and researchers in fields like robotics,
 spatial computing, 2D/3D simulation, and finance to verify, debug, and demo.
 
 ## How do you use it?
+
 <picture>
   <img src="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/full.png" alt="">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/480w.png">
