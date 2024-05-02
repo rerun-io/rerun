@@ -43,7 +43,7 @@ let Some(first) = vec.get(0) else {
 
 ### Iterators
 Be careful when iterating over `HashSet`s and `HashMap`s, as the order is non-deterministic.
-Wehnever you return a list of an iterator, sort it first.
+Whenever you return a list or an iterator, sort it first.
 If you don't want to sort it for performance reasons, you MUST put `unsorted` in the  name as a warning.
 
 ### Error handling and logging
