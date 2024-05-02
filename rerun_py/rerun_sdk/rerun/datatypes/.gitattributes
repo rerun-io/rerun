@@ -15,7 +15,6 @@ keypoint_pair.py linguist-generated=true
 mat3x3.py linguist-generated=true
 mat4x4.py linguist-generated=true
 material.py linguist-generated=true
-mesh_properties.py linguist-generated=true
 quaternion.py linguist-generated=true
 range1d.py linguist-generated=true
 range2d.py linguist-generated=true

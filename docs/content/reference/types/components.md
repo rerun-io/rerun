@@ -31,7 +31,6 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`MarkerSize`](components/marker_size.md): Size of a marker in UI points.
 * [`Material`](components/material.md): Material properties of a mesh.
 * [`MediaType`](components/media_type.md): A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
-* [`MeshProperties`](components/mesh_properties.md): Optional triangle indices for a mesh.
 * [`Name`](components/name.md): A display name, typically for an entity or a item like a plot series.
 * [`OutOfTreeTransform3D`](components/out_of_tree_transform3d.md): An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
@@ -50,6 +49,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Text`](components/text.md): A string of text, e.g. for labels and text documents.
 * [`TextLogLevel`](components/text_log_level.md): The severity level of a text log message.
 * [`Transform3D`](components/transform3d.md): An affine transform between two 3D spaces, represented in a given direction.
+* [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle mesh.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.

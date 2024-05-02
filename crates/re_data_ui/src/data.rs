@@ -1,7 +1,7 @@
 use egui::Vec2;
 
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, MeshProperties, ViewCoordinates};
+use re_types::components::{Color, LineStrip2D, LineStrip3D, ViewCoordinates};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::{table_for_verbosity, DataUi};
@@ -126,6 +126,58 @@ impl DataUi for re_types::datatypes::Vec3D {
     }
 }
 
+impl DataUi for re_types::datatypes::Vec4D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec2D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec3D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
+impl DataUi for re_types::datatypes::UVec4D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        _verbosity: UiVerbosity,
+        _query: &re_data_store::LatestAtQuery,
+        _db: &re_entity_db::EntityDb,
+    ) {
+        ui.label(self.to_string());
+    }
+}
+
 impl DataUi for LineStrip2D {
     fn data_ui(
         &self,
@@ -221,41 +273,6 @@ impl DataUi for LineStrip3D {
                             }
                         });
                     });
-            }
-        }
-    }
-}
-
-impl DataUi for MeshProperties {
-    fn data_ui(
-        &self,
-        _ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        _query: &re_data_store::LatestAtQuery,
-        _db: &re_entity_db::EntityDb,
-    ) {
-        let show_optional_indices = |ui: &mut egui::Ui| {
-            if let Some(indices) = self.indices.as_ref() {
-                ui.label(format!(
-                    "{} triangles",
-                    re_format::format_uint(indices.len() / 3)
-                ));
-            } else {
-                ui.weak("(empty)");
-            }
-        };
-
-        match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
-                show_optional_indices(ui);
-            }
-            UiVerbosity::Full | UiVerbosity::LimitHeight => {
-                egui::Grid::new("material").num_columns(2).show(ui, |ui| {
-                    ui.label("triangles");
-                    show_optional_indices(ui);
-                    ui.end_row();
-                });
             }
         }
     }

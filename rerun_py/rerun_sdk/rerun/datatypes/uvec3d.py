@@ -16,12 +16,13 @@ from .._baseclasses import BaseBatch, BaseExtensionType
 from .._converters import (
     to_np_uint32,
 )
+from .uvec3d_ext import UVec3DExt
 
 __all__ = ["UVec3D", "UVec3DArrayLike", "UVec3DBatch", "UVec3DLike", "UVec3DType"]
 
 
 @define(init=False)
-class UVec3D:
+class UVec3D(UVec3DExt):
     """**Datatype**: A uint32 vector in 3D space."""
 
     def __init__(self: Any, xyz: UVec3DLike):
@@ -61,6 +62,4 @@ class UVec3DBatch(BaseBatch[UVec3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: UVec3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of UVec3D not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in uvec3d_ext.py
+        return UVec3DExt.native_to_pa_array_override(data, data_type)
