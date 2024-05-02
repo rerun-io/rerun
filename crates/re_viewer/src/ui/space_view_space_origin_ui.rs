@@ -1,6 +1,9 @@
+use std::ops::ControlFlow;
+
 use eframe::emath::NumExt;
 use egui::{Key, Ui};
 
+use re_log_types::EntityPath;
 use re_space_view::SpaceViewBlueprint;
 use re_ui::{ReUi, SyntaxHighlighting};
 use re_viewer_context::ViewerContext;
@@ -50,13 +53,21 @@ pub(crate) fn space_view_space_origin_widget_ui(
             }
         }
         SpaceOriginEditState::Editing(edit_state) => {
-            let keep_editing =
+            let control_flow =
                 space_view_space_origin_widget_editing_ui(ui, ctx, space_view, edit_state);
 
-            if keep_editing {
-                edit_state.entered_editing = false;
-            } else {
-                state = SpaceOriginEditState::NotEditing;
+            match control_flow {
+                ControlFlow::Break(Some(new_space_origin)) => {
+                    space_view.set_origin(ctx, &new_space_origin);
+                    state = SpaceOriginEditState::NotEditing;
+                }
+                ControlFlow::Break(None) => {
+                    state = SpaceOriginEditState::NotEditing;
+                }
+                ControlFlow::Continue(()) => {
+                    // Keep editing
+                    edit_state.entered_editing = false;
+                }
             }
         }
     }
@@ -70,8 +81,10 @@ fn space_view_space_origin_widget_editing_ui(
     ctx: &ViewerContext<'_>,
     space_view: &SpaceViewBlueprint,
     state: &mut EditState,
-) -> bool {
-    let mut keep_editing = true;
+) -> ControlFlow<Option<EntityPath>, ()> {
+    let mut control_flow = ControlFlow::Continue(());
+
+    let popup_id = ui.make_persistent_id("suggestions");
 
     //
     // Build and filter the suggestion lists
@@ -131,10 +144,9 @@ fn space_view_space_origin_widget_editing_ui(
 
     if let Some(selected_suggestion) = state.selected_suggestion {
         if enter_key_hit {
-            state.origin_string = filtered_space_view_suggestions[selected_suggestion]
-                .space_origin
-                .to_string();
-            keep_editing = false;
+            let origin = &filtered_space_view_suggestions[selected_suggestion].space_origin;
+            state.origin_string = origin.to_string();
+            control_flow = ControlFlow::Break(Some(origin.clone()));
         }
     }
 
@@ -157,18 +169,14 @@ fn space_view_space_origin_widget_editing_ui(
         space_view.set_origin(ctx, &state.origin_string.clone().into());
     }
 
-    if output.response.lost_focus() {
-        if enter_key_hit {
-            space_view.set_origin(ctx, &state.origin_string.clone().into());
-        }
-        keep_editing = false;
+    if output.response.lost_focus() && enter_key_hit && control_flow.is_continue() {
+        control_flow = ControlFlow::Break(Some(state.origin_string.clone().into()));
     }
 
     //
     // Display popup with suggestions
     //
 
-    let popup_id = ui.make_persistent_id("suggestions");
     if output.response.has_focus() {
         ui.memory_mut(|mem| mem.open_popup(popup_id));
     }
@@ -190,8 +198,7 @@ fn space_view_space_origin_widget_editing_ui(
             }
 
             if response.clicked() {
-                state.origin_string = suggested_space_view.space_origin.to_string();
-                space_view.set_origin(ctx, &state.origin_string.clone().into());
+                control_flow = ControlFlow::Break(Some(suggested_space_view.space_origin.clone()));
             }
         }
 
@@ -207,5 +214,9 @@ fn space_view_space_origin_widget_editing_ui(
 
     ReUi::list_item_popup(ui, popup_id, &output.response, 4.0, suggestions_ui);
 
-    keep_editing
+    if control_flow.is_continue() && !ui.memory(|mem| mem.is_popup_open(popup_id)) {
+        control_flow = ControlFlow::Break(None);
+    };
+
+    control_flow
 }
