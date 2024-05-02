@@ -1,4 +1,4 @@
-use egui::{text::TextWrapping, Align, Align2, Ui};
+use egui::{text::TextWrapping, Align, Align2, NumExt, Ui};
 
 use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, LabelStyle, ReUi};
@@ -18,6 +18,7 @@ pub struct LabelContent<'a> {
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
     always_show_buttons: bool,
 
+    min_desired_width: f32,
     exact_width: bool,
 }
 
@@ -32,6 +33,7 @@ impl<'a> LabelContent<'a> {
             icon_fn: None,
             buttons_fn: None,
             always_show_buttons: false,
+            min_desired_width: 0.0,
             exact_width: false,
         }
     }
@@ -82,9 +84,20 @@ impl<'a> LabelContent<'a> {
     /// By default, [`LabelContent`] uses the available width. By setting `exact_width` to true,
     /// the exact width required by the label (and the icon if any) is allocated instead. See
     /// [`super::DesiredWidth::Exact`].
+    ///
+    /// Note that if [`Self::min_desired_width`] is set, it is used as a minimum value.
     #[inline]
     pub fn exact_width(mut self, exact_width: bool) -> Self {
         self.exact_width = exact_width;
+        self
+    }
+
+    /// Set the minimum desired for the content.
+    ///
+    /// This defaults to zero.
+    #[inline]
+    pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
+        self.min_desired_width = min_desired_width;
         self
     }
 
@@ -148,6 +161,7 @@ impl ListItemContent for LabelContent<'_> {
             icon_fn,
             buttons_fn,
             always_show_buttons,
+            min_desired_width: _,
             exact_width: _,
         } = *self;
 
@@ -259,9 +273,9 @@ impl ListItemContent for LabelContent<'_> {
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
-            DesiredWidth::Exact(desired_width.ceil())
+            DesiredWidth::Exact(desired_width.ceil().at_least(self.min_desired_width))
         } else {
-            DesiredWidth::STANDARD
+            DesiredWidth::AtLeast(self.min_desired_width)
         }
     }
 }

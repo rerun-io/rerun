@@ -155,6 +155,7 @@ pub fn override_ui(
                 .show_flat(
                     ui,
                     re_ui::list_item2::PropertyContent::new(component_name.short_name())
+                        .min_desired_width(150.0)
                         .action_button(&re_ui::icons::CLOSE, || {
                             ctx.save_empty_blueprint_component_name(
                                 &overrides.individual_override_path,
@@ -336,6 +337,7 @@ pub fn override_visualizer_ui(
                 ctx.re_ui.list_item2().interactive(false).show_flat(
                     ui,
                     re_ui::list_item2::LabelContent::new(viz_name.as_str())
+                        .min_desired_width(150.0)
                         .with_buttons(|re_ui, ui| {
                             let response = re_ui.small_icon_button(ui, &re_ui::icons::CLOSE);
                             if response.clicked() {

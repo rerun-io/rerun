@@ -19,6 +19,7 @@ struct PropertyActionButton<'a> {
 /// value (which may be editable).
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
+    min_desired_width: f32,
     icon_fn: Option<Box<IconFn<'a>>>,
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
@@ -35,11 +36,22 @@ impl<'a> PropertyContent<'a> {
     pub fn new(label: impl Into<egui::WidgetText>) -> Self {
         Self {
             label: label.into(),
+            min_desired_width: 200.0,
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
             action_buttons: None,
         }
+    }
+
+    /// Set the minimum desired width for the entire content.
+    ///
+    /// Since there is no possibly way to meaningfully collapse two to three columns worth of
+    /// content, this is set to 200.0 by default.
+    #[inline]
+    pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
+        self.min_desired_width = min_desired_width;
+        self
     }
 
     /// Provide an [`Icon`] to be displayed on the left of the label.
@@ -171,6 +183,7 @@ impl ListItemContent for PropertyContent<'_> {
     fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
         let Self {
             label,
+            min_desired_width: _,
             icon_fn,
             show_only_when_collapsed,
             value_fn,
@@ -324,6 +337,6 @@ impl ListItemContent for PropertyContent<'_> {
     }
 
     fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
-        DesiredWidth::STANDARD
+        DesiredWidth::AtLeast(self.min_desired_width)
     }
 }
