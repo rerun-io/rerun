@@ -147,7 +147,7 @@ export class WebViewer {
     this.#handle.open_channel(id, channel_name);
     const on_send = (/** @type {Uint8Array} */ data) => {
       if (!this.#handle) throw new Error("...");
-      this.#handle.push_data_to_channel(id, data)
+      this.#handle.send_rrd_to_channel(id, data)
     };
     const on_close = () => {
       if (!this.#handle) throw new Error("...");
@@ -181,13 +181,13 @@ export class LogStream {
   }
 
   /**
-   * Send an `rrd` log message to the viewer.
+   * Send an `rrd` containing log messages to the viewer.
    *
    * Does nothing if `!this.ready`.
    *
-   * @param {Uint8Array} rrd_bytes stored in a byte array, received via some other side channel.
+   * @param {Uint8Array} rrd_bytes Is an rrd file stored in a byte array, received via some other side channel.
    */
-  push(rrd_bytes) {
+  send_rrd(rrd_bytes) {
     if (!this.ready) return;
     this.#on_send(rrd_bytes);
   }
