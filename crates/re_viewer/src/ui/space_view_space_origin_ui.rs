@@ -144,9 +144,11 @@ fn space_view_space_origin_widget_editing_ui(
 
     if let Some(selected_suggestion) = state.selected_suggestion {
         if enter_key_hit {
-            let origin = &filtered_space_view_suggestions[selected_suggestion].space_origin;
-            state.origin_string = origin.to_string();
-            control_flow = ControlFlow::Break(Some(origin.clone()));
+            if let Some(suggestion) = filtered_space_view_suggestions.get(selected_suggestion) {
+                let origin = &suggestion.space_origin;
+                state.origin_string = origin.to_string();
+                control_flow = ControlFlow::Break(Some(origin.clone()));
+            }
         }
     }
 
