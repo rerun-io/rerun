@@ -57,6 +57,8 @@ export class WebViewer {
       throw new Error(`Web viewer crashed: ${this.#handle.panic_message()}`);
     }
 
+    this.#state = "ready";
+
     if (rrd) {
       this.open(rrd);
     }
@@ -130,5 +132,76 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+  }
+
+  /**
+   * Opens a new channel for sending log messages.
+   *
+   * The channel can be used to incrementally push `rrd` chunks into the viewer.
+   *
+   * @param {string} channel_name used to identify the channel.
+   *
+   * @returns {LogChannel}
+   */
+  open_channel(channel_name = "rerun-io/web-viewer") {
+    if (!this.#handle) throw new Error("...");
+    const id = crypto.randomUUID();
+    this.#handle.open_channel(id, channel_name);
+    const on_send = (/** @type {Uint8Array} */ data) => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.send_rrd_to_channel(id, data);
+    };
+    const on_close = () => {
+      if (!this.#handle) throw new Error("...");
+      this.#handle.close_channel(id);
+    };
+    const get_state = () => this.#state;
+    return new LogChannel(on_send, on_close, get_state);
+  }
+}
+
+export class LogChannel {
+  #on_send;
+  #on_close;
+  #get_state;
+  #closed = false;
+
+  /** @internal
+   *
+   * @param {(data: Uint8Array) => void} on_send
+   * @param {() => void} on_close
+   * @param {() => 'ready' | 'starting' | 'stopped'} get_state
+   */
+  constructor(on_send, on_close, get_state) {
+    this.#on_send = on_send;
+    this.#on_close = on_close;
+    this.#get_state = get_state;
+  }
+
+  get ready() {
+    return !this.#closed && this.#get_state() === "ready";
+  }
+
+  /**
+   * Send an `rrd` containing log messages to the viewer.
+   *
+   * Does nothing if `!this.ready`.
+   *
+   * @param {Uint8Array} rrd_bytes Is an rrd file stored in a byte array, received via some other side channel.
+   */
+  send_rrd(rrd_bytes) {
+    if (!this.ready) return;
+    this.#on_send(rrd_bytes);
+  }
+
+  /**
+   * Close the channel.
+   *
+   * Does nothing if `!this.ready`.
+   */
+  close() {
+    if (!this.ready) return;
+    this.#on_close();
+    this.#closed = true;
   }
 }

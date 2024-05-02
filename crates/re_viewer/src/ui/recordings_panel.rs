@@ -55,6 +55,7 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
             SmartChannelSource::RrdHttpStream { url } => format!("Loading {url}…"),
 
             SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. }
             | SmartChannelSource::TcpServer { .. }

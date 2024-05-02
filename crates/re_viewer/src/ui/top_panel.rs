@@ -151,7 +151,8 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 re_smart_channel::SmartChannelSource::RrdWebEventListener
                 | re_smart_channel::SmartChannelSource::Sdk
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
-                | re_smart_channel::SmartChannelSource::TcpServer { .. } => true,
+                | re_smart_channel::SmartChannelSource::TcpServer { .. }
+                | re_smart_channel::SmartChannelSource::JsChannel { .. } => true,
             }
         })
         .collect_vec();
@@ -182,6 +183,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
             | SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. } => None,
 
@@ -206,7 +208,8 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
                 format!("Loading {url}…")
             }
-            re_smart_channel::SmartChannelSource::RrdWebEventListener => {
+            re_smart_channel::SmartChannelSource::RrdWebEventListener
+            | re_smart_channel::SmartChannelSource::JsChannel { .. } => {
                 "Waiting for logging data…".to_owned()
             }
             re_smart_channel::SmartChannelSource::Sdk => {

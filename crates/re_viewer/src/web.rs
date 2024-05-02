@@ -2,6 +2,7 @@
 
 #![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
 
+use ahash::HashMap;
 use wasm_bindgen::prelude::*;
 
 use re_log::ResultExt as _;
@@ -17,6 +18,12 @@ static GLOBAL: AccountingAllocator<std::alloc::System> =
 #[wasm_bindgen]
 pub struct WebHandle {
     runner: eframe::WebRunner,
+
+    /// A dedicated smart channel used by the [`WebHandle::add_rrd_from_bytes`] API.
+    ///
+    /// This exists because the direct bytes API is expected to submit many small RRD chunks
+    /// and allocating a new tx pair for each chunk doesn't make sense.
+    tx_channels: HashMap<String, re_smart_channel::Sender<re_log_types::LogMsg>>,
 }
 
 #[wasm_bindgen]
@@ -28,6 +35,7 @@ impl WebHandle {
 
         Self {
             runner: eframe::WebRunner::new(),
+            tx_channels: Default::default(),
         }
     }
 
@@ -105,6 +113,98 @@ impl WebHandle {
         app.msg_receive_set().remove_by_uri(url);
         if let Some(store_hub) = app.store_hub.as_mut() {
             store_hub.remove_recording_by_uri(url);
+        }
+    }
+
+    /// Open a new channel for streaming data.
+    ///
+    /// It is an error to open a channel twice with the same id.
+    #[wasm_bindgen]
+    pub fn open_channel(&mut self, id: &str, channel_name: &str) {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if self.tx_channels.contains_key(id) {
+            re_log::warn!("Channel with id '{}' already exists.", id);
+            return;
+        }
+
+        let (tx, rx) = re_smart_channel::smart_channel(
+            re_smart_channel::SmartMessageSource::JsChannelPush,
+            re_smart_channel::SmartChannelSource::JsChannel {
+                channel_name: channel_name.to_owned(),
+            },
+        );
+
+        app.add_receiver(rx);
+        self.tx_channels.insert(id.to_owned(), tx);
+    }
+
+    /// Close an existing channel for streaming data.
+    ///
+    /// No-op if the channel is already closed.
+    #[wasm_bindgen]
+    pub fn close_channel(&mut self, id: &str) {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(tx) = self.tx_channels.remove(id) {
+            tx.quit(None).warn_on_err_once("Failed to send quit marker");
+        }
+
+        // Request a repaint since closing the channel may update the top bar.
+        app.re_ui
+            .egui_ctx
+            .request_repaint_after(std::time::Duration::from_millis(10));
+    }
+
+    /// Add an rrd to the viewer directly from a byte array.
+    #[wasm_bindgen]
+    pub fn send_rrd_to_channel(&mut self, id: &str, data: &[u8]) {
+        use std::{ops::ControlFlow, sync::Arc};
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
+        if let Some(tx) = self.tx_channels.get(id).cloned() {
+            let data: Vec<u8> = data.to_vec();
+
+            let egui_ctx = app.re_ui.egui_ctx.clone();
+
+            let ui_waker = Box::new(move || {
+                // Spend a few more milliseconds decoding incoming messages,
+                // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
+                egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
+            });
+
+            re_log_encoding::stream_rrd_from_http::web_decode::decode_rrd(
+                data,
+                Arc::new({
+                    move |msg| {
+                        ui_waker();
+                        use re_log_encoding::stream_rrd_from_http::HttpMessage;
+                        match msg {
+                            HttpMessage::LogMsg(msg) => {
+                                if tx.send(msg).is_ok() {
+                                    ControlFlow::Continue(())
+                                } else {
+                                    re_log::info_once!("Failed to dispatch log message to viewer.");
+                                    ControlFlow::Break(())
+                                }
+                            }
+                            // TODO(jleibs): Unclear what we want to do here. More data is coming.
+                            HttpMessage::Success => ControlFlow::Continue(()),
+                            HttpMessage::Failure(err) => {
+                                tx.quit(Some(err))
+                                    .warn_on_err_once("Failed to send quit marker");
+                                ControlFlow::Break(())
+                            }
+                        }
+                    }
+                }),
+            );
         }
     }
 }
