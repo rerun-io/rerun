@@ -56,8 +56,8 @@ table VisibleTimeRange (
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// Name of the timeline this applies to.
-  timeline: rerun.datatypes.Utf8 (order: 300);
+  timeline: rerun.datatypes.Utf8 (order: 100);
 
   /// Time range to use for this timeline.
-  range: rerun.datatypes.TimeRange (order: 100);
+  range: rerun.datatypes.TimeRange (order: 200);
 }

@@ -77,13 +77,13 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
-                "range",
-                <crate::datatypes::TimeRange>::arrow_datatype(),
+                "timeline",
+                <crate::datatypes::Utf8>::arrow_datatype(),
                 false,
             ),
             Field::new(
-                "timeline",
-                <crate::datatypes::Utf8>::arrow_datatype(),
+                "range",
+                <crate::datatypes::TimeRange>::arrow_datatype(),
                 false,
             ),
         ]))

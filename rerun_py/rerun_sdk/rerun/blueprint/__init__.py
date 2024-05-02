@@ -16,13 +16,14 @@ from .archetypes import (
     Background,
     PlotLegend,
     ScalarAxis,
-    VisibleTimeRange,
+    # VisibleTimeRange, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds,
 )
 from .components import (
     BackgroundKind,
     Corner2D,
     LockRangeDuringZoom,
+    VisibleTimeRange,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (

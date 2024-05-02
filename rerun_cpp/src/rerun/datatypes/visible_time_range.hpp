@@ -19,11 +19,11 @@ namespace arrow {
 namespace rerun::datatypes {
     /// **Datatype**: Visible time range bounds for a specific timeline.
     struct VisibleTimeRange {
-        /// Time range to use for this timeline.
-        rerun::datatypes::TimeRange range;
-
         /// Name of the timeline this applies to.
         rerun::datatypes::Utf8 timeline;
+
+        /// Time range to use for this timeline.
+        rerun::datatypes::TimeRange range;
 
       public:
         VisibleTimeRange() = default;

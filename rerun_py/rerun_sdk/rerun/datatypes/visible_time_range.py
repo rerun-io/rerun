@@ -33,29 +33,29 @@ def _visible_time_range__timeline__special_field_converter_override(x: datatypes
 class VisibleTimeRange:
     """**Datatype**: Visible time range bounds for a specific timeline."""
 
-    def __init__(self: Any, range: datatypes.TimeRangeLike, timeline: datatypes.Utf8Like):
+    def __init__(self: Any, timeline: datatypes.Utf8Like, range: datatypes.TimeRangeLike):
         """
         Create a new instance of the VisibleTimeRange datatype.
 
         Parameters
         ----------
-        range:
-            Time range to use for this timeline.
         timeline:
             Name of the timeline this applies to.
+        range:
+            Time range to use for this timeline.
 
         """
 
         # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
-        self.__attrs_init__(range=range, timeline=timeline)
-
-    range: datatypes.TimeRange = field()
-    # Time range to use for this timeline.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
+        self.__attrs_init__(timeline=timeline, range=range)
 
     timeline: datatypes.Utf8 = field(converter=_visible_time_range__timeline__special_field_converter_override)
     # Name of the timeline this applies to.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    range: datatypes.TimeRange = field()
+    # Time range to use for this timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -74,6 +74,7 @@ class VisibleTimeRangeType(BaseExtensionType):
         pa.ExtensionType.__init__(
             self,
             pa.struct([
+                pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
                 pa.field(
                     "range",
                     pa.struct([
@@ -119,7 +120,6 @@ class VisibleTimeRangeType(BaseExtensionType):
                     nullable=False,
                     metadata={},
                 ),
-                pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -137,8 +137,8 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,
                 Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,
+                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,
             ],
             fields=list(data_type),
         )
