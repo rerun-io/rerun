@@ -70,8 +70,9 @@ from .datatypes import (
     TensorData,
     TranslationAndMat3x3,
     TranslationRotationScale3D,
-    VisibleTimeRangeBoundary,
-    VisibleTimeRangeBoundaryKind,
+    TimeRange,
+    TimeRangeBoundary,
+    TimeRangeBoundaryKind,
 )
 from .error_utils import set_strict_mode
 from .logging_handler import LoggingHandler
