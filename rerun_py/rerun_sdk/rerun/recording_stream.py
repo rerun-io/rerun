@@ -414,6 +414,21 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
     This can be helpful for decorating a function that represents a job or a task that you want to
     to produce its own isolated recording.
 
+    Example
+    -------
+    ```python
+    @rr.thread_local_stream("rerun_example_job")
+    def job(name: str) -> None:
+        rr.save(f"job_{name}.rrd")
+        for i in range(5):
+            time.sleep(0.2)
+            rr.log("hello", rr.TextLog(f"Hello {i) from Job {name}"))
+
+    threading.Thread(target=job, args=("A",)).start()
+    threading.Thread(target=job, args=("B",)).start()
+    ```
+    This will produce 2 separate rrd files, each only containing the logs from the respective threads.
+
     Parameters
     ----------
     application_id : str
