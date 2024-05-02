@@ -161,7 +161,7 @@ impl LogSink for MemorySink {
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
         // Note that When draining the backlog, we don't call `take` since that would flush
-        // the stream.  But drain_backlog is being called as part of `set_sink`, which has already queued
+        // the stream. But drain_backlog is being called as part of `set_sink`, which has already queued
         // a flush of the batcher. Queueing a second flush here seems to lead to a deadlock
         // at shutdown.
         std::mem::take(&mut (self.0.write()))
