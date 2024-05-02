@@ -29,8 +29,8 @@ use crate::ui::override_ui::override_visualizer_ui;
 use crate::{app_state::default_selection_panel_width, ui::override_ui::override_ui};
 
 use super::{
-    selection_history_ui::SelectionHistoryUi, visual_time_range::visual_time_range_ui_data_result,
-    visual_time_range::visual_time_range_ui_space_view,
+    query_range_ui::query_range_ui_data_result, query_range_ui::query_range_ui_space_view,
+    selection_history_ui::SelectionHistoryUi,
 };
 
 // ---
@@ -904,7 +904,7 @@ fn blueprint_ui_for_space_view(
             &class_identifier,
         );
 
-        visual_time_range_ui_space_view(ctx, ui, space_view);
+        query_range_ui_space_view(ctx, ui, space_view);
 
         // Space View don't inherit (legacy) properties.
         let mut props =
@@ -951,19 +951,20 @@ fn blueprint_ui_for_data_result(
                 .lookup_result_by_path(entity_path)
                 .cloned()
             {
-                let mut props = data_result
-                    .individual_properties()
-                    .cloned()
-                    .unwrap_or_default();
+                let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
+                let accumulated_legacy_props_before = accumulated_legacy_props.clone();
 
                 entity_props_ui(
                     ctx,
                     ui,
                     ctx.lookup_query_result(space_view_id),
                     entity_path,
-                    &mut props,
+                    &mut accumulated_legacy_props,
                 );
-                data_result.save_individual_override_properties(ctx, Some(props));
+                if accumulated_legacy_props != accumulated_legacy_props_before {
+                    data_result
+                        .save_individual_override_properties(ctx, Some(accumulated_legacy_props));
+                }
             }
         }
     }
@@ -1174,7 +1175,7 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    visual_time_range_ui_data_result(ctx, ui, &query_result.tree, data_result);
+    query_range_ui_data_result(ctx, ui, &query_result.tree, data_result);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)

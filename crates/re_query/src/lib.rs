@@ -135,10 +135,6 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
                 re_types::components::TensorData::name(),
                 "rerun.components.TensorData"
             );
-            assert_eq!(
-                re_types::components::MeshProperties::name(),
-                "rerun.components.MeshProperties"
-            );
             assert_eq!(re_types::components::Blob::name(), "rerun.components.Blob");
         }
 
@@ -147,9 +143,6 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
             // TODO(#5974): tensors might already be cached in the ad-hoc JPEG cache, we don't
             // want yet another copy.
             re_types::components::TensorData::name(),
-            // TODO(#5974): meshes are already cached in the ad-hoc mesh cache, we don't
-            // want yet another copy.
-            re_types::components::MeshProperties::name(),
             // TODO(#5974): blobs are used for assets, which are themselves already cached in
             // the ad-hoc mesh cache -- we don't want yet another copy.
             re_types::components::Blob::name(),
@@ -161,7 +154,6 @@ pub fn cacheable(component_name: re_types_core::ComponentName) -> bool {
     #[cfg(not(feature = "to_archetype"))]
     let component_names = [
         "rerun.components.TensorData".into(),
-        "rerun.components.MeshProperties".into(),
         "rerun.components.Blob".into(),
     ];
 

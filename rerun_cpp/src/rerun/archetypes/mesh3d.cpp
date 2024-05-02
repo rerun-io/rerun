@@ -21,8 +21,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.mesh_properties.has_value()) {
-            auto result = DataCell::from_loggable(archetype.mesh_properties.value());
+        if (archetype.triangle_indices.has_value()) {
+            auto result = DataCell::from_loggable(archetype.triangle_indices.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

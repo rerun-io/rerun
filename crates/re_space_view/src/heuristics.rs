@@ -45,10 +45,7 @@ where
             } else {
                 Some(RecommendedSpaceView::new_single_entity(entity.clone()))
             }
-        })
-        .collect();
+        });
 
-    re_viewer_context::SpaceViewSpawnHeuristics {
-        recommended_space_views,
-    }
+    re_viewer_context::SpaceViewSpawnHeuristics::new(recommended_space_views)
 }

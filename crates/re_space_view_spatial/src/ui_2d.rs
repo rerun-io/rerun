@@ -26,6 +26,10 @@ use crate::{
 
 // ---
 
+fn valid_bound(rect: &Rect) -> bool {
+    rect.is_finite() && rect.is_positive()
+}
+
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
     ctx: &ViewerContext<'_>,
@@ -35,41 +39,34 @@ fn ui_from_scene(
 ) -> RectTransform {
     /// Pan and zoom, and return the current transform.
     fn update_ui_from_scene_impl(
-        visual_bounds: &mut Rect,
+        visual_bounds: &mut Option<Rect>,
         response: &egui::Response,
         default_scene_rect: Rect,
     ) -> RectTransform {
-        fn valid_bound(rect: &Rect) -> bool {
-            rect.is_finite() && rect.is_positive()
-        }
-
-        if !valid_bound(visual_bounds) {
-            *visual_bounds = default_scene_rect;
-        }
-        if !valid_bound(visual_bounds) {
-            // Nothing in scene, probably.
-            // Just return something that isn't NaN.
-            let fake_bounds = Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0));
-            return RectTransform::from_to(fake_bounds, response.rect);
+        if let Some(visual_bounds) = visual_bounds.as_mut() {
+            if !valid_bound(visual_bounds) {
+                *visual_bounds = default_scene_rect;
+            }
         }
 
         // --------------------------------------------------------------------------
         // Expand bounds for uniform scaling (letterboxing):
 
-        let mut letterboxed_bounds = *visual_bounds;
+        let active_bounds = visual_bounds.unwrap_or(default_scene_rect);
+        let mut letterboxed_bounds = active_bounds;
 
         // Temporary before applying letterboxing:
-        let ui_from_scene = RectTransform::from_to(*visual_bounds, response.rect);
+        let ui_from_scene = RectTransform::from_to(active_bounds, response.rect);
 
         let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
         if scale_aspect < 1.0 {
             // Letterbox top/bottom:
-            let add = visual_bounds.height() * (1.0 / scale_aspect - 1.0);
+            let add = active_bounds.height() * (1.0 / scale_aspect - 1.0);
             letterboxed_bounds.min.y -= 0.5 * add;
             letterboxed_bounds.max.y += 0.5 * add;
         } else {
             // Letterbox sides:
-            let add = visual_bounds.width() * (scale_aspect - 1.0);
+            let add = active_bounds.width() * (scale_aspect - 1.0);
             letterboxed_bounds.min.x -= 0.5 * add;
             letterboxed_bounds.max.x += 0.5 * add;
         }
@@ -91,7 +88,8 @@ fn ui_from_scene(
             pan_delta_in_ui += response.ctx.input(|i| i.raw_scroll_delta);
         }
         if pan_delta_in_ui != Vec2::ZERO {
-            *visual_bounds = visual_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale());
+            *visual_bounds =
+                Some(active_bounds.translate(-pan_delta_in_ui / ui_from_scene.scale()));
         }
 
         if response.hovered() {
@@ -105,11 +103,13 @@ fn ui_from_scene(
                     .inverse()
                     .transform_pos(zoom_center_in_ui)
                     .to_vec2();
-                *visual_bounds = scale_rect(
-                    visual_bounds.translate(-zoom_center_in_scene),
-                    Vec2::splat(1.0) / zoom_delta,
-                )
-                .translate(zoom_center_in_scene);
+                *visual_bounds = Some(
+                    scale_rect(
+                        active_bounds.translate(-zoom_center_in_scene),
+                        Vec2::splat(1.0) / zoom_delta,
+                    )
+                    .translate(zoom_center_in_scene),
+                );
             }
         }
 
@@ -127,13 +127,13 @@ fn ui_from_scene(
         space_view_id,
         |range2d: &mut Option<re_types::components::Range2D>| {
             // Convert to a Rect
-            let mut rect: Rect = range2d.map_or(default_scene_rect, Rect::from);
+            let mut rect = range2d.map(Rect::from);
 
             // Apply pan and zoom based on input
             let ui_from_scene = update_ui_from_scene_impl(&mut rect, response, default_scene_rect);
 
-            // Store back the results
-            *range2d = Some(rect.into());
+            // Store the result back (if changed).
+            *range2d = rect.map(Into::into);
 
             if response.double_clicked() {
                 // Double-click to reset.
@@ -204,20 +204,30 @@ pub fn view_2d(
     // the camera to be added to the scene!
     let pinhole = query_pinhole(ctx.recording(), &ctx.current_query(), query.space_origin);
 
-    let default_scene_rect = pinhole
-        .as_ref()
-        .and_then(pinhole_resolution_rect)
-        .unwrap_or_else(|| {
-            // TODO(emilk): if there is a single image, use that as the default bounds
-            let scene_rect_accum = state.bounding_boxes.accumulated;
-            egui::Rect::from_min_max(
-                scene_rect_accum.min.truncate().to_array().into(),
-                scene_rect_accum.max.truncate().to_array().into(),
-            )
-        });
-
     let (mut response, painter) =
         ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
+
+    let default_scene_rect = {
+        let default_scene_rect = pinhole
+            .as_ref()
+            .and_then(pinhole_resolution_rect)
+            .unwrap_or_else(|| {
+                // TODO(emilk): if there is a single image, use that as the default bounds
+                let scene_rect_accum = state.bounding_boxes.accumulated;
+                egui::Rect::from_min_max(
+                    scene_rect_accum.min.truncate().to_array().into(),
+                    scene_rect_accum.max.truncate().to_array().into(),
+                )
+            });
+
+        if !valid_bound(&default_scene_rect) {
+            // Nothing in scene, probably.
+            // Just return something that isn't NaN.
+            Rect::from_min_size(Pos2::ZERO, Vec2::splat(1.0))
+        } else {
+            default_scene_rect
+        }
+    };
 
     // Convert ui coordinates to/from scene coordinates.
     let ui_from_scene = ui_from_scene(ctx, query.space_view_id, &response, default_scene_rect);

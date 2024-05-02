@@ -1,6 +1,6 @@
 //! Helpers for drag and drop support for reordering hierarchical lists.
 //!
-//! Works well in combination with [`crate::ListItem`].
+//! Works well in combination with [`crate::list_item2::ListItem`].
 
 pub enum ItemKind<ItemId: Copy> {
     /// Root container item.

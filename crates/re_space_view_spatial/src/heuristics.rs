@@ -21,29 +21,32 @@ use crate::{
     },
 };
 
-pub fn update_object_property_heuristics(
+pub fn generate_auto_legacy_properties(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
     spatial_kind: SpatialSpaceViewKind,
-) {
+) -> re_entity_db::EntityPropertyMap {
     re_tracing::profile_function!();
 
+    let mut auto_properties = re_entity_db::EntityPropertyMap::default();
+
     // Do pinhole properties before, since they may be used in transform3d heuristics.
-    update_pinhole_property_heuristics(per_system_entities, entity_properties, scene_bbox_accum);
+    update_pinhole_property_heuristics(per_system_entities, &mut auto_properties, scene_bbox_accum);
     update_depth_cloud_property_heuristics(
         ctx,
         per_system_entities,
-        entity_properties,
+        &mut auto_properties,
         spatial_kind,
     );
     update_transform3d_lines_heuristics(
         ctx,
         per_system_entities,
-        entity_properties,
+        &mut auto_properties,
         scene_bbox_accum,
     );
+
+    auto_properties
 }
 
 pub fn auto_size_world_heuristic(
@@ -73,35 +76,34 @@ pub fn auto_size_world_heuristic(
 
 fn update_pinhole_property_heuristics(
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_entity_db::EntityPropertyMap,
+    auto_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
         .get(&CamerasVisualizer::identifier())
         .unwrap_or(&BTreeSet::new())
     {
-        let mut properties = entity_properties.get(ent_path);
-        if properties.pinhole_image_plane_distance.is_auto() {
-            let scene_size = scene_bbox_accum.size().length();
-            let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
-                scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
-            } else {
-                // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
-                // the heuristic will change it or it will be user edited. In the case of non-defined bounds
-                // this value works better with the default camera setup.
-                0.3
-            };
-            properties.pinhole_image_plane_distance =
-                EditableAutoValue::Auto(default_image_plane_distance);
-            entity_properties.overwrite_properties(ent_path.clone(), properties);
-        }
+        let mut properties = auto_properties.get(ent_path);
+
+        let scene_size = scene_bbox_accum.size().length();
+        let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
+            scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/open_photogrammetry_format.py --no-frames`
+        } else {
+            // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+            // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+            // this value works better with the default camera setup.
+            0.3
+        };
+        properties.pinhole_image_plane_distance =
+            EditableAutoValue::Auto(default_image_plane_distance);
+        auto_properties.overwrite_properties(ent_path.clone(), properties);
     }
 }
 
 fn update_depth_cloud_property_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_entity_db::EntityPropertyMap,
+    auto_properties: &mut re_entity_db::EntityPropertyMap,
     spatial_kind: SpatialSpaceViewKind,
 ) {
     // TODO(andreas): There should be a depth cloud system
@@ -126,30 +128,23 @@ fn update_depth_cloud_property_heuristics(
             .latest_at_component::<DepthMeter>(ent_path, &ctx.current_query())
             .map(|meter| meter.value.0);
 
-        let mut properties = entity_properties.get(ent_path);
-        if properties.backproject_depth.is_auto() {
-            properties.backproject_depth = EditableAutoValue::Auto(
-                meaning == TensorDataMeaning::Depth && spatial_kind == SpatialSpaceViewKind::ThreeD,
-            );
-        }
+        let mut properties = auto_properties.get(ent_path);
+        properties.backproject_depth = EditableAutoValue::Auto(
+            meaning == TensorDataMeaning::Depth && spatial_kind == SpatialSpaceViewKind::ThreeD,
+        );
 
         if meaning == TensorDataMeaning::Depth {
-            if properties.depth_from_world_scale.is_auto() {
-                let auto = meter.unwrap_or_else(|| {
-                    if tensor.dtype().is_integer() {
-                        1000.0
-                    } else {
-                        1.0
-                    }
-                });
-                properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
-            }
+            let auto = meter.unwrap_or_else(|| {
+                if tensor.dtype().is_integer() {
+                    1000.0
+                } else {
+                    1.0
+                }
+            });
+            properties.depth_from_world_scale = EditableAutoValue::Auto(auto);
+            properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
 
-            if properties.backproject_radius_scale.is_auto() {
-                properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
-            }
-
-            entity_properties.overwrite_properties(ent_path.clone(), properties);
+            auto_properties.overwrite_properties(ent_path.clone(), properties);
         }
     }
 }
@@ -157,7 +152,7 @@ fn update_depth_cloud_property_heuristics(
 fn update_transform3d_lines_heuristics(
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
-    entity_properties: &mut re_entity_db::EntityPropertyMap,
+    auto_properties: &mut re_entity_db::EntityPropertyMap,
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
@@ -186,37 +181,33 @@ fn update_transform3d_lines_heuristics(
             None
         }
 
-        let mut properties = entity_properties.get(ent_path);
-        if properties.transform_3d_visible.is_auto() {
-            // By default show the transform if it is a camera extrinsic,
-            // or if this entity only contains Transform3D components.
-            let only_has_transform_components = ctx
-                .recording_store()
-                .all_components(&ctx.current_query().timeline(), ent_path)
-                .map_or(false, |c| {
-                    c.iter()
-                        .all(|c| re_types::archetypes::Transform3D::all_components().contains(c))
-                });
-            properties.transform_3d_visible = EditableAutoValue::Auto(
-                only_has_transform_components || is_pinhole_extrinsics_of(ent_path, ctx).is_some(),
-            );
+        let mut properties = auto_properties.get(ent_path);
+
+        // By default show the transform if it is a camera extrinsic,
+        // or if this entity only contains Transform3D components.
+        let only_has_transform_components = ctx
+            .recording_store()
+            .all_components(&ctx.current_query().timeline(), ent_path)
+            .map_or(false, |c| {
+                c.iter()
+                    .all(|c| re_types::archetypes::Transform3D::all_components().contains(c))
+            });
+        properties.transform_3d_visible = EditableAutoValue::Auto(
+            only_has_transform_components || is_pinhole_extrinsics_of(ent_path, ctx).is_some(),
+        );
+
+        if let Some(pinhole_path) = is_pinhole_extrinsics_of(ent_path, ctx) {
+            // If there's a pinhole, we orient ourselves on its image plane distance
+            let pinhole_path_props = auto_properties.get(pinhole_path);
+            properties.transform_3d_size =
+                EditableAutoValue::Auto(*pinhole_path_props.pinhole_image_plane_distance * 0.25);
+        } else {
+            // Size should be proportional to the scene extent, here covered by its diagonal
+            let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
+            properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
         }
 
-        if properties.transform_3d_size.is_auto() {
-            if let Some(pinhole_path) = is_pinhole_extrinsics_of(ent_path, ctx) {
-                // If there's a pinhole, we orient ourselves on its image plane distance
-                let pinhole_path_props = entity_properties.get(pinhole_path);
-                properties.transform_3d_size = EditableAutoValue::Auto(
-                    *pinhole_path_props.pinhole_image_plane_distance * 0.25,
-                );
-            } else {
-                // Size should be proportional to the scene extent, here covered by its diagonal
-                let diagonal_length = (scene_bbox_accum.max - scene_bbox_accum.min).length();
-                properties.transform_3d_size = EditableAutoValue::Auto(diagonal_length * 0.05);
-            }
-        }
-
-        entity_properties.overwrite_properties(ent_path.clone(), properties);
+        auto_properties.overwrite_properties(ent_path.clone(), properties);
     }
 }
 

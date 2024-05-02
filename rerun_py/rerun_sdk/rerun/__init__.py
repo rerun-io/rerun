@@ -57,7 +57,6 @@ from .blueprint.api import BlueprintLike
 from .components import (
     Material,
     MediaType,
-    MeshProperties,
     OutOfTreeTransform3D,
     OutOfTreeTransform3DBatch,
     TextLogLevel,

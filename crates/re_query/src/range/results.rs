@@ -226,10 +226,13 @@ pub struct RangeData<'a, T> {
 
 impl<'a, C: Component> RangeData<'a, C> {
     /// Useful to abstract over latest-at and ranged results.
+    ///
+    /// Use `reindexed` override the index of the data, if needed.
     #[inline]
     pub fn from_latest_at(
         resolver: &PromiseResolver,
         results: &'a LatestAtComponentResults,
+        reindexed: Option<(TimeInt, RowId)>,
     ) -> Self {
         let LatestAtComponentResults {
             index,
@@ -238,9 +241,10 @@ impl<'a, C: Component> RangeData<'a, C> {
         } = results;
 
         let status = results.to_dense::<C>(resolver).map(|_| ());
+        let index = reindexed.unwrap_or(*index);
 
         Self {
-            indices: Some(Indices::Owned(vec![*index].into())),
+            indices: Some(Indices::Owned(vec![index].into())),
             data: cached_dense.get().map(|data| Data::Owned(Arc::clone(data))),
             time_range: TimeRange::new(index.0, index.0),
             front_status: status.clone(),

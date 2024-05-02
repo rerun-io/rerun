@@ -13,7 +13,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{
-        default_visualized_entities_for_visualizer_kind, update_object_property_heuristics,
+        default_visualized_entities_for_visualizer_kind, generate_auto_legacy_properties,
     },
     spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags},
     ui::{format_vector, SpatialSpaceViewState},
@@ -210,65 +210,65 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Spawn a space view at each subspace that has any potential 3D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.recording_id(), |topo| SpaceViewSpawnHeuristics {
-            recommended_space_views: topo
-                .iter_subspaces()
-                .filter_map(|subspace| {
-                    if !subspace.supports_3d_content() {
-                        return None;
-                    }
+        SpatialTopology::access(ctx.recording_id(), |topo| {
+            SpaceViewSpawnHeuristics::new(
+                topo.iter_subspaces()
+                    .filter_map(|subspace| {
+                        if !subspace.supports_3d_content() {
+                            return None;
+                        }
 
-                    let mut pinhole_child_spaces = subspace
-                        .child_spaces
-                        .iter()
-                        .filter(|child| {
-                            topo.subspace_for_subspace_origin(child.hash()).map_or(
-                                false,
-                                |child_space| {
-                                    child_space.connection_to_parent.is_connected_pinhole()
-                                },
-                            )
-                        })
-                        .peekable(); // Don't collect the iterator, we're only interested in 'any'-style operations.
+                        let mut pinhole_child_spaces = subspace
+                            .child_spaces
+                            .iter()
+                            .filter(|child| {
+                                topo.subspace_for_subspace_origin(child.hash()).map_or(
+                                    false,
+                                    |child_space| {
+                                        child_space.connection_to_parent.is_connected_pinhole()
+                                    },
+                                )
+                            })
+                            .peekable(); // Don't collect the iterator, we're only interested in 'any'-style operations.
 
-                    // Empty space views are still of interest if any of the child spaces is connected via a pinhole.
-                    if subspace.entities.is_empty() && pinhole_child_spaces.peek().is_none() {
-                        return None;
-                    }
+                        // Empty space views are still of interest if any of the child spaces is connected via a pinhole.
+                        if subspace.entities.is_empty() && pinhole_child_spaces.peek().is_none() {
+                            return None;
+                        }
 
-                    // Creates space views at each view coordinates if there's any.
-                    // (yes, we do so even if they're empty at the moment!)
-                    //
-                    // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
-                    // (e.g. this also has a camera or a `disconnect` logged there)
-                    let mut origins = subspace
-                        .heuristic_hints
-                        .iter()
-                        .filter(|(path, hint)| {
-                            hint.contains(HeuristicHints::ViewCoordinates3d)
-                                && !subspace.child_spaces.contains(path)
-                        })
-                        .map(|(path, _)| path.clone())
-                        .collect::<Vec<_>>();
+                        // Creates space views at each view coordinates if there's any.
+                        // (yes, we do so even if they're empty at the moment!)
+                        //
+                        // An exception to this rule is not to create a view there if this is already _also_ a subspace root.
+                        // (e.g. this also has a camera or a `disconnect` logged there)
+                        let mut origins = subspace
+                            .heuristic_hints
+                            .iter()
+                            .filter(|(path, hint)| {
+                                hint.contains(HeuristicHints::ViewCoordinates3d)
+                                    && !subspace.child_spaces.contains(path)
+                            })
+                            .map(|(path, _)| path.clone())
+                            .collect::<Vec<_>>();
 
-                    let path_not_covered_yet =
-                        |e: &EntityPath| origins.iter().all(|origin| !e.starts_with(origin));
+                        let path_not_covered_yet =
+                            |e: &EntityPath| origins.iter().all(|origin| !e.starts_with(origin));
 
-                    // If there's no view coordinates or there are still some entities not covered,
-                    // create a view at the subspace origin.
-                    if !origins.iter().contains(&subspace.origin)
-                        && (indicated_entities
-                            .intersection(&subspace.entities)
-                            .any(path_not_covered_yet)
-                            || pinhole_child_spaces.any(path_not_covered_yet))
-                    {
-                        origins.push(subspace.origin.clone());
-                    }
+                        // If there's no view coordinates or there are still some entities not covered,
+                        // create a view at the subspace origin.
+                        if !origins.iter().contains(&subspace.origin)
+                            && (indicated_entities
+                                .intersection(&subspace.entities)
+                                .any(path_not_covered_yet)
+                                || pinhole_child_spaces.any(path_not_covered_yet))
+                        {
+                            origins.push(subspace.origin.clone());
+                        }
 
-                    Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
-                })
-                .flatten()
-                .collect(),
+                        Some(origins.into_iter().map(RecommendedSpaceView::new_subtree))
+                    })
+                    .flatten(),
+            )
         })
         .unwrap_or_default()
     }
@@ -278,15 +278,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
-        entity_properties: &mut re_entity_db::EntityPropertyMap,
+        auto_properties: &mut re_entity_db::EntityPropertyMap,
     ) {
         let Ok(state) = state.downcast_mut::<SpatialSpaceViewState>() else {
             return;
         };
-        update_object_property_heuristics(
+        *auto_properties = generate_auto_legacy_properties(
             ctx,
             ent_paths,
-            entity_properties,
             &state.bounding_boxes.accumulated,
             SpatialSpaceViewKind::ThreeD,
         );

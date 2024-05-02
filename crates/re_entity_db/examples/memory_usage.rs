@@ -48,7 +48,7 @@ fn live_bytes() -> usize {
 
 // ----------------------------------------------------------------------------
 
-use re_log_types::{entity_path, DataRow, RowId, StoreId, StoreKind};
+use re_log_types::{entity_path, example_components::MyPoint, DataRow, RowId, StoreId, StoreKind};
 
 fn main() {
     log_messages();
@@ -56,7 +56,6 @@ fn main() {
 
 fn log_messages() {
     use re_log_types::{build_frame_nr, LogMsg, TimeInt, TimePoint, Timeline};
-    use re_types::datagen::build_some_positions2d;
 
     // Note: we use Box in this function so that we also count the "static"
     // part of all the data, i.e. its `std::mem::size_of`.
@@ -112,7 +111,7 @@ fn log_messages() {
                 RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                build_some_positions2d(1),
+                MyPoint::from_iter(0..1),
             )
             .unwrap()
             .into_table(),
@@ -138,7 +137,7 @@ fn log_messages() {
                 RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(TimeInt::ZERO)],
-                build_some_positions2d(NUM_POINTS),
+                MyPoint::from_iter(0..NUM_POINTS as u32),
             )
             .unwrap()
             .into_table(),

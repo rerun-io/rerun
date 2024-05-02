@@ -65,8 +65,6 @@ unindent = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
-
 criterion.workspace = true
 mimalloc.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }

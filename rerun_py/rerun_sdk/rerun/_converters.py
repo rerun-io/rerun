@@ -105,12 +105,9 @@ def to_np_uint16(data: npt.ArrayLike) -> npt.NDArray[np.uint16]:
     return np.asarray(data, dtype=np.uint16)
 
 
-def to_np_uint32(data: npt.ArrayLike | None) -> npt.NDArray[np.uint32] | None:
+def to_np_uint32(data: npt.ArrayLike) -> npt.NDArray[np.uint32]:
     """Convert some data to a numpy uint32 array."""
-    if data is not None:
-        return np.asarray(data, dtype=np.uint32)
-    else:
-        return None
+    return np.asarray(data, dtype=np.uint32)
 
 
 def to_np_uint64(data: npt.ArrayLike) -> npt.NDArray[np.uint64]:

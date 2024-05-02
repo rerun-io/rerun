@@ -12,7 +12,6 @@ keypoint_pair.rs linguist-generated=true
 mat3x3.rs linguist-generated=true
 mat4x4.rs linguist-generated=true
 material.rs linguist-generated=true
-mesh_properties.rs linguist-generated=true
 mod.rs linguist-generated=true
 quaternion.rs linguist-generated=true
 range1d.rs linguist-generated=true
