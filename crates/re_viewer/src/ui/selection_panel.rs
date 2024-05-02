@@ -951,19 +951,20 @@ fn blueprint_ui_for_data_result(
                 .lookup_result_by_path(entity_path)
                 .cloned()
             {
-                let mut props = data_result
-                    .individual_properties()
-                    .cloned()
-                    .unwrap_or_default();
+                let mut accumulated_legacy_props = data_result.accumulated_properties().clone();
+                let accumulated_legacy_props_before = accumulated_legacy_props.clone();
 
                 entity_props_ui(
                     ctx,
                     ui,
                     ctx.lookup_query_result(space_view_id),
                     entity_path,
-                    &mut props,
+                    &mut accumulated_legacy_props,
                 );
-                data_result.save_individual_override_properties(ctx, Some(props));
+                if accumulated_legacy_props != accumulated_legacy_props_before {
+                    data_result
+                        .save_individual_override_properties(ctx, Some(accumulated_legacy_props));
+                }
             }
         }
     }
