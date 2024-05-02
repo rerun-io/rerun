@@ -141,14 +141,23 @@ impl WebHandle {
         self.tx_channels.insert(id.to_owned(), tx);
     }
 
-    /// Open a new channel for streaming data.
+    /// Close an existing channel for streaming data.
     ///
     /// No-op if the channel is already closed.
     #[wasm_bindgen]
     pub fn close_channel(&mut self, id: &str) {
+        let Some(app) = self.runner.app_mut::<crate::App>() else {
+            return;
+        };
+
         if let Some(tx) = self.tx_channels.remove(id) {
             tx.quit(None).warn_on_err_once("Failed to send quit marker");
         }
+
+        // Request a repaint since closing the channel may update the top bar.
+        app.re_ui
+            .egui_ctx
+            .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
     /// Add an rrd to the viewer directly from a byte array.
