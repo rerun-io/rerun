@@ -22,8 +22,8 @@ namespace rerun::components {
         TriangleIndices(uint32_t v0, uint32_t v1, uint32_t v2) : indices{v0, v1, v2} {}
 
         /// Construct UVec3D from v0/v1/v2 uint32_t pointer.
-        explicit TriangleIndices(const uint32_t* indices)
-            : indices{indices[0], indices[1], indices[2]} {}
+        explicit TriangleIndices(const uint32_t* indices_)
+            : indices{indices_[0], indices_[1], indices_[2]} {}
 
       public:
         TriangleIndices() = default;
