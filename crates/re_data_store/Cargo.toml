@@ -51,7 +51,7 @@ web-time.workspace = true
 
 [dev-dependencies]
 re_format.workspace = true
-re_types = { workspace = true, features = ["datagen", "testing"] }
+re_types = { workspace = true, features = ["testing"] }
 
 anyhow.workspace = true
 criterion.workspace = true

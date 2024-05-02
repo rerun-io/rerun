@@ -9,13 +9,9 @@ use arrow2::array::{Array, FixedSizeListArray, PrimitiveArray, StructArray};
 use criterion::Criterion;
 use itertools::Itertools;
 
-use re_log_types::example_components::MyIndex;
+use re_log_types::example_components::{MyIndex, MyPoint};
 use re_log_types::DataCell;
-use re_types::datagen::build_some_positions2d;
-use re_types::{
-    components::Position2D,
-    testing::{build_some_large_structs, LargeStruct},
-};
+use re_types::testing::{build_some_large_structs, LargeStruct};
 use re_types_core::{Component, SizeBytes};
 
 // ---
@@ -85,7 +81,7 @@ fn erased_clone(c: &mut Criterion) {
                 bench_native(&mut group, &data);
             }
             ArrayKind::Struct => {
-                let data = build_some_positions2d(NUM_INSTANCES);
+                let data = MyPoint::from_iter(0..NUM_INSTANCES as u32);
                 bench_arrow(&mut group, &data);
                 bench_native(&mut group, &data);
             }
@@ -205,7 +201,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
                     .collect(),
                 ArrayKind::Struct => (0..NUM_ROWS)
                     .map(|_| {
-                        DataCell::from_native(build_some_positions2d(NUM_INSTANCES).as_slice())
+                        DataCell::from_native(
+                            MyPoint::from_iter(0..NUM_INSTANCES as u32).as_slice(),
+                        )
                     })
                     .collect(),
                 ArrayKind::StructLarge => (0..NUM_ROWS)
@@ -309,9 +307,9 @@ fn estimated_size_bytes(c: &mut Criterion) {
         }
 
         {
-            fn generate_positions() -> Vec<Vec<Position2D>> {
+            fn generate_positions() -> Vec<Vec<MyPoint>> {
                 (0..NUM_ROWS)
-                    .map(|_| build_some_positions2d(NUM_INSTANCES))
+                    .map(|_| MyPoint::from_iter(0..NUM_INSTANCES as u32))
                     .collect()
             }
 
