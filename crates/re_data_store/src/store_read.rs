@@ -215,13 +215,10 @@ impl DataStore {
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
         let entity_path_hash = entity_path.hash();
-        let Some(primary_comp_pos) = component_names
+        let primary_comp_pos = component_names
             .iter()
             .find_position(|component_name| **component_name == primary)
-            .map(|(pos, _)| pos)
-        else {
-            return None;
-        };
+            .map(|(pos, _)| pos)?;
 
         let static_table = self.static_tables.get(&entity_path_hash);
 
