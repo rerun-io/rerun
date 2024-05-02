@@ -7,10 +7,10 @@ use re_data_store::{
     DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time, example_components::MyIndex, DataRow, DataTable, EntityPath,
-    RowId, TableId, TimePoint,
+    build_frame_nr, build_log_time,
+    example_components::{MyColor, MyIndex, MyPoint},
+    DataRow, DataTable, EntityPath, RowId, TableId, TimePoint,
 };
-use re_types::datagen::{build_some_colors, build_some_positions2d};
 
 // ---
 
@@ -275,22 +275,22 @@ fn create_insert_table(entity_path: impl Into<EntityPath>) -> DataTable {
     let frame3 = TimeInt::new_temporal(3);
     let frame4 = TimeInt::new_temporal(4);
 
-    let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
+    let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
     let row1 = test_row!(entity_path @ [
             build_frame_nr(frame1),
         ] => [instances1.clone(), colors1]);
 
-    let positions2 = build_some_positions2d(3);
+    let positions2 = MyPoint::from_iter(0..2);
     let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => [instances1, positions2.clone()]);
 
-    let positions3 = build_some_positions2d(10);
+    let positions3 = MyPoint::from_iter(0..10);
     let row3 = test_row!(entity_path @ [
             build_log_time(frame3.into()) /* ! */, build_frame_nr(frame3),
         ] => [positions3]);
 
-    let colors4 = build_some_colors(5);
+    let colors4 = MyColor::from_iter(0..5);
     let row4 = test_row!(entity_path @ [
             build_frame_nr(frame4),
         ] => [colors4.clone()]);
@@ -331,12 +331,12 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {
-        let (instances1, colors1) = (MyIndex::from_iter(0..3), build_some_colors(3));
+        let (instances1, colors1) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
         let row1 = test_row!(entity_path @ [
                 build_frame_nr(frame1),
             ] => [instances1, colors1]);
 
-        let (instances2, positions2) = (MyIndex::from_iter(0..3), build_some_positions2d(3));
+        let (instances2, positions2) = (MyIndex::from_iter(0..3), MyPoint::from_iter(0..2));
         let row2 = test_row!(entity_path @ [
             build_frame_nr(frame2),
         ] => [instances2, positions2]);
@@ -347,7 +347,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
 
     // Now insert another table with points only.
     {
-        let (instances3, positions3) = (MyIndex::from_iter(0..3), build_some_colors(3));
+        let (instances3, positions3) = (MyIndex::from_iter(0..3), MyColor::from_iter(0..3));
         let row3 = test_row!(entity_path @ [
                 build_frame_nr(frame3),
             ] => [instances3, positions3]);

@@ -43,6 +43,16 @@ pub struct MyPoint {
 }
 
 impl MyPoint {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        it.into_iter()
+            .map(|i| MyPoint::new(i as f32, i as f32))
+            .collect()
+    }
+}
+
+impl MyPoint {
     #[inline]
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
@@ -132,6 +142,14 @@ impl Loggable for MyPoint {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[repr(transparent)]
 pub struct MyColor(pub u32);
+
+impl MyColor {
+    #[allow(clippy::should_implement_trait)]
+    #[inline]
+    pub fn from_iter(it: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        it.into_iter().map(Self).collect()
+    }
+}
 
 impl MyColor {
     #[inline]
