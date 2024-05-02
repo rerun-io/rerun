@@ -372,7 +372,7 @@ fn show_visual_time_range(
             TimeType::Sequence => {
                 ui.label(format!("At current frame: {current_time}"))
             }
-        }.on_hover_text("Does not perform a latest-at query, only data shown logged at the current time cursor position is shown.");
+        }.on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
     } else {
         egui::Grid::new("from_to_labels").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "From");
