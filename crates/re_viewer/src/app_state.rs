@@ -486,7 +486,7 @@ fn recording_config_entry<'cfgs>(
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
                 | re_smart_channel::SmartChannelSource::TcpServer { .. }
                 | re_smart_channel::SmartChannelSource::Stdin
-                | re_smart_channel::SmartChannelSource::JsBytes => PlayState::Following,
+                | re_smart_channel::SmartChannelSource::JsChannel { .. } => PlayState::Following,
             }
         } else {
             PlayState::Following // No known source 🤷‍♂️

@@ -372,7 +372,7 @@ impl App {
                     SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
-                    | SmartChannelSource::JsBytes
+                    | SmartChannelSource::JsChannel { .. }
                     | SmartChannelSource::RrdWebEventListener
                     | SmartChannelSource::Sdk
                     | SmartChannelSource::TcpServer { .. }
@@ -1209,7 +1209,7 @@ impl App {
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
                 | SmartChannelSource::WsClient { .. }
-                | SmartChannelSource::JsBytes => {
+                | SmartChannelSource::JsChannel { .. } => {
                     return true; // We expect data soon, so fade-in
                 }
 

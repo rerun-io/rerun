@@ -120,7 +120,7 @@ impl WebHandle {
     ///
     /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
-    pub fn open_channel(&mut self, id: &str, _channel_name: &str) {
+    pub fn open_channel(&mut self, id: &str, channel_name: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
@@ -131,8 +131,10 @@ impl WebHandle {
         }
 
         let (tx, rx) = re_smart_channel::smart_channel(
-            re_smart_channel::SmartMessageSource::JsBytes,
-            re_smart_channel::SmartChannelSource::JsBytes,
+            re_smart_channel::SmartMessageSource::JsChannelPush,
+            re_smart_channel::SmartChannelSource::JsChannel {
+                channel_name: channel_name.to_owned(),
+            },
         );
 
         app.add_receiver(rx);
