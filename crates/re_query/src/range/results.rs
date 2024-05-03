@@ -577,7 +577,7 @@ impl RangeComponentResults {
             return RangeData {
                 indices: None,
                 data: None,
-                time_range: TimeRange::EMPTY,
+                time_range: ResolvedTimeRange::EMPTY,
                 front_status: PromiseResult::Ready(()),
                 back_status: PromiseResult::Ready(()),
                 reentering: &REENTERING,
