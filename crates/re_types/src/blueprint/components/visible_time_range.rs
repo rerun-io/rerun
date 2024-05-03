@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
 ///
-/// Refer to [`VisibleTimeRanges`] archetype for more information.
+/// Refer to `VisibleTimeRanges` archetype for more information.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);

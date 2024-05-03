@@ -15,7 +15,7 @@ class VisibleTimeRange(datatypes.VisibleTimeRange):
     """
     **Component**: The range of values on a given timeline that will be included in a view's query.
 
-    Refer to [`VisibleTimeRanges`] archetype for more information.
+    Refer to `VisibleTimeRanges` archetype for more information.
     """
 
     # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
