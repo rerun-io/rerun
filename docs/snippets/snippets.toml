@@ -63,16 +63,6 @@ archetypes.point3d_random = [ # TODO(#3206): examples use different RNGs
   "py",
   "rust",
 ]
-archetypes.quick_start_connect = [ # These example don't have exactly the same implementation.
-  "cpp",
-  "py",
-  "rust",
-]
-archetypes.quick_start_spawn = [ # These example don't have exactly the same implementation.
-  "cpp",
-  "py",
-  "rust",
-]
 archetypes.scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
@@ -96,6 +86,11 @@ archetypes.series_line_style = [ # TODO(#5116):trigonometric functions have slig
   "py",
   "rust",
 ]
+quick_start = [
+  "cpp",
+  "py",
+  "rust",
+] # These examples don't have exactly the same implementation.
 
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
