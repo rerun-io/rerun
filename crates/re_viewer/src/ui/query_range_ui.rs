@@ -77,7 +77,7 @@ pub fn query_range_ui_data_result(
     visible_time_range_ui(ctx, ui, query_range, override_path, is_space_view);
 }
 
-/// Draws ui for a a visible time range from a given override path and a resulting query range.
+/// Draws ui for a visible time range from a given override path and a resulting query range.
 fn visible_time_range_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
