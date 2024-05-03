@@ -667,7 +667,11 @@ pub fn view_3d(
 
     let background = re_space_view::view_property::<Background>(ctx, query.space_view_id)
         .unwrap_or(Background::DEFAULT_3D);
-    let (background_drawable, clear_color) = crate::configure_background(ctx, background);
+    let (background_drawable, clear_color) = crate::configure_background(
+        ctx,
+        background.kind,
+        background.color.unwrap_or(Background::DEFAULT_COLOR_3D),
+    );
 
     if let Some(background_drawable) = background_drawable {
         view_builder.queue_draw(background_drawable);

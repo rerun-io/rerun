@@ -20,7 +20,7 @@ mod ui_2d;
 mod ui_3d;
 mod visualizers;
 
-use re_types::blueprint::archetypes::Background;
+use re_types::blueprint::components::BackgroundKind;
 use re_types::components::{Resolution, TensorData};
 
 pub use space_view_2d::SpatialSpaceView2D;
@@ -76,12 +76,10 @@ fn query_pinhole(
 
 pub(crate) fn configure_background(
     ctx: &re_viewer_context::ViewerContext<'_>,
-    background: re_types::blueprint::archetypes::Background,
+    kind: BackgroundKind,
+    color: re_types::components::Color,
 ) -> (Option<re_renderer::QueueableDrawData>, re_renderer::Rgba) {
     use re_renderer::renderer;
-    use re_types::blueprint::components::BackgroundKind;
-
-    let Background { kind, color } = background;
 
     match kind {
         BackgroundKind::GradientDark => (
@@ -106,12 +104,6 @@ pub(crate) fn configure_background(
             re_renderer::Rgba::TRANSPARENT, // All zero is slightly faster to clear usually.
         ),
 
-        BackgroundKind::SolidColor => (
-            None,
-            // If the user has told us to use a solid color, but hasn't picked a specific color,
-            // we need to fall back to something. For dark mode, black makes sense.
-            // TODO(#3058): support light mode
-            color.unwrap_or(re_types::components::Color::BLACK).into(),
-        ),
+        BackgroundKind::SolidColor => (None, color.into()),
     }
 }
