@@ -312,19 +312,11 @@ impl eframe::App for ExampleApp {
             .frame(panel_frame)
             .min_width(0.0)
             .show_animated(egui_ctx, self.show_right_panel, |ui| {
-                // TODO(#6156): this is still needed for some full-span widgets
-                ui.set_clip_rect(ui.max_rect());
-
                 // define the hover/selection background highlight range for all nested `ListItem`s
-                re_ui::list_item2::list_item_scope(
-                    ui,
-                    "right_panel_list_item_scope",
-                    Some(ui.max_rect().x_range()),
-                    |ui| {
-                        ui.spacing_mut().item_spacing.y = 0.0;
-                        self.right_panel.ui(&self.re_ui, ui);
-                    },
-                );
+                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+                    ui.spacing_mut().item_spacing.y = 0.0;
+                    self.right_panel.ui(&self.re_ui, ui);
+                });
             });
 
         egui::CentralPanel::default()

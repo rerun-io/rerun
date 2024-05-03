@@ -92,7 +92,7 @@ pub fn override_ui(
         .sorted_by_key(|(c, _)| *c)
         .filter(|(c, _)| component_to_vis.contains_key(c));
 
-    ui.scope(|ui| {
+    re_ui::list_item2::list_item_scope(ui, "overrides", |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (
             ref component_name,
@@ -330,7 +330,7 @@ pub fn override_visualizer_ui(
             &active_visualizers,
         );
 
-        ui.scope(|ui| {
+        re_ui::list_item2::list_item_scope(ui, "visualizers", |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             for viz_name in &active_visualizers {

@@ -8,6 +8,7 @@ mod syntax_highlighting;
 mod toggle_switch;
 
 pub mod drag_and_drop;
+pub mod full_span;
 pub mod icons;
 pub mod list_item;
 pub mod list_item2;
