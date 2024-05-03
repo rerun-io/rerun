@@ -2,7 +2,7 @@ use ahash::HashMap;
 
 use re_data_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{LogMsg, StoreId, TimeRangeF};
+use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_space_view::{determine_visualizable_entities, DataQuery as _, PropertyResolver as _};
 use re_viewer_context::{
@@ -90,7 +90,7 @@ impl AppState {
     pub fn loop_selection(
         &self,
         store_context: Option<&StoreContext<'_>>,
-    ) -> Option<(re_entity_db::Timeline, TimeRangeF)> {
+    ) -> Option<(re_entity_db::Timeline, ResolvedTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
         let rec_cfg = self.recording_configs.get(rec_id)?;
 

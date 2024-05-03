@@ -50,7 +50,7 @@ pub use self::data_table::{
 };
 pub use self::instance::Instance;
 pub use self::path::*;
-pub use self::resolved_time_range::{ResolvedTimeRange, TimeRangeF};
+pub use self::resolved_time_range::{ResolvedTimeRange, ResolvedTimeRangeF};
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{
     NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,

@@ -10,7 +10,7 @@ use egui::emath::Rangef;
 use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
-use re_log_types::{ResolvedTimeRange, TimeInt, TimeRangeF, TimeReal};
+use re_log_types::{ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal};
 use re_viewer_context::{PlayState, TimeControl, TimeView};
 
 /// The ideal gap between time segments.
@@ -46,7 +46,7 @@ pub struct Segment {
     pub x: RangeInclusive<f64>,
 
     /// Matches [`Self::x`] (linear transform).
-    pub time: TimeRangeF,
+    pub time: ResolvedTimeRangeF,
 
     /// Does NOT match any of the above. Instead this is a tight bound.
     pub tight_time: ResolvedTimeRange,
@@ -148,7 +148,7 @@ impl TimeRangesUi {
                 let x_range =
                     (*x_range.start() - expansion_in_ui)..=(*x_range.end() + expansion_in_ui);
 
-                let time_range = TimeRangeF::new(
+                let time_range = ResolvedTimeRangeF::new(
                     tight_time_range.min() - expansion_in_time,
                     tight_time_range.max() + expansion_in_time,
                 );
@@ -240,7 +240,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            time_ctrl.set_loop_selection(TimeRangeF::new(
+            time_ctrl.set_loop_selection(ResolvedTimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));
@@ -263,7 +263,8 @@ impl TimeRangesUi {
 
         for segment in &self.segments {
             if needle_time < segment.time.min {
-                let t = TimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
+                let t =
+                    ResolvedTimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
                 return Some(lerp(last_x..=*segment.x.start(), t));
             } else if needle_time <= segment.time.max {
                 let t = segment.time.inverse_lerp(needle_time);
@@ -295,7 +296,7 @@ impl TimeRangesUi {
         for segment in &self.segments {
             if needle_x < *segment.x.start() {
                 let t = remap(needle_x, last_x..=*segment.x.start(), 0.0..=1.0);
-                return Some(TimeRangeF::new(last_time, segment.time.min).lerp(t));
+                return Some(ResolvedTimeRangeF::new(last_time, segment.time.min).lerp(t));
             } else if needle_x <= *segment.x.end() {
                 let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
                 return Some(segment.time.lerp(t));

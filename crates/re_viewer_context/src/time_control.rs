@@ -4,7 +4,7 @@ use re_entity_db::{
     EditableAutoValue, EntityTree, TimeCounts, TimeHistogramPerTimeline, TimesPerTimeline,
 };
 use re_log_types::{
-    Duration, ResolvedTimeRange, TimeInt, TimeRangeF, TimeReal, TimeType, Timeline,
+    Duration, ResolvedTimeRange, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType, Timeline,
 };
 
 use crate::NeedsRepaint;
@@ -34,7 +34,7 @@ struct TimeState {
 
     /// Selected time range, if any.
     #[serde(default)]
-    loop_selection: Option<TimeRangeF>,
+    loop_selection: Option<ResolvedTimeRangeF>,
 
     /// The time range we are currently zoomed in on.
     ///
@@ -458,7 +458,7 @@ impl TimeControl {
     }
 
     /// The current loop range, iff selection looping is turned on.
-    pub fn active_loop_selection(&self) -> Option<TimeRangeF> {
+    pub fn active_loop_selection(&self) -> Option<ResolvedTimeRangeF> {
         if self.looping == Looping::Selection {
             self.states.get(self.timeline())?.loop_selection
         } else {
@@ -474,12 +474,12 @@ impl TimeControl {
     /// The selected slice of time that is called the "loop selection".
     ///
     /// This can still return `Some` even if looping is currently off.
-    pub fn loop_selection(&self) -> Option<TimeRangeF> {
+    pub fn loop_selection(&self) -> Option<ResolvedTimeRangeF> {
         self.states.get(self.timeline())?.loop_selection
     }
 
     /// Set the current loop selection without enabling looping.
-    pub fn set_loop_selection(&mut self, selection: TimeRangeF) {
+    pub fn set_loop_selection(&mut self, selection: ResolvedTimeRangeF) {
         self.states
             .entry(*self.timeline)
             .or_insert_with(|| TimeState::new(selection.min))
@@ -614,7 +614,11 @@ fn step_back_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
     }
 }
 
-fn step_fwd_time_looped(time: TimeReal, values: &TimeCounts, loop_range: &TimeRangeF) -> TimeReal {
+fn step_fwd_time_looped(
+    time: TimeReal,
+    values: &TimeCounts,
+    loop_range: &ResolvedTimeRangeF,
+) -> TimeReal {
     if time < loop_range.min || loop_range.max <= time {
         loop_range.min
     } else if let Some((next, _)) = values
@@ -630,7 +634,11 @@ fn step_fwd_time_looped(time: TimeReal, values: &TimeCounts, loop_range: &TimeRa
     }
 }
 
-fn step_back_time_looped(time: TimeReal, values: &TimeCounts, loop_range: &TimeRangeF) -> TimeReal {
+fn step_back_time_looped(
+    time: TimeReal,
+    values: &TimeCounts,
+    loop_range: &ResolvedTimeRangeF,
+) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
         loop_range.max
     } else if let Some((previous, _)) = values.range(loop_range.min.ceil()..time.ceil()).next_back()

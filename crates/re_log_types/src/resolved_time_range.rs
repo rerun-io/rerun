@@ -24,7 +24,7 @@ impl ResolvedTimeRange {
         max: TimeInt::MAX,
     };
 
-    /// Creates a new temporal [`TimeRange`].
+    /// Creates a new temporal [`ResolvedTimeRange`].
     ///
     /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
@@ -128,15 +128,15 @@ impl re_types_core::SizeBytes for ResolvedTimeRange {
 
 // ----------------------------------------------------------------------------
 
-/// Like [`TimeRange`], but using [`TimeReal`] for improved precision.
+/// Like [`ResolvedTimeRange`], but using [`TimeReal`] for improved precision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeRangeF {
+pub struct ResolvedTimeRangeF {
     pub min: TimeReal,
     pub max: TimeReal,
 }
 
-impl TimeRangeF {
+impl ResolvedTimeRangeF {
     #[inline]
     pub fn new(min: impl Into<TimeReal>, max: impl Into<TimeReal>) -> Self {
         Self {
@@ -186,19 +186,19 @@ impl TimeRangeF {
     }
 }
 
-impl From<TimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: TimeRangeF) -> RangeInclusive<TimeReal> {
+impl From<ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
+    fn from(range: ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
         range.min..=range.max
     }
 }
 
-impl From<&TimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: &TimeRangeF) -> RangeInclusive<TimeReal> {
+impl From<&ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
+    fn from(range: &ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
         range.min..=range.max
     }
 }
 
-impl From<ResolvedTimeRange> for TimeRangeF {
+impl From<ResolvedTimeRange> for ResolvedTimeRangeF {
     fn from(range: ResolvedTimeRange) -> Self {
         Self::new(range.min, range.max)
     }
