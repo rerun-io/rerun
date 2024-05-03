@@ -24,10 +24,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures what range of each timeline is shown on a view.
 ///
-/// Refer to [`VisibleTimeRange`] component for more information.
+/// Whenever no visual time range applies, queries are done with "latest at" semantics.
+/// This means that the view will, starting from the time cursor position,
+/// query the latest data available for each component type.
+///
+/// The default visual time range depends on the type of view this property applies to:
+/// - For time series views, the default is to show the entire timeline.
+/// - For any other view, the default is to apply latest-at semantics.
 #[derive(Clone, Debug, Default)]
 pub struct VisibleTimeRanges {
-    /// The ranges of time to show for all given timelines based on sequence numbers.
+    /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
+    ///
+    /// If a timeline is listed twice, the first entry will be used.
     pub ranges: Vec<crate::blueprint::components::VisibleTimeRange>,
 }
 
