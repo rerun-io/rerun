@@ -35,7 +35,7 @@ use egui::NumExt;
 /// │                                                            │
 /// │  │◀───────────────max_item_width─────────────────▶│        │
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct LayoutStatistics {
     /// Maximum desired column width.
     ///
@@ -51,17 +51,6 @@ struct LayoutStatistics {
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
     max_item_width: Option<f32>,
-}
-
-impl Default for LayoutStatistics {
-    fn default() -> Self {
-        // set values suitable to initialize the stat accumulator
-        Self {
-            max_desired_left_column_width: None,
-            is_action_button_used: false,
-            max_item_width: None,
-        }
-    }
 }
 
 impl LayoutStatistics {
