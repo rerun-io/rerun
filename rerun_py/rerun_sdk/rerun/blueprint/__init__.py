@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Re-export time range types for better discoverability.
+from ..datatypes import (
+    TimeRange,
+    TimeRangeBoundary,
+    VisibleTimeRange,
+)
 from . import archetypes, components
 from .api import (
     Blueprint,
@@ -23,7 +29,6 @@ from .components import (
     BackgroundKind,
     Corner2D,
     LockRangeDuringZoom,
-    VisibleTimeRange,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (
