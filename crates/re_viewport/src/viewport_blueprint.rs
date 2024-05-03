@@ -670,6 +670,11 @@ impl ViewportBlueprint {
         ));
     }
 
+    /// Make all children of the given container the same size.
+    pub fn make_all_children_same_size(&self, container_id: &ContainerId) {
+        self.send_tree_action(TreeAction::MakeAllChildrenSameSize(*container_id));
+    }
+
     /// Set the container that is currently identified as the drop target of an ongoing drag.
     ///
     /// This is used for highlighting the drop target in the UI. Note that the drop target container is reset at every

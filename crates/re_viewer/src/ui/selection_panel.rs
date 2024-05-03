@@ -720,6 +720,35 @@ fn container_top_level_properties(
                     },
                 );
             }
+            ui.end_row();
+
+            // ---
+
+            fn equal_shares(shares: &[f32]) -> bool {
+                shares.iter().all(|&share| share == shares[0])
+            }
+
+            let all_shares_are_equal =
+                equal_shares(&container.col_shares) && equal_shares(&container.row_shares);
+
+            if container.contents.len() > 1
+                && match container.container_kind {
+                    egui_tiles::ContainerKind::Tabs => false,
+                    egui_tiles::ContainerKind::Horizontal
+                    | egui_tiles::ContainerKind::Vertical
+                    | egui_tiles::ContainerKind::Grid => true,
+                }
+                && ui
+                    .add_enabled(
+                        !all_shares_are_equal,
+                        egui::Button::new("Distribute content equally"),
+                    )
+                    .on_hover_text("Make all children the same size")
+                    .clicked()
+            {
+                viewport.blueprint.make_all_children_same_size(container_id);
+            }
+            ui.end_row();
         });
 }
 
