@@ -313,8 +313,10 @@ fn time_back_and_forth() {
 
     // --- Query #1: `[8, 10]` ---
 
-    let query =
-        re_data_store::RangeQuery::new(Timeline::new_sequence("frame_nr"), TimeRange::new(8, 10));
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(8, 10),
+    );
 
     let expected_points = &[
         (
@@ -330,8 +332,10 @@ fn time_back_and_forth() {
 
     // --- Query #2: `[1, 3]` ---
 
-    let query =
-        re_data_store::RangeQuery::new(Timeline::new_sequence("frame_nr"), TimeRange::new(1, 3));
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(1, 3),
+    );
 
     let expected_points = &[
         (
@@ -351,8 +355,10 @@ fn time_back_and_forth() {
 
     // --- Query #3: `[5, 7]` ---
 
-    let query =
-        re_data_store::RangeQuery::new(Timeline::new_sequence("frame_nr"), TimeRange::new(5, 7));
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(5, 7),
+    );
 
     let expected_points = &[
         (
