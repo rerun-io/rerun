@@ -741,7 +741,7 @@ fn container_top_level_properties(
                 && ui
                     .add_enabled(
                         !all_shares_are_equal,
-                        egui::Button::new("Equalize children"),
+                        egui::Button::new("Distribute content equally"),
                     )
                     .on_hover_text("Make all children the same size")
                     .clicked()
