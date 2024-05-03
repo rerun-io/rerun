@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.16...3.27)
 
 # Setup builds for examples
-file(GLOB sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
+file(GLOB_RECURSE sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/.*) # Tutorial snippets are generally not expected to be able to build.
 
 # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
 list(REMOVE_ITEM sources_list ${CMAKE_CURRENT_SOURCE_DIR}/all/timelines_example.cpp)
@@ -15,6 +16,7 @@ foreach(SOURCE_PATH ${sources_list})
         CONTINUE()
     endif()
 
+    # message(STATUS "Adding snippet: ${SOURCE_PATH}")
     set(EXAMPLE_TARGET ${SOURCE_NAME})
 
     add_executable(${EXAMPLE_TARGET} ${SOURCE_PATH})
