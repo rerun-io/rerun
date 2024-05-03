@@ -5,23 +5,21 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-any_values = ["cpp", "rust"] # Not yet implemented
-extra_values = ["cpp", "rust"] # Missing examples
-image_advanced = ["cpp", "rust"] # Missing examples
-log_line = [ # Not a complete example -- just a single log line
+archetypes.any_values = ["cpp", "rust"] # Not yet implemented
+archetypes.extra_values = ["cpp", "rust"] # Missing examples
+archetypes.image_advanced = ["cpp", "rust"] # Missing examples
+archetypes.log_line = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
   "py",
 ]
-spatial3dview = ["cpp", "rust"] # Missing examples
-timelines_example = [ # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
-  "py",
-  "cpp",
-  "rust",
-]
+archetypes.spatial3dview = ["cpp", "rust"] # Missing examples
 
 # This is this script, it's not an example.
-roundtrips = ["cpp", "py", "rust"]
+archetypes.roundtrips = ["cpp", "py", "rust"]
+
+tutorials = ["cpp", "py", "rust"]
+views = ["cpp", "rust"]           # Don't have view support yet for C++ and Rust
 
 
 # These entries will run but their results won't be compared to the baseline.
@@ -29,66 +27,75 @@ roundtrips = ["cpp", "py", "rust"]
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-arrow3d_simple = [ # TODO(#3206): examples use different RNGs
+archetypes.arrow3d_simple = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-asset3d_out_of_tree = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
+archetypes.asset3d_out_of_tree = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
   "cpp",
   "py",
   "rust",
 ]
-bar_chart = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
+archetypes.bar_chart = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-mesh3d_partial_updates = ["cpp", "py", "rust"] # float precision issues
-pinhole_simple = [ # TODO(#3206): examples use different RNGs
+archetypes.mesh3d_partial_updates = [
+  "cpp",
+  "py",
+  "rust",
+] # float precision issues
+archetypes.pinhole_simple = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-point2d_random = [ # TODO(#3206): examples use different RNGs
+archetypes.point2d_random = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-point3d_random = [ # TODO(#3206): examples use different RNGs
+archetypes.point3d_random = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-quick_start_connect = [ # These example don't have exactly the same implementation.
+archetypes.quick_start_connect = [ # These example don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
 ]
-quick_start_spawn = [ # These example don't have exactly the same implementation.
+archetypes.quick_start_spawn = [ # These example don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
 ]
-scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
+archetypes.scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
-tensor_simple = ["cpp", "py", "rust"] # TODO(#3206): examples use different RNGs
-text_log_integration = [ # The entity path will differ because the Rust code is part of a library
+archetypes.tensor_simple = [
+  "cpp",
+  "py",
+  "rust",
+] # TODO(#3206): examples use different RNGs
+archetypes.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
   "cpp",
   "py",
   "rust",
 ]
-series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
+archetypes.series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
   "cpp",
   "py",
   "rust",
 ]
-series_line_style = [ # TODO(#5116):trigonometric functions have slightly different outcomes
+archetypes.series_line_style = [ # TODO(#5116):trigonometric functions have slightly different outcomes
   "cpp",
   "py",
   "rust",
 ]
 
+
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
-asset3d_simple = ["$config_dir/assets/cube.glb"]
-asset3d_out_of_tree = ["$config_dir/assets/cube.glb"]
+archetypes.asset3d_simple = ["$config_dir/assets/cube.glb"]
+archetypes.asset3d_out_of_tree = ["$config_dir/assets/cube.glb"]

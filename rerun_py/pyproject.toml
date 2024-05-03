@@ -64,8 +64,11 @@ extend-exclude = [
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
   "docs/snippets/all/text_document.py",
 
+  # Ruff gets confused about symlink,
+  "crates/re_viewer/data/quick_start_guides/",
+
   # TODO(#4047): incomplete example snippet
-  "docs/snippets/all/timelines_example.py",
+  "docs/snippets/all/tutorials/timelines_example/example.py",
 
   # generated
   "examples/python/objectron/objectron/proto/objectron/proto.py",

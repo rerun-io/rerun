@@ -20,17 +20,54 @@ from roundtrip_utils import roundtrip_env, run, run_comparison  # noqa
 
 config_path = Path(__file__).parent / "snippets.toml"
 config = tomlkit.loads(config_path.read_text())
-OPT_OUT_RUN = config["opt_out"]["run"]
+OPT_OUT_ENTIRELY = config["opt_out"]["run"]
 OPT_OUT_COMPARE = config["opt_out"]["compare"]
-EXTRA_ARGS = {
-    name: [arg.replace("$config_dir", str(Path(__file__).parent.absolute())) for arg in args]
-    for name, args in config["extra_args"].items()
-}
+EXTRA_ARGS = config["extra_args"]
 
-EXTRA_ARGS = {
-    "asset3d_simple": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
-    "asset3d_out_of_tree": [f"{os.path.dirname(__file__)}/../assets/cube.glb"],
-}
+
+class Example:
+    def __init__(self, subdir: str, name: str) -> None:
+        self.subdir = subdir
+        self.name = name
+
+    def opt_out_entirely(self) -> list[str]:
+        if self.subdir not in OPT_OUT_ENTIRELY:
+            return []
+        if isinstance(OPT_OUT_ENTIRELY[self.subdir], tomlkit.items.Array):
+            return OPT_OUT_ENTIRELY[self.subdir]
+        return OPT_OUT_ENTIRELY[self.subdir].get(self.name, [])
+
+    def opt_out_compare(self) -> list[str]:
+        if self.subdir not in OPT_OUT_COMPARE:
+            return []
+        return OPT_OUT_COMPARE[self.subdir].get(self.name, [])
+
+    def extra_args(self) -> list[str]:
+        if self.subdir not in EXTRA_ARGS:
+            return []
+        return [
+            arg.replace("$config_dir", str(Path(__file__).parent.parent.absolute()))
+            for arg in EXTRA_ARGS[self.subdir].get(self.name, [])
+        ]
+
+        return EXTRA_ARGS[self.subdir].get(self.name, [])
+
+    def output_path(self, language: str) -> str:
+        return f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Example):
+            return NotImplemented
+        return self.subdir == other.subdir and self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash((self.subdir, self.name))
+
+    def __lt__(self, other: Example) -> bool:
+        return self.name < other.name
+
+    def __repr__(self) -> str:
+        return f"Example(subdir={self.subdir}, name={self.name})"
 
 
 def main() -> None:
@@ -90,12 +127,20 @@ def main() -> None:
         examples = args.example
     else:
         dir = os.path.join(os.path.dirname(__file__), "all")
-        files = [f for f in listdir(dir) if isfile(join(dir, f))]
-        examples = [
-            filename
-            for filename, extension in [os.path.splitext(file) for file in files]
-            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs"
-        ]
+        examples = []
+        for subdir in [os.path.join(dir, subdir) for subdir in os.listdir(dir)]:
+            if not os.path.isdir(subdir):
+                continue
+            files = [f for f in listdir(subdir) if isfile(join(subdir, f))]
+            examples += [
+                Example(os.path.basename(subdir), filename)
+                for filename, extension in [os.path.splitext(file) for file in files]
+                if extension == ".cpp"
+                and not args.no_cpp
+                or extension == ".py"
+                and not args.no_py
+                or extension == ".rs"
+            ]
 
     examples = list(set(examples))
     examples.sort()
@@ -112,16 +157,14 @@ def main() -> None:
     if not args.no_cpp_build:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
-            example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
-            if "cpp" in example_opt_out_entirely:
-                continue
-            run_example(example, "cpp", args)
+            if "cpp" not in example.opt_out_entirely():
+                run_example(example, "cpp", args)
 
     print(f"Running {len(examples)} Rust and Python examples…")
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
-            example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
+            example_opt_out_entirely = example.opt_out_entirely()
             for language in active_languages:
                 if language in example_opt_out_entirely or language == "cpp":  # cpp already processed in series.
                     continue
@@ -139,15 +182,15 @@ def main() -> None:
         print("----------------------------------------------------------")
         print(f"Comparing example '{example}'…")
 
-        example_opt_out_entirely = OPT_OUT_RUN.get(example, [])
-        example_opt_out_compare = OPT_OUT_COMPARE.get(example, [])
+        example_opt_out_entirely = example.opt_out_entirely()
+        example_opt_out_compare = example.opt_out_compare()
 
         if "rust" in example_opt_out_entirely:
             continue  # No baseline to compare against
 
-        cpp_output_path = f"docs/snippets/all/{example}_cpp.rrd"
-        python_output_path = f"docs/snippets/all/{example}_py.rrd"
-        rust_output_path = f"docs/snippets/all/{example}_rust.rrd"
+        cpp_output_path = example.output_path("cpp")
+        python_output_path = example.output_path("python")
+        rust_output_path = example.output_path("rust")
 
         if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
@@ -160,9 +203,9 @@ def main() -> None:
     print("All tests passed!")
 
 
-def run_example(example: str, language: str, args: argparse.Namespace) -> None:
+def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_roundtrip_cpp(example, args.release)
+        cpp_output_path = run_roundtrip_cpp(example)
         check_non_empty_rrd(cpp_output_path)
     elif language == "py":
         python_output_path = run_roundtrip_python(example)
@@ -174,16 +217,16 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
         assert False, f"Unknown language: {language}"
 
 
-def run_roundtrip_python(example: str) -> str:
-    main_path = f"docs/snippets/all/{example}.py"
-    output_path = f"docs/snippets/all/{example}_py.rrd"
+def run_roundtrip_python(example: Example) -> str:
+    main_path = f"docs/snippets/all/{example.subdir}/{example.name}.py"
+    output_path = example.output_path("python")
 
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
     if python_executable is None:
         python_executable = "python3"
 
-    cmd = [python_executable, main_path] + (EXTRA_ARGS.get(example) or [])
+    cmd = [python_executable, main_path] + example.extra_args()
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=30)
@@ -191,8 +234,8 @@ def run_roundtrip_python(example: str) -> str:
     return output_path
 
 
-def run_roundtrip_rust(example: str, release: bool, target: str | None, target_dir: str | None) -> str:
-    output_path = f"docs/snippets/all/{example}_rust.rrd"
+def run_roundtrip_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+    output_path = example.output_path("rust")
 
     cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
 
@@ -205,10 +248,8 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
     if release:
         cmd += ["--release"]
 
-    cmd += ["--", example]
-
-    if EXTRA_ARGS.get(example):
-        cmd += EXTRA_ARGS[example]
+    cmd += ["--", example.name]
+    cmd += example.extra_args()
 
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
@@ -216,10 +257,10 @@ def run_roundtrip_rust(example: str, release: bool, target: str | None, target_d
     return output_path
 
 
-def run_roundtrip_cpp(example: str, release: bool) -> str:
-    output_path = f"docs/snippets/all/{example}_cpp.rrd"
+def run_roundtrip_cpp(example: Example) -> str:
+    output_path = example.output_path("cpp")
 
-    cmd = [f"./build/debug/docs/snippets/{example}"] + (EXTRA_ARGS.get(example) or [])
+    cmd = [f"./build/debug/docs/snippets/{example.name}"] + example.extra_args()
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 
