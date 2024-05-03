@@ -581,6 +581,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
     putln!(o);
 
     for ExampleInfo {
+        path,
         name,
         title,
         image,
@@ -590,7 +591,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         let title = title.unwrap_or(name);
         putln!(o, "### {title}");
         putln!(o);
-        putln!(o, "snippet: {name}");
+        putln!(o, "snippet: {path}");
         if let Some(image_url) = image {
             putln!(o);
             for line in image_url.image_stack().snippet_id(name).finish() {

@@ -14,10 +14,11 @@ fn is_blank<T: AsRef<str>>(line: T) -> bool {
 
 #[derive(Clone)]
 pub struct ExampleInfo<'a> {
+    /// Path to the snippet relative to the snippet directory.
+    pub path: &'a str,
+
     /// The snake_case name of the example.
-    ///
-    /// Used with `snippet:`, `std::fs::read_to_string`, etc.
-    pub name: &'a str,
+    pub name: String,
 
     /// The human-readable name of the example.
     pub title: Option<&'a str>,
@@ -55,9 +56,10 @@ impl<'a> ExampleInfo<'a> {
         }
 
         let tag_content = tag_content.trim();
-        let (name, args) = tag_content
+        let (path, args) = tag_content
             .split_once(' ')
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
+        let name = path.split('/').last().unwrap_or_default().to_owned();
 
         let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
@@ -82,6 +84,7 @@ impl<'a> ExampleInfo<'a> {
         }
 
         ExampleInfo {
+            path,
             name,
             title,
             image,
@@ -289,12 +292,12 @@ pub fn collect_snippets_for_api_docs<'a>(
 
     for example in &examples {
         let base: ExampleInfo<'a> = ExampleInfo::parse(example);
-        let name = &base.name;
+        let example_path = &base.path;
         if base.exclude_from_api_docs {
             continue;
         }
 
-        let path = base_path.join(format!("{name}.{extension}"));
+        let path = base_path.join(format!("{example_path}.{extension}"));
         let content = match std::fs::read_to_string(&path) {
             Ok(content) => content,
             Err(_) if !required => continue,
