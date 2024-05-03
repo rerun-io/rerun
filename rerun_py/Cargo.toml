@@ -41,7 +41,6 @@ web_viewer = [
 
 [dependencies]
 re_build_info.workspace = true
-re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_memory.workspace = true
