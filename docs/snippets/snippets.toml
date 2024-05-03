@@ -19,7 +19,10 @@ archetypes.spatial3dview = ["cpp", "rust"] # Missing examples
 archetypes.roundtrips = ["cpp", "py", "rust"]
 
 tutorials = ["cpp", "py", "rust"]
-views = ["cpp", "rust"]           # Don't have view support yet for C++ and Rust
+views = [
+  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "rust", # TODO(#5521): Rust views are not yet implemented
+]
 
 
 # These entries will run but their results won't be compared to the baseline.
