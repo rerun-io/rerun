@@ -141,6 +141,9 @@ fn test_format_uint() {
 /// Options for how to format a floating point number, e.g. an [`f64`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FloatFormatOptions {
+    /// Always show the sign, even if it is positive (`+`).
+    pub always_sign: bool,
+
     /// Maximum digits of precision to use.
     ///
     /// This includes both the integer part and the fractional part.
@@ -158,6 +161,7 @@ impl FloatFormatOptions {
     /// Default options for formatting an [`f32`].
     #[allow(non_upper_case_globals)]
     pub const DEFAULT_f32: Self = Self {
+        always_sign: false,
         precision: 7,
         num_decimals: None,
         strip_trailing_zeros: true,
@@ -166,10 +170,18 @@ impl FloatFormatOptions {
     /// Default options for formatting an [`f64`].
     #[allow(non_upper_case_globals)]
     pub const DEFAULT_f64: Self = Self {
+        always_sign: false,
         precision: 15,
         num_decimals: None,
         strip_trailing_zeros: true,
     };
+
+    /// Always show the sign, even if it is positive (`+`).
+    #[inline]
+    pub fn with_always_sign(mut self, always_sign: bool) -> Self {
+        self.always_sign = always_sign;
+        self
+    }
 
     /// Show at most this many digits of precision,
     /// including both the integer part and the fractional part.
@@ -188,28 +200,45 @@ impl FloatFormatOptions {
         self
     }
 
+    /// Strip trailing zeros from decimal expansion?
+    #[inline]
+    pub fn with_strip_trailing_zeros(mut self, strip_trailing_zeros: bool) -> Self {
+        self.strip_trailing_zeros = strip_trailing_zeros;
+        self
+    }
+
     /// The returned value is for human eyes only, and can not be parsed
     /// by the normal `f64::from_str` function.
     pub fn format(&self, value: impl Into<f64>) -> String {
         self.format_f64(value.into())
     }
 
-    fn format_f64(&self, value: f64) -> String {
+    fn format_f64(&self, mut value: f64) -> String {
         fn reverse(s: &str) -> String {
             s.chars().rev().collect()
         }
 
         let Self {
+            always_sign,
             precision,
             num_decimals,
             strip_trailing_zeros,
         } = *self;
 
         if value.is_nan() {
-            "NaN".to_owned()
-        } else if value < 0.0 {
-            format!("{MINUS}{}", self.format_f64(-value))
-        } else if value == f64::INFINITY {
+            return "NaN".to_owned();
+        }
+
+        let sign = if value < 0.0 {
+            value = -value;
+            "−" // NOTE: the minus character: <https://www.compart.com/en/unicode/U+2212>
+        } else if always_sign {
+            "+"
+        } else {
+            ""
+        };
+
+        let abs_string = if value == f64::INFINITY {
             "∞".to_owned()
         } else {
             let magnitude = value.log10();
@@ -219,41 +248,44 @@ impl FloatFormatOptions {
                 // A very large number (more digits than we have precision),
                 // so use scientific notation.
                 // TODO(emilk): nice formatting of scientific notation with thousands separators
-                return format!("{:.*e}", precision.saturating_sub(1), value);
-            }
-
-            let max_decimals = max_decimals as usize;
-
-            let num_decimals = if let Some(num_decimals) = num_decimals {
-                num_decimals.min(max_decimals)
+                format!("{:.*e}", precision.saturating_sub(1), value)
             } else {
-                max_decimals
-            };
+                let max_decimals = max_decimals as usize;
 
-            let mut formatted = format!("{value:.num_decimals$}");
+                let num_decimals = if let Some(num_decimals) = num_decimals {
+                    num_decimals.min(max_decimals)
+                } else {
+                    max_decimals
+                };
 
-            if strip_trailing_zeros && formatted.contains('.') {
-                while formatted.ends_with('0') {
-                    formatted.pop();
+                let mut formatted = format!("{value:.num_decimals$}");
+
+                if strip_trailing_zeros && formatted.contains('.') {
+                    while formatted.ends_with('0') {
+                        formatted.pop();
+                    }
+                    if formatted.ends_with('.') {
+                        formatted.pop();
+                    }
                 }
-                if formatted.ends_with('.') {
-                    formatted.pop();
+
+                if let Some(dot) = formatted.find('.') {
+                    let integer_part = &formatted[..dot];
+                    let fractional_part = &formatted[dot + 1..];
+                    // let fractional_part = &fractional_part[..num_decimals.min(fractional_part.len())];
+
+                    let integer_part = add_thousands_separators(integer_part);
+                    // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
+                    let fractional_part =
+                        reverse(&add_thousands_separators(&reverse(fractional_part)));
+                    format!("{integer_part}.{fractional_part}")
+                } else {
+                    add_thousands_separators(&formatted) // it's an integer
                 }
             }
+        };
 
-            if let Some(dot) = formatted.find('.') {
-                let integer_part = &formatted[..dot];
-                let fractional_part = &formatted[dot + 1..];
-                // let fractional_part = &fractional_part[..num_decimals.min(fractional_part.len())];
-
-                let integer_part = add_thousands_separators(integer_part);
-                // For the fractional part we should start counting thousand separators from the _front_, so we reverse:
-                let fractional_part = reverse(&add_thousands_separators(&reverse(fractional_part)));
-                format!("{integer_part}.{fractional_part}")
-            } else {
-                add_thousands_separators(&formatted) // it's an integer
-            }
-        }
+        format!("{sign}{abs_string}")
     }
 }
 
