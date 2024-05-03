@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import numpy as np
 import rerun as rr
+import rerun.blueprint as rrb
 
 README = """
 # Parallelism, caching, reentrancy, etc
@@ -16,22 +17,48 @@ This check simply puts a lot of pressure on all things parallel.
 
 ### Actions
 
-TODO(cmc): simplify these instructions once we can log blueprint stuff!
-
-* Clone the `plots` view a handful of times.
-* Clone the `text_logs` view a handful of times.
-* 2D spatial:
-    * Clone the `2D` view a handful of times.
-    * Edit one of the `2D` views so that it requests a visible time range of `-inf:current` instead.
-    * Clone that edited `2D` view a bunch of times.
-* 3D spatial:
-    * Clone the `3D` view a handful of times.
-    * Edit one of the `3D` views so that it requests a visible time range of `-inf:+inf` instead.
-    * Clone that edited `3D` view a bunch of times.
-* Now scrub the time cursor like crazy: do your worst!
+* Scrub the time cursor like crazy: do your worst!
 
 If nothing weird happens, you can close this recording.
 """
+
+
+def blueprint() -> rrb.BlueprintLike:
+    return rrb.Grid(
+        rrb.Vertical(*[rrb.TimeSeriesView(name="plots", origin="/plots") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.TextLogView(name="logs", origin="/text") for _ in range(0, 3)]),
+        rrb.Vertical(*[rrb.Spatial2DView(name="2D", origin="/2D") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.Spatial2DView(
+                name="2D",
+                origin="/2D",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    rr.TimeRange(
+                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
+                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 0),
+                    ),
+                ),
+            )
+            for _ in range(0, 3)
+        ]),
+        rrb.Vertical(*[rrb.Spatial3DView(name="3D", origin="/3D") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.Spatial3DView(
+                name="3D",
+                origin="/3D",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    rr.TimeRange(
+                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
+                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
+                    ),
+                ),
+            )
+            for _ in range(0, 3)
+        ]),
+        grid_columns=3,
+    )
 
 
 def log_readme() -> None:
@@ -141,7 +168,7 @@ def log_spatial() -> None:
 
 
 def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4(), default_blueprint=blueprint())
 
     log_readme()
     log_text_logs()
