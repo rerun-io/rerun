@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 __all__ = ["TimeSeriesView"]
 
 
@@ -25,7 +27,10 @@ class TimeSeriesView(SpaceView):
         visible: blueprint_components.VisibleLike | None = None,
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
-        time_ranges: blueprint_archetypes.VisibleTimeRanges | None = None,
+        time_ranges: blueprint_archetypes.VisibleTimeRanges
+        | blueprint_components.VisibleTimeRangeLike
+        | Sequence[blueprint_components.VisibleTimeRangeLike]
+        | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TimeSeriesView view.
