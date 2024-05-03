@@ -40,7 +40,7 @@ struct LayoutStatistics {
     /// Maximum desired column width.
     ///
     /// The semantics are exactly the same as [`LayoutInfo`]'s `left_column_width`.
-    max_desired_left_column_width: f32,
+    max_desired_left_column_width: Option<f32>,
 
     /// Track whether any item uses the action button.
     ///
@@ -50,16 +50,16 @@ struct LayoutStatistics {
     /// Max item width.
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
-    max_item_width: f32,
+    max_item_width: Option<f32>,
 }
 
 impl Default for LayoutStatistics {
     fn default() -> Self {
         // set values suitable to initialize the stat accumulator
         Self {
-            max_desired_left_column_width: f32::NEG_INFINITY,
+            max_desired_left_column_width: None,
             is_action_button_used: false,
-            max_item_width: f32::NEG_INFINITY,
+            max_item_width: None,
         }
     }
 }
@@ -147,8 +147,10 @@ impl LayoutInfo {
     /// call this function once in their [`super::ListItemContent::ui`] method.
     pub fn register_desired_left_column_width(&self, ctx: &egui::Context, desired_width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
-            stats.max_desired_left_column_width =
-                stats.max_desired_left_column_width.max(desired_width);
+            stats.max_desired_left_column_width = stats
+                .max_desired_left_column_width
+                .map(|v| v.max(desired_width))
+                .or(Some(desired_width));
         });
     }
 
@@ -164,7 +166,7 @@ impl LayoutInfo {
     /// Should only be set by [`super::ListItem`].
     pub(crate) fn register_max_item_width(&self, ctx: &egui::Context, width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
-            stats.max_item_width = stats.max_item_width.max(width);
+            stats.max_item_width = stats.max_item_width.map(|v| v.max(width)).or(Some(width));
         });
     }
 }
@@ -250,17 +252,15 @@ pub fn list_item_scope<R>(
     LayoutStatistics::reset(ui.ctx(), scope_id);
 
     // prepare the layout infos
-    let left_column_width = if layout_stats.max_desired_left_column_width > 0.0 {
-        Some(
+    let left_column_width =
+        if let Some(max_desired_left_column_width) = layout_stats.max_desired_left_column_width {
             // TODO(ab): this heuristics can certainly be improved, to be done with more hindsight
             // from real-world usage.
-            layout_stats
-                .max_desired_left_column_width
-                .at_most(0.7 * layout_stats.max_item_width),
-        )
-    } else {
-        None
-    };
+            let available_width = layout_stats.max_item_width.unwrap_or(ui.available_width());
+            Some(max_desired_left_column_width.at_most(0.7 * available_width))
+        } else {
+            None
+        };
     let state = LayoutInfo {
         left_x: ui.max_rect().left(),
         left_column_width,

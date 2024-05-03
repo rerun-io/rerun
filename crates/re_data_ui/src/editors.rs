@@ -255,16 +255,18 @@ fn edit_marker_shape_ui(
 
     let marker_text = edit_marker.to_string();
 
+    let item_width = 100.0;
+
     egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
-        .width(ui.available_width().at_most(100.0))
+        .width(
+            ui.available_width()
+                .at_most(item_width + ui.spacing().menu_margin.sum().x),
+        )
         .height(320.0)
         .show_ui(ui, |ui| {
-            let item_width = 100.0;
-
             // workaround to force `ui.max_rect()` to reflect the content size
-            ui.spacing_mut().item_spacing.y = 0.0;
-            ui.allocate_space(egui::vec2(item_width, 0.0));
+            ui.set_width(item_width);
 
             let background_x_range = ui
                 .spacing()

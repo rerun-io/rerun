@@ -45,7 +45,7 @@ pub fn full_span_scope<R>(
 pub fn get_full_span(ui: &egui::Ui) -> egui::Rangef {
     let range = ui.ctx().data_mut(|writer| {
         let stack: &mut FullSpanStack = writer.get_temp_mut_or_default(egui::Id::NULL);
-        stack.0.last().cloned()
+        stack.0.last().copied()
     });
 
     if range.is_none() {
