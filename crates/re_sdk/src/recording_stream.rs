@@ -1518,7 +1518,7 @@ impl RecordingStream {
         flush_timeout: Option<std::time::Duration>,
     ) {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return;
         }
 
@@ -1571,7 +1571,7 @@ impl RecordingStream {
             return Ok(());
         }
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
@@ -1620,7 +1620,7 @@ impl RecordingStream {
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
@@ -1656,7 +1656,7 @@ impl RecordingStream {
     /// Blueprints are currently an experimental part of the Rust SDK.
     pub fn stdout_opts(&self) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
