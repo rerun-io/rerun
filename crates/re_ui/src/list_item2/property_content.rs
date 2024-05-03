@@ -191,7 +191,7 @@ impl ListItemContent for PropertyContent<'_> {
         } = *self;
 
         // │                                                                              │
-        // │◀─────────────────────layout_info.background_x_range─────────────────────────▶│
+        // │◀─────────────────────────────get_full_span()────────────────────────────────▶│
         // │                                                                              │
         // │ ◀────────layout_info.left_column_width─────────▶│┌──COLUMN_SPACING           │
         // │                                                  ▼                           │
