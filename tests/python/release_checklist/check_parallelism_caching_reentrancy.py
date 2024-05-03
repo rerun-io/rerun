@@ -26,6 +26,20 @@ If nothing weird happens, you can close this recording.
 def blueprint() -> rrb.BlueprintLike:
     return rrb.Grid(
         rrb.Vertical(*[rrb.TimeSeriesView(name="plots", origin="/plots") for _ in range(0, 3)]),
+        rrb.Vertical(*[
+            rrb.TimeSeriesView(
+                name="plots",
+                origin="/plots",
+                time_ranges=rrb.VisibleTimeRange(
+                    "frame_nr",
+                    rr.TimeRange(
+                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 50 - i * 10),
+                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 50 - i * 10 + 10),
+                    ),
+                ),
+            )
+            for i in range(0, 10)
+        ]),
         rrb.Vertical(*[rrb.TextLogView(name="logs", origin="/text") for _ in range(0, 3)]),
         rrb.Vertical(*[rrb.Spatial2DView(name="2D", origin="/2D") for _ in range(0, 3)]),
         rrb.Vertical(*[
@@ -57,7 +71,7 @@ def blueprint() -> rrb.BlueprintLike:
             )
             for _ in range(0, 3)
         ]),
-        grid_columns=3,
+        grid_columns=4,
     )
 
 
