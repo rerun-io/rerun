@@ -7,7 +7,6 @@ extend-exclude = [
   ".typos.toml",
   "crates/re_ui/data/design_tokens.json",
   "crates/re_ui/src/design_tokens.rs",
-  "docs/cspell.json",
   "examples/assets",
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]
