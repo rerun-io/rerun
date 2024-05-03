@@ -31,18 +31,14 @@ blueprint = rrb.Blueprint(
             # Sliding window depending on the time cursor for the first timeline.
             rrb.VisibleTimeRange(
                 "timeline0",
-                rr.TimeRange(
-                    start=rr.TimeRangeBoundary.cursor_relative(-100),
-                    end=rr.TimeRangeBoundary.cursor_relative(),
-                ),
+                start=rr.TimeRangeBoundary.cursor_relative(-100),
+                end=rr.TimeRangeBoundary.cursor_relative(),
             ),
             # Time range from some point to the end of the timeline for the second timeline.
             rrb.VisibleTimeRange(
                 "timeline1",
-                rr.TimeRange(
-                    start=rr.TimeRangeBoundary.absolute(300),
-                    end=rr.TimeRangeBoundary.infinite(),
-                ),
+                start=rr.TimeRangeBoundary.absolute(300),
+                end=rr.TimeRangeBoundary.infinite(),
             ),
         ],
     )
