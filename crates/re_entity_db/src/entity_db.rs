@@ -9,8 +9,8 @@ use re_data_store::{
 };
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, DataTableResult, EntityPath,
-    EntityPathHash, LogMsg, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
-    TimeRange, TimeRangeF, Timeline,
+    EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF, RowId, SetStoreInfo, StoreId,
+    StoreInfo, StoreKind, TimePoint, Timeline,
 };
 use re_query::PromiseResult;
 use re_types_core::{Archetype, Loggable};
@@ -680,7 +680,7 @@ impl EntityDb {
     /// specific time range will be accounted for.
     pub fn to_messages(
         &self,
-        time_selection: Option<(Timeline, TimeRangeF)>,
+        time_selection: Option<(Timeline, ResolvedTimeRangeF)>,
     ) -> DataTableResult<Vec<LogMsg>> {
         re_tracing::profile_function!();
 
@@ -693,7 +693,7 @@ impl EntityDb {
         let time_filter = time_selection.map(|(timeline, range)| {
             (
                 timeline,
-                TimeRange::new(range.min.floor(), range.max.ceil()),
+                ResolvedTimeRange::new(range.min.floor(), range.max.ceil()),
             )
         });
 

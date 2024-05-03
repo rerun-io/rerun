@@ -7,7 +7,7 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeInt, TimeZone};
 use re_space_view::{controls, query_view_property_or_default};
 use re_types::{
-    blueprint::components::Corner2D, components::Range1D, datatypes::VisibleTimeRange,
+    blueprint::components::Corner2D, components::Range1D, datatypes::TimeRange,
     SpaceViewClassIdentifier, View,
 };
 use re_viewer_context::external::re_entity_db::{
@@ -142,7 +142,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     }
 
     fn default_query_range(&self) -> QueryRange {
-        QueryRange::TimeRange(VisibleTimeRange::EVERYTHING)
+        QueryRange::TimeRange(TimeRange::EVERYTHING)
     }
 
     fn selection_ui(

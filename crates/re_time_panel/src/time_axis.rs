@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 
 use re_entity_db::TimeHistogram;
-use re_log_types::{TimeInt, TimeRange, TimeType};
+use re_log_types::{ResolvedTimeRange, TimeInt, TimeType};
 
 /// A piece-wise linear view of a single timeline.
 ///
@@ -9,7 +9,7 @@ use re_log_types::{TimeInt, TimeRange, TimeType};
 /// which we collapse in order to present a compressed view of the data.
 #[derive(Clone, Debug)]
 pub(crate) struct TimelineAxis {
-    pub ranges: vec1::Vec1<TimeRange>,
+    pub ranges: vec1::Vec1<ResolvedTimeRange>,
 }
 
 impl TimelineAxis {
@@ -130,11 +130,11 @@ fn collect_gaps_with_granularity(
 }
 
 /// Collapse any gaps larger or equals to the given threshold.
-fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRange> {
+fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<ResolvedTimeRange> {
     re_tracing::profile_function!();
     let mut it = times.range(.., gap_threshold);
     let first_range = it.next().unwrap().0;
-    let mut ranges = vec1::vec1![TimeRange::new(first_range.min, first_range.max,)];
+    let mut ranges = vec1::vec1![ResolvedTimeRange::new(first_range.min, first_range.max,)];
 
     for (new_range, _count) in it {
         if ranges.last_mut().max().as_i64().abs_diff(new_range.min) < gap_threshold {
@@ -142,7 +142,7 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
             ranges.last_mut().set_max(new_range.max);
         } else {
             // new range:
-            ranges.push(TimeRange::new(new_range.min, new_range.max));
+            ranges.push(ResolvedTimeRange::new(new_range.min, new_range.max));
         }
     }
 
@@ -152,9 +152,9 @@ fn create_ranges(times: &TimeHistogram, gap_threshold: u64) -> vec1::Vec1<TimeRa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use re_data_store::TimeRange;
+    use re_data_store::ResolvedTimeRange;
 
-    fn ranges(times: &[i64]) -> vec1::Vec1<TimeRange> {
+    fn ranges(times: &[i64]) -> vec1::Vec1<ResolvedTimeRange> {
         let mut time_histogram = TimeHistogram::default();
         for &time in times {
             time_histogram.increment(time, 1);

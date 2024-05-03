@@ -2,14 +2,12 @@
 title: "VisibleTimeRange"
 ---
 
-Visible time range bounds for a timelines.
-
-This datatype does not specify whether it's a time or sequence based timeline.
+Visible time range bounds for a specific timeline.
 
 ## Fields
 
-* start: [`VisibleTimeRangeBoundary`](../datatypes/visible_time_range_boundary.md)
-* end: [`VisibleTimeRangeBoundary`](../datatypes/visible_time_range_boundary.md)
+* timeline: [`Utf8`](../datatypes/utf8.md)
+* range: [`TimeRange`](../datatypes/time_range.md)
 
 ## Links
  * 🌊 [C++ API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VisibleTimeRange.html)

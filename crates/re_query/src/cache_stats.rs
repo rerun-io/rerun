@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_log_types::TimeRange;
+use re_log_types::ResolvedTimeRange;
 use re_types_core::SizeBytes as _;
 
 use crate::{CacheKey, Caches};
@@ -13,7 +13,7 @@ use crate::{CacheKey, Caches};
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
     pub latest_at: BTreeMap<CacheKey, CachedComponentStats>,
-    pub range: BTreeMap<CacheKey, (Option<TimeRange>, CachedComponentStats)>,
+    pub range: BTreeMap<CacheKey, (Option<ResolvedTimeRange>, CachedComponentStats)>,
 }
 
 impl CachesStats {

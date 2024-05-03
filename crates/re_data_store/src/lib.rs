@@ -48,7 +48,7 @@ pub(crate) use self::store::{
 #[doc(no_inline)]
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
 #[doc(no_inline)]
-pub use re_log_types::{TimeInt, TimeRange, TimeType, Timeline}; // for politeness sake
+pub use re_log_types::{ResolvedTimeRange, TimeInt, TimeType, Timeline}; // for politeness sake
 
 pub mod external {
     pub use arrow2;

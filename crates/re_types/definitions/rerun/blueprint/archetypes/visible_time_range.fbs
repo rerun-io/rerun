@@ -9,7 +9,7 @@ namespace rerun.blueprint.archetypes;
 
 // ---
 
-/// Configures what range of the timeline is shown on a view.
+/// Configures what range of each timeline is shown on a view.
 ///
 /// Whenever no visual time range applies, queries are done with "latest at" semantics.
 /// This means that the view will, starting from the time cursor position,
@@ -18,15 +18,12 @@ namespace rerun.blueprint.archetypes;
 /// The default visual time range depends on the type of view this property applies to:
 /// - For time series views, the default is to show the entire timeline.
 /// - For any other view, the default is to apply latest-at semantics.
-///
-/// The visual time range can be overridden also individually per entity.
-table VisibleTimeRange (
+table VisibleTimeRanges (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
-    /// The range of time to show for timelines based on sequence numbers.
-    sequence: rerun.blueprint.components.VisibleTimeRangeSequence ("attr.rerun.component_optional", nullable, order: 1000);
-
-    /// The range of time to show for timelines based on time.
-    time: rerun.blueprint.components.VisibleTimeRangeTime ("attr.rerun.component_optional", nullable, order: 2000);
+    /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
+    ///
+    /// If a timeline is listed twice, the first entry will be used.
+    ranges: [rerun.blueprint.components.VisibleTimeRange] ("attr.rerun.component_required", order: 1000);
 }

@@ -4,7 +4,8 @@
 #pragma once
 
 #include "../result.hpp"
-#include "visible_time_range_boundary.hpp"
+#include "time_range.hpp"
+#include "utf8.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -16,15 +17,13 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Visible time range bounds for a timelines.
-    ///
-    /// This datatype does not specify whether it's a time or sequence based timeline.
+    /// **Datatype**: Visible time range bounds for a specific timeline.
     struct VisibleTimeRange {
-        /// Low time boundary for sequence timeline.
-        rerun::datatypes::VisibleTimeRangeBoundary start;
+        /// Name of the timeline this applies to.
+        rerun::datatypes::Utf8 timeline;
 
-        /// High time boundary for sequence timeline.
-        rerun::datatypes::VisibleTimeRangeBoundary end;
+        /// Time range to use for this timeline.
+        rerun::datatypes::TimeRange range;
 
       public:
         VisibleTimeRange() = default;

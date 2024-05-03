@@ -15,8 +15,8 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
-    enum class VisibleTimeRangeBoundaryKind : uint8_t {
+    /// **Datatype**: Kind of boundary for visible history, see `TimeRangeBoundary`.
+    enum class TimeRangeBoundaryKind : uint8_t {
 
         /// Boundary is a value relative to the time cursor.
         RelativeToTimeCursor = 1,
@@ -35,21 +35,21 @@ namespace rerun {
 
     /// \private
     template <>
-    struct Loggable<datatypes::VisibleTimeRangeBoundaryKind> {
-        static constexpr const char Name[] = "rerun.datatypes.VisibleTimeRangeBoundaryKind";
+    struct Loggable<datatypes::TimeRangeBoundaryKind> {
+        static constexpr const char Name[] = "rerun.datatypes.TimeRangeBoundaryKind";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Serializes an array of `rerun::datatypes::VisibleTimeRangeBoundaryKind` into an arrow array.
+        /// Serializes an array of `rerun::datatypes::TimeRangeBoundaryKind` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
-            const datatypes::VisibleTimeRangeBoundaryKind* instances, size_t num_instances
+            const datatypes::TimeRangeBoundaryKind* instances, size_t num_instances
         );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::SparseUnionBuilder* builder,
-            const datatypes::VisibleTimeRangeBoundaryKind* elements, size_t num_elements
+            arrow::SparseUnionBuilder* builder, const datatypes::TimeRangeBoundaryKind* elements,
+            size_t num_elements
         );
     };
 } // namespace rerun

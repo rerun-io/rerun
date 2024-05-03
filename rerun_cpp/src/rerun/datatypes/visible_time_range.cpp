@@ -3,7 +3,8 @@
 
 #include "visible_time_range.hpp"
 
-#include "visible_time_range_boundary.hpp"
+#include "time_range.hpp"
+#include "utf8.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -14,16 +15,8 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::VisibleTimeRange>::arrow_datatype(
     ) {
         static const auto datatype = arrow::struct_({
-            arrow::field(
-                "start",
-                Loggable<rerun::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false
-            ),
-            arrow::field(
-                "end",
-                Loggable<rerun::datatypes::VisibleTimeRangeBoundary>::arrow_datatype(),
-                false
-            ),
+            arrow::field("timeline", Loggable<rerun::datatypes::Utf8>::arrow_datatype(), false),
+            arrow::field("range", Loggable<rerun::datatypes::TimeRange>::arrow_datatype(), false),
         });
         return datatype;
     }
@@ -63,29 +56,25 @@ namespace rerun {
         }
 
         {
-            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::VisibleTimeRangeBoundary>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].start,
-                        1
-                    )
-                );
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].timeline,
+                    1
+                ));
             }
         }
         {
             auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::VisibleTimeRangeBoundary>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].end,
-                        1
-                    )
-                );
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeRange>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].range,
+                    1
+                ));
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));

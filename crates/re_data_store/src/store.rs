@@ -5,8 +5,8 @@ use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_log_types::{
-    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, RowId, RowIdVec, StoreId,
-    TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, ResolvedTimeRange, RowId,
+    RowIdVec, StoreId, TimeInt, TimePoint, Timeline,
 };
 use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 
@@ -420,7 +420,7 @@ pub struct IndexedBucketInner {
     /// The time range covered by the primary time column (see [`Self::col_time`]).
     ///
     /// For an empty bucket, this defaults to `[+∞,-∞]`.
-    pub time_range: TimeRange,
+    pub time_range: ResolvedTimeRange,
 
     // The primary time column, which is what drives the ordering of every other column.
     pub col_time: ErasedTimeVec,
@@ -462,7 +462,7 @@ impl Default for IndexedBucketInner {
     fn default() -> Self {
         let mut this = Self {
             is_sorted: true,
-            time_range: TimeRange::EMPTY,
+            time_range: ResolvedTimeRange::EMPTY,
             col_time: Default::default(),
             col_insert_id: Default::default(),
             col_row_id: Default::default(),

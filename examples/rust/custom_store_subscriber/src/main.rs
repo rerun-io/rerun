@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 
 use rerun::{
-    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::TimeRange},
+    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::ResolvedTimeRange},
     time::TimeInt,
     ComponentName, EntityPath, StoreEvent, StoreId, StoreSubscriber, Timeline,
 };
@@ -183,7 +183,7 @@ impl StoreSubscriber for TimeRangesPerEntity {
         for (entity_path, per_timeline) in &self.times {
             println!("  {entity_path}:");
             for (timeline, times) in per_timeline {
-                let time_range = TimeRange::new(
+                let time_range = ResolvedTimeRange::new(
                     times
                         .first_key_value()
                         .map_or(TimeInt::MIN, |(time, _)| *time),

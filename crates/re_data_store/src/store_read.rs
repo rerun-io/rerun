@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 
 use re_log::trace;
 use re_log_types::{
-    DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
+    DataCell, EntityPath, EntityPathHash, ResolvedTimeRange, RowId, TimeInt, TimePoint, Timeline,
 };
 use re_types_core::{ComponentName, ComponentNameSet};
 
@@ -67,7 +67,7 @@ impl LatestAtQuery {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
     pub timeline: Timeline,
-    pub range: TimeRange,
+    pub range: ResolvedTimeRange,
 }
 
 impl std::fmt::Debug for RangeQuery {
@@ -84,7 +84,7 @@ impl std::fmt::Debug for RangeQuery {
 impl RangeQuery {
     /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
-    pub const fn new(timeline: Timeline, range: TimeRange) -> Self {
+    pub const fn new(timeline: Timeline, range: ResolvedTimeRange) -> Self {
         Self { timeline, range }
     }
 
@@ -92,7 +92,7 @@ impl RangeQuery {
     pub const fn everything(timeline: Timeline) -> Self {
         Self {
             timeline,
-            range: TimeRange::EVERYTHING,
+            range: ResolvedTimeRange::EVERYTHING,
         }
     }
 
@@ -102,7 +102,7 @@ impl RangeQuery {
     }
 
     #[inline]
-    pub fn range(&self) -> TimeRange {
+    pub fn range(&self) -> ResolvedTimeRange {
         self.range
     }
 }
@@ -414,7 +414,7 @@ impl IndexedTable {
     /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
-        time_range: TimeRange,
+        time_range: ResolvedTimeRange,
         component_names: [Option<ComponentName>; N],
     ) -> impl Iterator<Item = (TimeInt, RowId, [Option<DataCell>; N])> + '_ {
         // Beware! This merely measures the time it takes to gather all the necessary metadata
@@ -684,7 +684,7 @@ impl IndexedBucket {
     /// This method cannot fail! If there's no data to return, an empty iterator is returned.
     pub fn range<const N: usize>(
         &self,
-        time_range: TimeRange,
+        time_range: ResolvedTimeRange,
         component_names: [Option<ComponentName>; N],
     ) -> impl Iterator<Item = (TimeInt, RowId, [Option<DataCell>; N])> + '_ {
         self.sort_indices_if_needed();

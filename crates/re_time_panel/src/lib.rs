@@ -17,8 +17,8 @@ use re_data_ui::item_ui::guess_instance_path_icon;
 use re_data_ui::DataUi as _;
 use re_entity_db::{EntityTree, InstancePath, TimeHistogram};
 use re_log_types::{
-    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart, TimeInt,
-    TimeRange, TimeReal,
+    external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
+    ResolvedTimeRange, TimeInt, TimeReal,
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
@@ -998,7 +998,7 @@ fn collapsed_time_marker_and_time(
 }
 
 fn paint_range_highlight(
-    highlighted_range: TimeRange,
+    highlighted_range: ResolvedTimeRange,
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,

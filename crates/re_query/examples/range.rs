@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use re_data_store::{DataStore, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-use re_log_types::{build_frame_nr, DataRow, RowId, TimeRange, TimeType, Timeline};
+use re_log_types::{build_frame_nr, DataRow, ResolvedTimeRange, RowId, TimeType, Timeline};
 use re_types_core::{Archetype as _, Loggable as _};
 
 use re_query::{
@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
 
     let entity_path = "points";
     let timeline = Timeline::new("frame_nr", TimeType::Sequence);
-    let query = RangeQuery::new(timeline, TimeRange::EVERYTHING);
+    let query = RangeQuery::new(timeline, ResolvedTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
     let caches = re_query::Caches::new(&store);

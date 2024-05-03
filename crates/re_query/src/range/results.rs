@@ -9,7 +9,7 @@ use nohash_hasher::IntMap;
 
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use re_data_store::RangeQuery;
-use re_log_types::{RowId, TimeInt, TimeRange};
+use re_log_types::{ResolvedTimeRange, RowId, TimeInt};
 use re_types_core::{Component, ComponentName, DeserializationError, SizeBytes};
 
 use crate::{
@@ -106,19 +106,19 @@ thread_local! {
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug)]
 pub struct RangeComponentResults {
-    /// The [`TimeRange`] of the query that was used in order to retrieve these results in the
+    /// The [`ResolvedTimeRange`] of the query that was used in order to retrieve these results in the
     /// first place.
     ///
-    /// The "original" copy in the cache just stores [`TimeRange::EMPTY`]. It's meaningless.
-    pub(crate) time_range: TimeRange,
+    /// The "original" copy in the cache just stores [`ResolvedTimeRange::EMPTY`]. It's meaningless.
+    pub(crate) time_range: ResolvedTimeRange,
 
     pub(crate) inner: Arc<RwLock<RangeComponentResultsInner>>,
 }
 
 impl RangeComponentResults {
-    /// Clones the results while making sure to stamp them with the [`TimeRange`] of the associated query.
+    /// Clones the results while making sure to stamp them with the [`ResolvedTimeRange`] of the associated query.
     #[inline]
-    pub(crate) fn clone_at(&self, time_range: TimeRange) -> Self {
+    pub(crate) fn clone_at(&self, time_range: ResolvedTimeRange) -> Self {
         Self {
             time_range,
             inner: self.inner.clone(),
@@ -146,7 +146,7 @@ impl Default for RangeComponentResults {
     #[inline]
     fn default() -> Self {
         Self {
-            time_range: TimeRange::EMPTY,
+            time_range: ResolvedTimeRange::EMPTY,
             inner: Arc::new(RwLock::new(RangeComponentResultsInner::empty())),
         }
     }
@@ -213,7 +213,7 @@ pub struct RangeData<'a, T> {
     indices: Option<Indices<'a>>,
     data: Option<Data<'a, T>>,
 
-    time_range: TimeRange,
+    time_range: ResolvedTimeRange,
     front_status: PromiseResult<()>,
     back_status: PromiseResult<()>,
 
@@ -246,7 +246,7 @@ impl<'a, C: Component> RangeData<'a, C> {
         Self {
             indices: Some(Indices::Owned(vec![index].into())),
             data: cached_dense.get().map(|data| Data::Owned(Arc::clone(data))),
-            time_range: TimeRange::new(index.0, index.0),
+            time_range: ResolvedTimeRange::new(index.0, index.0),
             front_status: status.clone(),
             back_status: status,
             reentering: &REENTERING,
@@ -358,11 +358,11 @@ impl RangeComponentResults {
         REENTERING.with_borrow_mut(|reentering| *reentering = reentering.saturating_add(1));
 
         // Manufactured empty result.
-        if self.time_range == TimeRange::EMPTY {
+        if self.time_range == ResolvedTimeRange::EMPTY {
             return RangeData {
                 indices: None,
                 data: None,
-                time_range: TimeRange::EMPTY,
+                time_range: ResolvedTimeRange::EMPTY,
                 front_status: PromiseResult::Ready(()),
                 back_status: PromiseResult::Ready(()),
                 reentering: &REENTERING,
@@ -577,7 +577,7 @@ impl RangeComponentResults {
             return RangeData {
                 indices: None,
                 data: None,
-                time_range: TimeRange::EMPTY,
+                time_range: ResolvedTimeRange::EMPTY,
                 front_status: PromiseResult::Ready(()),
                 back_status: PromiseResult::Ready(()),
                 reentering: &REENTERING,
@@ -763,12 +763,12 @@ impl RangeComponentResultsInner {
 
     /// Returns the time range covered by the cached data.
     ///
-    /// Reminder: [`TimeInt::STATIC`] is never included in [`TimeRange`]s.
+    /// Reminder: [`TimeInt::STATIC`] is never included in [`ResolvedTimeRange`]s.
     #[inline]
-    pub fn time_range(&self) -> Option<TimeRange> {
+    pub fn time_range(&self) -> Option<ResolvedTimeRange> {
         let first_time = self.indices.front().map(|(t, _)| *t)?;
         let last_time = self.indices.back().map(|(t, _)| *t)?;
-        Some(TimeRange::new(first_time, last_time))
+        Some(ResolvedTimeRange::new(first_time, last_time))
     }
 
     #[inline]

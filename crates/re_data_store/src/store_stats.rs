@@ -1,4 +1,4 @@
-use re_log_types::{EntityPathHash, TimePoint, TimeRange};
+use re_log_types::{EntityPathHash, ResolvedTimeRange, TimePoint};
 use re_types_core::SizeBytes;
 
 use crate::{store::IndexedBucketInner, DataStore, IndexedBucket, IndexedTable, MetadataRegistry};
@@ -254,7 +254,7 @@ pub struct EntityStats {
     pub size_bytes: u64,
 
     /// The time covered by the entity.
-    pub time_range: re_log_types::TimeRange,
+    pub time_range: re_log_types::ResolvedTimeRange,
 
     /// Number of static cells.
     pub num_static_cells: u64,
@@ -268,7 +268,7 @@ impl Default for EntityStats {
         Self {
             num_rows: 0,
             size_bytes: 0,
-            time_range: re_log_types::TimeRange::EMPTY,
+            time_range: re_log_types::ResolvedTimeRange::EMPTY,
             num_static_cells: 0,
             static_size_bytes: 0,
         }
@@ -313,7 +313,7 @@ impl IndexedTable {
     }
 
     /// The time range covered by this table.
-    pub fn time_range(&self) -> TimeRange {
+    pub fn time_range(&self) -> ResolvedTimeRange {
         if let (Some((_, first)), Some((_, last))) = (
             self.buckets.first_key_value(),
             self.buckets.last_key_value(),
@@ -324,7 +324,7 @@ impl IndexedTable {
                 .time_range
                 .union(last.inner.read().time_range)
         } else {
-            TimeRange::EMPTY
+            ResolvedTimeRange::EMPTY
         }
     }
 }

@@ -7,7 +7,7 @@ use ahash::{HashMap, HashSet};
 use parking_lot::RwLock;
 
 use re_data_store::{DataStore, StoreDiff, StoreEvent, StoreSubscriber, TimeInt};
-use re_log_types::{EntityPath, StoreId, TimeRange, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, Timeline};
 use re_types_core::ComponentName;
 
 use crate::{LatestAtCache, RangeCache};
@@ -98,7 +98,7 @@ impl std::fmt::Debug for Caches {
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidations.first().map(|&t| cache_key
                         .timeline
-                        .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
+                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
                 ));
                 strings.push(indent::indent_all_by(4, format!("{cache:?}")));
             }
@@ -115,7 +115,7 @@ impl std::fmt::Debug for Caches {
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidation.map(|t| cache_key
                         .timeline
-                        .format_time_range_utc(&TimeRange::new(t, TimeInt::MAX))),
+                        .format_time_range_utc(&ResolvedTimeRange::new(t, TimeInt::MAX))),
                 ));
                 strings.push(indent::indent_all_by(4, format!("{cache:?}")));
             }

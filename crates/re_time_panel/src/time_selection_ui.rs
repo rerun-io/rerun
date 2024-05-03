@@ -1,7 +1,7 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
 use re_entity_db::EntityDb;
-use re_log_types::{Duration, TimeInt, TimeRangeF, TimeReal, TimeType};
+use re_log_types::{Duration, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType};
 use re_viewer_context::{Looping, TimeControl};
 
 use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
@@ -152,7 +152,7 @@ pub fn loop_selection_ui(
             && ui.input(|i| i.pointer.primary_down() && i.modifiers.shift_only())
         {
             if let Some(time) = time_ranges_ui.time_from_x_f32(pointer_pos.x) {
-                time_ctrl.set_loop_selection(TimeRangeF::point(time));
+                time_ctrl.set_loop_selection(ResolvedTimeRangeF::point(time));
                 time_ctrl.set_looping(Looping::Selection);
                 ui.ctx().set_dragged_id(right_edge_id);
             }
@@ -163,7 +163,7 @@ pub fn loop_selection_ui(
 fn initial_time_selection(
     time_ranges_ui: &TimeRangesUi,
     time_type: TimeType,
-) -> Option<TimeRangeF> {
+) -> Option<ResolvedTimeRangeF> {
     let ranges = &time_ranges_ui.segments;
 
     // Try to find a long duration first, then fall back to shorter
@@ -177,11 +177,14 @@ fn initial_time_selection(
                         if seconds > min_duration {
                             let one_sec =
                                 TimeInt::new_temporal(Duration::from_secs(1.0).as_nanos());
-                            return Some(TimeRangeF::new(range.min(), range.min() + one_sec));
+                            return Some(ResolvedTimeRangeF::new(
+                                range.min(),
+                                range.min() + one_sec,
+                            ));
                         }
                     }
                     TimeType::Sequence => {
-                        return Some(TimeRangeF::new(
+                        return Some(ResolvedTimeRangeF::new(
                             range.min(),
                             TimeReal::from(range.min())
                                 + TimeReal::from((range.max() - range.min()).as_f64() / 2.0),
@@ -198,7 +201,7 @@ fn initial_time_selection(
         None // not enough to show anything meaningful
     } else {
         let end = (ranges.len() / 2).at_least(1);
-        Some(TimeRangeF::new(
+        Some(ResolvedTimeRangeF::new(
             ranges[0].tight_time.min(),
             ranges[end].tight_time.max(),
         ))
@@ -208,7 +211,7 @@ fn initial_time_selection(
 fn drag_right_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
     right_edge_id: Id,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
@@ -236,7 +239,7 @@ fn drag_right_loop_selection_edge(
 fn drag_left_loop_selection_edge(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
     left_edge_id: Id,
 ) -> Option<()> {
     use egui::emath::smart_aim::best_in_range_f64;
@@ -264,7 +267,7 @@ fn drag_left_loop_selection_edge(
 fn on_drag_loop_selection(
     ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
-    selected_range: &mut TimeRangeF,
+    selected_range: &mut ResolvedTimeRangeF,
 ) -> Option<()> {
     let pointer_delta = ui.input(|i| i.pointer.delta());
 
@@ -274,7 +277,7 @@ fn on_drag_loop_selection(
     let min_time = time_ranges_ui.time_from_x_f32(min_x)?;
     let max_time = time_ranges_ui.time_from_x_f32(max_x)?;
 
-    let mut new_range = TimeRangeF::new(min_time, max_time);
+    let mut new_range = ResolvedTimeRangeF::new(min_time, max_time);
 
     if egui::emath::almost_equal(
         selected_range.length().as_f32(),
@@ -292,7 +295,7 @@ fn on_drag_loop_selection(
 
 fn paint_range_text(
     time_ctrl: &TimeControl,
-    selected_range: TimeRangeF,
+    selected_range: ResolvedTimeRangeF,
     ui: &egui::Ui,
     painter: &egui::Painter,
     selection_rect: Rect,

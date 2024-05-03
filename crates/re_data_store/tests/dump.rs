@@ -4,7 +4,7 @@ use itertools::Itertools;
 use re_data_store::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
-    DataStore, DataStoreStats, GarbageCollectionOptions, TimeInt, TimeRange, Timeline,
+    DataStore, DataStoreStats, GarbageCollectionOptions, ResolvedTimeRange, TimeInt, Timeline,
 };
 use re_log_types::{
     build_frame_nr, build_log_time,
@@ -221,24 +221,24 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Dump frame1 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame1, frame1)).into()),
     );
     // Dump frame2 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame2, frame2)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame2, frame2)).into()),
     );
     // Dump frame3 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame3, frame3)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame3, frame3)).into()),
     );
     // Dump frame3 _from the other timeline_, from the first store.
     // This will produce the same RowIds again!
     row_set.insert_tables(
-        store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()),
+        store1.to_data_tables((timeline_log_time, ResolvedTimeRange::new(frame3, frame3)).into()),
     );
     // Dump frame4 from the first store.
     row_set.insert_tables(
-        store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()),
+        store1.to_data_tables((timeline_frame_nr, ResolvedTimeRange::new(frame4, frame4)).into()),
     );
 
     row_set.insert_into(store2);

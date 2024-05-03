@@ -6,12 +6,12 @@ use crate::{NonMinI64, TimeInt, TimeReal};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeRange {
+pub struct ResolvedTimeRange {
     min: TimeInt,
     max: TimeInt,
 }
 
-impl TimeRange {
+impl ResolvedTimeRange {
     /// Contains no time at all.
     pub const EMPTY: Self = Self {
         min: TimeInt::MAX,
@@ -24,7 +24,7 @@ impl TimeRange {
         max: TimeInt::MAX,
     };
 
-    /// Creates a new temporal [`TimeRange`].
+    /// Creates a new temporal [`ResolvedTimeRange`].
     ///
     /// The returned range is guaranteed to never include [`TimeInt::STATIC`].
     #[inline]
@@ -102,8 +102,8 @@ impl TimeRange {
         }
     }
 
-    pub fn from_visible_time_range(
-        range: &re_types_core::datatypes::VisibleTimeRange,
+    pub fn from_relative_time_range(
+        range: &re_types_core::datatypes::TimeRange,
         cursor: impl Into<re_types_core::datatypes::TimeInt>,
     ) -> Self {
         let cursor = cursor.into();
@@ -119,7 +119,7 @@ impl TimeRange {
     }
 }
 
-impl re_types_core::SizeBytes for TimeRange {
+impl re_types_core::SizeBytes for ResolvedTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -128,15 +128,15 @@ impl re_types_core::SizeBytes for TimeRange {
 
 // ----------------------------------------------------------------------------
 
-/// Like [`TimeRange`], but using [`TimeReal`] for improved precision.
+/// Like [`ResolvedTimeRange`], but using [`TimeReal`] for improved precision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct TimeRangeF {
+pub struct ResolvedTimeRangeF {
     pub min: TimeReal,
     pub max: TimeReal,
 }
 
-impl TimeRangeF {
+impl ResolvedTimeRangeF {
     #[inline]
     pub fn new(min: impl Into<TimeReal>, max: impl Into<TimeReal>) -> Self {
         Self {
@@ -186,20 +186,20 @@ impl TimeRangeF {
     }
 }
 
-impl From<TimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: TimeRangeF) -> RangeInclusive<TimeReal> {
+impl From<ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
+    fn from(range: ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
         range.min..=range.max
     }
 }
 
-impl From<&TimeRangeF> for RangeInclusive<TimeReal> {
-    fn from(range: &TimeRangeF) -> RangeInclusive<TimeReal> {
+impl From<&ResolvedTimeRangeF> for RangeInclusive<TimeReal> {
+    fn from(range: &ResolvedTimeRangeF) -> RangeInclusive<TimeReal> {
         range.min..=range.max
     }
 }
 
-impl From<TimeRange> for TimeRangeF {
-    fn from(range: TimeRange) -> Self {
+impl From<ResolvedTimeRange> for ResolvedTimeRangeF {
+    fn from(range: ResolvedTimeRange) -> Self {
         Self::new(range.min, range.max)
     }
 }

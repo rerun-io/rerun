@@ -1,4 +1,4 @@
-use re_data_store::TimeRange;
+use re_data_store::ResolvedTimeRange;
 use re_entity_db::EntityPath;
 use re_log_types::{RowId, TimeInt};
 use re_query::{clamped_zip_1x2, range_zip_1x2, PromiseResult, RangeData};
@@ -52,7 +52,8 @@ impl VisualizerSystem for TextLogSystem {
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let resolver = ctx.recording().resolver();
-        let query = re_data_store::RangeQuery::new(view_query.timeline, TimeRange::EVERYTHING);
+        let query =
+            re_data_store::RangeQuery::new(view_query.timeline, ResolvedTimeRange::EVERYTHING);
 
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());

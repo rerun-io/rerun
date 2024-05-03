@@ -429,27 +429,21 @@ impl SpaceViewBlueprint {
         // * can't be specified in the data store
         // Here, we query the visual time range that serves as the default for all entities in this space.
         let (visible_time_range_archetype, _) = crate::query_view_property::<
-            blueprint_archetypes::VisibleTimeRange,
-        >(self.id, blueprint, blueprint_query); // Don't need to query the entire archetype but doesn't cost much and is convenient.
+            blueprint_archetypes::VisibleTimeRanges,
+        >(self.id, blueprint, blueprint_query);
 
         let visible_time_range_archetype = visible_time_range_archetype.ok().flatten();
 
-        match active_timeline.typ() {
-            re_log_types::TimeType::Time => {
-                visible_time_range_archetype.map(|arch| arch.time.map(|s| s.0))
-            }
-            re_log_types::TimeType::Sequence => {
-                visible_time_range_archetype.map(|arch| arch.sequence.map(|s| s.0))
-            }
-        }
-        .flatten()
-        .map_or_else(
+        let time_range = visible_time_range_archetype
+            .as_ref()
+            .and_then(|arch| arch.range_for_timeline(active_timeline.name().as_str()));
+        time_range.map_or_else(
             || {
                 let space_view_class =
                     space_view_class_registry.get_class_or_log_error(&self.class_identifier);
                 space_view_class.default_query_range()
             },
-            QueryRange::TimeRange,
+            |time_range| QueryRange::TimeRange(time_range.clone()),
         )
     }
 }

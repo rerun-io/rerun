@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use arrow2::Either;
 use re_log_types::{
-    DataCellColumn, DataRow, DataTable, ErasedTimeVec, RowId, RowIdVec, TableId, TimeInt,
-    TimePoint, TimeRange, Timeline,
+    DataCellColumn, DataRow, DataTable, ErasedTimeVec, ResolvedTimeRange, RowId, RowIdVec, TableId,
+    TimeInt, TimePoint, Timeline,
 };
 
 use crate::{store::IndexedBucketInner, DataStore, IndexedBucket};
@@ -65,7 +65,7 @@ impl DataStore {
     /// corresponds 1-to-1 to an internal bucket.
     pub fn to_data_tables(
         &self,
-        time_filter: Option<(Timeline, TimeRange)>,
+        time_filter: Option<(Timeline, ResolvedTimeRange)>,
     ) -> impl Iterator<Item = DataTable> + '_ {
         let static_tables = self.dump_static_tables();
         let temporal = if let Some(time_filter) = time_filter {
@@ -141,7 +141,7 @@ impl DataStore {
 
     fn dump_temporal_tables_filtered(
         &self,
-        (timeline_filter, time_filter): (Timeline, TimeRange),
+        (timeline_filter, time_filter): (Timeline, ResolvedTimeRange),
     ) -> impl Iterator<Item = DataTable> + '_ {
         self.tables
             .values()
@@ -218,7 +218,7 @@ impl DataStore {
 fn filter_column<'a, T: 'a + Clone>(
     col_time: &'a ErasedTimeVec,
     column: impl Iterator<Item = &'a T> + 'a,
-    time_filter: TimeRange,
+    time_filter: ResolvedTimeRange,
 ) -> impl Iterator<Item = T> + 'a {
     col_time
         .iter()

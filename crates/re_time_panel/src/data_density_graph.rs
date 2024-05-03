@@ -10,7 +10,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
-use re_log_types::{ComponentPath, TimeRange, TimeReal};
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
 use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
 
 use crate::TimePanelItem;
@@ -390,10 +390,10 @@ pub fn data_density_graph_ui(
     let mut density_graph = DensityGraph::new(row_rect.x_range());
 
     let mut num_hovered_messages = 0;
-    let mut hovered_time_range = TimeRange::EMPTY;
+    let mut hovered_time_range = ResolvedTimeRange::EMPTY;
 
     {
-        let mut add_data_point = |time_range: TimeRange, count: usize| {
+        let mut add_data_point = |time_range: ResolvedTimeRange, count: usize| {
             if count == 0 {
                 return;
             }
@@ -455,7 +455,7 @@ pub fn data_density_graph_ui(
         re_tracing::profile_scope!("add_data_point");
         for (time_range, num_messages_at_time) in ranges {
             add_data_point(
-                TimeRange::new(time_range.min, time_range.max),
+                ResolvedTimeRange::new(time_range.min, time_range.max),
                 num_messages_at_time as _,
             );
         }
@@ -526,7 +526,7 @@ fn show_row_ids_tooltip(
     db: &re_entity_db::EntityDb,
     egui_ctx: &egui::Context,
     item: &TimePanelItem,
-    time_range: TimeRange,
+    time_range: ResolvedTimeRange,
     num_events: usize,
 ) {
     use re_data_ui::DataUi as _;

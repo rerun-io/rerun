@@ -1,6 +1,6 @@
 use arrow2::datatypes::{DataType, TimeUnit};
 
-use crate::{time::TimeZone, TimeRange, TimeType};
+use crate::{time::TimeZone, ResolvedTimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -97,7 +97,7 @@ impl Timeline {
     #[inline]
     pub fn format_time_range(
         &self,
-        time_range: &TimeRange,
+        time_range: &ResolvedTimeRange,
         time_zone_for_timestamps: TimeZone,
     ) -> String {
         format!(
@@ -109,7 +109,7 @@ impl Timeline {
 
     /// Returns a formatted string of `time_range` on this `Timeline`.
     #[inline]
-    pub fn format_time_range_utc(&self, time_range: &TimeRange) -> String {
+    pub fn format_time_range_utc(&self, time_range: &ResolvedTimeRange) -> String {
         self.format_time_range(time_range, TimeZone::Utc)
     }
 

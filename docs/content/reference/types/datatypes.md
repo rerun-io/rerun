@@ -32,6 +32,9 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`TensorData`](datatypes/tensor_data.md): A multi-dimensional `Tensor` of data.
 * [`TensorDimension`](datatypes/tensor_dimension.md): A single dimension within a multi-dimensional tensor.
 * [`TimeInt`](datatypes/time_int.md): A 64-bit number describing either nanoseconds OR sequence numbers.
+* [`TimeRange`](datatypes/time_range.md): Visible time range bounds for a specific timeline.
+* [`TimeRangeBoundary`](datatypes/time_range_boundary.md): Type of boundary for visible history.
+* [`TimeRangeBoundaryKind`](datatypes/time_range_boundary_kind.md): Kind of boundary for visible history, see `TimeRangeBoundary`.
 * [`Transform3D`](datatypes/transform3d.md): Representation of a 3D affine transform.
 * [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md): Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 * [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md): Representation of an affine transform via separate translation, rotation & scale.
@@ -45,7 +48,5 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.
 * [`Vec4D`](datatypes/vec4d.md): A vector in 4D space.
-* [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a timelines.
-* [`VisibleTimeRangeBoundary`](datatypes/visible_time_range_boundary.md): Type of boundary for visible history.
-* [`VisibleTimeRangeBoundaryKind`](datatypes/visible_time_range_boundary_kind.md): Kind of boundary for visible history, see `VisibleTimeRangeBoundary`.
+* [`VisibleTimeRange`](datatypes/visible_time_range.md): Visible time range bounds for a specific timeline.
 

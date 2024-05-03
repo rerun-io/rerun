@@ -22,37 +22,40 @@ __all__ = [
 ]
 
 
+def _visible_time_range__timeline__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
+    if isinstance(x, datatypes.Utf8):
+        return x
+    else:
+        return datatypes.Utf8(x)
+
+
 @define(init=False)
 class VisibleTimeRange:
-    """
-    **Datatype**: Visible time range bounds for a timelines.
+    """**Datatype**: Visible time range bounds for a specific timeline."""
 
-    This datatype does not specify whether it's a time or sequence based timeline.
-    """
-
-    def __init__(self: Any, start: datatypes.VisibleTimeRangeBoundaryLike, end: datatypes.VisibleTimeRangeBoundaryLike):
+    def __init__(self: Any, timeline: datatypes.Utf8Like, range: datatypes.TimeRangeLike):
         """
         Create a new instance of the VisibleTimeRange datatype.
 
         Parameters
         ----------
-        start:
-            Low time boundary for sequence timeline.
-        end:
-            High time boundary for sequence timeline.
+        timeline:
+            Name of the timeline this applies to.
+        range:
+            Time range to use for this timeline.
 
         """
 
         # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
-        self.__attrs_init__(start=start, end=end)
+        self.__attrs_init__(timeline=timeline, range=range)
 
-    start: datatypes.VisibleTimeRangeBoundary = field()
-    # Low time boundary for sequence timeline.
+    timeline: datatypes.Utf8 = field(converter=_visible_time_range__timeline__special_field_converter_override)
+    # Name of the timeline this applies to.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    end: datatypes.VisibleTimeRangeBoundary = field()
-    # High time boundary for sequence timeline.
+    range: datatypes.TimeRange = field()
+    # Time range to use for this timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -71,40 +74,48 @@ class VisibleTimeRangeType(BaseExtensionType):
         pa.ExtensionType.__init__(
             self,
             pa.struct([
+                pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
                 pa.field(
-                    "start",
+                    "range",
                     pa.struct([
                         pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+                            "start",
+                            pa.struct([
+                                pa.field(
+                                    "kind",
+                                    pa.sparse_union([
+                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
+                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
+                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+                                    ]),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field("time", pa.int64(), nullable=False, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},
                         ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "end",
-                    pa.struct([
                         pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+                            "end",
+                            pa.struct([
+                                pa.field(
+                                    "kind",
+                                    pa.sparse_union([
+                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
+                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
+                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+                                    ]),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field("time", pa.int64(), nullable=False, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},
                         ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},
@@ -119,15 +130,15 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: VisibleTimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import VisibleTimeRangeBoundaryBatch
+        from rerun.datatypes import TimeRangeBatch, Utf8Batch
 
         if isinstance(data, VisibleTimeRange):
             data = [data]
 
         return pa.StructArray.from_arrays(
             [
-                VisibleTimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array().storage,
-                VisibleTimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array().storage,
+                Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,
+                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,
             ],
             fields=list(data_type),
         )

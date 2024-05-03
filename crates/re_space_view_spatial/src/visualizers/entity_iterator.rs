@@ -53,7 +53,10 @@ pub fn query_archetype_with_history<A: Archetype>(
         QueryRange::TimeRange(time_range) => {
             let range_query = RangeQuery::new(
                 *timeline,
-                re_log_types::TimeRange::from_visible_time_range(time_range, timeline_cursor),
+                re_log_types::ResolvedTimeRange::from_relative_time_range(
+                    time_range,
+                    timeline_cursor,
+                ),
             );
             let results = caches.range(
                 store,

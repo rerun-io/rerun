@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use egui::{lerp, pos2, remap_clamp, Align2, Color32, Rect, Rgba, Shape, Stroke};
 
 use re_format::next_grid_tick_magnitude_ns;
-use re_log_types::{Time, TimeRangeF, TimeReal, TimeType, TimeZone};
+use re_log_types::{ResolvedTimeRangeF, Time, TimeReal, TimeType, TimeZone};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -35,12 +35,12 @@ pub fn paint_time_ranges_and_ticks(
         let left_t = egui::emath::inverse_lerp(x_range.clone(), clip_left).unwrap_or(0.5);
         if 0.0 < left_t && left_t < 1.0 {
             x_range = clip_left..=*x_range.end();
-            time_range = TimeRangeF::new(time_range.lerp(left_t), time_range.max);
+            time_range = ResolvedTimeRangeF::new(time_range.lerp(left_t), time_range.max);
         }
         let right_t = egui::emath::inverse_lerp(x_range.clone(), clip_right).unwrap_or(0.5);
         if 0.0 < right_t && right_t < 1.0 {
             x_range = *x_range.start()..=clip_right;
-            time_range = TimeRangeF::new(time_range.min, time_range.lerp(right_t));
+            time_range = ResolvedTimeRangeF::new(time_range.min, time_range.lerp(right_t));
         }
 
         let x_range = (*x_range.start() as f32)..=(*x_range.end() as f32);
@@ -61,7 +61,7 @@ fn paint_time_range_ticks(
     ui: &egui::Ui,
     rect: &Rect,
     time_type: TimeType,
-    time_range: &TimeRangeF,
+    time_range: &ResolvedTimeRangeF,
     time_zone_for_timestamps: TimeZone,
 ) -> Vec<Shape> {
     let font_id = egui::TextStyle::Small.resolve(ui.style());
@@ -105,7 +105,7 @@ fn paint_ticks(
     font_id: &egui::FontId,
     canvas: &Rect,
     clip_rect: &Rect,
-    time_range: &TimeRangeF,
+    time_range: &ResolvedTimeRangeF,
     next_time_step: fn(i64) -> i64,
     format_tick: impl Fn(i64) -> String,
 ) -> Vec<egui::Shape> {

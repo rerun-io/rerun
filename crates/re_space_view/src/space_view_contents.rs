@@ -10,10 +10,7 @@ use re_log_types::{
     path::RuleEffect, EntityPath, EntityPathFilter, EntityPathRule, EntityPathSubs, Timeline,
 };
 use re_types::{
-    blueprint::{
-        archetypes as blueprint_archetypes, components as blueprint_components,
-        components::QueryExpression,
-    },
+    blueprint::{archetypes as blueprint_archetypes, components::QueryExpression},
     Archetype as _, SpaceViewClassIdentifier,
 };
 use re_types_core::{components::VisualizerOverrides, ComponentName};
@@ -559,23 +556,19 @@ impl DataQueryPropertyResolver<'_> {
             }
 
             // Figure out relevant visual time range.
-            let visual_time_range_overrides = match active_timeline.typ() {
-                re_log_types::TimeType::Time => blueprint
-                    .latest_at_component_quiet::<blueprint_components::VisibleTimeRangeTime>(
-                        &recursive_override_path,
-                        blueprint_query,
-                    )
-                    .map(|result| result.value.0),
-                re_log_types::TimeType::Sequence => blueprint
-                    .latest_at_component_quiet::<blueprint_components::VisibleTimeRangeSequence>(
-                        &recursive_override_path,
-                        blueprint_query,
-                    )
-                    .map(|result| result.value.0),
-            };
-            let query_range = visual_time_range_overrides.map_or_else(
+            let visible_time_range_archetype = blueprint
+                .latest_at_archetype::<blueprint_archetypes::VisibleTimeRanges>(
+                    &recursive_override_path,
+                    blueprint_query,
+                )
+                .ok()
+                .flatten();
+            let time_range = visible_time_range_archetype
+                .as_ref()
+                .and_then(|(_, arch)| arch.range_for_timeline(active_timeline.name().as_str()));
+            let query_range = time_range.map_or_else(
                 || override_context.default_query_range.clone(),
-                QueryRange::TimeRange,
+                |time_range| QueryRange::TimeRange(time_range.clone()),
             );
 
             node.data_result.property_overrides = Some(PropertyOverrides {

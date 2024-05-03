@@ -3,7 +3,7 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 
 use re_data_store::{DataStore, RangeQuery, TimeInt};
-use re_log_types::{EntityPath, TimeRange};
+use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::ComponentName;
 use re_types_core::SizeBytes;
 
@@ -119,7 +119,7 @@ impl std::fmt::Debug for RangeCache {
             cache_key
                 .timeline
                 .typ()
-                .format_range_utc(TimeRange::new(data_time_min, data_time_max)),
+                .format_range_utc(ResolvedTimeRange::new(data_time_min, data_time_max)),
             re_format::format_bytes(per_data_time.total_size_bytes() as _),
         ));
 

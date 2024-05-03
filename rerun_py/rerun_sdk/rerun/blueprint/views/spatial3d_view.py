@@ -60,7 +60,7 @@ class Spatial3DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        time_range: blueprint_archetypes.VisibleTimeRange | None = None,
+        time_ranges: blueprint_archetypes.VisibleTimeRanges | None = None,
     ) -> None:
         """
         Construct a blueprint for a new Spatial3DView view.
@@ -82,8 +82,8 @@ class Spatial3DView(SpaceView):
             Defaults to true if not specified.
         background:
             Configuration for the background of the space view.
-        time_range:
-            Configures the range on the timeline shown by this view (unless specified differently per entity).
+        time_ranges:
+            Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
         """
 
@@ -93,10 +93,10 @@ class Spatial3DView(SpaceView):
                 background = blueprint_archetypes.Background(background)
             properties["Background"] = background
 
-        if time_range is not None:
-            if not isinstance(time_range, blueprint_archetypes.VisibleTimeRange):
-                time_range = blueprint_archetypes.VisibleTimeRange(time_range)
-            properties["VisibleTimeRange"] = time_range
+        if time_ranges is not None:
+            if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):
+                time_ranges = blueprint_archetypes.VisibleTimeRanges(time_ranges)
+            properties["VisibleTimeRanges"] = time_ranges
 
         super().__init__(
             class_identifier="3D", origin=origin, contents=contents, name=name, visible=visible, properties=properties
