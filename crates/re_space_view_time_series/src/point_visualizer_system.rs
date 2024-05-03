@@ -181,6 +181,17 @@ impl SeriesPointSystem {
                     })
                     .collect_vec();
 
+                if cfg!(debug_assertions) {
+                    for ps in points.windows(2) {
+                        assert!(
+                            ps[0].time <= ps[1].time,
+                            "scalars should be sorted already when extracted from the cache, got p0 at {} and p1 at {}\n{:?}",
+                            ps[0].time, ps[1].time,
+                            points.iter().map(|p| p.time).collect_vec(),
+                        );
+                    }
+                }
+
                 // Fill in values.
                 for (i, scalars) in all_scalars
                     .range_data(all_scalars_entry_range.clone())
