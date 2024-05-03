@@ -4,7 +4,31 @@ use once_cell::sync::Lazy;
 
 use re_log_types::{ArrowMsg, DataRow, EntityPath, LogMsg, TimePoint};
 
-// ---
+// ----------------------------------------------------------------------------
+
+mod load_file;
+mod loader_archetype;
+mod loader_directory;
+mod loader_rrd;
+
+#[cfg(not(target_arch = "wasm32"))]
+mod loader_external;
+
+pub use self::{
+    load_file::load_from_file_contents, loader_archetype::ArchetypeLoader,
+    loader_directory::DirectoryLoader, loader_rrd::RrdLoader,
+};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::{
+    load_file::load_from_path,
+    loader_external::{
+        iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
+        EXTERNAL_DATA_LOADER_PREFIX,
+    },
+};
+
+// ----------------------------------------------------------------------------
 
 /// Recommended settings for the [`DataLoader`].
 ///
@@ -340,7 +364,7 @@ impl LoadedData {
     }
 }
 
-// ---
+// ----------------------------------------------------------------------------
 
 /// Keeps track of all builtin [`DataLoader`]s.
 ///
@@ -379,21 +403,52 @@ pub fn register_custom_data_loader(loader: impl DataLoader + 'static) {
     CUSTOM_LOADERS.write().push(Arc::new(loader));
 }
 
-// ---
+// ----------------------------------------------------------------------------
 
-mod loader_archetype;
-mod loader_directory;
-mod loader_rrd;
+/// Empty string if no extension.
+#[inline]
+pub(crate) fn extension(path: &std::path::Path) -> String {
+    path.extension()
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+        .to_string_lossy()
+        .to_string()
+}
 
-#[cfg(not(target_arch = "wasm32"))]
-mod loader_external;
+// ----------------------------------------------------------------------------
 
-pub use self::loader_archetype::ArchetypeLoader;
-pub use self::loader_directory::DirectoryLoader;
-pub use self::loader_rrd::RrdLoader;
+// …given that all feature flags are turned on for the `image` crate.
+pub const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &[
+    "avif", "bmp", "dds", "exr", "farbfeld", "ff", "gif", "hdr", "ico", "jpeg", "jpg", "pam",
+    "pbm", "pgm", "png", "ppm", "tga", "tif", "tiff", "webp",
+];
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::loader_external::{
-    iter_external_loaders, ExternalLoader, EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE,
-    EXTERNAL_DATA_LOADER_PREFIX,
-};
+pub const SUPPORTED_MESH_EXTENSIONS: &[&str] = &["glb", "gltf", "obj", "stl"];
+
+// TODO(#4532): `.ply` data loader should support 2D point cloud & meshes
+pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
+
+pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
+
+// TODO(#4555): Add catch-all builtin `DataLoader` for text files
+pub const SUPPORTED_TEXT_EXTENSIONS: &[&str] = &["txt", "md"];
+
+/// All file extension supported by our builtin [`DataLoader`]s.
+pub fn supported_extensions() -> impl Iterator<Item = &'static str> {
+    SUPPORTED_RERUN_EXTENSIONS
+        .iter()
+        .chain(SUPPORTED_IMAGE_EXTENSIONS)
+        .chain(SUPPORTED_MESH_EXTENSIONS)
+        .chain(SUPPORTED_POINT_CLOUD_EXTENSIONS)
+        .chain(SUPPORTED_TEXT_EXTENSIONS)
+        .copied()
+}
+
+/// Is this a supported file extension by any of our builtin [`DataLoader`]s?
+pub fn is_supported_file_extension(extension: &str) -> bool {
+    SUPPORTED_IMAGE_EXTENSIONS.contains(&extension)
+        || SUPPORTED_MESH_EXTENSIONS.contains(&extension)
+        || SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension)
+        || SUPPORTED_RERUN_EXTENSIONS.contains(&extension)
+        || SUPPORTED_TEXT_EXTENSIONS.contains(&extension)
+}
