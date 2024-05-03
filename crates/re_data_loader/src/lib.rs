@@ -1,3 +1,5 @@
+//! Handles loading of Rerun data from file using data loader plugins.
+
 use std::sync::Arc;
 
 use once_cell::sync::Lazy;
