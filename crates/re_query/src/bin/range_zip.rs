@@ -311,12 +311,8 @@ fn generate_struct(params: &Params) -> String {
 ///             o1_data_latest,
 ///         } = self;
 ///
-///         let Some((r0_index, r0_data)) = r0.next() else {
-///             return None;
-///         };
-///         let Some((r1_index, r1_data)) = r1.next() else {
-///             return None;
-///         };
+///         let (r0_index, r0_data) = r0.next()?;
+///         let (r1_index, r1_data) = r1.next()?;
 ///
 ///         let max_index = [r0_index, r1_index].into_iter().max().unwrap();
 ///
@@ -325,14 +321,14 @@ fn generate_struct(params: &Params) -> String {
 ///             o0_data = Some(data);
 ///         }
 ///         let o0_data = o0_data.or(o0_data_latest.take());
-///         *o0_data_latest = o0_data.clone();
+///         o0_data_latest.clone_from(&o0_data);
 ///
 ///         let mut o1_data = None;
 ///         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
 ///             o1_data = Some(data);
 ///         }
 ///         let o1_data = o1_data.or(o1_data_latest.take());
-///         *o1_data_latest = o1_data.clone();
+///         o1_data_latest.clone_from(&o1_data);
 ///
 ///         Some((max_index, r0_data, r1_data, o0_data, o1_data))
 ///     }
@@ -409,7 +405,7 @@ fn generate_impl(params: &Params) -> String {
     let next_required = params
         .to_required_names()
         .into_iter()
-        .map(|r| format!("let Some(({r}_index, {r}_data)) = {r}.next() else {{ return None; }};"))
+        .map(|r| format!("let ({r}_index, {r}_data) = {r}.next()?;"))
         .collect_vec()
         .join("\n");
 
@@ -424,7 +420,7 @@ fn generate_impl(params: &Params) -> String {
                     {o}_data = Some(data);
                 }}
                 let {o}_data = {o}_data.or({o}_data_latest.take());
-                *{o}_data_latest = {o}_data.clone();
+                {o}_data_latest.clone_from(&{o}_data);
                 "
             )
         })
@@ -486,7 +482,7 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p crate --all-features --bin range_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin range_zip`.
         // DO NOT EDIT.
 
         // ---

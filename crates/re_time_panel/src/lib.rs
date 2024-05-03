@@ -1228,7 +1228,7 @@ fn paint_time_ranges_gaps(
         }
 
         // Regular & shadow mesh have the same topology!
-        shadow_mesh.indices = mesh.indices.clone();
+        shadow_mesh.indices.clone_from(&mesh.indices);
 
         painter.add(Shape::Mesh(mesh));
         painter.add(Shape::Mesh(shadow_mesh));
