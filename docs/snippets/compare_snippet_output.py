@@ -40,6 +40,8 @@ class Example:
     def opt_out_compare(self) -> list[str]:
         if self.subdir not in OPT_OUT_COMPARE:
             return []
+        if isinstance(OPT_OUT_COMPARE[self.subdir], tomlkit.items.Array):
+            return OPT_OUT_COMPARE[self.subdir]
         return OPT_OUT_COMPARE[self.subdir].get(self.name, [])
 
     def extra_args(self) -> list[str]:
@@ -123,11 +125,13 @@ def main() -> None:
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
 
+    examples = []
     if len(args.example) > 0:
-        examples = args.example
+        for example in args.example:
+            parts = example.split("/")
+            examples.append(Example("/".join(parts[0:-1]), parts[-1]))
     else:
         dir = os.path.join(os.path.dirname(__file__), "all")
-        examples = []
         for subdir in [os.path.join(dir, subdir) for subdir in os.listdir(dir)]:
             if not os.path.isdir(subdir):
                 continue
