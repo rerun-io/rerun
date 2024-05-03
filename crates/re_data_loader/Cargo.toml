@@ -1,7 +1,7 @@
 [package]
-name = "re_data_source"
+name = "re_data_loader"
 authors.workspace = true
-description = "Handles loading of Rerun data"
+description = "Handles loading of Rerun data from file using data loader plugins"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -24,20 +24,21 @@ default = []
 
 
 [dependencies]
-re_data_loader.workspace = true
-re_log_encoding = { workspace = true, features = [
-  "decoder",
-  "stream_from_http",
-] }
+re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
-re_ws_comms = { workspace = true, features = ["client"] }
+re_types = { workspace = true, features = ["image"] }
 
+ahash.workspace = true
 anyhow.workspace = true
-itertools.workspace = true
+image.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
 rayon.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

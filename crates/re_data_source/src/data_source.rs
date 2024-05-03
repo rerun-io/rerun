@@ -66,7 +66,7 @@ impl DataSource {
                 true // No dots. Weird. Let's assume it is a file path.
             } else if parts.len() == 2 {
                 // Extension or `.com` etc?
-                crate::is_supported_file_extension(parts[1])
+                re_data_loader::is_supported_file_extension(parts[1])
             } else {
                 false // Too many dots; assume an url
             }
@@ -156,8 +156,8 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
-                crate::load_from_path(&settings, file_source, &path, &tx)
+                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
                 if let Some(on_msg) = on_msg {
@@ -180,8 +180,8 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = crate::DataLoaderSettings::recommended(shared_store_id);
-                crate::load_from_file_contents(
+                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                re_data_loader::load_from_file_contents(
                     &settings,
                     file_source,
                     &std::path::PathBuf::from(file_contents.name),

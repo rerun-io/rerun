@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/b5d47defe239a5e495c7633c0ed4a924727d5588/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/b5d47defe239a5e495c7633c0ed4a924727d5588/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/b5d47defe239a5e495c7633c0ed4a924727d5588/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/b5d47defe239a5e495c7633c0ed4a924727d5588/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/b5d47defe239a5e495c7633c0ed4a924727d5588/1200w.png">
+  <img src="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/f0024a424aa35efab710ae88ba6a1ed741e7c248/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -171,7 +171,8 @@ Update instructions:
 | re_sdk_comms         | TCP communication between Rerun SDK and Rerun Server                                                   |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
 | re_ws_comms          | WebSocket communication library (encoding, decoding, client, server) between a Rerun server and viewer |
-| re_data_source       | Handles loading of Rerun data                                                                          |
+| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
+| re_data_source       | Handles loading of Rerun data from different sources                                                   |
 
 
 ### Build support

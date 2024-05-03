@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{DataLoaderError, LoadedData};
+use crate::{extension, DataLoaderError, LoadedData};
 
 // ---
 
@@ -87,16 +87,6 @@ pub fn load_from_file_contents(
 }
 
 // ---
-
-/// Empty string if no extension.
-#[inline]
-pub fn extension(path: &std::path::Path) -> String {
-    path.extension()
-        .unwrap_or_default()
-        .to_ascii_lowercase()
-        .to_string_lossy()
-        .to_string()
-}
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
