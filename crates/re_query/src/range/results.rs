@@ -566,6 +566,24 @@ impl RangeComponentResults {
             }
         };
 
+        // # Reentrancy edge-case
+        //
+        // If we are in the reentrancy case, and if it's the first time this cache is used at all, and if
+        // the previous stack-frame that was holding the lock finally decided to release it without
+        // actually caching anything, then the deserialization cache still won't be initialized.
+        //
+        // Just leave it be for now, it'll fix itself by next frame.
+        if results.cached_dense.is_none() {
+            return RangeData {
+                indices: None,
+                data: None,
+                time_range: TimeRange::EMPTY,
+                front_status: PromiseResult::Ready(()),
+                back_status: PromiseResult::Ready(()),
+                reentering: &REENTERING,
+            };
+        }
+
         // TODO(Amanieu/parking_lot#289): we need two distinct mapped guards because it's
         // impossible to return an owned type in a `parking_lot` guard.
         // See <https://github.com/Amanieu/parking_lot/issues/289#issuecomment-1827545967>.
