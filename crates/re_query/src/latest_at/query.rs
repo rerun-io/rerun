@@ -216,7 +216,6 @@ impl LatestAtCache {
             std::collections::btree_map::Entry::Occupied(entry) => {
                 // Fastest path: we have an entry for this exact query time, no need to look any
                 // further.
-                re_log::trace!(query_time=?query.at(), "cache hit (query time)");
                 return Some(Arc::clone(entry.get()));
             }
             std::collections::btree_map::Entry::Vacant(entry) => entry,
@@ -229,8 +228,6 @@ impl LatestAtCache {
             // Fast path: we've run the query and realized that we already have the data for the resulting
             // _data_ time, so let's use that to avoid join & deserialization costs.
             if let Some(data_time_bucket_at_data_time) = per_data_time.get(&data_time) {
-                re_log::trace!(query_time=?query.at(), ?data_time, "cache hit (data time)");
-
                 query_time_bucket_at_query_time.insert(Arc::clone(data_time_bucket_at_data_time));
 
                 // We now know for a fact that a query at that data time would yield the same
@@ -260,8 +257,6 @@ impl LatestAtCache {
 
             // Slowest path: this is a complete cache miss.
             {
-                re_log::trace!(query_time=?query.at(), ?data_time, "cache miss");
-
                 let query_time_bucket_at_query_time =
                     query_time_bucket_at_query_time.insert(Arc::clone(&bucket));
 
