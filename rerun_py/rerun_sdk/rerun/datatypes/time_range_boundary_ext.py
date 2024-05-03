@@ -18,7 +18,7 @@ class TimeRangeBoundaryExt:
         return TimeRangeBoundary(inner=time, kind="cursor_relative")
 
     @staticmethod
-    def infinite(time: datatypes.TimeIntLike = 0) -> TimeRangeBoundary:
+    def infinite() -> TimeRangeBoundary:
         from .time_range_boundary import TimeRangeBoundary
 
         return TimeRangeBoundary(inner=None, kind="infinite")
