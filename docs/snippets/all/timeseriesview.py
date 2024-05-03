@@ -25,23 +25,23 @@ blueprint = rrb.Blueprint(
         # Set a custom Y axis.
         axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), lock_range_during_zoom=True),
         # Configure the legend.
-        plot_legend=rrb.Corner2D.RightTop,
+        plot_legend=rrb.PlotLegend(visible=False),
         # Set time different time ranges for different timelines.
         time_ranges=[
-            # Sliding window depending on the time cursor
+            # Sliding window depending on the time cursor for the first timeline.
             rrb.VisibleTimeRange(
                 "timeline0",
-                range=rr.TimeRange(
-                    start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, -100),
-                    end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 0),
+                rr.TimeRange(
+                    start=rr.TimeRangeBoundary.cursor_relative(-100),
+                    end=rr.TimeRangeBoundary.cursor_relative(),
                 ),
             ),
-            # Time range from some point to the end of the timeline.
+            # Time range from some point to the end of the timeline for the second timeline.
             rrb.VisibleTimeRange(
                 "timeline1",
-                range=rr.TimeRange(
-                    start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Absolute, 100),
-                    end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 200),
+                rr.TimeRange(
+                    start=rr.TimeRangeBoundary.absolute(300),
+                    end=rr.TimeRangeBoundary.infinite(),
                 ),
             ),
         ],
