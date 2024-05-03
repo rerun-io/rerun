@@ -60,7 +60,7 @@ impl Caches {
             //          query #2     \_______/
             //                       query #3
             //
-            // and coarsly invalidates the whole range in that case, to avoid the kind of bugs
+            // and coarsly invalidates the whole cache in that case, to avoid the kind of bugs
             // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
             {
                 let time_range = cache.per_data_time.read_recursive().time_range();
@@ -76,7 +76,7 @@ impl Caches {
                                 component_name,
                                 &[component_name],
                             ) {
-                                if data_time != hole_start {
+                                if data_time > hole_start {
                                     re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
                                     cache.pending_invalidation = Some(TimeInt::MIN);
                                 }
@@ -95,7 +95,7 @@ impl Caches {
                                 component_name,
                                 &[component_name],
                             ) {
-                                if data_time != hole_start {
+                                if data_time > hole_start {
                                     re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
                                     cache.pending_invalidation = Some(TimeInt::MIN);
                                 }
