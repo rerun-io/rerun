@@ -6,6 +6,35 @@ use egui::NumExt;
 /// stored in this structure (via [`LayoutInfo`] methods). Then, it is saved in egui temporary memory
 /// against the scope id. On frame `n+1`, the accumulated values are used by [`list_item_scope`] to
 /// set up the [`LayoutInfo`] and the accumulator is reset to restart the process.
+///
+/// Here is an illustration of the layout statistics that are gathered:
+/// ```text
+/// │◀─────────────────────background_x_range───────────────────▶│
+/// │                                                            │
+/// │  ┌──left_x                                                 │
+/// │  ▼                                                         │
+/// │  │                       │                        │        │
+/// │  ┌───────────────────────────────────────────┐             │
+/// │  │                       │                   │    │        │
+/// │  └───┬────────────────────────────────────┬──┘             │
+/// │  │ ▼ │                   │                │       │        │
+/// │      └───┬─────────────────────────┬──────┘                │
+/// │  │       │               │         │              │        │
+/// │          ├─────────────────────────┴────┐                  │
+/// │  │     ▼ │               │              │         │        │
+/// │          └───┬──────────────────────────┴─────────┐        │
+/// │  │           │           │                        │        │
+/// │              ├─────────────────────┬──────────────┘        │
+/// │  │         ▶ │           │         │              │        │
+/// │  ┌───────────┴─────────────────────┴──┐                    │
+/// │  │                       │            │           │        │
+/// │  └────────────────────────────────────┘                    │
+/// │  │                       │                        │        │
+/// │                                                            │
+/// │  │◀──────────────────────▶ max_desired_left_column_width   │
+/// │                                                            │
+/// │  │◀───────────────max_item_width─────────────────▶│        │
+/// ```
 #[derive(Debug, Clone)]
 struct LayoutStatistics {
     /// Maximum desired column width.
@@ -17,6 +46,11 @@ struct LayoutStatistics {
     ///
     /// If so, space for a right-aligned gutter should be reserved.
     is_action_button_used: bool,
+
+    /// Max item width.
+    ///
+    /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
+    max_item_width: f32,
 }
 
 impl Default for LayoutStatistics {
@@ -25,6 +59,7 @@ impl Default for LayoutStatistics {
         Self {
             max_desired_left_column_width: f32::NEG_INFINITY,
             is_action_button_used: false,
+            max_item_width: f32::NEG_INFINITY,
         }
     }
 }
@@ -117,11 +152,7 @@ impl LayoutInfo {
     ///
     /// All [`super::ListItemContent`] implementation that attempt to align on the two-column system should
     /// call this function once in their [`super::ListItemContent::ui`] method.
-    pub(crate) fn register_desired_left_column_width(
-        &self,
-        ctx: &egui::Context,
-        desired_width: f32,
-    ) {
+    pub fn register_desired_left_column_width(&self, ctx: &egui::Context, desired_width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
             stats.max_desired_left_column_width =
                 stats.max_desired_left_column_width.max(desired_width);
@@ -129,9 +160,18 @@ impl LayoutInfo {
     }
 
     /// Indicate whether right-aligned space should be reserved for the action button.
-    pub(crate) fn reserve_action_button_space(&self, ctx: &egui::Context, reserve: bool) {
+    pub fn reserve_action_button_space(&self, ctx: &egui::Context, reserve: bool) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
             stats.is_action_button_used |= reserve;
+        });
+    }
+
+    /// Register the maximum width of the item.
+    ///
+    /// Should only be set by [`super::ListItem`].
+    pub(crate) fn register_max_item_width(&self, ctx: &egui::Context, width: f32) {
+        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+            stats.max_item_width = stats.max_item_width.max(width);
         });
     }
 }
@@ -232,7 +272,7 @@ pub fn list_item_scope<R>(
             // from real-world usage.
             layout_stats
                 .max_desired_left_column_width
-                .at_most(0.7 * ui.max_rect().width()),
+                .at_most(0.7 * layout_stats.max_item_width),
         )
     } else {
         None

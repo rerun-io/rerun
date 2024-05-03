@@ -243,6 +243,9 @@ impl<'a> ListItem<'a> {
         bg_rect.set_left(layout_info.background_x_range.min);
         bg_rect.set_right(layout_info.background_x_range.max);
 
+        // Record the max allocated width.
+        layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
+
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…
         let mut response = ui.interact(bg_rect, allocated_id, sense);

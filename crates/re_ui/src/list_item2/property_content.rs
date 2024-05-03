@@ -1,8 +1,7 @@
-use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent};
+use egui::{text::TextWrapping, Align, Align2, NumExt as _, Ui};
+
+use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, ReUi};
-use eframe::emath::{Align, Align2};
-use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, Ui};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a;
@@ -20,6 +19,7 @@ struct PropertyActionButton<'a> {
 /// value (which may be editable).
 pub struct PropertyContent<'a> {
     label: egui::WidgetText,
+    min_desired_width: f32,
     icon_fn: Option<Box<IconFn<'a>>>,
     show_only_when_collapsed: bool,
     value_fn: Option<Box<PropertyValueFn<'a>>>,
@@ -36,11 +36,22 @@ impl<'a> PropertyContent<'a> {
     pub fn new(label: impl Into<egui::WidgetText>) -> Self {
         Self {
             label: label.into(),
+            min_desired_width: 200.0,
             icon_fn: None,
             show_only_when_collapsed: true,
             value_fn: None,
             action_buttons: None,
         }
+    }
+
+    /// Set the minimum desired width for the entire content.
+    ///
+    /// Since there is no possibly way to meaningfully collapse two to three columns worth of
+    /// content, this is set to 200.0 by default.
+    #[inline]
+    pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
+        self.min_desired_width = min_desired_width;
+        self
     }
 
     /// Provide an [`Icon`] to be displayed on the left of the label.
@@ -134,7 +145,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_text(self, text: impl Into<egui::WidgetText> + 'a) -> Self {
         self.value_fn(move |_, ui, _| {
-            ui.label(text.into());
+            ui.add(egui::Label::new(text.into()).truncate(true));
         })
     }
 
@@ -172,6 +183,7 @@ impl ListItemContent for PropertyContent<'_> {
     fn ui(self: Box<Self>, re_ui: &ReUi, ui: &mut Ui, context: &ContentContext<'_>) {
         let Self {
             label,
+            min_desired_width: _,
             icon_fn,
             show_only_when_collapsed,
             value_fn,
@@ -192,7 +204,7 @@ impl ListItemContent for PropertyContent<'_> {
         // │                       │        │ │             │││             │ │         │ │
         // │ └ ─ ─ ─ ─ ┴ ─ ─ ─ ─ ┴ ┴────────┴─┴─────────────┴─┴─────────────┴─┴─────────┘ │
         // │ ▲                     ▲         ▲               │               ▲            │
-        // │ └──layout_info.left   │         └───────────────────────────────┤            │
+        // │ └──layout_info.left_x │         └───────────────────────────────┤            │
         // │                       │                         ▲               │            │
         // │       content_left_x──┘           mid_point_x───┘    text_to_icon_padding()  │
         // │                                                                              │
@@ -325,7 +337,6 @@ impl ListItemContent for PropertyContent<'_> {
     }
 
     fn desired_width(&self, _re_ui: &ReUi, _ui: &Ui) -> DesiredWidth {
-        // really no point having a two-column widget collapsed to 0 width
-        super::DesiredWidth::AtLeast(200.0)
+        DesiredWidth::AtLeast(self.min_desired_width)
     }
 }
