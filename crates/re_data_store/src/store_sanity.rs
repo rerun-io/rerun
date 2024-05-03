@@ -1,4 +1,4 @@
-use re_log_types::{AbsoluteTimeRange, RowId, TimeInt, VecDequeSortingExt as _};
+use re_log_types::{ResolvedTimeRange, RowId, TimeInt, VecDequeSortingExt as _};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable};
@@ -14,8 +14,8 @@ pub enum SanityError {
         "Reported time range for indexed bucket is out of sync: got {got:?}, expected {expected:?}"
     )]
     TimeRangeOutOfSync {
-        expected: AbsoluteTimeRange,
-        got: AbsoluteTimeRange,
+        expected: ResolvedTimeRange,
+        got: ResolvedTimeRange,
     },
 
     #[error(
@@ -174,7 +174,7 @@ impl IndexedBucket {
                     .copied()
                     .and_then(|t| TimeInt::try_from(t).ok())
                     .unwrap_or(TimeInt::MIN);
-                let expected_time_range = AbsoluteTimeRange::new(expected_min, expected_max);
+                let expected_time_range = ResolvedTimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {
                     return Err(SanityError::TimeRangeOutOfSync {

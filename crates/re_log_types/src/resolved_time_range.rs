@@ -6,12 +6,12 @@ use crate::{NonMinI64, TimeInt, TimeReal};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct AbsoluteTimeRange {
+pub struct ResolvedTimeRange {
     min: TimeInt,
     max: TimeInt,
 }
 
-impl AbsoluteTimeRange {
+impl ResolvedTimeRange {
     /// Contains no time at all.
     pub const EMPTY: Self = Self {
         min: TimeInt::MAX,
@@ -119,7 +119,7 @@ impl AbsoluteTimeRange {
     }
 }
 
-impl re_types_core::SizeBytes for AbsoluteTimeRange {
+impl re_types_core::SizeBytes for ResolvedTimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0
@@ -198,8 +198,8 @@ impl From<&TimeRangeF> for RangeInclusive<TimeReal> {
     }
 }
 
-impl From<AbsoluteTimeRange> for TimeRangeF {
-    fn from(range: AbsoluteTimeRange) -> Self {
+impl From<ResolvedTimeRange> for TimeRangeF {
+    fn from(range: ResolvedTimeRange) -> Self {
         Self::new(range.min, range.max)
     }
 }

@@ -1,4 +1,4 @@
-use re_log_types::{AbsoluteTimeRange, EntityPath};
+use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types::datatypes::{TimeRange, TimeRangeBoundary, Utf8};
 use re_viewer_context::{external::re_entity_db::TimeSeriesAggregator, ViewQuery, ViewerContext};
 
@@ -32,7 +32,7 @@ pub fn determine_time_range(
     data_result: &re_viewer_context::DataResult,
     plot_bounds: Option<egui_plot::PlotBounds>,
     enable_query_clamping: bool,
-) -> AbsoluteTimeRange {
+) -> ResolvedTimeRange {
     let query_range = data_result.query_range();
 
     // Latest-at doesn't make sense for time series and should also never happen.
@@ -51,7 +51,7 @@ pub fn determine_time_range(
     };
 
     let mut time_range =
-        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
+        ResolvedTimeRange::from_relative_time_range(&visible_time_range, time_cursor);
 
     // TODO(cmc): We would love to reduce the query to match the actual plot bounds, but because
     // the plot widget handles zoom after we provide it with data for the current frame,

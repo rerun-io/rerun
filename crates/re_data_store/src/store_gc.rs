@@ -4,7 +4,7 @@ use ahash::{HashMap, HashSet};
 use web_time::Instant;
 
 use re_log_types::{
-    AbsoluteTimeRange, DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, Timeline,
+    DataCell, EntityPath, EntityPathHash, ResolvedTimeRange, RowId, TimeInt, TimePoint, Timeline,
     VecDequeRemovalExt as _,
 };
 use re_types_core::{ComponentName, SizeBytes as _};
@@ -683,7 +683,7 @@ impl IndexedBucketInner {
             // Update the time_range min/max:
             if col_time.len() == 1 {
                 // We removed the last row
-                *time_range = AbsoluteTimeRange::EMPTY;
+                *time_range = ResolvedTimeRange::EMPTY;
             } else {
                 *is_sorted = row_index == 0 || row_index.saturating_add(1) == col_row_id.len();
 

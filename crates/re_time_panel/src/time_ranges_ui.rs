@@ -10,7 +10,7 @@ use egui::emath::Rangef;
 use egui::{lerp, remap, NumExt};
 use itertools::Itertools as _;
 
-use re_log_types::{AbsoluteTimeRange, TimeInt, TimeRangeF, TimeReal};
+use re_log_types::{ResolvedTimeRange, TimeInt, TimeRangeF, TimeReal};
 use re_viewer_context::{PlayState, TimeControl, TimeView};
 
 /// The ideal gap between time segments.
@@ -24,7 +24,7 @@ const MAX_GAP: f64 = 40.0;
 const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
 /// Sze of the gap between time segments.
-pub fn gap_width(x_range: &Rangef, segments: &[AbsoluteTimeRange]) -> f64 {
+pub fn gap_width(x_range: &Rangef, segments: &[ResolvedTimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
     if num_gaps == 0 {
         // gap width doesn't matter when there are no gaps
@@ -49,7 +49,7 @@ pub struct Segment {
     pub time: TimeRangeF,
 
     /// Does NOT match any of the above. Instead this is a tight bound.
-    pub tight_time: AbsoluteTimeRange,
+    pub tight_time: ResolvedTimeRange,
 }
 
 /// Represents a compressed view of time.
@@ -93,7 +93,7 @@ impl Default for TimeRangesUi {
 }
 
 impl TimeRangesUi {
-    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[AbsoluteTimeRange]) -> Self {
+    pub fn new(x_range: Rangef, time_view: TimeView, time_ranges: &[ResolvedTimeRange]) -> Self {
         re_tracing::profile_function!();
 
         debug_assert!(x_range.min < x_range.max);
@@ -309,9 +309,9 @@ impl TimeRangesUi {
         Some(last_time + TimeReal::from((needle_x - last_x) / self.points_per_time))
     }
 
-    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> AbsoluteTimeRange {
+    pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> ResolvedTimeRange {
         let (min_x, max_x) = (*x_range.start(), *x_range.end());
-        AbsoluteTimeRange::new(
+        ResolvedTimeRange::new(
             self.time_from_x_f32(min_x)
                 .map_or(TimeInt::MIN, |tf| tf.floor()),
             self.time_from_x_f32(max_x)
@@ -361,9 +361,9 @@ fn test_time_ranges_ui() {
             time_spanned: 14.2,
         },
         &[
-            AbsoluteTimeRange::new(0, 0),
-            AbsoluteTimeRange::new(1, 5),
-            AbsoluteTimeRange::new(10, 100),
+            ResolvedTimeRange::new(0, 0),
+            ResolvedTimeRange::new(1, 5),
+            ResolvedTimeRange::new(10, 100),
         ],
     );
 
@@ -403,8 +403,8 @@ fn test_time_ranges_ui_2() {
             time_spanned: 50.0,
         },
         &[
-            AbsoluteTimeRange::new(10, 20),
-            AbsoluteTimeRange::new(30, 40),
+            ResolvedTimeRange::new(10, 20),
+            ResolvedTimeRange::new(30, 40),
         ],
     );
 

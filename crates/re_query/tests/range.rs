@@ -1,6 +1,6 @@
 use itertools::Itertools as _;
 
-use re_data_store::{AbsoluteTimeRange, DataStore, RangeQuery, StoreSubscriber as _, TimeInt};
+use re_data_store::{DataStore, RangeQuery, ResolvedTimeRange, StoreSubscriber as _, TimeInt};
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
@@ -64,7 +64,7 @@ fn simple_range() -> anyhow::Result<()> {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        AbsoluteTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
+        ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -92,7 +92,7 @@ fn simple_range() -> anyhow::Result<()> {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        AbsoluteTimeRange::new(timepoint1[0].1, timepoint3[0].1),
+        ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -202,7 +202,7 @@ fn static_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        AbsoluteTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
+        ResolvedTimeRange::new(timepoint1[0].1.as_i64() + 1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -229,7 +229,7 @@ fn static_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        AbsoluteTimeRange::new(timepoint1[0].1, timepoint3[0].1),
+        ResolvedTimeRange::new(timepoint1[0].1, timepoint3[0].1),
     );
 
     let expected_points = &[
@@ -258,7 +258,7 @@ fn static_range() {
 
     let query = re_data_store::RangeQuery::new(
         timepoint1[0].0,
-        AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
     );
 
     // same expectations
@@ -540,14 +540,14 @@ fn invalidation() {
     let frame_124 = build_frame_nr(124);
 
     test_invalidation(
-        RangeQuery::new(frame_123.0, AbsoluteTimeRange::EVERYTHING),
+        RangeQuery::new(frame_123.0, ResolvedTimeRange::EVERYTHING),
         [frame_123].into(),
         [frame_122].into(),
         [frame_124].into(),
     );
 
     test_invalidation(
-        RangeQuery::new(frame_123.0, AbsoluteTimeRange::EVERYTHING),
+        RangeQuery::new(frame_123.0, ResolvedTimeRange::EVERYTHING),
         [frame_123].into(),
         timeless,
         [frame_124].into(),
@@ -593,7 +593,7 @@ fn invalidation_of_future_optionals() {
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
-    let query = re_data_store::RangeQuery::new(frame2[0].0, AbsoluteTimeRange::EVERYTHING);
+    let query = re_data_store::RangeQuery::new(frame2[0].0, ResolvedTimeRange::EVERYTHING);
 
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row1 =
@@ -699,7 +699,7 @@ fn invalidation_static() {
     let timeless = TimePoint::default();
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
-    let query = re_data_store::RangeQuery::new(frame0[0].0, AbsoluteTimeRange::EVERYTHING);
+    let query = re_data_store::RangeQuery::new(frame0[0].0, ResolvedTimeRange::EVERYTHING);
 
     let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
     let row1 =

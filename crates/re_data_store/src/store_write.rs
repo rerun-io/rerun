@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    AbsoluteTimeRange, DataCell, DataCellColumn, DataCellError, DataRow, EntityPathHash, RowId,
+    DataCell, DataCellColumn, DataCellError, DataRow, EntityPathHash, ResolvedTimeRange, RowId,
     TimeInt, TimePoint, VecDequeRemovalExt as _,
 };
 use re_types_core::{ComponentName, ComponentNameSet, SizeBytes as _};
@@ -270,7 +270,7 @@ impl IndexedTable {
 
                     let (inner, inner_size_bytes) = {
                         let mut inner = IndexedBucketInner {
-                            time_range: AbsoluteTimeRange::new(time, time),
+                            time_range: ResolvedTimeRange::new(time, time),
                             ..Default::default()
                         };
                         let size_bytes = inner.compute_size_bytes();
@@ -360,7 +360,7 @@ impl IndexedBucket {
 
         col_time.push_back(time.as_i64());
         *time_range =
-            AbsoluteTimeRange::new(time_range.min().min(time), time_range.max().max(time));
+            ResolvedTimeRange::new(time_range.min().min(time), time_range.max().max(time));
         size_bytes_added += time.as_i64().total_size_bytes();
 
         // update all control columns
@@ -651,10 +651,10 @@ fn test_find_split_index() {
 fn split_time_range_off(
     split_idx: usize,
     times1: &[i64],
-    time_range1: &mut AbsoluteTimeRange,
-) -> AbsoluteTimeRange {
+    time_range1: &mut ResolvedTimeRange,
+) -> ResolvedTimeRange {
     let time_range2 =
-        AbsoluteTimeRange::new(TimeInt::new_temporal(times1[split_idx]), time_range1.max());
+        ResolvedTimeRange::new(TimeInt::new_temporal(times1[split_idx]), time_range1.max());
 
     // This can never fail (underflow or OOB) because we never split buckets smaller than 2
     // entries.

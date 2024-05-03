@@ -27,8 +27,8 @@ mod data_cell;
 mod data_row;
 mod data_table;
 mod instance;
+mod resolved_time_range;
 mod time;
-mod absolute_time_range;
 mod time_real;
 mod vec_deque_ext;
 
@@ -50,11 +50,11 @@ pub use self::data_table::{
 };
 pub use self::instance::Instance;
 pub use self::path::*;
+pub use self::resolved_time_range::{ResolvedTimeRange, TimeRangeF};
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{
     NonMinI64, TimeInt, TimePoint, TimeType, Timeline, TimelineName, TryFromIntError,
 };
-pub use self::absolute_time_range::{AbsoluteTimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 

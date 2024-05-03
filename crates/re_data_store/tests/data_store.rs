@@ -7,8 +7,8 @@ use rand::Rng;
 use re_data_store::{
     test_row,
     test_util::{insert_table_with_retries, sanity_unwrap},
-    AbsoluteTimeRange, DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions,
-    GarbageCollectionTarget, LatestAtQuery, RangeQuery, TimeInt,
+    DataStore, DataStoreConfig, DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget,
+    LatestAtQuery, RangeQuery, ResolvedTimeRange, TimeInt,
 };
 use re_log_types::{
     build_frame_nr,
@@ -430,7 +430,7 @@ fn range_impl(store: &mut DataStore) {
     // range queries.
     #[allow(clippy::type_complexity)]
     let assert_range_components =
-        |time_range: AbsoluteTimeRange,
+        |time_range: ResolvedTimeRange,
          components: [ComponentName; 2],
          rows_at_times: &[(TimeInt, &[(ComponentName, &DataRow)])]| {
             // Stress test save-to-disk & load-from-disk
@@ -482,14 +482,14 @@ fn range_impl(store: &mut DataStore) {
     // Unit ranges (multi-PoV)
 
     assert_range_components(
-        AbsoluteTimeRange::new(frame1, frame1),
+        ResolvedTimeRange::new(frame1, frame1),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
         ],
     );
     assert_range_components(
-        AbsoluteTimeRange::new(frame2, frame2),
+        ResolvedTimeRange::new(frame2, frame2),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
@@ -497,7 +497,7 @@ fn range_impl(store: &mut DataStore) {
         ],
     );
     assert_range_components(
-        AbsoluteTimeRange::new(frame3, frame3),
+        ResolvedTimeRange::new(frame3, frame3),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
@@ -505,7 +505,7 @@ fn range_impl(store: &mut DataStore) {
         ],
     );
     assert_range_components(
-        AbsoluteTimeRange::new(frame4, frame4),
+        ResolvedTimeRange::new(frame4, frame4),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
@@ -514,7 +514,7 @@ fn range_impl(store: &mut DataStore) {
         ],
     );
     assert_range_components(
-        AbsoluteTimeRange::new(frame5, frame5),
+        ResolvedTimeRange::new(frame5, frame5),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
@@ -524,7 +524,7 @@ fn range_impl(store: &mut DataStore) {
     // Full range (multi-PoV)
 
     assert_range_components(
-        AbsoluteTimeRange::new(frame1, frame5),
+        ResolvedTimeRange::new(frame1, frame5),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //
@@ -538,7 +538,7 @@ fn range_impl(store: &mut DataStore) {
     // Infinite range (multi-PoV)
 
     assert_range_components(
-        AbsoluteTimeRange::new(TimeInt::MIN, TimeInt::MAX),
+        ResolvedTimeRange::new(TimeInt::MIN, TimeInt::MAX),
         [MyColor::name(), MyPoint::name()],
         &[
             (TimeInt::STATIC, &[(MyColor::name(), &row5)]), //

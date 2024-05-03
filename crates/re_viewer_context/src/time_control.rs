@@ -4,7 +4,7 @@ use re_entity_db::{
     EditableAutoValue, EntityTree, TimeCounts, TimeHistogramPerTimeline, TimesPerTimeline,
 };
 use re_log_types::{
-    AbsoluteTimeRange, Duration, TimeInt, TimeRangeF, TimeReal, TimeType, Timeline,
+    Duration, ResolvedTimeRange, TimeInt, TimeRangeF, TimeReal, TimeType, Timeline,
 };
 
 use crate::NeedsRepaint;
@@ -106,7 +106,7 @@ pub struct TimeControl {
     ///
     /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
     #[serde(skip)]
-    pub highlighted_range: Option<AbsoluteTimeRange>,
+    pub highlighted_range: Option<ResolvedTimeRange>,
 }
 
 impl Default for TimeControl {
@@ -467,7 +467,7 @@ impl TimeControl {
     }
 
     /// The full range of times for the current timeline
-    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<AbsoluteTimeRange> {
+    pub fn full_range(&self, times_per_timeline: &TimesPerTimeline) -> Option<ResolvedTimeRange> {
         times_per_timeline.get(self.timeline()).map(range)
     }
 
@@ -573,8 +573,8 @@ fn max(values: &TimeCounts) -> TimeInt {
         .unwrap_or(&TimeInt::MIN_TIME_PANEL)
 }
 
-fn range(values: &TimeCounts) -> AbsoluteTimeRange {
-    AbsoluteTimeRange::new(min(values), max(values))
+fn range(values: &TimeCounts) -> ResolvedTimeRange {
+    ResolvedTimeRange::new(min(values), max(values))
 }
 
 /// Pick the timeline that should be the default, prioritizing user-defined ones.
