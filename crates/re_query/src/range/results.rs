@@ -106,17 +106,17 @@ thread_local! {
 /// Lazily cached results for a particular component when using a cached range query.
 #[derive(Debug)]
 pub struct RangeComponentResults {
-    /// The [`TimeRange`] of the query that was used in order to retrieve these results in the
+    /// The [`ResolvedTimeRange`] of the query that was used in order to retrieve these results in the
     /// first place.
     ///
-    /// The "original" copy in the cache just stores [`TimeRange::EMPTY`]. It's meaningless.
+    /// The "original" copy in the cache just stores [`ResolvedTimeRange::EMPTY`]. It's meaningless.
     pub(crate) time_range: ResolvedTimeRange,
 
     pub(crate) inner: Arc<RwLock<RangeComponentResultsInner>>,
 }
 
 impl RangeComponentResults {
-    /// Clones the results while making sure to stamp them with the [`TimeRange`] of the associated query.
+    /// Clones the results while making sure to stamp them with the [`ResolvedTimeRange`] of the associated query.
     #[inline]
     pub(crate) fn clone_at(&self, time_range: ResolvedTimeRange) -> Self {
         Self {
@@ -763,7 +763,7 @@ impl RangeComponentResultsInner {
 
     /// Returns the time range covered by the cached data.
     ///
-    /// Reminder: [`TimeInt::STATIC`] is never included in [`TimeRange`]s.
+    /// Reminder: [`TimeInt::STATIC`] is never included in [`ResolvedTimeRange`]s.
     #[inline]
     pub fn time_range(&self) -> Option<ResolvedTimeRange> {
         let first_time = self.indices.front().map(|(t, _)| *t)?;
