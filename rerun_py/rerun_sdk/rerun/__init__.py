@@ -68,11 +68,11 @@ from .datatypes import (
     RotationAxisAngle,
     Scale3D,
     TensorData,
-    TranslationAndMat3x3,
-    TranslationRotationScale3D,
     TimeRange,
     TimeRangeBoundary,
     TimeRangeBoundaryKind,
+    TranslationAndMat3x3,
+    TranslationRotationScale3D,
 )
 from .error_utils import set_strict_mode
 from .logging_handler import LoggingHandler
