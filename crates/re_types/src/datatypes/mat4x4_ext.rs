@@ -18,7 +18,7 @@ impl Mat4x4 {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than 2.
+    /// Panics if `index` is greater than 3.
     #[inline]
     pub fn col(&self, index: usize) -> Vec4D {
         match index {
