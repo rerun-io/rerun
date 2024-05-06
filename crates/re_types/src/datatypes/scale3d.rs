@@ -108,6 +108,7 @@ impl ::re_types_core::Loggable for Scale3D {
                             _ => None,
                         })
                         .collect();
+                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let three_d_inner_data: Vec<_> = three_d
@@ -118,6 +119,7 @@ impl ::re_types_core::Loggable for Scale3D {
                             })
                             .flatten()
                             .collect();
+                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -126,10 +128,10 @@ impl ::re_types_core::Loggable for Scale3D {
                             PrimitiveArray::new(
                                 DataType::Float32,
                                 three_d_inner_data.into_iter().collect(),
-                                None,
+                                three_d_inner_bitmap,
                             )
                             .boxed(),
-                            None,
+                            three_d_bitmap,
                         )
                         .boxed()
                     }
@@ -142,8 +144,13 @@ impl ::re_types_core::Loggable for Scale3D {
                             _ => None,
                         })
                         .collect();
-                    PrimitiveArray::new(DataType::Float32, uniform.into_iter().collect(), None)
-                        .boxed()
+                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        uniform.into_iter().collect(),
+                        uniform_bitmap,
+                    )
+                    .boxed()
                 },
             ];
             let offsets = Some({

@@ -117,7 +117,9 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             _ => None,
                         })
                         .collect();
+                    let single_required_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
+                        _ = single_required_bitmap;
                         crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
                             single_required.into_iter().map(Some),
                         )?
@@ -131,10 +133,12 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             _ => None,
                         })
                         .collect();
+                    let many_required_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let many_required_inner_data: Vec<_> =
                             many_required.iter().flatten().cloned().collect();
+                        let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             many_required.iter().map(|datum| datum.len()),
                         )
@@ -148,11 +152,12 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             ))),
                             offsets,
                             {
+                                _ = many_required_inner_bitmap;
                                 crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
                                     many_required_inner_data.into_iter().map(Some),
                                 )?
                             },
-                            None,
+                            many_required_bitmap,
                         )
                         .boxed()
                     }

@@ -314,6 +314,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let u8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u8_inner_data: Buffer<_> = u8
@@ -322,6 +323,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u8.iter().map(|datum| datum.num_instances()),
                         )
@@ -334,8 +336,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt8, u8_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::UInt8, u8_inner_data, u8_inner_bitmap)
+                                .boxed(),
+                            u8_bitmap,
                         )
                         .boxed()
                     }
@@ -348,6 +351,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let u16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u16_inner_data: Buffer<_> = u16
@@ -356,6 +360,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u16.iter().map(|datum| datum.num_instances()),
                         )
@@ -368,8 +373,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt16, u16_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::UInt16, u16_inner_data, u16_inner_bitmap)
+                                .boxed(),
+                            u16_bitmap,
                         )
                         .boxed()
                     }
@@ -382,6 +388,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let u32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u32_inner_data: Buffer<_> = u32
@@ -390,6 +397,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u32.iter().map(|datum| datum.num_instances()),
                         )
@@ -402,8 +410,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt32, u32_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::UInt32, u32_inner_data, u32_inner_bitmap)
+                                .boxed(),
+                            u32_bitmap,
                         )
                         .boxed()
                     }
@@ -416,6 +425,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let u64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u64_inner_data: Buffer<_> = u64
@@ -424,6 +434,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u64.iter().map(|datum| datum.num_instances()),
                         )
@@ -436,8 +447,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt64, u64_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::UInt64, u64_inner_data, u64_inner_bitmap)
+                                .boxed(),
+                            u64_bitmap,
                         )
                         .boxed()
                     }
@@ -450,6 +462,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let i8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i8_inner_data: Buffer<_> = i8
@@ -458,6 +471,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i8.iter().map(|datum| datum.num_instances()),
                         )
@@ -470,8 +484,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Int8, i8_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
+                                .boxed(),
+                            i8_bitmap,
                         )
                         .boxed()
                     }
@@ -484,6 +499,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let i16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i16_inner_data: Buffer<_> = i16
@@ -492,6 +508,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i16.iter().map(|datum| datum.num_instances()),
                         )
@@ -504,8 +521,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Int16, i16_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::Int16, i16_inner_data, i16_inner_bitmap)
+                                .boxed(),
+                            i16_bitmap,
                         )
                         .boxed()
                     }
@@ -518,6 +536,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let i32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i32_inner_data: Buffer<_> = i32
@@ -526,6 +545,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i32.iter().map(|datum| datum.num_instances()),
                         )
@@ -538,8 +558,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Int32, i32_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::Int32, i32_inner_data, i32_inner_bitmap)
+                                .boxed(),
+                            i32_bitmap,
                         )
                         .boxed()
                     }
@@ -552,6 +573,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let i64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i64_inner_data: Buffer<_> = i64
@@ -560,6 +582,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i64.iter().map(|datum| datum.num_instances()),
                         )
@@ -572,8 +595,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Int64, i64_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(DataType::Int64, i64_inner_data, i64_inner_bitmap)
+                                .boxed(),
+                            i64_bitmap,
                         )
                         .boxed()
                     }
@@ -586,6 +610,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let f16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f16_inner_data: Buffer<_> = f16
@@ -594,6 +619,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f16.iter().map(|datum| datum.num_instances()),
                         )
@@ -606,8 +632,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Float16, f16_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::Float16,
+                                f16_inner_data,
+                                f16_inner_bitmap,
+                            )
+                            .boxed(),
+                            f16_bitmap,
                         )
                         .boxed()
                     }
@@ -620,6 +651,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let f32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f32_inner_data: Buffer<_> = f32
@@ -628,6 +660,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f32.iter().map(|datum| datum.num_instances()),
                         )
@@ -640,8 +673,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Float32, f32_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::Float32,
+                                f32_inner_data,
+                                f32_inner_bitmap,
+                            )
+                            .boxed(),
+                            f32_bitmap,
                         )
                         .boxed()
                     }
@@ -654,6 +692,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let f64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f64_inner_data: Buffer<_> = f64
@@ -662,6 +701,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f64.iter().map(|datum| datum.num_instances()),
                         )
@@ -674,8 +714,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::Float64, f64_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::Float64,
+                                f64_inner_data,
+                                f64_inner_bitmap,
+                            )
+                            .boxed(),
+                            f64_bitmap,
                         )
                         .boxed()
                     }
@@ -688,6 +733,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let jpeg_inner_data: Buffer<_> = jpeg
@@ -696,6 +742,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             jpeg.iter().map(|datum| datum.num_instances()),
                         )
@@ -708,8 +755,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt8, jpeg_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::UInt8,
+                                jpeg_inner_data,
+                                jpeg_inner_bitmap,
+                            )
+                            .boxed(),
+                            jpeg_bitmap,
                         )
                         .boxed()
                     }
@@ -722,6 +774,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let nv12_inner_data: Buffer<_> = nv12
@@ -730,6 +783,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             nv12.iter().map(|datum| datum.num_instances()),
                         )
@@ -742,8 +796,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt8, nv12_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::UInt8,
+                                nv12_inner_data,
+                                nv12_inner_bitmap,
+                            )
+                            .boxed(),
+                            nv12_bitmap,
                         )
                         .boxed()
                     }
@@ -756,6 +815,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             _ => None,
                         })
                         .collect();
+                    let yuy2_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let yuy2_inner_data: Buffer<_> = yuy2
@@ -764,6 +824,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
+                        let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             yuy2.iter().map(|datum| datum.num_instances()),
                         )
@@ -776,8 +837,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 false,
                             ))),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt8, yuy2_inner_data, None).boxed(),
-                            None,
+                            PrimitiveArray::new(
+                                DataType::UInt8,
+                                yuy2_inner_data,
+                                yuy2_inner_bitmap,
+                            )
+                            .boxed(),
+                            yuy2_bitmap,
                         )
                         .boxed()
                     }

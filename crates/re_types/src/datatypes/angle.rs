@@ -108,8 +108,13 @@ impl ::re_types_core::Loggable for Angle {
                             _ => None,
                         })
                         .collect();
-                    PrimitiveArray::new(DataType::Float32, radians.into_iter().collect(), None)
-                        .boxed()
+                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        radians.into_iter().collect(),
+                        radians_bitmap,
+                    )
+                    .boxed()
                 },
                 {
                     let degrees: Vec<_> = data
@@ -119,8 +124,13 @@ impl ::re_types_core::Loggable for Angle {
                             _ => None,
                         })
                         .collect();
-                    PrimitiveArray::new(DataType::Float32, degrees.into_iter().collect(), None)
-                        .boxed()
+                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        degrees.into_iter().collect(),
+                        degrees_bitmap,
+                    )
+                    .boxed()
                 },
             ];
             let offsets = Some({

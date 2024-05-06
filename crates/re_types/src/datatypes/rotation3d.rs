@@ -116,6 +116,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             _ => None,
                         })
                         .collect();
+                    let quaternion_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let quaternion_inner_data: Vec<_> = quaternion
@@ -126,6 +127,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             })
                             .flatten()
                             .collect();
+                        let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -134,10 +136,10 @@ impl ::re_types_core::Loggable for Rotation3D {
                             PrimitiveArray::new(
                                 DataType::Float32,
                                 quaternion_inner_data.into_iter().collect(),
-                                None,
+                                quaternion_inner_bitmap,
                             )
                             .boxed(),
-                            None,
+                            quaternion_bitmap,
                         )
                         .boxed()
                     }
@@ -150,7 +152,9 @@ impl ::re_types_core::Loggable for Rotation3D {
                             _ => None,
                         })
                         .collect();
+                    let axis_angle_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
+                        _ = axis_angle_bitmap;
                         crate::datatypes::RotationAxisAngle::to_arrow_opt(
                             axis_angle.into_iter().map(Some),
                         )?

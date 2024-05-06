@@ -125,8 +125,13 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             _ => None,
                         })
                         .collect();
-                    PrimitiveArray::new(DataType::Float32, degrees.into_iter().collect(), None)
-                        .boxed()
+                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                    PrimitiveArray::new(
+                        DataType::Float32,
+                        degrees.into_iter().collect(),
+                        degrees_bitmap,
+                    )
+                    .boxed()
                 },
                 {
                     let craziness: Vec<_> = data
@@ -136,10 +141,12 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             _ => None,
                         })
                         .collect();
+                    let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let craziness_inner_data: Vec<_> =
                             craziness.iter().flatten().cloned().collect();
+                        let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             craziness.iter().map(|datum| datum.len()),
                         )
@@ -153,11 +160,12 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             ))),
                             offsets,
                             {
+                                _ = craziness_inner_bitmap;
                                 crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
                                     craziness_inner_data.into_iter().map(Some),
                                 )?
                             },
-                            None,
+                            craziness_bitmap,
                         )
                         .boxed()
                     }
@@ -170,10 +178,13 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             _ => None,
                         })
                         .collect();
+                    let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let fixed_size_shenanigans_inner_data: Vec<_> =
                             fixed_size_shenanigans.iter().flatten().cloned().collect();
+                        let fixed_size_shenanigans_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                            None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -182,10 +193,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             PrimitiveArray::new(
                                 DataType::Float32,
                                 fixed_size_shenanigans_inner_data.into_iter().collect(),
-                                None,
+                                fixed_size_shenanigans_inner_bitmap,
                             )
                             .boxed(),
-                            None,
+                            fixed_size_shenanigans_bitmap,
                         )
                         .boxed()
                     }

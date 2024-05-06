@@ -128,7 +128,6 @@ impl ::re_types_core::Loggable for PinholeProjection {
                             .unwrap_or_default()
                     })
                     .flatten()
-                    .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
@@ -143,10 +142,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::Float32,
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data.into_iter().collect(),
                         data0_inner_bitmap,
                     )
                     .boxed(),

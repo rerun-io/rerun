@@ -120,7 +120,9 @@ impl ::re_types_core::Loggable for Transform3D {
                             _ => None,
                         })
                         .collect();
+                    let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
+                        _ = translation_and_mat3x3_bitmap;
                         crate::datatypes::TranslationAndMat3x3::to_arrow_opt(
                             translation_and_mat3x3.into_iter().map(Some),
                         )?
@@ -134,7 +136,9 @@ impl ::re_types_core::Loggable for Transform3D {
                             _ => None,
                         })
                         .collect();
+                    let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
+                        _ = translation_rotation_scale_bitmap;
                         crate::datatypes::TranslationRotationScale3D::to_arrow_opt(
                             translation_rotation_scale.into_iter().map(Some),
                         )?
