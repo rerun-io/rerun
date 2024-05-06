@@ -118,8 +118,13 @@ impl SpatialSpaceViewState {
             auto_size_world_heuristic(&self.bounding_boxes.accumulated, self.scene_num_primitives);
 
         ctx.re_ui.grid_left_hand_label(ui, "Default size");
-        ui.vertical(|ui| {
-            ui.horizontal(|ui| {
+
+        egui::Grid::new("default_sizes")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Point radius")
+                    .on_hover_text("Point radius used whenever not explicitly specified");
                 ui.push_id("points", |ui| {
                     size_ui(
                         ui,
@@ -128,22 +133,20 @@ impl SpatialSpaceViewState {
                         &mut self.auto_size_config.point_radius,
                     );
                 });
-                ui.label("Point radius")
-                    .on_hover_text("Point radius used whenever not explicitly specified");
+                ui.end_row();
+
+                ctx.re_ui
+                    .grid_left_hand_label(ui, "Line radius")
+                    .on_hover_text("Line radius used whenever not explicitly specified");
+                size_ui(
+                    ui,
+                    1.5,
+                    auto_size_world,
+                    &mut self.auto_size_config.line_radius,
+                );
+                ui.end_row();
             });
-            ui.horizontal(|ui| {
-                ui.push_id("lines", |ui| {
-                    size_ui(
-                        ui,
-                        1.5,
-                        auto_size_world,
-                        &mut self.auto_size_config.line_radius,
-                    );
-                    ui.label("Line radius")
-                        .on_hover_text("Line radius used whenever not explicitly specified");
-                });
-            });
-        });
+
         ui.end_row();
     }
 
