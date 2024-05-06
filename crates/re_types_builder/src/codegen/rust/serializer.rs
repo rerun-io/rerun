@@ -77,7 +77,6 @@ pub fn quote_arrow_serializer(
             objects,
             datatype,
             &quoted_datatype,
-            obj_field.is_nullable,
             Some(obj_field),
             Some(&bitmap_dst),
             &quoted_data_dst,
@@ -128,7 +127,6 @@ pub fn quote_arrow_serializer(
                         objects,
                         inner_datatype,
                         &quoted_inner_datatype,
-                        obj_field.is_nullable,
                         Some(obj_field),
                         Some(&bitmap_dst),
                         &data_dst,
@@ -249,7 +247,6 @@ pub fn quote_arrow_serializer(
 
                     // We handle nullability with a special null variant that is always present.
                     let bitmap_dst = None;
-                    let is_nullable = false;
 
                     let inner_datatype = &arrow_registry.get(&obj_field.fqname);
                     let quoted_inner_datatype = super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
@@ -258,7 +255,6 @@ pub fn quote_arrow_serializer(
                         objects,
                         inner_datatype,
                         &quoted_inner_datatype,
-                        is_nullable,
                         Some(obj_field),
                         bitmap_dst,
                         &data_dst,
@@ -384,12 +380,17 @@ enum InnerRepr {
     NativeIterable,
 }
 
+/// Writes out code to serialize a single field.
+///
+/// If `validity_bitmap` is `None`, then we ignore nullability of the field.
+/// This is useful for:
+/// * unions: nullability is encoded as a separate variant
+/// * lists inside of fields that are lists: we don't support intra-list nullability
 #[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,
     quoted_datatype: &dyn quote::ToTokens,
-    is_nullable: bool,
     obj_field: Option<&ObjectField>,
     validity_bitmap: Option<&proc_macro2::Ident>,
     data_src: &proc_macro2::Ident,
@@ -402,11 +403,6 @@ fn quote_arrow_field_serializer(
     };
     let inner_is_arrow_transparent = inner_obj.map_or(false, |obj| obj.datatype.is_none());
 
-    assert!(
-        !is_nullable || validity_bitmap.is_some(),
-        "Nullable fields must have a validity bitmap.
-        Note though that if a field is not nullable, we may still use a validity bitmap."
-    );
     let bitmap_src = validity_bitmap
         .as_ref()
         .map_or_else(|| quote!(None), |bitmap| quote!(#bitmap));
@@ -585,7 +581,6 @@ fn quote_arrow_field_serializer(
                 objects,
                 inner_datatype,
                 &quoted_inner_datatype,
-                inner.is_nullable,
                 None,
                 validity_bitmap.map(|_| &quoted_inner_bitmap),
                 &quoted_inner_data,
@@ -772,9 +767,6 @@ fn quote_arrow_field_serializer(
                 }
             };
 
-            // TODO(cmc): We should be checking this, but right now we don't because we don't
-            // support intra-list nullability.
-            _ = is_nullable;
             match inner_repr {
                 InnerRepr::ArrowBuffer => {
                     if serde_type.is_some() {
