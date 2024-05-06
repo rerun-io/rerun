@@ -32,7 +32,9 @@ impl Command {
     }
 }
 
+/// The storage used by [`BinarySink`].
 #[derive(Clone)]
+
 pub struct BinarySinkStorage {
     inner: Arc<Mutex<std::io::Cursor<Vec<u8>>>>,
     pub(crate) rec: RecordingStream,
@@ -46,6 +48,9 @@ impl BinarySinkStorage {
         }
     }
 
+    /// Read the contents of the storage.
+    ///
+    /// This will flush the buffer prior to reading.
     #[inline]
     pub fn read(&self) -> Vec<u8> {
         self.rec.flush_blocking();
