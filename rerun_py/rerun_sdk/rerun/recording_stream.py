@@ -216,6 +216,43 @@ class RecordingStream:
         bindings.flush(blocking=False, recording=recording)
 
 
+def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
+    """
+    Sends all log-data to a binary stream that can be read from and sent elsewhere.
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    BinaryStream
+        A memory recording object that can be used to read the data.
+
+    """
+
+    recording = RecordingStream.to_native(recording)
+    return BinaryStream(bindings.binary_stream(recording=recording))
+
+
+class BinaryStream:
+    """An encoded stream of bytes that can be saved as an rrd or sent to the viewer."""
+
+    def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
+        self.storage = storage
+
+    def read(self) -> bytes:
+        """
+        Reads bytes from the stream.
+
+        This will flush the current sink before returning.
+        """
+        return self.storage.read()  # type: ignore[no-any-return]
+
+
 def _patch(funcs):  # type: ignore[no-untyped-def]
     """Adds the given functions as methods to the `RecordingStream` class; injects `recording=self` in passing."""
     import functools
