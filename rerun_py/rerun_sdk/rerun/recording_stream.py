@@ -220,6 +220,15 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
     """
     Sends all log-data to a binary stream that can be read from and sent elsewhere.
 
+    Example
+    -------
+    ```python
+    stream = rr.binary_stream()
+    rr.log("stream", rr.TextLog("Hello world"))
+    with open("output.rrd", "wb") as f:
+        f.write(stream.read())
+    ```
+
     Parameters
     ----------
     recording:
