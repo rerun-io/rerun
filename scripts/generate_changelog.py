@@ -123,7 +123,7 @@ def print_section(title: str, items: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument("--commit-range", help="e.g. 0.11.0..HEAD")
+    parser.add_argument("--commit-range", required=True, help="e.g. 0.11.0..HEAD")
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
