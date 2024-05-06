@@ -1,16 +1,20 @@
+use egui_tiles::ContainerKind;
+
+use re_ui::icons;
 use re_viewer_context::Item;
 
 use crate::context_menu::{ContextMenuAction, ContextMenuContext};
 
 /// Move the selected contents to a newly created container of the given kind
-pub(crate) struct MoveContentsToNewContainerAction(pub egui_tiles::ContainerKind);
+pub(crate) struct MoveContentsToNewContainerAction(pub ContainerKind);
 
 impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn supports_selection(&self, ctx: &ContextMenuContext<'_>) -> bool {
         if let Some((parent_container, _)) = ctx.clicked_item_enclosing_container_and_position() {
-            if (parent_container.container_kind == egui_tiles::ContainerKind::Vertical
-                || parent_container.container_kind == egui_tiles::ContainerKind::Horizontal)
-                && parent_container.container_kind == self.0
+            if matches!(
+                parent_container.container_kind,
+                ContainerKind::Vertical | ContainerKind::Horizontal
+            ) && parent_container.container_kind == self.0
             {
                 return false;
             }
@@ -36,6 +40,15 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
                 ctx.viewport_blueprint.root_container != Some(*container_id)
             }
             _ => false,
+        }
+    }
+
+    fn icon(&self) -> Option<&'static re_ui::Icon> {
+        match self.0 {
+            ContainerKind::Tabs => Some(&icons::CONTAINER_TABS),
+            ContainerKind::Horizontal => Some(&icons::CONTAINER_HORIZONTAL),
+            ContainerKind::Vertical => Some(&icons::CONTAINER_VERTICAL),
+            ContainerKind::Grid => Some(&icons::CONTAINER_GRID),
         }
     }
 

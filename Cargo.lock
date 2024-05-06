@@ -5035,6 +5035,7 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
+ "static_assertions",
  "thiserror",
  "time",
  "wasm-bindgen",
@@ -5113,6 +5114,7 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "smallvec",
+ "static_assertions",
 ]
 
 [[package]]
