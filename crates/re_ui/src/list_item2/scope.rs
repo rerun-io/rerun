@@ -9,7 +9,7 @@ use egui::NumExt;
 ///
 /// Here is an illustration of the layout statistics that are gathered:
 /// ```text
-/// │◀─────────────────────background_x_range───────────────────▶│
+/// │◀──────────────────────get_full_span()─────────────────────▶│
 /// │                                                            │
 /// │  ┌──left_x                                                 │
 /// │  ▼                                                         │
@@ -35,12 +35,12 @@ use egui::NumExt;
 /// │                                                            │
 /// │  │◀───────────────max_item_width─────────────────▶│        │
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct LayoutStatistics {
     /// Maximum desired column width.
     ///
     /// The semantics are exactly the same as [`LayoutInfo`]'s `left_column_width`.
-    max_desired_left_column_width: f32,
+    max_desired_left_column_width: Option<f32>,
 
     /// Track whether any item uses the action button.
     ///
@@ -50,18 +50,7 @@ struct LayoutStatistics {
     /// Max item width.
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
-    max_item_width: f32,
-}
-
-impl Default for LayoutStatistics {
-    fn default() -> Self {
-        // set values suitable to initialize the stat accumulator
-        Self {
-            max_desired_left_column_width: f32::NEG_INFINITY,
-            is_action_button_used: false,
-            max_item_width: f32::NEG_INFINITY,
-        }
-    }
+    max_item_width: Option<f32>,
 }
 
 impl LayoutStatistics {
@@ -101,12 +90,6 @@ impl LayoutStatistics {
 /// [`super::ContentContext`].
 #[derive(Debug, Clone)]
 pub struct LayoutInfo {
-    /// X coordinate span to use for hover/selection highlight.
-    // TODO(#6156): this being here is a (temporary) hack (see docstring). In the future, this will
-    // be generalized to some `full_span_scope` mechanism to be used by all full-span widgets beyond
-    // `ListItem`.
-    pub(crate) background_x_range: egui::Rangef,
-
     /// Left-most X coordinate for the scope.
     ///
     /// This is the reference point for tracking column width. This is set by [`list_item_scope`]
@@ -138,8 +121,7 @@ pub struct LayoutInfo {
 impl Default for LayoutInfo {
     fn default() -> Self {
         Self {
-            background_x_range: egui::Rangef::NOTHING,
-            left_x: f32::NEG_INFINITY,
+            left_x: 0.0,
             left_column_width: None,
             reserve_action_button_space: true,
             scope_id: egui::Id::NULL,
@@ -154,8 +136,10 @@ impl LayoutInfo {
     /// call this function once in their [`super::ListItemContent::ui`] method.
     pub fn register_desired_left_column_width(&self, ctx: &egui::Context, desired_width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
-            stats.max_desired_left_column_width =
-                stats.max_desired_left_column_width.max(desired_width);
+            stats.max_desired_left_column_width = stats
+                .max_desired_left_column_width
+                .map(|v| v.max(desired_width))
+                .or(Some(desired_width));
         });
     }
 
@@ -171,7 +155,7 @@ impl LayoutInfo {
     /// Should only be set by [`super::ListItem`].
     pub(crate) fn register_max_item_width(&self, ctx: &egui::Context, width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
-            stats.max_item_width = stats.max_item_width.max(width);
+            stats.max_item_width = stats.max_item_width.map(|v| v.max(width)).or(Some(width));
         });
     }
 }
@@ -204,27 +188,25 @@ impl LayoutInfoStack {
 
     /// Returns the current [`LayoutInfo`] to be used by [`super::ListItemContent`] implementation.
     ///
-    /// For ergonomic reasons, this function will fail by returning a default state if the stack is
-    /// empty. This is an error condition that should be addressed by wrapping `ListItem` code in a
-    /// [`super::list_item_scope`].
+    /// # Panics
+    ///
+    /// This function panics if the stack is temps. [`super::ListItem`] must always be nested in a
+    /// [`list_item_scope`].
     pub(crate) fn top(ctx: &egui::Context) -> LayoutInfo {
         ctx.data_mut(|writer| {
             let stack: &mut LayoutInfoStack = writer.get_temp_mut_or_default(egui::Id::NULL);
             let state = stack.0.last();
             if state.is_none() {
                 re_log::warn_once!(
-                    "Attempted to access empty ListItem state stack, returning default state. \
-                    Wrap in a `list_item_scope`."
+                    "Attempted to access empty LayoutInfo stack, returning default LayoutInfo. \
+                    Wrap all calls to ListItem in a list_item_scope()."
                 );
             }
+            debug_assert!(
+                state.is_some(),
+                "ListItem was not wrapped in list_item_scope()"
+            );
             state.cloned().unwrap_or_default()
-        })
-    }
-
-    fn peek(ctx: &egui::Context) -> Option<LayoutInfo> {
-        ctx.data_mut(|writer| {
-            let stack: &mut LayoutInfoStack = writer.get_temp_mut_or_default(egui::Id::NULL);
-            stack.0.last().cloned()
         })
     }
 }
@@ -241,13 +223,15 @@ impl LayoutInfoStack {
 /// id. Layout information is pushed to a global stack, which is also stored in egui's memory. This
 /// enables nesting [`list_item_scope`]s.
 ///
-/// *Note*: the scope id is derived from the provided `id_source` and combined with the
-/// [`egui::Ui`]'s id, such that `id_source` only needs to be unique within the scope of the parent
-/// ui.
+/// *Note*
+/// - The scope id is derived from the provided `id_source` and combined with the [`egui::Ui`]'s id,
+///   such that `id_source` only needs to be unique within the scope of the parent ui.
+/// - Uses [`egui::Ui::scope`] internally, so it's safe to modify the `ui` within the closure.
+/// - The `ui.spacing_mut().item_spacing.y` is set to `0.0` to remove the default spacing between
+///   list items.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
     id_source: impl Into<egui::Id>,
-    background_x_range: Option<egui::Rangef>,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
     let scope_id = ui.id().with(id_source.into());
@@ -257,28 +241,16 @@ pub fn list_item_scope<R>(
     LayoutStatistics::reset(ui.ctx(), scope_id);
 
     // prepare the layout infos
-    // TODO(#6156): the background X range stuff is to be split off and generalised for all full-span
-    // widgets.
-    let background_x_range = if let Some(background_x_range) = background_x_range {
-        background_x_range
-    } else if let Some(parent_state) = LayoutInfoStack::peek(ui.ctx()) {
-        parent_state.background_x_range
-    } else {
-        ui.clip_rect().x_range()
-    };
-    let left_column_width = if layout_stats.max_desired_left_column_width > 0.0 {
-        Some(
+    let left_column_width =
+        if let Some(max_desired_left_column_width) = layout_stats.max_desired_left_column_width {
             // TODO(ab): this heuristics can certainly be improved, to be done with more hindsight
             // from real-world usage.
-            layout_stats
-                .max_desired_left_column_width
-                .at_most(0.7 * layout_stats.max_item_width),
-        )
-    } else {
-        None
-    };
+            let available_width = layout_stats.max_item_width.unwrap_or(ui.available_width());
+            Some(max_desired_left_column_width.at_most(0.7 * available_width))
+        } else {
+            None
+        };
     let state = LayoutInfo {
-        background_x_range,
         left_x: ui.max_rect().left(),
         left_column_width,
         reserve_action_button_space: layout_stats.is_action_button_used,
@@ -287,7 +259,12 @@ pub fn list_item_scope<R>(
 
     // push, run, pop
     LayoutInfoStack::push(ui.ctx(), state);
-    let result = content(ui);
+    let result = ui
+        .scope(|ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            content(ui)
+        })
+        .inner;
     LayoutInfoStack::pop(ui.ctx());
 
     result

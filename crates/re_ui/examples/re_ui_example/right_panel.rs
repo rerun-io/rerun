@@ -47,11 +47,13 @@ impl RightPanel {
                 ui.label("Hierarchical:");
             });
 
-            if self.show_hierarchical_demo {
-                self.hierarchical_drag_and_drop.ui(re_ui, ui);
-            } else {
-                self.drag_and_drop.ui(re_ui, ui);
-            }
+            list_item2::list_item_scope(ui, "drag_and_drop", |ui| {
+                if self.show_hierarchical_demo {
+                    self.hierarchical_drag_and_drop.ui(re_ui, ui);
+                } else {
+                    self.drag_and_drop.ui(re_ui, ui);
+                }
+            });
         });
 
         ui.add_space(20.0);
@@ -62,7 +64,10 @@ impl RightPanel {
 
         re_ui.panel_content(ui, |re_ui, ui| {
             re_ui.panel_title_bar(ui, "Demo: ListItem APIs", None);
-            self.list_item_api_demo(re_ui, ui);
+
+            list_item2::list_item_scope(ui, "list_item_api", |ui| {
+                self.list_item_api_demo(re_ui, ui);
+            });
         });
 
         ui.add_space(20.0);
@@ -81,25 +86,30 @@ impl RightPanel {
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 re_ui.panel_content(ui, |re_ui, ui| {
-                    for i in 0..10 {
-                        let label = if i == 4 {
-                            "That's one heck of a loooooooong label!".to_owned()
-                        } else {
-                            format!("Some item {i}")
-                        };
+                    list_item2::list_item_scope(ui, "scroll_area_demo", |ui| {
+                        for i in 0..10 {
+                            let label = if i == 4 {
+                                "That's one heck of a loooooooong label!".to_owned()
+                            } else {
+                                format!("Some item {i}")
+                            };
 
-                        // Note: we use `exact_width(true)` here to force the item to allocate
-                        // as much as needed for the label, which in turn will trigger the
-                        // scroll area.
-                        if re_ui
-                            .list_item2()
-                            .selected(Some(i) == self.selected_list_item)
-                            .show_flat(ui, list_item2::LabelContent::new(&label).exact_width(true))
-                            .clicked()
-                        {
-                            self.selected_list_item = Some(i);
+                            // Note: we use `exact_width(true)` here to force the item to allocate
+                            // as much as needed for the label, which in turn will trigger the
+                            // scroll area.
+                            if re_ui
+                                .list_item2()
+                                .selected(Some(i) == self.selected_list_item)
+                                .show_flat(
+                                    ui,
+                                    list_item2::LabelContent::new(&label).exact_width(true),
+                                )
+                                .clicked()
+                            {
+                                self.selected_list_item = Some(i);
+                            }
                         }
-                    }
+                    });
                 });
             });
     }
@@ -200,7 +210,7 @@ impl RightPanel {
             |re_ui, ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
                 // to the parent property, which in this particular case looks better.
-                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                list_item2::list_item_scope(ui, "inner_scope", |ui| {
                     re_ui.list_item2().show_hierarchical(
                         ui,
                         list_item2::PropertyContent::new("Bool").value_bool(self.boolean),
@@ -255,7 +265,7 @@ impl RightPanel {
             |re_ui, ui| {
                 // By using an inner scope, we allow the nested properties to not align themselves
                 // to the parent property, which in this particular case looks better.
-                list_item2::list_item_scope(ui, "inner_scope", None, |ui| {
+                list_item2::list_item_scope(ui, "inner_scope", |ui| {
                     fn demo_item(re_ui: &ReUi, ui: &mut egui::Ui) {
                         re_ui.list_item2().show_hierarchical(
                             ui,
