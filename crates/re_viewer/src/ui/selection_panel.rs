@@ -632,33 +632,7 @@ fn container_top_level_properties(
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
-            egui::ComboBox::from_id_source("container_kind")
-                .selected_text(format!("{container_kind:?}"))
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Tabs,
-                        format!("{:?}", egui_tiles::ContainerKind::Tabs),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Horizontal,
-                        format!("{:?}", egui_tiles::ContainerKind::Horizontal),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Vertical,
-                        format!("{:?}", egui_tiles::ContainerKind::Vertical),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Grid,
-                        format!("{:?}", egui_tiles::ContainerKind::Grid),
-                    );
-                });
+            container_kind_selection_ui(ctx, ui, &mut container_kind);
 
             viewport
                 .blueprint
@@ -749,6 +723,40 @@ fn container_top_level_properties(
             }
             ui.end_row();
         });
+}
+
+fn container_kind_selection_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    in_out_kind: &mut ContainerKind,
+) {
+    let min_width = 90.0;
+    let selected_text = format!("{in_out_kind:?}");
+
+    re_ui::drop_down_menu(ui, "container_kind", min_width, selected_text, |ui| {
+        ui.style_mut().wrap = Some(false);
+
+        static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
+        for (kind, icon) in [
+            (ContainerKind::Tabs, &icons::CONTAINER_TABS),
+            (ContainerKind::Grid, &icons::CONTAINER_GRID),
+            (ContainerKind::Horizontal, &icons::CONTAINER_HORIZONTAL),
+            (ContainerKind::Vertical, &icons::CONTAINER_VERTICAL),
+        ] {
+            let response = ctx
+                .re_ui
+                .list_item2()
+                .selected(*in_out_kind == kind)
+                .show_flat(
+                    ui,
+                    re_ui::list_item2::LabelContent::new(format!("{kind:?}")).with_icon(icon),
+                );
+
+            if response.clicked() {
+                *in_out_kind = kind;
+            }
+        }
+    });
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
