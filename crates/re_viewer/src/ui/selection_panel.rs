@@ -1,4 +1,5 @@
 use egui::{NumExt as _, Ui};
+use egui_tiles::ContainerKind;
 
 use re_data_ui::{
     image_meaning_for_entity, item_ui,
@@ -211,11 +212,7 @@ fn container_children(
         ui.strong("Contents");
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::ADD)
-                .clicked()
-            {
+            if ctx.re_ui.small_icon_button(ui, &icons::ADD).clicked() {
                 viewport.show_add_space_view_or_container_modal(*container_id);
             }
         });
@@ -375,9 +372,9 @@ fn what_is_selected_ui(
                 ui,
                 component_name.short_name(),
                 Some(if is_static {
-                    &re_ui::icons::COMPONENT_STATIC
+                    &icons::COMPONENT_STATIC
                 } else {
-                    &re_ui::icons::COMPONENT
+                    &icons::COMPONENT
                 }),
                 &format!(
                     "Component {} of entity '{}'",
@@ -669,7 +666,7 @@ fn container_top_level_properties(
 
             ui.end_row();
 
-            if container.container_kind == egui_tiles::ContainerKind::Grid {
+            if container.container_kind == ContainerKind::Grid {
                 ui.label("Columns");
 
                 fn columns_to_string(columns: &Option<u32>) -> String {
@@ -735,10 +732,10 @@ fn container_top_level_properties(
 
             if container.contents.len() > 1
                 && match container.container_kind {
-                    egui_tiles::ContainerKind::Tabs => false,
-                    egui_tiles::ContainerKind::Horizontal
-                    | egui_tiles::ContainerKind::Vertical
-                    | egui_tiles::ContainerKind::Grid => true,
+                    ContainerKind::Tabs => false,
+                    ContainerKind::Horizontal | ContainerKind::Vertical | ContainerKind::Grid => {
+                        true
+                    }
                 }
                 && ui
                     .add_enabled(
@@ -780,7 +777,7 @@ fn show_list_item_for_container_child(
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .small_icon_button(ui, &icons::REMOVE)
                             .on_hover_text("Remove this space view");
 
                         if response.clicked() {
@@ -806,7 +803,7 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .small_icon_button(ui, &icons::REMOVE)
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {
