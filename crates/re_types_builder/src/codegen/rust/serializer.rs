@@ -692,7 +692,6 @@ fn quote_arrow_field_serializer(
                     InnerRepr::NativeIterable => {
                         if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                             if elements_are_nullable {
-                                // TODO: always false?
                                 quote! {
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.iter().cloned()),
