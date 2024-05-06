@@ -156,6 +156,9 @@ class RecordingStream:
     with rec:
         rr.log(...)
     ```
+    WARNING: if using a RecordingStream as a context manager, you cannot yield from a generator function
+    while holding the context. This will leak the context and likely cause your program to send data
+    to the wrong stream. See: https://github.com/rerun-io/rerun/issues/6238
 
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
     [`rerun.get_thread_local_data_recording`][].
@@ -442,11 +445,14 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
             @functools.wraps(func)
             def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
                 gen = func(*args, **kwargs)
+                stream = new_recording(application_id, recording_id=uuid.uuid4())
                 try:
-                    with new_recording(application_id, recording_id=uuid.uuid4()):
+                    with stream:
                         value = next(gen)  # Start the generator inside the context
-                        while True:
-                            value = gen.send((yield value))  # Continue the generator
+                    while True:
+                        cont = yield value  # Continue the generator
+                        with stream:
+                            value = gen.send(cont)
                 except StopIteration:
                     pass
                 finally:
