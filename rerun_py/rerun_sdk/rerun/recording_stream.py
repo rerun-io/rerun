@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextvars
 import functools
 import inspect
 import uuid
@@ -136,6 +137,14 @@ def new_recording(
     return recording
 
 
+active_recording_stream: contextvars.ContextVar[RecordingStream] = contextvars.ContextVar("active_recording_stream")
+"""
+A context variable that tracks the currently active recording stream.
+
+Used to managed and detect interactions between generators and RecordingStream context-manager objects.
+"""
+
+
 class RecordingStream:
     """
     A RecordingStream is used to send data to Rerun.
@@ -202,13 +211,27 @@ class RecordingStream:
     def __init__(self, inner: bindings.PyRecordingStream) -> None:
         self.inner = inner
         self._prev: RecordingStream | None = None
+        self.context_token: contextvars.Token[RecordingStream] | None = None
 
     def __enter__(self):  # type: ignore[no-untyped-def]
+        self.context_token = active_recording_stream.set(self)
         self._prev = set_thread_local_data_recording(self)
         return self
 
     def __exit__(self, type, value, traceback):  # type: ignore[no-untyped-def]
+        current_recording = active_recording_stream.get(None)
+
+        if self.context_token is not None:
+            active_recording_stream.reset(self.context_token)
+
         self._prev = set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
+
+        # Sanity check: we set this context-var on enter. If it's not still set, something weird
+        # happened. The user is probably doing something sketch with generators or async code.
+        if current_recording is not self:
+            raise RuntimeError(
+                "RecordingStream context manager exited while not active. Likely mixing context managers with generators or async code. See: `recording_stream_generator_ctx`."
+            )
 
     # NOTE: The type is a string because we cannot reference `RecordingStream` yet at this point.
     def to_native(self: RecordingStream | None) -> bindings.PyRecordingStream | None:
@@ -450,9 +473,9 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
                     with stream:
                         value = next(gen)  # Start the generator inside the context
                     while True:
-                        cont = yield value  # Continue the generator
+                        cont = yield value  # Yield the value, suspending the generator
                         with stream:
-                            value = gen.send(cont)
+                            value = gen.send(cont)  # Resume the generator inside the context
                 except StopIteration:
                     pass
                 finally:
@@ -470,3 +493,67 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
             return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
+    """
+    Decorator to manage recording stream context for generator functions.
+
+    This is only necessary if you need to implement a generator which yields while holding an open
+    recording stream context. This decorator will ensure that the recording stream context is suspended
+    and then properly resumed upon re-entering the generator.
+
+    See: https://github.com/rerun-io/rerun/issues/6238 for context on why this is necessary.
+
+    Example
+    -------
+    ```python
+    @rr.recording_stream.recording_stream_generator_ctx
+    def my_generator(name: str) -> Iterator[None]:
+        with rr.new_recording(name):
+            rr.save(f"{name}.rrd")
+            for i in range(10):
+                rr.log("stream", rr.TextLog(f"{name} {i}"))
+                yield i
+
+    for i in my_generator("foo"):
+        pass
+    ```
+
+    """
+    if inspect.isgeneratorfunction(func):  # noqa: F821
+
+        @functools.wraps(func)
+        def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+            gen = func(*args, **kwargs)
+            current_recording = None
+            try:
+                value = next(gen)  # Get the first generated value
+                while True:
+                    current_recording = active_recording_stream.get(None)
+
+                    if current_recording is not None:
+                        # TODO(jleibs): Do we need to pass something through here?
+                        # Probably not, since __exit__ doesn't use those args, but
+                        # keep an eye on this.
+                        current_recording.__exit__(None, None, None)  # Exit our context before we yield
+
+                    cont = yield value  # Yield the value, suspending the generator
+
+                    if current_recording is not None:
+                        current_recording.__enter__()  # Restore our context before we continue
+
+                    value = gen.send(cont)  # Resume the generator inside the context
+
+            except StopIteration:
+                pass
+            finally:
+                # It's important to re-enter the generator to avoid getting our warning
+                # on the final (real) exit.
+                if current_recording is not None:
+                    current_recording.__enter__()
+                gen.close()
+
+        return generator_wrapper  # type: ignore[return-value]
+    else:
+        raise ValueError("Only generator functions can be decorated with `recording_stream_generator_ctx`")
