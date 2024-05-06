@@ -296,7 +296,7 @@ fn edit_marker_shape_ui(
             };
 
             re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
-                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui)
+                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui);
             });
         });
 
