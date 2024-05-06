@@ -402,7 +402,7 @@ fn quote_arrow_field_serializer(
     datatype: &DataType,
     quoted_datatype: &dyn quote::ToTokens,
     obj_field: Option<&ObjectField>,
-    bitmap_dst: &proc_macro2::Ident,
+    bitmap_src: &proc_macro2::Ident,
     elements_are_nullable: bool,
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
@@ -472,7 +472,7 @@ fn quote_arrow_field_serializer(
                         // NOTE: We need values for all slots, regardless of what the bitmap says,
                         // hence `unwrap_or_default`.
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
-                        #bitmap_dst,
+                        #bitmap_src,
                     ).boxed()
                 }
             } else {
@@ -483,14 +483,14 @@ fn quote_arrow_field_serializer(
                         PrimitiveArray::new(
                             #quoted_datatype,
                             #data_src,
-                            #bitmap_dst,
+                            #bitmap_src,
                         ).boxed()
                     },
                     InnerRepr::NativeIterable => quote! {
                         PrimitiveArray::new(
                             #quoted_datatype,
                             #data_src.into_iter() #quoted_transparent_mapping .collect(),
-                            #bitmap_dst,
+                            #bitmap_src,
                         ).boxed()
                     },
                 }
@@ -574,7 +574,7 @@ fn quote_arrow_field_serializer(
                 // Safety: we're building this from actual native strings, so no need to do the
                 // whole utf8 validation _again_.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_dst) }.boxed()
+                unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
             }}
         }
 
@@ -741,7 +741,7 @@ fn quote_arrow_field_serializer(
                             #quoted_datatype,
                             offsets,
                             #quoted_inner,
-                            #bitmap_dst,
+                            #bitmap_src,
                         ).boxed()
                     }
                 }
@@ -750,7 +750,7 @@ fn quote_arrow_field_serializer(
                     FixedSizeListArray::new(
                         #quoted_datatype,
                         #quoted_inner,
-                        #bitmap_dst,
+                        #bitmap_src,
                     ).boxed()
                 }
             };
@@ -771,7 +771,7 @@ fn quote_arrow_field_serializer(
             {
                 quote! {
                     let #inner_bitmap_ident: Option<arrow2::bitmap::Bitmap> =
-                        #bitmap_dst.as_ref().map(|bitmap| {
+                        #bitmap_src.as_ref().map(|bitmap| {
                             bitmap
                                 .iter()
                                 .map(|i| std::iter::repeat(i).take(#count))
@@ -809,7 +809,7 @@ fn quote_arrow_field_serializer(
                                 #quoted_datatype,
                                 offsets,
                                 #quoted_inner,
-                                #bitmap_dst,
+                                #bitmap_src,
                             ).boxed()
                         }}
                     } else {
@@ -857,7 +857,7 @@ fn quote_arrow_field_serializer(
             };
 
             quote! {{
-                _ = #bitmap_dst;
+                _ = #bitmap_src;
                 #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
             }}
         }
