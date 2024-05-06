@@ -46,7 +46,6 @@ class AffixFuzzer17Type(BaseExtensionType):
                     pa.dense_union([
                         pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                         pa.field("degrees", pa.float32(), nullable=False, metadata={}),
-                        pa.field("radians", pa.float32(), nullable=False, metadata={}),
                         pa.field(
                             "craziness",
                             pa.list_(

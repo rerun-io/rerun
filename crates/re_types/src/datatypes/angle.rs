@@ -101,50 +101,26 @@ impl ::re_types_core::Loggable for Angle {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, radians): (Vec<_>, Vec<_>) = data
+                    let radians: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Radians(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Angle::Radians(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Angle::Radians(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
-                    PrimitiveArray::new(
-                        DataType::Float32,
-                        radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                        radians_bitmap,
-                    )
-                    .boxed()
+                        .collect();
+                    PrimitiveArray::new(DataType::Float32, radians.into_iter().collect(), None)
+                        .boxed()
                 },
                 {
-                    let (somes, degrees): (Vec<_>, Vec<_>) = data
+                    let degrees: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Angle::Degrees(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Angle::Degrees(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Angle::Degrees(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
-                    PrimitiveArray::new(
-                        DataType::Float32,
-                        degrees.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                        degrees_bitmap,
-                    )
-                    .boxed()
+                        .collect();
+                    PrimitiveArray::new(DataType::Float32, degrees.into_iter().collect(), None)
+                        .boxed()
                 },
             ];
             let offsets = Some({

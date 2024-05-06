@@ -77,7 +77,6 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
             std::sync::Arc::new(vec![
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new("degrees", DataType::Float32, false),
-                Field::new("radians", DataType::Float32, false),
                 Field::new(
                     "craziness",
                     DataType::List(std::sync::Arc::new(Field::new(
@@ -96,7 +95,7 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                     false,
                 ),
             ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
             UnionMode::Dense,
         )
     }

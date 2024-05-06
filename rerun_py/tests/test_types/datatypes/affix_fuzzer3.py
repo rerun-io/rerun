@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,24 +28,9 @@ class AffixFuzzer3:
 
     * degrees (float):
 
-    * radians (float):
-
     * craziness (list[datatypes.AffixFuzzer1]):
 
     * fixed_size_shenanigans (npt.NDArray[np.float32]):
-    """
-
-    kind: Literal["degrees", "radians", "craziness", "fixed_size_shenanigans"] = field(default="degrees")
-    """
-    Possible values:
-
-    * "degrees":
-
-    * "radians":
-
-    * "craziness":
-
-    * "fixed_size_shenanigans":
     """
 
 
@@ -77,7 +62,6 @@ class AffixFuzzer3Type(BaseExtensionType):
             pa.dense_union([
                 pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
                 pa.field("degrees", pa.float32(), nullable=False, metadata={}),
-                pa.field("radians", pa.float32(), nullable=False, metadata={}),
                 pa.field(
                     "craziness",
                     pa.list_(
