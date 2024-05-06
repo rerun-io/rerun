@@ -32,10 +32,8 @@ def blueprint() -> rrb.BlueprintLike:
                 origin="/plots",
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
-                    rr.TimeRange(
-                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 50 - i * 10),
-                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 50 - i * 10 + 10),
-                    ),
+                    start=rrb.TimeRangeBoundary.cursor_relative(50 - i * 10),
+                    end=rrb.TimeRangeBoundary.cursor_relative(50 - i * 10 + 10),
                 ),
             )
             for i in range(0, 10)
@@ -48,10 +46,8 @@ def blueprint() -> rrb.BlueprintLike:
                 origin="/2D",
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
-                    rr.TimeRange(
-                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundary.Infinite, 0),
-                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 0),
-                    ),
+                    start=rrb.TimeRangeBoundary.infinite(),
+                    end=rrb.TimeRangeBoundary.cursor_relative(),
                 ),
             )
             for _ in range(0, 3)
@@ -63,10 +59,8 @@ def blueprint() -> rrb.BlueprintLike:
                 origin="/3D",
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
-                    rr.TimeRange(
-                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
-                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
-                    ),
+                    start=rrb.TimeRangeBoundary.infinite(),
+                    end=rrb.TimeRangeBoundary.infinite(),
                 ),
             )
             for _ in range(0, 3)

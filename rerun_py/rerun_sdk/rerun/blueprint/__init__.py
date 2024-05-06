@@ -4,7 +4,6 @@ from __future__ import annotations
 from ..datatypes import (
     TimeRange,
     TimeRangeBoundary,
-    VisibleTimeRange,
 )
 from . import archetypes, components
 from .api import (
@@ -29,6 +28,7 @@ from .components import (
     BackgroundKind,
     Corner2D,
     LockRangeDuringZoom,
+    VisibleTimeRange,
 )
 from .containers import Grid, Horizontal, Tabs, Vertical
 from .views import (
