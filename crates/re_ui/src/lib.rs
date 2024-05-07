@@ -518,8 +518,9 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined by the current clip rectangle. Contrary to [`egui::Separator`], this separator allocates
-    /// a single pixel in height, as spacing is typically handled by content when full span highlighting is used.
+    /// The span is determined using [`crate::full_span`]. Contrary to [`egui::Separator`], this
+    /// separator allocates a single pixel in height, as spacing is typically handled by content
+    /// when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
         let height = 1.0;
 
@@ -527,14 +528,13 @@ impl ReUi {
         let size = egui::vec2(available_space.x, height);
 
         let (rect, response) = ui.allocate_at_least(size, egui::Sense::hover());
-        let clip_rect = ui.clip_rect();
 
         if ui.is_rect_visible(response.rect) {
             let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             let painter = ui.painter();
 
             painter.hline(
-                clip_rect.left()..=clip_rect.right(),
+                crate::full_span::get_full_span(ui),
                 painter.round_to_pixel(rect.center().y),
                 stroke,
             );
@@ -575,15 +575,15 @@ impl ReUi {
                     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                        ui.set_clip_rect(ui.cursor());
-
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            egui::Frame {
-                                //TODO(ab): use design token
-                                inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                ..Default::default()
-                            }
-                            .show(ui, |ui| ret = Some(add_contents(ui)))
+                        crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                egui::Frame {
+                                    //TODO(ab): use design token
+                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                    ..Default::default()
+                                }
+                                .show(ui, |ui| ret = Some(add_contents(ui)))
+                            })
                         })
                     })
                 })
@@ -635,10 +635,12 @@ impl ReUi {
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
-                let mut rect = ui.available_rect_before_wrap();
+                let rect = egui::Rect::from_x_y_ranges(
+                    crate::full_span::get_full_span(ui),
+                    ui.available_rect_before_wrap().y_range(),
+                );
                 let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
-                rect.extend_with_x(ui.clip_rect().right());
-                rect.extend_with_x(ui.clip_rect().left());
+
                 ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
                 ui.painter()
                     .hline(rect.x_range(), rect.bottom(), hline_stroke);
@@ -860,9 +862,10 @@ impl ReUi {
                 ui.painter().galley(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
-                let mut bg_rect = rect;
-                bg_rect.extend_with_x(ui.clip_rect().right());
-                bg_rect.extend_with_x(ui.clip_rect().left());
+                let bg_rect = egui::Rect::from_x_y_ranges(
+                    crate::full_span::get_full_span(ui),
+                    rect.y_range(),
+                );
 
                 ui.painter().set(
                     background_frame,
