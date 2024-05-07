@@ -132,10 +132,7 @@ impl crate::Loggable for TimeRangeBoundary {
                             time.into_iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::TimeInt(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::TimeInt(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .collect(),

@@ -121,10 +121,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
                     .iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Mat3x3(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::Mat3x3(data0)| data0)
                             .unwrap_or_default()
                     })
                     .flatten()

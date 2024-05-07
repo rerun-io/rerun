@@ -115,10 +115,7 @@ impl ::re_types_core::Loggable for RootContainer {
                     .iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Uuid { bytes } = datum;
-                                bytes
-                            })
+                            .map(|crate::datatypes::Uuid { bytes }| bytes)
                             .unwrap_or_default()
                     })
                     .flatten()

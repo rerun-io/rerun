@@ -452,8 +452,7 @@ fn quote_arrow_field_serializer(
                 quote! {
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let #quoted_binding = datum;
+                            .map(|#quoted_binding| {
                                 #quoted_data_dst
                             })
                             .unwrap_or_default()
@@ -519,14 +518,12 @@ fn quote_arrow_field_serializer(
 
                     (
                         quote! {
-                            .flat_map(|datum| {
-                                let #quoted_binding = datum;
+                            .flat_map(|#quoted_binding| {
                                 #quoted_data_dst .0
                             })
                         },
                         quote! {
-                            .map(|datum| {
-                                let #quoted_binding = datum;
+                            .map(|#quoted_binding| {
                                 #quoted_data_dst.0.len()
                             })
                         },
@@ -633,8 +630,7 @@ fn quote_arrow_field_serializer(
                     quote! {
                         .map(|datum| {
                             datum
-                                .map(|datum| {
-                                    let #quoted_binding = datum;
+                                .map(|#quoted_binding| {
                                     #quoted_data_dst
                                 })
                                 .unwrap_or_default()

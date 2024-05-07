@@ -113,12 +113,13 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             p.into_iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::PrimitiveComponent(
+                                        .map(
+                                            |crate::testing::datatypes::PrimitiveComponent(
                                                 data0,
-                                            ) = datum;
-                                            data0
-                                        })
+                                            )| {
+                                                data0
+                                            },
+                                        )
                                         .unwrap_or_default()
                                 })
                                 .collect(),
@@ -145,9 +146,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 s.iter().map(|opt| {
                                     opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::StringComponent(data0) =
-                                                datum;
+                                        .map(|crate::testing::datatypes::StringComponent(data0)| {
                                             data0.0.len()
                                         })
                                         .unwrap_or_default()
@@ -158,8 +157,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let inner_data: arrow2::buffer::Buffer<u8> = s
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| {
-                                    let crate::testing::datatypes::StringComponent(data0) = datum;
+                                .flat_map(|crate::testing::datatypes::StringComponent(data0)| {
                                     data0.0
                                 })
                                 .collect();

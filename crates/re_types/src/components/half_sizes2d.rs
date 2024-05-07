@@ -114,10 +114,7 @@ impl ::re_types_core::Loggable for HalfSizes2D {
                     .iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Vec2D(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::Vec2D(data0)| data0)
                             .unwrap_or_default()
                     })
                     .flatten()

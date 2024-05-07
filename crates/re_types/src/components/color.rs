@@ -112,10 +112,7 @@ impl ::re_types_core::Loggable for Color {
                     .into_iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Rgba32(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::Rgba32(data0)| data0)
                             .unwrap_or_default()
                     })
                     .collect(),

@@ -111,10 +111,7 @@ impl ::re_types_core::Loggable for LockRangeDuringZoom {
                     .into_iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Bool(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::Bool(data0)| data0)
                             .unwrap_or_default()
                     })
                     .collect(),

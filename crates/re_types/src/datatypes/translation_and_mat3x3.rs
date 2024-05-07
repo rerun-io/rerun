@@ -129,10 +129,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 .iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::Vec3D(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .flatten()
@@ -190,10 +187,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 .iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Mat3x3(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::Mat3x3(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .flatten()

@@ -114,10 +114,7 @@ impl ::re_types_core::Loggable for ClassId {
                     .into_iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::ClassId(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::ClassId(data0)| data0)
                             .unwrap_or_default()
                     })
                     .collect(),

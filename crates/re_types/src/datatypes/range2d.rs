@@ -118,10 +118,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 .iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Range1D(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::Range1D(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .flatten()
@@ -176,10 +173,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 .iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Range1D(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::Range1D(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .flatten()

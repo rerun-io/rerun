@@ -141,10 +141,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 label.iter().map(|opt| {
                                     opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::datatypes::Utf8(data0) = datum;
-                                            data0.0.len()
-                                        })
+                                        .map(|crate::datatypes::Utf8(data0)| data0.0.len())
                                         .unwrap_or_default()
                                 }),
                             )
@@ -153,10 +150,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             let inner_data: arrow2::buffer::Buffer<u8> = label
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|datum| {
-                                    let crate::datatypes::Utf8(data0) = datum;
-                                    data0.0
-                                })
+                                .flat_map(|crate::datatypes::Utf8(data0)| data0.0)
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
@@ -194,10 +188,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 .into_iter()
                                 .map(|datum| {
                                     datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Rgba32(data0) = datum;
-                                            data0
-                                        })
+                                        .map(|crate::datatypes::Rgba32(data0)| data0)
                                         .unwrap_or_default()
                                 })
                                 .collect(),

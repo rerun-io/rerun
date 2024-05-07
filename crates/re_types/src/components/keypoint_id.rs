@@ -116,10 +116,7 @@ impl ::re_types_core::Loggable for KeypointId {
                     .into_iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::KeypointId(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::KeypointId(data0)| data0)
                             .unwrap_or_default()
                     })
                     .collect(),

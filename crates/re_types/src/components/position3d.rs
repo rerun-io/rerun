@@ -112,10 +112,7 @@ impl ::re_types_core::Loggable for Position3D {
                     .iter()
                     .map(|datum| {
                         datum
-                            .map(|datum| {
-                                let crate::datatypes::Vec3D(data0) = datum;
-                                data0
-                            })
+                            .map(|crate::datatypes::Vec3D(data0)| data0)
                             .unwrap_or_default()
                     })
                     .flatten()
