@@ -111,7 +111,6 @@ impl ::re_types_core::Loggable for Uuid {
                             std::iter::repeat(Default::default()).take(16usize),
                         ),
                     })
-                    .map(Some)
                     .collect();
                 let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     bytes_bitmap.as_ref().map(|bitmap| {
@@ -126,10 +125,7 @@ impl ::re_types_core::Loggable for Uuid {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::UInt8,
-                        bytes_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        bytes_inner_data.into_iter().collect(),
                         bytes_inner_bitmap,
                     )
                     .boxed(),

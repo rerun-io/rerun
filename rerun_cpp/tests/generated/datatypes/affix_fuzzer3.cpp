@@ -15,7 +15,6 @@ namespace rerun {
         static const auto datatype = arrow::dense_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
             arrow::field("degrees", arrow::float32(), false),
-            arrow::field("radians", arrow::float32(), true),
             arrow::field(
                 "craziness",
                 arrow::list(arrow::field(
@@ -88,16 +87,6 @@ namespace rerun {
                     ARROW_RETURN_NOT_OK(
                         variant_builder->Append(union_instance.get_union_data().degrees)
                     );
-                } break;
-                case TagType::radians: {
-                    auto variant_builder =
-                        static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
-                    const auto& element = union_instance.get_union_data();
-                    if (element.radians.has_value()) {
-                        ARROW_RETURN_NOT_OK(variant_builder->Append(element.radians.value()));
-                    } else {
-                        ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
-                    }
                 } break;
                 case TagType::craziness: {
                     auto variant_builder =

@@ -144,7 +144,6 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                         .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 translation_bitmap.as_ref().map(|bitmap| {
@@ -166,10 +165,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    translation_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    translation_inner_data.into_iter().collect(),
                                     translation_inner_bitmap,
                                 )
                                 .boxed(),

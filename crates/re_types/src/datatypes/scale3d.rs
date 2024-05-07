@@ -101,45 +101,25 @@ impl ::re_types_core::Loggable for Scale3D {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, three_d): (Vec<_>, Vec<_>) = data
+                    let three_d: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::ThreeD(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Scale3D::ThreeD(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Scale3D::ThreeD(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let three_d_inner_data: Vec<_> = three_d
                             .iter()
                             .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Vec3D(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
+                                let crate::datatypes::Vec3D(data0) = datum.clone();
+                                data0
                             })
                             .flatten()
-                            .map(Some)
                             .collect();
-                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            three_d_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(3usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -147,10 +127,7 @@ impl ::re_types_core::Loggable for Scale3D {
                             ),
                             PrimitiveArray::new(
                                 DataType::Float32,
-                                three_d_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                three_d_inner_data.into_iter().collect(),
                                 three_d_inner_bitmap,
                             )
                             .boxed(),
@@ -160,24 +137,17 @@ impl ::re_types_core::Loggable for Scale3D {
                     }
                 },
                 {
-                    let (somes, uniform): (Vec<_>, Vec<_>) = data
+                    let uniform: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Scale3D::Uniform(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Scale3D::Uniform(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Scale3D::Uniform(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Float32,
-                        uniform.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                        uniform.into_iter().collect(),
                         uniform_bitmap,
                     )
                     .boxed()

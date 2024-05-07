@@ -28,15 +28,6 @@ namespace rerun {
                 )),
                 false
             ),
-            arrow::field(
-                "many_optional",
-                arrow::list(arrow::field(
-                    "item",
-                    Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
-                    false
-                )),
-                true
-            ),
         });
         return datatype;
     }
@@ -107,15 +98,6 @@ namespace rerun {
                     return rerun::Error(
                         ErrorCode::NotImplemented,
                         "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
-                    );
-                } break;
-                case TagType::many_optional: {
-                    auto variant_builder =
-                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                    (void)variant_builder;
-                    return rerun::Error(
-                        ErrorCode::NotImplemented,
-                        "Failed to serialize AffixFuzzer4::many_optional: nullable list types in unions not yet implemented"
                     );
                 } break;
             }

@@ -130,13 +130,8 @@ impl ::re_types_core::Loggable for TensorData {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let shape_inner_data: Vec<_> = shape
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .map(Some)
-                                .collect();
+                            let shape_inner_data: Vec<_> =
+                                shape.iter().flatten().flatten().cloned().collect();
                             let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let offsets =
                                 arrow2::offset::Offsets::<i32>::try_from_lengths(shape.iter().map(
@@ -154,7 +149,7 @@ impl ::re_types_core::Loggable for TensorData {
                                 {
                                     _ = shape_inner_bitmap;
                                     crate::datatypes::TensorDimension::to_arrow_opt(
-                                        shape_inner_data,
+                                        shape_inner_data.into_iter().map(Some),
                                     )?
                                 },
                                 shape_bitmap,
