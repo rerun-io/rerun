@@ -273,12 +273,12 @@ pub fn quote_arrow_serializer(
 
                     quote! {{
                         let #data_dst: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
+                            .iter()
+                            .filter_map(|datum| match datum.as_deref() {
+                                Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
+                                _ => None,
+                            })
+                            .collect();
 
                         let #bitmap_dst: Option<arrow2::bitmap::Bitmap> = None;
                         #quoted_serializer
@@ -469,8 +469,6 @@ fn quote_arrow_field_serializer(
                 quote! {
                     BooleanArray::new(
                         #quoted_datatype,
-                        // NOTE: We need values for all slots, regardless of what the bitmap says,
-                        // hence `unwrap_or_default`.
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #bitmap_src,
                     ).boxed()
