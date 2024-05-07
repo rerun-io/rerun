@@ -84,4 +84,53 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        return AngleExt.native_to_pa_array_override(data, data_type)
+        from typing import cast
+
+        # Ensure data is iterable.
+        try:
+            iter(data)  # type: ignore[arg-type]
+        except TypeError:
+            data = [data]  # type: ignore[list-item]
+        data = cast(Sequence[AngleLike], data)
+
+        types: list[int] = []
+        value_offsets: list[int] = []
+
+        num_nulls = 0
+        variant_radians: list[float] = []
+        variant_degrees: list[float] = []
+
+        for value in data:
+            if value is None:
+                value_offsets.append(num_nulls)
+                num_nulls += 1
+                types.append(0)
+            else:
+                if not isinstance(value, Angle):
+                    value = Angle(value)
+                if value.kind == "radians":
+                    value_offsets.append(len(variant_radians))
+                    variant_radians.append(value.inner)  # type: ignore[arg-type]
+                    types.append(1)
+                elif value.kind == "degrees":
+                    value_offsets.append(len(variant_degrees))
+                    variant_degrees.append(value.inner)  # type: ignore[arg-type]
+                    types.append(2)
+
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+            pa.array(value_offsets, type=pa.int32()).buffers()[1],
+        ]
+        children = [
+            pa.nulls(num_nulls),
+            pa.array(variant_radians, type=pa.float32()),
+            pa.array(variant_degrees, type=pa.float32()),
+        ]
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=buffers,
+            children=children,
+        )
