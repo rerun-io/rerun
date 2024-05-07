@@ -201,5 +201,5 @@ class AffixFuzzer4Batch(BaseBatch[AffixFuzzer4ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer4ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer4 not implemented: We lack codegen for arrow-serialization of unions"
+            "Arrow serialization of AffixFuzzer4 not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.testing.datatypes.AffixFuzzer4#many_required"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer4_ext.py
