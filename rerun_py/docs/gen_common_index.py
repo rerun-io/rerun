@@ -306,6 +306,8 @@ SECTION_TABLE: Final[list[Section]] = [
             "start_web_viewer_server",
             "escape_entity_path_part",
             "new_entity_path",
+            "thread_local_stream",
+            "recording_stream_generator_ctx",
         ],
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),

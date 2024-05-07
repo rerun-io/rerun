@@ -1,4 +1,5 @@
 use egui::{NumExt as _, Ui};
+use egui_tiles::ContainerKind;
 
 use re_data_ui::{
     image_meaning_for_entity, item_ui,
@@ -211,11 +212,7 @@ fn container_children(
         ui.strong("Contents");
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ctx
-                .re_ui
-                .small_icon_button(ui, &re_ui::icons::ADD)
-                .clicked()
-            {
+            if ctx.re_ui.small_icon_button(ui, &icons::ADD).clicked() {
                 viewport.show_add_space_view_or_container_modal(*container_id);
             }
         });
@@ -375,9 +372,9 @@ fn what_is_selected_ui(
                 ui,
                 component_name.short_name(),
                 Some(if is_static {
-                    &re_ui::icons::COMPONENT_STATIC
+                    &icons::COMPONENT_STATIC
                 } else {
-                    &re_ui::icons::COMPONENT
+                    &icons::COMPONENT
                 }),
                 &format!(
                     "Component {} of entity '{}'",
@@ -635,33 +632,7 @@ fn container_top_level_properties(
             ui.label("Kind");
 
             let mut container_kind = container.container_kind;
-            egui::ComboBox::from_id_source("container_kind")
-                .selected_text(format!("{container_kind:?}"))
-                .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
-                    ui.set_min_width(64.0);
-
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Tabs,
-                        format!("{:?}", egui_tiles::ContainerKind::Tabs),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Horizontal,
-                        format!("{:?}", egui_tiles::ContainerKind::Horizontal),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Vertical,
-                        format!("{:?}", egui_tiles::ContainerKind::Vertical),
-                    );
-                    ui.selectable_value(
-                        &mut container_kind,
-                        egui_tiles::ContainerKind::Grid,
-                        format!("{:?}", egui_tiles::ContainerKind::Grid),
-                    );
-                });
+            container_kind_selection_ui(ctx, ui, &mut container_kind);
 
             viewport
                 .blueprint
@@ -669,7 +640,7 @@ fn container_top_level_properties(
 
             ui.end_row();
 
-            if container.container_kind == egui_tiles::ContainerKind::Grid {
+            if container.container_kind == ContainerKind::Grid {
                 ui.label("Columns");
 
                 fn columns_to_string(columns: &Option<u32>) -> String {
@@ -735,10 +706,10 @@ fn container_top_level_properties(
 
             if container.contents.len() > 1
                 && match container.container_kind {
-                    egui_tiles::ContainerKind::Tabs => false,
-                    egui_tiles::ContainerKind::Horizontal
-                    | egui_tiles::ContainerKind::Vertical
-                    | egui_tiles::ContainerKind::Grid => true,
+                    ContainerKind::Tabs => false,
+                    ContainerKind::Horizontal | ContainerKind::Vertical | ContainerKind::Grid => {
+                        true
+                    }
                 }
                 && ui
                     .add_enabled(
@@ -752,6 +723,40 @@ fn container_top_level_properties(
             }
             ui.end_row();
         });
+}
+
+fn container_kind_selection_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut Ui,
+    in_out_kind: &mut ContainerKind,
+) {
+    let min_width = 90.0;
+    let selected_text = format!("{in_out_kind:?}");
+
+    re_ui::drop_down_menu(ui, "container_kind", min_width, selected_text, |ui| {
+        ui.style_mut().wrap = Some(false);
+
+        static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
+        for (kind, icon) in [
+            (ContainerKind::Tabs, &icons::CONTAINER_TABS),
+            (ContainerKind::Grid, &icons::CONTAINER_GRID),
+            (ContainerKind::Horizontal, &icons::CONTAINER_HORIZONTAL),
+            (ContainerKind::Vertical, &icons::CONTAINER_VERTICAL),
+        ] {
+            let response = ctx
+                .re_ui
+                .list_item2()
+                .selected(*in_out_kind == kind)
+                .show_flat(
+                    ui,
+                    re_ui::list_item2::LabelContent::new(format!("{kind:?}")).with_icon(icon),
+                );
+
+            if response.clicked() {
+                *in_out_kind = kind;
+            }
+        }
+    });
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
@@ -780,7 +785,7 @@ fn show_list_item_for_container_child(
                     .with_icon(space_view.class(ctx.space_view_class_registry).icon())
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .small_icon_button(ui, &icons::REMOVE)
                             .on_hover_text("Remove this space view");
 
                         if response.clicked() {
@@ -806,7 +811,7 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|re_ui, ui| {
                         let response = re_ui
-                            .small_icon_button(ui, &re_ui::icons::REMOVE)
+                            .small_icon_button(ui, &icons::REMOVE)
                             .on_hover_text("Remove this container");
 
                         if response.clicked() {

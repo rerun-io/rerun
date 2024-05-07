@@ -120,7 +120,6 @@ impl ::re_types_core::Loggable for Mat4x4 {
                             std::iter::repeat(Default::default()).take(16usize),
                         ),
                     })
-                    .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
@@ -135,10 +134,7 @@ impl ::re_types_core::Loggable for Mat4x4 {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::Float32,
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data.into_iter().collect(),
                         data0_inner_bitmap,
                     )
                     .boxed(),

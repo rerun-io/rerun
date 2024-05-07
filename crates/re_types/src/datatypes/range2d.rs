@@ -125,7 +125,6 @@ impl ::re_types_core::Loggable for Range2D {
                                         .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let x_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 x_range_bitmap.as_ref().map(|bitmap| {
@@ -147,10 +146,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float64,
-                                    x_range_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    x_range_inner_data.into_iter().collect(),
                                     x_range_inner_bitmap,
                                 )
                                 .boxed(),
@@ -187,7 +183,6 @@ impl ::re_types_core::Loggable for Range2D {
                                         .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let y_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 y_range_bitmap.as_ref().map(|bitmap| {
@@ -209,10 +204,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float64,
-                                    y_range_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    y_range_inner_data.into_iter().collect(),
                                     y_range_inner_bitmap,
                                 )
                                 .boxed(),

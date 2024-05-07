@@ -346,7 +346,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .flatten()
                                 .flatten()
                                 .cloned()
-                                .map(Some)
                                 .collect();
                             let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
@@ -368,15 +367,12 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow2::buffer::Buffer<u8> =
                                         many_strings_required_inner_data
                                             .iter()
-                                            .flatten()
                                             .flat_map(|s| s.0.clone())
                                             .collect();
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                        many_strings_required_inner_data.iter().map(|opt| {
-                                            opt.as_ref()
-                                                .map(|datum| datum.0.len())
-                                                .unwrap_or_default()
-                                        }),
+                                        many_strings_required_inner_data
+                                            .iter()
+                                            .map(|datum| datum.0.len()),
                                     )
                                     .unwrap()
                                     .into();
@@ -424,7 +420,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .flatten()
                                 .flatten()
                                 .cloned()
-                                .map(Some)
                                 .collect();
                             let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
@@ -446,15 +441,12 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let inner_data: arrow2::buffer::Buffer<u8> =
                                         many_strings_optional_inner_data
                                             .iter()
-                                            .flatten()
                                             .flat_map(|s| s.0.clone())
                                             .collect();
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                        many_strings_optional_inner_data.iter().map(|opt| {
-                                            opt.as_ref()
-                                                .map(|datum| datum.0.len())
-                                                .unwrap_or_default()
-                                        }),
+                                        many_strings_optional_inner_data
+                                            .iter()
+                                            .map(|datum| datum.0.len()),
                                     )
                                     .unwrap()
                                     .into();

@@ -103,13 +103,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0
-                    .iter()
-                    .flatten()
-                    .flatten()
-                    .cloned()
-                    .map(Some)
-                    .collect();
+                let data0_inner_data: Vec<_> = data0.iter().flatten().flatten().cloned().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
@@ -126,25 +120,12 @@ impl ::re_types_core::Loggable for LineStrip2D {
                         let data0_inner_data_inner_data: Vec<_> = data0_inner_data
                             .iter()
                             .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Vec2D(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
+                                let crate::datatypes::Vec2D(data0) = datum.clone();
+                                data0
                             })
                             .flatten()
-                            .map(Some)
                             .collect();
-                        let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            data0_inner_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(2usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
@@ -152,10 +133,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                             ),
                             PrimitiveArray::new(
                                 DataType::Float32,
-                                data0_inner_data_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                data0_inner_data_inner_data.into_iter().collect(),
                                 data0_inner_data_inner_bitmap,
                             )
                             .boxed(),

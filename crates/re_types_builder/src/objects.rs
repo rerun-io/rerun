@@ -97,6 +97,14 @@ impl Objects {
                         reporter.error(virtpath, &obj.fqname, format!("Field {:?} s a primitive field of type {:?}. Primitive types are only allowed on DataTypes & Components.", field.fqname, field.typ));
                     }
                 }
+
+                if obj.is_union() && field.is_nullable {
+                    reporter.error(
+                        virtpath,
+                        &obj.fqname,
+                        "Nullable fields on unions are not supported.",
+                    );
+                }
             }
         }
 

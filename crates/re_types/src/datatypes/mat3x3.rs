@@ -119,7 +119,6 @@ impl ::re_types_core::Loggable for Mat3x3 {
                             std::iter::repeat(Default::default()).take(9usize),
                         ),
                     })
-                    .map(Some)
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
@@ -134,10 +133,7 @@ impl ::re_types_core::Loggable for Mat3x3 {
                     Self::arrow_datatype(),
                     PrimitiveArray::new(
                         DataType::Float32,
-                        data0_inner_data
-                            .into_iter()
-                            .map(|v| v.unwrap_or_default())
-                            .collect(),
+                        data0_inner_data.into_iter().collect(),
                         data0_inner_bitmap,
                     )
                     .boxed(),

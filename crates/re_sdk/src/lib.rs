@@ -108,9 +108,6 @@ pub mod external {
 
     #[cfg(feature = "data_loaders")]
     pub use re_data_loader;
-
-    #[cfg(feature = "log")]
-    pub use log;
 }
 
 // -----
