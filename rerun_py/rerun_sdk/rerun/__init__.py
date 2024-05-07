@@ -79,7 +79,9 @@ from .logging_handler import LoggingHandler
 from .memory import MemoryRecording, memory_recording
 from .notebook import notebook_show
 from .recording_stream import (
+    BinaryStream,
     RecordingStream,
+    binary_stream,
     get_application_id,
     get_data_recording,
     get_global_data_recording,
@@ -128,7 +130,18 @@ def _init_recording_stream() -> None:
     from rerun.recording_stream import _patch as recording_stream_patch
 
     recording_stream_patch(
-        [connect, save, stdout, disconnect, memory_recording, serve, spawn, send_blueprint, notebook_show]
+        [
+            binary_stream,
+            connect,
+            save,
+            stdout,
+            disconnect,
+            memory_recording,
+            serve,
+            spawn,
+            send_blueprint,
+            notebook_show,
+        ]
         + [
             set_time_sequence,
             set_time_seconds,

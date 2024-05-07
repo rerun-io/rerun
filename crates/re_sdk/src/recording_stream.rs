@@ -21,6 +21,7 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
+use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
@@ -1593,6 +1594,18 @@ impl RecordingStream {
         let storage = sink.buffer();
         self.set_sink(Box::new(sink));
         storage
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::BinaryStreamSink`] sink and returns the associated
+    /// [`BinaryStreamStorage`].
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn binary_stream(&self) -> Result<BinaryStreamStorage, crate::sink::BinaryStreamSinkError> {
+        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone())?;
+        self.set_sink(Box::new(sink));
+        Ok(storage)
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.

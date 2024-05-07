@@ -246,6 +246,73 @@ class RecordingStream:
         bindings.flush(blocking=False, recording=recording)
 
 
+def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
+    """
+    Sends all log-data to a [`rerun.BinaryStream`] object that can be read from.
+
+    The contents of this stream are encoded in the Rerun Record Data format (rrd).
+
+    This stream has no mechanism of limiting memory or creating back-pressure. If you do not
+    read from it, it will buffer all messages that you have logged.
+
+    Example
+    -------
+    ```python
+    stream = rr.binary_stream()
+
+    rr.log("stream", rr.TextLog("Hello world"))
+
+    with open("output.rrd", "wb") as f:
+        f.write(stream.read())
+    ```
+
+    Parameters
+    ----------
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    Returns
+    -------
+    BinaryStream
+        An object that can be used to flush or read the data.
+
+    """
+
+    recording = RecordingStream.to_native(recording)
+    return BinaryStream(bindings.binary_stream(recording=recording))
+
+
+class BinaryStream:
+    """An encoded stream of bytes that can be saved as an rrd or sent to the viewer."""
+
+    def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
+        self.storage = storage
+
+    def read(self, *, flush: bool = True) -> bytes:
+        """
+        Reads the available bytes from the stream.
+
+        If using `flush`, the read call will first block until the flush is complete.
+
+        Parameters
+        ----------
+        flush:
+            If true (default), the stream will be flushed before reading.
+
+        """
+        return self.storage.read(flush=flush)  # type: ignore[no-any-return]
+
+    def flush(self) -> None:
+        """
+        Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
+
+        This will block until the flush is complete.
+        """
+        self.storage.flush()
+
+
 def _patch(funcs):  # type: ignore[no-untyped-def]
     """Adds the given functions as methods to the `RecordingStream` class; injects `recording=self` in passing."""
     import functools

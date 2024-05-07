@@ -15,6 +15,7 @@
 // ----------------
 // Private modules:
 
+mod binary_stream_sink;
 mod global;
 mod log_sink;
 mod recording_stream;
@@ -60,6 +61,9 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// This is how you select whether the log stream ends up
 /// sent over TCP, written to file, etc.
 pub mod sink {
+    pub use crate::binary_stream_sink::{
+        BinaryStreamSink, BinaryStreamSinkError, BinaryStreamStorage,
+    };
     pub use crate::log_sink::{BufferedSink, LogSink, MemorySink, MemorySinkStorage, TcpSink};
 
     #[cfg(not(target_arch = "wasm32"))]
