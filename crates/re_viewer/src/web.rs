@@ -46,10 +46,10 @@ impl WebHandle {
     pub async fn start(
         &self,
         canvas_id: &str,
-        hide_welcome_screen: Option<bool>,
         url: Option<String>,
         manifest_url: Option<String>,
         force_wgpu_backend: Option<String>,
+        hide_welcome_screen: Option<bool>,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
