@@ -198,7 +198,7 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
 
 /// Customize eframe and egui to suit the rerun viewer.
 #[must_use]
-pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
+pub fn customize_eframe_and_setup_renderer(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     re_tracing::profile_function!();
 
     if let Some(render_state) = &cc.wgpu_render_state {
@@ -206,7 +206,7 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
 
         let paint_callback_resources = &mut render_state.renderer.write().callback_resources;
 
-        paint_callback_resources.insert(RenderContext::new(
+        let render_ctx = RenderContext::new(
             &render_state.adapter,
             render_state.device.clone(),
             render_state.queue.clone(),
@@ -214,7 +214,22 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
                 output_format_color: render_state.target_format,
                 device_caps: re_renderer::config::DeviceCaps::from_adapter(&render_state.adapter),
             },
-        ));
+        );
+
+        match render_ctx {
+            Ok(render_ctx) => {
+                paint_callback_resources.insert(render_ctx);
+            }
+            Err(err) => {
+                re_log::error!("Failed to create render context: {err}");
+
+                #[allow(clippy::exit)]
+                {
+                    // TODO(egui#4474): return errors to eframe -> `main`
+                    std::process::exit(1);
+                }
+            }
+        };
     }
 
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)
