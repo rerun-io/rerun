@@ -145,9 +145,9 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             .unwrap()
                             .into();
                             let many_halves_inner_data: Buffer<_> = many_halves
-                                .into_iter()
+                                .iter()
                                 .flatten()
-                                .map(|b| b.as_slice().to_vec())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();

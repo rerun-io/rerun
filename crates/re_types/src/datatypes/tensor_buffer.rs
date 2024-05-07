@@ -323,8 +323,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let u8_inner_data: Buffer<_> = u8
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -360,8 +360,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let u16_inner_data: Buffer<_> = u16
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -397,8 +397,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let u32_inner_data: Buffer<_> = u32
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -434,8 +434,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let u64_inner_data: Buffer<_> = u64
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -471,8 +471,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let i8_inner_data: Buffer<_> = i8
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -508,8 +508,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let i16_inner_data: Buffer<_> = i16
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -545,8 +545,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let i32_inner_data: Buffer<_> = i32
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -582,8 +582,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let i64_inner_data: Buffer<_> = i64
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -619,8 +619,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let f16_inner_data: Buffer<_> = f16
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -660,8 +660,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let f32_inner_data: Buffer<_> = f32
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -701,8 +701,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let f64_inner_data: Buffer<_> = f64
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -742,8 +742,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let jpeg_inner_data: Buffer<_> = jpeg
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -783,8 +783,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let nv12_inner_data: Buffer<_> = nv12
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
@@ -824,8 +824,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         .unwrap()
                         .into();
                         let yuy2_inner_data: Buffer<_> = yuy2
-                            .into_iter()
-                            .map(|b| b.as_slice().to_vec())
+                            .iter()
+                            .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();

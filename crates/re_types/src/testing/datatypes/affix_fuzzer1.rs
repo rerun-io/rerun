@@ -295,9 +295,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .unwrap()
                             .into();
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
-                                .into_iter()
+                                .iter()
                                 .flatten()
-                                .map(|b| b.as_slice().to_vec())
+                                .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();

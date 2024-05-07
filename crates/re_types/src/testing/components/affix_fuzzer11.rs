@@ -110,9 +110,9 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                     .unwrap()
                     .into();
                 let data0_inner_data: Buffer<_> = data0
-                    .into_iter()
+                    .iter()
                     .flatten()
-                    .map(|b| b.as_slice().to_vec())
+                    .map(|b| b.as_slice())
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
