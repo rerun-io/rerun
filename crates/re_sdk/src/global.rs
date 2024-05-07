@@ -11,7 +11,6 @@ use crate::{RecordingStream, StoreKind};
 // ---
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 enum RecordingScope {
     Global,
     ThreadLocal,
