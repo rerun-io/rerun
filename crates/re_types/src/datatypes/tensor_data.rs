@@ -130,15 +130,15 @@ impl ::re_types_core::Loggable for TensorData {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let shape_inner_data: Vec<_> =
-                                shape.iter().flatten().flatten().cloned().collect();
-                            let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let offsets =
                                 arrow2::offset::Offsets::<i32>::try_from_lengths(shape.iter().map(
                                     |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
                                 ))
                                 .unwrap()
                                 .into();
+                            let shape_inner_data: Vec<_> =
+                                shape.into_iter().flatten().flatten().collect();
+                            let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",

@@ -285,15 +285,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
-                                .iter()
-                                .flatten()
-                                .map(|b| b.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let many_floats_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
                                     opt.as_ref()
@@ -303,6 +294,15 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .unwrap()
                             .into();
+                            let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
+                                .into_iter()
+                                .flatten()
+                                .map(|b| b.as_slice().to_vec())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let many_floats_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -341,14 +341,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_required_inner_data: Vec<_> = many_strings_required
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -356,6 +348,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .unwrap()
                             .into();
+                            let many_strings_required_inner_data: Vec<_> = many_strings_required
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -415,14 +414,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_optional_inner_data: Vec<_> = many_strings_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -430,6 +421,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .unwrap()
                             .into();
+                            let many_strings_optional_inner_data: Vec<_> = many_strings_optional
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",

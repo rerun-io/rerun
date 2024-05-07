@@ -115,7 +115,7 @@ impl ::re_types_core::Loggable for Range2D {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let x_range_inner_data: Vec<_> = x_range
-                                .iter()
+                                .into_iter()
                                 .map(|datum| {
                                     datum
                                         .map(|crate::datatypes::Range1D(data0)| data0)
@@ -170,7 +170,7 @@ impl ::re_types_core::Loggable for Range2D {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let y_range_inner_data: Vec<_> = y_range
-                                .iter()
+                                .into_iter()
                                 .map(|datum| {
                                     datum
                                         .map(|crate::datatypes::Range1D(data0)| data0)

@@ -317,18 +317,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let u8_inner_data: Buffer<_> = u8
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u8.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let u8_inner_data: Buffer<_> = u8
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -354,18 +354,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let u16_inner_data: Buffer<_> = u16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let u16_inner_data: Buffer<_> = u16
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -391,18 +391,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let u32_inner_data: Buffer<_> = u32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let u32_inner_data: Buffer<_> = u32
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -428,18 +428,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let u64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let u64_inner_data: Buffer<_> = u64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             u64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let u64_inner_data: Buffer<_> = u64
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -465,18 +465,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let i8_inner_data: Buffer<_> = i8
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i8.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let i8_inner_data: Buffer<_> = i8
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -502,18 +502,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let i16_inner_data: Buffer<_> = i16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let i16_inner_data: Buffer<_> = i16
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -539,18 +539,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let i32_inner_data: Buffer<_> = i32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let i32_inner_data: Buffer<_> = i32
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -576,18 +576,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let i64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let i64_inner_data: Buffer<_> = i64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             i64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let i64_inner_data: Buffer<_> = i64
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -613,18 +613,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let f16_inner_data: Buffer<_> = f16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let f16_inner_data: Buffer<_> = f16
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -654,18 +654,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let f32_inner_data: Buffer<_> = f32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let f32_inner_data: Buffer<_> = f32
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -695,18 +695,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let f64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let f64_inner_data: Buffer<_> = f64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             f64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let f64_inner_data: Buffer<_> = f64
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -736,18 +736,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let jpeg_inner_data: Buffer<_> = jpeg
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             jpeg.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let jpeg_inner_data: Buffer<_> = jpeg
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -777,18 +777,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let nv12_inner_data: Buffer<_> = nv12
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             nv12.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let nv12_inner_data: Buffer<_> = nv12
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -818,18 +818,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     let yuy2_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let yuy2_inner_data: Buffer<_> = yuy2
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             yuy2.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
+                        let yuy2_inner_data: Buffer<_> = yuy2
+                            .into_iter()
+                            .map(|b| b.as_slice().to_vec())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",

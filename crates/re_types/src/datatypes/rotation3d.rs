@@ -120,11 +120,8 @@ impl ::re_types_core::Loggable for Rotation3D {
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let quaternion_inner_data: Vec<_> = quaternion
-                            .iter()
-                            .map(|datum| {
-                                let crate::datatypes::Quaternion(data0) = datum.clone();
-                                data0
-                            })
+                            .into_iter()
+                            .map(|crate::datatypes::Quaternion(data0)| data0)
                             .flatten()
                             .collect();
                         let quaternion_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;

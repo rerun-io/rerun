@@ -118,7 +118,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
-                    .iter()
+                    .into_iter()
                     .map(|datum| {
                         datum
                             .map(|crate::datatypes::Mat3x3(data0)| data0)

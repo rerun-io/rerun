@@ -110,7 +110,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let axis_inner_data: Vec<_> = axis
-                                .iter()
+                                .into_iter()
                                 .map(|datum| {
                                     datum
                                         .map(|crate::datatypes::Vec3D(data0)| data0)

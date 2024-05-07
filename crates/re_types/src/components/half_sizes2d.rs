@@ -111,7 +111,7 @@ impl ::re_types_core::Loggable for HalfSizes2D {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
-                    .iter()
+                    .into_iter()
                     .map(|datum| {
                         datum
                             .map(|crate::datatypes::Vec2D(data0)| data0)

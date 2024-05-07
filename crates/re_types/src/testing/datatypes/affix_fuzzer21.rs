@@ -135,14 +135,6 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_halves_inner_data: Buffer<_> = many_halves
-                                .iter()
-                                .flatten()
-                                .map(|b| b.as_slice())
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into();
-                            let many_halves_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_halves.iter().map(|opt| {
                                     opt.as_ref()
@@ -152,6 +144,14 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             )
                             .unwrap()
                             .into();
+                            let many_halves_inner_data: Buffer<_> = many_halves
+                                .into_iter()
+                                .flatten()
+                                .map(|b| b.as_slice().to_vec())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let many_halves_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
