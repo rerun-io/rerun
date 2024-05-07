@@ -222,10 +222,13 @@ class RecordingStream:
     def __exit__(self, type, value, traceback):  # type: ignore[no-untyped-def]
         current_recording = active_recording_stream.get(None)
 
+        # Restore the context state
         if self.context_token is not None:
             active_recording_stream.reset(self.context_token)
 
-        self._prev = set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
+        # Restore the recording stream state
+        set_thread_local_data_recording(self._prev)  # type: ignore[arg-type]
+        self._prev = None
 
         # Sanity check: we set this context-var on enter. If it's not still set, something weird
         # happened. The user is probably doing something sketch with generators or async code.
@@ -468,6 +471,12 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
             @functools.wraps(func)
             def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+                # The following code is structured to avoid leaking the recording stream
+                # context when yielding from the generator.
+                # See: https://github.com/rerun-io/rerun/issues/6238
+                #
+                # The basic idea is to only ever hold the context object open while
+                # the generator is actively running, but to release it prior to yielding.
                 gen = func(*args, **kwargs)
                 stream = new_recording(application_id, recording_id=uuid.uuid4())
                 try:
@@ -501,10 +510,16 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
     Decorator to manage recording stream context for generator functions.
 
     This is only necessary if you need to implement a generator which yields while holding an open
-    recording stream context. This decorator will ensure that the recording stream context is suspended
-    and then properly resumed upon re-entering the generator.
+    recording stream context which it created. This decorator will ensure that the recording stream
+    context is suspended and then properly resumed upon re-entering the generator.
 
     See: https://github.com/rerun-io/rerun/issues/6238 for context on why this is necessary.
+
+    There are plenty of things that can go wrong when mixing context managers with generators, so
+    don't use this decorator unless you're sure you need it.
+
+    If you can plumb through `RecordingStream` objects and use those directly instead of relying on
+    the context manager, that will always be more robust.
 
     Example
     -------
@@ -526,6 +541,12 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
 
         @functools.wraps(func)
         def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+            # The following code is structured to avoid leaking the recording stream
+            # context when yielding from the generator.
+            # See: https://github.com/rerun-io/rerun/issues/6238
+            #
+            # The basic idea is to only ever hold the context object open while
+            # the generator is actively running, but to release it prior to yielding.
             gen = func(*args, **kwargs)
             current_recording = None
             try:
@@ -547,10 +568,12 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
                     value = gen.send(cont)  # Resume the generator inside the context
 
             except StopIteration:
-                pass
+                # StopIteration is raised from inside `gen.send()`. This happens after a call
+                # `__enter__` and means we don't need to enter during finally, below.
+                current_recording = None
             finally:
-                # It's important to re-enter the generator to avoid getting our warning
-                # on the final (real) exit.
+                # If we never reached the end of the iterator (StopIteration wasn't raised), then
+                # we need to enter again before finally closing the generator.
                 if current_recording is not None:
                     current_recording.__enter__()
                 gen.close()
