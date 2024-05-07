@@ -16,6 +16,8 @@ use crate::{
 
 // ---
 
+const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
+
 /// The result of the semantic pass: an intermediate representation of all available object
 /// types; including structs, enums and unions.
 #[derive(Debug)]
@@ -60,6 +62,10 @@ impl Objects {
 
         // resolve objects
         for obj in schema.objects() {
+            if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
+                continue;
+            }
+
             let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
@@ -680,7 +686,7 @@ impl ObjectField {
 
         let attrs = Attributes::from_raw_attrs(field.attributes());
 
-        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs);
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs, &fqname);
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
@@ -728,16 +734,16 @@ impl ObjectField {
 
         let attrs = Attributes::from_raw_attrs(val.attributes());
 
-        let typ = Type::from_raw_type(
-            &virtpath,
-            enums,
-            objs,
-            // NOTE: Unwrapping is safe, we never resolve enums without union types.
-            val.union_type().unwrap(),
-            &attrs,
-        );
+        // NOTE: Unwrapping is safe, we never resolve enums without union types.
+        let field_type = val.union_type().unwrap();
+        let typ = Type::from_raw_type(&virtpath, enums, objs, field_type, &attrs, &fqname);
 
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
+        let is_nullable = if field_type.base_type() == FbsBaseType::Obj && typ == Type::Unit {
+            // Builtin unit type for unions is not nullable.
+            false
+        } else {
+            attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit // null type is always nullable
+        };
 
         let is_deprecated = false;
 
@@ -885,10 +891,8 @@ impl Type {
         objs: &[FbsObject<'_>],
         field_type: FbsType<'_>,
         attrs: &Attributes,
+        fqname: &str,
     ) -> Self {
-        // TODO(jleibs): Clean up fqname plumbing
-        let fqname = "???";
-
         let typ = field_type.base_type();
 
         if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
@@ -945,7 +949,11 @@ impl Type {
             FbsBaseType::String => Self::String,
             FbsBaseType::Obj => {
                 let obj = &objs[field_type.index() as usize];
-                Self::Object(obj.name().to_owned())
+                if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
+                    Self::Unit
+                } else {
+                    Self::Object(obj.name().to_owned())
+                }
             }
             FbsBaseType::Union => {
                 let union = &enums[field_type.index() as usize];

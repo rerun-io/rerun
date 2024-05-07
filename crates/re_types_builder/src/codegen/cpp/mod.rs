@@ -1947,7 +1947,7 @@ fn quote_append_single_value_to_builder(
 ) -> TokenStream {
     match &typ {
         Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
+            quote!(ARROW_RETURN_NOT_OK(#value_builder->AppendNull());)
         }
 
         Type::UInt8
@@ -2134,9 +2134,7 @@ fn quote_variable_with_docstring(
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
+        Type::Unit => quote! { void },
 
         Type::UInt8 => quote! { uint8_t  },
         Type::UInt16 => quote! { uint16_t  },
