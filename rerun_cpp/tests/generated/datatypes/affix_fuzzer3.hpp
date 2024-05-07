@@ -40,8 +40,6 @@ namespace rerun::datatypes {
 
             std::array<float, 3> fixed_size_shenanigans;
 
-            void empty_variant;
-
             AffixFuzzer3Data() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(AffixFuzzer3Data));
             }
@@ -135,10 +133,6 @@ namespace rerun::datatypes {
             *this = AffixFuzzer3::fixed_size_shenanigans(std::move(fixed_size_shenanigans));
         }
 
-        AffixFuzzer3(void empty_variant) : AffixFuzzer3() {
-            *this = AffixFuzzer3::empty_variant(std::move(empty_variant));
-        }
-
         static AffixFuzzer3 degrees(float degrees) {
             AffixFuzzer3 self;
             self._tag = detail::AffixFuzzer3Tag::degrees;
@@ -162,10 +156,9 @@ namespace rerun::datatypes {
             return self;
         }
 
-        static AffixFuzzer3 empty_variant(void empty_variant) {
+        static AffixFuzzer3 empty_variant() {
             AffixFuzzer3 self;
             self._tag = detail::AffixFuzzer3Tag::empty_variant;
-            new (&self._data.empty_variant) void(std::move(empty_variant));
             return self;
         }
 
@@ -196,13 +189,9 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Return a pointer to empty_variant if the union is in that state, otherwise `nullptr`.
-        const void* get_empty_variant() const {
-            if (_tag == detail::AffixFuzzer3Tag::empty_variant) {
-                return &_data.empty_variant;
-            } else {
-                return nullptr;
-            }
+        /// Returns true if the union is in the empty_variant state.
+        bool is_empty_variant() const {
+            return _tag == detail::AffixFuzzer3Tag::empty_variant;
         }
 
         /// \private
