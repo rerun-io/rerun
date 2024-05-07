@@ -29,6 +29,7 @@ namespace rerun::datatypes {
             degrees,
             craziness,
             fixed_size_shenanigans,
+            empty_variant,
         };
 
         /// \private
@@ -38,6 +39,8 @@ namespace rerun::datatypes {
             rerun::Collection<rerun::datatypes::AffixFuzzer1> craziness;
 
             std::array<float, 3> fixed_size_shenanigans;
+
+            void empty_variant;
 
             AffixFuzzer3Data() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(AffixFuzzer3Data));
@@ -68,7 +71,8 @@ namespace rerun::datatypes {
                     new (&_data.craziness) TypeAlias(other._data.craziness);
                 } break;
                 case detail::AffixFuzzer3Tag::degrees:
-                case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
+                case detail::AffixFuzzer3Tag::empty_variant: {
                     const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                     void* thisbytes = reinterpret_cast<void*>(&this->_data);
                     std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
@@ -108,6 +112,9 @@ namespace rerun::datatypes {
                 case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                     // has a trivial destructor
                 } break;
+                case detail::AffixFuzzer3Tag::empty_variant: {
+                    // has a trivial destructor
+                } break;
             }
         }
 
@@ -126,6 +133,10 @@ namespace rerun::datatypes {
 
         AffixFuzzer3(std::array<float, 3> fixed_size_shenanigans) : AffixFuzzer3() {
             *this = AffixFuzzer3::fixed_size_shenanigans(std::move(fixed_size_shenanigans));
+        }
+
+        AffixFuzzer3(void empty_variant) : AffixFuzzer3() {
+            *this = AffixFuzzer3::empty_variant(std::move(empty_variant));
         }
 
         static AffixFuzzer3 degrees(float degrees) {
@@ -151,6 +162,13 @@ namespace rerun::datatypes {
             return self;
         }
 
+        static AffixFuzzer3 empty_variant(void empty_variant) {
+            AffixFuzzer3 self;
+            self._tag = detail::AffixFuzzer3Tag::empty_variant;
+            new (&self._data.empty_variant) void(std::move(empty_variant));
+            return self;
+        }
+
         /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
         const float* get_degrees() const {
             if (_tag == detail::AffixFuzzer3Tag::degrees) {
@@ -173,6 +191,15 @@ namespace rerun::datatypes {
         const std::array<float, 3>* get_fixed_size_shenanigans() const {
             if (_tag == detail::AffixFuzzer3Tag::fixed_size_shenanigans) {
                 return &_data.fixed_size_shenanigans;
+            } else {
+                return nullptr;
+            }
+        }
+
+        /// Return a pointer to empty_variant if the union is in that state, otherwise `nullptr`.
+        const void* get_empty_variant() const {
+            if (_tag == detail::AffixFuzzer3Tag::empty_variant) {
+                return &_data.empty_variant;
             } else {
                 return nullptr;
             }

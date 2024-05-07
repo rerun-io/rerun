@@ -120,6 +120,7 @@ fn roundtrip() {
     ]));
 
     let fuzzy14_1 = components::AffixFuzzer14(datatypes::AffixFuzzer3::Degrees(90.0));
+    let fuzzy14_2 = components::AffixFuzzer14(datatypes::AffixFuzzer3::EmptyVariant);
 
     let fuzzy15_1 = components::AffixFuzzer15(None);
     let fuzzy15_2 = components::AffixFuzzer15(Some(datatypes::AffixFuzzer3::Degrees(90.0)));
@@ -129,6 +130,7 @@ fn roundtrip() {
     ]);
     let fuzzy16_2 = components::AffixFuzzer16(vec![
         datatypes::AffixFuzzer3::Degrees(20.0), //
+        datatypes::AffixFuzzer3::EmptyVariant,  //
         datatypes::AffixFuzzer3::Degrees(30.0), //
     ]);
 
@@ -285,7 +287,7 @@ fn roundtrip() {
             [fuzzy11_1.clone(), fuzzy11_2.clone(), fuzzy11_1.clone()],
             [fuzzy12_1.clone(), fuzzy12_2.clone(), fuzzy12_1.clone()],
             [fuzzy13_1.clone(), fuzzy13_2.clone(), fuzzy13_1.clone()],
-            [fuzzy14_1.clone(), fuzzy14_1.clone(), fuzzy14_1.clone()],
+            [fuzzy14_1.clone(), fuzzy14_2.clone(), fuzzy14_2.clone()],
             [fuzzy15_1.clone(), fuzzy15_2.clone(), fuzzy15_1.clone()],
             [fuzzy16_1.clone(), fuzzy16_2.clone(), fuzzy16_1.clone()],
             [fuzzy17_1.clone(), fuzzy17_2.clone(), fuzzy17_1.clone()],
