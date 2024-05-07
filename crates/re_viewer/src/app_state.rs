@@ -358,7 +358,7 @@ impl AppState {
         let show_welcome =
             store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
 
-        //TODO(ab): workaround for https://github.com/emilk/egui/issues/4475
+        //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
         left_panel = left_panel
             .frame(egui::Frame::default())
             .show_separator_line(false);
@@ -367,7 +367,7 @@ impl AppState {
             ui,
             app_blueprint.blueprint_panel_expanded,
             |ui: &mut egui::Ui| {
-                //TODO(ab): workaround for https://github.com/emilk/egui/issues/4475
+                //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
                 ui.painter()
                     .rect_filled(ui.max_rect(), 0.0, ui.visuals().panel_fill);
                 ui.painter().vline(
