@@ -112,14 +112,6 @@ impl crate::Loggable for VisibleTimeRange {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: arrow2::buffer::Buffer<u8> = timeline
-                                .iter()
-                                .flatten()
-                                .flat_map(|datum| {
-                                    let crate::datatypes::Utf8(data0) = datum;
-                                    data0.0.clone()
-                                })
-                                .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 timeline.iter().map(|opt| {
                                     opt.as_ref()
@@ -132,7 +124,14 @@ impl crate::Loggable for VisibleTimeRange {
                             )
                             .unwrap()
                             .into();
-
+                            let inner_data: arrow2::buffer::Buffer<u8> = timeline
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| {
+                                    let crate::datatypes::Utf8(data0) = datum;
+                                    data0.0
+                                })
+                                .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

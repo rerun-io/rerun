@@ -114,13 +114,13 @@ impl crate::Loggable for VisualizerOverrides {
                     Self::arrow_datatype(),
                     offsets,
                     {
-                        let inner_data: arrow2::buffer::Buffer<u8> =
-                            data0_inner_data.iter().flat_map(|s| s.0.clone()).collect();
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|datum| datum.0.len()),
                         )
                         .unwrap()
                         .into();
+                        let inner_data: arrow2::buffer::Buffer<u8> =
+                            data0_inner_data.into_iter().flat_map(|s| s.0).collect();
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         unsafe {

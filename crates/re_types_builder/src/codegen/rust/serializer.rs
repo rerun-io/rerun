@@ -523,8 +523,7 @@ fn quote_arrow_field_serializer(
                         quote! {
                             .flat_map(|datum| {
                                 let #quoted_binding = datum;
-                                // NOTE: `Buffer::clone`, which is just a ref-count bump
-                                #quoted_data_dst .0.clone()
+                                #quoted_data_dst .0
                             })
                         },
                         quote! {
@@ -537,8 +536,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     (
                         quote! {
-                            // NOTE: `Buffer::clone`, which is just a ref-count bump
-                            .flat_map(|s| s.0.clone())
+                            .flat_map(|s| s.0)
                         },
                         quote! {
                             .map(|datum| datum.0.len())
@@ -548,23 +546,23 @@ fn quote_arrow_field_serializer(
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
-                    // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
-                    // about it while building the backing buffer since it's all offsets driven.
-                    let inner_data: arrow2::buffer::Buffer<u8> =
-                        #data_src.iter().flatten() #quoted_transparent_mapping.collect();
-
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     ).unwrap().into();
+
+                    // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
+                    // about it while building the backing buffer since it's all offsets driven.
+                    let inner_data: arrow2::buffer::Buffer<u8> =
+                        #data_src.into_iter().flatten() #quoted_transparent_mapping.collect();
                 }
             } else {
                 quote! {
-                    let inner_data: arrow2::buffer::Buffer<u8> =
-                        #data_src.iter() #quoted_transparent_mapping.collect();
-
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     ).unwrap().into();
+
+                    let inner_data: arrow2::buffer::Buffer<u8> =
+                        #data_src.into_iter() #quoted_transparent_mapping.collect();
                 }
             };
 
