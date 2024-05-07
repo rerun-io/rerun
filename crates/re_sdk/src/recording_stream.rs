@@ -1596,8 +1596,8 @@ impl RecordingStream {
         storage
     }
 
-    /// Swaps the underlying sink for a [`crate::sink::BinarySink`] sink and returns the associated
-    /// [`BinarySinkStorage`].
+    /// Swaps the underlying sink for a [`crate::sink::BinaryStreamSink`] sink and returns the associated
+    /// [`BinaryStreamStorage`].
     ///
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.

@@ -8,7 +8,7 @@ use re_log_types::LogMsg;
 use crate::sink::LogSink;
 use crate::RecordingStream;
 
-/// Errors that can occur when creating a [`BinarySink`].
+/// Errors that can occur when creating a [`BinaryStreamSink`].
 #[derive(thiserror::Error, Debug)]
 pub enum BinaryStreamSinkError {
     /// Error spawning the writer thread.
@@ -49,7 +49,7 @@ impl std::io::Write for BinaryStreamStorageInner {
     }
 }
 
-/// The storage used by [`BinarySink`].
+/// The storage used by [`BinaryStreamSink`].
 ///
 /// Reading from this consumes the bytes from the stream.
 pub struct BinaryStreamStorage {
