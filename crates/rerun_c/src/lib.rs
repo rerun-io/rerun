@@ -85,6 +85,7 @@ pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 pub struct CSpawnOptions {
     pub port: u16,
     pub memory_limit: CStringView,
+    pub hide_welcome_screen: bool,
     pub executable_name: CStringView,
     pub executable_path: CStringView,
 }
@@ -103,6 +104,8 @@ impl CSpawnOptions {
         if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
+
+        spawn_opts.hide_welcome_screen = self.hide_welcome_screen;
 
         if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
