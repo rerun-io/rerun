@@ -29,7 +29,7 @@ def job(name: str) -> Iterator[tuple[str, bytes]]:
         yield (name, stream.read())
 
 
-def queue_results(generator: Iterator[Any], out_queue: queue.Queue) -> None:
+def queue_results(generator: Iterator[Any], out_queue: queue.Queue[tuple[str, bytes]]) -> None:
     for item in generator:
         out_queue.put(item)
 
