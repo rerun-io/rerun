@@ -218,7 +218,12 @@ class RecordingStream:
 
 def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
     """
-    Sends all log-data to a binary stream that can be read from and sent elsewhere.
+    Sends all log-data to a [`rerun.BinaryStream`] object that can be read from.
+
+    The contents of this stream are encoded in the Rerun Record Data format (rrd).
+
+    This stream has no mechanism of limiting memory or creating back-pressure. If you do not
+    read from it, it will buffer all messages that you have logged.
 
     Example
     -------
@@ -226,6 +231,7 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
     stream = rr.binary_stream()
     rr.log("stream", rr.TextLog("Hello world"))
     with open("output.rrd", "wb") as f:
+        stream.flush()
         f.write(stream.read())
     ```
 
@@ -239,7 +245,7 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
     Returns
     -------
     BinaryStream
-        A memory recording object that can be used to read the data.
+        An object that can be used to flush or read the data.
 
     """
 
@@ -255,11 +261,20 @@ class BinaryStream:
 
     def read(self) -> bytes:
         """
-        Reads bytes from the stream.
+        Reads the available bytes from the stream.
 
-        This will flush the current sink before returning.
+        This does not guarantee that logged messages have been flushed to the stream.
+        If you want to ensure that all messages have been flushed, call [`BinaryStream.flush`][] first.
         """
         return self.storage.read()  # type: ignore[no-any-return]
+
+    def flush(self) -> None:
+        """
+        Flushes the recording stream and ensures that all logged messages have been encoded.
+
+        This will block until the flush is complete.
+        """
+        self.storage.flush()
 
 
 def _patch(funcs):  # type: ignore[no-untyped-def]

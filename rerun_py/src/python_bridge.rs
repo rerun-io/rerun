@@ -15,7 +15,7 @@ use pyo3::{
 
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::{
-    sink::{BinarySinkStorage, MemorySinkStorage},
+    sink::{BinaryStreamStorage, MemorySinkStorage},
     time::TimePoint,
     EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
@@ -748,7 +748,7 @@ fn memory_recording(
     })
 }
 
-/// Create an in-memory rrd file
+/// Create a new binary stream sink, and return the associated binary stream.
 #[pyfunction]
 #[pyo3(signature = (recording = None))]
 fn binary_stream(
@@ -839,7 +839,7 @@ impl PyMemorySinkStorage {
 #[pyclass(frozen)]
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
-    inner: BinarySinkStorage,
+    inner: BinaryStreamStorage,
 }
 
 #[pymethods]

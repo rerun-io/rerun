@@ -8,10 +8,10 @@ use re_log_types::LogMsg;
 use crate::sink::LogSink;
 use crate::RecordingStream;
 
-/// Errors that can occur when creating a [`FileSink`].
+/// Errors that can occur when creating a [`BinarySink`].
 #[derive(thiserror::Error, Debug)]
-pub enum BinarySinkError {
-    /// Error spawning the file writer thread.
+pub enum BinaryStreamSinkError {
+    /// Error spawning the writer thread.
     #[error("Failed to spawn thread: {0}")]
     SpawnThread(std::io::Error),
 
@@ -32,15 +32,33 @@ impl Command {
     }
 }
 
-/// The storage used by [`BinarySink`].
-#[derive(Clone)]
+/// The inner storage used by [`BinaryStreamStorage`].
+///
+/// Although this implements Clone so that it can be shared between the encoder thread and the outer
+/// storage, the model is that reading from it consumes the buffer.
+#[derive(Clone, Default)]
+struct BinaryStreamStorageInner(Arc<Mutex<std::io::Cursor<Vec<u8>>>>);
 
-pub struct BinarySinkStorage {
-    inner: Arc<Mutex<std::io::Cursor<Vec<u8>>>>,
-    pub(crate) rec: RecordingStream,
+impl std::io::Write for BinaryStreamStorageInner {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.lock().flush()
+    }
 }
 
-impl BinarySinkStorage {
+/// The storage used by [`BinarySink`].
+///
+/// Reading from this consumes the bytes from the stream.
+pub struct BinaryStreamStorage {
+    inner: BinaryStreamStorageInner,
+    rec: RecordingStream,
+}
+
+impl BinaryStreamStorage {
+    /// Create a new binary stream storage.
     fn new(rec: RecordingStream) -> Self {
         Self {
             inner: Default::default(),
@@ -48,38 +66,43 @@ impl BinarySinkStorage {
         }
     }
 
-    /// Read the contents of the storage.
+    /// Read and consume the current contents of the buffer.
     ///
-    /// This will flush the buffer prior to reading.
+    /// This does not flush the underlying batcher.
+    /// Use [`BinaryStreamStorage::flush`] if you want to guarantee that all
+    /// logged messages have been written to the stream before you read them.
     #[inline]
     pub fn read(&self) -> Vec<u8> {
-        self.rec.flush_blocking();
         let mut buffer = std::io::Cursor::new(Vec::new());
-        std::mem::swap(&mut buffer, &mut *self.inner.lock());
+        std::mem::swap(&mut buffer, &mut *self.inner.0.lock());
         buffer.into_inner()
     }
-}
 
-impl std::io::Write for BinarySinkStorage {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.inner.lock().write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.inner.lock().flush()
+    /// Flush the batcher and log encoder to guarantee that all logged messages
+    /// have been written to the stream.
+    ///
+    /// This will block until the flush is complete.
+    #[inline]
+    pub fn flush(&self) {
+        self.rec.flush_blocking();
     }
 }
 
 /// Stream log messages to an in-memory binary stream.
-pub struct BinarySink {
-    // None = quit
+///
+/// The contents of this stream are encoded in the Rerun Record Data format (rrd).
+///
+/// This stream has no mechanism of limiting memory or creating back-pressure. If you do not
+/// read from it, it will buffer all messages that you have logged.
+pub struct BinaryStreamSink {
+    /// The sender to the encoder thread.
     tx: Mutex<Sender<Option<Command>>>,
-    join_handle: Option<std::thread::JoinHandle<()>>,
 
-    storage: BinarySinkStorage,
+    /// Handle to join the encoder thread on drop.
+    join_handle: Option<std::thread::JoinHandle<()>>,
 }
 
-impl Drop for BinarySink {
+impl Drop for BinaryStreamSink {
     fn drop(&mut self) {
         self.tx.lock().send(None).ok();
         if let Some(join_handle) = self.join_handle.take() {
@@ -88,35 +111,33 @@ impl Drop for BinarySink {
     }
 }
 
-impl BinarySink {
-    /// Start writing log messages to a file at the given path.
-    pub fn new(rec: RecordingStream) -> Result<Self, BinarySinkError> {
-        let storage = BinarySinkStorage::new(rec);
+impl BinaryStreamSink {
+    /// Create a pair of a new [`BinaryStreamSink`] and the associated [`BinaryStreamStorage`].
+    pub fn new(rec: RecordingStream) -> Result<(Self, BinaryStreamStorage), BinaryStreamSinkError> {
+        let storage = BinaryStreamStorage::new(rec);
 
         // We always compress when writing to a stream
+        // TODO(jleibs): Make this configurable
         let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
 
         let (tx, rx) = std::sync::mpsc::channel();
 
-        let encoder = re_log_encoding::encoder::Encoder::new(encoding_options, storage.clone())?;
+        let encoder =
+            re_log_encoding::encoder::Encoder::new(encoding_options, storage.inner.clone())?;
 
         let join_handle = spawn_and_stream(encoder, rx)?;
 
-        Ok(Self {
-            tx: tx.into(),
-            join_handle: Some(join_handle),
+        Ok((
+            Self {
+                tx: tx.into(),
+                join_handle: Some(join_handle),
+            },
             storage,
-        })
-    }
-
-    /// Access the raw `BinarySinkStorage`
-    #[inline]
-    pub fn buffer(&self) -> BinarySinkStorage {
-        self.storage.clone()
+        ))
     }
 }
 
-impl LogSink for BinarySink {
+impl LogSink for BinaryStreamSink {
     #[inline]
     fn send(&self, msg: re_log_types::LogMsg) {
         self.tx.lock().send(Some(Command::Send(msg))).ok();
@@ -130,11 +151,11 @@ impl LogSink for BinarySink {
     }
 }
 
-/// Set `filepath` to `None` to stream to standard output.
+/// Spawn the encoder thread that will write log messages to the binary stream.
 fn spawn_and_stream<W: std::io::Write + Send + 'static>(
     mut encoder: re_log_encoding::encoder::Encoder<W>,
     rx: Receiver<Option<Command>>,
-) -> Result<std::thread::JoinHandle<()>, BinarySinkError> {
+) -> Result<std::thread::JoinHandle<()>, BinaryStreamSinkError> {
     std::thread::Builder::new()
         .name("binary_stream_encoder".into())
         .spawn({
@@ -164,5 +185,5 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                 re_log::debug!("Log stream written to binary stream");
             }
         })
-        .map_err(BinarySinkError::SpawnThread)
+        .map_err(BinaryStreamSinkError::SpawnThread)
 }
