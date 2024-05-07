@@ -9,7 +9,10 @@ rerun *.rrd
 
 from __future__ import annotations
 
+import os
 import queue
+import subprocess
+import tempfile
 import threading
 import time
 from typing import Any, Iterator
@@ -26,11 +29,10 @@ def job(name: str) -> Iterator[tuple[str, bytes]]:
 
     rr.send_blueprint(blueprint)
 
-    for i in range(5):
-        time.sleep(0.2)
-        rr.log("test", rr.TextLog(f"Job {name} Message {i}"))
+    for i in range(100):
+        time.sleep(0.01)
+        rr.log("test", rr.TextLog(f"Message {i}"))
 
-        print(f"YIELD {name} {i}")
         yield (name, stream.read())
 
 
@@ -39,21 +41,36 @@ def queue_results(generator: Iterator[Any], out_queue: queue.Queue) -> None:
         out_queue.put(item)
 
 
-if __name__ == "__main__":
+def test_binary_stream() -> None:
+    # Flush num rows must be 0 to avoid inconsistencies in the stream
+    prev_flush_num_rows = os.environ.get("RERUN_FLUSH_NUM_ROWS")
+    os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
+
     results_queue: queue.Queue[tuple[str, bytes]] = queue.Queue()
 
     threads = [
         threading.Thread(target=queue_results, args=(job("A"), results_queue)),
         threading.Thread(target=queue_results, args=(job("B"), results_queue)),
-        threading.Thread(target=queue_results, args=(job("C"), results_queue)),
     ]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
 
-    while not results_queue.empty():
-        name, data = results_queue.get()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        while not results_queue.empty():
+            name, data = results_queue.get()
 
-        with open(f"output_{name}.rrd", "a+b") as f:
-            f.write(data)
+            with open(f"{tmpdir}/output_{name}.rrd", "a+b") as f:
+                f.write(data)
+
+        subprocess.run(
+            ["rerun", "compare", f"{tmpdir}/output_A.rrd", f"{tmpdir}/output_B.rrd"],
+            check=True,
+        )
+
+    # Restore the previous value of RERUN_FLUSH_NUM_ROWS
+    if prev_flush_num_rows is not None:
+        os.environ["RERUN_FLUSH_NUM_ROWS"] = prev_flush_num_rows
+    else:
+        del os.environ["RERUN_FLUSH_NUM_ROWS"]
