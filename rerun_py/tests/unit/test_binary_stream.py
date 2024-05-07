@@ -1,11 +1,4 @@
-"""
-Test showing that a binary stream as a valid RRD files.
-
-After running:
-```bash
-rerun *.rrd
-```
-"""
+"""Test verifying that a binary stream works and produces valid identical RRDs."""
 
 from __future__ import annotations
 
@@ -60,6 +53,9 @@ def test_binary_stream() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         while not results_queue.empty():
             name, data = results_queue.get()
+
+            # Bump this value down when we have less overhead.
+            assert len(data) > 1000
 
             with open(f"{tmpdir}/output_{name}.rrd", "a+b") as f:
                 f.write(data)
