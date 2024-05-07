@@ -512,10 +512,11 @@ fn send_mem_sink_as_default_blueprint(
 }
 
 #[pyfunction]
-#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![]))]
+#[pyo3(signature = (port = 9876, memory_limit = "75%".to_owned(), hide_welcome_screen = false, executable_name = "rerun".to_owned(), executable_path = None, extra_args = vec![]))]
 fn spawn(
     port: u16,
     memory_limit: String,
+    hide_welcome_screen: bool,
     executable_name: String,
     executable_path: Option<String>,
     extra_args: Vec<String>,
@@ -524,6 +525,7 @@ fn spawn(
         port,
         wait_for_bind: true,
         memory_limit,
+        hide_welcome_screen,
         executable_name,
         executable_path,
         extra_args,
