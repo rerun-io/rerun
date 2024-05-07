@@ -1,6 +1,7 @@
 use std::{
     io::{ErrorKind, Read as _},
     net::{TcpListener, TcpStream},
+    str,
     time::Instant,
 };
 
@@ -38,6 +39,9 @@ enum VersionError {
 
 #[derive(thiserror::Error, Debug)]
 enum ConnectionError {
+    #[error("An unknown client tried to connect")]
+    UnknownClient,
+
     #[error(transparent)]
     VersionError(#[from] VersionError),
 
@@ -202,6 +206,13 @@ fn run_client(
     options: ServerOptions,
 ) -> Result<(), ConnectionError> {
     #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
+
+    let mut protocol_header = [0_u8; 5];
+    stream.read_exact(&mut protocol_header)?;
+
+    if !str::from_utf8(&protocol_header).is_ok_and(|header| header == crate::PROTOCOL_HEADER) {
+        return Err(ConnectionError::UnknownClient);
+    }
 
     let mut client_version = [0_u8; 2];
     stream.read_exact(&mut client_version)?;
