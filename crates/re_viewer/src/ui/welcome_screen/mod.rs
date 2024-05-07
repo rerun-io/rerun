@@ -4,6 +4,10 @@ mod welcome_section;
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use welcome_section::welcome_section_ui;
 
+use crate::app_state::WelcomeScreenState;
+
+use super::no_data_ui;
+
 #[derive(Default)]
 pub struct WelcomeScreen {
     example_page: ExampleSection,
@@ -20,9 +24,9 @@ impl WelcomeScreen {
         ui: &mut egui::Ui,
         re_ui: &re_ui::ReUi,
         command_sender: &re_viewer_context::CommandSender,
-        welcome_screen_opacity: f32,
+        welcome_screen_state: &WelcomeScreenState,
     ) {
-        if welcome_screen_opacity <= 0.0 {
+        if welcome_screen_state.opacity <= 0.0 {
             return;
         }
 
@@ -46,13 +50,17 @@ impl WelcomeScreen {
                     ..Default::default()
                 }
                 .show(ui, |ui| {
-                    self.example_page
-                        .ui(ui, re_ui, command_sender, &welcome_section_ui);
+                    if welcome_screen_state.hide {
+                        no_data_ui(ui);
+                    } else {
+                        self.example_page
+                            .ui(ui, re_ui, command_sender, &welcome_section_ui);
+                    }
                 });
             });
 
-        if welcome_screen_opacity < 1.0 {
-            let cover_opacity = 1.0 - welcome_screen_opacity;
+        if welcome_screen_state.opacity < 1.0 {
+            let cover_opacity = 1.0 - welcome_screen_state.opacity;
             let fill_color = ui.visuals().panel_fill.gamma_multiply(cover_opacity);
             ui.painter()
                 .rect_filled(response.inner_rect, 0.0, fill_color);
