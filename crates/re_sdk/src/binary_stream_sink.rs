@@ -88,6 +88,17 @@ impl BinaryStreamStorage {
     }
 }
 
+impl Drop for BinaryStreamStorage {
+    fn drop(&mut self) {
+        self.flush();
+        let bytes = self.read();
+
+        if !bytes.is_empty() {
+            re_log::warn!("Dropping data in BinaryStreamStorage");
+        }
+    }
+}
+
 /// Stream log messages to an in-memory binary stream.
 ///
 /// The contents of this stream are encoded in the Rerun Record Data format (rrd).

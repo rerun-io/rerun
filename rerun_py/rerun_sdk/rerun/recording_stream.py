@@ -229,9 +229,10 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
     -------
     ```python
     stream = rr.binary_stream()
+
     rr.log("stream", rr.TextLog("Hello world"))
+
     with open("output.rrd", "wb") as f:
-        stream.flush()
         f.write(stream.read())
     ```
 
@@ -259,18 +260,23 @@ class BinaryStream:
     def __init__(self, storage: bindings.PyMemorySinkStorage) -> None:
         self.storage = storage
 
-    def read(self) -> bytes:
+    def read(self, *, flush: bool = True) -> bytes:
         """
         Reads the available bytes from the stream.
 
-        This does not guarantee that logged messages have been flushed to the stream.
-        If you want to ensure that all messages have been flushed, call [`BinaryStream.flush`][] first.
+        If using `flush`, the read call will first block until the flush is complete.
+
+        Parameters
+        ----------
+        flush:
+            If true (default), the stream will be flushed before reading.
+
         """
-        return self.storage.read()  # type: ignore[no-any-return]
+        return self.storage.read(flush=flush)  # type: ignore[no-any-return]
 
     def flush(self) -> None:
         """
-        Flushes the recording stream and ensures that all logged messages have been encoded.
+        Flushes the recording stream and ensures that all logged messages have been encoded into the stream.
 
         This will block until the flush is complete.
         """

@@ -846,12 +846,17 @@ struct PyBinarySinkStorage {
 impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
-    /// This will do a blocking flush before returning.
-    fn read<'p>(&self, py: Python<'p>) -> &'p PyBytes {
+    /// If `flush` is `true`, the sink will be flushed before reading.
+    #[pyo3(signature = (*, flush = true))]
+    fn read<'p>(&self, flush: bool, py: Python<'p>) -> &'p PyBytes {
         // Release the GIL in case any flushing behavior needs to cleanup a python object.
         PyBytes::new(
             py,
             py.allow_threads(|| {
+                if flush {
+                    self.inner.flush();
+                }
+
                 let bytes = self.inner.read();
 
                 flush_garbage_queue();
@@ -860,6 +865,15 @@ impl PyBinarySinkStorage {
             })
             .as_slice(),
         )
+    }
+
+    /// Flush the binary sink manually.
+    fn flush(&self, py: Python<'_>) {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.inner.flush();
+            flush_garbage_queue();
+        });
     }
 }
 

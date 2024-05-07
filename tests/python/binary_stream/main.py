@@ -18,8 +18,8 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 
-@rr.thread_local_stream("rerun_example_memory_drain")
-def job(name: str) -> Iterator[tuple[str, int, bytes]]:
+@rr.thread_local_stream("rerun_example_binary_stream")
+def job(name: str) -> Iterator[tuple[str, bytes]]:
     stream = rr.binary_stream()
 
     blueprint = rrb.Blueprint(rrb.TextLogView(name="My Logs", origin="test"))
@@ -31,7 +31,7 @@ def job(name: str) -> Iterator[tuple[str, int, bytes]]:
         rr.log("test", rr.TextLog(f"Job {name} Message {i}"))
 
         print(f"YIELD {name} {i}")
-        yield (name, i, stream.read())
+        yield (name, stream.read())
 
 
 def queue_results(generator: Iterator[Any], out_queue: queue.Queue) -> None:
@@ -40,7 +40,7 @@ def queue_results(generator: Iterator[Any], out_queue: queue.Queue) -> None:
 
 
 if __name__ == "__main__":
-    results_queue: queue.Queue[tuple[str, int, bytes]] = queue.Queue()
+    results_queue: queue.Queue[tuple[str, bytes]] = queue.Queue()
 
     threads = [
         threading.Thread(target=queue_results, args=(job("A"), results_queue)),
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         t.join()
 
     while not results_queue.empty():
-        name, i, data = results_queue.get()
+        name, data = results_queue.get()
 
         with open(f"output_{name}.rrd", "a+b") as f:
             f.write(data)
