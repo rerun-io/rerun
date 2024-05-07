@@ -4,35 +4,25 @@ include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
 include "rerun/attributes.fbs";
+include "rerun/unit_type.fbs";
 
 include "time_int.fbs";
 
 namespace rerun.datatypes;
 
-/// Kind of boundary for visible history, see `TimeRangeBoundary`.
-enum TimeRangeBoundaryKind: byte (
+/// Left or right boundary of a time range.
+union TimeRangeBoundary (
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.override_crate": "re_types_core"
 ) {
   /// Boundary is a value relative to the time cursor.
-  RelativeToTimeCursor,
+  CursorRelative: TimeInt,
 
   /// Boundary is an absolute value.
-  Absolute,
+  Absolute: TimeInt,
 
   /// The boundary extends to infinity.
-  Infinite,
-}
-
-/// Type of boundary for visible history.
-struct TimeRangeBoundary (
-  "attr.rust.derive": "Copy",
-  "attr.rust.override_crate": "re_types_core"
-) {
-  /// Type of the boundary.
-  kind: rerun.datatypes.TimeRangeBoundaryKind (order: 100);
-
-  /// Value of the boundary (ignored for `Infinite` type).
-  time: rerun.datatypes.TimeInt (order: 200);
+  Infinite: rerun.builtins.UnitType,
 }
 
 /// Visible time range bounds for a specific timeline.

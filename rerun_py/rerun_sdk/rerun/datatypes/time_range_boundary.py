@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -22,49 +22,56 @@ __all__ = [
 ]
 
 
-def _time_range_boundary__time__special_field_converter_override(x: datatypes.TimeIntLike) -> datatypes.TimeInt:
-    if isinstance(x, datatypes.TimeInt):
-        return x
-    else:
-        return datatypes.TimeInt(x)
-
-
-@define(init=False)
+@define
 class TimeRangeBoundary:
-    """**Datatype**: Type of boundary for visible history."""
+    """**Datatype**: Left or right boundary of a time range."""
 
-    def __init__(self: Any, kind: datatypes.TimeRangeBoundaryKindLike, time: datatypes.TimeIntLike):
-        """
-        Create a new instance of the TimeRangeBoundary datatype.
+    # You can define your own __init__ function as a member of TimeRangeBoundaryExt in time_range_boundary_ext.py
 
-        Parameters
-        ----------
-        kind:
-            Type of the boundary.
-        time:
-            Value of the boundary (ignored for `Infinite` type).
+    inner: Union[None, datatypes.TimeInt] = field()
+    """
+    Must be one of:
 
-        """
+    * CursorRelative (datatypes.TimeInt):
+        Boundary is a value relative to the time cursor.
 
-        # You can define your own __init__ function as a member of TimeRangeBoundaryExt in time_range_boundary_ext.py
-        self.__attrs_init__(kind=kind, time=time)
+    * Absolute (datatypes.TimeInt):
+        Boundary is an absolute value.
 
-    kind: datatypes.TimeRangeBoundaryKind = field()
-    # Type of the boundary.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
+    * Infinite (None):
+        The boundary extends to infinity.
+    """
 
-    time: datatypes.TimeInt = field(converter=_time_range_boundary__time__special_field_converter_override)
-    # Value of the boundary (ignored for `Infinite` type).
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
+    kind: Literal["cursor_relative", "absolute", "infinite"] = field(default="cursor_relative")
+    """
+    Possible values:
+
+    * "CursorRelative":
+        Boundary is a value relative to the time cursor.
+
+    * "Absolute":
+        Boundary is an absolute value.
+
+    * "Infinite":
+        The boundary extends to infinity.
+    """
 
 
-TimeRangeBoundaryLike = TimeRangeBoundary
-TimeRangeBoundaryArrayLike = Union[
-    TimeRangeBoundary,
-    Sequence[TimeRangeBoundaryLike],
-]
+if TYPE_CHECKING:
+    TimeRangeBoundaryLike = Union[
+        TimeRangeBoundary,
+        None,
+        datatypes.TimeInt,
+    ]
+    TimeRangeBoundaryArrayLike = Union[
+        TimeRangeBoundary,
+        None,
+        datatypes.TimeInt,
+        Sequence[TimeRangeBoundaryLike],
+    ]
+else:
+    TimeRangeBoundaryLike = Any
+    TimeRangeBoundaryArrayLike = Any
 
 
 class TimeRangeBoundaryType(BaseExtensionType):
@@ -73,19 +80,11 @@ class TimeRangeBoundaryType(BaseExtensionType):
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
             self,
-            pa.struct([
-                pa.field(
-                    "kind",
-                    pa.sparse_union([
-                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field("time", pa.int64(), nullable=False, metadata={}),
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -96,15 +95,61 @@ class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeBoundaryArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import TimeIntBatch, TimeRangeBoundaryKindBatch
+        from typing import cast
 
-        if isinstance(data, TimeRangeBoundary):
-            data = [data]
+        from rerun.datatypes import TimeIntBatch
 
-        return pa.StructArray.from_arrays(
-            [
-                TimeRangeBoundaryKindBatch([x.kind for x in data]).as_arrow_array().storage,
-                TimeIntBatch([x.time for x in data]).as_arrow_array().storage,
-            ],
-            fields=list(data_type),
+        # Ensure data is iterable.
+        try:
+            iter(data)  # type: ignore[arg-type]
+        except TypeError:
+            data = [data]  # type: ignore[list-item]
+        data = cast(Sequence[TimeRangeBoundaryLike], data)
+
+        types: list[int] = []
+        value_offsets: list[int] = []
+
+        num_nulls = 0
+        variant_cursor_relative: list[datatypes.TimeInt] = []
+        variant_absolute: list[datatypes.TimeInt] = []
+        variant_infinite: int = 0
+
+        for value in data:
+            if value is None:
+                value_offsets.append(num_nulls)
+                num_nulls += 1
+                types.append(0)
+            else:
+                if not isinstance(value, TimeRangeBoundary):
+                    value = TimeRangeBoundary(value)
+                if value.kind == "cursor_relative":
+                    value_offsets.append(len(variant_cursor_relative))
+                    variant_cursor_relative.append(value.inner)  # type: ignore[arg-type]
+                    types.append(1)
+                elif value.kind == "absolute":
+                    value_offsets.append(len(variant_absolute))
+                    variant_absolute.append(value.inner)  # type: ignore[arg-type]
+                    types.append(2)
+                elif value.kind == "infinite":
+                    value_offsets.append(variant_infinite)
+                    variant_infinite += 1
+                    types.append(3)
+
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+            pa.array(value_offsets, type=pa.int32()).buffers()[1],
+        ]
+        children = [
+            pa.nulls(num_nulls),
+            TimeIntBatch(variant_cursor_relative).as_arrow_array().storage,
+            TimeIntBatch(variant_absolute).as_arrow_array().storage,
+            pa.nulls(variant_infinite),
+        ]
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=buffers,
+            children=children,
         )

@@ -4,7 +4,6 @@
 #include "time_range_boundary.hpp"
 
 #include "time_int.hpp"
-#include "time_range_boundary_kind.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -14,13 +13,15 @@ namespace rerun::datatypes {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::TimeRangeBoundary>::arrow_datatype(
     ) {
-        static const auto datatype = arrow::struct_({
+        static const auto datatype = arrow::dense_union({
+            arrow::field("_null_markers", arrow::null(), true, nullptr),
             arrow::field(
-                "kind",
-                Loggable<rerun::datatypes::TimeRangeBoundaryKind>::arrow_datatype(),
+                "CursorRelative",
+                Loggable<rerun::datatypes::TimeInt>::arrow_datatype(),
                 false
             ),
-            arrow::field("time", Loggable<rerun::datatypes::TimeInt>::arrow_datatype(), false),
+            arrow::field("Absolute", Loggable<rerun::datatypes::TimeInt>::arrow_datatype(), false),
+            arrow::field("Infinite", arrow::null(), true),
         });
         return datatype;
     }
@@ -35,7 +36,7 @@ namespace rerun {
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(Loggable<datatypes::TimeRangeBoundary>::fill_arrow_array_builder(
-                static_cast<arrow::StructBuilder*>(builder.get()),
+                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
                 instances,
                 num_instances
             ));
@@ -46,7 +47,7 @@ namespace rerun {
     }
 
     rerun::Error Loggable<datatypes::TimeRangeBoundary>::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const datatypes::TimeRangeBoundary* elements,
+        arrow::DenseUnionBuilder* builder, const datatypes::TimeRangeBoundary* elements,
         size_t num_elements
     ) {
         if (builder == nullptr) {
@@ -59,31 +60,45 @@ namespace rerun {
             );
         }
 
-        {
-            auto field_builder = static_cast<arrow::SparseUnionBuilder*>(builder->field_builder(0));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(
-                    Loggable<rerun::datatypes::TimeRangeBoundaryKind>::fill_arrow_array_builder(
-                        field_builder,
-                        &elements[elem_idx].kind,
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto& union_instance = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance.get_union_tag()))
+            );
+
+            auto variant_index = static_cast<int>(union_instance.get_union_tag());
+            auto variant_builder_untyped = builder->child_builder(variant_index).get();
+
+            using TagType = datatypes::detail::TimeRangeBoundaryTag;
+            switch (union_instance.get_union_tag()) {
+                case TagType::None: {
+                    ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
+                } break;
+                case TagType::CursorRelative: {
+                    auto variant_builder =
+                        static_cast<arrow::Int64Builder*>(variant_builder_untyped);
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(
+                        variant_builder,
+                        &union_instance.get_union_data().cursor_relative,
                         1
-                    )
-                );
+                    ));
+                } break;
+                case TagType::Absolute: {
+                    auto variant_builder =
+                        static_cast<arrow::Int64Builder*>(variant_builder_untyped);
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(
+                        variant_builder,
+                        &union_instance.get_union_data().absolute,
+                        1
+                    ));
+                } break;
+                case TagType::Infinite: {
+                    auto variant_builder =
+                        static_cast<arrow::NullBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
+                } break;
             }
         }
-        {
-            auto field_builder = static_cast<arrow::Int64Builder*>(builder->field_builder(1));
-            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::TimeInt>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].time,
-                    1
-                ));
-            }
-        }
-        ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
 
         return Error::ok();
     }

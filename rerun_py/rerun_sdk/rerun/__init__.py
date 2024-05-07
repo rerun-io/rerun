@@ -70,7 +70,6 @@ from .datatypes import (
     TensorData,
     TimeRange,
     TimeRangeBoundary,
-    TimeRangeBoundaryKind,
     TranslationAndMat3x3,
     TranslationRotationScale3D,
 )
