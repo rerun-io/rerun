@@ -368,14 +368,15 @@ impl AppState {
             app_blueprint.blueprint_panel_expanded,
             |ui: &mut egui::Ui| {
                 //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
+                let max_rect = ui.max_rect();
                 ui.painter()
-                    .rect_filled(ui.max_rect(), 0.0, ui.visuals().panel_fill);
+                    .rect_filled(max_rect, 0.0, ui.visuals().panel_fill);
                 ui.painter().vline(
-                    ui.max_rect().right(),
-                    ui.max_rect().y_range(),
+                    max_rect.right(),
+                    max_rect.y_range(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
                 );
-                ui.set_clip_rect(ui.max_rect());
+                ui.set_clip_rect(max_rect);
 
                 re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
                     // ListItem don't need vertical spacing so we disable it, but restore it
