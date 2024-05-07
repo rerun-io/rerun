@@ -87,6 +87,7 @@ from .recording_stream import (
     get_thread_local_data_recording,
     is_enabled,
     new_recording,
+    recording_stream_generator_ctx,
     set_global_data_recording,
     set_thread_local_data_recording,
     thread_local_stream,
