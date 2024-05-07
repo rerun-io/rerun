@@ -98,8 +98,12 @@ pub fn context_menu_ui_for_item(
 fn action_list(
     ctx: &ViewerContext<'_>,
 ) -> &'static Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>> {
+    use egui_tiles::ContainerKind;
+
     static CONTEXT_MENU_ACTIONS: OnceCell<Vec<Vec<Box<dyn ContextMenuAction + Sync + Send>>>> =
         OnceCell::new();
+
+    static_assertions::const_assert_eq!(ContainerKind::ALL.len(), 4);
 
     CONTEXT_MENU_ACTIONS.get_or_init(|| {
         vec![
@@ -117,10 +121,10 @@ fn action_list(
                 Box::new(SubMenu {
                     label: "Add container".to_owned(),
                     actions: vec![
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Tabs)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Horizontal)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Vertical)),
-                        Box::new(AddContainerAction(egui_tiles::ContainerKind::Grid)),
+                        Box::new(AddContainerAction(ContainerKind::Tabs)),
+                        Box::new(AddContainerAction(ContainerKind::Horizontal)),
+                        Box::new(AddContainerAction(ContainerKind::Vertical)),
+                        Box::new(AddContainerAction(ContainerKind::Grid)),
                     ],
                 }),
                 Box::new(SubMenu {
@@ -129,7 +133,10 @@ fn action_list(
                         .space_view_class_registry
                         .iter_registry()
                         .map(|entry| {
-                            Box::new(AddSpaceViewAction(entry.identifier))
+                            Box::new(AddSpaceViewAction {
+                                icon: entry.class.icon(),
+                                id: entry.identifier,
+                            })
                                 as Box<dyn ContextMenuAction + Sync + Send>
                         })
                         .collect(),
@@ -138,18 +145,10 @@ fn action_list(
             vec![Box::new(SubMenu {
                 label: "Move to new container".to_owned(),
                 actions: vec![
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Tabs,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Horizontal,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Vertical,
-                    )),
-                    Box::new(MoveContentsToNewContainerAction(
-                        egui_tiles::ContainerKind::Grid,
-                    )),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Tabs)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Horizontal)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Vertical)),
+                    Box::new(MoveContentsToNewContainerAction(ContainerKind::Grid)),
                 ],
             })],
             vec![Box::new(AddEntitiesToNewSpaceViewAction)],
@@ -277,11 +276,20 @@ trait ContextMenuAction {
     /// [`Self::process_selection`] when triggered by the user.
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut egui::Ui) -> egui::Response {
         let label = self.label(ctx);
-        let response = ui.button(label);
+
+        let response = if let Some(icon) = self.icon() {
+            ui.add(egui::Button::image_and_text(icon.as_image(), label))
+        } else {
+            ui.button(label)
+        };
         if response.clicked() {
             self.process_selection(ctx);
         }
         response
+    }
+
+    fn icon(&self) -> Option<&'static re_ui::Icon> {
+        None
     }
 
     // TODO(ab): return a `ListItem` to make those context menu nice to look at. This requires

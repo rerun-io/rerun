@@ -1227,3 +1227,35 @@ pub fn markdown_ui(ui: &mut egui::Ui, id: egui::Id, markdown: &str) {
 
     egui_commonmark::CommonMarkViewer::new(id).show(ui, &mut commonmark_cache.lock(), markdown);
 }
+
+/// A drop-down menu with a list of options.
+///
+/// Designed for use with [`list_item2`] content.
+///
+/// Use this instead of using [`egui::ComboBox`] directly.
+pub fn drop_down_menu(
+    ui: &mut egui::Ui,
+    id_source: impl std::hash::Hash,
+    min_width: f32,
+    selected_text: String,
+    content: impl FnOnce(&mut egui::Ui),
+) {
+    // TODO(emilk): make the button itself a `ListItem2`
+    egui::ComboBox::from_id_source(id_source)
+        .selected_text(selected_text)
+        .show_ui(ui, |ui| {
+            ui.set_min_width(min_width);
+
+            let background_x_range = ui
+                .spacing()
+                .menu_margin
+                .expand_rect(ui.max_rect())
+                .x_range();
+
+            list_item2::list_item_scope(ui, "inner_scope", |ui| {
+                full_span::full_span_scope(ui, background_x_range, |ui| {
+                    content(ui);
+                });
+            });
+        });
+}
