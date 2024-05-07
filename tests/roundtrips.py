@@ -20,7 +20,10 @@ from os.path import isfile, join
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../scripts/")
 from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
 
-ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
+ARCHETYPES_PATHS = [
+    "crates/re_types/definitions/rerun/archetypes",
+    "crates/re_types/definitions/rerun/blueprint/archetypes",
+]
 
 opt_out = {
     "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
@@ -30,6 +33,17 @@ opt_out = {
     "scalar": ["cpp", "py", "rust"],  # TODO(jleibs)
     "series_line": ["cpp", "py", "rust"],  # TODO(jleibs)
     "series_point": ["cpp", "py", "rust"],  # TODO(jleibs)
+    #
+    # Most blueprint archetypes are untested currently:
+    "background": ["cpp", "py", "rust"],
+    "container_blueprint": ["cpp", "py", "rust"],
+    "panel_blueprint": ["cpp", "py", "rust"],
+    "plot_legend": ["cpp", "py", "rust"],
+    "scalar_axis": ["cpp", "py", "rust"],
+    "space_view_blueprint": ["cpp", "py", "rust"],
+    "space_view_contents": ["cpp", "py", "rust"],
+    "viewport_blueprint": ["cpp", "py", "rust"],
+    "visual_bounds": ["cpp", "py", "rust"],
 }
 
 
@@ -80,7 +94,9 @@ def main() -> None:
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
 
-    files = [f for f in listdir(ARCHETYPES_PATH) if isfile(join(ARCHETYPES_PATH, f))]
+    files = [
+        f for archetype_path in ARCHETYPES_PATHS for f in listdir(archetype_path) if isfile(join(archetype_path, f))
+    ]
 
     if len(args.archetype) > 0:
         archetypes = args.archetype

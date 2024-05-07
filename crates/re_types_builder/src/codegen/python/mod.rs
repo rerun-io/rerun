@@ -1219,7 +1219,7 @@ fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
                 line.remove(0);
             }
         }
-        lines.push(format!("* {:?}:", field.name));
+        lines.push(format!("* {:?}:", field.snake_case_name()));
         lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }

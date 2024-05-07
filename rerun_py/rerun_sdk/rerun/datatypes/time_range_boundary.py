@@ -46,13 +46,13 @@ class TimeRangeBoundary:
     """
     Possible values:
 
-    * "CursorRelative":
+    * "cursor_relative":
         Boundary is a value relative to the time cursor.
 
-    * "Absolute":
+    * "absolute":
         Boundary is an absolute value.
 
-    * "Infinite":
+    * "infinite":
         The boundary extends to infinity.
     """
 
