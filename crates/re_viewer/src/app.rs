@@ -2,6 +2,7 @@ use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
+use re_sdk_comms::ConnectionError;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
@@ -961,7 +962,16 @@ impl App {
                 re_smart_channel::SmartMessagePayload::Msg(msg) => msg,
                 re_smart_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!("Data source {} has left unexpectedly: {err}", msg.source);
+                        let log_msg =
+                            format!("Data source {} has left unexpectedly: {err}", msg.source);
+                        if err
+                            .downcast_ref::<ConnectionError>()
+                            .is_some_and(|e| matches!(e, ConnectionError::UnknownClient))
+                        {
+                            re_log::debug!("{}", log_msg);
+                        } else {
+                            re_log::warn!("{}", log_msg);
+                        }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }

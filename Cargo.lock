@@ -5013,6 +5013,7 @@ dependencies = [
  "re_memory",
  "re_query",
  "re_renderer",
+ "re_sdk_comms",
  "re_smart_channel",
  "re_space_view",
  "re_space_view_bar_chart",

@@ -74,6 +74,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
+re_sdk_comms.workspace = true
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }

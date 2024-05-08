@@ -23,7 +23,7 @@ pub enum ServerError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum VersionError {
+pub enum VersionError {
     #[error("SDK client is using an older protocol version ({client_version}) than the SDK server ({server_version})")]
     ClientIsOlder {
         client_version: u16,
@@ -38,7 +38,7 @@ enum VersionError {
 }
 
 #[derive(thiserror::Error, Debug)]
-enum ConnectionError {
+pub enum ConnectionError {
     #[error("An unknown client tried to connect")]
     UnknownClient,
 
@@ -194,8 +194,15 @@ fn spawn_client(
                 return;
             }
         }
-        re_log::warn_once!("Closing connection to client at {addr_string}: {err}");
-        let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.to_string().into();
+
+        let log_msg = format!("Closing connection to client at {addr_string}: {err}");
+        if matches!(&err, ConnectionError::UnknownClient) {
+            re_log::debug!("{}", log_msg);
+        } else {
+            re_log::warn_once!("{}", log_msg);
+        }
+
+        let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.into();
         tx.quit(Some(err)).ok(); // best-effort at this point
     }
 }

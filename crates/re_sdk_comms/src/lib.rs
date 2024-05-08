@@ -17,7 +17,7 @@ pub use {buffered_client::Client, tcp_client::ClientError};
 mod server;
 
 #[cfg(feature = "server")]
-pub use server::{serve, ServerError, ServerOptions};
+pub use server::{serve, ConnectionError, ServerError, ServerOptions};
 
 pub const PROTOCOL_HEADER: &str = "rerun";
 
