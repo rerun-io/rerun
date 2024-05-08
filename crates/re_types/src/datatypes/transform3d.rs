@@ -113,55 +113,34 @@ impl ::re_types_core::Loggable for Transform3D {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, translation_and_mat3x3): (Vec<_>, Vec<_>) = data
+                    let translation_and_mat3x3: Vec<_> = data
                         .iter()
-                        .filter(|datum| {
-                            matches!(datum.as_deref(), Some(Transform3D::TranslationAndMat3x3(_)))
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Transform3D::TranslationAndMat3x3(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Transform3D::TranslationAndMat3x3(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         _ = translation_and_mat3x3_bitmap;
                         crate::datatypes::TranslationAndMat3x3::to_arrow_opt(
-                            translation_and_mat3x3,
+                            translation_and_mat3x3.into_iter().map(Some),
                         )?
                     }
                 },
                 {
-                    let (somes, translation_rotation_scale): (Vec<_>, Vec<_>) = data
+                    let translation_rotation_scale: Vec<_> = data
                         .iter()
-                        .filter(|datum| {
-                            matches!(
-                                datum.as_deref(),
-                                Some(Transform3D::TranslationRotationScale(_))
-                            )
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Transform3D::TranslationRotationScale(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(Transform3D::TranslationRotationScale(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         _ = translation_rotation_scale_bitmap;
                         crate::datatypes::TranslationRotationScale3D::to_arrow_opt(
-                            translation_rotation_scale,
+                            translation_rotation_scale.into_iter().map(Some),
                         )?
                     }
                 },

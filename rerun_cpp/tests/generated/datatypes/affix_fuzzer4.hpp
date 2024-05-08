@@ -9,7 +9,6 @@
 #include <cstring>
 #include <memory>
 #include <new>
-#include <optional>
 #include <rerun/collection.hpp>
 #include <rerun/result.hpp>
 #include <utility>
@@ -28,7 +27,6 @@ namespace rerun::datatypes {
             None = 0,
             single_required,
             many_required,
-            many_optional,
         };
 
         /// \private
@@ -36,8 +34,6 @@ namespace rerun::datatypes {
             rerun::datatypes::AffixFuzzer3 single_required;
 
             rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required;
-
-            std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>> many_optional;
 
             AffixFuzzer4Data() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(AffixFuzzer4Data));
@@ -70,11 +66,6 @@ namespace rerun::datatypes {
                 case detail::AffixFuzzer4Tag::many_required: {
                     using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer3>;
                     new (&_data.many_required) TypeAlias(other._data.many_required);
-                } break;
-                case detail::AffixFuzzer4Tag::many_optional: {
-                    using TypeAlias =
-                        std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>>;
-                    new (&_data.many_optional) TypeAlias(other._data.many_optional);
                 } break;
                 case detail::AffixFuzzer4Tag::None: {
                 } break;
@@ -109,17 +100,21 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer3>;
                     _data.many_required.~TypeAlias();
                 } break;
-                case detail::AffixFuzzer4Tag::many_optional: {
-                    using TypeAlias =
-                        std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>>;
-                    _data.many_optional.~TypeAlias();
-                } break;
             }
         }
 
         void swap(AffixFuzzer4& other) noexcept {
             std::swap(this->_tag, other._tag);
             this->_data.swap(other._data);
+        }
+
+        AffixFuzzer4(rerun::datatypes::AffixFuzzer3 single_required) : AffixFuzzer4() {
+            *this = AffixFuzzer4::single_required(std::move(single_required));
+        }
+
+        AffixFuzzer4(rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required)
+            : AffixFuzzer4() {
+            *this = AffixFuzzer4::many_required(std::move(many_required));
         }
 
         static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
@@ -140,18 +135,6 @@ namespace rerun::datatypes {
             return self;
         }
 
-        static AffixFuzzer4 many_optional(
-            std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>> many_optional
-        ) {
-            AffixFuzzer4 self;
-            self._tag = detail::AffixFuzzer4Tag::many_optional;
-            new (&self._data.many_optional)
-                std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>>(
-                    std::move(many_optional)
-                );
-            return self;
-        }
-
         /// Return a pointer to single_required if the union is in that state, otherwise `nullptr`.
         const rerun::datatypes::AffixFuzzer3* get_single_required() const {
             if (_tag == detail::AffixFuzzer4Tag::single_required) {
@@ -165,16 +148,6 @@ namespace rerun::datatypes {
         const rerun::Collection<rerun::datatypes::AffixFuzzer3>* get_many_required() const {
             if (_tag == detail::AffixFuzzer4Tag::many_required) {
                 return &_data.many_required;
-            } else {
-                return nullptr;
-            }
-        }
-
-        /// Return a pointer to many_optional if the union is in that state, otherwise `nullptr`.
-        const std::optional<rerun::Collection<rerun::datatypes::AffixFuzzer3>>* get_many_optional(
-        ) const {
-            if (_tag == detail::AffixFuzzer4Tag::many_optional) {
-                return &_data.many_optional;
             } else {
                 return nullptr;
             }

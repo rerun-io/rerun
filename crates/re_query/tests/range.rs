@@ -4,7 +4,7 @@ use re_data_store::{DataStore, RangeQuery, ResolvedTimeRange, StoreSubscriber as
 use re_log_types::{
     build_frame_nr,
     example_components::{MyColor, MyPoint, MyPoints},
-    DataRow, EntityPath, RowId, TimePoint,
+    DataRow, EntityPath, RowId, TimePoint, Timeline,
 };
 use re_query::{Caches, PromiseResolver, PromiseResult};
 use re_types::Archetype;
@@ -270,6 +270,111 @@ fn static_range() {
         expected_points,
         expected_colors,
     );
+}
+
+// Test the case where the user loads a piece of data at the end of the time range, then a piece at
+// the beginning of the range, and finally a piece right in the middle.
+//
+// DATA = ###################################################
+//          |      |     |       |            \_____/
+//          \______/     |       |            query #1
+//          query #2     \_______/
+//                       query #3
+//
+// There is no data invalidation involved, which is what makes this case tricky: the cache must
+// properly keep track of the fact that there are holes in the data -- on purpose.
+#[test]
+fn time_back_and_forth() {
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        Default::default(),
+    );
+    let mut caches = Caches::new(&store);
+
+    let entity_path: EntityPath = "point".into();
+
+    let (rows, points): (Vec<_>, Vec<_>) = (0..10)
+        .map(|i| {
+            let timepoint = [build_frame_nr(i)];
+            let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+            let row = DataRow::from_cells1_sized(
+                RowId::new(),
+                entity_path.clone(),
+                timepoint,
+                points.clone(),
+            )
+            .unwrap();
+
+            insert_and_react(&mut store, &mut caches, &row);
+
+            (row, points)
+        })
+        .unzip();
+
+    // --- Query #1: `[8, 10]` ---
+
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(8, 10),
+    );
+
+    let expected_points = &[
+        (
+            (TimeInt::new_temporal(8), rows[8].row_id()), //
+            points[8].as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(9), rows[9].row_id()), //
+            points[9].as_slice(),
+        ), //
+    ];
+    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+
+    // --- Query #2: `[1, 3]` ---
+
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(1, 3),
+    );
+
+    let expected_points = &[
+        (
+            (TimeInt::new_temporal(1), rows[1].row_id()), //
+            points[1].as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(2), rows[2].row_id()), //
+            points[2].as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(3), rows[3].row_id()), //
+            points[3].as_slice(),
+        ), //
+    ];
+    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+
+    // --- Query #3: `[5, 7]` ---
+
+    let query = re_data_store::RangeQuery::new(
+        Timeline::new_sequence("frame_nr"),
+        ResolvedTimeRange::new(5, 7),
+    );
+
+    let expected_points = &[
+        (
+            (TimeInt::new_temporal(5), rows[5].row_id()), //
+            points[5].as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(6), rows[6].row_id()), //
+            points[6].as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(7), rows[7].row_id()), //
+            points[7].as_slice(),
+        ), //
+    ];
+    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
 }
 
 #[test]
@@ -754,6 +859,87 @@ fn invalidation_static() {
         expected_points,
         expected_colors,
     );
+}
+
+// See <https://github.com/rerun-io/rerun/pull/6214>.
+#[test]
+fn concurrent_multitenant_edge_case() -> anyhow::Result<()> {
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        Default::default(),
+    );
+    let mut caches = Caches::new(&store);
+
+    let entity_path: EntityPath = "point".into();
+
+    let timepoint1 = [build_frame_nr(123)];
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let row1 = DataRow::from_cells1_sized(
+        RowId::new(),
+        entity_path.clone(),
+        timepoint1,
+        points1.clone(),
+    )?;
+    insert_and_react(&mut store, &mut caches, &row1);
+
+    let timepoint2 = [build_frame_nr(223)];
+    let points2 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
+    let row2 = DataRow::from_cells1_sized(
+        RowId::new(),
+        entity_path.clone(),
+        timepoint2,
+        points2.clone(),
+    )?;
+    insert_and_react(&mut store, &mut caches, &row2);
+
+    let timepoint3 = [build_frame_nr(323)];
+    let points3 = vec![MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)];
+    let row3 = DataRow::from_cells1_sized(
+        RowId::new(),
+        entity_path.clone(),
+        timepoint3,
+        points3.clone(),
+    )?;
+    insert_and_react(&mut store, &mut caches, &row3);
+
+    // --- Tenant #1 queries the data, but doesn't cache the result in the deserialization cache ---
+
+    let query = re_data_store::RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::EVERYTHING);
+
+    eprintln!("{}", store.to_data_table().unwrap());
+
+    {
+        let cached = caches.range(
+            &store,
+            &query,
+            &entity_path,
+            MyPoints::all_components().iter().copied(),
+        );
+
+        let _cached_all_points = cached.get_required(MyPoint::name()).unwrap();
+    }
+
+    // --- Meanwhile, tenant #2 queries and deserializes the data ---
+
+    let query = re_data_store::RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::EVERYTHING);
+
+    let expected_points = &[
+        (
+            (TimeInt::new_temporal(123), row1.row_id()),
+            points1.as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(223), row2.row_id()),
+            points2.as_slice(),
+        ), //
+        (
+            (TimeInt::new_temporal(323), row3.row_id()),
+            points3.as_slice(),
+        ), //
+    ];
+    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+
+    Ok(())
 }
 
 // ---

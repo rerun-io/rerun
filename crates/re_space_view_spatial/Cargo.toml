@@ -48,7 +48,6 @@ itertools.workspace = true
 macaw = { workspace = true, features = ["with_serde"] }
 nohash-hasher.workspace = true
 once_cell.workspace = true
-rayon.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
 web-time.workspace = true

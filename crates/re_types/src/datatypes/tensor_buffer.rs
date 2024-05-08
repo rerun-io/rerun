@@ -307,37 +307,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
             let fields = vec![
                 NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
                 {
-                    let (somes, u8): (Vec<_>, Vec<_>) = data
+                    let u8: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U8(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::U8(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::U8(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let u8_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let u8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u8_inner_data: Buffer<_> = u8
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u8.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            u8.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -356,37 +344,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, u16): (Vec<_>, Vec<_>) = data
+                    let u16: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U16(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::U16(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::U16(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let u16_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let u16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u16_inner_data: Buffer<_> = u16
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u16.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            u16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -405,37 +381,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, u32): (Vec<_>, Vec<_>) = data
+                    let u32: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U32(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::U32(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::U32(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let u32_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let u32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u32_inner_data: Buffer<_> = u32
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u32.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            u32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -454,37 +418,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, u64): (Vec<_>, Vec<_>) = data
+                    let u64: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U64(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::U64(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::U64(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let u64_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let u64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let u64_inner_data: Buffer<_> = u64
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u64.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            u64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -503,37 +455,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, i8): (Vec<_>, Vec<_>) = data
+                    let i8: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I8(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::I8(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::I8(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let i8_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let i8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i8_inner_data: Buffer<_> = i8
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i8.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            i8.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -552,37 +492,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, i16): (Vec<_>, Vec<_>) = data
+                    let i16: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I16(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::I16(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::I16(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let i16_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let i16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i16_inner_data: Buffer<_> = i16
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i16.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            i16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -601,37 +529,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, i32): (Vec<_>, Vec<_>) = data
+                    let i32: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I32(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::I32(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::I32(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let i32_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let i32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i32_inner_data: Buffer<_> = i32
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i32.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            i32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -650,37 +566,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, i64): (Vec<_>, Vec<_>) = data
+                    let i64: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I64(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::I64(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::I64(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let i64_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let i64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let i64_inner_data: Buffer<_> = i64
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i64.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            i64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -699,37 +603,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, f16): (Vec<_>, Vec<_>) = data
+                    let f16: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F16(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::F16(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::F16(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let f16_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let f16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f16_inner_data: Buffer<_> = f16
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f16.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            f16.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -752,37 +644,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, f32): (Vec<_>, Vec<_>) = data
+                    let f32: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F32(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::F32(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::F32(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let f32_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let f32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f32_inner_data: Buffer<_> = f32
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f32.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            f32.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -805,37 +685,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, f64): (Vec<_>, Vec<_>) = data
+                    let f64: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F64(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::F64(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::F64(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let f64_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let f64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let f64_inner_data: Buffer<_> = f64
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f64.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            f64.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -858,37 +726,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, jpeg): (Vec<_>, Vec<_>) = data
+                    let jpeg: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Jpeg(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::Jpeg(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::Jpeg(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let jpeg_inner_data: Buffer<_> = jpeg
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            jpeg.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            jpeg.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -911,37 +767,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, nv12): (Vec<_>, Vec<_>) = data
+                    let nv12: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Nv12(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::Nv12(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::Nv12(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let nv12_inner_data: Buffer<_> = nv12
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            nv12.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            nv12.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();
@@ -964,37 +808,25 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     }
                 },
                 {
-                    let (somes, yuy2): (Vec<_>, Vec<_>) = data
+                    let yuy2: Vec<_> = data
                         .iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Yuy2(_))))
-                        .map(|datum| {
-                            let datum = match datum.as_deref() {
-                                Some(TensorBuffer::Yuy2(v)) => Some(v.clone()),
-                                _ => None,
-                            };
-                            (datum.is_some(), datum)
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(TensorBuffer::Yuy2(v)) => Some(v.clone()),
+                            _ => None,
                         })
-                        .unzip();
-                    let yuy2_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                        .collect();
+                    let yuy2_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let yuy2_inner_data: Buffer<_> = yuy2
                             .iter()
-                            .flatten()
                             .map(|b| b.as_slice())
                             .collect::<Vec<_>>()
                             .concat()
                             .into();
                         let yuy2_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            yuy2.iter().map(|opt| {
-                                opt.as_ref()
-                                    .map(|datum| datum.num_instances())
-                                    .unwrap_or_default()
-                            }),
+                            yuy2.iter().map(|datum| datum.num_instances()),
                         )
                         .unwrap()
                         .into();

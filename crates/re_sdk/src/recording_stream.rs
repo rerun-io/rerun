@@ -21,6 +21,7 @@ use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "web_viewer")]
 use re_ws_comms::RerunServerPort;
 
+use crate::binary_stream_sink::BinaryStreamStorage;
 use crate::sink::{LogSink, MemorySinkStorage};
 
 // ---
@@ -83,10 +84,10 @@ pub enum RecordingStreamError {
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
 
-    /// An error occurred while attempting to use a [`re_data_source::DataLoader`].
+    /// An error occurred while attempting to use a [`re_data_loader::DataLoader`].
     #[cfg(feature = "data_loaders")]
     #[error(transparent)]
-    DataLoaderError(#[from] re_data_source::DataLoaderError),
+    DataLoaderError(#[from] re_data_loader::DataLoaderError),
 }
 
 /// Results that can occur when creating/manipulating a [`RecordingStream`].
@@ -1062,11 +1063,11 @@ impl RecordingStream {
         Ok(())
     }
 
-    /// Logs the file at the given `path` using all [`re_data_source::DataLoader`]s available.
+    /// Logs the file at the given `path` using all [`re_data_loader::DataLoader`]s available.
     ///
     /// A single `path` might be handled by more than one loader.
     ///
-    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
     /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
@@ -1080,11 +1081,11 @@ impl RecordingStream {
         self.log_file(filepath, None, entity_path_prefix, static_)
     }
 
-    /// Logs the given `contents` using all [`re_data_source::DataLoader`]s available.
+    /// Logs the given `contents` using all [`re_data_loader::DataLoader`]s available.
     ///
     /// A single `path` might be handled by more than one loader.
     ///
-    /// This method blocks until either at least one [`re_data_source::DataLoader`] starts
+    /// This method blocks until either at least one [`re_data_loader::DataLoader`] starts
     /// streaming data in or all of them fail.
     ///
     /// See <https://www.rerun.io/docs/reference/data-loaders/overview> for more information.
@@ -1145,7 +1146,7 @@ impl RecordingStream {
         };
 
         if let Some(contents) = contents {
-            re_data_source::load_from_file_contents(
+            re_data_loader::load_from_file_contents(
                 &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
@@ -1153,7 +1154,7 @@ impl RecordingStream {
                 &tx,
             )?;
         } else {
-            re_data_source::load_from_path(
+            re_data_loader::load_from_path(
                 &settings,
                 re_log_types::FileSource::Sdk,
                 filepath,
@@ -1518,7 +1519,7 @@ impl RecordingStream {
         flush_timeout: Option<std::time::Duration>,
     ) {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return;
         }
 
@@ -1571,7 +1572,7 @@ impl RecordingStream {
             return Ok(());
         }
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new TcpSink since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
@@ -1593,6 +1594,18 @@ impl RecordingStream {
         let storage = sink.buffer();
         self.set_sink(Box::new(sink));
         storage
+    }
+
+    /// Swaps the underlying sink for a [`crate::sink::BinaryStreamSink`] sink and returns the associated
+    /// [`BinaryStreamStorage`].
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn binary_stream(&self) -> Result<BinaryStreamStorage, crate::sink::BinaryStreamSinkError> {
+        let (sink, storage) = crate::sink::BinaryStreamSink::new(self.clone())?;
+        self.set_sink(Box::new(sink));
+        Ok(storage)
     }
 
     /// Swaps the underlying sink for a [`crate::sink::FileSink`] at the specified `path`.
@@ -1620,7 +1633,7 @@ impl RecordingStream {
         path: impl Into<std::path::PathBuf>,
     ) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 
@@ -1656,7 +1669,7 @@ impl RecordingStream {
     /// Blueprints are currently an experimental part of the Rust SDK.
     pub fn stdout_opts(&self) -> Result<(), crate::sink::FileSinkError> {
         if forced_sink_path().is_some() {
-            re_log::debug!("Ignored setting new file since _RERUN_FORCE_SINK is set");
+            re_log::debug!("Ignored setting new file since {ENV_FORCE_SAVE} is set");
             return Ok(());
         }
 

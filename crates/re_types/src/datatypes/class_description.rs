@@ -174,7 +174,6 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .flatten()
                                 .flatten()
                                 .cloned()
-                                .map(Some)
                                 .collect();
                             let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
@@ -195,7 +194,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
                                     crate::datatypes::AnnotationInfo::to_arrow_opt(
-                                        keypoint_annotations_inner_data,
+                                        keypoint_annotations_inner_data.into_iter().map(Some),
                                     )?
                                 },
                                 keypoint_annotations_bitmap,
@@ -228,7 +227,6 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .flatten()
                                 .flatten()
                                 .cloned()
-                                .map(Some)
                                 .collect();
                             let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
@@ -249,7 +247,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 {
                                     _ = keypoint_connections_inner_bitmap;
                                     crate::datatypes::KeypointPair::to_arrow_opt(
-                                        keypoint_connections_inner_data,
+                                        keypoint_connections_inner_data.into_iter().map(Some),
                                     )?
                                 },
                                 keypoint_connections_bitmap,

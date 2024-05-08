@@ -47,5 +47,5 @@ Adding Entities
 To (re-)add an Entity to a Space View, you need first need to select the respective Space View.
 You then can open a dedicated menu through a button in the [Selection view](selection.md).
 
-This allows you to add any Entity with a matching [category](viewport.md#Categories-of-Space-Views) and a valid [transform](../../concepts/spaces-and-transforms.md) to your
+This allows you to add any Entity with a matching [category](viewport.md#space-view-classes) and a valid [transform](../../concepts/spaces-and-transforms.md) to your
 Space View's path.

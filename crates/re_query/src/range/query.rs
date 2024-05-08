@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
+use re_data_store::LatestAtQuery;
 use re_data_store::{DataStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::ComponentName;
@@ -47,7 +48,65 @@ impl Caches {
             };
 
             let mut cache = cache.write();
+
+            // TODO(#4810): Get rid of this once we have proper bucketing in place.
+            //
+            // Detects the case where the user loads a piece of data at the end of the time range, then a piece
+            // at the beginning of the range, and finally a piece right in the middle.
+            //
+            // DATA = ###################################################
+            //          |      |     |       |            \_____/
+            //          \______/     |       |            query #1
+            //          query #2     \_______/
+            //                       query #3
+            //
+            // and coarsly invalidates the whole cache in that case, to avoid the kind of bugs
+            // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
+            {
+                let time_range = cache.per_data_time.read_recursive().time_range();
+                if let Some(time_range) = time_range {
+                    {
+                        let hole_start = time_range.max();
+                        let hole_end =
+                            TimeInt::new_temporal(query.range().min().as_i64().saturating_sub(1));
+                        if hole_start < hole_end {
+                            if let Some((data_time, _, _)) = store.latest_at(
+                                &LatestAtQuery::new(query.timeline(), hole_end),
+                                entity_path,
+                                component_name,
+                                &[component_name],
+                            ) {
+                                if data_time > hole_start {
+                                    re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
+                                    cache.pending_invalidation = Some(TimeInt::MIN);
+                                }
+                            }
+                        }
+                    }
+
+                    {
+                        let hole_start = query.range().max();
+                        let hole_end =
+                            TimeInt::new_temporal(time_range.min().as_i64().saturating_sub(1));
+                        if hole_start < hole_end {
+                            if let Some((data_time, _, _)) = store.latest_at(
+                                &LatestAtQuery::new(query.timeline(), hole_end),
+                                entity_path,
+                                component_name,
+                                &[component_name],
+                            ) {
+                                if data_time > hole_start {
+                                    re_log::trace!(%entity_path, %component_name, "coarsely invalidated because of bridged queries");
+                                    cache.pending_invalidation = Some(TimeInt::MIN);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             cache.handle_pending_invalidation();
+
             let cached = cache.range(store, query, entity_path, component_name);
             results.add(component_name, cached);
         }
@@ -292,26 +351,32 @@ impl RangeComponentResultsInner {
         // timestamp. All entries for a given timestamp are loaded and invalidated atomically,
         // whether it's promises or already resolved entries.
 
+        // We check the back promises too just because I'm feeling overly cautious.
+        // See `Concurrency edge-case` section below.
+
         let pending_front_min = self
             .promises_front
             .first()
             .map_or(TimeInt::MAX.as_i64(), |((t, _), _)| {
                 t.as_i64().saturating_sub(1)
             });
+        let pending_back_min = self
+            .promises_back
+            .first()
+            .map_or(TimeInt::MAX.as_i64(), |((t, _), _)| {
+                t.as_i64().saturating_sub(1)
+            });
+        let pending_min = i64::min(pending_front_min, pending_back_min);
 
         if let Some(time_range) = self.time_range() {
-            let time_range_min = i64::min(
-                time_range.min().as_i64().saturating_sub(1),
-                pending_front_min,
-            );
+            let time_range_min = i64::min(time_range.min().as_i64().saturating_sub(1), pending_min);
             reduced_query
                 .range
                 .set_max(i64::min(reduced_query.range.max().as_i64(), time_range_min));
         } else {
-            reduced_query.range.set_max(i64::min(
-                reduced_query.range.max().as_i64(),
-                pending_front_min,
-            ));
+            reduced_query
+                .range
+                .set_max(i64::min(reduced_query.range.max().as_i64(), pending_min));
         }
 
         if reduced_query.range.max() < reduced_query.range.min() {
@@ -357,26 +422,42 @@ impl RangeComponentResultsInner {
         // timestamp. All entries for a given timestamp are loaded and invalidated atomically,
         // whether it's promises or already resolved entries.
 
+        // # Concurrency edge-case
+        //
+        // We need to make sure to check for both front _and_ back promises here.
+        // If two or more threads are querying for the same entity path concurrently, it is possible
+        // that the first thread queues a bunch of promises to the front queue, but then relinquishes
+        // control to the second thread before ever resolving those promises.
+        //
+        // If that happens, the second thread would end up queuing the same exact promises in the
+        // back queue, yielding duplicated data.
+        // In most cases, duplicated data isn't noticeable (except for a performance drop), but if
+        // the duplication is only partial this can sometimes lead to visual glitches, depending on
+        // the visualizer used.
+
         let pending_back_max = self
             .promises_back
             .last()
             .map_or(TimeInt::MIN.as_i64(), |((t, _), _)| {
                 t.as_i64().saturating_add(1)
             });
+        let pending_front_max = self
+            .promises_front
+            .last()
+            .map_or(TimeInt::MIN.as_i64(), |((t, _), _)| {
+                t.as_i64().saturating_add(1)
+            });
+        let pending_max = i64::max(pending_back_max, pending_front_max);
 
         if let Some(time_range) = self.time_range() {
-            let time_range_max = i64::max(
-                time_range.max().as_i64().saturating_add(1),
-                pending_back_max,
-            );
+            let time_range_max = i64::max(time_range.max().as_i64().saturating_add(1), pending_max);
             reduced_query
                 .range
                 .set_min(i64::max(reduced_query.range.min().as_i64(), time_range_max));
         } else {
-            reduced_query.range.set_min(i64::max(
-                reduced_query.range.min().as_i64(),
-                pending_back_max,
-            ));
+            reduced_query
+                .range
+                .set_min(i64::max(reduced_query.range.min().as_i64(), pending_max));
         }
 
         // Back query should never overlap with the front query.

@@ -8,43 +8,6 @@
     "files.autoGuessEncoding": true,
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
-    "cSpell.ignorePaths": [
-        ".vscode",
-        "pixi.lock"
-    ],
-    "cSpell.words": [
-        "andreas",
-        "bbox",
-        "bindgroup",
-        "colormap",
-        "emath",
-        "flatbuffers",
-        "framebuffer",
-        "Frazzoli",
-        "hoverable",
-        "ilog",
-        "jumpflooding",
-        "Karaman",
-        "Keypoint",
-        "memoffset",
-        "nyud",
-        "objectron",
-        "Readback",
-        "readbacks",
-        "Skybox",
-        "smallvec",
-        "swapchain",
-        "texcoord",
-        "texcoords",
-        "Tonemapper",
-        "tonemapping",
-        "unsmoothed",
-        "visualizable",
-        "visualizability",
-        "voronoi",
-        "vram",
-        "Wgsl"
-    ],
     // don't share a cargo lock with rust-analyzer.
     // see https://github.com/rerun-io/rerun/pull/519 for rationale
     "rust-analyzer.check.overrideCommand": [

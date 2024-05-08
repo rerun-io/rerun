@@ -1,8 +1,7 @@
-use crate::list_item2::{ContentContext, DesiredWidth, ListItemContent};
+use egui::{text::TextWrapping, Align, Align2, NumExt, Ui};
+
+use super::{ContentContext, DesiredWidth, ListItemContent};
 use crate::{Icon, LabelStyle, ReUi};
-use eframe::emath::{Align, Align2};
-use eframe::epaint::text::TextWrapping;
-use egui::Ui;
 
 /// [`ListItemContent`] that displays a simple label with optional icon and buttons.
 #[allow(clippy::type_complexity)]
@@ -17,7 +16,9 @@ pub struct LabelContent<'a> {
     label_style: LabelStyle,
     icon_fn: Option<Box<dyn FnOnce(&ReUi, &egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
     buttons_fn: Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a>>,
+    always_show_buttons: bool,
 
+    min_desired_width: f32,
     exact_width: bool,
 }
 
@@ -31,6 +32,8 @@ impl<'a> LabelContent<'a> {
             label_style: Default::default(),
             icon_fn: None,
             buttons_fn: None,
+            always_show_buttons: false,
+            min_desired_width: 0.0,
             exact_width: false,
         }
     }
@@ -81,9 +84,20 @@ impl<'a> LabelContent<'a> {
     /// By default, [`LabelContent`] uses the available width. By setting `exact_width` to true,
     /// the exact width required by the label (and the icon if any) is allocated instead. See
     /// [`super::DesiredWidth::Exact`].
+    ///
+    /// Note that if [`Self::min_desired_width`] is set, it is used as a minimum value.
     #[inline]
     pub fn exact_width(mut self, exact_width: bool) -> Self {
         self.exact_width = exact_width;
+        self
+    }
+
+    /// Set the minimum desired for the content.
+    ///
+    /// This defaults to zero.
+    #[inline]
+    pub fn min_desired_width(mut self, min_desired_width: f32) -> Self {
+        self.min_desired_width = min_desired_width;
         self
     }
 
@@ -108,7 +122,8 @@ impl<'a> LabelContent<'a> {
 
     /// Provide a closure to display on-hover buttons on the right of the item.
     ///
-    /// Buttons also show when the item is selected, in order to support clicking them on touch screens.
+    /// Buttons also show when the item is selected, in order to support clicking them on touch
+    /// screens. The buttons can be set to be always shown with [`Self::always_show_buttons`].
     ///
     /// Notes:
     /// - If buttons are used, the item will allocate the full available width of the parent. If the
@@ -123,6 +138,16 @@ impl<'a> LabelContent<'a> {
         self.buttons_fn = Some(Box::new(buttons));
         self
     }
+
+    /// Always show the buttons.
+    ///
+    /// By default, buttons are only shown when the item is hovered or selected. By setting this to
+    /// `true`, the buttons are always shown.
+    #[inline]
+    pub fn always_show_buttons(mut self, always_show_buttons: bool) -> Self {
+        self.always_show_buttons = always_show_buttons;
+        self
+    }
 }
 
 impl ListItemContent for LabelContent<'_> {
@@ -135,6 +160,8 @@ impl ListItemContent for LabelContent<'_> {
             label_style,
             icon_fn,
             buttons_fn,
+            always_show_buttons,
+            min_desired_width: _,
             exact_width: _,
         } = *self;
 
@@ -179,10 +206,12 @@ impl ListItemContent for LabelContent<'_> {
         // We can't use `.hovered()` or the buttons disappear just as the user clicks,
         // so we use `contains_pointer` instead. That also means we need to check
         // that we aren't dragging anything.
-        let should_show_buttons = context.list_item.interactive
+        // By showing the buttons when selected, we allow users to find them on touch screens.
+        let should_show_buttons = (context.list_item.interactive
             && ui.rect_contains_pointer(context.bg_rect)
-            && !egui::DragAndDrop::has_any_payload(ui.ctx())
-            || context.list_item.selected; // by showing the buttons when selected, we allow users to find them on touch screens
+            && !egui::DragAndDrop::has_any_payload(ui.ctx()))
+            || context.list_item.selected
+            || always_show_buttons;
         let button_response = if should_show_buttons {
             if let Some(buttons) = buttons_fn {
                 let mut ui =
@@ -244,9 +273,9 @@ impl ListItemContent for LabelContent<'_> {
 
             // The `ceil()` is needed to avoid some rounding errors which leads to text being
             // truncated even though we allocated enough space.
-            DesiredWidth::Exact(desired_width.ceil())
+            DesiredWidth::Exact(desired_width.ceil().at_least(self.min_desired_width))
         } else {
-            DesiredWidth::default()
+            DesiredWidth::AtLeast(self.min_desired_width)
         }
     }
 }

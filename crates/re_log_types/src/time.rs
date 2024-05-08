@@ -132,11 +132,13 @@ impl Time {
             let secs = nanos_since_epoch as f64 * 1e-9;
 
             let is_whole_second = nanos_since_epoch % 1_000_000_000 == 0;
-            if is_whole_second {
-                format!("{secs:+.0}s")
-            } else {
-                format!("{secs:+.3}s")
-            }
+
+            let secs = re_format::FloatFormatOptions::DEFAULT_f64
+                .with_always_sign(true)
+                .with_decimals(if is_whole_second { 0 } else { 3 })
+                .with_strip_trailing_zeros(false)
+                .format(secs);
+            format!("{secs}s")
         }
     }
 
@@ -307,6 +309,10 @@ mod tests {
         assert_eq!(
             &Time::from_us_since_epoch(42_000_000).format(TimeZone::Local),
             "+42s"
+        );
+        assert_eq!(
+            &Time::from_us_since_epoch(42_123_000_000).format(TimeZone::Local),
+            "+42 123s"
         );
         assert_eq!(
             &Time::from_us_since_epoch(69_000).format(TimeZone::Local),

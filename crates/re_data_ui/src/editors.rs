@@ -255,30 +255,49 @@ fn edit_marker_shape_ui(
 
     let marker_text = edit_marker.to_string();
 
+    let item_width = 100.0;
+
     egui::ComboBox::from_id_source("marker_shape")
         .selected_text(marker_text) // TODO(emilk): Show marker shape in the selected text
-        .width(100.0)
+        .width(
+            ui.available_width()
+                .at_most(item_width + ui.spacing().menu_margin.sum().x),
+        )
         .height(320.0)
         .show_ui(ui, |ui| {
-            // no spacing between list items
-            ui.spacing_mut().item_spacing.y = 0.0;
+            // workaround to force `ui.max_rect()` to reflect the content size
+            ui.set_width(item_width);
 
-            // Hack needed for ListItem to click its highlight bg rect correctly:
-            ui.set_clip_rect(
-                ui.clip_rect()
-                    .with_max_x(ui.max_rect().max.x + ui.spacing().menu_margin.right),
-            );
+            let background_x_range = ui
+                .spacing()
+                .menu_margin
+                .expand_rect(ui.max_rect())
+                .x_range();
 
-            for marker in MarkerShape::ALL {
-                let list_item = re_ui::ListItem::new(ctx.re_ui, marker.to_string())
-                    .with_icon_fn(|_re_ui, ui, rect, visuals| {
-                        paint_marker(ui, marker.into(), rect, visuals.text_color());
-                    })
-                    .selected(edit_marker == marker);
-                if list_item.show_flat(ui).clicked() {
-                    edit_marker = marker;
+            let list_ui = |ui: &mut egui::Ui| {
+                for marker in MarkerShape::ALL {
+                    let response = ctx
+                        .re_ui
+                        .list_item2()
+                        .selected(edit_marker == marker)
+                        .show_flat(
+                            ui,
+                            re_ui::list_item2::LabelContent::new(marker.to_string())
+                                .min_desired_width(item_width)
+                                .with_icon_fn(|_re_ui, ui, rect, visuals| {
+                                    paint_marker(ui, marker.into(), rect, visuals.text_color());
+                                }),
+                        );
+
+                    if response.clicked() {
+                        edit_marker = marker;
+                    }
                 }
-            }
+            };
+
+            re_ui::full_span::full_span_scope(ui, background_x_range, |ui| {
+                re_ui::list_item2::list_item_scope(ui, "marker_shape", list_ui);
+            });
         });
 
     if edit_marker != current_marker {

@@ -26,7 +26,7 @@ default = ["to_archetype"]
 to_archetype = ["dep:re_types", "dep:re_types_blueprint"]
 
 ## Enable codegen helper binaries (generates ClampedZip & RangeZip implementations).
-codegen = ["unindent"]
+codegen = []
 
 
 [dependencies]
@@ -58,10 +58,6 @@ paste.workspace = true
 seq-macro.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
-web-time.workspace = true
-
-# External dependencies (optional):
-unindent = { workspace = true, optional = true }
 
 
 [dev-dependencies]

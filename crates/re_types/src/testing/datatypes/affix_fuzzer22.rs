@@ -127,7 +127,6 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                                     std::iter::repeat(Default::default()).take(4usize),
                                 ),
                             })
-                            .map(Some)
                             .collect();
                         let fixed_sized_native_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                             fixed_sized_native_bitmap.as_ref().map(|bitmap| {
@@ -145,10 +144,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             ),
                             PrimitiveArray::new(
                                 DataType::UInt8,
-                                fixed_sized_native_inner_data
-                                    .into_iter()
-                                    .map(|v| v.unwrap_or_default())
-                                    .collect(),
+                                fixed_sized_native_inner_data.into_iter().collect(),
                                 fixed_sized_native_inner_bitmap,
                             )
                             .boxed(),

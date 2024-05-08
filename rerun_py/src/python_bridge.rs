@@ -15,8 +15,9 @@ use pyo3::{
 
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, StoreKind};
 use re_sdk::{
-    sink::MemorySinkStorage, time::TimePoint, EntityPath, RecordingStream, RecordingStreamBuilder,
-    StoreId,
+    sink::{BinaryStreamStorage, MemorySinkStorage},
+    time::TimePoint,
+    EntityPath, RecordingStream, RecordingStreamBuilder, StoreId,
 };
 
 #[cfg(feature = "web_viewer")]
@@ -131,6 +132,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
     m.add_function(wrap_pyfunction!(connect, m)?)?;
     m.add_function(wrap_pyfunction!(connect_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
@@ -746,6 +748,29 @@ fn memory_recording(
     })
 }
 
+/// Create a new binary stream sink, and return the associated binary stream.
+#[pyfunction]
+#[pyo3(signature = (recording = None))]
+fn binary_stream(
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> PyResult<Option<PyBinarySinkStorage>> {
+    let Some(recording) = get_data_recording(recording) else {
+        return Ok(None);
+    };
+
+    // The call to memory may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    let inner = py
+        .allow_threads(|| {
+            let storage = recording.binary_stream();
+            flush_garbage_queue();
+            storage
+        })
+        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+    Ok(Some(PyBinarySinkStorage { inner }))
+}
+
 #[pyclass(frozen)]
 struct PyMemorySinkStorage {
     // So we can flush when needed!
@@ -808,6 +833,47 @@ impl PyMemorySinkStorage {
         })
         .map(|bytes| PyBytes::new(py, bytes.as_slice()))
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    }
+}
+
+#[pyclass(frozen)]
+struct PyBinarySinkStorage {
+    /// The underlying binary sink storage.
+    inner: BinaryStreamStorage,
+}
+
+#[pymethods]
+impl PyBinarySinkStorage {
+    /// Read the bytes from the binary sink.
+    ///
+    /// If `flush` is `true`, the sink will be flushed before reading.
+    #[pyo3(signature = (*, flush = true))]
+    fn read<'p>(&self, flush: bool, py: Python<'p>) -> &'p PyBytes {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        PyBytes::new(
+            py,
+            py.allow_threads(|| {
+                if flush {
+                    self.inner.flush();
+                }
+
+                let bytes = self.inner.read();
+
+                flush_garbage_queue();
+
+                bytes
+            })
+            .as_slice(),
+        )
+    }
+
+    /// Flush the binary sink manually.
+    fn flush(&self, py: Python<'_>) {
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        py.allow_threads(|| {
+            self.inner.flush();
+            flush_garbage_queue();
+        });
     }
 }
 

@@ -655,6 +655,8 @@ fn quote_enum(
             }
         }
 
+        // We implement `Display` to match the `PascalCase` name so that
+        // the enum variants are displayed in the UI exactly how they are displayed in code.
         impl std::fmt::Display for #name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {

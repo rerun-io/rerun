@@ -118,6 +118,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item as part of a flat list.
+    ///
+    /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_flat(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
@@ -126,6 +128,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item as a leaf node from a hierarchical list.
+    ///
+    /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimise interferences on subsequent items' id
         ui.scope(|ui| {
@@ -141,6 +145,8 @@ impl<'a> ListItem<'a> {
     }
 
     /// Draw the item as a non-leaf node from a hierarchical list.
+    ///
+    /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical_with_children<R>(
         mut self,
         ui: &mut Ui,
@@ -239,9 +245,11 @@ impl<'a> ListItem<'a> {
         // We use the state set by ListItemContainer to determine how far the background should
         // extend.
         let layout_info = LayoutInfoStack::top(ui.ctx());
-        let mut bg_rect = rect;
-        bg_rect.set_left(layout_info.background_x_range.min);
-        bg_rect.set_right(layout_info.background_x_range.max);
+        let bg_rect =
+            egui::Rect::from_x_y_ranges(crate::full_span::get_full_span(ui), rect.y_range());
+
+        // Record the max allocated width.
+        layout_info.register_max_item_width(ui.ctx(), rect.right() - layout_info.left_x);
 
         // We want to be able to select/hover the item across its full span, so we interact over the
         // entire background rect. But…

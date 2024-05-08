@@ -5,20 +5,26 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-archetypes.any_values = ["cpp", "rust"] # Not yet implemented
-archetypes.extra_values = ["cpp", "rust"] # Missing examples
+roundtrips = ["cpp", "py", "rust"] # This is this script, it's not an example.
+
 archetypes.image_advanced = ["cpp", "rust"] # Missing examples
-archetypes.log_line = [ # Not a complete example -- just a single log line
+
+tutorials.any_values = [ # Not yet implementedtutorials.extra_values = ["cpp", "rust"] # Missing examples
+  "cpp",
+  "rust",
+]
+tutorials.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
+  "cpp",
+  "py",
+  "rust",
+]
+
+migration.log_line = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
   "py",
 ]
-archetypes.spatial3dview = ["cpp", "rust"] # Missing examples
 
-# This is this script, it's not an example.
-archetypes.roundtrips = ["cpp", "py", "rust"]
-
-tutorials = ["cpp", "py", "rust"]
 views = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
@@ -71,11 +77,6 @@ archetypes.tensor_simple = [
   "py",
   "rust",
 ] # TODO(#3206): examples use different RNGs
-archetypes.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
-  "cpp",
-  "py",
-  "rust",
-]
 archetypes.series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
   "cpp",
   "py",

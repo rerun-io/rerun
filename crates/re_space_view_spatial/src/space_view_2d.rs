@@ -286,22 +286,24 @@ fn visual_bounds_ui(ctx: &ViewerContext<'_>, space_view_id: SpaceViewId, ui: &mu
     re_space_view::edit_blueprint_component::<VisualBounds, re_types::components::Range2D, ()>(
         ctx,
         space_view_id,
-        |range2d: &mut Option<re_types::components::Range2D>| {
+        |range2d_opt: &mut Option<re_types::components::Range2D>| {
             ctx.re_ui
                 .grid_left_hand_label(ui, "Visible bounds")
                 .on_hover_text(tooltip);
             ui.vertical(|ui| {
                 ui.style_mut().wrap = Some(false);
 
-                if let Some(range2d) = range2d {
+                if let Some(range2d) = range2d_opt {
                     let rect = egui::Rect::from(*range2d);
                     let (min, max) = (rect.min, rect.max);
                     ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                     ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-                }
 
-                if ui.button("Reset visible bounds").clicked() {
-                    *range2d = None;
+                    if ui.button("Reset visible bounds").clicked() {
+                        *range2d_opt = None;
+                    }
+                } else {
+                    ui.weak("Default");
                 }
             });
             ui.end_row();

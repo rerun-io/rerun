@@ -120,7 +120,6 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                         .unwrap_or_default()
                                 })
                                 .flatten()
-                                .map(Some)
                                 .collect();
                             let axis_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 axis_bitmap.as_ref().map(|bitmap| {
@@ -142,10 +141,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 ),
                                 PrimitiveArray::new(
                                     DataType::Float32,
-                                    axis_inner_data
-                                        .into_iter()
-                                        .map(|v| v.unwrap_or_default())
-                                        .collect(),
+                                    axis_inner_data.into_iter().collect(),
                                     axis_inner_bitmap,
                                 )
                                 .boxed(),
