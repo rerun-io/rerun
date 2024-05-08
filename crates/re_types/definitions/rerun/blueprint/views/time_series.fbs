@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A time series view.
+///
+/// \example timeseriesview title="Use a blueprint to customize a TimeSeriesView"
 table TimeSeriesView (
     "attr.rerun.view_identifier": "TimeSeries"
 ) {

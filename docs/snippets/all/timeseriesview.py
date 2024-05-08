@@ -1,4 +1,4 @@
-"""Use a blueprint to customize a TimeSeriesVieew."""
+"""Use a blueprint to customize a TimeSeriesView."""
 
 import math
 
