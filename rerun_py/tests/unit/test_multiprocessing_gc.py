@@ -8,9 +8,9 @@ import rerun as rr
 # since it causes more issues. But, it's annoying to always require it so at
 # least for the tests in other contexts, we'll use the standard library version.
 try:
-    from torch import multiprocessing
+    import torch.multiprocessing as multiprocessing
 except ImportError:
-    import multiprocessing
+    import multiprocessing  # ignore[no-redef]
 
 
 def task() -> None:
