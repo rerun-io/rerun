@@ -2,7 +2,12 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 # Setup builds for examples
 file(GLOB_RECURSE sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
-list(FILTER sources_list EXCLUDE REGEX .*/tutorials/.*) # Tutorial snippets are generally not expected to be able to build.
+
+# Not complete examples:
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log_line/.*)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log-file/.*)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-recording-id/.*)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/timelines_example/.*)
 
 add_custom_target(snippets)
 
@@ -13,9 +18,14 @@ foreach(SOURCE_PATH ${sources_list})
         CONTINUE()
     endif()
 
-    # message(STATUS "Adding snippet: ${SOURCE_PATH}")
-    set(EXAMPLE_TARGET ${SOURCE_NAME})
+    if(${SOURCE_NAME} STREQUAL "example")
+        get_filename_component(EXAMPLE_TARGET ${SOURCE_PATH} DIRECTORY)
+        get_filename_component(EXAMPLE_TARGET ${EXAMPLE_TARGET} NAME)
+    else()
+        set(EXAMPLE_TARGET ${SOURCE_NAME})
+    endif()
 
+    # message(STATUS "Adding snippet: ${SOURCE_PATH}")
     add_executable(${EXAMPLE_TARGET} ${SOURCE_PATH})
 
     rerun_strict_warning_settings(${EXAMPLE_TARGET})

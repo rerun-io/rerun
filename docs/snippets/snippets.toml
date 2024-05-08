@@ -9,10 +9,11 @@ roundtrips = ["cpp", "py", "rust"] # This is this script, it's not an example.
 
 archetypes.image_advanced = ["cpp", "rust"] # Missing examples
 
-tutorials.any_values = [ # Not yet implementedtutorials.extra_values = ["cpp", "rust"] # Missing examples
+tutorials.any_values = [ # Not yet implemented
   "cpp",
   "rust",
 ]
+tutorials.extra_values = ["cpp", "rust"] # Missing examples
 tutorials.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
   "cpp",
   "py",
