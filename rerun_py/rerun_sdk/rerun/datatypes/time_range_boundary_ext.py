@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .. import datatypes
+from datatypes import TimeInt, TimeIntLike
 
 if TYPE_CHECKING:
     from .time_range_boundary import TimeRangeBoundary
@@ -12,7 +12,7 @@ class TimeRangeBoundaryExt:
     """Extension for [TimeRangeBoundary][rerun.datatypes.TimeRangeBoundary]."""
 
     @staticmethod
-    def cursor_relative(time: datatypes.TimeIntLike = 0) -> TimeRangeBoundary:
+    def cursor_relative(time: TimeIntLike = 0) -> TimeRangeBoundary:
         """
         Boundary that is relative to the timeline cursor.
 
@@ -24,6 +24,9 @@ class TimeRangeBoundaryExt:
         """
 
         from .time_range_boundary import TimeRangeBoundary
+
+        if not isinstance(time, TimeInt):
+            time = TimeInt(time)
 
         return TimeRangeBoundary(inner=time, kind="cursor_relative")
 
@@ -40,7 +43,7 @@ class TimeRangeBoundaryExt:
         return TimeRangeBoundary(inner=None, kind="infinite")
 
     @staticmethod
-    def absolute(time: datatypes.TimeIntLike) -> TimeRangeBoundary:
+    def absolute(time: TimeIntLike) -> TimeRangeBoundary:
         """
         Boundary that is at an absolute time.
 
@@ -52,5 +55,8 @@ class TimeRangeBoundaryExt:
         """
 
         from .time_range_boundary import TimeRangeBoundary
+
+        if not isinstance(time, TimeInt):
+            time = TimeInt(time)
 
         return TimeRangeBoundary(inner=time, kind="absolute")

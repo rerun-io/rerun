@@ -32,8 +32,8 @@ class Spatial2DView(SpaceView):
         | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
-        | blueprint_components.VisibleTimeRangeLike
-        | Sequence[blueprint_components.VisibleTimeRangeLike]
+        | datatypes.VisibleTimeRangeLike
+        | Sequence[datatypes.VisibleTimeRangeLike]
         | None = None,
     ) -> None:
         """

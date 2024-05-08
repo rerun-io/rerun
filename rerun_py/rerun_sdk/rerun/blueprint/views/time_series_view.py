@@ -8,6 +8,7 @@ from typing import Sequence
 __all__ = ["TimeSeriesView"]
 
 
+from ... import datatypes
 from ..._baseclasses import AsComponents
 from ...datatypes import EntityPathLike, Utf8Like
 from .. import archetypes as blueprint_archetypes
@@ -82,8 +83,8 @@ class TimeSeriesView(SpaceView):
         axis_y: blueprint_archetypes.ScalarAxis | None = None,
         plot_legend: blueprint_archetypes.PlotLegend | blueprint_components.Corner2D | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
-        | blueprint_components.VisibleTimeRangeLike
-        | Sequence[blueprint_components.VisibleTimeRangeLike]
+        | datatypes.VisibleTimeRangeLike
+        | Sequence[datatypes.VisibleTimeRangeLike]
         | None = None,
     ) -> None:
         """

@@ -21,7 +21,7 @@ namespace rerun.blueprint.archetypes;
 table VisibleTimeRanges (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default",
-    "attr.python.aliases": "blueprint_components.VisibleTimeRangeLike, Sequence[blueprint_components.VisibleTimeRangeLike]"
+    "attr.python.aliases": "datatypes.VisibleTimeRangeLike, Sequence[datatypes.VisibleTimeRangeLike]"
 ) {
     /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     ///
