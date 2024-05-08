@@ -84,14 +84,8 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
-        # Ensure data is iterable.
-        try:
-            iter(data)  # type: ignore[arg-type]
-        except TypeError:
-            data = [data]  # type: ignore[list-item]
-        data = cast(Sequence[AngleLike], data)
+        if isinstance(data, Angle) or isinstance(data, float):
+            data = [data]
 
         types: list[int] = []
         value_offsets: list[int] = []

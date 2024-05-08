@@ -89,16 +89,10 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
         from rerun.datatypes import Vec3DBatch
 
-        # Ensure data is iterable.
-        try:
-            iter(data)  # type: ignore[arg-type]
-        except TypeError:
-            data = [data]  # type: ignore[list-item]
-        data = cast(Sequence[Scale3DLike], data)
+        if isinstance(data, Scale3D) or isinstance(data, datatypes.Vec3D) or isinstance(data, float):
+            data = [data]
 
         types: list[int] = []
         value_offsets: list[int] = []

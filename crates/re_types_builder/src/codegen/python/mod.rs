@@ -1986,6 +1986,13 @@ return pa.UnionArray.from_buffers(
             let mut variant_list_push_arms = String::new();
             let mut child_list_push = String::new();
 
+            // List of all possible types that could be in in the incoming data that aren't sequences.
+            let mut possible_singular_types = HashSet::new();
+            possible_singular_types.insert(name.clone());
+            if let Some(aliases) = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES) {
+                possible_singular_types.extend(aliases.split(',').map(|s| s.trim().to_owned()));
+            }
+
             // Checking for the variant and adding it to a flat list.
             // We only have a 'kind' field if the enum is not distinguished by type.
             let type_based_variants = obj
@@ -1998,6 +2005,8 @@ return pa.UnionArray.from_buffers(
                 let kind = field.snake_case_name();
                 let variant_kind_list = format!("variant_{kind}");
                 let (field_type, _) = quote_field_type_from_field(objects, field, false);
+
+                possible_singular_types.insert(field_type.clone());
 
                 // Build lists of variants.
                 let variant_list_decl = if field.typ == Type::Unit {
@@ -2075,18 +2084,22 @@ return pa.UnionArray.from_buffers(
                 child_list_push.push_indented(1, format!("{variant_list_to_pa_array},"), 1);
             }
 
+            let singular_checks = possible_singular_types
+                .into_iter()
+                .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
+                .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
+                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .map(|typename| format!("isinstance(data, {typename})"))
+                .join(" or ");
+
             let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
             Ok(format!(
                 r##"
 {batch_type_imports}
 from typing import cast
 
-# Ensure data is iterable.
-try:
-    iter(data) # type: ignore[arg-type]
-except TypeError:
-    data = [data] # type: ignore[list-item]
-data = cast(Sequence[{name}Like], data)
+if {singular_checks}:
+    data = [data]
 
 types: list[int] = []
 value_offsets: list[int] = []
@@ -2103,7 +2116,6 @@ for value in data:
         if not isinstance(value, {name}):
             value = {name}(value)
 {variant_list_push_arms}
-
 
 buffers = [
     None,
