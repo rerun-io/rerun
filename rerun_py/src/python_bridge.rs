@@ -314,9 +314,13 @@ struct PyRecordingStream(RecordingStream);
 
 #[pymethods]
 impl PyRecordingStream {
-    /// Read the bytes from the binary sink.
+    /// Determine if this stream is operating in the context of a forked child process.
     ///
-    /// If `flush` is `true`, the sink will be flushed before reading.
+    /// This means the stream was created in the parent process. It now exists in the child
+    /// process by way of fork, but it is effectively a zombie since it's batcher and sink
+    /// threads would not have been copied.
+    ///
+    /// Calling operations such as flush or set_sink will result in an error.
     fn is_forked_child(&self) -> bool {
         self.0.is_forked_child()
     }
