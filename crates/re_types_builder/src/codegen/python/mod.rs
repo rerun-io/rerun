@@ -2089,8 +2089,7 @@ return pa.UnionArray.from_buffers(
                 .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
                 .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
                 .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
-                .map(|typename| format!("isinstance(data, {typename})"))
-                .join(" or ");
+                .join(", ");
 
             let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
             Ok(format!(
@@ -2098,7 +2097,12 @@ return pa.UnionArray.from_buffers(
 {batch_type_imports}
 from typing import cast
 
-if {singular_checks}:
+# TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+try:
+    iter(data)
+    if isinstance(data, ({singular_checks})):
+        data = [data]
+except TypeError:
     data = [data]
 
 types: list[int] = []

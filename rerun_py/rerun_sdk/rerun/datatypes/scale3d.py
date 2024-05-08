@@ -91,7 +91,12 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import Vec3DBatch
 
-        if isinstance(data, Scale3D) or isinstance(data, datatypes.Vec3D) or isinstance(data, float):
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        try:
+            iter(data)
+            if isinstance(data, (Scale3D, datatypes.Vec3D, float)):
+                data = [data]
+        except TypeError:
             data = [data]
 
         types: list[int] = []

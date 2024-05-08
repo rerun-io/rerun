@@ -99,11 +99,12 @@ class Rotation3DBatch(BaseBatch[Rotation3DArrayLike]):
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
         from rerun.datatypes import QuaternionBatch, RotationAxisAngleBatch
 
-        if (
-            isinstance(data, Rotation3D)
-            or isinstance(data, datatypes.Quaternion)
-            or isinstance(data, datatypes.RotationAxisAngle)
-        ):
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        try:
+            iter(data)
+            if isinstance(data, (Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle)):
+                data = [data]
+        except TypeError:
             data = [data]
 
         types: list[int] = []

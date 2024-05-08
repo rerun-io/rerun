@@ -84,7 +84,12 @@ class AngleBatch(BaseBatch[AngleArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:
-        if isinstance(data, Angle) or isinstance(data, float):
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        try:
+            iter(data)
+            if isinstance(data, (Angle, float)):
+                data = [data]
+        except TypeError:
             data = [data]
 
         types: list[int] = []
