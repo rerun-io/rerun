@@ -76,7 +76,7 @@ fn collect_snippets_recursively(
     dir: &Utf8Path,
     config: &Config,
     snippet_root_path: &Utf8Path,
-) -> Result<Vec<Snippet>, anyhow::Error> {
+) -> anyhow::Result<Vec<Snippet>> {
     let mut snippets = vec![];
 
     for snippet in dir.read_dir()? {
