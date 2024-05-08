@@ -41,9 +41,9 @@ impl crate::DataUi for ApplicationId {
             .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
             .collect();
 
+        //TODO(#6245): we should _not_ use interactive UI in code used for hover tooltip!
         if !recordings.is_empty() {
-            ui.scope(|ui| {
-                ui.set_clip_rect(ui.max_rect()); // TODO(#5740): Hack required because `entity_db_button_ui` uses `ListItem`, which fills the full width until the clip rect.
+            let content_ui = |ui: &mut egui::Ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.add_space(8.0);
@@ -51,52 +51,68 @@ impl crate::DataUi for ApplicationId {
                 for entity_db in recordings {
                     entity_db_button_ui(ctx, ui, entity_db, true);
                 }
+            };
+
+            ui.scope(|ui| {
+                // TODO(#6246): this test is needed because we're called in a context that may or may
+                // not have a full span defined.
+                if verbosity == UiVerbosity::Reduced {
+                    // This typically happens in tooltips, so a scope is needed
+                    //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
+                    re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);
+                } else {
+                    // This only happens from the selection panel, so the full span scope is already set.
+                    content_ui(ui);
+                }
             });
         }
 
         // ---------------------------------------------------------------------
+        // do not show UI code in tooltips
 
-        ui.add_space(8.0);
+        if verbosity != UiVerbosity::Reduced {
+            ui.add_space(8.0);
 
-        // ---------------------------------------------------------------------
+            // ---------------------------------------------------------------------
 
-        // Blueprint section.
-        let active_blueprint = ctx.store_context.blueprint;
-        let default_blueprint = ctx.store_context.hub.default_blueprint_for_app(self);
+            // Blueprint section.
+            let active_blueprint = ctx.store_context.blueprint;
+            let default_blueprint = ctx.store_context.hub.default_blueprint_for_app(self);
 
-        let button = egui::Button::image_and_text(
-            re_ui::icons::RESET.as_image(),
-            "Reset to default blueprint",
-        );
+            let button = egui::Button::image_and_text(
+                re_ui::icons::RESET.as_image(),
+                "Reset to default blueprint",
+            );
 
-        let is_same_as_default = default_blueprint.map_or(false, |default_blueprint| {
-            default_blueprint.latest_row_id() == active_blueprint.latest_row_id()
-        });
+            let is_same_as_default = default_blueprint.map_or(false, |default_blueprint| {
+                default_blueprint.latest_row_id() == active_blueprint.latest_row_id()
+            });
 
-        if is_same_as_default {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("No modifications has been made");
-        } else if default_blueprint.is_none() {
-            ui.add_enabled(false, button)
-                .on_disabled_hover_text("There's no default blueprint");
-        } else {
-            // The active blueprint is different from the default blueprint
-            if ui
-                .add(button)
-                .on_hover_text("Reset to the default blueprint for this app")
-                .clicked()
-            {
-                ctx.command_sender
-                    .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+            if is_same_as_default {
+                ui.add_enabled(false, button)
+                    .on_disabled_hover_text("No modifications have been made");
+            } else if default_blueprint.is_none() {
+                ui.add_enabled(false, button)
+                    .on_disabled_hover_text("There's no default blueprint");
+            } else {
+                // The active blueprint is different from the default blueprint
+                if ui
+                    .add(button)
+                    .on_hover_text("Reset to the default blueprint for this app")
+                    .clicked()
+                {
+                    ctx.command_sender
+                        .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+                }
             }
-        }
 
-        if ui.add(egui::Button::image_and_text(
+            if ui.add(egui::Button::image_and_text(
                 re_ui::icons::RESET.as_image(),
                 "Reset to heuristic blueprint",
             )).on_hover_text("Clear both active and default blueprint, and auto-generate a new blueprint based on heuristics").clicked() {
                 ctx.command_sender
                     .send_system(re_viewer_context::SystemCommand::ClearAndGenerateBlueprint);
             }
+        }
     }
 }

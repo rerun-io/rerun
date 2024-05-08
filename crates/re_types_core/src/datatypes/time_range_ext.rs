@@ -4,10 +4,10 @@ impl TimeRange {
     /// The range encompassing all time, from -∞ to +∞.
     pub const EVERYTHING: Self = Self {
         // This means -∞
-        start: TimeRangeBoundary::INFINITE,
+        start: TimeRangeBoundary::Infinite,
 
         // This means +∞
-        end: TimeRangeBoundary::INFINITE,
+        end: TimeRangeBoundary::Infinite,
     };
 
     /// A range of zero length exactly at the time cursor.

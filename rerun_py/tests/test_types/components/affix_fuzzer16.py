@@ -95,6 +95,7 @@ class AffixFuzzer16Type(BaseExtensionType):
                             nullable=False,
                             metadata={},
                         ),
+                        pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},

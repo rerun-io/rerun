@@ -22,7 +22,7 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixF
 class AffixFuzzer3:
     # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
+    inner: Union[None, float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
     """
     Must be one of:
 
@@ -31,18 +31,22 @@ class AffixFuzzer3:
     * craziness (list[datatypes.AffixFuzzer1]):
 
     * fixed_size_shenanigans (npt.NDArray[np.float32]):
+
+    * empty_variant (None):
     """
 
 
 if TYPE_CHECKING:
     AffixFuzzer3Like = Union[
         AffixFuzzer3,
+        None,
         float,
         list[datatypes.AffixFuzzer1],
         npt.NDArray[np.float32],
     ]
     AffixFuzzer3ArrayLike = Union[
         AffixFuzzer3,
+        None,
         float,
         list[datatypes.AffixFuzzer1],
         npt.NDArray[np.float32],
@@ -111,6 +115,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                     nullable=False,
                     metadata={},
                 ),
+                pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
         )
@@ -122,5 +127,5 @@ class AffixFuzzer3Batch(BaseBatch[AffixFuzzer3ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer3ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of AffixFuzzer3 not implemented: We lack codegen for arrow-serialization of unions"
+            "Arrow serialization of AffixFuzzer3 not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.testing.datatypes.AffixFuzzer3#craziness"
         )  # You need to implement native_to_pa_array_override in affix_fuzzer3_ext.py

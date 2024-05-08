@@ -33,8 +33,8 @@ def blueprint() -> rrb.BlueprintLike:
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
                     rr.TimeRange(
-                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 50 - i * 10),
-                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 50 - i * 10 + 10),
+                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 50 - i * 10),
+                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 50 - i * 10 + 10),
                     ),
                 ),
             )
@@ -49,8 +49,8 @@ def blueprint() -> rrb.BlueprintLike:
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
                     rr.TimeRange(
-                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.Infinite, 0),
-                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundaryKind.RelativeToTimeCursor, 0),
+                        start=rr.TimeRangeBoundary(rr.TimeRangeBoundary.Infinite, 0),
+                        end=rr.TimeRangeBoundary(rr.TimeRangeBoundary.CursorRelative, 0),
                     ),
                 ),
             )

@@ -487,9 +487,16 @@ fn quote_union(
         let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
-        quote! {
-            #quoted_doc
-            #name(#quoted_type)
+        if obj_field.typ == Type::Unit {
+            quote! {
+                #quoted_doc
+                #name
+            }
+        } else {
+            quote! {
+                #quoted_doc
+                #name(#quoted_type)
+            }
         }
     });
 
@@ -505,15 +512,29 @@ fn quote_union(
     } else {
         let quoted_matches = fields.iter().map(|obj_field| {
             let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
-            quote!(Self::#name(v) => v.heap_size_bytes())
+
+            if obj_field.typ == Type::Unit {
+                quote!(Self::#name => 0)
+            } else {
+                quote!(Self::#name(v) => v.heap_size_bytes())
+            }
         });
 
         let is_pod_impl = {
-            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                let quoted_field_type = quote_field_type_from_object_field(obj_field);
-                quote!(<#quoted_field_type>::is_pod())
-            });
-            quote!(#(#quoted_is_pods)&&*)
+            let quoted_is_pods: Vec<_> = obj
+                .fields
+                .iter()
+                .filter(|obj_field| obj_field.typ != Type::Unit)
+                .map(|obj_field| {
+                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                    quote!(<#quoted_field_type>::is_pod())
+                })
+                .collect();
+            if quoted_is_pods.is_empty() {
+                quote!(true)
+            } else {
+                quote!(#(#quoted_is_pods)&&*)
+            }
         };
 
         quote! {

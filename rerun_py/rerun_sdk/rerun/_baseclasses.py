@@ -61,7 +61,7 @@ class Archetype:
 
     @classmethod
     def archetype_name(cls) -> str:
-        return "rerun.archetypes." + cls.__name__
+        return ".".join(cls.__module__.rsplit(".", 1)[:-1] + [cls.__name__])
 
     @classmethod
     def indicator(cls) -> ComponentBatchLike:

@@ -832,6 +832,7 @@ impl QuotedObject {
         let enum_data_declarations = obj
             .fields
             .iter()
+            .filter(|obj_field| obj_field.typ != Type::Unit)
             .map(|obj_field| {
                 let declaration = quote_variable_with_docstring(
                     &mut hpp_includes,
@@ -851,6 +852,11 @@ impl QuotedObject {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
                 for obj_field in &obj.fields {
+                    if obj_field.typ == Type::Unit {
+                        // Can't create a constructor for a unit type.
+                        continue;
+                    }
+
                     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                     let param_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
@@ -883,29 +889,46 @@ impl QuotedObject {
 
         // Code that allows to access the data of the union in a safe way.
         for obj_field in &obj.fields {
-            let typ = quote_field_type(&mut hpp_includes, obj_field);
-
             let snake_case_name = obj_field.snake_case_name();
             let field_name = format_ident!("{}", snake_case_name);
-            let method_name = format_ident!("get_{}", snake_case_name);
             let tag_name = format_ident!("{}", obj_field.name);
 
-            methods.push(Method {
-                docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
-                declaration: MethodDeclaration {
-                    name_and_parameters: quote! { #method_name() const },
-                    return_type: quote! { const #typ* },
-                    is_static: false,
-                },
-                definition_body: quote! {
-                    if (_tag == detail::#tag_typename::#tag_name) {
-                        return &_data.#field_name;
-                    } else {
-                        return nullptr;
-                    }
-                },
-                inline: true,
-            });
+            let method = if obj_field.typ == Type::Unit {
+                let method_name = format_ident!("is_{}", snake_case_name);
+                Method {
+                    docs: format!("Returns true if the union is in the {snake_case_name} state.")
+                        .into(),
+                    declaration: MethodDeclaration {
+                        name_and_parameters: quote! { #method_name() const },
+                        return_type: quote! { bool },
+                        is_static: false,
+                    },
+                    definition_body: quote! {
+                        return _tag == detail::#tag_typename::#tag_name;
+                    },
+                    inline: true,
+                }
+            } else {
+                let typ = quote_field_type(&mut hpp_includes, obj_field);
+                let method_name = format_ident!("get_{}", snake_case_name);
+                Method {
+                    docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
+                    declaration: MethodDeclaration {
+                        name_and_parameters: quote! { #method_name() const },
+                        return_type: quote! { const #typ* },
+                        is_static: false,
+                    },
+                    definition_body: quote! {
+                        if (_tag == detail::#tag_typename::#tag_name) {
+                            return &_data.#field_name;
+                        } else {
+                            return nullptr;
+                        }
+                    },
+                    inline: true,
+                }
+            };
+            methods.push(method);
         }
 
         let destructor = if obj.has_default_destructor(objects) {
@@ -1947,7 +1970,7 @@ fn quote_append_single_value_to_builder(
 ) -> TokenStream {
     match &typ {
         Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
+            quote!(ARROW_RETURN_NOT_OK(#value_builder->AppendNull());)
         }
 
         Type::UInt8
@@ -2072,22 +2095,28 @@ fn static_constructor_for_enum_type(
         name_and_parameters: quote!(#function_name_ident(#param_declaration)),
     };
 
-    // We need to use placement-new since the union is in an uninitialized state here:
-    //
-    // Do *not* assign (move _or_ copy).
-    // At this point self._data is uninitialized, so only placement new is safe since we have to regard the target as "raw memory".
-    // Otherwise we may call a function (move assignment or copy assignment)
-    // on an uninitialized object which means that the compiler may optimize away the assignment.
-    // (This was identified as the cause of #3865.)
-    hpp_includes.insert_system("new"); // placement-new
-    let typ = quote_field_type(hpp_includes, obj_field);
+    let data_setter = if obj_field.typ == Type::Unit {
+        quote! {}
+    } else {
+        // We need to use placement-new since the union is in an uninitialized state here:
+        //
+        // Do *not* assign (move _or_ copy).
+        // At this point self._data is uninitialized, so only placement new is safe since we have to regard the target as "raw memory".
+        // Otherwise we may call a function (move assignment or copy assignment)
+        // on an uninitialized object which means that the compiler may optimize away the assignment.
+        // (This was identified as the cause of #3865.)
+        hpp_includes.insert_system("new"); // placement-new
+        let typ = quote_field_type(hpp_includes, obj_field);
+        quote! { new (&self._data.#snake_case_ident) #typ(std::move(#snake_case_ident)); }
+    };
+
     Method {
         docs,
         declaration,
         definition_body: quote! {
             #pascal_case_ident self;
             self._tag = detail::#tag_typename::#tag_ident;
-            new (&self._data.#snake_case_ident) #typ(std::move(#snake_case_ident));
+            #data_setter
             return self;
         },
         inline: true,
@@ -2134,9 +2163,7 @@ fn quote_variable_with_docstring(
 fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     #[allow(clippy::match_same_arms)]
     let typ = match &obj_field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
+        Type::Unit => panic!("Can't express the unit type directly"),
 
         Type::UInt8 => quote! { uint8_t  },
         Type::UInt16 => quote! { uint16_t  },
@@ -2187,8 +2214,12 @@ fn quote_variable(
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
-    let typ = quote_field_type(includes, obj_field);
-    quote! { #typ #name }
+    if obj_field.typ == Type::Unit {
+        quote! {}
+    } else {
+        let typ = quote_field_type(includes, obj_field);
+        quote! { #typ #name }
+    }
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {

@@ -16,7 +16,7 @@ from .archetypes import (
     Background,
     PlotLegend,
     ScalarAxis,
-    # VisibleTimeRange, # Don't expose this mono-archetype directly - one can always use the component instead!
+    # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds,
 )
 from .components import (
