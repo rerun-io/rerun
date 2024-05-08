@@ -2091,7 +2091,7 @@ return pa.UnionArray.from_buffers(
                 .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
                 .map(|typename| {
                     if typename == "None" {
-                        "NoneType".to_owned()
+                        "type(None)".to_owned() // `NoneType` requires Python 3.10.
                     } else {
                         typename
                     }
@@ -2102,7 +2102,7 @@ return pa.UnionArray.from_buffers(
             Ok(format!(
                 r##"
 {batch_type_imports}
-from typing import cast, NoneType
+from typing import cast
 
 # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
 # If we can call iter, it may be that one of the variants implements __iter__.
