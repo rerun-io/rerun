@@ -39,11 +39,11 @@ class Angle(AngleExt):
     """
     Possible values:
 
-    * "Radians":
+    * "radians":
         Angle in radians. One turn is equal to 2π (or τ) radians.
         Only one of `degrees` or `radians` should be set.
 
-    * "Degrees":
+    * "degrees":
         Angle in degrees. One turn is equal to 360 degrees.
         Only one of `degrees` or `radians` should be set.
     """

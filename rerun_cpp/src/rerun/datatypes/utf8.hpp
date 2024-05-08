@@ -24,9 +24,6 @@ namespace rerun::datatypes {
       public:
         // Extensions to generated type defined in 'utf8_ext.cpp'
 
-        /// Construct a `Utf8` from null-terminated UTF-8.
-        Utf8(const char* str) : value(str) {}
-
         const char* c_str() const {
             return value.c_str();
         }
