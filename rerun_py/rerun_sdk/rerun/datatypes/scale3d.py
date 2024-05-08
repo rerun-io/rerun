@@ -89,13 +89,15 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
+        from typing import cast
+
         from rerun.datatypes import Vec3DBatch
 
         # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-        if not hasattr(data, "__iter__") or isinstance(
-            data, (Scale3D, datatypes.Vec3D, float)
-        ):  # If we can call iter, it may be that one of the variants implements __iter__.
-            data = [data]
+        # If we can call iter, it may be that one of the variants implements __iter__.
+        if not hasattr(data, "__iter__") or isinstance(data, (Scale3D, datatypes.Vec3D, float)):  # type: ignore[arg-type]
+            data = [data]  # type: ignore[list-item]
+        data = cast(Sequence[Scale3DLike], data)  # type: ignore[redundant-cast]
 
         types: list[int] = []
         value_offsets: list[int] = []
