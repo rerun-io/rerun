@@ -2098,11 +2098,7 @@ return pa.UnionArray.from_buffers(
 from typing import cast
 
 # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-try:
-    iter(data)
-    if isinstance(data, ({singular_checks})):
-        data = [data]
-except TypeError:
+if not hasattr(data, "__iter__") or isinstance(data, ({singular_checks})): # If we can call iter, it may be that one of the variants implements __iter__.
     data = [data]
 
 types: list[int] = []

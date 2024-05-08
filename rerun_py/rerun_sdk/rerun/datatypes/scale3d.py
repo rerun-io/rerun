@@ -92,11 +92,9 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
         from rerun.datatypes import Vec3DBatch
 
         # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-        try:
-            iter(data)
-            if isinstance(data, (Scale3D, datatypes.Vec3D, float)):
-                data = [data]
-        except TypeError:
+        if not hasattr(data, "__iter__") or isinstance(
+            data, (Scale3D, datatypes.Vec3D, float)
+        ):  # If we can call iter, it may be that one of the variants implements __iter__.
             data = [data]
 
         types: list[int] = []

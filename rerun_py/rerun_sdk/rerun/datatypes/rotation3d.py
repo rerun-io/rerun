@@ -100,11 +100,9 @@ class Rotation3DBatch(BaseBatch[Rotation3DArrayLike]):
         from rerun.datatypes import QuaternionBatch, RotationAxisAngleBatch
 
         # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
-        try:
-            iter(data)
-            if isinstance(data, (Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle)):
-                data = [data]
-        except TypeError:
+        if not hasattr(data, "__iter__") or isinstance(
+            data, (Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle)
+        ):  # If we can call iter, it may be that one of the variants implements __iter__.
             data = [data]
 
         types: list[int] = []
