@@ -312,6 +312,16 @@ fn shutdown(py: Python<'_>) {
 #[derive(Clone)]
 struct PyRecordingStream(RecordingStream);
 
+#[pymethods]
+impl PyRecordingStream {
+    /// Read the bytes from the binary sink.
+    ///
+    /// If `flush` is `true`, the sink will be flushed before reading.
+    fn is_forked_child(&self) -> bool {
+        self.0.is_forked_child()
+    }
+}
+
 impl std::ops::Deref for PyRecordingStream {
     type Target = RecordingStream;
 

@@ -243,7 +243,13 @@ class RecordingStream:
 
     def __del__(self):  # type: ignore[no-untyped-def]
         recording = RecordingStream.to_native(self)
-        bindings.flush(blocking=False, recording=recording)
+        # TODO(jleibs): I'm 98% sure this flush is redundant, but removing it requires more thorough testing.
+        # However, it's definitely a problem if we are in a forked child process. The rerun SDK will still
+        # detect this case and prevent a hang internally, but will do so with a warning that we should avoid.
+        #
+        # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
+        if recording is not None and not recording.is_forked_child():
+            bindings.flush(blocking=False, recording=recording)
 
 
 def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
