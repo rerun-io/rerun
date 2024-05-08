@@ -22,7 +22,7 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixF
 class AffixFuzzer3:
     # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
+    inner: Union[None, float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
     """
     Must be one of:
 
@@ -31,18 +31,22 @@ class AffixFuzzer3:
     * craziness (list[datatypes.AffixFuzzer1]):
 
     * fixed_size_shenanigans (npt.NDArray[np.float32]):
+
+    * empty_variant (None):
     """
 
 
 if TYPE_CHECKING:
     AffixFuzzer3Like = Union[
         AffixFuzzer3,
+        None,
         float,
         list[datatypes.AffixFuzzer1],
         npt.NDArray[np.float32],
     ]
     AffixFuzzer3ArrayLike = Union[
         AffixFuzzer3,
+        None,
         float,
         list[datatypes.AffixFuzzer1],
         npt.NDArray[np.float32],
@@ -111,6 +115,7 @@ class AffixFuzzer3Type(BaseExtensionType):
                     nullable=False,
                     metadata={},
                 ),
+                pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
             ]),
             self._TYPE_NAME,
         )

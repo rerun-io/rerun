@@ -1474,9 +1474,7 @@ fn quote_field_type_from_field(
 ) -> (String, bool) {
     let mut unwrapped = false;
     let typ = match &field.typ {
-        Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
-        }
+        Type::Unit => "None".to_owned(),
 
         Type::UInt8
         | Type::UInt16

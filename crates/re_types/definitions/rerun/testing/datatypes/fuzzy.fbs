@@ -3,6 +3,7 @@ include "fbs/attributes.fbs";
 include "rust/attributes.fbs";
 
 include "rerun/testing/components/fuzzy_deps.fbs";
+include "rerun/unit_type.fbs";
 
 namespace rerun.testing.datatypes;
 
@@ -61,6 +62,7 @@ union AffixFuzzer3 (
   //radians: FlattenedScalar (transparent, nullable), // Nullable fields on unions are not supported.
   craziness: __AffixFuzzer1Vec (transparent),
   fixed_size_shenanigans: ArrayOfFloats (transparent),
+  empty_variant: rerun.builtins.UnitType,
 }
 
 table __AffixFuzzer3 (transparent, order: 0) {

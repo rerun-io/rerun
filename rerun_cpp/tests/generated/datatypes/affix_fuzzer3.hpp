@@ -29,6 +29,7 @@ namespace rerun::datatypes {
             degrees,
             craziness,
             fixed_size_shenanigans,
+            empty_variant,
         };
 
         /// \private
@@ -68,7 +69,8 @@ namespace rerun::datatypes {
                     new (&_data.craziness) TypeAlias(other._data.craziness);
                 } break;
                 case detail::AffixFuzzer3Tag::degrees:
-                case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
+                case detail::AffixFuzzer3Tag::empty_variant: {
                     const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                     void* thisbytes = reinterpret_cast<void*>(&this->_data);
                     std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
@@ -106,6 +108,9 @@ namespace rerun::datatypes {
                     _data.craziness.~TypeAlias();
                 } break;
                 case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                    // has a trivial destructor
+                } break;
+                case detail::AffixFuzzer3Tag::empty_variant: {
                     // has a trivial destructor
                 } break;
             }
@@ -151,6 +156,12 @@ namespace rerun::datatypes {
             return self;
         }
 
+        static AffixFuzzer3 empty_variant() {
+            AffixFuzzer3 self;
+            self._tag = detail::AffixFuzzer3Tag::empty_variant;
+            return self;
+        }
+
         /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
         const float* get_degrees() const {
             if (_tag == detail::AffixFuzzer3Tag::degrees) {
@@ -176,6 +187,11 @@ namespace rerun::datatypes {
             } else {
                 return nullptr;
             }
+        }
+
+        /// Returns true if the union is in the empty_variant state.
+        bool is_empty_variant() const {
+            return _tag == detail::AffixFuzzer3Tag::empty_variant;
         }
 
         /// \private

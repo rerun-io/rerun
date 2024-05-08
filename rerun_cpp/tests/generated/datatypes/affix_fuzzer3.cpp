@@ -29,6 +29,7 @@ namespace rerun {
                 arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 3),
                 false
             ),
+            arrow::field("empty_variant", arrow::null(), true),
         });
         return datatype;
     }
@@ -105,6 +106,11 @@ namespace rerun {
                         ErrorCode::NotImplemented,
                         "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
                     );
+                } break;
+                case TagType::empty_variant: {
+                    auto variant_builder =
+                        static_cast<arrow::NullBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
                 } break;
             }
         }
