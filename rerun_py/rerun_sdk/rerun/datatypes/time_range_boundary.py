@@ -95,16 +95,13 @@ class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeBoundaryArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
         from rerun.datatypes import TimeIntBatch
 
-        # Ensure data is iterable.
-        try:
-            iter(data)  # type: ignore[arg-type]
-        except TypeError:
-            data = [data]  # type: ignore[list-item]
-        data = cast(Sequence[TimeRangeBoundaryLike], data)
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        if not hasattr(data, "__iter__") or isinstance(
+            data, (None, TimeRangeBoundary, datatypes.TimeInt)
+        ):  # If we can call iter, it may be that one of the variants implements __iter__.
+            data = [data]
 
         types: list[int] = []
         value_offsets: list[int] = []
