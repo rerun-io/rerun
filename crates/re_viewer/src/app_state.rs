@@ -354,26 +354,23 @@ impl AppState {
                     ui,
                     app_blueprint.blueprint_panel_expanded,
                     |ui: &mut egui::Ui| {
-                        // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets like
-                        // large collapsing headers. Here, no need to extend `ui.max_rect()` as the enclosing frame
-                        // doesn't have inner margins.
-                        ui.set_clip_rect(ui.max_rect());
+                        re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+                            // ListItem don't need vertical spacing so we disable it, but restore it
+                            // before drawing the blueprint panel.
+                            ui.spacing_mut().item_spacing.y = 0.0;
 
-                        // ListItem don't need vertical spacing so we disable it, but restore it
-                        // before drawing the blueprint panel.
-                        ui.spacing_mut().item_spacing.y = 0.0;
+                            let pre_cursor = ui.cursor();
+                            recordings_panel_ui(&ctx, rx, ui);
+                            let any_recording_shows = pre_cursor == ui.cursor();
 
-                        let pre_cursor = ui.cursor();
-                        recordings_panel_ui(&ctx, rx, ui);
-                        let any_recording_shows = pre_cursor == ui.cursor();
+                            if any_recording_shows {
+                                ui.add_space(4.0);
+                            }
 
-                        if any_recording_shows {
-                            ui.add_space(4.0);
-                        }
-
-                        if !show_welcome {
-                            blueprint_panel_ui(&mut viewport, &ctx, ui);
-                        }
+                            if !show_welcome {
+                                blueprint_panel_ui(&mut viewport, &ctx, ui);
+                            }
+                        });
                     },
                 );
 

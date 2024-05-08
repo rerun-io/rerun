@@ -431,16 +431,17 @@ impl TimePanel {
         ));
 
         // All the entity rows and their data density graphs:
-        self.tree_ui(
-            ctx,
-            viewport_blueprint,
-            entity_db,
-            time_ctrl,
-            &time_area_response,
-            &lower_time_area_painter,
-            time_x_left,
-            ui,
-        );
+        re_ui::full_span::full_span_scope(ui, (0.0..=time_x_left).into(), |ui| {
+            self.tree_ui(
+                ctx,
+                viewport_blueprint,
+                entity_db,
+                time_ctrl,
+                &time_area_response,
+                &lower_time_area_painter,
+                ui,
+            );
+        });
 
         {
             // Paint a shadow between the stream names on the left
@@ -490,7 +491,6 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree_max_y: f32,
         ui: &mut egui::Ui,
     ) {
         re_tracing::profile_function!();
@@ -519,7 +519,6 @@ impl TimePanel {
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        tree_max_y,
                         None,
                         entity_db.tree(),
                         ui,
@@ -533,7 +532,6 @@ impl TimePanel {
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        tree_max_y,
                         entity_db.tree(),
                         ui,
                     );
@@ -550,7 +548,6 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree_max_y: f32,
         last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
         ui: &mut egui::Ui,
@@ -583,11 +580,6 @@ impl TimePanel {
             .selection_state()
             .highlight_for_ui_element(&item.to_item())
             == HoverHighlight::Hovered;
-
-        let clip_rect_save = ui.clip_rect();
-        let mut clip_rect = clip_rect_save;
-        clip_rect.max.x = tree_max_y;
-        ui.set_clip_rect(clip_rect);
 
         // expand if children is focused
         let focused_entity_path = ctx
@@ -624,14 +616,11 @@ impl TimePanel {
                         time_ctrl,
                         time_area_response,
                         time_area_painter,
-                        tree_max_y,
                         tree,
                         ui,
                     );
                 },
             );
-
-        ui.set_clip_rect(clip_rect_save);
 
         let response = response.on_hover_ui(|ui| {
             re_data_ui::item_ui::entity_hover_card_ui(
@@ -717,7 +706,6 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
-        tree_max_y: f32,
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
@@ -729,7 +717,6 @@ impl TimePanel {
                 time_ctrl,
                 time_area_response,
                 time_area_painter,
-                tree_max_y,
                 Some(last_component),
                 child,
                 ui,
@@ -739,8 +726,6 @@ impl TimePanel {
 
         // If this is an entity:
         if !tree.entity.components.is_empty() {
-            let clip_rect_save = ui.clip_rect();
-
             for component_name in re_data_ui::component_list_for_ui(tree.entity.components.keys()) {
                 let data = &tree.entity.components[&component_name];
 
@@ -751,10 +736,6 @@ impl TimePanel {
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
-
-                let mut clip_rect = clip_rect_save;
-                clip_rect.max.x = tree_max_y;
-                ui.set_clip_rect(clip_rect);
 
                 let response = ListItem::new(ctx.re_ui, short_component_name)
                     .selected(ctx.selection().contains_item(&item.to_item()))
@@ -770,8 +751,6 @@ impl TimePanel {
                         &re_ui::icons::COMPONENT
                     })
                     .show_hierarchical(ui);
-
-                ui.set_clip_rect(clip_rect_save);
 
                 context_menu_ui_for_item(
                     ctx,
