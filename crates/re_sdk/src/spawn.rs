@@ -134,8 +134,7 @@ impl std::fmt::Debug for SpawnError {
 /// to [`crate::RecordingStream::connect`] or use [`crate::RecordingStream::spawn`] directly.
 #[allow(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
 
     use std::{net::TcpStream, process::Command, time::Duration};
@@ -263,8 +262,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
 
     // SAFETY: This code is only run in the child fork, we are not modifying any memory
     // that is shared with the parent process.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_family = "unix")]
     unsafe {
         rerun_bin.pre_exec(|| {
             // On unix systems, we want to make sure that the child process becomes its

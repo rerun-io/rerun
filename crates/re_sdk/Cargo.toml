@@ -77,7 +77,7 @@ anyhow = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
 
 # Native unix dependencies:
-[target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
+[target.'cfg(target_family = "unix")'.dependencies]
 libc.workspace = true
 
 [dev-dependencies]
