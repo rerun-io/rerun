@@ -2089,13 +2089,20 @@ return pa.UnionArray.from_buffers(
                 .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
                 .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
                 .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .map(|typename| {
+                    if typename == "None" {
+                        "NoneType".to_owned()
+                    } else {
+                        typename
+                    }
+                })
                 .join(", ");
 
             let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
             Ok(format!(
                 r##"
 {batch_type_imports}
-from typing import cast
+from typing import cast, NoneType
 
 # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
 # If we can call iter, it may be that one of the variants implements __iter__.
