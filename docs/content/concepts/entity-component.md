@@ -56,11 +56,11 @@ snippet: tutorials/extra_values
 
 It can also be used log an entirely custom set of components:
 
-snippet: tutorial/any_values
+snippet: tutorials/any_values
 
 For more complex use-cases, custom objects implementing the `rr.AsComponents` protocol can be used. For Rust, the `rerun::AsComponents` trait must be implemented:
 
-snippet: custom_data
+snippet: tutorials/custom_data
 
 ### Empty entities
 
