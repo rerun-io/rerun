@@ -1986,7 +1986,7 @@ return pa.UnionArray.from_buffers(
             let mut variant_list_push_arms = String::new();
             let mut child_list_push = String::new();
 
-            // List of all possible types that could be in in the incoming data that aren't sequences.
+            // List of all possible types that could be in the incoming data that aren't sequences.
             let mut possible_singular_types = HashSet::new();
             possible_singular_types.insert(name.clone());
             if let Some(aliases) = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES) {
