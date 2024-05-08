@@ -12,6 +12,7 @@ from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import BaseBatch, BaseExtensionType
+from .time_range_boundary_ext import TimeRangeBoundaryExt
 
 __all__ = [
     "TimeRangeBoundary",
@@ -23,7 +24,7 @@ __all__ = [
 
 
 @define
-class TimeRangeBoundary:
+class TimeRangeBoundary(TimeRangeBoundaryExt):
     """**Datatype**: Left or right boundary of a time range."""
 
     # You can define your own __init__ function as a member of TimeRangeBoundaryExt in time_range_boundary_ext.py

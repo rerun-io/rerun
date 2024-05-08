@@ -21,16 +21,16 @@ def main() -> None:
     rr.log(
         "visible_time_ranges",
         rrb.archetypes.VisibleTimeRanges([
-            rr.VisibleTimeRange(
+            rrb.VisibleTimeRange(
                 "timeline0",
-                rr.TimeRange(rr.TimeRangeBoundary(None, "infinite"), rr.TimeRangeBoundary(-10, "cursor_relative")),
+                start=rr.TimeRangeBoundary.infinite(),
+                end=rr.TimeRangeBoundary.cursor_relative(-10),
             ),
-            rr.VisibleTimeRange(
-                "timeline1",
-                rr.TimeRange(rr.TimeRangeBoundary(20, "cursor_relative"), rr.TimeRangeBoundary(None, "infinite")),
+            rrb.VisibleTimeRange(
+                "timeline1", start=rrb.TimeRangeBoundary.cursor_relative(20), end=rrb.TimeRangeBoundary.infinite()
             ),
-            rr.VisibleTimeRange(
-                "timeline2", rr.TimeRange(rr.TimeRangeBoundary(20, "absolute"), rr.TimeRangeBoundary(40, "absolute"))
+            rrb.VisibleTimeRange(
+                "timeline2", start=rrb.TimeRangeBoundary.absolute(20), end=rrb.TimeRangeBoundary.absolute(40)
             ),
         ]),
     )

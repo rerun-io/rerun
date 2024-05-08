@@ -32,3 +32,9 @@ The default visual time range depends on the type of view this property applies 
 ## Links
  * 🐍 [Python API docs for `TimeSeriesView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TimeSeriesView)
 
+## Example
+
+### Use a blueprint to customize a TimeSeriesView
+
+snippet: timeseriesview
+

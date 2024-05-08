@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# Re-export time range types for better discoverability.
+from ..datatypes import (
+    TimeRange,
+    TimeRangeBoundary,
+)
 from . import archetypes, components
 from .api import (
     Blueprint,
