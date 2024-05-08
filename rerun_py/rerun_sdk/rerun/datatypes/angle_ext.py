@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import pyarrow as pa
-
 if TYPE_CHECKING:
-    from . import AngleArrayLike
+    pass
 
 
 class AngleExt:

@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
-import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import Quaternion, Rotation3D, Rotation3DArrayLike, Rotation3DLike, RotationAxisAngle
-
-from .._unions import union_discriminant_type
+    from . import Quaternion, Rotation3D, Rotation3DLike, RotationAxisAngle
 
 
 class Rotation3DExt:
