@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from datatypes import TimeInt, TimeIntLike
+from . import TimeInt, TimeIntLike
 
 if TYPE_CHECKING:
     from .time_range_boundary import TimeRangeBoundary
