@@ -14,6 +14,9 @@ except ImportError:
 
 
 def task() -> None:
+    # Forcing a gc in the multiprocess task can cause issues, most notably
+    # hangs, if recording streams were leaked across the fork. We see this
+    # happen specifically using the `torch.multiprocessing` module.
     gc.collect()
 
 
