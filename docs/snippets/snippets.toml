@@ -5,17 +5,20 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-roundtrips = ["cpp", "py", "rust"] # This is this script, it's not an example.
+"archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
 
-archetypes.image_advanced = ["cpp", "rust"] # Missing examples
-
-tutorials.any_values = [ # Not yet implemented
+"tutorials/any_values" = [ # Not yet implemented
   "cpp",
   "rust",
 ]
-tutorials.extra_values = ["cpp", "rust"] # Missing examples
+"tutorials/extra_values" = ["cpp", "rust"] # Missing examples
+"tutorials/annotation-context" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
 
-migration.log_line = [ # Not a complete example -- just a single log line
+"migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
   "rust",
   "py",
@@ -32,53 +35,53 @@ views = [
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
-archetypes.arrow3d_simple = [ # TODO(#3206): examples use different RNGs
+"archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-archetypes.asset3d_out_of_tree = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
+"archetypes/asset3d_out_of_tree" = [ # float issues since calculation is done slightly differently (also, Python uses doubles)
   "cpp",
   "py",
   "rust",
 ]
-archetypes.bar_chart = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
+"archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
 ]
-archetypes.mesh3d_partial_updates = [
+"archetypes/mesh3d_partial_updates" = [
   "cpp",
   "py",
   "rust",
 ] # float precision issues
-archetypes.pinhole_simple = [ # TODO(#3206): examples use different RNGs
+"archetypes/pinhole_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-archetypes.point2d_random = [ # TODO(#3206): examples use different RNGs
+"archetypes/point2d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-archetypes.point3d_random = [ # TODO(#3206): examples use different RNGs
+"archetypes/point3d_random" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-archetypes.scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
+"archetypes/scalar_multiple_plots" = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
-archetypes.tensor_simple = [ # TODO(#3206): examples use different RNGs
-  "cpp",
-  "py",
-  "rust",
-]
-archetypes.series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
+"archetypes/tensor_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
 ]
-archetypes.series_line_style = [ # TODO(#5116):trigonometric functions have slightly different outcomes
+"archetypes/series_point_style" = [ # TODO(#5116): trigonometric functions have slightly different outcomes
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/series_line_style" = [ # TODO(#5116):trigonometric functions have slightly different outcomes
   "cpp",
   "py",
   "rust",
@@ -88,7 +91,7 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-archetypes.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
+"archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
   "cpp",
   "py",
   "rust",
@@ -97,5 +100,5 @@ archetypes.text_log_integration = [ # The entity path will differ because the Ru
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
-archetypes.asset3d_simple = ["$config_dir/assets/cube.glb"]
-archetypes.asset3d_out_of_tree = ["$config_dir/assets/cube.glb"]
+"archetypes/asset3d_simple" = ["$config_dir/assets/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/assets/cube.glb"]

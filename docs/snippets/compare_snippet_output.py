@@ -5,12 +5,11 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import multiprocessing
 import os
 import sys
 import time
-from os import listdir
-from os.path import isfile, join
 from pathlib import Path
 
 import tomlkit
@@ -31,28 +30,25 @@ class Example:
         self.name = name
 
     def opt_out_entirely(self) -> list[str]:
-        if self.subdir not in OPT_OUT_ENTIRELY:
-            return []
-        if isinstance(OPT_OUT_ENTIRELY[self.subdir], tomlkit.items.Array):
-            return OPT_OUT_ENTIRELY[self.subdir]
-        return OPT_OUT_ENTIRELY[self.subdir].get(self.name, [])
+        for key in [self.subdir, self.subdir + "/" + self.name]:
+            if key in OPT_OUT_ENTIRELY:
+                return OPT_OUT_ENTIRELY[key]
+        return []
 
     def opt_out_compare(self) -> list[str]:
-        if self.subdir not in OPT_OUT_COMPARE:
-            return []
-        if isinstance(OPT_OUT_COMPARE[self.subdir], tomlkit.items.Array):
-            return OPT_OUT_COMPARE[self.subdir]
-        return OPT_OUT_COMPARE[self.subdir].get(self.name, [])
+        for key in [self.subdir, self.subdir + "/" + self.name]:
+            if key in OPT_OUT_COMPARE:
+                return OPT_OUT_COMPARE[key]
+        return []
 
     def extra_args(self) -> list[str]:
-        if self.subdir not in EXTRA_ARGS:
-            return []
-        return [
-            arg.replace("$config_dir", str(Path(__file__).parent.parent.absolute()))
-            for arg in EXTRA_ARGS[self.subdir].get(self.name, [])
-        ]
-
-        return EXTRA_ARGS[self.subdir].get(self.name, [])
+        for key in [self.subdir, self.subdir + "/" + self.name]:
+            if key in EXTRA_ARGS:
+                return [
+                    arg.replace("$config_dir", str(Path(__file__).parent.parent.absolute()))
+                    for arg in EXTRA_ARGS[key].get(self.name, [])
+                ]
+        return []
 
     def output_path(self, language: str) -> str:
         return f"docs/snippets/all/{self.subdir}/{self.name}_{language}.rrd"
@@ -132,19 +128,12 @@ def main() -> None:
             examples.append(Example("/".join(parts[0:-1]), parts[-1]))
     else:
         dir = os.path.join(os.path.dirname(__file__), "all")
-        for subdir in [os.path.join(dir, subdir) for subdir in os.listdir(dir)]:
-            if not os.path.isdir(subdir):
-                continue
-            files = [f for f in listdir(subdir) if isfile(join(subdir, f))]
-            examples += [
-                Example(os.path.basename(subdir), filename)
-                for filename, extension in [os.path.splitext(file) for file in files]
-                if extension == ".cpp"
-                and not args.no_cpp
-                or extension == ".py"
-                and not args.no_py
-                or extension == ".rs"
-            ]
+        for file in glob.glob(dir + "/**", recursive=True):
+            name = os.path.basename(file)
+            name, extension = os.path.splitext(name)
+            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs":
+                subdir = os.path.relpath(os.path.dirname(file), dir)
+                examples += [Example(subdir.replace("\\", "/"), name)]
 
     examples = list(set(examples))
     examples.sort()
@@ -264,7 +253,8 @@ def run_roundtrip_rust(example: Example, release: bool, target: str | None, targ
 def run_roundtrip_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
-    cmd = [f"./build/debug/docs/snippets/{example.name}"] + example.extra_args()
+    extension = ".exe" if os.name == "nt" else ""
+    cmd = [f"./build/debug/docs/snippets/{example.name}{extension}"] + example.extra_args()
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 
