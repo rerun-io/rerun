@@ -89,6 +89,52 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of Scale3D not implemented: We lack codegen for arrow-serialization of unions"
-        )  # You need to implement native_to_pa_array_override in scale3d_ext.py
+        from rerun.datatypes import Vec3DBatch
+
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        if not hasattr(data, "__iter__") or isinstance(
+            data, (Scale3D, datatypes.Vec3D, float)
+        ):  # If we can call iter, it may be that one of the variants implements __iter__.
+            data = [data]
+
+        types: list[int] = []
+        value_offsets: list[int] = []
+
+        num_nulls = 0
+        variant_three_d: list[datatypes.Vec3D] = []
+        variant_uniform: list[float] = []
+
+        for value in data:
+            if value is None:
+                value_offsets.append(num_nulls)
+                num_nulls += 1
+                types.append(0)
+            else:
+                if not isinstance(value, Scale3D):
+                    value = Scale3D(value)
+                if isinstance(value.inner, datatypes.Vec3D):
+                    value_offsets.append(len(variant_three_d))
+                    variant_three_d.append(value.inner)
+                    types.append(1)
+                elif isinstance(value.inner, float):
+                    value_offsets.append(len(variant_uniform))
+                    variant_uniform.append(value.inner)
+                    types.append(2)
+
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+            pa.array(value_offsets, type=pa.int32()).buffers()[1],
+        ]
+        children = [
+            pa.nulls(num_nulls),
+            Vec3DBatch(variant_three_d).as_arrow_array().storage,
+            pa.array(variant_uniform, type=pa.float32()),
+        ]
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=buffers,
+            children=children,
+        )

@@ -97,4 +97,52 @@ class Rotation3DBatch(BaseBatch[Rotation3DArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
-        return Rotation3DExt.native_to_pa_array_override(data, data_type)
+        from rerun.datatypes import QuaternionBatch, RotationAxisAngleBatch
+
+        # TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+        if not hasattr(data, "__iter__") or isinstance(
+            data, (Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle)
+        ):  # If we can call iter, it may be that one of the variants implements __iter__.
+            data = [data]
+
+        types: list[int] = []
+        value_offsets: list[int] = []
+
+        num_nulls = 0
+        variant_quaternion: list[datatypes.Quaternion] = []
+        variant_axis_angle: list[datatypes.RotationAxisAngle] = []
+
+        for value in data:
+            if value is None:
+                value_offsets.append(num_nulls)
+                num_nulls += 1
+                types.append(0)
+            else:
+                if not isinstance(value, Rotation3D):
+                    value = Rotation3D(value)
+                if isinstance(value.inner, datatypes.Quaternion):
+                    value_offsets.append(len(variant_quaternion))
+                    variant_quaternion.append(value.inner)
+                    types.append(1)
+                elif isinstance(value.inner, datatypes.RotationAxisAngle):
+                    value_offsets.append(len(variant_axis_angle))
+                    variant_axis_angle.append(value.inner)
+                    types.append(2)
+
+        buffers = [
+            None,
+            pa.array(types, type=pa.int8()).buffers()[1],
+            pa.array(value_offsets, type=pa.int32()).buffers()[1],
+        ]
+        children = [
+            pa.nulls(num_nulls),
+            QuaternionBatch(variant_quaternion).as_arrow_array().storage,
+            RotationAxisAngleBatch(variant_axis_angle).as_arrow_array().storage,
+        ]
+
+        return pa.UnionArray.from_buffers(
+            type=data_type,
+            length=len(data),
+            buffers=buffers,
+            children=children,
+        )

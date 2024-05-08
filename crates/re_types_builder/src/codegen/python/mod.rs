@@ -1219,7 +1219,7 @@ fn quote_union_kind_from_fields(fields: &Vec<ObjectField>) -> String {
                 line.remove(0);
             }
         }
-        lines.push(format!("* {:?}:", field.name));
+        lines.push(format!("* {:?}:", field.snake_case_name()));
         lines.extend(content.into_iter().map(|line| format!("    {line}")));
         lines.push(String::new());
     }
@@ -1742,7 +1742,12 @@ fn quote_arrow_support_from_obj(
     let extension_batch = format!("{name}Batch");
     let extension_type = format!("{name}Type");
 
-    let native_to_pa_array_impl = match quote_arrow_serialization(reporter, objects, obj) {
+    let native_to_pa_array_impl = match quote_arrow_serialization(
+        reporter,
+        objects,
+        obj,
+        arrow_registry,
+    ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
                 reporter.warn(&obj.virtpath, &obj.fqname, format!("No need to manually implement {NATIVE_TO_PA_ARRAY_METHOD} in {} - we can autogenerate the code for this", ext_class.file_name));
@@ -1841,6 +1846,7 @@ fn quote_arrow_serialization(
     reporter: &Reporter,
     objects: &Objects,
     obj: &Object,
+    arrow_registry: &ArrowRegistry,
 ) -> Result<String, String> {
     let Object { name, .. } = obj;
 
@@ -1888,23 +1894,7 @@ fn quote_arrow_serialization(
 
             let mut code = String::new();
 
-            for field in &obj.fields {
-                let Type::Object(field_fqname) = &field.typ else {
-                    return Err(
-                        "We lack codegen for arrow-serialization of general structs".to_owned()
-                    );
-                };
-                if let Some(last_dot) = field_fqname.rfind('.') {
-                    let mod_path = &field_fqname[..last_dot];
-                    let field_type_name = &field_fqname[last_dot + 1..];
-                    code.push_indented(
-                        0,
-                        format!("from {mod_path} import {field_type_name}Batch"),
-                        2,
-                    );
-                }
-            }
-
+            code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
             code.push_indented(0, &format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
@@ -1991,8 +1981,179 @@ return pa.UnionArray.from_buffers(
             )))
         }
 
-        ObjectClass::Union => Err("We lack codegen for arrow-serialization of unions".to_owned()),
+        ObjectClass::Union => {
+            let mut variant_list_decls = String::new();
+            let mut variant_list_push_arms = String::new();
+            let mut child_list_push = String::new();
+
+            // List of all possible types that could be in in the incoming data that aren't sequences.
+            let mut possible_singular_types = HashSet::new();
+            possible_singular_types.insert(name.clone());
+            if let Some(aliases) = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES) {
+                possible_singular_types.extend(aliases.split(',').map(|s| s.trim().to_owned()));
+            }
+
+            // Checking for the variant and adding it to a flat list.
+            // We only have a 'kind' field if the enum is not distinguished by type.
+            let type_based_variants = obj
+                .fields
+                .iter()
+                .map(|f| quote_field_type_from_field(objects, f, false).0)
+                .all_unique();
+
+            for (idx, field) in obj.fields.iter().enumerate() {
+                let kind = field.snake_case_name();
+                let variant_kind_list = format!("variant_{kind}");
+                let (field_type, _) = quote_field_type_from_field(objects, field, false);
+
+                possible_singular_types.insert(field_type.clone());
+
+                // Build lists of variants.
+                let variant_list_decl = if field.typ == Type::Unit {
+                    format!("{variant_kind_list}: int = 0")
+                } else {
+                    format!("{variant_kind_list}: list[{field_type}] = []")
+                };
+                variant_list_decls.push_unindented(variant_list_decl, 1);
+
+                let if_or_elif = if idx == 0 { "if" } else { "elif" };
+
+                let kind_check = if type_based_variants {
+                    format!("isinstance(value.inner, {field_type})")
+                } else {
+                    format!(r#"value.kind == "{kind}""#)
+                };
+                variant_list_push_arms.push_indented(2, format!("{if_or_elif} {kind_check}:"), 1);
+
+                let (value_offset_update, append_to_variant_kind_list) = if field.typ == Type::Unit
+                {
+                    (
+                        format!("value_offsets.append({variant_kind_list})"),
+                        format!("{variant_kind_list} += 1"),
+                    )
+                } else {
+                    let ignore_type_check = if type_based_variants {
+                        ""
+                    } else {
+                        // my-py doesn't know that this has the right type now.
+                        "# type: ignore[arg-type]"
+                    };
+                    (
+                        format!("value_offsets.append(len({variant_kind_list}))"),
+                        format!("{variant_kind_list}.append(value.inner) {ignore_type_check}"),
+                    )
+                };
+                variant_list_push_arms.push_indented(3, value_offset_update, 1);
+                variant_list_push_arms.push_indented(3, append_to_variant_kind_list, 1);
+                variant_list_push_arms.push_indented(3, format!("types.append({})", idx + 1), 1); // 0 is reserved for nulls
+
+                // Converting the variant list to a pa array.
+                let variant_list_to_pa_array = match &field.typ {
+                    Type::Object(fqname) => {
+                        let field_type_name = &objects[fqname].name;
+                        format!(
+                            "{field_type_name}Batch({variant_kind_list}).as_arrow_array().storage"
+                        )
+                    }
+                    Type::Unit => {
+                        format!("pa.nulls({variant_kind_list})")
+                    }
+                    Type::UInt8
+                    | Type::UInt16
+                    | Type::UInt32
+                    | Type::UInt64
+                    | Type::Int8
+                    | Type::Int16
+                    | Type::Int32
+                    | Type::Int64
+                    | Type::Bool
+                    | Type::Float16
+                    | Type::Float32
+                    | Type::Float64
+                    | Type::String => {
+                        let datatype = quote_arrow_datatype(&arrow_registry.get(&field.fqname));
+                        format!("pa.array({variant_kind_list}, type={datatype})")
+                    }
+                    Type::Array { .. } | Type::Vector { .. } => {
+                        return Err(format!(
+                            "We lack codegen for arrow-serialization of unions containing lists. Can't handle type {}",
+                            field.fqname
+                        ));
+                    }
+                };
+                child_list_push.push_indented(1, format!("{variant_list_to_pa_array},"), 1);
+            }
+
+            let singular_checks = possible_singular_types
+                .into_iter()
+                .sorted() // Make order not dependent on hash shenanigans (also looks nicer often).
+                .filter(|typename| !typename.contains('[')) // If we keep these we unfortunately get: `TypeError: Subscripted generics cannot be used with class and instance checks`
+                .filter(|typename| !typename.ends_with("Like")) // `xLike` types are union types and checking those is not supported until Python 3.10.
+                .join(", ");
+
+            let batch_type_imports = quote_local_batch_type_imports(&obj.fields);
+            Ok(format!(
+                r##"
+{batch_type_imports}
+from typing import cast
+
+# TODO(#2623): There should be a separate overridable `coerce_to_array` method that can be overridden.
+if not hasattr(data, "__iter__") or isinstance(data, ({singular_checks})): # If we can call iter, it may be that one of the variants implements __iter__.
+    data = [data]
+
+types: list[int] = []
+value_offsets: list[int] = []
+
+num_nulls = 0
+{variant_list_decls}
+
+for value in data:
+    if value is None:
+        value_offsets.append(num_nulls)
+        num_nulls += 1
+        types.append(0)
+    else:
+        if not isinstance(value, {name}):
+            value = {name}(value)
+{variant_list_push_arms}
+
+buffers = [
+    None,
+    pa.array(types, type=pa.int8()).buffers()[1],
+    pa.array(value_offsets, type=pa.int32()).buffers()[1],
+]
+children = [
+    pa.nulls(num_nulls),
+{child_list_push}
+]
+
+return pa.UnionArray.from_buffers(
+    type=data_type,
+    length=len(data),
+    buffers=buffers,
+    children=children,
+)
+        "##
+            ))
+        }
     }
+}
+
+fn quote_local_batch_type_imports(fields: &[ObjectField]) -> String {
+    let mut code = String::new();
+
+    for field in fields {
+        let Type::Object(field_fqname) = &field.typ else {
+            continue;
+        };
+        if let Some(last_dot) = field_fqname.rfind('.') {
+            let mod_path = &field_fqname[..last_dot];
+            let field_type_name = &field_fqname[last_dot + 1..];
+
+            code.push_unindented(format!("from {mod_path} import {field_type_name}Batch"), 1);
+        }
+    }
+    code
 }
 
 fn quote_parameter_type_alias(

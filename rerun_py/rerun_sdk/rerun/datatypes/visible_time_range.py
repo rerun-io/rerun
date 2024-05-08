@@ -80,38 +80,22 @@ class VisibleTimeRangeType(BaseExtensionType):
                     pa.struct([
                         pa.field(
                             "start",
-                            pa.struct([
-                                pa.field(
-                                    "kind",
-                                    pa.sparse_union([
-                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field("time", pa.int64(), nullable=False, metadata={}),
+                            pa.dense_union([
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},
                         ),
                         pa.field(
                             "end",
-                            pa.struct([
-                                pa.field(
-                                    "kind",
-                                    pa.sparse_union([
-                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field("time", pa.int64(), nullable=False, metadata={}),
+                            pa.dense_union([
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},

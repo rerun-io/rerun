@@ -5,28 +5,146 @@
 
 #include "../result.hpp"
 #include "time_int.hpp"
-#include "time_range_boundary_kind.hpp"
 
 #include <cstdint>
+#include <cstring>
 #include <memory>
+#include <new>
+#include <utility>
 
 namespace arrow {
     class Array;
     class DataType;
-    class StructBuilder;
+    class DenseUnionBuilder;
 } // namespace arrow
 
 namespace rerun::datatypes {
-    /// **Datatype**: Type of boundary for visible history.
+    namespace detail {
+        /// \private
+        enum class TimeRangeBoundaryTag : uint8_t {
+            /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
+            None = 0,
+            CursorRelative,
+            Absolute,
+            Infinite,
+        };
+
+        /// \private
+        union TimeRangeBoundaryData {
+            /// Boundary is a value relative to the time cursor.
+            rerun::datatypes::TimeInt cursor_relative;
+
+            /// Boundary is an absolute value.
+            rerun::datatypes::TimeInt absolute;
+
+            TimeRangeBoundaryData() {
+                std::memset(reinterpret_cast<void*>(this), 0, sizeof(TimeRangeBoundaryData));
+            }
+
+            ~TimeRangeBoundaryData() {}
+
+            void swap(TimeRangeBoundaryData& other) noexcept {
+                // This bitwise swap would fail for self-referential types, but we don't have any of those.
+                char temp[sizeof(TimeRangeBoundaryData)];
+                void* otherbytes = reinterpret_cast<void*>(&other);
+                void* thisbytes = reinterpret_cast<void*>(this);
+                std::memcpy(temp, thisbytes, sizeof(TimeRangeBoundaryData));
+                std::memcpy(thisbytes, otherbytes, sizeof(TimeRangeBoundaryData));
+                std::memcpy(otherbytes, temp, sizeof(TimeRangeBoundaryData));
+            }
+        };
+    } // namespace detail
+
+    /// **Datatype**: Left or right boundary of a time range.
     struct TimeRangeBoundary {
-        /// Type of the boundary.
-        rerun::datatypes::TimeRangeBoundaryKind kind;
+        TimeRangeBoundary() : _tag(detail::TimeRangeBoundaryTag::None) {}
 
-        /// Value of the boundary (ignored for `Infinite` type).
-        rerun::datatypes::TimeInt time;
+        /// Copy constructor
+        TimeRangeBoundary(const TimeRangeBoundary& other) : _tag(other._tag) {
+            const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+            void* thisbytes = reinterpret_cast<void*>(&this->_data);
+            std::memcpy(thisbytes, otherbytes, sizeof(detail::TimeRangeBoundaryData));
+        }
 
-      public:
-        TimeRangeBoundary() = default;
+        TimeRangeBoundary& operator=(const TimeRangeBoundary& other) noexcept {
+            TimeRangeBoundary tmp(other);
+            this->swap(tmp);
+            return *this;
+        }
+
+        TimeRangeBoundary(TimeRangeBoundary&& other) noexcept : TimeRangeBoundary() {
+            this->swap(other);
+        }
+
+        TimeRangeBoundary& operator=(TimeRangeBoundary&& other) noexcept {
+            this->swap(other);
+            return *this;
+        }
+
+        void swap(TimeRangeBoundary& other) noexcept {
+            std::swap(this->_tag, other._tag);
+            this->_data.swap(other._data);
+        }
+
+        /// Boundary is a value relative to the time cursor.
+        static TimeRangeBoundary cursor_relative(rerun::datatypes::TimeInt cursor_relative) {
+            TimeRangeBoundary self;
+            self._tag = detail::TimeRangeBoundaryTag::CursorRelative;
+            new (&self._data.cursor_relative) rerun::datatypes::TimeInt(std::move(cursor_relative));
+            return self;
+        }
+
+        /// Boundary is an absolute value.
+        static TimeRangeBoundary absolute(rerun::datatypes::TimeInt absolute) {
+            TimeRangeBoundary self;
+            self._tag = detail::TimeRangeBoundaryTag::Absolute;
+            new (&self._data.absolute) rerun::datatypes::TimeInt(std::move(absolute));
+            return self;
+        }
+
+        /// The boundary extends to infinity.
+        static TimeRangeBoundary infinite() {
+            TimeRangeBoundary self;
+            self._tag = detail::TimeRangeBoundaryTag::Infinite;
+            return self;
+        }
+
+        /// Return a pointer to cursor_relative if the union is in that state, otherwise `nullptr`.
+        const rerun::datatypes::TimeInt* get_cursor_relative() const {
+            if (_tag == detail::TimeRangeBoundaryTag::CursorRelative) {
+                return &_data.cursor_relative;
+            } else {
+                return nullptr;
+            }
+        }
+
+        /// Return a pointer to absolute if the union is in that state, otherwise `nullptr`.
+        const rerun::datatypes::TimeInt* get_absolute() const {
+            if (_tag == detail::TimeRangeBoundaryTag::Absolute) {
+                return &_data.absolute;
+            } else {
+                return nullptr;
+            }
+        }
+
+        /// Returns true if the union is in the infinite state.
+        bool is_infinite() const {
+            return _tag == detail::TimeRangeBoundaryTag::Infinite;
+        }
+
+        /// \private
+        const detail::TimeRangeBoundaryData& get_union_data() const {
+            return _data;
+        }
+
+        /// \private
+        detail::TimeRangeBoundaryTag get_union_tag() const {
+            return _tag;
+        }
+
+      private:
+        detail::TimeRangeBoundaryTag _tag;
+        detail::TimeRangeBoundaryData _data;
     };
 } // namespace rerun::datatypes
 
@@ -49,7 +167,7 @@ namespace rerun {
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const datatypes::TimeRangeBoundary* elements,
+            arrow::DenseUnionBuilder* builder, const datatypes::TimeRangeBoundary* elements,
             size_t num_elements
         );
     };

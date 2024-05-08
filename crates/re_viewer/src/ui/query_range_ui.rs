@@ -9,7 +9,7 @@ use re_space_view::{entity_path_for_view_property, SpaceViewBlueprint};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
-    datatypes::{TimeInt, TimeRange, TimeRangeBoundary, TimeRangeBoundaryKind},
+    datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
     SpaceViewClassIdentifier,
 };
 use re_ui::{markdown_ui, ReUi};
@@ -345,8 +345,8 @@ fn show_visual_time_range(
     current_time: TimeInt,
 ) {
     // Show the resolved visible range as labels (user can't edit them):
-    if resolved_range.start.kind == TimeRangeBoundaryKind::Infinite
-        && resolved_range.end.kind == TimeRangeBoundaryKind::Infinite
+    if resolved_range.start == TimeRangeBoundary::Infinite
+        && resolved_range.end == TimeRangeBoundary::Infinite
     {
         ui.label("Entire timeline");
     } else if resolved_range.start == TimeRangeBoundary::AT_CURSOR
@@ -399,16 +399,16 @@ fn resolved_visible_history_boundary_ui(
     time_type: TimeType,
     low_bound: bool,
 ) {
-    let boundary_type = match visible_history_boundary.kind {
-        TimeRangeBoundaryKind::RelativeToTimeCursor => match time_type {
+    let boundary_type = match visible_history_boundary {
+        TimeRangeBoundary::CursorRelative(_) => match time_type {
             TimeType::Time => "current time",
             TimeType::Sequence => "current frame",
         },
-        TimeRangeBoundaryKind::Absolute => match time_type {
+        TimeRangeBoundary::Absolute(_) => match time_type {
             TimeType::Time => "absolute time",
             TimeType::Sequence => "frame",
         },
-        TimeRangeBoundaryKind::Infinite => {
+        TimeRangeBoundary::Infinite => {
             if low_bound {
                 "beginning of timeline"
             } else {
@@ -419,9 +419,9 @@ fn resolved_visible_history_boundary_ui(
 
     let mut label = boundary_type.to_owned();
 
-    match visible_history_boundary.kind {
-        TimeRangeBoundaryKind::RelativeToTimeCursor => {
-            let offset = visible_history_boundary.time.0;
+    match visible_history_boundary {
+        TimeRangeBoundary::CursorRelative(offset) => {
+            let offset = offset.0;
             if offset != 0 {
                 match time_type {
                     TimeType::Time => {
@@ -450,31 +450,30 @@ fn resolved_visible_history_boundary_ui(
                 }
             }
         }
-        TimeRangeBoundaryKind::Absolute => {
-            let time = visible_history_boundary.time;
-            label += &format!(" {}", time_type.format(time, ctx.app_options.time_zone));
+        TimeRangeBoundary::Absolute(time) => {
+            label += &format!(" {}", time_type.format(*time, ctx.app_options.time_zone));
         }
-        TimeRangeBoundaryKind::Infinite => {}
+        TimeRangeBoundary::Infinite => {}
     }
 
     ui.label(label);
 }
 
 fn visible_history_boundary_combo_label(
-    boundary: TimeRangeBoundaryKind,
+    boundary: TimeRangeBoundary,
     time_type: TimeType,
     low_bound: bool,
 ) -> &'static str {
     match boundary {
-        TimeRangeBoundaryKind::RelativeToTimeCursor => match time_type {
+        TimeRangeBoundary::CursorRelative(_) => match time_type {
             TimeType::Time => "current time with offset",
             TimeType::Sequence => "current frame with offset",
         },
-        TimeRangeBoundaryKind::Absolute => match time_type {
+        TimeRangeBoundary::Absolute(_) => match time_type {
             TimeType::Time => "absolute time",
             TimeType::Sequence => "absolute frame",
         },
-        TimeRangeBoundaryKind::Infinite => {
+        TimeRangeBoundary::Infinite => {
             if low_bound {
                 "beginning of timeline"
             } else {
@@ -495,19 +494,13 @@ fn visible_history_boundary_ui(
     low_bound: bool,
     other_boundary_absolute: TimeInt,
 ) -> bool {
-    let (abs_time, rel_time) = match visible_history_boundary.kind {
-        TimeRangeBoundaryKind::RelativeToTimeCursor => (
-            visible_history_boundary.time + current_time,
-            visible_history_boundary.time,
-        ),
-        TimeRangeBoundaryKind::Absolute => (
-            visible_history_boundary.time,
-            visible_history_boundary.time - current_time,
-        ),
-        TimeRangeBoundaryKind::Infinite => (current_time, TimeInt(0)),
+    let (abs_time, rel_time) = match *visible_history_boundary {
+        TimeRangeBoundary::CursorRelative(time) => (time + current_time, time),
+        TimeRangeBoundary::Absolute(time) => (time, time - current_time),
+        TimeRangeBoundary::Infinite => (current_time, TimeInt(0)),
     };
-    let abs_time = TimeRangeBoundary::absolute(abs_time);
-    let rel_time = TimeRangeBoundary::relative_to_time_cursor(rel_time);
+    let abs_time = TimeRangeBoundary::Absolute(abs_time);
+    let rel_time = TimeRangeBoundary::CursorRelative(rel_time);
 
     egui::ComboBox::from_id_source(if low_bound {
         "time_history_low_bound"
@@ -515,7 +508,7 @@ fn visible_history_boundary_ui(
         "time_history_high_bound"
     })
     .selected_text(visible_history_boundary_combo_label(
-        visible_history_boundary.kind,
+        *visible_history_boundary,
         time_type,
         low_bound,
     ))
@@ -525,7 +518,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             rel_time,
-            visible_history_boundary_combo_label(rel_time.kind, time_type, low_bound),
+            visible_history_boundary_combo_label(rel_time, time_type, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from a time point relative to the current time."
@@ -535,7 +528,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             abs_time,
-            visible_history_boundary_combo_label(abs_time.kind, time_type, low_bound),
+            visible_history_boundary_combo_label(abs_time, time_type, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from an absolute time point."
@@ -543,13 +536,9 @@ fn visible_history_boundary_ui(
             "Show data until an absolute time point."
         });
         ui.selectable_value(
-            &mut visible_history_boundary.kind,
-            TimeRangeBoundaryKind::Infinite,
-            visible_history_boundary_combo_label(
-                TimeRangeBoundaryKind::Infinite,
-                time_type,
-                low_bound,
-            ),
+            visible_history_boundary,
+            TimeRangeBoundary::Infinite,
+            visible_history_boundary_combo_label(TimeRangeBoundary::Infinite, time_type, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from the beginning of the timeline"
@@ -565,15 +554,14 @@ fn visible_history_boundary_ui(
     // both boundaries fighting each other in some corner cases (when the user interacts with the
     // current time cursor)
 
-    let response = match visible_history_boundary.kind {
-        TimeRangeBoundaryKind::RelativeToTimeCursor => {
+    let response = match visible_history_boundary {
+        TimeRangeBoundary::CursorRelative(value) => {
             // see note above
             let low_bound_override = if low_bound {
                 None
             } else {
                 Some(other_boundary_absolute - current_time)
             };
-            let value = &mut visible_history_boundary.time;
 
             match time_type {
                 TimeType::Time => Some(
@@ -601,14 +589,13 @@ fn visible_history_boundary_ui(
                 ),
             }
         }
-        TimeRangeBoundaryKind::Absolute => {
+        TimeRangeBoundary::Absolute(value) => {
             // see note above
             let low_bound_override = if low_bound {
                 None
             } else {
                 Some(other_boundary_absolute)
             };
-            let value = &mut visible_history_boundary.time;
 
             match time_type {
                 TimeType::Time => {
@@ -633,7 +620,7 @@ fn visible_history_boundary_ui(
                 ),
             }
         }
-        TimeRangeBoundaryKind::Infinite => None,
+        TimeRangeBoundary::Infinite => None,
     };
 
     response.map_or(false, |r| r.dragged() || r.has_focus())
