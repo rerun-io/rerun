@@ -14,11 +14,6 @@ tutorials.any_values = [ # Not yet implemented
   "rust",
 ]
 tutorials.extra_values = ["cpp", "rust"] # Missing examples
-tutorials.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
-  "cpp",
-  "py",
-  "rust",
-]
 
 migration.log_line = [ # Not a complete example -- just a single log line
   "cpp",
@@ -73,11 +68,11 @@ archetypes.point3d_random = [ # TODO(#3206): examples use different RNGs
 archetypes.scalar_multiple_plots = [ # trigonometric functions have slightly different outcomes
   "cpp",
 ]
-archetypes.tensor_simple = [
+archetypes.tensor_simple = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
   "rust",
-] # TODO(#3206): examples use different RNGs
+]
 archetypes.series_point_style = [ # TODO(#5116): trigonometric functions have slightly different outcomes
   "cpp",
   "py",
@@ -88,11 +83,16 @@ archetypes.series_line_style = [ # TODO(#5116):trigonometric functions have slig
   "py",
   "rust",
 ]
-quick_start = [
+quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
   "rust",
-] # These examples don't have exactly the same implementation.
+]
+archetypes.text_log_integration = [ # The entity path will differ because the Rust code is part of a library
+  "cpp",
+  "py",
+  "rust",
+]
 
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
