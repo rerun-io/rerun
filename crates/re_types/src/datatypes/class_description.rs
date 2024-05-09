@@ -171,9 +171,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                             let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_annotations.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                keypoint_annotations
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
@@ -220,9 +220,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                             let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_connections.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                keypoint_connections
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();

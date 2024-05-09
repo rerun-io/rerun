@@ -139,9 +139,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             let many_halves_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_halves.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
+                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
                                 }),
                             )
                             .unwrap()

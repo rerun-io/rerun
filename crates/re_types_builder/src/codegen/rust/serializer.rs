@@ -743,7 +743,7 @@ fn quote_arrow_field_serializer(
                     quote! {}
                 } else {
                     let map_to_length = if elements_are_nullable {
-                        quote! { map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default()) }
+                        quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum. #quoted_num_instances)) }
                     } else {
                         quote! { map(|datum| datum. #quoted_num_instances) }
                     };

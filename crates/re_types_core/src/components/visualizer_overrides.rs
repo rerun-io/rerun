@@ -103,7 +103,7 @@ impl crate::Loggable for VisualizerOverrides {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                 )
                 .unwrap()
                 .into();

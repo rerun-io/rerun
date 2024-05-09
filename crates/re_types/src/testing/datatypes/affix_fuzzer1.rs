@@ -274,9 +274,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
+                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
                                 }),
                             )
                             .unwrap()
@@ -324,9 +322,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                many_strings_required
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
@@ -392,9 +390,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                many_strings_optional
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
