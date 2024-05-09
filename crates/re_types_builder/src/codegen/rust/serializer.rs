@@ -814,7 +814,7 @@ fn quote_arrow_field_serializer(
                                 #quoted_transparent_mapping;
 
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                buffers.iter().map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default())
+                                buffers.iter().map(|opt| opt.as_ref().map_or(0, |buf| buf.len()))
                             ).unwrap().into();
 
                             #quoted_inner_bitmap

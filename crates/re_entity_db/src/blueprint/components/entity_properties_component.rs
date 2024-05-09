@@ -103,7 +103,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     buffers
                         .iter()
-                        .map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map_or(0, |buf| buf.len())),
                 )
                 .unwrap()
                 .into();
