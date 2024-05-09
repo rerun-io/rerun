@@ -92,10 +92,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, size): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { size, .. } = &**datum;
-                                    size.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.size.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -114,13 +111,8 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, name): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { name, .. } = &**datum;
-                                        name.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.name.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -138,6 +130,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                             )
                             .unwrap()
                             .into();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

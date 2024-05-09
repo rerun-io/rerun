@@ -102,10 +102,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         let (somes, class_id): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { class_id, .. } = &**datum;
-                                    class_id.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.class_id.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -134,12 +131,8 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         let (somes, class_description): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        class_description, ..
-                                    } = &**datum;
-                                    class_description.clone()
-                                });
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.class_description.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

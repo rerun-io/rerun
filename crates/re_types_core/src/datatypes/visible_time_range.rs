@@ -100,10 +100,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, timeline): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { timeline, .. } = &**datum;
-                                    timeline.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.timeline.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -132,7 +129,6 @@ impl crate::Loggable for VisibleTimeRange {
                             )
                             .unwrap()
                             .into();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -149,10 +145,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { range, .. } = &**datum;
-                                    range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

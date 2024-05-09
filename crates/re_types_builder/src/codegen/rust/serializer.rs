@@ -146,8 +146,7 @@ pub fn quote_arrow_serializer(
                                 let datum = datum
                                     .as_ref()
                                     .map(|datum| {
-                                        let Self { #data_dst, .. } = &**datum;
-                                        #data_dst.clone()
+                                        datum.#data_dst.clone()
                                     })
                                     #quoted_flatten;
 

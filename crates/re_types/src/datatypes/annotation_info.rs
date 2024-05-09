@@ -101,10 +101,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, id): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { id, .. } = &**datum;
-                                    id.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.id.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -123,13 +120,8 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, label): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { label, .. } = &**datum;
-                                        label.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.label.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -175,13 +167,8 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, color): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { color, .. } = &**datum;
-                                        color.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.color.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();

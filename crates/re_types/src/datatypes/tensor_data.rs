@@ -117,10 +117,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { shape, .. } = &**datum;
-                                    shape.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.shape.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -161,10 +158,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, buffer): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { buffer, .. } = &**datum;
-                                    buffer.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.buffer.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

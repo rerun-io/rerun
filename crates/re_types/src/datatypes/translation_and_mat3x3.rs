@@ -111,10 +111,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self { translation, .. } = &**datum;
-                                        translation.clone()
-                                    })
+                                    .map(|datum| datum.translation.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -170,13 +167,8 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, mat3x3): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { mat3x3, .. } = &**datum;
-                                        mat3x3.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.mat3x3.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -231,10 +223,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_parent, .. } = &**datum;
-                                    from_parent.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.from_parent.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

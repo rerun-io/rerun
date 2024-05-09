@@ -97,10 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, p): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { p, .. } = &**datum;
-                                    p.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.p.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -130,10 +127,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, s): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { s, .. } = &**datum;
-                                    s.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.s.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

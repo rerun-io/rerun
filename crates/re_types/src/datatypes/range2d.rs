@@ -101,10 +101,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { x_range, .. } = &**datum;
-                                    x_range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.x_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -159,10 +156,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, y_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { y_range, .. } = &**datum;
-                                    y_range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.y_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

@@ -96,10 +96,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, axis): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { axis, .. } = &**datum;
-                                    axis.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.axis.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -154,10 +151,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, angle): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { angle, .. } = &**datum;
-                                    angle.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.angle.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

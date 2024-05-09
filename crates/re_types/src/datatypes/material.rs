@@ -115,10 +115,7 @@ impl ::re_types_core::Loggable for Material {
                         .map(|datum| {
                             let datum = datum
                                 .as_ref()
-                                .map(|datum| {
-                                    let Self { albedo_factor, .. } = &**datum;
-                                    albedo_factor.clone()
-                                })
+                                .map(|datum| datum.albedo_factor.clone())
                                 .flatten();
                             (datum.is_some(), datum)
                         })
