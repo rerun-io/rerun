@@ -46,7 +46,7 @@ class Example:
             if key in EXTRA_ARGS:
                 return [
                     arg.replace("$config_dir", str(Path(__file__).parent.parent.absolute()))
-                    for arg in EXTRA_ARGS[key].get(self.name, [])
+                    for arg in EXTRA_ARGS.get(key, [])
                 ]
         return []
 
