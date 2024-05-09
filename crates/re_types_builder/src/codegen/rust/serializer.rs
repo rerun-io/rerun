@@ -112,8 +112,6 @@ pub fn quote_arrow_serializer(
             #quoted_serializer
         }}
     } else {
-        let data_src = data_src.clone();
-
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(_) => {
