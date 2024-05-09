@@ -2293,11 +2293,15 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name, title, image, ..
+                path,
+                name,
+                title,
+                image,
+                ..
             } = &example.base;
 
             for line in &example.lines {
-                assert!(!line.contains("```"), "Example {name:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+                assert!(!line.contains("```"), "Example {path:?} contains ``` in it, so we can't embed it in the C++ API docs.");
             }
 
             if let Some(title) = title {

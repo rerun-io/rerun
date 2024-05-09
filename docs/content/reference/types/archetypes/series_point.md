@@ -21,7 +21,7 @@ the `Scalar` archetype.
 
 ### Point series
 
-snippet: series_point_style
+snippet: archetypes/series_point_style
 
 <picture data-inline-viewer="snippets/series_point_style">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/480w.png">

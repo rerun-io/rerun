@@ -22,7 +22,7 @@ Each pixel corresponds to a depth value in units specified by `meter`.
 
 ### Simple example
 
-snippet: depth_image_simple
+snippet: archetypes/depth_image_simple
 
 <picture data-inline-viewer="snippets/depth_image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_simple/9598554977873ace2577bddd79184ac120ceb0b0/480w.png">
@@ -34,7 +34,7 @@ snippet: depth_image_simple
 
 ### Depth to 3D example
 
-snippet: depth_image_3d
+snippet: archetypes/depth_image_3d
 
 <picture data-inline-viewer="snippets/depth_image_3d">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/480w.png">

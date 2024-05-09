@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::fs::create_dir_all;
-use std::fs::read_dir;
 use std::fs::read_to_string;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 
+use camino::Utf8Path;
 use indicatif::MultiProgress;
 use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::ParallelIterator;
@@ -34,57 +33,8 @@ impl Snippets {
         let config: Config = toml::from_str(&config)?;
 
         println!("Collecting snippets…");
-        let mut snippets = vec![];
-        for snippet in read_dir(snippets_dir.join("all"))? {
-            let snippet = snippet?;
-            let meta = snippet.metadata()?;
-            let path = snippet.path();
-            let name = path.file_stem().and_then(OsStr::to_str).unwrap().to_owned();
-
-            if meta.is_dir() {
-                println!(
-                    "Skipping {}: directories are implicitly opt-out",
-                    path.display()
-                );
-                continue;
-            }
-
-            // We only run python examples, because:
-            // - Each snippet should already be available in each language
-            // - Python is the easiest to run
-            if !path.extension().is_some_and(|p| p == "py") {
-                println!("Skipping {}: not a python example", path.display());
-                continue;
-            }
-
-            let is_opted_out = config
-                .opt_out
-                .run
-                .get(&name)
-                .is_some_and(|languages| languages.iter().any(|v| v == "py"));
-            if is_opted_out {
-                println!(
-                    "Skipping {}: explicit opt-out in `snippets.toml`",
-                    path.display()
-                );
-                continue;
-            }
-
-            println!("Adding {}", path.display());
-            let extra_args: Vec<String> = config
-                .extra_args
-                .get(&name)
-                .cloned()
-                .unwrap_or_default()
-                .into_iter()
-                .map(|value| value.replace("$config_dir", snippets_dir.as_str()))
-                .collect();
-            snippets.push(Snippet {
-                extra_args,
-                name,
-                path,
-            });
-        }
+        let snippet_root = snippets_dir.join("all");
+        let snippets = collect_snippets_recursively(&snippet_root, &config, &snippet_root)?;
 
         println!("Running {} snippets…", snippets.len());
         let progress = MultiProgress::new();
@@ -120,6 +70,79 @@ impl Snippets {
 
         Ok(())
     }
+}
+
+fn collect_snippets_recursively(
+    dir: &Utf8Path,
+    config: &Config,
+    snippet_root_path: &Utf8Path,
+) -> anyhow::Result<Vec<Snippet>> {
+    let mut snippets = vec![];
+
+    for snippet in dir.read_dir()? {
+        let snippet = snippet?;
+        let meta = snippet.metadata()?;
+        let path = snippet.path();
+        // Compare snippet outputs sometimes leaves orphaned rrd files.
+        if path.extension().is_some_and(|p| p == "rrd") {
+            continue;
+        }
+        let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+
+        let config_key = path.strip_prefix(snippet_root_path)?.with_extension("");
+
+        let config_key = config_key.to_str().unwrap();
+
+        let is_opted_out = config
+            .opt_out
+            .run
+            .get(config_key)
+            .is_some_and(|languages| languages.iter().any(|v| v == "py"));
+        if is_opted_out {
+            println!(
+                "Skipping {}: explicit opt-out in `snippets.toml`",
+                path.display()
+            );
+            continue;
+        }
+
+        if meta.is_dir() {
+            snippets.extend(
+                collect_snippets_recursively(
+                    Utf8Path::from_path(&path).unwrap(),
+                    config,
+                    snippet_root_path,
+                )?
+                .into_iter(),
+            );
+            continue;
+        }
+
+        // We only run python examples, because:
+        // - Each snippet should already be available in each language
+        // - Python is the easiest to run
+        if !path.extension().is_some_and(|p| p == "py") {
+            println!("Skipping {}: not a python example", path.display());
+            continue;
+        }
+
+        println!("Adding {}", path.display());
+        let extra_args: Vec<String> = config
+            .extra_args
+            .get(config_key)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|value| value.replace("$config_dir", dir.as_str()))
+            .collect();
+        snippets.push(Snippet {
+            extra_args,
+            name,
+            path,
+        });
+    }
+
+    Ok(snippets)
 }
 
 #[derive(Debug)]

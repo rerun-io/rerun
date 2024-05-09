@@ -12,7 +12,7 @@ All that matter is that they share the same Recording ID.
 
 By default, Rerun generates a random Recording ID everytime you start a new logging session, but you can override that behavior, e.g.:
 
-snippet: custom-recording-id
+snippet: tutorials/custom-recording-id
 
 It's up to you to decide where each recording ends up:
 - all processes could stream their share of the data in real-time to a Rerun Viewer,

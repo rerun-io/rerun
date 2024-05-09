@@ -21,7 +21,7 @@ title: "Arrows2D"
 
 ### Simple batch of 2D arrows
 
-snippet: arrow2d_simple
+snippet: archetypes/arrow2d_simple
 
 <picture data-inline-viewer="snippets/arrow2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/480w.png">
