@@ -6,7 +6,7 @@ use crate::{ArrowRegistry, Object, ObjectField, Objects};
 
 use super::{
     arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path},
-    util::is_tuple_struct_from_obj,
+    util::{is_tuple_struct_from_obj, quote_comment},
 };
 
 // ---
@@ -211,7 +211,11 @@ pub fn quote_arrow_serializer(
 
                 let num_variants = obj.fields.len();
 
+                let comment = quote_comment("Sparse Arrow union");
+
                 quote! {{
+                    #comment
+
                     #quoted_data_collect
 
                     let num_variants = #num_variants;
@@ -380,7 +384,11 @@ pub fn quote_arrow_serializer(
                     }}
                 };
 
+                let comment = quote_comment("Dense Arrow union");
+
                 quote! {{
+                    #comment
+
                     #quoted_data_collect
 
                     let types = #quoted_types;
@@ -609,6 +617,8 @@ fn quote_arrow_field_serializer(
 
                 // Safety: we're building this from actual native strings, so no need to do the
                 // whole utf8 validation _again_.
+                // It would be nice to use quote_comment here and put this safety notice in the generated code,
+                // but that seems to push us over some complexity limit causing rustfmt to fail.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
             }}
