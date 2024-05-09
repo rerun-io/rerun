@@ -83,34 +83,33 @@ impl ::re_types_core::Loggable for Range2D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::Range2D>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, x_range): (Vec<_>, Vec<_>) = data
+                        let x_range: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { x_range, .. } = &**datum;
                                     x_range.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let x_range_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = x_range.iter().any(|val| val.is_none());
+                            any_nones.then(|| x_range.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -156,19 +155,18 @@ impl ::re_types_core::Loggable for Range2D {
                         }
                     },
                     {
-                        let (somes, y_range): (Vec<_>, Vec<_>) = data
+                        let y_range: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { y_range, .. } = &**datum;
                                     y_range.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let y_range_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = y_range.iter().any(|val| val.is_none());
+                            any_nones.then(|| y_range.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};

@@ -94,24 +94,24 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::testing::datatypes::AffixFuzzer5>::arrow_datatype(),
                 vec![{
-                    let (somes, single_optional_union): (Vec<_>, Vec<_>) = data
+                    let single_optional_union: Vec<_> = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum
+                            datum
                                 .as_ref()
                                 .map(|datum| {
                                     let Self {
@@ -120,13 +120,17 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                                     } = &**datum;
                                     single_optional_union.clone()
                                 })
-                                .flatten();
-                            (datum.is_some(), datum)
+                                .flatten()
                         })
-                        .unzip();
+                        .collect();
                     let single_optional_union_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
+                        let any_nones = single_optional_union.iter().any(|val| val.is_none());
+                        any_nones.then(|| {
+                            single_optional_union
+                                .iter()
+                                .map(|val| val.is_some())
+                                .collect()
+                        })
                     };
                     {
                         _ = single_optional_union_bitmap;

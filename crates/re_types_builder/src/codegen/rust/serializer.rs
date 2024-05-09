@@ -38,15 +38,18 @@ pub fn quote_arrow_serializer(
         }
     };
 
-    let quoted_bitmap = |var| {
+    fn quote_bitmap_from(
+        bitmap_var: &proc_macro2::Ident,
+        from_var: &proc_macro2::Ident,
+    ) -> TokenStream {
         quote! {
-            let #var: Option<arrow2::bitmap::Bitmap> = {
+            let #bitmap_var: Option<arrow2::bitmap::Bitmap> = {
                 // NOTE: Don't compute a bitmap if there isn't at least one null element.
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = #from_var.iter().any(|val| val.is_none());
+                any_nones.then(|| #from_var.iter().map(|val| val.is_some()).collect())
             }
         }
-    };
+    }
 
     if is_arrow_transparent {
         // NOTE: Arrow transparent objects must have a single field, no more no less.
@@ -85,26 +88,22 @@ pub fn quote_arrow_serializer(
             InnerRepr::NativeIterable,
         );
 
-        let quoted_bitmap = quoted_bitmap(bitmap_dst);
+        let quoted_bitmap = quote_bitmap_from(&bitmap_dst, &quoted_data_dst);
 
         let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
         quote! {{
-            let (somes, #quoted_data_dst): (Vec<_>, Vec<_>) = #quoted_data_src
+            let #quoted_data_dst: Vec<_> = #quoted_data_src
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-
-                    let datum = datum
+                    datum
                         .map(|datum| {
                             let #quoted_binding = datum.into_owned();
                             #quoted_data_dst
                         })
-                        #quoted_flatten;
-
-                    (datum.is_some(), datum)
-                })
-                .unzip();
+                        #quoted_flatten
+                }).collect();
 
 
             #quoted_bitmap;
@@ -139,24 +138,21 @@ pub fn quote_arrow_serializer(
 
                     let quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-                    let quoted_bitmap = quoted_bitmap(bitmap_dst);
+                    let quoted_bitmap = quote_bitmap_from(&bitmap_dst, &data_dst);
 
                     quote! {{
-                        let (somes, #data_dst): (Vec<_>, Vec<_>) = #data_src
+                        let #data_dst: Vec<_> = #data_src
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { #data_dst, .. } = &**datum;
                                         #data_dst.clone()
                                     })
-                                    #quoted_flatten;
-
-                                (datum.is_some(), datum)
+                                    #quoted_flatten
                             })
-                            .unzip();
-
+                            .collect();
 
                         #quoted_bitmap;
 
@@ -164,16 +160,16 @@ pub fn quote_arrow_serializer(
                     }}
                 });
 
-                let quoted_bitmap = quoted_bitmap(format_ident!("bitmap"));
+                let quoted_bitmap = quote_bitmap_from(&format_ident!("bitmap"), &data_src);
 
                 quote! {{
-                    let (somes, #data_src): (Vec<_>, Vec<_>) = #data_src
+                    let #data_src: Vec<_> = #data_src
                         .into_iter()
                         .map(|datum| {
                             let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                            (datum.is_some(), datum)
+                            datum
                         })
-                        .unzip();
+                        .collect();
 
                     #quoted_bitmap;
 

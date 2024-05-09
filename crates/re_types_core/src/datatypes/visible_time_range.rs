@@ -82,34 +82,33 @@ impl crate::Loggable for VisibleTimeRange {
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::VisibleTimeRange>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, timeline): (Vec<_>, Vec<_>) = data
+                        let timeline: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { timeline, .. } = &**datum;
                                     timeline.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let timeline_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = timeline.iter().any(|val| val.is_none());
+                            any_nones.then(|| timeline.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> = timeline
@@ -132,7 +131,6 @@ impl crate::Loggable for VisibleTimeRange {
                             )
                             .unwrap()
                             .into();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -146,19 +144,18 @@ impl crate::Loggable for VisibleTimeRange {
                         }
                     },
                     {
-                        let (somes, range): (Vec<_>, Vec<_>) = data
+                        let range: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { range, .. } = &**datum;
                                     range.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let range_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = range.iter().any(|val| val.is_none());
+                            any_nones.then(|| range.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = range_bitmap;

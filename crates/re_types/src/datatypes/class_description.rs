@@ -115,34 +115,33 @@ impl ::re_types_core::Loggable for ClassDescription {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::ClassDescription>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, info): (Vec<_>, Vec<_>) = data
+                        let info: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { info, .. } = &**datum;
                                     info.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let info_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = info.iter().any(|val| val.is_none());
+                            any_nones.then(|| info.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = info_bitmap;
@@ -150,22 +149,26 @@ impl ::re_types_core::Loggable for ClassDescription {
                         }
                     },
                     {
-                        let (somes, keypoint_annotations): (Vec<_>, Vec<_>) = data
+                        let keypoint_annotations: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         keypoint_annotations,
                                         ..
                                     } = &**datum;
                                     keypoint_annotations.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let keypoint_annotations_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = keypoint_annotations.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                keypoint_annotations
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -203,22 +206,26 @@ impl ::re_types_core::Loggable for ClassDescription {
                         }
                     },
                     {
-                        let (somes, keypoint_connections): (Vec<_>, Vec<_>) = data
+                        let keypoint_connections: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         keypoint_connections,
                                         ..
                                     } = &**datum;
                                     keypoint_connections.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let keypoint_connections_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = keypoint_connections.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                keypoint_connections
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};

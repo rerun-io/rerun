@@ -78,34 +78,33 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::RotationAxisAngle>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, axis): (Vec<_>, Vec<_>) = data
+                        let axis: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { axis, .. } = &**datum;
                                     axis.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let axis_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = axis.iter().any(|val| val.is_none());
+                            any_nones.then(|| axis.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -151,19 +150,18 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         }
                     },
                     {
-                        let (somes, angle): (Vec<_>, Vec<_>) = data
+                        let angle: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { angle, .. } = &**datum;
                                     angle.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = angle.iter().any(|val| val.is_none());
+                            any_nones.then(|| angle.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = angle_bitmap;

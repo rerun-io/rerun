@@ -86,20 +86,19 @@ impl ::re_types_core::Loggable for Uuid {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, bytes): (Vec<_>, Vec<_>) = data
+            let bytes: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
+                    datum.map(|datum| {
                         let Self { bytes } = datum.into_owned();
                         bytes
-                    });
-                    (datum.is_some(), datum)
+                    })
                 })
-                .unzip();
+                .collect();
             let bytes_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = bytes.iter().any(|val| val.is_none());
+                any_nones.then(|| bytes.iter().map(|val| val.is_some()).collect())
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};

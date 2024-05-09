@@ -83,34 +83,33 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, id): (Vec<_>, Vec<_>) = data
+                        let id: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { id, .. } = &**datum;
                                     id.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let id_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = id.iter().any(|val| val.is_none());
+                            any_nones.then(|| id.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::UInt16,
@@ -120,22 +119,21 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .boxed()
                     },
                     {
-                        let (somes, label): (Vec<_>, Vec<_>) = data
+                        let label: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { label, .. } = &**datum;
                                         label.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let label_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = label.iter().any(|val| val.is_none());
+                            any_nones.then(|| label.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> = label
@@ -172,22 +170,21 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         }
                     },
                     {
-                        let (somes, color): (Vec<_>, Vec<_>) = data
+                        let color: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { color, .. } = &**datum;
                                         color.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let color_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = color.iter().any(|val| val.is_none());
+                            any_nones.then(|| color.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::UInt32,

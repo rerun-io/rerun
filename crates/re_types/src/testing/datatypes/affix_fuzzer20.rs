@@ -79,34 +79,33 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::testing::datatypes::AffixFuzzer20>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, p): (Vec<_>, Vec<_>) = data
+                        let p: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { p, .. } = &**datum;
                                     p.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let p_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = p.iter().any(|val| val.is_none());
+                            any_nones.then(|| p.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::UInt32,
@@ -127,19 +126,18 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         .boxed()
                     },
                     {
-                        let (somes, s): (Vec<_>, Vec<_>) = data
+                        let s: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { s, .. } = &**datum;
                                     s.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let s_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = s.iter().any(|val| val.is_none());
+                            any_nones.then(|| s.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> = s

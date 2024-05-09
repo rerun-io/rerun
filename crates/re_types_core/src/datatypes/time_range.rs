@@ -83,34 +83,33 @@ impl crate::Loggable for TimeRange {
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::TimeRange>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, start): (Vec<_>, Vec<_>) = data
+                        let start: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { start, .. } = &**datum;
                                     start.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let start_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = start.iter().any(|val| val.is_none());
+                            any_nones.then(|| start.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = start_bitmap;
@@ -118,19 +117,18 @@ impl crate::Loggable for TimeRange {
                         }
                     },
                     {
-                        let (somes, end): (Vec<_>, Vec<_>) = data
+                        let end: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { end, .. } = &**datum;
                                     end.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let end_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = end.iter().any(|val| val.is_none());
+                            any_nones.then(|| end.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = end_bitmap;

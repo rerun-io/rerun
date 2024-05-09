@@ -128,25 +128,25 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
+                        let single_float_optional: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self {
@@ -155,13 +155,17 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         } = &**datum;
                                         single_float_optional.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let single_float_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = single_float_optional.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                single_float_optional
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         PrimitiveArray::new(
                             DataType::Float32,
@@ -174,22 +178,26 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         .boxed()
                     },
                     {
-                        let (somes, single_string_required): (Vec<_>, Vec<_>) = data
+                        let single_string_required: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         single_string_required,
                                         ..
                                     } = &**datum;
                                     single_string_required.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let single_string_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = single_string_required.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                single_string_required
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> = single_string_required
@@ -217,10 +225,10 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, single_string_optional): (Vec<_>, Vec<_>) = data
+                        let single_string_optional: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self {
@@ -229,13 +237,17 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         } = &**datum;
                                         single_string_optional.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let single_string_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = single_string_optional.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                single_string_optional
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> = single_string_optional
@@ -263,10 +275,10 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, many_floats_optional): (Vec<_>, Vec<_>) = data
+                        let many_floats_optional: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self {
@@ -275,13 +287,17 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         } = &**datum;
                                         many_floats_optional.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let many_floats_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = many_floats_optional.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                many_floats_optional
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -322,22 +338,26 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, many_strings_required): (Vec<_>, Vec<_>) = data
+                        let many_strings_required: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         many_strings_required,
                                         ..
                                     } = &**datum;
                                     many_strings_required.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let many_strings_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = many_strings_required.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                many_strings_required
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -393,10 +413,10 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, many_strings_optional): (Vec<_>, Vec<_>) = data
+                        let many_strings_optional: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self {
@@ -405,13 +425,17 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                         } = &**datum;
                                         many_strings_optional.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let many_strings_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = many_strings_optional.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                many_strings_optional
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -467,21 +491,21 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, flattened_scalar): (Vec<_>, Vec<_>) = data
+                        let flattened_scalar: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         flattened_scalar, ..
                                     } = &**datum;
                                     flattened_scalar.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let flattened_scalar_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = flattened_scalar.iter().any(|val| val.is_none());
+                            any_nones
+                                .then(|| flattened_scalar.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::Float32,
@@ -494,22 +518,26 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         .boxed()
                     },
                     {
-                        let (somes, almost_flattened_scalar): (Vec<_>, Vec<_>) = data
+                        let almost_flattened_scalar: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         almost_flattened_scalar,
                                         ..
                                     } = &**datum;
                                     almost_flattened_scalar.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let almost_flattened_scalar_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = almost_flattened_scalar.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                almost_flattened_scalar
+                                    .iter()
+                                    .map(|val| val.is_some())
+                                    .collect()
+                            })
                         };
                         {
                             _ = almost_flattened_scalar_bitmap;
@@ -519,22 +547,21 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         }
                     },
                     {
-                        let (somes, from_parent): (Vec<_>, Vec<_>) = data
+                        let from_parent: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { from_parent, .. } = &**datum;
                                         from_parent.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let from_parent_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = from_parent.iter().any(|val| val.is_none());
+                            any_nones.then(|| from_parent.iter().map(|val| val.is_some()).collect())
                         };
                         BooleanArray::new(
                             DataType::Boolean,

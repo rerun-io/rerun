@@ -79,34 +79,33 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::testing::datatypes::AffixFuzzer21>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, single_half): (Vec<_>, Vec<_>) = data
+                        let single_half: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { single_half, .. } = &**datum;
                                     single_half.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let single_half_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = single_half.iter().any(|val| val.is_none());
+                            any_nones.then(|| single_half.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::Float16,
@@ -119,19 +118,18 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                         .boxed()
                     },
                     {
-                        let (somes, many_halves): (Vec<_>, Vec<_>) = data
+                        let many_halves: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { many_halves, .. } = &**datum;
                                     many_halves.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let many_halves_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = many_halves.iter().any(|val| val.is_none());
+                            any_nones.then(|| many_halves.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};

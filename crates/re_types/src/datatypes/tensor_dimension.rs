@@ -74,34 +74,33 @@ impl ::re_types_core::Loggable for TensorDimension {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::TensorDimension>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, size): (Vec<_>, Vec<_>) = data
+                        let size: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { size, .. } = &**datum;
                                     size.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let size_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = size.iter().any(|val| val.is_none());
+                            any_nones.then(|| size.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::UInt64,
@@ -111,22 +110,21 @@ impl ::re_types_core::Loggable for TensorDimension {
                         .boxed()
                     },
                     {
-                        let (somes, name): (Vec<_>, Vec<_>) = data
+                        let name: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { name, .. } = &**datum;
                                         name.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let name_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = name.iter().any(|val| val.is_none());
+                            any_nones.then(|| name.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> =

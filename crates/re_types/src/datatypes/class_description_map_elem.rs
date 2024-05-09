@@ -84,34 +84,33 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::ClassDescriptionMapElem>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, class_id): (Vec<_>, Vec<_>) = data
+                        let class_id: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { class_id, .. } = &**datum;
                                     class_id.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let class_id_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = class_id.iter().any(|val| val.is_none());
+                            any_nones.then(|| class_id.iter().map(|val| val.is_some()).collect())
                         };
                         PrimitiveArray::new(
                             DataType::UInt16,
@@ -131,21 +130,22 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         .boxed()
                     },
                     {
-                        let (somes, class_description): (Vec<_>, Vec<_>) = data
+                        let class_description: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self {
                                         class_description, ..
                                     } = &**datum;
                                     class_description.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let class_description_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = class_description.iter().any(|val| val.is_none());
+                            any_nones.then(|| {
+                                class_description.iter().map(|val| val.is_some()).collect()
+                            })
                         };
                         {
                             _ = class_description_bitmap;

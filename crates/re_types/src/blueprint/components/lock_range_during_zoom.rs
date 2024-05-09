@@ -90,20 +90,19 @@ impl ::re_types_core::Loggable for LockRangeDuringZoom {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data0): (Vec<_>, Vec<_>) = data
+            let data0: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
+                    datum.map(|datum| {
                         let Self(data0) = datum.into_owned();
                         data0
-                    });
-                    (datum.is_some(), datum)
+                    })
                 })
-                .unzip();
+                .collect();
             let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data0.iter().any(|val| val.is_none());
+                any_nones.then(|| data0.iter().map(|val| val.is_some()).collect())
             };
             BooleanArray::new(
                 Self::arrow_datatype(),

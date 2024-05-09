@@ -99,37 +99,36 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    (datum.is_some(), datum)
+                    datum
                 })
-                .unzip();
+                .collect();
             let bitmap: Option<arrow2::bitmap::Bitmap> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
+                let any_nones = data.iter().any(|val| val.is_none());
+                any_nones.then(|| data.iter().map(|val| val.is_some()).collect())
             };
             StructArray::new(
                 <crate::datatypes::TranslationRotationScale3D>::arrow_datatype(),
                 vec![
                     {
-                        let (somes, translation): (Vec<_>, Vec<_>) = data
+                        let translation: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { translation, .. } = &**datum;
                                         translation.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let translation_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = translation.iter().any(|val| val.is_none());
+                            any_nones.then(|| translation.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -175,22 +174,21 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         }
                     },
                     {
-                        let (somes, rotation): (Vec<_>, Vec<_>) = data
+                        let rotation: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { rotation, .. } = &**datum;
                                         rotation.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let rotation_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = rotation.iter().any(|val| val.is_none());
+                            any_nones.then(|| rotation.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = rotation_bitmap;
@@ -198,22 +196,21 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         }
                     },
                     {
-                        let (somes, scale): (Vec<_>, Vec<_>) = data
+                        let scale: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
+                                datum
                                     .as_ref()
                                     .map(|datum| {
                                         let Self { scale, .. } = &**datum;
                                         scale.clone()
                                     })
-                                    .flatten();
-                                (datum.is_some(), datum)
+                                    .flatten()
                             })
-                            .unzip();
+                            .collect();
                         let scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = scale.iter().any(|val| val.is_none());
+                            any_nones.then(|| scale.iter().map(|val| val.is_some()).collect())
                         };
                         {
                             _ = scale_bitmap;
@@ -221,19 +218,18 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         }
                     },
                     {
-                        let (somes, from_parent): (Vec<_>, Vec<_>) = data
+                        let from_parent: Vec<_> = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
+                                datum.as_ref().map(|datum| {
                                     let Self { from_parent, .. } = &**datum;
                                     from_parent.clone()
-                                });
-                                (datum.is_some(), datum)
+                                })
                             })
-                            .unzip();
+                            .collect();
                         let from_parent_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
+                            let any_nones = from_parent.iter().any(|val| val.is_none());
+                            any_nones.then(|| from_parent.iter().map(|val| val.is_some()).collect())
                         };
                         BooleanArray::new(
                             DataType::Boolean,
