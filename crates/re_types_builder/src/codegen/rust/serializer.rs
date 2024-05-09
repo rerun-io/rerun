@@ -64,10 +64,10 @@ pub fn quote_arrow_serializer(
         );
         let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
 
-        let quoted_binding = if is_tuple_struct {
-            quote!(Self(#quoted_data_dst))
+        let quoted_member_accessor = if is_tuple_struct {
+            quote!(0)
         } else {
-            quote!(Self { #quoted_data_dst })
+            quote!(#quoted_data_dst)
         };
 
         let datatype = &arrow_registry.get(&obj_field.fqname);
@@ -97,8 +97,7 @@ pub fn quote_arrow_serializer(
 
                     let datum = datum
                         .map(|datum| {
-                            let #quoted_binding = datum.into_owned();
-                            #quoted_data_dst
+                            datum.into_owned().#quoted_member_accessor
                         })
                         #quoted_flatten;
 
