@@ -106,14 +106,13 @@ impl ::re_types_core::Loggable for SpaceViewClass {
                     .flatten()
                     .flat_map(|datum| datum.0 .0.clone())
                     .collect();
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|datum| datum.0 .0.len())
-                            .unwrap_or_default()
-                    }))
-                    .unwrap()
-                    .into();
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )
+                .unwrap()
+                .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {

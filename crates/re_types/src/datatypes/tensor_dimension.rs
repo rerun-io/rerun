@@ -123,13 +123,12 @@ impl ::re_types_core::Loggable for TensorDimension {
                         {
                             let inner_data: arrow2::buffer::Buffer<u8> =
                                 name.iter().flatten().flat_map(|s| s.0.clone()).collect();
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                name.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
+                            let offsets =
+                                arrow2::offset::Offsets::<i32>::try_from_lengths(name.iter().map(
+                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                                ))
+                                .unwrap()
+                                .into();
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {

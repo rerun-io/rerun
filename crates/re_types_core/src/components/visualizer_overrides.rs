@@ -114,7 +114,7 @@ impl crate::Loggable for VisualizerOverrides {
                         let inner_data: arrow2::buffer::Buffer<u8> =
                             data0_inner_data.iter().flat_map(|s| s.0.clone()).collect();
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            data0_inner_data.iter().map(|datum| datum.0.len()),
+                            data0_inner_data.iter().map(|datum| datum.len()),
                         )
                         .unwrap()
                         .into();

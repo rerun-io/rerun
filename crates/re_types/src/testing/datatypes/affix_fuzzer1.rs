@@ -189,7 +189,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -229,7 +229,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()
@@ -346,7 +346,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_required_inner_data
                                             .iter()
-                                            .map(|datum| datum.0.len()),
+                                            .map(|datum| datum.len()),
                                     )
                                     .unwrap()
                                     .into();
@@ -414,7 +414,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_optional_inner_data
                                             .iter()
-                                            .map(|datum| datum.0.len()),
+                                            .map(|datum| datum.len()),
                                     )
                                     .unwrap()
                                     .into();

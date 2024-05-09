@@ -116,9 +116,7 @@ impl crate::Loggable for VisibleTimeRange {
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 timeline.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.0 .0.len())
-                                        .unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .unwrap()

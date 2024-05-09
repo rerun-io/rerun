@@ -98,7 +98,7 @@ impl crate::Loggable for Utf8 {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
                 .unwrap()
                 .into();

@@ -549,7 +549,7 @@ fn quote_arrow_field_serializer(
                         },
                         quote! {
                             .map(|datum| {
-                                datum.#quoted_member_accessor.0.len()
+                                datum.#quoted_member_accessor.len()
                             })
                         },
                     )
@@ -560,7 +560,7 @@ fn quote_arrow_field_serializer(
                             .flat_map(|s| s.0.clone())
                         },
                         quote! {
-                            .map(|datum| datum.0.len())
+                            .map(|datum| datum.len())
                         },
                     )
                 };
