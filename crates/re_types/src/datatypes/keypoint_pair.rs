@@ -112,14 +112,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             DataType::UInt16,
                             keypoint0
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::KeypointId(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             keypoint0_bitmap,
                         )
@@ -141,14 +134,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             DataType::UInt16,
                             keypoint1
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::KeypointId(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             keypoint1_bitmap,
                         )

@@ -112,14 +112,7 @@ impl ::re_types_core::Loggable for ClassId {
                 Self::arrow_datatype(),
                 data0
                     .into_iter()
-                    .map(|datum| {
-                        datum
-                            .map(|datum| {
-                                let crate::datatypes::ClassId(data0) = datum;
-                                data0
-                            })
-                            .unwrap_or_default()
-                    })
+                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                     .collect(),
                 data0_bitmap,
             )

@@ -180,14 +180,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             DataType::UInt32,
                             color
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Rgba32(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             color_bitmap,
                         )

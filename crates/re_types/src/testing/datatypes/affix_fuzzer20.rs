@@ -108,16 +108,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         PrimitiveArray::new(
                             DataType::UInt32,
                             p.into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::PrimitiveComponent(
-                                                data0,
-                                            ) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             p_bitmap,
                         )
