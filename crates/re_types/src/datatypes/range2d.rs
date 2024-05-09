@@ -130,7 +130,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 x_range_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(2usize))
+                                        .map(|b| std::iter::repeat(b).take(2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -188,7 +188,7 @@ impl ::re_types_core::Loggable for Range2D {
                                 y_range_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(2usize))
+                                        .map(|b| std::iter::repeat(b).take(2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()

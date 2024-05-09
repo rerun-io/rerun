@@ -124,7 +124,7 @@ impl ::re_types_core::Loggable for Position3D {
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(3usize))
+                            .map(|b| std::iter::repeat(b).take(3usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()

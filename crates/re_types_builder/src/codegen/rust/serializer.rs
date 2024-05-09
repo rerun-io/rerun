@@ -810,7 +810,7 @@ fn quote_arrow_field_serializer(
                         #bitmap_src.as_ref().map(|bitmap| {
                             bitmap
                                 .iter()
-                                .map(|i| std::iter::repeat(i).take(#count))
+                                .map(|b| std::iter::repeat(b).take(#count))
                                 .flatten()
                                 .collect::<Vec<_>>()
                                 .into()

@@ -141,7 +141,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 translation_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .map(|b| std::iter::repeat(b).take(3usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
@@ -202,7 +202,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 mat3x3_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
-                                        .map(|i| std::iter::repeat(i).take(9usize))
+                                        .map(|b| std::iter::repeat(b).take(9usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
