@@ -108,14 +108,7 @@ impl ::re_types_core::Loggable for Resolution {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
-                    .map(|datum| {
-                        datum
-                            .map(|datum| {
-                                let crate::datatypes::Vec2D(data0) = datum;
-                                data0
-                            })
-                            .unwrap_or_default()
-                    })
+                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                     .flatten()
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

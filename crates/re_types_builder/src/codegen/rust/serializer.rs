@@ -639,7 +639,6 @@ fn quote_arrow_field_serializer(
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
                 let quoted_data_dst = format_ident!(
                     "{}",
@@ -649,10 +648,10 @@ fn quote_arrow_field_serializer(
                         inner_obj.fields[0].name.as_str()
                     }
                 );
-                let quoted_binding = if is_tuple_struct {
-                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                let quoted_member_accessor = if is_tuple_struct {
+                    quote!(0)
                 } else {
-                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                    quote!(#quoted_data_dst)
                 };
 
                 if elements_are_nullable {
@@ -660,8 +659,7 @@ fn quote_arrow_field_serializer(
                         .map(|datum| {
                             datum
                                 .map(|datum| {
-                                    let #quoted_binding = datum;
-                                    #quoted_data_dst
+                                    datum.#quoted_member_accessor
                                 })
                                 .unwrap_or_default()
                         })
@@ -671,8 +669,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     quote! {
                         .map(|datum| {
-                            let #quoted_binding = datum.clone();
-                            #quoted_data_dst
+                            datum.#quoted_member_accessor.clone()
                         })
                         // NOTE: Flattening yet since we have to deconstruct the inner list.
                         .flatten()

@@ -124,14 +124,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -180,14 +173,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let mat3x3_inner_data: Vec<_> = mat3x3
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Mat3x3(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let mat3x3_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

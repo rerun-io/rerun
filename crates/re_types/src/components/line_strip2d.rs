@@ -116,10 +116,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let data0_inner_data_inner_data: Vec<_> = data0_inner_data
                             .iter()
-                            .map(|datum| {
-                                let crate::datatypes::Vec2D(data0) = datum.clone();
-                                data0
-                            })
+                            .map(|datum| datum.0.clone())
                             .flatten()
                             .collect();
                         let data0_inner_data_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
