@@ -83,14 +83,16 @@ fn collect_snippets_recursively(
         let snippet = snippet?;
         let meta = snippet.metadata()?;
         let path = snippet.path();
+        // Compare snippet outputs sometimes leaves orphaned rrd files.
+        if path.extension().is_some_and(|p| p == "rrd") {
+            continue;
+        }
         let name = path.file_stem().unwrap().to_str().unwrap().to_owned();
 
-        let config_key = path
-            .strip_prefix(snippet_root_path)?
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap();
+        let config_key = path.strip_prefix(snippet_root_path)?.with_extension("");
+
+        let config_key = config_key.to_str().unwrap();
+
         let is_opted_out = config
             .opt_out
             .run
