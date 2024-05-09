@@ -525,7 +525,6 @@ fn quote_arrow_field_serializer(
             let (quoted_transparent_mapping, quoted_transparent_length) =
                 if inner_is_arrow_transparent {
                     let inner_obj = inner_obj.as_ref().unwrap();
-                    let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                     let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
                     let quoted_data_dst = format_ident!(
                         "{}",
@@ -535,24 +534,22 @@ fn quote_arrow_field_serializer(
                             inner_obj.fields[0].name.as_str()
                         }
                     );
-                    let quoted_binding = if is_tuple_struct {
-                        quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                    let quoted_member_accessor = if is_tuple_struct {
+                        quote!(0)
                     } else {
-                        quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                        quote!(#quoted_data_dst)
                     };
 
                     (
                         quote! {
                             .flat_map(|datum| {
-                                let #quoted_binding = datum;
                                 // NOTE: `Buffer::clone`, which is just a ref-count bump
-                                #quoted_data_dst .0.clone()
+                                datum.#quoted_member_accessor.0.clone()
                             })
                         },
                         quote! {
                             .map(|datum| {
-                                let #quoted_binding = datum;
-                                #quoted_data_dst.0.len()
+                                datum.#quoted_member_accessor.0.len()
                             })
                         },
                     )

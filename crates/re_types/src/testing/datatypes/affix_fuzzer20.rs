@@ -130,25 +130,17 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let inner_data: arrow2::buffer::Buffer<u8> = s
                                 .iter()
                                 .flatten()
-                                .flat_map(|datum| {
-                                    let crate::testing::datatypes::StringComponent(data0) = datum;
-                                    data0.0.clone()
-                                })
+                                .flat_map(|datum| datum.0 .0.clone())
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 s.iter().map(|opt| {
                                     opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::StringComponent(data0) =
-                                                datum;
-                                            data0.0.len()
-                                        })
+                                        .map(|datum| datum.0 .0.len())
                                         .unwrap_or_default()
                                 }),
                             )
                             .unwrap()
                             .into();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

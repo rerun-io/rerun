@@ -104,18 +104,12 @@ impl ::re_types_core::Loggable for SpaceViewClass {
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
                     .iter()
                     .flatten()
-                    .flat_map(|datum| {
-                        let crate::datatypes::Utf8(data0) = datum;
-                        data0.0.clone()
-                    })
+                    .flat_map(|datum| datum.0 .0.clone())
                     .collect();
                 let offsets =
                     arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
                         opt.as_ref()
-                            .map(|datum| {
-                                let crate::datatypes::Utf8(data0) = datum;
-                                data0.0.len()
-                            })
+                            .map(|datum| datum.0 .0.len())
                             .unwrap_or_default()
                     }))
                     .unwrap()
