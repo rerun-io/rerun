@@ -214,29 +214,41 @@ fn run_client(
 ) -> Result<(), ConnectionError> {
     #![allow(clippy::read_zero_byte_vec)] // false positive: https://github.com/rust-lang/rust-clippy/issues/9274
 
-    let mut protocol_header = [0_u8; 5];
-    stream.read_exact(&mut protocol_header)?;
-
-    if !str::from_utf8(&protocol_header).is_ok_and(|header| header == crate::PROTOCOL_HEADER) {
-        return Err(ConnectionError::UnknownClient);
-    }
-
     let mut client_version = [0_u8; 2];
     stream.read_exact(&mut client_version)?;
     let client_version = u16::from_le_bytes(client_version);
 
-    match client_version.cmp(&crate::PROTOCOL_VERSION) {
+    // The server goes into a backward compat mode
+    // if the client sends version 0
+    let server_version = if client_version == crate::PROTOCOL_VERSION_0 {
+        crate::PROTOCOL_VERSION_0 // Act like a version 0 server
+    } else {
+        crate::PROTOCOL_VERSION_1
+    };
+
+    // We do not look for protocol header in compat mode
+    // because old clients don't send it
+    if server_version > crate::PROTOCOL_VERSION_0 {
+        let mut protocol_header = [0_u8; crate::PROTOCOL_HEADER.len()];
+        stream.read_exact(&mut protocol_header)?;
+
+        if !str::from_utf8(&protocol_header).is_ok_and(|header| header == crate::PROTOCOL_HEADER) {
+            return Err(ConnectionError::UnknownClient);
+        }
+    }
+
+    match client_version.cmp(&server_version) {
         std::cmp::Ordering::Less => {
             return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
                 client_version,
-                server_version: crate::PROTOCOL_VERSION,
+                server_version,
             }));
         }
         std::cmp::Ordering::Equal => {}
         std::cmp::Ordering::Greater => {
             return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
                 client_version,
-                server_version: crate::PROTOCOL_VERSION,
+                server_version,
             }));
         }
     }

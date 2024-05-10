@@ -21,7 +21,8 @@ pub use server::{serve, ConnectionError, ServerError, ServerOptions};
 
 pub const PROTOCOL_HEADER: &str = "rerun";
 
-pub const PROTOCOL_VERSION: u16 = 0;
+pub const PROTOCOL_VERSION_0: u16 = 0;
+pub const PROTOCOL_VERSION_1: u16 = 1;
 
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 
