@@ -1,6 +1,6 @@
 use egui::Ui;
 
-const DOCS_URL: &str = "https://www.rerun.io/docs";
+pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
 pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize Multimodal Data";
 pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
     "Log data with the Rerun SDK in C++, Python, or Rust",

@@ -38,5 +38,21 @@ pub fn no_data_ui(ui: &mut egui::Ui) {
         for text in super::welcome_section::WELCOME_SCREEN_BULLET_TEXT {
             bullet_text(ui, text);
         }
+
+        ui.add_space(9.0);
+        if ui
+            .button(
+                egui::RichText::new("Go to documentation →")
+                    .weak()
+                    .text_style(re_ui::ReUi::welcome_screen_body()),
+            )
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .clicked()
+        {
+            ui.ctx().open_url(egui::output::OpenUrl {
+                url: super::welcome_section::DOCS_URL.to_owned(),
+                new_tab: true,
+            });
+        }
     });
 }
