@@ -12,7 +12,7 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::image_meaning_for_entity;
+use crate::{image_meaning_for_entity, label_for_ui_layout};
 
 use super::EntityDataUi;
 
@@ -64,7 +64,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
+                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
             }
         }
     }
@@ -157,7 +157,7 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                ui.add(egui::Label::new(format_tensor_shape_single_line(&shape)).wrap(true))
+                label_for_ui_layout(ui, ui_layout, format_tensor_shape_single_line(&shape))
                     .on_hover_ui(|ui| {
                         tensor_summary_ui(
                             ctx.re_ui,

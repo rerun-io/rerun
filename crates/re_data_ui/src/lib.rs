@@ -208,3 +208,20 @@ pub fn table_for_ui_layout(
         }
     }
 }
+
+pub fn label_for_ui_layout(
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    text: impl Into<egui::WidgetText>,
+) -> egui::Response {
+    let mut label = egui::Label::new(text);
+
+    match ui_layout {
+        UiLayout::List => label = label.truncate(true),
+        UiLayout::Tooltip | UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
+            label = label.wrap(true)
+        }
+    }
+
+    ui.add(label)
+}
