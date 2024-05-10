@@ -237,7 +237,7 @@ fn create_app(
         force_wgpu_backend: None,
         hide_welcome_screen: hide_welcome_screen,
     };
-    let re_ui = crate::customize_eframe(cc);
+    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 

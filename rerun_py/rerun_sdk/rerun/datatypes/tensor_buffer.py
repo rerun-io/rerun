@@ -99,48 +99,48 @@ class TensorBuffer(TensorBufferExt):
     """
     Possible values:
 
-    * "U8":
+    * "u8":
         8bit unsigned integer.
 
-    * "U16":
+    * "u16":
         16bit unsigned integer.
 
-    * "U32":
+    * "u32":
         32bit unsigned integer.
 
-    * "U64":
+    * "u64":
         64bit unsigned integer.
 
-    * "I8":
+    * "i8":
         8bit signed integer.
 
-    * "I16":
+    * "i16":
         16bit signed integer.
 
-    * "I32":
+    * "i32":
         32bit signed integer.
 
-    * "I64":
+    * "i64":
         64bit signed integer.
 
-    * "F16":
+    * "f16":
         16bit IEEE-754 floating point, also known as `half`.
 
-    * "F32":
+    * "f32":
         32bit IEEE-754 floating point, also known as `float` or `single`.
 
-    * "F64":
+    * "f64":
         64bit IEEE-754 floating point, also known as `double`.
 
-    * "JPEG":
+    * "jpeg":
         Raw bytes of a JPEG file.
 
-    * "NV12":
+    * "nv12":
         NV12 is a YUV 4:2:0 chroma downsamples format with 8 bits per channel.
 
         First comes entire image in Y, followed by interleaved lines ordered as U0, V0, U1, V1, etc.
 
-    * "YUY2":
+    * "yuy2":
         YUY2, also known as YUYV is a YUV 4:2:2 chroma downsampled format with 8 bits per channel.
 
         The order of the channels is Y0, U0, Y1, V0.
@@ -285,5 +285,5 @@ class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError(
-            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions"
+            "Arrow serialization of TensorBuffer not implemented: We lack codegen for arrow-serialization of unions containing lists. Can't handle type rerun.datatypes.TensorBuffer#U8"
         )  # You need to implement native_to_pa_array_override in tensor_buffer_ext.py

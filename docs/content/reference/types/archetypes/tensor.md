@@ -17,7 +17,7 @@ A generic n-dimensional Tensor.
 
 ### Simple tensor
 
-snippet: tensor_simple
+snippet: archetypes/tensor_simple
 
 <picture data-inline-viewer="snippets/tensor_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/480w.png">

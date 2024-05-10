@@ -388,6 +388,10 @@ impl ViewBuilder {
 
         let tan_half_fov = config.projection_from_view.tan_half_fov();
 
+        let resolution = glam::Vec2::new(
+            config.resolution_in_pixel[0] as f32,
+            config.resolution_in_pixel[1] as f32,
+        );
         let pixel_world_size_from_camera_distance = match config.projection_from_view {
             Projection::Perspective { .. } => {
                 // Determine how wide a pixel is in world space at unit distance from the camera.
@@ -399,14 +403,16 @@ impl ViewBuilder {
                 // want: pixels in world per distance, i.e (screen_in_world / resolution / distance)
                 // => (resolution / screen_in_world / distance) = tan(FOV / 2) * distance * 2 / resolution / distance =
                 //                                              = tan(FOV / 2) * 2.0 / resolution
-                tan_half_fov.y * 2.0 / config.resolution_in_pixel[1] as f32
+                tan_half_fov * 2.0 / resolution
             }
             Projection::Orthographic {
                 vertical_world_size,
                 ..
             } => {
-                vertical_world_size
-                    / config.resolution_in_pixel[0].max(config.resolution_in_pixel[1]) as f32
+                glam::vec2(
+                    vertical_world_size,
+                    vertical_world_size * resolution.x / resolution.y,
+                ) / resolution
             }
         };
 
@@ -415,9 +421,17 @@ impl ViewBuilder {
             .viewport_transformation
             .to_ndc_scale_and_translation();
         let projection_from_view = ndc_scale_and_translation * projection_from_view;
-        // Need to take into account that a smaller portion of the world scale is visible now.
-        let pixel_world_size_from_camera_distance = pixel_world_size_from_camera_distance
-            * config.viewport_transformation.scale().max_element();
+
+        // Need to take into account that a smaller or bigger portion of the world scale is visible now.
+        let pixel_world_size_from_camera_distance =
+            pixel_world_size_from_camera_distance * config.viewport_transformation.scale();
+
+        // Unless the transformation intentionally stretches the image,
+        // our world size -> pixel size conversation factor should be roughly the same in both directions.
+        //
+        // As of writing, the shaders dealing with pixel size estimation, can't deal with non-uniform
+        // scaling in the viewport transformation.
+        let pixel_world_size_from_camera_distance = pixel_world_size_from_camera_distance.x;
 
         let mut view_from_world = config.view_from_world.to_mat4();
         // For OrthographicCameraMode::TopLeftCorner, we want Z facing forward.

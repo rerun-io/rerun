@@ -27,6 +27,7 @@ pub enum AffixFuzzer3 {
     Degrees(f32),
     Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
     FixedSizeShenanigans([f32; 3usize]),
+    EmptyVariant,
 }
 
 impl ::re_types_core::SizeBytes for AffixFuzzer3 {
@@ -37,6 +38,7 @@ impl ::re_types_core::SizeBytes for AffixFuzzer3 {
             Self::Degrees(v) => v.heap_size_bytes(),
             Self::Craziness(v) => v.heap_size_bytes(),
             Self::FixedSizeShenanigans(v) => v.heap_size_bytes(),
+            Self::EmptyVariant => 0,
         }
     }
 
@@ -83,8 +85,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     ),
                     false,
                 ),
+                Field::new("empty_variant", DataType::Null, true),
             ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,
         )
     }
@@ -113,6 +116,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     Some(AffixFuzzer3::Degrees(_)) => 1i8,
                     Some(AffixFuzzer3::Craziness(_)) => 2i8,
                     Some(AffixFuzzer3::FixedSizeShenanigans(_)) => 3i8,
+                    Some(AffixFuzzer3::EmptyVariant) => 4i8,
                 })
                 .collect();
             let fields = vec![
@@ -201,11 +205,21 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .boxed()
                     }
                 },
+                NullArray::new(
+                    DataType::Null,
+                    data.iter()
+                        .filter(|datum| {
+                            matches!(datum.as_deref(), Some(AffixFuzzer3::EmptyVariant))
+                        })
+                        .count(),
+                )
+                .boxed(),
             ];
             let offsets = Some({
                 let mut degrees_offset = 0;
                 let mut craziness_offset = 0;
                 let mut fixed_size_shenanigans_offset = 0;
+                let mut empty_variant_offset = 0;
                 let mut nulls_offset = 0;
                 data.iter()
                     .map(|v| match v.as_deref() {
@@ -227,6 +241,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         Some(AffixFuzzer3::FixedSizeShenanigans(_)) => {
                             let offset = fixed_size_shenanigans_offset;
                             fixed_size_shenanigans_offset += 1;
+                            offset
+                        }
+                        Some(AffixFuzzer3::EmptyVariant) => {
+                            let offset = empty_variant_offset;
+                            empty_variant_offset += 1;
                             offset
                         }
                     })
@@ -525,6 +544,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                     )?
                                             })
                                         }
+                                        4i8 => AffixFuzzer3::EmptyVariant,
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(

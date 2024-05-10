@@ -17,7 +17,7 @@ A 3D transform.
 
 ### Variety of 3D transforms
 
-snippet: transform3d_simple
+snippet: archetypes/transform3d_simple
 
 <picture data-inline-viewer="snippets/transform3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">

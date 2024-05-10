@@ -15,9 +15,6 @@ namespace rerun {
 
             // <CODEGEN_COPY_TO_HEADER>
 
-            /// Construct a `Utf8` from null-terminated UTF-8.
-            Utf8(const char* str) : value(str) {}
-
             const char* c_str() const {
                 return value.c_str();
             }

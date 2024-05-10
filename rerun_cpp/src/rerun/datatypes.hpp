@@ -28,7 +28,6 @@
 #include "datatypes/time_int.hpp"
 #include "datatypes/time_range.hpp"
 #include "datatypes/time_range_boundary.hpp"
-#include "datatypes/time_range_boundary_kind.hpp"
 #include "datatypes/transform3d.hpp"
 #include "datatypes/translation_and_mat3x3.hpp"
 #include "datatypes/translation_rotation_scale3d.hpp"

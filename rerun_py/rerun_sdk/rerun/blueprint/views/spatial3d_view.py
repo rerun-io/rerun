@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 __all__ = ["Spatial3DView"]
 
 
@@ -60,7 +62,10 @@ class Spatial3DView(SpaceView):
         | datatypes.Rgba32Like
         | blueprint_components.BackgroundKindLike
         | None = None,
-        time_ranges: blueprint_archetypes.VisibleTimeRanges | None = None,
+        time_ranges: blueprint_archetypes.VisibleTimeRanges
+        | datatypes.VisibleTimeRangeLike
+        | Sequence[datatypes.VisibleTimeRangeLike]
+        | None = None,
     ) -> None:
         """
         Construct a blueprint for a new Spatial3DView view.

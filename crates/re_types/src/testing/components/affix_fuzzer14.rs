@@ -94,8 +94,9 @@ impl ::re_types_core::Loggable for AffixFuzzer14 {
                     ),
                     false,
                 ),
+                Field::new("empty_variant", DataType::Null, true),
             ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32])),
+            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
             UnionMode::Dense,
         )
     }

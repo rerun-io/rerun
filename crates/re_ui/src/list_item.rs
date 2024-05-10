@@ -437,9 +437,8 @@ impl<'a> ListItem<'a> {
         let (rect, mut response) = ui.allocate_at_least(desired_size, sense);
 
         // compute the full-span background rect
-        let mut bg_rect = rect;
-        bg_rect.extend_with_x(ui.clip_rect().right());
-        bg_rect.extend_with_x(ui.clip_rect().left());
+        let bg_rect =
+            egui::Rect::from_x_y_ranges(crate::full_span::get_full_span(ui), rect.y_range());
 
         // we want to be able to select/hover the item across its full span, so we sense that and
         // update the response accordingly.

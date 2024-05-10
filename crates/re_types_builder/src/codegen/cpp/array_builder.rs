@@ -16,7 +16,9 @@ fn arrow_array_builder_type_and_declaration(
 ) -> Ident {
     match typ {
         Type::Unit => {
-            panic!("Unit type should only occur for enum variants");
+            let ident = format_ident!("NullBuilder");
+            declarations.insert("arrow", ForwardDecl::Class(ident.clone()));
+            ident
         }
 
         Type::Int8

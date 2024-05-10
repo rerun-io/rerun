@@ -61,7 +61,7 @@ namespace rerun {
         }
 
         {
-            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
+            auto field_builder = static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(
@@ -74,7 +74,7 @@ namespace rerun {
             }
         }
         {
-            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 RR_RETURN_NOT_OK(

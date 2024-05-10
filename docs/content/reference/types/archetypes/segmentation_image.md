@@ -28,7 +28,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ### Simple segmentation image
 
-snippet: segmentation_image_simple
+snippet: archetypes/segmentation_image_simple
 
 <picture data-inline-viewer="snippets/segmentation_image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">

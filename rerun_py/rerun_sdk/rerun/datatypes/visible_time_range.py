@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
 
 from .. import datatypes
 from .._baseclasses import BaseBatch, BaseExtensionType
+from .visible_time_range_ext import VisibleTimeRangeExt
 
 __all__ = [
     "VisibleTimeRange",
@@ -30,24 +31,10 @@ def _visible_time_range__timeline__special_field_converter_override(x: datatypes
 
 
 @define(init=False)
-class VisibleTimeRange:
+class VisibleTimeRange(VisibleTimeRangeExt):
     """**Datatype**: Visible time range bounds for a specific timeline."""
 
-    def __init__(self: Any, timeline: datatypes.Utf8Like, range: datatypes.TimeRangeLike):
-        """
-        Create a new instance of the VisibleTimeRange datatype.
-
-        Parameters
-        ----------
-        timeline:
-            Name of the timeline this applies to.
-        range:
-            Time range to use for this timeline.
-
-        """
-
-        # You can define your own __init__ function as a member of VisibleTimeRangeExt in visible_time_range_ext.py
-        self.__attrs_init__(timeline=timeline, range=range)
+    # __init__ can be found in visible_time_range_ext.py
 
     timeline: datatypes.Utf8 = field(converter=_visible_time_range__timeline__special_field_converter_override)
     # Name of the timeline this applies to.
@@ -80,38 +67,22 @@ class VisibleTimeRangeType(BaseExtensionType):
                     pa.struct([
                         pa.field(
                             "start",
-                            pa.struct([
-                                pa.field(
-                                    "kind",
-                                    pa.sparse_union([
-                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field("time", pa.int64(), nullable=False, metadata={}),
+                            pa.dense_union([
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},
                         ),
                         pa.field(
                             "end",
-                            pa.struct([
-                                pa.field(
-                                    "kind",
-                                    pa.sparse_union([
-                                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                        pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                                pa.field("time", pa.int64(), nullable=False, metadata={}),
+                            pa.dense_union([
+                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                             ]),
                             nullable=False,
                             metadata={},

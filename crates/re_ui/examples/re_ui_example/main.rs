@@ -173,6 +173,93 @@ impl eframe::App for ExampleApp {
 
         // LEFT PANEL
 
+        // top section closure
+        let left_panel_top_section_ui = |ui: &mut egui::Ui| {
+            ui.horizontal_centered(|ui| {
+                ui.strong("Left bar");
+            });
+
+            if ui.button("Log info").clicked() {
+                re_log::info!(
+                    "A lot of text on info level.\nA lot of text in fact. So \
+                             much that we should ideally be auto-wrapping it at some point, much \
+                             earlier than this."
+                );
+            }
+            if ui.button("Log warn").clicked() {
+                re_log::warn!(
+                    "A lot of text on warn level.\nA lot of text in fact. So \
+                            much that we should ideally be auto-wrapping it at some point, much \
+                            earlier than this."
+                );
+            }
+            if ui.button("Log error").clicked() {
+                re_log::error!(
+                    "A lot of text on error level.\nA lot of text in fact. \
+                            So much that we should ideally be auto-wrapping it at some point, much \
+                            earlier than this."
+                );
+            }
+        };
+
+        // bottom section closure
+        let left_panel_bottom_section_ui = |ui: &mut egui::Ui| {
+            ui.horizontal(|ui| {
+                ui.label("Toggle switch:");
+                ui.add(re_ui::toggle_switch(8.0, &mut self.dummy_bool));
+            });
+            ui.label(format!("Latest command: {}", self.latest_cmd));
+
+            // ---
+
+            if ui.button("Open modal").clicked() {
+                self.modal_handler.open();
+            }
+
+            self.modal_handler.ui(
+                &self.re_ui,
+                ui.ctx(),
+                || re_ui::modal::Modal::new("Modal window"),
+                |_, ui, _| ui.label("This is a modal window."),
+            );
+
+            // ---
+
+            if ui.button("Open full span modal").clicked() {
+                self.full_span_modal_handler.open();
+            }
+
+            self.full_span_modal_handler.ui(
+                &self.re_ui,
+                ui.ctx(),
+                || re_ui::modal::Modal::new("Modal window").full_span_content(true),
+                |_, ui, _| {
+                    for idx in 0..10 {
+                        ListItem::new(&self.re_ui, format!("Item {idx}")).show_flat(ui);
+                    }
+                },
+            );
+
+            // ---
+
+            self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
+                ui.label("Some data here");
+            });
+            self.re_ui
+                .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    ui.label("Some blueprint stuff here, that might be wide.");
+                    self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+
+                    self.re_ui
+                        .collapsing_header(ui, "Collapsing header", true, |ui| {
+                            ui.label("Some data here");
+                            self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+                        });
+                });
+        };
+
+        // UI code
         egui::SidePanel::left("left_panel")
             .default_width(500.0)
             .frame(egui::Frame {
@@ -180,115 +267,25 @@ impl eframe::App for ExampleApp {
                 ..Default::default()
             })
             .show_animated(egui_ctx, self.show_left_panel, |ui| {
-                // no need to extend `ui.max_rect()` as the enclosing frame doesn't have margins
-                ui.set_clip_rect(ui.max_rect());
-
-                egui::TopBottomPanel::top("left_panel_top_bar")
-                    .exact_height(re_ui::ReUi::title_bar_height())
-                    .frame(egui::Frame {
-                        inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
-                        ..Default::default()
-                    })
-                    .show_inside(ui, |ui| {
-                        ui.horizontal_centered(|ui| {
-                            ui.strong("Left bar");
-                        });
-
-                        if ui.button("Log info").clicked() {
-                            re_log::info!(
-                                "A lot of text on info level.\nA lot of text in fact. So \
-                             much that we should ideally be auto-wrapping it at some point, much \
-                             earlier than this."
-                            );
-                        }
-                        if ui.button("Log warn").clicked() {
-                            re_log::warn!(
-                                "A lot of text on warn level.\nA lot of text in fact. So \
-                            much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
-                            );
-                        }
-                        if ui.button("Log error").clicked() {
-                            re_log::error!(
-                                "A lot of text on error level.\nA lot of text in fact. \
-                            So much that we should ideally be auto-wrapping it at some point, much \
-                            earlier than this."
-                            );
-                        }
-                    });
-
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        egui::Frame {
-                            inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+                    egui::TopBottomPanel::top("left_panel_top_bar")
+                        .exact_height(re_ui::ReUi::title_bar_height())
+                        .frame(egui::Frame {
+                            inner_margin: egui::Margin::symmetric(re_ui::ReUi::view_padding(), 0.0),
                             ..Default::default()
-                        }
+                        })
+                        .show_inside(ui, left_panel_top_section_ui);
+
+                    egui::ScrollArea::both()
+                        .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            ui.horizontal(|ui| {
-                                ui.label("Toggle switch:");
-                                ui.add(re_ui::toggle_switch(8.0, &mut self.dummy_bool));
-                            });
-                            ui.label(format!("Latest command: {}", self.latest_cmd));
-
-                            // ---
-
-                            if ui.button("Open modal").clicked() {
-                                self.modal_handler.open();
+                            egui::Frame {
+                                inner_margin: egui::Margin::same(re_ui::ReUi::view_padding()),
+                                ..Default::default()
                             }
-
-                            self.modal_handler.ui(
-                                &self.re_ui,
-                                ui.ctx(),
-                                || re_ui::modal::Modal::new("Modal window"),
-                                |_, ui, _| ui.label("This is a modal window."),
-                            );
-
-                            // ---
-
-                            if ui.button("Open full span modal").clicked() {
-                                self.full_span_modal_handler.open();
-                            }
-
-                            self.full_span_modal_handler.ui(
-                                &self.re_ui,
-                                ui.ctx(),
-                                || re_ui::modal::Modal::new("Modal window").full_span_content(true),
-                                |_, ui, _| {
-                                    for idx in 0..10 {
-                                        ListItem::new(&self.re_ui, format!("Item {idx}"))
-                                            .show_flat(ui);
-                                    }
-                                },
-                            );
-
-                            // ---
-
-                            self.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                                ui.label("Some data here");
-                            });
-                            self.re_ui
-                                .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                                    ui.style_mut().wrap = Some(false);
-                                    ui.label("Some blueprint stuff here, that might be wide.");
-                                    self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
-
-                                    self.re_ui.collapsing_header(
-                                        ui,
-                                        "Collapsing header",
-                                        true,
-                                        |ui| {
-                                            ui.label("Some data here");
-                                            self.re_ui.checkbox(
-                                                ui,
-                                                &mut self.dummy_bool,
-                                                "Checkbox",
-                                            );
-                                        },
-                                    );
-                                });
+                            .show(ui, left_panel_bottom_section_ui);
                         });
-                    });
+                });
             });
 
         // RIGHT PANEL
@@ -301,7 +298,7 @@ impl eframe::App for ExampleApp {
         //   `Frame`.
         //
         // This way, the content (titles, etc.) is properly inset and benefits from a properly set
-        // clip rectangle for full-span behavior, without interference from the scroll areas.
+        // full-span scope, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
             fill: egui_ctx.style().visuals.panel_fill,

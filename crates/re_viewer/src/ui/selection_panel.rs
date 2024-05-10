@@ -67,11 +67,6 @@ impl SelectionPanel {
         ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
-            // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets
-            // like large collapsing headers. Here, no need to extend `ui.max_rect()` as the
-            // enclosing frame doesn't have inner margins.
-            ui.set_clip_rect(ui.max_rect());
-
             re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
                 ctx.re_ui.panel_content(ui, |_, ui| {
                     let hover = "The Selection View contains information and options about \
@@ -240,17 +235,15 @@ fn container_children(
         ..Default::default()
     }
     .show(ui, |ui| {
-        let clip_rect = ui.clip_rect();
-        ui.set_clip_rect(ui.max_rect());
-        ui.spacing_mut().item_spacing.y = 0.0;
+        re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
 
-        egui::Frame {
-            inner_margin: egui::Margin::symmetric(4.0, 0.0),
-            ..Default::default()
-        }
-        .show(ui, show_content);
-
-        ui.set_clip_rect(clip_rect);
+            egui::Frame {
+                inner_margin: egui::Margin::symmetric(4.0, 0.0),
+                ..Default::default()
+            }
+            .show(ui, show_content);
+        });
     });
 }
 

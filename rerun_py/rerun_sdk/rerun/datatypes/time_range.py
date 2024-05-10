@@ -16,6 +16,24 @@ from .._baseclasses import BaseBatch, BaseExtensionType
 __all__ = ["TimeRange", "TimeRangeArrayLike", "TimeRangeBatch", "TimeRangeLike", "TimeRangeType"]
 
 
+def _time_range__start__special_field_converter_override(
+    x: datatypes.TimeRangeBoundaryLike,
+) -> datatypes.TimeRangeBoundary:
+    if isinstance(x, datatypes.TimeRangeBoundary):
+        return x
+    else:
+        return datatypes.TimeRangeBoundary(x)
+
+
+def _time_range__end__special_field_converter_override(
+    x: datatypes.TimeRangeBoundaryLike,
+) -> datatypes.TimeRangeBoundary:
+    if isinstance(x, datatypes.TimeRangeBoundary):
+        return x
+    else:
+        return datatypes.TimeRangeBoundary(x)
+
+
 @define(init=False)
 class TimeRange:
     """**Datatype**: Visible time range bounds for a specific timeline."""
@@ -36,12 +54,12 @@ class TimeRange:
         # You can define your own __init__ function as a member of TimeRangeExt in time_range_ext.py
         self.__attrs_init__(start=start, end=end)
 
-    start: datatypes.TimeRangeBoundary = field()
+    start: datatypes.TimeRangeBoundary = field(converter=_time_range__start__special_field_converter_override)
     # Low time boundary for sequence timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    end: datatypes.TimeRangeBoundary = field()
+    end: datatypes.TimeRangeBoundary = field(converter=_time_range__end__special_field_converter_override)
     # High time boundary for sequence timeline.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -63,38 +81,22 @@ class TimeRangeType(BaseExtensionType):
             pa.struct([
                 pa.field(
                     "start",
-                    pa.struct([
-                        pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
+                    pa.dense_union([
+                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},
                 ),
                 pa.field(
                     "end",
-                    pa.struct([
-                        pa.field(
-                            "kind",
-                            pa.sparse_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("RelativeToTimeCursor", pa.null(), nullable=True, metadata={}),
-                                pa.field("Absolute", pa.null(), nullable=True, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field("time", pa.int64(), nullable=False, metadata={}),
+                    pa.dense_union([
+                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},
