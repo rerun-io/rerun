@@ -6,23 +6,17 @@ struct TextSize(egui::Vec2);
 /// Show a minimal welcome section.
 pub fn no_data_ui(ui: &mut egui::Ui) {
     re_ui::ReUi::center(ui, "no_data_ui_contents", |ui| {
-        let (style, line_height) = if ui.available_width() > 400.0 {
-            (re_ui::ReUi::welcome_screen_h1(), 50.0)
-        } else {
-            (re_ui::ReUi::welcome_screen_h2(), 36.0)
-        };
-
         ui.add(
             egui::Label::new(
                 egui::RichText::new(super::welcome_section::WELCOME_SCREEN_TITLE)
                     .weak()
-                    .line_height(Some(line_height))
-                    .text_style(style),
+                    .line_height(Some(36.0))
+                    .text_style(re_ui::ReUi::welcome_screen_h2()),
             )
             .wrap(true),
         );
 
-        ui.add_space(18.0);
+        ui.add_space(10.0);
 
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
