@@ -1270,6 +1270,7 @@ fn blueprint_loader() -> BlueprintPersistence {
     BlueprintPersistence {
         loader: None,
         saver: None,
+        validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
     }
 }
 
