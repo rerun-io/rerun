@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import os
-import sys
 from argparse import Namespace
 from typing import Any, Iterable
 from uuid import uuid4
