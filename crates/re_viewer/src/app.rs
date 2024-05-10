@@ -1046,7 +1046,11 @@ impl App {
                             );
                             let app_id = info.application_id.clone();
                             if cmd.make_default {
-                                store_hub.set_default_blueprint_for_app(&app_id, store_id);
+                                store_hub
+                                    .set_default_blueprint_for_app(&app_id, store_id)
+                                    .unwrap_or_else(|err| {
+                                        re_log::warn!("Failed to make blueprint default: {err}");
+                                    });
                             }
                             if cmd.make_active {
                                 store_hub
@@ -1266,6 +1270,7 @@ fn blueprint_loader() -> BlueprintPersistence {
     BlueprintPersistence {
         loader: None,
         saver: None,
+        validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
     }
 }
 
@@ -1318,6 +1323,7 @@ fn blueprint_loader() -> BlueprintPersistence {
     BlueprintPersistence {
         loader: Some(Box::new(load_blueprint_from_disk)),
         saver: Some(Box::new(save_blueprint_to_disk)),
+        validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
     }
 }
 
