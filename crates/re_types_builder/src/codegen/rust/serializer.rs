@@ -591,7 +591,9 @@ fn quote_arrow_field_serializer(
 
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
-                    ).unwrap().into();
+                    )
+                    .map_err(|err| std::sync::Arc::new(err))?
+                    .into();
                 }
             } else {
                 quote! {
@@ -600,7 +602,9 @@ fn quote_arrow_field_serializer(
 
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
-                    ).unwrap().into();
+                    )
+                    .map_err(|err| std::sync::Arc::new(err))?
+                    .into();
                 }
             };
 

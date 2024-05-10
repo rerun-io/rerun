@@ -202,8 +202,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
-                            .unwrap()
+                            .map_err(|err| std::sync::Arc::new(err))?
                             .into();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -248,8 +249,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
-                            .unwrap()
+                            .map_err(|err| std::sync::Arc::new(err))?
                             .into();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -374,7 +376,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                             .iter()
                                             .map(|datum| datum.0.len()),
                                     )
-                                    .unwrap()
+                                    .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
@@ -448,7 +450,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                             .iter()
                                             .map(|datum| datum.0.len()),
                                     )
-                                    .unwrap()
+                                    .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
