@@ -16,6 +16,12 @@ pub trait ErasedFlatVecDeque: std::any::Any {
 
     fn into_any(self: Box<Self>) -> Box<dyn std::any::Any>;
 
+    /// Dynamically dispatches to [`FlatVecDeque::clone`].
+    ///
+    /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
+    /// avoid even with explicit syntax and that silently lead to infinite recursions.
+    fn dyn_clone(&self) -> Box<dyn ErasedFlatVecDeque + Send + Sync>;
+
     /// Dynamically dispatches to [`FlatVecDeque::num_entries`].
     ///
     /// This is prefixed with `dyn_` to avoid method dispatch ambiguities that are very hard to
@@ -53,7 +59,10 @@ pub trait ErasedFlatVecDeque: std::any::Any {
     fn dyn_total_size_bytes(&self) -> u64;
 }
 
-impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
+impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T>
+where
+    T: Send + Sync + Clone,
+{
     #[inline]
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -62,6 +71,11 @@ impl<T: SizeBytes + 'static> ErasedFlatVecDeque for FlatVecDeque<T> {
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    #[inline]
+    fn dyn_clone(&self) -> Box<dyn ErasedFlatVecDeque + Send + Sync> {
+        Box::new((*self).clone())
     }
 
     #[inline]

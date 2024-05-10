@@ -290,7 +290,12 @@ impl RangeCache {
             return;
         };
 
-        per_data_time.write().truncate_at_time(pending_invalidation);
+        // Invalidating data is tricky. Our results object may have been cloned and shared already.
+        // We can't just invalidate the data in-place without guaranteeing the post-invalidation query
+        // will return the same results as the pending pre-invalidation queries.
+        let mut new_inner = (*per_data_time.read()).clone();
+        new_inner.truncate_at_time(pending_invalidation);
+        per_data_time.inner = Arc::new(RwLock::new(new_inner));
     }
 }
 

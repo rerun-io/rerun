@@ -642,6 +642,20 @@ pub struct RangeComponentResultsInner {
     pub(crate) cached_dense: Option<Box<dyn ErasedFlatVecDeque + Send + Sync>>,
 }
 
+impl Clone for RangeComponentResultsInner {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            indices: self.indices.clone(),
+            promises_front: self.promises_front.clone(),
+            promises_back: self.promises_back.clone(),
+            front_status: self.front_status.clone(),
+            back_status: self.back_status.clone(),
+            cached_dense: self.cached_dense.as_ref().map(|dense| dense.dyn_clone()),
+        }
+    }
+}
+
 impl SizeBytes for RangeComponentResultsInner {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
