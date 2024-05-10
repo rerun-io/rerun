@@ -229,7 +229,7 @@ fn create_app(
         expect_data_soon: None,
         force_wgpu_backend: None,
     };
-    let re_ui = crate::customize_eframe(cc);
+    let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 

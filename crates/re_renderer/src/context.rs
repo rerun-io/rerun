@@ -120,7 +120,7 @@ impl RenderContext {
         device: Arc<wgpu::Device>,
         queue: Arc<wgpu::Queue>,
         config: RenderContextConfig,
-    ) -> Self {
+    ) -> Result<Self, String> {
         re_tracing::profile_function!();
 
         let frame_index_for_uncaptured_errors = Arc::new(AtomicU64::new(STARTUP_FRAME_IDX));
@@ -155,38 +155,46 @@ impl RenderContext {
         let global_bindings = GlobalBindings::new(&gpu_resources, &device);
 
         // Validate capabilities of the device.
-        assert!(
-            config.device_caps.limits().check_limits(&device.limits()),
-            "The given device doesn't support the required limits for the given hardware caps {:?}.
-            Required:
-            {:?}
-            Actual:
-            {:?}",
-            config.device_caps,
-            config.device_caps.limits(),
-            device.limits(),
-        );
-        assert!(
-            device.features().contains(config.device_caps.features()),
-            "The given device doesn't support the required features for the given hardware caps {:?}.
-            Required:
-            {:?}
-            Actual:
-            {:?}",
-            config.device_caps,
-            config.device_caps.features(),
-            device.features(),
-        );
-        assert!(adapter.get_downlevel_capabilities().flags.contains(config.device_caps.required_downlevel_capabilities().flags),
-            "The given device doesn't support the required downlevel capabilities for the given hardware caps {:?}.
-            Required:
-            {:?}
-            Actual:
-            {:?}",
-            config.device_caps,
-            config.device_caps.required_downlevel_capabilities(),
-            adapter.get_downlevel_capabilities(),
-        );
+        if !config.device_caps.limits().check_limits(&device.limits()) {
+            return Err(format!(
+                "The given device doesn't support the required limits for the given hardware caps {:?}.
+                Required:
+                {:?}
+                Actual:
+                {:?}",
+                config.device_caps,
+                config.device_caps.limits(),
+                device.limits(),
+            ));
+        }
+        if !device.features().contains(config.device_caps.features()) {
+            return Err(format!(
+                "The given device doesn't support the required features for the given hardware caps {:?}.
+                Required:
+                {:?}
+                Actual:
+                {:?}",
+                config.device_caps,
+                config.device_caps.features(),
+                device.features(),
+            ));
+        }
+        if !adapter
+            .get_downlevel_capabilities()
+            .flags
+            .contains(config.device_caps.required_downlevel_capabilities().flags)
+        {
+            return Err(format!(
+                "The given device doesn't support the required downlevel capabilities for the given hardware caps {:?}.
+                Required:
+                {:?}
+                Actual:
+                {:?}",
+                config.device_caps,
+                config.device_caps.required_downlevel_capabilities(),
+                adapter.get_downlevel_capabilities(),
+            ));
+        }
 
         let resolver = crate::new_recommended_file_resolver();
         let mesh_manager = RwLock::new(MeshManager::new());
@@ -222,7 +230,7 @@ impl RenderContext {
             Self::GPU_READBACK_BELT_DEFAULT_CHUNK_SIZE.unwrap(),
         ));
 
-        RenderContext {
+        Ok(RenderContext {
             device,
             queue,
             config,
@@ -240,7 +248,7 @@ impl RenderContext {
             active_frame,
             frame_index_for_uncaptured_errors,
             gpu_resources,
-        }
+        })
     }
 
     fn poll_device(&mut self) {
