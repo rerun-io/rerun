@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use re_log_types::{DataCell, EntityPath, TimePoint};
 use re_types::ComponentName;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiContext, ViewerContext};
 
 mod annotation_context;
 mod app_id;
@@ -59,7 +59,7 @@ pub trait DataUi {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     );
@@ -74,7 +74,7 @@ pub trait EntityDataUi {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
@@ -89,15 +89,15 @@ where
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        entity: &EntityPath,
+        ui_context: UiContext,
+        entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
-        ui.push_id(entity.hash(), |ui| {
-            self.data_ui(ctx, ui, verbosity, query, db);
+        ui.push_id(entity_path.hash(), |ui| {
+            self.data_ui(ctx, ui, ui_context, query, db);
         });
     }
 }
@@ -109,7 +109,7 @@ impl DataUi for TimePoint {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_context: UiContext,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -131,21 +131,21 @@ impl DataUi for [DataCell] {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let mut sorted = self.to_vec();
         sorted.sort_by_key(|cb| cb.component_name());
 
-        match verbosity {
-            UiVerbosity::List => {
+        match ui_context {
+            UiContext::List => {
                 ui.label(sorted.iter().map(format_cell).join(", "));
             }
 
-            UiVerbosity::SelectionPanelFull
-            | UiVerbosity::SelectionPanelLimitHeight
-            | UiVerbosity::Tooltip => {
+            UiContext::SelectionPanelFull
+            | UiContext::SelectionPanelLimitHeight
+            | UiContext::Tooltip => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_cell(component_bundle));
@@ -180,29 +180,29 @@ pub fn annotations(
 
 // ---------------------------------------------------------------------------
 
-/// Build an egui table and configure it for the given verbosity.
+/// Build an egui table and configure it for the given UI context.
 ///
 /// Note that the caller is responsible for strictly limiting the number of displayed rows for
-/// [`UiVerbosity::List`] and [`UiVerbosity::Tooltip`], as the table will not scroll.
-pub fn table_for_verbosity(
-    verbosity: UiVerbosity,
+/// [`UiContext::List`] and [`UiContext::Tooltip`], as the table will not scroll.
+pub fn table_for_ui_context(
+    ui_context: UiContext,
     ui: &mut egui::Ui,
 ) -> egui_extras::TableBuilder<'_> {
     let table = egui_extras::TableBuilder::new(ui);
-    match verbosity {
-        UiVerbosity::List | UiVerbosity::Tooltip => {
+    match ui_context {
+        UiContext::List | UiContext::Tooltip => {
             // Be as small as possible in the hover tooltips. No scrolling related configuration, as
             // the content itself must be limited (scrolling is not possible in tooltips).
             table.auto_shrink([true, true])
         }
-        UiVerbosity::SelectionPanelLimitHeight => {
+        UiContext::SelectionPanelLimitHeight => {
             // Don't take too much vertical space to leave room for other selected items.
             table
                 .auto_shrink([false, true])
                 .vscroll(true)
                 .max_scroll_height(100.0)
         }
-        UiVerbosity::SelectionPanelFull => {
+        UiContext::SelectionPanelFull => {
             // We're alone in the selection panel. Let the outer ScrollArea do the work.
             table.auto_shrink([false, true]).vscroll(false)
         }

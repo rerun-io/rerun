@@ -5,7 +5,7 @@
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ApplicationId, ComponentPath, EntityPath, TimeInt, Timeline};
 use re_ui::{icons, SyntaxHighlighting};
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext};
+use re_viewer_context::{HoverHighlight, Item, SpaceViewId, UiContext, ViewerContext};
 
 use super::DataUi;
 
@@ -535,7 +535,7 @@ pub fn instance_hover_card_ui(
         // TODO(emilk): per-component stats
     }
 
-    instance_path.data_ui(ctx, ui, UiVerbosity::Tooltip, query, db);
+    instance_path.data_ui(ctx, ui, UiContext::Tooltip, query, db);
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
@@ -569,7 +569,7 @@ pub fn app_id_button_ui(
         app_id.data_ui(
             ctx,
             ui,
-            re_viewer_context::UiVerbosity::Tooltip,
+            re_viewer_context::UiContext::Tooltip,
             &ctx.current_query(), // unused
             ctx.recording(),      // unused
         );
@@ -597,7 +597,7 @@ pub fn data_source_button_ui(
         data_source.data_ui(
             ctx,
             ui,
-            re_viewer_context::UiVerbosity::Tooltip,
+            re_viewer_context::UiContext::Tooltip,
             &ctx.current_query(),
             ctx.recording(), // unused
         );
@@ -700,7 +700,7 @@ pub fn entity_db_button_ui(
         entity_db.data_ui(
             ctx,
             ui,
-            re_viewer_context::UiVerbosity::Tooltip,
+            re_viewer_context::UiContext::Tooltip,
             &ctx.current_query(),
             entity_db,
         );

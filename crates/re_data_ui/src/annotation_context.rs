@@ -5,16 +5,16 @@ use re_types::components::AnnotationContext;
 use re_types::datatypes::{
     AnnotationInfo, ClassDescription, ClassDescriptionMapElem, KeypointId, KeypointPair,
 };
-use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
+use re_viewer_context::{auto_color, UiContext, ViewerContext};
 
-use super::{table_for_verbosity, DataUi};
+use super::{table_for_ui_context, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
         &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: re_viewer_context::UiVerbosity,
+        ui_context: UiContext,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
@@ -34,21 +34,21 @@ impl crate::EntityDataUi for re_types::components::ClassId {
             });
 
             let id = self.0;
-            match verbosity {
-                UiVerbosity::List => {
+            match ui_context {
+                UiContext::List => {
                     if !class.keypoint_connections.is_empty()
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ctx, ui, verbosity, class, id);
+                            class_description_ui(ctx, ui, ui_context, class, id);
                         });
                     }
                 }
-                UiVerbosity::Tooltip
-                | UiVerbosity::SelectionPanelFull
-                | UiVerbosity::SelectionPanelLimitHeight => {
+                UiContext::Tooltip
+                | UiContext::SelectionPanelFull
+                | UiContext::SelectionPanelLimitHeight => {
                     ui.separator();
-                    class_description_ui(ctx, ui, verbosity, class, id);
+                    class_description_ui(ctx, ui, ui_context, class, id);
                 }
             }
         } else {
@@ -60,9 +60,9 @@ impl crate::EntityDataUi for re_types::components::ClassId {
 impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
-        ctx: &re_viewer_context::ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: re_viewer_context::UiVerbosity,
+        _ui_context: UiContext,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
@@ -102,12 +102,12 @@ impl DataUi for AnnotationContext {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        match verbosity {
-            UiVerbosity::List | UiVerbosity::Tooltip => {
+        match ui_context {
+            UiContext::List | UiContext::Tooltip => {
                 if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
                     ui.label(format!(
@@ -119,7 +119,7 @@ impl DataUi for AnnotationContext {
                     ui.label(format!("{} classes", self.0.len()));
                 }
             }
-            UiVerbosity::SelectionPanelLimitHeight | UiVerbosity::SelectionPanelFull => {
+            UiContext::SelectionPanelLimitHeight | UiContext::SelectionPanelFull => {
                 ui.vertical(|ui| {
                     ctx.re_ui
                         .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
@@ -129,7 +129,7 @@ impl DataUi for AnnotationContext {
                                 .map(|class| &class.class_description.info)
                                 .sorted_by_key(|info| info.id)
                                 .collect_vec();
-                            annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                            annotation_info_table_ui(ui, ui_context, &annotation_infos);
                         });
 
                     for ClassDescriptionMapElem {
@@ -137,7 +137,7 @@ impl DataUi for AnnotationContext {
                         class_description,
                     } in &self.0
                     {
-                        class_description_ui(ctx, ui, verbosity, class_description, *class_id);
+                        class_description_ui(ctx, ui, ui_context, class_description, *class_id);
                     }
                 });
             }
@@ -148,7 +148,7 @@ impl DataUi for AnnotationContext {
 fn class_description_ui(
     ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    mut verbosity: UiVerbosity,
+    mut ui_context: UiContext,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -158,13 +158,13 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible = verbosity == UiVerbosity::SelectionPanelLimitHeight
-        || verbosity == UiVerbosity::SelectionPanelFull;
+    let use_collapsible = ui_context == UiContext::SelectionPanelLimitHeight
+        || ui_context == UiContext::SelectionPanelFull;
 
     // We use collapsible header as a means for the user to limit the height, so the annotation info
     // tables can be fully unrolled.
-    if verbosity == UiVerbosity::SelectionPanelLimitHeight {
-        verbosity = UiVerbosity::SelectionPanelFull;
+    if ui_context == UiContext::SelectionPanelLimitHeight {
+        ui_context = UiContext::SelectionPanelFull;
     }
 
     let row_height = re_ui::ReUi::table_line_height();
@@ -181,7 +181,7 @@ fn class_description_ui(
                     .sorted_by_key(|annotation| annotation.id)
                     .collect_vec();
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                    annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                    annotation_info_table_ui(ui, ui_context, &annotation_infos);
                 });
             },
         );
@@ -197,7 +197,7 @@ fn class_description_ui(
                 ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
                     use egui_extras::Column;
 
-                    let table = table_for_verbosity(verbosity, ui)
+                    let table = table_for_ui_context(ui_context, ui)
                         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                         .column(Column::auto().clip(true).at_least(40.0))
                         .column(Column::auto().clip(true).at_least(40.0));
@@ -254,7 +254,7 @@ fn class_description_ui(
 
 fn annotation_info_table_ui(
     ui: &mut egui::Ui,
-    verbosity: UiVerbosity,
+    ui_context: UiContext,
     annotation_infos: &[&AnnotationInfo],
 ) {
     re_tracing::profile_function!();
@@ -265,7 +265,7 @@ fn annotation_info_table_ui(
 
     use egui_extras::Column;
 
-    let table = table_for_verbosity(verbosity, ui)
+    let table = table_for_ui_context(ui_context, ui)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label

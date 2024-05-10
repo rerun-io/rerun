@@ -10,7 +10,7 @@ use re_viewer::external::{
         SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
         SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
         SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-        UiVerbosity, ViewQuery, ViewerContext,
+        UiContext, ViewQuery, ViewerContext,
     },
 };
 
@@ -278,7 +278,7 @@ fn color_space_ui(
                 instance.data_ui(
                     ctx,
                     ui,
-                    UiVerbosity::Tooltip,
+                    UiContext::Tooltip,
                     &ctx.current_query(),
                     ctx.recording(),
                 );

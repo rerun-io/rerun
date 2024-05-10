@@ -9,7 +9,7 @@ use crate::ViewerContext;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UiVerbosity {
+pub enum UiContext {
     /// Display a short summary. Used in lists.
     ///
     /// Keep it small enough to fit on half a row. Text should truncate.
@@ -18,21 +18,21 @@ pub enum UiVerbosity {
     /// Display as much information as possible in a compact way. Used for hovering/tooltips.
     ///
     /// Keep it under a half-dozen lines. Text may wrap. Avoid interactive UI. When using a table,
-    /// use the `re_data_ui::table_for_verbosity` function.
+    /// use the `re_data_ui::table_for_ui_context` function.
     Tooltip,
 
     /// Display everything as wide as available but limit height. Used in the selection panel when
     /// multiple items are selected.
     ///
     /// When displaying lists, wrap them in a height-limited [`egui::ScrollArea`]. When using a
-    /// table, use the `re_data_ui::table_for_verbosity` function.
+    /// table, use the `re_data_ui::table_for_ui_context` function.
     SelectionPanelLimitHeight,
 
     /// Display everything as wide as available, without height restriction. Used in the selection
     /// panel when a single item is selected.
     ///
     /// The UI will be wrapped in a [`egui::ScrollArea`], so data should be fully displayed with no
-    /// restriction. When using a table, use the `re_data_ui::table_for_verbosity` function.
+    /// restriction. When using a table, use the `re_data_ui::table_for_ui_context` function.
     SelectionPanelFull,
 }
 
@@ -40,7 +40,7 @@ type ComponentUiCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiContext,
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
@@ -54,7 +54,7 @@ type ComponentEditCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiContext,
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
@@ -120,7 +120,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
@@ -141,7 +141,7 @@ impl ComponentUiRegistry {
         (*ui_callback)(
             ctx,
             ui,
-            verbosity,
+            ui_context,
             query,
             db,
             entity_path,
@@ -156,7 +156,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
@@ -175,7 +175,7 @@ impl ComponentUiRegistry {
             (*edit_callback)(
                 ctx,
                 ui,
-                verbosity,
+                ui_context,
                 query,
                 db,
                 entity_path,
@@ -188,7 +188,7 @@ impl ComponentUiRegistry {
             self.ui(
                 ctx,
                 ui,
-                verbosity,
+                ui_context,
                 query,
                 db,
                 entity_path,

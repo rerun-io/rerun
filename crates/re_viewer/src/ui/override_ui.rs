@@ -8,7 +8,7 @@ use re_log_types::{DataRow, RowId, StoreKind};
 use re_space_view::{determine_visualizable_entities, SpaceViewBlueprint};
 use re_types_core::{components::VisualizerOverrides, ComponentName};
 use re_viewer_context::{
-    DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiVerbosity,
+    DataResult, OverridePath, SystemCommand, SystemCommandSender as _, UiContext,
     ViewSystemIdentifier, ViewerContext,
 };
 
@@ -134,7 +134,7 @@ pub fn override_ui(
                     ctx.component_ui_registry.edit_ui(
                         ctx,
                         ui,
-                        UiVerbosity::List,
+                        UiContext::List,
                         &query,
                         ctx.recording(),
                         entity_path_overridden,

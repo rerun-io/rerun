@@ -1,5 +1,5 @@
 use re_types::components::{PinholeProjection, Resolution};
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiContext, ViewerContext};
 
 use crate::DataUi;
 
@@ -8,11 +8,11 @@ impl DataUi for PinholeProjection {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_context: UiContext,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        if verbosity == UiVerbosity::List {
+        if ui_context == UiContext::List {
             // See if this is a trivial pinhole, and can be displayed as such:
             let fl = self.focal_length_in_pixels();
             let pp = self.principal_point();
@@ -24,12 +24,12 @@ impl DataUi for PinholeProjection {
                 };
 
                 ui.label(format!("Focal length: {fl}\nPrincipal point: {pp}"))
-                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Tooltip, query, db));
+                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiContext::Tooltip, query, db));
                 return;
             }
         }
 
-        self.0.data_ui(ctx, ui, verbosity, query, db);
+        self.0.data_ui(ctx, ui, ui_context, query, db);
     }
 }
 
@@ -38,7 +38,7 @@ impl DataUi for Resolution {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_context: UiContext,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
