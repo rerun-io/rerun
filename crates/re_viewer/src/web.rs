@@ -235,7 +235,7 @@ fn create_app(
         is_in_notebook: is_in_notebook(&cc.integration_info),
         expect_data_soon: None,
         force_wgpu_backend: None,
-        hide_welcome_screen: hide_welcome_screen,
+        hide_welcome_screen,
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 
