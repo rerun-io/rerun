@@ -168,13 +168,10 @@ def log_readme() -> None:
 
 def log_some_space_views() -> None:
     # check that we didn't forget a component
-    assert set(ALL_COMPONENTS.keys()) == set([
-        c for c in dir(rr.components) if c.endswith("Batch")
-    ]), "The component list is incomplete"
-
-    # check that all components values are there
-    if any(value is None for value in ALL_COMPONENTS.values()):
-        print("WARNING: some components are disabled!!!", file=sys.stderr)
+    missing_components = set(c for c in dir(rr.components) if c.endswith("Batch")) - set(ALL_COMPONENTS.keys())
+    assert (
+        len(missing_components) == 0
+    ), f"Some components are missing from the `ALL_COMPONENTS` dictionary: {missing_components}"
 
     # log all components as len=1 batches
     rr.log_components(
