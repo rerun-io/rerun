@@ -142,6 +142,15 @@ fn recording_list_ui(
         }
     }
 
+    if entity_dbs_map.is_empty() && welcome_screen_state.hide {
+        ctx.re_ui
+            .list_item("No recordings loaded")
+            .weak(true)
+            .italics(true)
+            .interactive(false)
+            .show_flat(ui);
+    }
+
     for (app_id, entity_dbs) in entity_dbs_map {
         app_and_its_recordings_ui(ctx, ui, &app_id, entity_dbs);
     }

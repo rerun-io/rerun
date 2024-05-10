@@ -25,6 +25,7 @@ pub use self::{
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
+use std::hash::Hash;
 
 // ---------------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ pub enum LabelStyle {
 use egui::emath::{Rangef, Rot2};
 use egui::{
     epaint::util::FloatOrd, pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape,
-    Vec2, Widget,
+    Ui, Vec2, Widget,
 };
 
 #[derive(Debug, Clone)]
@@ -1161,6 +1162,69 @@ impl ReUi {
             egui::Stroke::NONE,
         ));
         painter.vline(x, (y_min + w)..=y_max, stroke);
+    }
+
+    /// Draw a bullet (for text lists).
+    pub fn bullet(ui: &mut Ui, color: Color32) {
+        static DIAMETER: f32 = 6.0;
+        let (rect, _) =
+            ui.allocate_exact_size(egui::vec2(DIAMETER, DIAMETER), egui::Sense::hover());
+
+        ui.painter().add(egui::epaint::CircleShape {
+            center: rect.center(),
+            radius: DIAMETER / 2.0,
+            fill: color,
+            stroke: egui::Stroke::NONE,
+        });
+    }
+
+    /// Center the content within [`egui::Ui::max_rect()`].
+    ///
+    /// The `add_contents` closure is executed in the context of a vertical layout.
+    pub fn center<R>(
+        ui: &mut egui::Ui,
+        id_source: impl Hash,
+        add_contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        // Strategy:
+        // - estimate the size allocated by the `add_contents` closure
+        // - add space based on the estimated size and `ui.max_size()`
+        //
+        // The estimation is done by recording the cursor position before and after the closure in
+        // nested vertical/horizontal UIs such as for `ui.cursor()` to return the correct info.
+
+        #[derive(Clone, Copy)]
+        struct TextSize(egui::Vec2);
+
+        let id = ui.make_persistent_id(id_source);
+
+        let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
+
+        // ensure the current ui has a vertical orientation so the space we add is in the correct
+        // direction
+        ui.vertical(|ui| {
+            if let Some(text_size) = text_size {
+                ui.add_space(ui.available_height() / 2.0 - text_size.0.y / 2.0);
+            }
+
+            ui.horizontal(|ui| {
+                if let Some(text_size) = text_size {
+                    ui.add_space(ui.available_width() / 2.0 - text_size.0.x / 2.0);
+                }
+
+                let starting_pos = ui.cursor().min;
+                let (result, end_y) = ui
+                    .vertical(|ui| (add_contents(ui), ui.cursor().min.y))
+                    .inner;
+
+                let end_pos = egui::pos2(ui.cursor().min.x, end_y);
+                ui.data_mut(|writer| writer.insert_temp(id, TextSize(end_pos - starting_pos)));
+
+                result
+            })
+            .inner
+        })
+        .inner
     }
 }
 

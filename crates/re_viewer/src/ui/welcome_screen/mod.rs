@@ -1,12 +1,11 @@
 mod example_section;
+mod no_data_ui;
 mod welcome_section;
 
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use welcome_section::welcome_section_ui;
 
 use crate::app_state::WelcomeScreenState;
-
-use super::no_data_ui;
 
 #[derive(Default)]
 pub struct WelcomeScreen {
@@ -51,7 +50,7 @@ impl WelcomeScreen {
                 }
                 .show(ui, |ui| {
                     if welcome_screen_state.hide {
-                        no_data_ui(ui);
+                        no_data_ui::no_data_ui(ui);
                     } else {
                         self.example_page
                             .ui(ui, re_ui, command_sender, &welcome_section_ui);
