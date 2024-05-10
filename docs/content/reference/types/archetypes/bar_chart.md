@@ -21,7 +21,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 ### Simple bar chart
 
-snippet: bar_chart
+snippet: archetypes/bar_chart
 
 <picture data-inline-viewer="snippets/bar_chart">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/480w.png">

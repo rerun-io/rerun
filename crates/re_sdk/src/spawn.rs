@@ -132,7 +132,11 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect`] or use [`crate::RecordingStream::spawn`] directly.
+#[allow(unsafe_code)]
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+    #[cfg(target_family = "unix")]
+    use std::os::unix::process::CommandExt as _;
+
     use std::{net::TcpStream, process::Command, time::Duration};
 
     // NOTE: These are indented on purpose, it just looks better and reads easier.
@@ -244,17 +248,32 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         }
     }
 
-    let rerun_bin = Command::new(&executable_path)
-        // By default stdin is inherited which may cause issues in some debugger setups.
-        // Also, there's really no reason to forward stdin to the child process in this case.
-        // `stdout`/`stderr` we leave at default inheritance because it can be useful to see the Viewer's output.
+    let mut rerun_bin = Command::new(&executable_path);
+
+    // By default stdin is inherited which may cause issues in some debugger setups.
+    // Also, there's really no reason to forward stdin to the child process in this case.
+    // `stdout`/`stderr` we leave at default inheritance because it can be useful to see the Viewer's output.
+    rerun_bin
         .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
         .arg("--expect-data-soon")
-        .args(opts.extra_args.clone())
-        .spawn()
-        .map_err(map_err)?;
+        .args(opts.extra_args.clone());
+
+    // SAFETY: This code is only run in the child fork, we are not modifying any memory
+    // that is shared with the parent process.
+    #[cfg(target_family = "unix")]
+    unsafe {
+        rerun_bin.pre_exec(|| {
+            // On unix systems, we want to make sure that the child process becomes its
+            // own session leader, so that it doesn't die if the parent process crashes
+            // or is killed.
+            libc::setsid();
+
+            Ok(())
+        })
+    };
+    rerun_bin.spawn().map_err(map_err)?;
 
     if opts.wait_for_bind {
         // Give the newly spawned Rerun Viewer some time to bind.

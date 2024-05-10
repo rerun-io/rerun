@@ -22,7 +22,7 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 
 ### Disconnected space
 
-snippet: disconnected_space
+snippet: archetypes/disconnected_space
 
 <picture data-inline-viewer="snippets/disconnected_space">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/480w.png">

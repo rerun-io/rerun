@@ -24,7 +24,7 @@ The `RERUN` environment variable is read once during SDK initialization. The acc
 
 The "default-on" behavior can also be changed to a "default-off" behavior:
 
-snippet: default-off-session
+snippet: tutorials/default-off-session
 
 ## Dynamically turn logging on/off
 

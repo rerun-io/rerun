@@ -76,6 +76,9 @@ re_web_viewer_server = { workspace = true, optional = true }
 anyhow = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
 
+# Native unix dependencies:
+[target.'cfg(target_family = "unix")'.dependencies]
+libc.workspace = true
 
 [dev-dependencies]
 re_data_store.workspace = true

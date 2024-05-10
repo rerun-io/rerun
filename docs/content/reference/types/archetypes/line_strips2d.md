@@ -21,7 +21,7 @@ title: "LineStrips2D"
 
 ### line_strip2d_simple
 
-snippet: line_strip2d_simple
+snippet: archetypes/line_strip2d_simple
 
 <picture data-inline-viewer="snippets/line_strip2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/480w.png">
@@ -33,7 +33,7 @@ snippet: line_strip2d_simple
 
 ### line_segments2d_simple
 
-snippet: line_segments2d_simple
+snippet: archetypes/line_segments2d_simple
 
 <picture data-inline-viewer="snippets/line_segments2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/480w.png">
@@ -45,7 +45,7 @@ snippet: line_segments2d_simple
 
 ### line_strip2d_batch
 
-snippet: line_strip2d_batch
+snippet: archetypes/line_strip2d_batch
 
 <picture data-inline-viewer="snippets/line_strip2d_batch">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/480w.png">

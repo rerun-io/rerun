@@ -301,6 +301,10 @@ impl AppState {
             focused_item,
         };
 
+        //
+        // Blueprint time panel
+        //
+
         if app_options.inspect_blueprint_timeline {
             blueprint_panel.show_panel(
                 &ctx,
@@ -311,6 +315,11 @@ impl AppState {
                 true,
             );
         }
+
+        //
+        // Time panel
+        //
+
         time_panel.show_panel(
             &ctx,
             &viewport_blueprint,
@@ -320,6 +329,10 @@ impl AppState {
             app_blueprint.time_panel_expanded,
         );
 
+        //
+        // Selection Panel
+        //
+
         selection_panel.show_panel(
             &ctx,
             ui,
@@ -327,67 +340,81 @@ impl AppState {
             app_blueprint.selection_panel_expanded,
         );
 
-        let central_panel_frame = egui::Frame {
+        //
+        // Left panel (recordings and blueprint)
+        //
+
+        let mut left_panel = egui::SidePanel::left("blueprint_panel")
+            .resizable(true)
+            .frame(egui::Frame {
+                fill: ui.visuals().panel_fill,
+                ..Default::default()
+            })
+            .min_width(120.0)
+            .default_width(default_blueprint_panel_width(
+                ui.ctx().screen_rect().width(),
+            ));
+
+        let show_welcome =
+            store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
+
+        //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
+        left_panel = left_panel
+            .frame(egui::Frame::default())
+            .show_separator_line(false);
+
+        left_panel.show_animated_inside(
+            ui,
+            app_blueprint.blueprint_panel_expanded,
+            |ui: &mut egui::Ui| {
+                //TODO(#6256): workaround for https://github.com/emilk/egui/issues/4475
+                let max_rect = ui.max_rect();
+                ui.painter()
+                    .rect_filled(max_rect, 0.0, ui.visuals().panel_fill);
+                ui.painter().vline(
+                    max_rect.right(),
+                    max_rect.y_range(),
+                    ui.visuals().widgets.noninteractive.bg_stroke,
+                );
+                ui.set_clip_rect(max_rect);
+
+                re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
+                    // ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    ui.spacing_mut().item_spacing.y = 0.0;
+
+                    let pre_cursor = ui.cursor();
+                    recordings_panel_ui(&ctx, rx, ui);
+                    let any_recording_shows = pre_cursor == ui.cursor();
+
+                    if any_recording_shows {
+                        ui.add_space(4.0);
+                    }
+
+                    if !show_welcome {
+                        blueprint_panel_ui(&mut viewport, &ctx, ui);
+                    }
+                });
+            },
+        );
+
+        //
+        // Viewport
+        //
+
+        let viewport_frame = egui::Frame {
             fill: ui.style().visuals.panel_fill,
-            inner_margin: egui::Margin::same(0.0),
             ..Default::default()
         };
 
         egui::CentralPanel::default()
-            .frame(central_panel_frame)
+            .frame(viewport_frame)
             .show_inside(ui, |ui| {
-                let left_panel = egui::SidePanel::left("blueprint_panel")
-                    .resizable(true)
-                    .frame(egui::Frame {
-                        fill: ui.visuals().panel_fill,
-                        ..Default::default()
-                    })
-                    .min_width(120.0)
-                    .default_width(default_blueprint_panel_width(
-                        ui.ctx().screen_rect().width(),
-                    ));
-
-                let show_welcome =
-                    store_context.blueprint.app_id() == Some(&StoreHub::welcome_screen_app_id());
-
-                left_panel.show_animated_inside(
-                    ui,
-                    app_blueprint.blueprint_panel_expanded,
-                    |ui: &mut egui::Ui| {
-                        re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), |ui| {
-                            // ListItem don't need vertical spacing so we disable it, but restore it
-                            // before drawing the blueprint panel.
-                            ui.spacing_mut().item_spacing.y = 0.0;
-
-                            let pre_cursor = ui.cursor();
-                            recordings_panel_ui(&ctx, rx, ui);
-                            let any_recording_shows = pre_cursor == ui.cursor();
-
-                            if any_recording_shows {
-                                ui.add_space(4.0);
-                            }
-
-                            if !show_welcome {
-                                blueprint_panel_ui(&mut viewport, &ctx, ui);
-                            }
-                        });
-                    },
-                );
-
-                let viewport_frame = egui::Frame {
-                    fill: ui.style().visuals.panel_fill,
-                    ..Default::default()
-                };
-
-                egui::CentralPanel::default()
-                    .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
-                        if show_welcome {
-                            welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_opacity);
-                        } else {
-                            viewport.viewport_ui(ui, &ctx);
-                        }
-                    });
+                if show_welcome {
+                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_opacity);
+                } else {
+                    viewport.viewport_ui(ui, &ctx);
+                }
             });
 
         // Process deferred layout operations and apply updates back to blueprint

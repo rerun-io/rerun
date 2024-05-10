@@ -20,7 +20,8 @@ namespace rerun.blueprint.archetypes;
 /// - For any other view, the default is to apply latest-at semantics.
 table VisibleTimeRanges (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
+    "attr.rust.derive": "Default",
+    "attr.python.aliases": "datatypes.VisibleTimeRangeLike, Sequence[datatypes.VisibleTimeRangeLike]"
 ) {
     /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     ///

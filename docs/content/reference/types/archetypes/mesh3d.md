@@ -21,7 +21,7 @@ A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 
 ### Simple indexed 3D mesh
 
-snippet: mesh3d_indexed
+snippet: archetypes/mesh3d_indexed
 
 <picture data-inline-viewer="snippets/mesh3d_indexed">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/480w.png">
@@ -33,7 +33,7 @@ snippet: mesh3d_indexed
 
 ### 3D mesh with partial updates
 
-snippet: mesh3d_partial_updates
+snippet: archetypes/mesh3d_partial_updates
 
 <picture data-inline-viewer="snippets/mesh3d_partial_updates">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_partial_updates/a11e4accb0257dcd9531867b7e1d6fd5e3bee5c3/480w.png">

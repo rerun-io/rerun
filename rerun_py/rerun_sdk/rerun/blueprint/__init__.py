@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+# Re-export time range types for better discoverability.
+from ..datatypes import (
+    TimeRange,
+    TimeRangeBoundary,
+)
 from . import archetypes, components
 from .api import (
     Blueprint,
@@ -16,7 +21,7 @@ from .archetypes import (
     Background,
     PlotLegend,
     ScalarAxis,
-    # VisibleTimeRange, # Don't expose this mono-archetype directly - one can always use the component instead!
+    # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds,
 )
 from .components import (
