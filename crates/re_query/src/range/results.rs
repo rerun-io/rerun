@@ -761,9 +761,10 @@ impl RangeComponentResultsInner {
             }),
             "back promises must always be sorted in ascending index order"
         );
-        if let (Some(p_index), Some(i_index)) =
-            (promises_back.last().map(|(index, _)| index), indices.back())
-        {
+        if let (Some(p_index), Some(i_index)) = (
+            promises_back.first().map(|(index, _)| index),
+            indices.back(),
+        ) {
             assert!(
                 i_index < p_index,
                 "the leftmost back promise must have an index larger than the rightmost data index ({i_index:?} < {p_index:?})",
