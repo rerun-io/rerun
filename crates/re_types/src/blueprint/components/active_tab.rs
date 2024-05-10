@@ -125,7 +125,7 @@ impl ::re_types_core::Loggable for ActiveTab {
                             })
                             .unwrap_or_default()
                     }))
-                    .unwrap()
+                    .map_err(|err| std::sync::Arc::new(err))?
                     .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]

@@ -32,6 +32,10 @@ pub enum SerializationError {
         reason: String,
         backtrace: _Backtrace,
     },
+
+    /// E.g. too many values (overflows i32).
+    #[error("Arrow error")]
+    ArrowError(#[from] std::sync::Arc<arrow2::error::Error>),
 }
 
 impl std::fmt::Debug for SerializationError {
@@ -84,7 +88,7 @@ impl SerializationError {
             Self::MissingExtensionMetadata { backtrace, .. }
             | Self::SerdeFailure { backtrace, .. }
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
-            SerializationError::Context { .. } => None,
+            Self::ArrowError { .. } | Self::Context { .. } => None,
         }
     }
 }
