@@ -51,7 +51,13 @@ export class WebViewer {
     if (this.#state !== "starting") return;
 
     this.#handle = new WebHandle_class();
-    await this.#handle.start(this.#canvas.id, undefined, undefined, undefined, hide_welcome_screen);
+    await this.#handle.start(
+      this.#canvas.id,
+      undefined,
+      undefined,
+      undefined,
+      hide_welcome_screen,
+    );
     if (this.#state !== "starting") return;
 
     if (this.#handle.has_panicked()) {
