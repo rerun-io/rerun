@@ -49,6 +49,7 @@ impl WebHandle {
         url: Option<String>,
         manifest_url: Option<String>,
         force_wgpu_backend: Option<String>,
+        hide_welcome_screen: Option<bool>,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
@@ -63,7 +64,12 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, &url, &manifest_url);
+                    let app = create_app(
+                        cc,
+                        &url,
+                        &manifest_url,
+                        hide_welcome_screen.unwrap_or(false),
+                    );
                     Box::new(app)
                 }),
             )
@@ -213,6 +219,7 @@ fn create_app(
     cc: &eframe::CreationContext<'_>,
     url: &Option<String>,
     manifest_url: &Option<String>,
+    hide_welcome_screen: bool,
 ) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web {
@@ -228,6 +235,7 @@ fn create_app(
         is_in_notebook: is_in_notebook(&cc.integration_info),
         expect_data_soon: None,
         force_wgpu_backend: None,
+        hide_welcome_screen: hide_welcome_screen,
     };
     let re_ui = crate::customize_eframe_and_setup_renderer(cc);
 

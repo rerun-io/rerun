@@ -44,6 +44,9 @@ pub struct SpawnOptions {
 
     /// Extra arguments that will be passed as-is to the Rerun Viewer process.
     pub extra_args: Vec<String>,
+
+    /// Hide the welcome screen.
+    pub hide_welcome_screen: bool,
 }
 
 // NOTE: No need for .exe extension on windows.
@@ -58,6 +61,7 @@ impl Default for SpawnOptions {
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
+            hide_welcome_screen: false,
         }
     }
 }
@@ -257,8 +261,13 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         .stdin(std::process::Stdio::null())
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
-        .arg("--expect-data-soon")
-        .args(opts.extra_args.clone());
+        .arg("--expect-data-soon");
+
+    if opts.hide_welcome_screen {
+        rerun_bin.arg("--hide-welcome-screen");
+    }
+
+    rerun_bin.args(opts.extra_args.clone());
 
     // SAFETY: This code is only run in the child fork, we are not modifying any memory
     // that is shared with the parent process.

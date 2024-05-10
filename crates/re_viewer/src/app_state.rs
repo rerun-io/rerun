@@ -72,6 +72,14 @@ impl Default for AppState {
     }
 }
 
+pub(crate) struct WelcomeScreenState {
+    /// The normal welcome screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide: bool,
+
+    /// The opacity of the welcome screen during fade-in.
+    pub opacity: f32,
+}
+
 impl AppState {
     pub fn set_examples_manifest_url(&mut self, egui_ctx: &egui::Context, url: String) {
         self.welcome_screen.set_examples_manifest_url(egui_ctx, url);
@@ -114,7 +122,7 @@ impl AppState {
         space_view_class_registry: &SpaceViewClassRegistry,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &CommandSender,
-        welcome_screen_opacity: f32,
+        welcome_screen_state: &WelcomeScreenState,
     ) {
         re_tracing::profile_function!();
 
@@ -384,7 +392,7 @@ impl AppState {
                     ui.spacing_mut().item_spacing.y = 0.0;
 
                     let pre_cursor = ui.cursor();
-                    recordings_panel_ui(&ctx, rx, ui);
+                    recordings_panel_ui(&ctx, rx, ui, welcome_screen_state);
                     let any_recording_shows = pre_cursor == ui.cursor();
 
                     if any_recording_shows {
@@ -411,7 +419,7 @@ impl AppState {
             .frame(viewport_frame)
             .show_inside(ui, |ui| {
                 if show_welcome {
-                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_opacity);
+                    welcome_screen.ui(ui, re_ui, command_sender, welcome_screen_state);
                 } else {
                     viewport.viewport_ui(ui, &ctx);
                 }

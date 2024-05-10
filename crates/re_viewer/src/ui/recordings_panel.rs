@@ -9,9 +9,16 @@ use re_viewer_context::{
     Item, StoreHub, SystemCommand, SystemCommandSender, UiVerbosity, ViewerContext,
 };
 
+use crate::app_state::WelcomeScreenState;
+
 /// Show the currently open Recordings in a selectable list.
 /// Also shows the currently loading receivers.
-pub fn recordings_panel_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &mut egui::Ui) {
+pub fn recordings_panel_ui(
+    ctx: &ViewerContext<'_>,
+    rx: &ReceiveSet<LogMsg>,
+    ui: &mut egui::Ui,
+    welcome_screen_state: &WelcomeScreenState,
+) {
     ctx.re_ui.panel_content(ui, |re_ui, ui| {
         re_ui.panel_title_bar_with_buttons(
             ui,
@@ -31,7 +38,7 @@ pub fn recordings_panel_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui:
         .max_height(300.)
         .show(ui, |ui| {
             ctx.re_ui.panel_content(ui, |_re_ui, ui| {
-                recording_list_ui(ctx, ui);
+                recording_list_ui(ctx, ui, welcome_screen_state);
 
                 // Show currently loading things after.
                 // They will likely end up here as recordings soon.
@@ -91,7 +98,11 @@ fn loading_receivers_ui(ctx: &ViewerContext<'_>, rx: &ReceiveSet<LogMsg>, ui: &m
 }
 
 /// Draw the recording list.
-fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
+fn recording_list_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    welcome_screen_state: &WelcomeScreenState,
+) {
     let mut entity_dbs_map: BTreeMap<ApplicationId, Vec<&EntityDb>> = BTreeMap::new();
 
     // Always have a place for the welcome screen, even if there is no recordings or blueprints associated with it:
@@ -116,6 +127,7 @@ fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         if ctx
             .app_options
             .include_welcome_screen_button_in_recordings_panel
+            && !welcome_screen_state.hide
         {
             debug_assert!(
                 entity_dbs.is_empty(),
