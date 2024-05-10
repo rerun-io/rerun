@@ -8,6 +8,7 @@ import * as rerun from "@rerun-io/web-viewer";
  *                                   and close any URLs which are not present.
  * @property {string} [width] CSS width of the viewer's parent div
  * @property {string} [height] CSS height of the viewer's parent div
+ * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen. Default is `false`.
  */
 
 /**
@@ -27,17 +28,21 @@ export default class WebViewer extends React.Component {
   /** @type {string[]} */
   #recordings = [];
 
+  /** @type {boolean} */
+  #hide_welcome_screen = false;
+
   /** @param {Props} props */
   constructor(props) {
     super(props);
 
     this.#handle = new rerun.WebViewer();
     this.#recordings = toArray(props.rrd);
+    this.#hide_welcome_screen = props.hide_welcome_screen ?? false;
   }
 
   componentDidMount() {
     const current = /** @type {HTMLDivElement} */ (this.#parent.current);
-    this.#handle.start(this.#recordings, current);
+    this.#handle.start(this.#recordings, current, this.#hide_welcome_screen);
   }
 
   componentDidUpdate(/** @type {Props} */ prevProps) {

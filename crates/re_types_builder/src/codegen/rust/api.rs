@@ -765,7 +765,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name, title, image, ..
+                path,
+                name,
+                title,
+                image,
+                ..
             } = &example.base;
 
             for line in &example.lines {
@@ -773,7 +777,7 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
                     reporter.error(
                         virtpath,
                         fqname,
-                        format!("Example {name:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
                     );
                     continue;
                 }

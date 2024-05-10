@@ -36,9 +36,10 @@ export class WebViewer {
    *
    * @param {string | string[]} [rrd] URLs to `.rrd` files or WebSocket connections to our SDK.
    * @param {HTMLElement} [parent] The element to attach the canvas onto.
+   * @param {boolean} [hide_welcome_screen] Whether to hide the welcome screen.
    * @returns {Promise<void>}
    */
-  async start(rrd, parent = document.body) {
+  async start(rrd, parent = document.body, hide_welcome_screen = false) {
     if (this.#state !== "stopped") return;
     this.#state = "starting";
 
@@ -50,7 +51,13 @@ export class WebViewer {
     if (this.#state !== "starting") return;
 
     this.#handle = new WebHandle_class();
-    await this.#handle.start(this.#canvas.id, undefined);
+    await this.#handle.start(
+      this.#canvas.id,
+      undefined,
+      undefined,
+      undefined,
+      hide_welcome_screen,
+    );
     if (this.#state !== "starting") return;
 
     if (this.#handle.has_panicked()) {

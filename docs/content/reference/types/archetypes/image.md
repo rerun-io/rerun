@@ -34,7 +34,7 @@ Using these formats can save a lot of bandwidth and memory.
 
 ### image_simple
 
-snippet: image_simple
+snippet: archetypes/image_simple
 
 <picture data-inline-viewer="snippets/image_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">

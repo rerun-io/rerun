@@ -1055,7 +1055,11 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     let mut examples = examples.into_iter().peekable();
     while let Some(example) = examples.next() {
         let ExampleInfo {
-            name, title, image, ..
+            path,
+            name,
+            title,
+            image,
+            ..
         } = &example.base;
 
         let mut example_lines = example.lines.clone();
@@ -1078,11 +1082,11 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
         for line in &example_lines {
             assert!(
                 !line.contains("```"),
-                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+                "Example {path:?} contains ``` in it, so we can't embed it in the Python API docs."
             );
             assert!(
                 !line.contains("\"\"\""),
-                "Example {name:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
+                "Example {path:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
             );
         }
 

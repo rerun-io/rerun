@@ -21,7 +21,7 @@ A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 
 ### Simple 3D asset
 
-snippet: asset3d_simple
+snippet: archetypes/asset3d_simple
 
 <picture data-inline-viewer="snippets/asset3d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/480w.png">
@@ -33,5 +33,5 @@ snippet: asset3d_simple
 
 ### 3D asset with out-of-tree transform
 
-snippet: asset3d_out_of_tree
+snippet: archetypes/asset3d_out_of_tree
 

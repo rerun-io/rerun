@@ -306,6 +306,7 @@ def spawn(
     port: int = 9876,
     connect: bool = True,
     memory_limit: str = "75%",
+    hide_welcome_screen: bool = False,
     default_blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
 ) -> None:
@@ -327,6 +328,8 @@ def spawn(
         An upper limit on how much memory the Rerun Viewer should use.
         When this limit is reached, Rerun will drop the oldest data.
         Example: `16GB` or `50%` (of system total).
+    hide_welcome_screen:
+        Hide the normal Rerun welcome screen.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use if `connect = True`.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -343,7 +346,7 @@ def spawn(
         logging.warning("Rerun is disabled - spawn() call ignored.")
         return
 
-    _spawn_viewer(port=port, memory_limit=memory_limit)
+    _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
 
     if connect:
         _connect(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)

@@ -12,7 +12,10 @@ use re_viewer_context::{
     SystemCommandSender,
 };
 
-use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks, AppState};
+use crate::{
+    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+    AppState,
+};
 
 // ----------------------------------------------------------------------------
 
@@ -47,6 +50,9 @@ pub struct StartupOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub screenshot_to_path_then_quit: Option<std::path::PathBuf>,
 
+    /// A user has specifically requested the welcome screen be hidden.
+    pub hide_welcome_screen: bool,
+
     /// Set the screen resolution in logical points.
     #[cfg(not(target_arch = "wasm32"))]
     pub resolution_in_points: Option<[f32; 2]>,
@@ -76,6 +82,8 @@ impl Default for StartupOptions {
 
             #[cfg(not(target_arch = "wasm32"))]
             screenshot_to_path_then_quit: None,
+
+            hide_welcome_screen: false,
 
             #[cfg(not(target_arch = "wasm32"))]
             resolution_in_points: None,
@@ -916,7 +924,10 @@ impl App {
                             &self.space_view_class_registry,
                             &self.rx,
                             &self.command_sender,
-                            self.welcome_screen_opacity(egui_ctx),
+                            &WelcomeScreenState {
+                                hide: self.startup_options.hide_welcome_screen,
+                                opacity: self.welcome_screen_opacity(egui_ctx),
+                            },
                         );
                     }
                     render_ctx.before_submit();

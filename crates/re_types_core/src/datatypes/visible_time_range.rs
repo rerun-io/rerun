@@ -130,9 +130,8 @@ impl crate::Loggable for VisibleTimeRange {
                                         .unwrap_or_default()
                                 }),
                             )
-                            .unwrap()
+                            .map_err(|err| std::sync::Arc::new(err))?
                             .into();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

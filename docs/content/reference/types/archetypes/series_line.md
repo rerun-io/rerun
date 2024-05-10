@@ -21,7 +21,7 @@ the `Scalar` archetype.
 
 ### Line series
 
-snippet: series_line_style
+snippet: archetypes/series_line_style
 
 <picture data-inline-viewer="snippets/series_line_style">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/480w.png">

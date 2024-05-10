@@ -27,7 +27,7 @@ data (i.e. discontinuous lines).
 
 ### Flat
 
-snippet: clear_simple
+snippet: archetypes/clear_simple
 
 <picture data-inline-viewer="snippets/clear_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
@@ -39,5 +39,5 @@ snippet: clear_simple
 
 ### Recursive
 
-snippet: clear_recursive
+snippet: archetypes/clear_recursive
 

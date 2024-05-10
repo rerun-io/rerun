@@ -21,7 +21,7 @@ title: "Boxes2D"
 
 ### Simple 2D boxes
 
-snippet: box2d_simple
+snippet: archetypes/box2d_simple
 
 <picture data-inline-viewer="snippets/box2d_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
