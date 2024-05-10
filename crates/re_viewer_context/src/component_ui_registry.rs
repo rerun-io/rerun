@@ -7,28 +7,32 @@ use re_types::ComponentName;
 
 use crate::ViewerContext;
 
-/// Controls how mich space we use to show the data in a component ui.
+/// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiVerbosity {
-    /// Keep it small enough to fit on one row.
+    /// Display a short summary. Used in lists.
+    ///
+    /// Keep it small enough to fit on half a row. Text should truncate.
     List,
 
-    /// Display a reduced set, used for hovering/tooltips.
+    /// Display as much information as possible in a compact way. Used for hovering/tooltips.
     ///
-    /// Keep it under a half-dozen lines.
+    /// Keep it under a half-dozen lines. Text may wrap. Avoid interactive UI. When using a table,
+    /// use the `re_data_ui::table_for_verbosity` function.
     Tooltip,
 
-    /// Display everything as wide as available but limit height.
+    /// Display everything as wide as available but limit height. Used in the selection panel when
+    /// multiple items are selected.
     ///
-    /// This is used for example in the selection panel when multiple items are selected. When using
-    /// a Table, use the `re_data_ui::table_for_verbosity` function.
+    /// When displaying lists, wrap them in a height-limited [`egui::ScrollArea`]. When using a
+    /// table, use the `re_data_ui::table_for_verbosity` function.
     SelectionPanelLimitHeight,
 
-    /// Display everything as wide as available, without height restrictions.
+    /// Display everything as wide as available, without height restriction. Used in the selection
+    /// panel when a single item is selected.
     ///
-    /// This is used for example in the selection panel when only one item is selected. In this
-    /// case, any scrolling is handled by the selection panel itself. When using a Table, use the
-    /// `re_data_ui::table_for_verbosity` function.
+    /// The UI will be wrapped in a [`egui::ScrollArea`], so data should be fully displayed with no
+    /// restriction. When using a table, use the `re_data_ui::table_for_verbosity` function.
     SelectionPanelFull,
 }
 
