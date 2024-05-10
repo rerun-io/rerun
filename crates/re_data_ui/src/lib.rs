@@ -139,11 +139,13 @@ impl DataUi for [DataCell] {
         sorted.sort_by_key(|cb| cb.component_name());
 
         match verbosity {
-            UiVerbosity::Small => {
+            UiVerbosity::List => {
                 ui.label(sorted.iter().map(format_cell).join(", "));
             }
 
-            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
+            UiVerbosity::SelectionPanelFull
+            | UiVerbosity::SelectionPanelLimitHeight
+            | UiVerbosity::Tooltip => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_cell(component_bundle));
@@ -181,26 +183,26 @@ pub fn annotations(
 /// Build an egui table and configure it for the given verbosity.
 ///
 /// Note that the caller is responsible for strictly limiting the number of displayed rows for
-/// [`UiVerbosity::Small`] and [`UiVerbosity::Reduced`], as the table will not scroll.
+/// [`UiVerbosity::List`] and [`UiVerbosity::Tooltip`], as the table will not scroll.
 pub fn table_for_verbosity(
     verbosity: UiVerbosity,
     ui: &mut egui::Ui,
 ) -> egui_extras::TableBuilder<'_> {
     let table = egui_extras::TableBuilder::new(ui);
     match verbosity {
-        UiVerbosity::Small | UiVerbosity::Reduced => {
+        UiVerbosity::List | UiVerbosity::Tooltip => {
             // Be as small as possible in the hover tooltips. No scrolling related configuration, as
             // the content itself must be limited (scrolling is not possible in tooltips).
             table.auto_shrink([true, true])
         }
-        UiVerbosity::LimitHeight => {
+        UiVerbosity::SelectionPanelLimitHeight => {
             // Don't take too much vertical space to leave room for other selected items.
             table
                 .auto_shrink([false, true])
                 .vscroll(true)
                 .max_scroll_height(100.0)
         }
-        UiVerbosity::Full => {
+        UiVerbosity::SelectionPanelFull => {
             // We're alone in the selection panel. Let the outer ScrollArea do the work.
             table.auto_shrink([false, true]).vscroll(false)
         }

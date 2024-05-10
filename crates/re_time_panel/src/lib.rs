@@ -787,7 +787,7 @@ impl TimePanel {
                                 *time_ctrl.timeline(),
                                 TimeInt::MAX,
                             );
-                            let verbosity = UiVerbosity::Reduced;
+                            let verbosity = UiVerbosity::Tooltip;
                             component_path.data_ui(ctx, ui, verbosity, &query, entity_db);
                         }
                     }

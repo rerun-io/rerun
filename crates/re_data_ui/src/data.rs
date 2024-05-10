@@ -61,11 +61,13 @@ impl DataUi for ViewCoordinates {
         _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small => {
+            UiVerbosity::List => {
                 ui.label(self.describe_short())
                     .on_hover_text(self.describe());
             }
-            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
+            UiVerbosity::SelectionPanelFull
+            | UiVerbosity::SelectionPanelLimitHeight
+            | UiVerbosity::Tooltip => {
                 ui.label(self.describe());
             }
         }
@@ -188,10 +190,10 @@ impl DataUi for LineStrip2D {
         _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+            UiVerbosity::List | UiVerbosity::Tooltip => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => {
+            UiVerbosity::SelectionPanelLimitHeight | UiVerbosity::SelectionPanelFull => {
                 use egui_extras::Column;
                 table_for_verbosity(verbosity, ui)
                     .resizable(true)
@@ -235,10 +237,10 @@ impl DataUi for LineStrip3D {
         _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+            UiVerbosity::List | UiVerbosity::Tooltip => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::Full | UiVerbosity::LimitHeight => {
+            UiVerbosity::SelectionPanelFull | UiVerbosity::SelectionPanelLimitHeight => {
                 use egui_extras::Column;
                 table_for_verbosity(verbosity, ui)
                     .resizable(true)

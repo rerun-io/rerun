@@ -14,14 +14,16 @@ impl DataUi for re_types::components::Transform3D {
         db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small => {
+            UiVerbosity::List => {
                 // TODO(andreas): Preview some information instead of just a label with hover ui.
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query, db);
+                    self.data_ui(ctx, ui, UiVerbosity::SelectionPanelLimitHeight, query, db);
                 });
             }
 
-            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
+            UiVerbosity::SelectionPanelFull
+            | UiVerbosity::SelectionPanelLimitHeight
+            | UiVerbosity::Tooltip => {
                 let from_parent = match &self.0 {
                     Transform3D::TranslationRotationScale(t) => t.from_parent,
                     Transform3D::TranslationAndMat3x3(t) => t.from_parent,
@@ -69,13 +71,15 @@ impl DataUi for Transform3D {
         db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small => {
+            UiVerbosity::List => {
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query, db);
+                    self.data_ui(ctx, ui, UiVerbosity::SelectionPanelLimitHeight, query, db);
                 });
             }
 
-            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => match self {
+            UiVerbosity::SelectionPanelFull
+            | UiVerbosity::SelectionPanelLimitHeight
+            | UiVerbosity::Tooltip => match self {
                 Transform3D::TranslationAndMat3x3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, verbosity, query, db);
                 }

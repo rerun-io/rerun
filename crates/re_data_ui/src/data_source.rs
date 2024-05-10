@@ -14,7 +14,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
     ) {
         ui.label(self.to_string());
 
-        if verbosity == UiVerbosity::Small {
+        if verbosity == UiVerbosity::List {
             return;
         }
 
@@ -73,7 +73,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
 
             // TODO(#6246): this test is needed because we're called in a context that may or may
             // not have a full span defined.
-            if verbosity == UiVerbosity::Reduced {
+            if verbosity == UiVerbosity::Tooltip {
                 // This typically happens in tooltips, so a scope is needed
                 //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
                 re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);

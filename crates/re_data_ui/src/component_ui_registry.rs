@@ -136,19 +136,19 @@ fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
     let mut needs_scroll_area = false;
 
     match verbosity {
-        UiVerbosity::Small => {
+        UiVerbosity::List => {
             // Elide
             layout_job.wrap.max_rows = 1;
             layout_job.wrap.break_anywhere = true;
         }
-        UiVerbosity::Reduced => {
+        UiVerbosity::Tooltip => {
             layout_job.wrap.max_rows = 3;
         }
-        UiVerbosity::LimitHeight => {
+        UiVerbosity::SelectionPanelLimitHeight => {
             let num_newlines = string.chars().filter(|&c| c == '\n').count();
             needs_scroll_area = 10 < num_newlines || 300 < string.len();
         }
-        UiVerbosity::Full => {
+        UiVerbosity::SelectionPanelFull => {
             needs_scroll_area = false;
         }
     }

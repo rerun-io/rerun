@@ -134,7 +134,7 @@ pub fn override_ui(
                     ctx.component_ui_registry.edit_ui(
                         ctx,
                         ui,
-                        UiVerbosity::Small,
+                        UiVerbosity::List,
                         &query,
                         ctx.recording(),
                         entity_path_overridden,

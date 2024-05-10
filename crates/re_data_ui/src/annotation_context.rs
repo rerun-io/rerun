@@ -35,7 +35,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
 
             let id = self.0;
             match verbosity {
-                UiVerbosity::Small => {
+                UiVerbosity::List => {
                     if !class.keypoint_connections.is_empty()
                         || !class.keypoint_annotations.is_empty()
                     {
@@ -44,7 +44,9 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         });
                     }
                 }
-                UiVerbosity::Reduced | UiVerbosity::Full | UiVerbosity::LimitHeight => {
+                UiVerbosity::Tooltip
+                | UiVerbosity::SelectionPanelFull
+                | UiVerbosity::SelectionPanelLimitHeight => {
                     ui.separator();
                     class_description_ui(ctx, ui, verbosity, class, id);
                 }
@@ -105,7 +107,7 @@ impl DataUi for AnnotationContext {
         _db: &re_entity_db::EntityDb,
     ) {
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+            UiVerbosity::List | UiVerbosity::Tooltip => {
                 if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
                     ui.label(format!(
@@ -117,7 +119,7 @@ impl DataUi for AnnotationContext {
                     ui.label(format!("{} classes", self.0.len()));
                 }
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => {
+            UiVerbosity::SelectionPanelLimitHeight | UiVerbosity::SelectionPanelFull => {
                 ui.vertical(|ui| {
                     ctx.re_ui
                         .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
@@ -156,12 +158,13 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible = verbosity == UiVerbosity::LimitHeight || verbosity == UiVerbosity::Full;
+    let use_collapsible = verbosity == UiVerbosity::SelectionPanelLimitHeight
+        || verbosity == UiVerbosity::SelectionPanelFull;
 
     // We use collapsible header as a means for the user to limit the height, so the annotation info
     // tables can be fully unrolled.
-    if verbosity == UiVerbosity::LimitHeight {
-        verbosity = UiVerbosity::Full;
+    if verbosity == UiVerbosity::SelectionPanelLimitHeight {
+        verbosity = UiVerbosity::SelectionPanelFull;
     }
 
     let row_height = re_ui::ReUi::table_line_height();

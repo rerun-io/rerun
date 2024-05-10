@@ -544,7 +544,7 @@ fn show_row_ids_tooltip(
 
         let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
-        let verbosity = UiVerbosity::Reduced;
+        let verbosity = UiVerbosity::Tooltip;
 
         let TimePanelItem {
             entity_path,

@@ -278,7 +278,7 @@ fn color_space_ui(
                 instance.data_ui(
                     ctx,
                     ui,
-                    UiVerbosity::Reduced,
+                    UiVerbosity::Tooltip,
                     &ctx.current_query(),
                     ctx.recording(),
                 );

@@ -21,10 +21,10 @@ impl DataUi for Material {
         };
 
         match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+            UiVerbosity::List | UiVerbosity::Tooltip => {
                 show_optional_albedo_factor(ui);
             }
-            UiVerbosity::Full | UiVerbosity::LimitHeight => {
+            UiVerbosity::SelectionPanelFull | UiVerbosity::SelectionPanelLimitHeight => {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("albedo_factor");
                     show_optional_albedo_factor(ui);

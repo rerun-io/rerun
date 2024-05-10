@@ -223,7 +223,7 @@ fn app_and_its_recordings_ui(
         app_id.data_ui(
             ctx,
             ui,
-            UiVerbosity::Reduced,
+            UiVerbosity::Tooltip,
             &ctx.current_query(), // unused
             ctx.recording(),      // unused
         );

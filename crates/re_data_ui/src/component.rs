@@ -40,19 +40,23 @@ impl DataUi for EntityLatestAtResults {
         };
 
         let one_line = match verbosity {
-            UiVerbosity::Small => true,
-            UiVerbosity::Reduced | UiVerbosity::LimitHeight | UiVerbosity::Full => false,
+            UiVerbosity::List => true,
+            UiVerbosity::Tooltip
+            | UiVerbosity::SelectionPanelLimitHeight
+            | UiVerbosity::SelectionPanelFull => false,
         };
 
         // in some cases, we don't want to display all instances
         let max_row = match verbosity {
-            UiVerbosity::Small => 0,
-            UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
-            UiVerbosity::LimitHeight | UiVerbosity::Full => num_instances,
+            UiVerbosity::List => 0,
+            UiVerbosity::Tooltip => num_instances.at_most(4), // includes "…x more" if any
+            UiVerbosity::SelectionPanelLimitHeight | UiVerbosity::SelectionPanelFull => {
+                num_instances
+            }
         };
 
         // Display data time and additional diagnostic information for static components.
-        if verbosity != UiVerbosity::Small {
+        if verbosity != UiVerbosity::List {
             ui.label(format!(
                 "Data time: {}",
                 query
@@ -173,7 +177,7 @@ impl DataUi for EntityLatestAtResults {
                             ctx.component_ui_registry.ui(
                                 ctx,
                                 ui,
-                                UiVerbosity::Small,
+                                UiVerbosity::List,
                                 query,
                                 db,
                                 &self.entity_path,

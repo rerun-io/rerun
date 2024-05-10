@@ -113,7 +113,7 @@ pub fn tensor_ui(
     .ok();
 
     match verbosity {
-        UiVerbosity::Small => {
+        UiVerbosity::List => {
             ui.horizontal(|ui| {
                 if let Some(texture) = &texture_result {
                     // We want all preview images to take up the same amount of space,
@@ -172,7 +172,9 @@ pub fn tensor_ui(
             });
         }
 
-        UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
+        UiVerbosity::SelectionPanelFull
+        | UiVerbosity::SelectionPanelLimitHeight
+        | UiVerbosity::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
                 tensor_summary_ui(

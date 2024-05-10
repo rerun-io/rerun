@@ -26,7 +26,7 @@ impl crate::DataUi for ApplicationId {
                 ui.end_row();
             });
 
-        if verbosity == UiVerbosity::Small {
+        if verbosity == UiVerbosity::List {
             return;
         }
 
@@ -56,7 +56,7 @@ impl crate::DataUi for ApplicationId {
             ui.scope(|ui| {
                 // TODO(#6246): this test is needed because we're called in a context that may or may
                 // not have a full span defined.
-                if verbosity == UiVerbosity::Reduced {
+                if verbosity == UiVerbosity::Tooltip {
                     // This typically happens in tooltips, so a scope is needed
                     //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
                     re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);
@@ -70,7 +70,7 @@ impl crate::DataUi for ApplicationId {
         // ---------------------------------------------------------------------
         // do not show UI code in tooltips
 
-        if verbosity != UiVerbosity::Reduced {
+        if verbosity != UiVerbosity::Tooltip {
             ui.add_space(8.0);
 
             // ---------------------------------------------------------------------

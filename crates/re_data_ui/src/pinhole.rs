@@ -12,7 +12,7 @@ impl DataUi for PinholeProjection {
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        if verbosity == UiVerbosity::Small {
+        if verbosity == UiVerbosity::List {
             // See if this is a trivial pinhole, and can be displayed as such:
             let fl = self.focal_length_in_pixels();
             let pp = self.principal_point();
@@ -24,7 +24,7 @@ impl DataUi for PinholeProjection {
                 };
 
                 ui.label(format!("Focal length: {fl}\nPrincipal point: {pp}"))
-                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Reduced, query, db));
+                    .on_hover_ui(|ui| self.data_ui(ctx, ui, UiVerbosity::Tooltip, query, db));
                 return;
             }
         }

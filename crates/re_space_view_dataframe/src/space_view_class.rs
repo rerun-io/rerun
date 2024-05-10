@@ -166,7 +166,7 @@ impl SpaceViewClass for DataframeSpaceView {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
-                            UiVerbosity::Small,
+                            UiVerbosity::List,
                             &latest_at_query,
                             ctx.recording(),
                             &instance.entity_path,

@@ -16,7 +16,7 @@ impl crate::DataUi for EntityDb {
     ) {
         let re_ui = &ctx.re_ui;
 
-        if verbosity == UiVerbosity::Small {
+        if verbosity == UiVerbosity::List {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
             let mut string = self.store_id().to_string();
             if let Some(data_source) = &self.data_source {

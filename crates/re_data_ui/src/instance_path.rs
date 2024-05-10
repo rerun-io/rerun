@@ -47,12 +47,12 @@ impl DataUi for InstancePath {
         let indicator_components = components;
 
         let show_indicator_comps = match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+            UiVerbosity::List | UiVerbosity::Tooltip => {
                 // Skip indicator components in hover ui (unless there are no other
                 // types of components).
                 !normal_components.is_empty()
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => true,
+            UiVerbosity::SelectionPanelLimitHeight | UiVerbosity::SelectionPanelFull => true,
         };
 
         // First show indicator components, outside the grid:
@@ -96,12 +96,12 @@ impl DataUi for InstancePath {
                             component_name,
                             results: Arc::clone(results),
                         }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query, db);
+                        .data_ui(ctx, ui, UiVerbosity::List, query, db);
                     } else {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
-                            UiVerbosity::Small,
+                            UiVerbosity::List,
                             query,
                             db,
                             entity_path,

@@ -119,9 +119,9 @@ impl SelectionPanel {
 
         let selection = ctx.selection();
         let multi_selection_verbosity = if selection.len() > 1 {
-            UiVerbosity::LimitHeight
+            UiVerbosity::SelectionPanelLimitHeight
         } else {
-            UiVerbosity::Full
+            UiVerbosity::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
             ui.push_id(i, |ui| {
