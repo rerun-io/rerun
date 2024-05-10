@@ -1,6 +1,5 @@
 mod blueprint_panel;
 mod mobile_warning_ui;
-mod no_data_ui;
 mod override_ui;
 mod recordings_panel;
 mod rerun_menu;
@@ -18,6 +17,6 @@ pub use recordings_panel::recordings_panel_ui;
 // ----
 
 pub(crate) use {
-    self::mobile_warning_ui::mobile_warning_ui, self::no_data_ui::no_data_ui,
-    self::top_panel::top_panel, self::welcome_screen::WelcomeScreen,
+    self::mobile_warning_ui::mobile_warning_ui, self::top_panel::top_panel,
+    self::welcome_screen::WelcomeScreen,
 };
