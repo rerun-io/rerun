@@ -101,10 +101,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, id): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { id, .. } = &**datum;
-                                    id.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.id.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -123,13 +120,8 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, label): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { label, .. } = &**datum;
-                                        label.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.label.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -140,9 +132,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 label.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|crate::datatypes::Utf8(data0)| data0.0.len())
-                                        .unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
@@ -150,7 +140,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             let inner_data: arrow2::buffer::Buffer<u8> = label
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|crate::datatypes::Utf8(data0)| data0.0)
+                                .flat_map(|datum| datum.0 .0)
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
@@ -168,13 +158,8 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         let (somes, color): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { color, .. } = &**datum;
-                                        color.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.color.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -186,11 +171,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             DataType::UInt32,
                             color
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|crate::datatypes::Rgba32(data0)| data0)
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             color_bitmap,
                         )

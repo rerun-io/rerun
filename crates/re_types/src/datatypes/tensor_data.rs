@@ -117,10 +117,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { shape, .. } = &**datum;
-                                    shape.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.shape.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -130,12 +127,13 @@ impl ::re_types_core::Loggable for TensorData {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let offsets =
-                                arrow2::offset::Offsets::<i32>::try_from_lengths(shape.iter().map(
-                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
-                                ))
-                                .unwrap()
-                                .into();
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                shape
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            )
+                            .unwrap()
+                            .into();
                             let shape_inner_data: Vec<_> =
                                 shape.into_iter().flatten().flatten().collect();
                             let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
@@ -161,10 +159,7 @@ impl ::re_types_core::Loggable for TensorData {
                         let (somes, buffer): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { buffer, .. } = &**datum;
-                                    buffer.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.buffer.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

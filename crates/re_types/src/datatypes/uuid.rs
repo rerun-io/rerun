@@ -90,10 +90,7 @@ impl ::re_types_core::Loggable for Uuid {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self { bytes } = datum.into_owned();
-                        bytes
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().bytes);
                     (datum.is_some(), datum)
                 })
                 .unzip();

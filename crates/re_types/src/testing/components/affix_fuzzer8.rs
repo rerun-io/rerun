@@ -82,12 +82,7 @@ impl ::re_types_core::Loggable for AffixFuzzer8 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum
-                        .map(|datum| {
-                            let Self(data0) = datum.into_owned();
-                            data0
-                        })
-                        .flatten();
+                    let datum = datum.map(|datum| datum.into_owned().0).flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();

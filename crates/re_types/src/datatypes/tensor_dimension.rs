@@ -92,10 +92,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, size): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { size, .. } = &**datum;
-                                    size.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.size.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -114,13 +111,8 @@ impl ::re_types_core::Loggable for TensorDimension {
                         let (somes, name): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { name, .. } = &**datum;
-                                        name.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.name.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -129,13 +121,12 @@ impl ::re_types_core::Loggable for TensorDimension {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                name.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            )
-                            .map_err(|err| std::sync::Arc::new(err))?
-                            .into();
+                            let offsets =
+                                arrow2::offset::Offsets::<i32>::try_from_lengths(name.iter().map(
+                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                                ))
+                                .map_err(|err| std::sync::Arc::new(err))?
+                                .into();
                             let inner_data: arrow2::buffer::Buffer<u8> =
                                 name.into_iter().flatten().flat_map(|s| s.0).collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]

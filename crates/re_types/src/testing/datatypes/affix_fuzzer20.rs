@@ -97,10 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, p): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { p, .. } = &**datum;
-                                    p.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.p.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -111,17 +108,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         PrimitiveArray::new(
                             DataType::UInt32,
                             p.into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(
-                                            |crate::testing::datatypes::PrimitiveComponent(
-                                                data0,
-                                            )| {
-                                                data0
-                                            },
-                                        )
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             p_bitmap,
                         )
@@ -131,10 +118,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         let (somes, s): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { s, .. } = &**datum;
-                                    s.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.s.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -145,11 +129,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 s.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|crate::testing::datatypes::StringComponent(data0)| {
-                                            data0.0.len()
-                                        })
-                                        .unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
@@ -157,9 +137,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                             let inner_data: arrow2::buffer::Buffer<u8> = s
                                 .into_iter()
                                 .flatten()
-                                .flat_map(|crate::testing::datatypes::StringComponent(data0)| {
-                                    data0.0
-                                })
+                                .flat_map(|datum| datum.0 .0)
                                 .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {

@@ -148,13 +148,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            single_float_optional,
-                                            ..
-                                        } = &**datum;
-                                        single_float_optional.clone()
-                                    })
+                                    .map(|datum| datum.single_float_optional.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -177,13 +171,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         let (somes, single_string_required): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        single_string_required,
-                                        ..
-                                    } = &**datum;
-                                    single_string_required.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.single_string_required.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -194,7 +184,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
@@ -222,13 +212,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            single_string_optional,
-                                            ..
-                                        } = &**datum;
-                                        single_string_optional.clone()
-                                    })
+                                    .map(|datum| datum.single_string_optional.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -240,7 +224,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         {
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
@@ -268,13 +252,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            many_floats_optional,
-                                            ..
-                                        } = &**datum;
-                                        many_floats_optional.clone()
-                                    })
+                                    .map(|datum| datum.many_floats_optional.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -287,9 +265,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| datum.num_instances())
-                                        .unwrap_or_default()
+                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
                                 }),
                             )
                             .unwrap()
@@ -325,13 +301,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         let (somes, many_strings_required): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        many_strings_required,
-                                        ..
-                                    } = &**datum;
-                                    many_strings_required.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.many_strings_required.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -342,9 +314,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                many_strings_required
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
@@ -366,7 +338,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_required_inner_data
                                             .iter()
-                                            .map(|datum| datum.0.len()),
+                                            .map(|datum| datum.len()),
                                     )
                                     .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
@@ -397,13 +369,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self {
-                                            many_strings_optional,
-                                            ..
-                                        } = &**datum;
-                                        many_strings_optional.clone()
-                                    })
+                                    .map(|datum| datum.many_strings_optional.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -415,9 +381,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_strings_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                many_strings_optional
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
@@ -439,7 +405,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_optional_inner_data
                                             .iter()
-                                            .map(|datum| datum.0.len()),
+                                            .map(|datum| datum.len()),
                                     )
                                     .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
@@ -468,12 +434,8 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         let (somes, flattened_scalar): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        flattened_scalar, ..
-                                    } = &**datum;
-                                    flattened_scalar.clone()
-                                });
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.flattened_scalar.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -495,13 +457,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         let (somes, almost_flattened_scalar): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        almost_flattened_scalar,
-                                        ..
-                                    } = &**datum;
-                                    almost_flattened_scalar.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.almost_flattened_scalar.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -522,10 +480,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self { from_parent, .. } = &**datum;
-                                        from_parent.clone()
-                                    })
+                                    .map(|datum| datum.from_parent.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })

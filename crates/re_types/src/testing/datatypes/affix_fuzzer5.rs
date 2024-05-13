@@ -113,13 +113,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                         .map(|datum| {
                             let datum = datum
                                 .as_ref()
-                                .map(|datum| {
-                                    let Self {
-                                        single_optional_union,
-                                        ..
-                                    } = &**datum;
-                                    single_optional_union.clone()
-                                })
+                                .map(|datum| datum.single_optional_union.clone())
                                 .flatten();
                             (datum.is_some(), datum)
                         })

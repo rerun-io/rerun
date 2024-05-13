@@ -133,10 +133,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, info): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { info, .. } = &**datum;
-                                    info.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.info.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -153,13 +150,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, keypoint_annotations): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_annotations,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_annotations.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.keypoint_annotations.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -170,9 +163,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_annotations.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                keypoint_annotations
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();
@@ -205,13 +198,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         let (somes, keypoint_connections): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self {
-                                        keypoint_connections,
-                                        ..
-                                    } = &**datum;
-                                    keypoint_connections.clone()
-                                });
+                                let datum = datum
+                                    .as_ref()
+                                    .map(|datum| datum.keypoint_connections.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -222,9 +211,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                keypoint_connections.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
+                                keypoint_connections
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
                             )
                             .unwrap()
                             .into();

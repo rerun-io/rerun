@@ -104,10 +104,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -119,11 +116,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .into_iter()
-                    .map(|datum| {
-                        datum
-                            .map(|crate::datatypes::Mat3x3(data0)| data0)
-                            .unwrap_or_default()
-                    })
+                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                     .flatten()
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

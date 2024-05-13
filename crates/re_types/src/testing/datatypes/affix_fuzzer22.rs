@@ -104,12 +104,8 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                     let (somes, fixed_sized_native): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self {
-                                    fixed_sized_native, ..
-                                } = &**datum;
-                                fixed_sized_native.clone()
-                            });
+                            let datum =
+                                datum.as_ref().map(|datum| datum.fixed_sized_native.clone());
                             (datum.is_some(), datum)
                         })
                         .unzip();

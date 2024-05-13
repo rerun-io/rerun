@@ -100,10 +100,7 @@ impl ::re_types_core::Loggable for TextLogLevel {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -112,18 +109,17 @@ impl ::re_types_core::Loggable for TextLogLevel {
                 any_nones.then(|| somes.into())
             };
             {
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|crate::datatypes::Utf8(data0)| data0.0.len())
-                            .unwrap_or_default()
-                    }))
-                    .map_err(|err| std::sync::Arc::new(err))?
-                    .into();
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                )
+                .map_err(|err| std::sync::Arc::new(err))?
+                .into();
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
                     .into_iter()
                     .flatten()
-                    .flat_map(|crate::datatypes::Utf8(data0)| data0.0)
+                    .flat_map(|datum| datum.0 .0)
                     .collect();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
