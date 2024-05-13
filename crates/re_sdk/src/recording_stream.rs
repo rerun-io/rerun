@@ -1403,6 +1403,11 @@ impl RecordingStream {
     /// If the current sink is in a broken state (e.g. a TCP sink with a broken connection that
     /// cannot be repaired), all pending data in its buffers will be dropped.
     pub fn set_sink(&self, sink: Box<dyn LogSink>) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected during set_sink. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
@@ -1435,6 +1440,11 @@ impl RecordingStream {
     /// This does **not** wait for the flush to propagate (see [`Self::flush_blocking`]).
     /// See [`RecordingStream`] docs for ordering semantics and multithreading guarantees.
     pub fn flush_async(&self) {
+        if self.is_forked_child() {
+            re_log::error_once!("Fork detected during flush_async. cleanup_if_forked() should always be called after forking. This is likely a bug in the SDK.");
+            return;
+        }
+
         let f = move |inner: &RecordingStreamInner| {
             // NOTE: Internal channels can never be closed outside of the `Drop` impl, all these sends
             // are safe.
