@@ -29,10 +29,19 @@ class BarChartView(SpaceView):
     rr.log("tensor", rr.Tensor([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
 
     # Create a bar chart view to display the chart.
-    blueprint = rrb.Blueprint(rrb.BarChartView(origin="/bar_chart", name="Bar Chart"))
+    blueprint = rrb.Blueprint(rrb.BarChartView(origin="tensor", name="Bar Chart"), collapse_panels=True)
 
     rr.send_blueprint(blueprint)
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png">
+      <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

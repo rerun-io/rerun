@@ -48,6 +48,6 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 )
 
 # Create a text view that displays the markdown.
-blueprint = rrb.Blueprint(rrb.TextDocumentView(origin="markdown", name="Markdown example"))
+blueprint = rrb.Blueprint(rrb.TextDocumentView(origin="markdown", name="Markdown example"), collapse_panels=True)
 
 rr.send_blueprint(blueprint)

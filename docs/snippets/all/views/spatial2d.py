@@ -24,7 +24,8 @@ blueprint = rrb.Blueprint(
         # Note that this range is smaller than the range of the points,
         # so some points will not be visible.
         visual_bounds=rrb.VisualBounds(x_range=[-5, 5], y_range=[-5, 5]),
-    )
+    ),
+    collapse_panels=True,
 )
 
 rr.send_blueprint(blueprint)

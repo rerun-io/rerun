@@ -9,10 +9,11 @@ rr.set_time_sequence("time", 0)
 rr.log("log/status", rr.TextLog("Application started.", level=rr.TextLogLevel.INFO))
 rr.set_time_sequence("time", 5)
 rr.log("log/other", rr.TextLog("A warning.", level=rr.TextLogLevel.WARN))
-rr.set_time_sequence("time", 10)
-rr.log("log/status", rr.TextLog("Application ended.", level=rr.TextLogLevel.INFO))
+for i in range(10):
+    rr.set_time_sequence("time", i)
+    rr.log("log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO))
 
 # Create a text view that displays all logs.
-blueprint = rrb.Blueprint(rrb.TextLogView(origin="/log", name="Text Logs"))
+blueprint = rrb.Blueprint(rrb.TextLogView(origin="/log", name="Text Logs"), collapse_panels=True)
 
 rr.send_blueprint(blueprint)

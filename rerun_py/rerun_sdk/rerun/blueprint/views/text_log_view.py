@@ -29,14 +29,24 @@ class TextLogView(SpaceView):
     rr.log("log/status", rr.TextLog("Application started.", level=rr.TextLogLevel.INFO))
     rr.set_time_sequence("time", 5)
     rr.log("log/other", rr.TextLog("A warning.", level=rr.TextLogLevel.WARN))
-    rr.set_time_sequence("time", 10)
-    rr.log("log/status", rr.TextLog("Application ended.", level=rr.TextLogLevel.INFO))
+    for i in range(10):
+        rr.set_time_sequence("time", i)
+        rr.log("log/status", rr.TextLog(f"Processing item {i}.", level=rr.TextLogLevel.INFO))
 
     # Create a text view that displays all logs.
-    blueprint = rrb.Blueprint(rrb.TextLogView(origin="/log", name="Text Logs"))
+    blueprint = rrb.Blueprint(rrb.TextLogView(origin="/log", name="Text Logs"), collapse_panels=True)
 
     rr.send_blueprint(blueprint)
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_view/f9ad7f3346605fdfe8ddf920d730907ac7f73900/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_view/f9ad7f3346605fdfe8ddf920d730907ac7f73900/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_view/f9ad7f3346605fdfe8ddf920d730907ac7f73900/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_view/f9ad7f3346605fdfe8ddf920d730907ac7f73900/1200w.png">
+      <img src="https://static.rerun.io/text_log_view/f9ad7f3346605fdfe8ddf920d730907ac7f73900/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

@@ -19,8 +19,10 @@ blueprint = rrb.Blueprint(
     rrb.Spatial3DView(
         origin="/points",
         name="3D Points",
-        background=[80, 80, 80],
-    )
+        # Set the background color to light blue.
+        background=[100, 149, 237],
+    ),
+    collapse_panels=True,
 )
 
 rr.send_blueprint(blueprint)

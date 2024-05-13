@@ -48,11 +48,21 @@ class Spatial2DView(SpaceView):
             # Note that this range is smaller than the range of the points,
             # so some points will not be visible.
             visual_bounds=rrb.VisualBounds(x_range=[-5, 5], y_range=[-5, 5]),
-        )
+        ),
+        collapse_panels=True,
     )
 
     rr.send_blueprint(blueprint)
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/1200w.png">
+      <img src="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

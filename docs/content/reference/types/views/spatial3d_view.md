@@ -33,3 +33,11 @@ The default visual time range depends on the type of view this property applies 
 
 snippet: views/spatial3d
 
+<picture data-inline-viewer="snippets/spatial3d">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/1200w.png">
+  <img src="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/full.png">
+</picture>
+
