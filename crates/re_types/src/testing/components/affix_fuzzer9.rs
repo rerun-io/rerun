@@ -98,7 +98,7 @@ impl ::re_types_core::Loggable for AffixFuzzer9 {
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
-                .unwrap()
+                .map_err(|err| std::sync::Arc::new(err))?
                 .into();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]

@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         window_title,
         native_options,
         Box::new(move |cc| {
-            let re_ui = re_viewer::customize_eframe(cc);
+            let re_ui = re_viewer::customize_eframe_and_setup_renderer(cc);
 
             let mut rerun_app = re_viewer::App::new(
                 re_viewer::build_info(),

@@ -1,6 +1,12 @@
 use egui::Ui;
 
-const DOCS_URL: &str = "https://www.rerun.io/docs";
+pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
+pub(super) const WELCOME_SCREEN_TITLE: &str = "Visualize Multimodal Data";
+pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
+    "Log data with the Rerun SDK in C++, Python, or Rust",
+    "Visualize and explore live or recorded data",
+    "Configure the viewer interactively or through code",
+];
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
@@ -13,7 +19,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
 
         ui.add(
             egui::Label::new(
-                egui::RichText::new("Visualize Multimodal Data")
+                egui::RichText::new(WELCOME_SCREEN_TITLE)
                     .strong()
                     .line_height(Some(line_height))
                     .text_style(style),
@@ -26,7 +32,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         let bullet_text = |ui: &mut Ui, text: &str| {
             ui.horizontal(|ui| {
                 ui.add_space(1.0);
-                bullet(ui);
+                re_ui::ReUi::bullet(ui, ui.visuals().strong_text_color());
                 ui.add_space(5.0);
                 ui.add(
                     egui::Label::new(
@@ -40,9 +46,9 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
             ui.add_space(4.0);
         };
 
-        bullet_text(ui, "Log data with the Rerun SDK in C++, Python, or Rust");
-        bullet_text(ui, "Visualize and explore live or recorded data");
-        bullet_text(ui, "Configure the viewer interactively or through code");
+        for text in WELCOME_SCREEN_BULLET_TEXT {
+            bullet_text(ui, text);
+        }
 
         ui.add_space(9.0);
         if ui
@@ -61,17 +67,5 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
         }
 
         ui.add_space(83.0);
-    });
-}
-
-fn bullet(ui: &mut Ui) {
-    static DIAMETER: f32 = 6.0;
-    let (rect, _) = ui.allocate_exact_size(egui::vec2(DIAMETER, DIAMETER), egui::Sense::hover());
-
-    ui.painter().add(egui::epaint::CircleShape {
-        center: rect.center(),
-        radius: DIAMETER / 2.0,
-        fill: ui.visuals().strong_text_color(),
-        stroke: egui::Stroke::NONE,
     });
 }

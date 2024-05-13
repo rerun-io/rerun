@@ -34,6 +34,9 @@ pub enum RerunServerError {
     #[error("Failed to bind to WebSocket port {0}: {1}")]
     BindFailed(RerunServerPort, std::io::Error),
 
+    #[error("Failed to bind to WebSocket port {0} since the address is already in use. Use port 0 to let the OS choose a free port.")]
+    BindFailedAddrInUse(RerunServerPort),
+
     #[error("Received an invalid message")]
     InvalidMessagePrefix,
 

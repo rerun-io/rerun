@@ -127,6 +127,9 @@ typedef struct rr_spawn_options {
     /// Defaults to `75%` if null.
     rr_string memory_limit;
 
+    /// Hide the normal Rerun welcome screen.
+    bool hide_welcome_screen;
+
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.

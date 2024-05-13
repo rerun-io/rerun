@@ -545,7 +545,9 @@ class Blueprint:
 
         bindings.save_blueprint(path, blueprint_stream.to_native())
 
-    def spawn(self, application_id: str, port: int = 9876, memory_limit: str = "75%") -> None:
+    def spawn(
+        self, application_id: str, port: int = 9876, memory_limit: str = "75%", hide_welcome_screen: bool = False
+    ) -> None:
         """
         Spawn a Rerun viewer with this blueprint.
 
@@ -560,9 +562,11 @@ class Blueprint:
             An upper limit on how much memory the Rerun Viewer should use.
             When this limit is reached, Rerun will drop the oldest data.
             Example: `16GB` or `50%` (of system total).
+        hide_welcome_screen:
+            Hide the normal Rerun welcome screen.
 
         """
-        _spawn_viewer(port=port, memory_limit=memory_limit)
+        _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
         self.connect(application_id=application_id, addr=f"127.0.0.1:{port}")
 
 

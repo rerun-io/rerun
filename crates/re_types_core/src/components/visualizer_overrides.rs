@@ -116,7 +116,7 @@ impl crate::Loggable for VisualizerOverrides {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
                         )
-                        .unwrap()
+                        .map_err(|err| std::sync::Arc::new(err))?
                         .into();
 
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]

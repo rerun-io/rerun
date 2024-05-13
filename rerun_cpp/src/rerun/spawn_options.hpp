@@ -26,6 +26,11 @@ namespace rerun {
         /// Defaults to `75%` if unset.
         std::string_view memory_limit = "75%";
 
+        /// Hide the normal Rerun welcome screen.
+        ///
+        /// Defaults to `false` if unset.
+        bool hide_welcome_screen = false;
+
         /// Specifies the name of the Rerun executable.
         ///
         /// You can omit the `.exe` suffix on Windows.
