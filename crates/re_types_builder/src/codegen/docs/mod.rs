@@ -117,9 +117,6 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 
     write_frontmatter(&mut page, kind.plural_name(), Some(order));
     putln!(page);
-    // Can't put the autogen warning before the frontmatter, stuff breaks down then.
-    putln!(page, "<!-- {} -->", autogen_warning!());
-    putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
 
@@ -329,6 +326,8 @@ fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
         putln!(o, "order: {order}");
     }
     putln!(o, "---");
+    // Can't put the autogen warning before the frontmatter, stuff breaks down then.
+    putln!(o, "<!-- {} -->", autogen_warning!());
 }
 
 fn write_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
