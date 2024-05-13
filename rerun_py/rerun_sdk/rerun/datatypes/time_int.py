@@ -33,6 +33,9 @@ class TimeInt(TimeIntExt):
     def __int__(self) -> int:
         return int(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 if TYPE_CHECKING:
     TimeIntLike = Union[TimeInt, int]

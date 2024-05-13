@@ -48,6 +48,9 @@ class Rgba32(Rgba32Ext):
     def __int__(self) -> int:
         return int(self.rgba)
 
+    def __hash__(self) -> int:
+        return hash(self.rgba)
+
 
 if TYPE_CHECKING:
     Rgba32Like = Union[Rgba32, int, Sequence[Union[int, float]], npt.NDArray[Union[np.uint8, np.float32, np.float64]]]

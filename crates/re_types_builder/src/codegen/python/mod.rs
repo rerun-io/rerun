@@ -1283,7 +1283,7 @@ fn quote_array_method_from_obj(
     ))
 }
 
-/// Automatically implement `__str__`, `__int__`, or `__float__` method if the object has a single
+/// Automatically implement `__str__`, `__int__`, or `__float__` as well as `__hash__` methods if the object has a single
 /// field of the corresponding type that is not optional.
 ///
 /// Only applies to datatypes and components.
@@ -1309,6 +1309,9 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
         "
         def __{typ}__(self) -> {typ}:
             return {typ}(self.{field_name})
+
+        def __hash__(self) -> int:
+            return hash(self.{field_name})
         ",
     ))
 }

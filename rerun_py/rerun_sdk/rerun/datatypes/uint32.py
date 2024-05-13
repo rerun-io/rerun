@@ -36,6 +36,9 @@ class UInt32:
     def __int__(self) -> int:
         return int(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 if TYPE_CHECKING:
     UInt32Like = Union[UInt32, int]

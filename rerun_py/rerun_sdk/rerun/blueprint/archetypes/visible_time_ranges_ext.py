@@ -27,12 +27,12 @@ class VisibleTimeRangesExt:
 
         timelines = set()
         for range in ranges:
-            if range.timeline.value in timelines:
+            if range.timeline in timelines:
                 _send_warning_or_raise(
                     f"Warning: Timeline {range.timeline} is listed twice in the list of visible time ranges. Only the first entry will be used.",
                     1,
                 )
-            timelines.add(range.timeline.value)
+            timelines.add(range.timeline)
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(ranges=ranges)

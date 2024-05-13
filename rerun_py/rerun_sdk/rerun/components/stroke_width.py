@@ -36,6 +36,9 @@ class StrokeWidth:
     def __float__(self) -> float:
         return float(self.width)
 
+    def __hash__(self) -> int:
+        return hash(self.width)
+
 
 if TYPE_CHECKING:
     StrokeWidthLike = Union[StrokeWidth, float]

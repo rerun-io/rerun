@@ -30,6 +30,9 @@ class EntityPath:
     def __str__(self) -> str:
         return str(self.path)
 
+    def __hash__(self) -> int:
+        return hash(self.path)
+
 
 if TYPE_CHECKING:
     EntityPathLike = Union[EntityPath, str]
