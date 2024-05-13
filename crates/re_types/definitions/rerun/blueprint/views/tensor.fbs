@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A tensor view.
+///
+/// \example views/tensor title="Use a blueprint to create a TensorView."
 table TensorView (
     "attr.rerun.view_identifier": "Tensor"
 ) {
