@@ -7,7 +7,7 @@ A text log view.
 
 
 ## Api reference links
- * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextLogView)
+ * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.TextLogView)
 
 ## Example
 

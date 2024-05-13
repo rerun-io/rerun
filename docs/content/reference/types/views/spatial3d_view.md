@@ -20,11 +20,11 @@ Configuration for the background of the view.
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
 **Api reference links:**
- * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.VisibleTimeRanges)
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes?speculative-link#rerun.blueprint.archetypes.VisibleTimeRanges)
 
 
 ## Api reference links
- * 🐍 [Python API docs for `Spatial3DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial3DView)
+ * 🐍 [Python API docs for `Spatial3DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.Spatial3DView)
 
 ## Example
 

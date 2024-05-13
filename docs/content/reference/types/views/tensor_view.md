@@ -7,7 +7,7 @@ A tensor view.
 
 
 ## Api reference links
- * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TensorView)
+ * 🐍 [Python API docs for `TensorView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.TensorView)
 
 ## Example
 
