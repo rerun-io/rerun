@@ -119,13 +119,14 @@ impl crate::Loggable for VisibleTimeRange {
                                         .unwrap_or_default()
                                 }),
                             )
-                            .unwrap()
+                            .map_err(|err| std::sync::Arc::new(err))?
                             .into();
                             let inner_data: arrow2::buffer::Buffer<u8> = timeline
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|crate::datatypes::Utf8(data0)| data0.0)
                                 .collect();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

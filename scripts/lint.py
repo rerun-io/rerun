@@ -844,7 +844,7 @@ class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
     def __init__(self, path: str):
-        self.path = os.path.abspath(path)
+        self.path = os.path.realpath(path)
         self.ext = path.split(".")[-1]
         with open(path, encoding="utf8") as f:
             self.lines = f.readlines()

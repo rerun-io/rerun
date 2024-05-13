@@ -21,7 +21,7 @@ A log entry in a text log, comprised of a text body and its log level.
 
 ### text_log_integration
 
-snippet: text_log_integration
+snippet: archetypes/text_log_integration
 
 <picture data-inline-viewer="snippets/text_log_integration">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">

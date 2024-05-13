@@ -109,6 +109,7 @@ exclude = [
 
   # Needs authentication
   'https://edge.meilisearch.com',
+  'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.

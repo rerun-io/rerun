@@ -64,13 +64,6 @@ from .time_range_boundary import (
     TimeRangeBoundaryLike,
     TimeRangeBoundaryType,
 )
-from .time_range_boundary_kind import (
-    TimeRangeBoundaryKind,
-    TimeRangeBoundaryKindArrayLike,
-    TimeRangeBoundaryKindBatch,
-    TimeRangeBoundaryKindLike,
-    TimeRangeBoundaryKindType,
-)
 from .transform3d import Transform3D, Transform3DArrayLike, Transform3DBatch, Transform3DLike, Transform3DType
 from .translation_and_mat3x3 import (
     TranslationAndMat3x3,
@@ -231,11 +224,6 @@ __all__ = [
     "TimeRangeBoundary",
     "TimeRangeBoundaryArrayLike",
     "TimeRangeBoundaryBatch",
-    "TimeRangeBoundaryKind",
-    "TimeRangeBoundaryKindArrayLike",
-    "TimeRangeBoundaryKindBatch",
-    "TimeRangeBoundaryKindLike",
-    "TimeRangeBoundaryKindType",
     "TimeRangeBoundaryLike",
     "TimeRangeBoundaryType",
     "TimeRangeLike",

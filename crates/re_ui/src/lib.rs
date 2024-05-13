@@ -25,6 +25,7 @@ pub use self::{
     syntax_highlighting::SyntaxHighlighting,
     toggle_switch::toggle_switch,
 };
+use std::hash::Hash;
 
 // ---------------------------------------------------------------------------
 
@@ -70,7 +71,7 @@ pub enum LabelStyle {
 use egui::emath::{Rangef, Rot2};
 use egui::{
     epaint::util::FloatOrd, pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape,
-    Vec2, Widget,
+    Ui, Vec2, Widget,
 };
 
 #[derive(Debug, Clone)]
@@ -518,8 +519,9 @@ impl ReUi {
 
     /// Create a separator similar to [`egui::Separator`] but with the full span behavior.
     ///
-    /// The span is determined by the current clip rectangle. Contrary to [`egui::Separator`], this separator allocates
-    /// a single pixel in height, as spacing is typically handled by content when full span highlighting is used.
+    /// The span is determined using [`crate::full_span`]. Contrary to [`egui::Separator`], this
+    /// separator allocates a single pixel in height, as spacing is typically handled by content
+    /// when full span highlighting is used.
     pub fn full_span_separator(ui: &mut egui::Ui) -> egui::Response {
         let height = 1.0;
 
@@ -527,14 +529,13 @@ impl ReUi {
         let size = egui::vec2(available_space.x, height);
 
         let (rect, response) = ui.allocate_at_least(size, egui::Sense::hover());
-        let clip_rect = ui.clip_rect();
 
         if ui.is_rect_visible(response.rect) {
             let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
             let painter = ui.painter();
 
             painter.hline(
-                clip_rect.left()..=clip_rect.right(),
+                crate::full_span::get_full_span(ui),
                 painter.round_to_pixel(rect.center().y),
                 stroke,
             );
@@ -575,15 +576,15 @@ impl ReUi {
                     ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
                         ui.set_width(widget_response.rect.width() - frame_margin.sum().x);
 
-                        ui.set_clip_rect(ui.cursor());
-
-                        egui::ScrollArea::vertical().show(ui, |ui| {
-                            egui::Frame {
-                                //TODO(ab): use design token
-                                inner_margin: egui::Margin::symmetric(8.0, 0.0),
-                                ..Default::default()
-                            }
-                            .show(ui, |ui| ret = Some(add_contents(ui)))
+                        crate::full_span::full_span_scope(ui, ui.cursor().x_range(), |ui| {
+                            egui::ScrollArea::vertical().show(ui, |ui| {
+                                egui::Frame {
+                                    //TODO(ab): use design token
+                                    inner_margin: egui::Margin::symmetric(8.0, 0.0),
+                                    ..Default::default()
+                                }
+                                .show(ui, |ui| ret = Some(add_contents(ui)))
+                            })
                         })
                     })
                 })
@@ -635,10 +636,12 @@ impl ReUi {
             egui::Layout::left_to_right(egui::Align::Center),
             |ui| {
                 // draw horizontal separator lines
-                let mut rect = ui.available_rect_before_wrap();
+                let rect = egui::Rect::from_x_y_ranges(
+                    crate::full_span::get_full_span(ui),
+                    ui.available_rect_before_wrap().y_range(),
+                );
                 let hline_stroke = ui.style().visuals.widgets.noninteractive.bg_stroke;
-                rect.extend_with_x(ui.clip_rect().right());
-                rect.extend_with_x(ui.clip_rect().left());
+
                 ui.painter().hline(rect.x_range(), rect.top(), hline_stroke);
                 ui.painter()
                     .hline(rect.x_range(), rect.bottom(), hline_stroke);
@@ -860,9 +863,10 @@ impl ReUi {
                 ui.painter().galley(text_pos, galley, visuals.text_color());
 
                 // Let the rect cover the full panel width:
-                let mut bg_rect = rect;
-                bg_rect.extend_with_x(ui.clip_rect().right());
-                bg_rect.extend_with_x(ui.clip_rect().left());
+                let bg_rect = egui::Rect::from_x_y_ranges(
+                    crate::full_span::get_full_span(ui),
+                    rect.y_range(),
+                );
 
                 ui.painter().set(
                     background_frame,
@@ -1158,6 +1162,69 @@ impl ReUi {
             egui::Stroke::NONE,
         ));
         painter.vline(x, (y_min + w)..=y_max, stroke);
+    }
+
+    /// Draw a bullet (for text lists).
+    pub fn bullet(ui: &mut Ui, color: Color32) {
+        static DIAMETER: f32 = 6.0;
+        let (rect, _) =
+            ui.allocate_exact_size(egui::vec2(DIAMETER, DIAMETER), egui::Sense::hover());
+
+        ui.painter().add(egui::epaint::CircleShape {
+            center: rect.center(),
+            radius: DIAMETER / 2.0,
+            fill: color,
+            stroke: egui::Stroke::NONE,
+        });
+    }
+
+    /// Center the content within [`egui::Ui::max_rect()`].
+    ///
+    /// The `add_contents` closure is executed in the context of a vertical layout.
+    pub fn center<R>(
+        ui: &mut egui::Ui,
+        id_source: impl Hash,
+        add_contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
+        // Strategy:
+        // - estimate the size allocated by the `add_contents` closure
+        // - add space based on the estimated size and `ui.max_size()`
+        //
+        // The estimation is done by recording the cursor position before and after the closure in
+        // nested vertical/horizontal UIs such as for `ui.cursor()` to return the correct info.
+
+        #[derive(Clone, Copy)]
+        struct TextSize(egui::Vec2);
+
+        let id = ui.make_persistent_id(id_source);
+
+        let text_size: Option<TextSize> = ui.data(|reader| reader.get_temp(id));
+
+        // ensure the current ui has a vertical orientation so the space we add is in the correct
+        // direction
+        ui.vertical(|ui| {
+            if let Some(text_size) = text_size {
+                ui.add_space(ui.available_height() / 2.0 - text_size.0.y / 2.0);
+            }
+
+            ui.horizontal(|ui| {
+                if let Some(text_size) = text_size {
+                    ui.add_space(ui.available_width() / 2.0 - text_size.0.x / 2.0);
+                }
+
+                let starting_pos = ui.cursor().min;
+                let (result, end_y) = ui
+                    .vertical(|ui| (add_contents(ui), ui.cursor().min.y))
+                    .inner;
+
+                let end_pos = egui::pos2(ui.cursor().min.x, end_y);
+                ui.data_mut(|writer| writer.insert_temp(id, TextSize(end_pos - starting_pos)));
+
+                result
+            })
+            .inner
+        })
+        .inner
     }
 }
 

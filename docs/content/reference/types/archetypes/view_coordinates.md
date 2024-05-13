@@ -24,7 +24,7 @@ down, and the Z axis points forward.
 
 ### View coordinates for adjusting the eye camera
 
-snippet: view_coordinates_simple
+snippet: archetypes/view_coordinates_simple
 
 <picture data-inline-viewer="snippets/view_coordinates_simple">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/480w.png">

@@ -123,6 +123,7 @@ impl ::re_types_core::Loggable for EnumTest {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Sparse Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {

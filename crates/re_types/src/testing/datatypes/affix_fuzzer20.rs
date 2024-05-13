@@ -152,7 +152,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                         .unwrap_or_default()
                                 }),
                             )
-                            .unwrap()
+                            .map_err(|err| std::sync::Arc::new(err))?
                             .into();
                             let inner_data: arrow2::buffer::Buffer<u8> = s
                                 .into_iter()

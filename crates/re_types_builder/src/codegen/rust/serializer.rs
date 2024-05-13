@@ -6,7 +6,7 @@ use crate::{ArrowRegistry, Object, ObjectField, Objects};
 
 use super::{
     arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path},
-    util::is_tuple_struct_from_obj,
+    util::{is_tuple_struct_from_obj, quote_comment},
 };
 
 // ---
@@ -211,7 +211,11 @@ pub fn quote_arrow_serializer(
 
                 let num_variants = obj.fields.len();
 
+                let comment = quote_comment("Sparse Arrow union");
+
                 quote! {{
+                    #comment
+
                     #quoted_data_collect
 
                     let num_variants = #num_variants;
@@ -246,7 +250,24 @@ pub fn quote_arrow_serializer(
                         .collect();
                 };
 
+                let quoted_obj_name = format_ident!("{}", obj.name);
+
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
+                    let quoted_obj_field_name = format_ident!("{}", obj_field.pascal_case_name());
+
+                    // Short circuit for empty variants since they're trivial to solve at this level:
+                    if obj_field.typ == crate::Type::Unit {
+                        return quote! {
+                            NullArray::new(
+                                DataType::Null,
+                                #data_src
+                                    .iter()
+                                    .filter(|datum| matches!(datum.as_deref(), Some(#quoted_obj_name::#quoted_obj_field_name)))
+                                    .count(),
+                            ).boxed()
+                        };
+                    }
+
                     let data_dst = format_ident!("{}", obj_field.snake_case_name());
 
                     // We handle nullability with a special null variant that is always present.
@@ -267,9 +288,6 @@ pub fn quote_arrow_serializer(
                         &data_dst,
                         InnerRepr::NativeIterable,
                     );
-
-                    let quoted_obj_name = format_ident!("{}", obj.name);
-                    let quoted_obj_field_name = format_ident!("{}", obj_field.pascal_case_name());
 
                     quote! {{
                         let #data_dst: Vec<_> = data
@@ -295,14 +313,22 @@ pub fn quote_arrow_serializer(
                     ]
                 };
 
+                let get_match_case_for_field = |typ, quoted_obj_field_name| {
+                    if typ == &crate::Type::Unit {
+                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name))
+                    } else {
+                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name(_)))
+                    }
+                };
+
                 let quoted_types = {
-                    let quoted_obj_name = format_ident!("{}", obj.name);
                     let quoted_branches = obj.fields.iter().enumerate().map(|(i, obj_field)| {
                         let i = 1 + i as i8; // NOTE: +1 to account for `nulls` virtual arm
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.pascal_case_name());
-
-                        quote!(Some(#quoted_obj_name::#quoted_obj_field_name(_)) => #i)
+                        let match_case =
+                            get_match_case_for_field(&obj_field.typ, quoted_obj_field_name);
+                        quote!(#match_case => #i)
                     });
 
                     quote! {
@@ -317,8 +343,6 @@ pub fn quote_arrow_serializer(
                 };
 
                 let quoted_offsets = {
-                    let quoted_obj_name = format_ident!("{}", obj.name);
-
                     let quoted_counters = obj.fields.iter().map(|obj_field| {
                         let quoted_obj_field_name =
                             format_ident!("{}_offset", obj_field.snake_case_name());
@@ -330,8 +354,11 @@ pub fn quote_arrow_serializer(
                             format_ident!("{}_offset", obj_field.snake_case_name());
                         let quoted_obj_field_name =
                             format_ident!("{}", obj_field.pascal_case_name());
+
+                        let match_case =
+                            get_match_case_for_field(&obj_field.typ, quoted_obj_field_name);
                         quote! {
-                            Some(#quoted_obj_name::#quoted_obj_field_name(_)) => {
+                            #match_case => {
                                 let offset = #quoted_counter_name;
                                 #quoted_counter_name += 1;
                                 offset
@@ -357,7 +384,11 @@ pub fn quote_arrow_serializer(
                     }}
                 };
 
+                let comment = quote_comment("Dense Arrow union");
+
                 quote! {{
+                    #comment
+
                     #quoted_data_collect
 
                     let types = #quoted_types;
@@ -428,10 +459,8 @@ fn quote_arrow_field_serializer(
         | DataType::Float32
         | DataType::Float64 => {
             // NOTE: We need values for all slots, regardless of what the bitmap says,
-            // hence `unwrap_or_default`.
-            let quoted_transparent_mapping = if !elements_are_nullable {
-                quote! {} // If the elements are not nullable, we don't have to do anything.
-            } else if inner_is_arrow_transparent {
+            // hence `unwrap_or_default` (unless elements_are_nullable is false)
+            let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
@@ -449,19 +478,29 @@ fn quote_arrow_field_serializer(
                     quote!(#quoted_inner_obj_type { #quoted_data_dst })
                 };
 
-                quote! {
-                    .map(|datum| {
-                        datum
-                            .map(|#quoted_binding| {
-                                #quoted_data_dst
-                            })
-                            .unwrap_or_default()
-                    })
+                if elements_are_nullable {
+                    quote! {
+                        .map(|datum| {
+                            datum
+                                .map(|#quoted_binding| {
+                                    #quoted_data_dst
+                                })
+                                .unwrap_or_default()
+                        })
+                    }
+                } else {
+                    quote! {
+                        .map(|#quoted_binding| {
+                            #quoted_data_dst
+                        })
+                    }
                 }
-            } else {
+            } else if elements_are_nullable {
                 quote! {
                     .map(|v| v.unwrap_or_default())
                 }
+            } else {
+                quote! {}
             };
 
             if datatype.to_logical_type() == &DataType::Boolean {
@@ -492,6 +531,10 @@ fn quote_arrow_field_serializer(
                     },
                 }
             }
+        }
+
+        DataType::Null => {
+            panic!("Null fields should only occur within enums and unions where they are handled separately.");
         }
 
         DataType::Utf8 => {
@@ -543,7 +586,9 @@ fn quote_arrow_field_serializer(
                 quote! {
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
-                    ).unwrap().into();
+                    )
+                    .map_err(|err| std::sync::Arc::new(err))?
+                    .into();
 
                     // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                     // about it while building the backing buffer since it's all offsets driven.
@@ -554,7 +599,9 @@ fn quote_arrow_field_serializer(
                 quote! {
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
-                    ).unwrap().into();
+                    )
+                    .map_err(|err| std::sync::Arc::new(err))?
+                    .into();
 
                     let inner_data: arrow2::buffer::Buffer<u8> =
                         #data_src.into_iter() #quoted_transparent_mapping.collect();
@@ -566,6 +613,8 @@ fn quote_arrow_field_serializer(
 
                 // Safety: we're building this from actual native strings, so no need to do the
                 // whole utf8 validation _again_.
+                // It would be nice to use quote_comment here and put this safety notice in the generated code,
+                // but that seems to push us over some complexity limit causing rustfmt to fail.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
             }}
@@ -789,7 +838,7 @@ fn quote_arrow_field_serializer(
                         #bitmap_src.as_ref().map(|bitmap| {
                             bitmap
                                 .iter()
-                                .map(|i| std::iter::repeat(i).take(#count))
+                                .map(|b| std::iter::repeat(b).take(#count))
                                 .flatten()
                                 .collect::<Vec<_>>()
                                 .into()

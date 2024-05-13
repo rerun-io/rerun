@@ -30,14 +30,11 @@ use crate::{
 };
 
 use super::{
-    arrow::quote_fqname_as_type_path, blueprint_validation::generate_blueprint_validation,
-    to_archetype::generate_to_archetype_impls, util::string_from_quoted,
+    arrow::quote_fqname_as_type_path,
+    blueprint_validation::generate_blueprint_validation,
+    to_archetype::generate_to_archetype_impls,
+    util::{string_from_quoted, SIMPLE_COMMENT_PREFIX},
 };
-
-// ---
-
-// TODO(cmc): it'd be nice to be able to generate vanilla comments (as opposed to doc-comments)
-// once again at some point (`TokenStream` strips them)… nothing too urgent though.
 
 // ---
 
@@ -268,7 +265,7 @@ fn generate_mod_file(
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,
 /// while also removing trailing whitespace.
-fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
+fn replace_doc_attrb_with_doc_comment(code: &str) -> String {
     // This is difficult to do with regex, because the patterns with newlines overlap.
 
     let start_pattern = "# [doc = \"";
@@ -289,13 +286,25 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
             let content_start = doc_start + start_pattern.len();
             if let Some(off) = code[content_start..].find(end_pattern) {
                 let content_end = content_start + off;
-                new_code.push_str(&code[i..doc_start]);
-                new_code.push_str("///");
                 let content = &code[content_start..content_end];
+                let mut unescped_content = unescape_string(content);
+
+                new_code.push_str(&code[i..doc_start]);
+
+                // TODO(emilk): why do we need to do the `SIMPLE_COMMENT_PREFIX` both here and in `fn string_from_quoted`?
+                if let Some(rest) = unescped_content.strip_prefix(SIMPLE_COMMENT_PREFIX) {
+                    // This is a normal comment
+                    new_code.push_str("//");
+                    unescped_content = rest.to_owned();
+                } else {
+                    // This is a docstring
+                    new_code.push_str("///");
+                }
+
                 if !content.starts_with(char::is_whitespace) {
                     new_code.push(' ');
                 }
-                unescape_string_into(content, &mut new_code);
+                new_code.push_str(&unescped_content);
                 new_code.push('\n');
 
                 i = content_end + end_pattern.len();
@@ -312,6 +321,43 @@ fn replace_doc_attrb_with_doc_comment(code: &String) -> String {
         break;
     }
     new_code
+}
+
+#[test]
+fn test_doc_attr_unfolding() {
+    // Normal case with unescaping of quotes:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(
+            r#"
+# [doc = "Hello, \"world\"!"]
+pub fn foo () {}
+        "#
+        ),
+        r#"
+/// Hello, "world"!
+pub fn foo () {}
+        "#
+    );
+
+    // Spacial case for when it contains a `SIMPLE_COMMENT_PREFIX`:
+    assert_eq!(
+        replace_doc_attrb_with_doc_comment(&format!(
+            r#"
+# [doc = "{SIMPLE_COMMENT_PREFIX}Just a \"comment\"!"]
+const FOO: u32 = 42;
+        "#
+        )),
+        r#"
+// Just a "comment"!
+const FOO: u32 = 42;
+        "#
+    );
+}
+
+fn unescape_string(input: &str) -> String {
+    let mut output = String::new();
+    unescape_string_into(input, &mut output);
+    output
 }
 
 fn unescape_string_into(input: &str, output: &mut String) {
@@ -487,9 +533,16 @@ fn quote_union(
         let quoted_doc = quote_field_docs(reporter, obj_field);
         let quoted_type = quote_field_type_from_object_field(obj_field);
 
-        quote! {
-            #quoted_doc
-            #name(#quoted_type)
+        if obj_field.typ == Type::Unit {
+            quote! {
+                #quoted_doc
+                #name
+            }
+        } else {
+            quote! {
+                #quoted_doc
+                #name(#quoted_type)
+            }
         }
     });
 
@@ -505,15 +558,29 @@ fn quote_union(
     } else {
         let quoted_matches = fields.iter().map(|obj_field| {
             let name = format_ident!("{}", crate::to_pascal_case(&obj_field.name));
-            quote!(Self::#name(v) => v.heap_size_bytes())
+
+            if obj_field.typ == Type::Unit {
+                quote!(Self::#name => 0)
+            } else {
+                quote!(Self::#name(v) => v.heap_size_bytes())
+            }
         });
 
         let is_pod_impl = {
-            let quoted_is_pods = obj.fields.iter().map(|obj_field| {
-                let quoted_field_type = quote_field_type_from_object_field(obj_field);
-                quote!(<#quoted_field_type>::is_pod())
-            });
-            quote!(#(#quoted_is_pods)&&*)
+            let quoted_is_pods: Vec<_> = obj
+                .fields
+                .iter()
+                .filter(|obj_field| obj_field.typ != Type::Unit)
+                .map(|obj_field| {
+                    let quoted_field_type = quote_field_type_from_object_field(obj_field);
+                    quote!(<#quoted_field_type>::is_pod())
+                })
+                .collect();
+            if quoted_is_pods.is_empty() {
+                quote!(true)
+            } else {
+                quote!(#(#quoted_is_pods)&&*)
+            }
         };
 
         quote! {
@@ -744,7 +811,11 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name, title, image, ..
+                path,
+                name,
+                title,
+                image,
+                ..
             } = &example.base;
 
             for line in &example.lines {
@@ -752,7 +823,7 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
                     reporter.error(
                         virtpath,
                         fqname,
-                        format!("Example {name:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                        format!("Example {path:?} contains ``` in it, so we can't embed it in the Rust API docs."),
                     );
                     continue;
                 }

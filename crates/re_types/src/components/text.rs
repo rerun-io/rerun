@@ -110,7 +110,7 @@ impl ::re_types_core::Loggable for Text {
                             .map(|crate::datatypes::Utf8(data0)| data0.0.len())
                             .unwrap_or_default()
                     }))
-                    .unwrap()
+                    .map_err(|err| std::sync::Arc::new(err))?
                     .into();
                 let inner_data: arrow2::buffer::Buffer<u8> = data0
                     .into_iter()

@@ -117,7 +117,7 @@ impl ::re_types_core::Loggable for AffixFuzzer13 {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|datum| datum.0.len()),
                         )
-                        .unwrap()
+                        .map_err(|err| std::sync::Arc::new(err))?
                         .into();
                         let inner_data: arrow2::buffer::Buffer<u8> =
                             data0_inner_data.into_iter().flat_map(|s| s.0).collect();

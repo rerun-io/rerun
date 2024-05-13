@@ -191,6 +191,10 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long, default_value_t = Default::default())]
     web_viewer_port: WebViewerServerPort,
 
+    /// Hide the normal Rerun welcome screen.
+    #[clap(long)]
+    hide_welcome_screen: bool,
+
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
     #[clap(long)]
@@ -606,6 +610,7 @@ fn run_impl(
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
         re_viewer::StartupOptions {
+            hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
                 .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?,
             persist_state: args.persist_state,

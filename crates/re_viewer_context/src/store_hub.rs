@@ -57,10 +57,14 @@ pub type BlueprintLoader =
 /// Save a blueprint to persisted storage, e.g. disk.
 pub type BlueprintSaver = dyn Fn(&ApplicationId, &EntityDb) -> anyhow::Result<()> + Send + Sync;
 
+/// Validate a blueprint against the current blueprint schema requirements.
+pub type BlueprintValidator = dyn Fn(&EntityDb) -> bool + Send + Sync;
+
 /// How to save and load blueprints
 pub struct BlueprintPersistence {
     pub loader: Option<Box<BlueprintLoader>>,
     pub saver: Option<Box<BlueprintSaver>>,
+    pub validator: Option<Box<BlueprintValidator>>,
 }
 
 /// Convenient information used for `MemoryPanel`
@@ -94,6 +98,7 @@ impl StoreHub {
             BlueprintPersistence {
                 loader: None,
                 saver: None,
+                validator: None,
             },
             &|_| {},
         )
@@ -416,10 +421,24 @@ impl StoreHub {
         &mut self,
         app_id: &ApplicationId,
         blueprint_id: &StoreId,
-    ) {
+    ) -> anyhow::Result<()> {
+        let blueprint = self
+            .store_bundle
+            .get(blueprint_id)
+            .context("missing blueprint")?;
+
+        // TODO(#6282): Improve this error message.
+        if let Some(validator) = &self.persistence.validator {
+            if !(validator)(blueprint) {
+                anyhow::bail!("Blueprint failed validation");
+            }
+        }
+
         re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
         self.default_blueprint_by_app_id
             .insert(app_id.clone(), blueprint_id.clone());
+
+        Ok(())
     }
 
     /// Clear the current default blueprint
@@ -468,6 +487,13 @@ impl StoreHub {
             .store_bundle
             .get(blueprint_id)
             .context("missing blueprint")?;
+
+        // TODO(#6282): Improve this error message.
+        if let Some(validator) = &self.persistence.validator {
+            if !(validator)(blueprint) {
+                anyhow::bail!("Blueprint failed validation");
+            }
+        }
 
         let new_blueprint = blueprint.clone_with_new_id(new_id.clone())?;
 

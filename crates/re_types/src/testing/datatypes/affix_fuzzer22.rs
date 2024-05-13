@@ -132,7 +132,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             fixed_sized_native_bitmap.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
-                                    .map(|i| std::iter::repeat(i).take(4usize))
+                                    .map(|b| std::iter::repeat(b).take(4usize))
                                     .flatten()
                                     .collect::<Vec<_>>()
                                     .into()

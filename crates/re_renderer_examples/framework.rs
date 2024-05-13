@@ -152,7 +152,8 @@ impl<E: Example + 'static> Application<E> {
                 output_format_color,
                 device_caps,
             },
-        );
+        )
+        .map_err(|err| anyhow::format_err!("{err}"))?;
 
         let example = E::new(&re_ctx);
 

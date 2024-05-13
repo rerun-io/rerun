@@ -35,6 +35,10 @@ impl<T: Send> Sender<T> {
             Arc::clone(&self.source),
             SmartMessagePayload::Msg(msg),
         )
+        .map_err(|SendError(msg)| match msg {
+            SmartMessagePayload::Msg(msg) => SendError(msg),
+            SmartMessagePayload::Quit(_) => unreachable!(),
+        })
     }
 
     /// Forwards a message as-is.
@@ -43,7 +47,7 @@ impl<T: Send> Sender<T> {
         time: Instant,
         source: Arc<SmartMessageSource>,
         payload: SmartMessagePayload<T>,
-    ) -> Result<(), SendError<T>> {
+    ) -> Result<(), SendError<SmartMessagePayload<T>>> {
         // NOTE: We should never be sending a message with an unknown source.
         debug_assert!(!matches!(*source, SmartMessageSource::Unknown));
 
@@ -53,7 +57,7 @@ impl<T: Send> Sender<T> {
                 source,
                 payload,
             })
-            .map_err(|SendError(msg)| SendError(msg.into_data().unwrap()))
+            .map_err(|SendError(msg)| SendError(msg.payload))
     }
 
     /// Used to indicate that a sender has left.
