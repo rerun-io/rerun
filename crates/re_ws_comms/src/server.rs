@@ -104,16 +104,13 @@ impl RerunServer {
     ) -> Result<Self, RerunServerError> {
         let bind_addr = format!("{bind_ip}:{port}");
 
-        let listener_socket = match TcpListener::bind(bind_addr) {
-            Ok(listener) => listener,
-            Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
-                let bind_addr = format!("{bind_ip}:0");
-
-                TcpListener::bind(bind_addr)
-                    .map_err(|err| RerunServerError::BindFailed(RerunServerPort(0), err))?
+        let listener_socket = TcpListener::bind(bind_addr).map_err(|err| {
+            if err.kind() == std::io::ErrorKind::AddrInUse {
+                RerunServerError::BindFailedAddrInUse(port)
+            } else {
+                RerunServerError::BindFailed(port, err)
             }
-            Err(err) => return Err(RerunServerError::BindFailed(port, err)),
-        };
+        })?;
 
         // Blocking listener socket seems much easier at first glance:
         // No polling needed and as such no extra libraries!
