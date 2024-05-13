@@ -2,7 +2,7 @@ use re_data_store::LatestAtQuery;
 use re_entity_db::{external::re_query::LatestAtComponentResults, EntityDb};
 use re_log_types::{external::arrow2, EntityPath, Instance};
 use re_types::external::arrow2::array::Utf8Array;
-use re_viewer_context::{ComponentUiRegistry, UiVerbosity, ViewerContext};
+use re_viewer_context::{ComponentUiRegistry, UiLayout, ViewerContext};
 
 use crate::editors::register_editors;
 
@@ -41,11 +41,11 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
     registry.add(
         C::name(),
         Box::new(
-            |ctx, ui, verbosity, query, db, entity_path, component, instance| {
+            |ctx, ui, ui_layout, query, db, entity_path, component, instance| {
                 // TODO(#5607): what should happen if the promise is still pending?
                 if let Some(component) = component.instance::<C>(db.resolver(), instance.get() as _)
                 {
-                    component.entity_data_ui(ctx, ui, verbosity, entity_path, query, db);
+                    component.entity_data_ui(ctx, ui, ui_layout, entity_path, query, db);
                 } else {
                     ui.weak("(not found)");
                 }
@@ -58,7 +58,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
 fn fallback_component_ui(
     _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    verbosity: UiVerbosity,
+    ui_layout: UiLayout,
     _query: &LatestAtQuery,
     db: &EntityDb,
     _entity_path: &EntityPath,
@@ -74,13 +74,13 @@ fn fallback_component_ui(
 
     // No special ui implementation - use a generic one:
     if let Some(value) = value {
-        arrow_ui(ui, verbosity, &*value);
+        arrow_ui(ui, ui_layout, &*value);
     } else {
         ui.weak("(null)");
     }
 }
 
-fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array::Array) {
+fn arrow_ui(ui: &mut egui::Ui, ui_layout: UiLayout, array: &dyn arrow2::array::Array) {
     use re_types::SizeBytes as _;
 
     // Special-treat text.
@@ -88,14 +88,14 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i32>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(ui, verbosity, string);
+            text_ui(ui, ui_layout, string);
             return;
         }
     }
     if let Some(utf8) = array.as_any().downcast_ref::<Utf8Array<i64>>() {
         if utf8.len() == 1 {
             let string = utf8.value(0);
-            text_ui(ui, verbosity, string);
+            text_ui(ui, ui_layout, string);
             return;
         }
     }
@@ -106,7 +106,7 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
         let mut string = String::new();
         let display = arrow2::array::get_display(array, "null");
         if display(&mut string, 0).is_ok() {
-            text_ui(ui, verbosity, &string);
+            text_ui(ui, ui_layout, &string);
             return;
         }
     }
@@ -119,14 +119,14 @@ fn arrow_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, array: &dyn arrow2::array
 
     if data_type_formatted.len() < 20 {
         // e.g. "4.2 KiB of Float32"
-        text_ui(ui, verbosity, &format!("{bytes} of {data_type_formatted}"));
+        text_ui(ui, ui_layout, &format!("{bytes} of {data_type_formatted}"));
     } else {
         // Huge datatype, probably a union horror show
         ui.label(format!("{bytes} of data"));
     }
 }
 
-fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
+fn text_ui(ui: &mut egui::Ui, ui_layout: UiLayout, string: &str) {
     let font_id = egui::TextStyle::Monospace.resolve(ui.style());
     let color = ui.visuals().text_color();
     let wrap_width = ui.available_width();
@@ -135,20 +135,20 @@ fn text_ui(ui: &mut egui::Ui, verbosity: UiVerbosity, string: &str) {
 
     let mut needs_scroll_area = false;
 
-    match verbosity {
-        UiVerbosity::Small => {
+    match ui_layout {
+        UiLayout::List => {
             // Elide
             layout_job.wrap.max_rows = 1;
             layout_job.wrap.break_anywhere = true;
         }
-        UiVerbosity::Reduced => {
+        UiLayout::Tooltip => {
             layout_job.wrap.max_rows = 3;
         }
-        UiVerbosity::LimitHeight => {
+        UiLayout::SelectionPanelLimitHeight => {
             let num_newlines = string.chars().filter(|&c| c == '\n').count();
             needs_scroll_area = 10 < num_newlines || 300 < string.len();
         }
-        UiVerbosity::Full => {
+        UiLayout::SelectionPanelFull => {
             needs_scroll_area = false;
         }
     }

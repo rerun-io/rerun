@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 use crate::item_ui;
@@ -12,7 +12,7 @@ impl DataUi for InstancePath {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
@@ -46,13 +46,13 @@ impl DataUi for InstancePath {
         let normal_components = components.split_off(split);
         let indicator_components = components;
 
-        let show_indicator_comps = match verbosity {
-            UiVerbosity::Small | UiVerbosity::Reduced => {
+        let show_indicator_comps = match ui_layout {
+            UiLayout::List | UiLayout::Tooltip => {
                 // Skip indicator components in hover ui (unless there are no other
                 // types of components).
                 !normal_components.is_empty()
             }
-            UiVerbosity::LimitHeight | UiVerbosity::Full => true,
+            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => true,
         };
 
         // First show indicator components, outside the grid:
@@ -96,12 +96,12 @@ impl DataUi for InstancePath {
                             component_name,
                             results: Arc::clone(results),
                         }
-                        .data_ui(ctx, ui, UiVerbosity::Small, query, db);
+                        .data_ui(ctx, ui, UiLayout::List, query, db);
                     } else {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
-                            UiVerbosity::Small,
+                            UiLayout::List,
                             query,
                             db,
                             entity_path,

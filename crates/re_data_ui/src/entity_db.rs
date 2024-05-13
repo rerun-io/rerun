@@ -1,7 +1,7 @@
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_types::SizeBytes;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
 
@@ -10,13 +10,13 @@ impl crate::DataUi for EntityDb {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         let re_ui = &ctx.re_ui;
 
-        if verbosity == UiVerbosity::Small {
+        if ui_layout == UiLayout::List {
             // TODO(emilk): standardize this formatting with that in `entity_db_button_ui`
             let mut string = self.store_id().to_string();
             if let Some(data_source) = &self.data_source {

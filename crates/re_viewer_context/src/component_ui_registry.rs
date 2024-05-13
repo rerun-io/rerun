@@ -7,36 +7,42 @@ use re_types::ComponentName;
 
 use crate::ViewerContext;
 
-/// Controls how mich space we use to show the data in a component ui.
+/// Specifies the context in which the UI is used and the constraints it should follow.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UiVerbosity {
-    /// Keep it small enough to fit on one row.
-    Small,
-
-    /// Display a reduced set, used for hovering/tooltips.
+pub enum UiLayout {
+    /// Display a short summary. Used in lists.
     ///
-    /// Keep it under a half-dozen lines.
-    Reduced,
+    /// Keep it small enough to fit on half a row (i.e. the second column of a
+    /// [`re_ui::list_item2::ListItem`] with [`re_ui::list_item2::PropertyContent`]. Text should
+    /// truncate.
+    List,
 
-    /// Display everything as wide as available but limit height.
+    /// Display as much information as possible in a compact way. Used for hovering/tooltips.
     ///
-    /// This is used for example in the selection panel when multiple items are selected. When using
-    /// a Table, use the `re_data_ui::table_for_verbosity` function.
-    LimitHeight,
+    /// Keep it under a half-dozen lines. Text may wrap. Avoid interactive UI. When using a table,
+    /// use the `re_data_ui::table_for_ui_layout` function.
+    Tooltip,
 
-    /// Display everything as wide as available, without height restrictions.
+    /// Display everything as wide as available but limit height. Used in the selection panel when
+    /// multiple items are selected.
     ///
-    /// This is used for example in the selection panel when only one item is selected. In this
-    /// case, any scrolling is handled by the selection panel itself. When using a Table, use the
-    /// `re_data_ui::table_for_verbosity` function.
-    Full,
+    /// When displaying lists, wrap them in a height-limited [`egui::ScrollArea`]. When using a
+    /// table, use the `re_data_ui::table_for_ui_layout` function.
+    SelectionPanelLimitHeight,
+
+    /// Display everything as wide as available, without height restriction. Used in the selection
+    /// panel when a single item is selected.
+    ///
+    /// The UI will be wrapped in a [`egui::ScrollArea`], so data should be fully displayed with no
+    /// restriction. When using a table, use the `re_data_ui::table_for_ui_layout` function.
+    SelectionPanelFull,
 }
 
 type ComponentUiCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiLayout,
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
@@ -50,7 +56,7 @@ type ComponentEditCallback = Box<
     dyn Fn(
             &ViewerContext<'_>,
             &mut egui::Ui,
-            UiVerbosity,
+            UiLayout,
             &LatestAtQuery,
             &EntityDb,
             &EntityPath,
@@ -91,7 +97,7 @@ impl ComponentUiRegistry {
 
     /// Registers how to edit a given component in the ui.
     ///
-    /// Requires two callbacks: one to provided an initial default value, and one to show the editor
+    /// Requires two callbacks: one to provide an initial default value, and one to show the editor
     /// UI and save the updated value.
     ///
     /// If the component was already registered, the new callback replaces the old one.
@@ -116,7 +122,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
@@ -137,7 +143,7 @@ impl ComponentUiRegistry {
         (*ui_callback)(
             ctx,
             ui,
-            verbosity,
+            ui_layout,
             query,
             db,
             entity_path,
@@ -152,7 +158,7 @@ impl ComponentUiRegistry {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &LatestAtQuery,
         db: &EntityDb,
         entity_path: &EntityPath,
@@ -171,7 +177,7 @@ impl ComponentUiRegistry {
             (*edit_callback)(
                 ctx,
                 ui,
-                verbosity,
+                ui_layout,
                 query,
                 db,
                 entity_path,
@@ -184,7 +190,7 @@ impl ComponentUiRegistry {
             self.ui(
                 ctx,
                 ui,
-                verbosity,
+                ui_layout,
                 query,
                 db,
                 entity_path,

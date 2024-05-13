@@ -9,7 +9,7 @@ use re_log_types::{EntityPath, Instance, Timeline};
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewState, SpaceViewSystemExecutionError,
-    SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
+    SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
 
 use crate::visualizer_system::EmptySystem;
@@ -166,7 +166,7 @@ impl SpaceViewClass for DataframeSpaceView {
                         ctx.component_ui_registry.ui(
                             ctx,
                             ui,
-                            UiVerbosity::Small,
+                            UiLayout::List,
                             &latest_at_query,
                             ctx.recording(),
                             &instance.entity_path,

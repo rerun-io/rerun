@@ -2,7 +2,7 @@ use re_types::{
     components,
     datatypes::{self, Angle, RotationAxisAngle},
 };
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::DataUi;
 
@@ -11,11 +11,11 @@ impl DataUi for components::Rotation3D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        self.0.data_ui(ctx, ui, verbosity, query, db);
+        self.0.data_ui(ctx, ui, ui_layout, query, db);
     }
 }
 
@@ -24,7 +24,7 @@ impl DataUi for datatypes::Rotation3D {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
@@ -36,7 +36,7 @@ impl DataUi for datatypes::Rotation3D {
             datatypes::Rotation3D::AxisAngle(RotationAxisAngle { axis, angle }) => {
                 egui::Grid::new("axis_angle").num_columns(2).show(ui, |ui| {
                     ui.label("axis");
-                    axis.data_ui(ctx, ui, verbosity, query, db);
+                    axis.data_ui(ctx, ui, ui_layout, query, db);
                     ui.end_row();
 
                     ui.label("angle");

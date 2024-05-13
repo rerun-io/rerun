@@ -6,9 +6,9 @@ use re_entity_db::{external::re_query::LatestAtComponentResults, EntityPath, Ins
 use re_log_types::Instance;
 use re_types::ComponentName;
 use re_ui::SyntaxHighlighting as _;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{table_for_verbosity, DataUi};
+use super::{table_for_ui_layout, DataUi};
 use crate::item_ui;
 
 /// All the values of a specific [`re_log_types::ComponentPath`].
@@ -23,7 +23,7 @@ impl DataUi for EntityLatestAtResults {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
@@ -39,20 +39,22 @@ impl DataUi for EntityLatestAtResults {
             return;
         };
 
-        let one_line = match verbosity {
-            UiVerbosity::Small => true,
-            UiVerbosity::Reduced | UiVerbosity::LimitHeight | UiVerbosity::Full => false,
+        let one_line = match ui_layout {
+            UiLayout::List => true,
+            UiLayout::Tooltip
+            | UiLayout::SelectionPanelLimitHeight
+            | UiLayout::SelectionPanelFull => false,
         };
 
         // in some cases, we don't want to display all instances
-        let max_row = match verbosity {
-            UiVerbosity::Small => 0,
-            UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
-            UiVerbosity::LimitHeight | UiVerbosity::Full => num_instances,
+        let max_row = match ui_layout {
+            UiLayout::List => 0,
+            UiLayout::Tooltip => num_instances.at_most(4), // includes "…x more" if any
+            UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => num_instances,
         };
 
         // Display data time and additional diagnostic information for static components.
-        if verbosity != UiVerbosity::Small {
+        if ui_layout != UiLayout::List {
             ui.label(format!(
                 "Data time: {}",
                 query
@@ -127,7 +129,7 @@ impl DataUi for EntityLatestAtResults {
             ctx.component_ui_registry.ui(
                 ctx,
                 ui,
-                verbosity,
+                ui_layout,
                 query,
                 db,
                 &self.entity_path,
@@ -137,7 +139,7 @@ impl DataUi for EntityLatestAtResults {
         } else if one_line {
             ui.label(format!("{} values", re_format::format_uint(num_instances)));
         } else {
-            table_for_verbosity(verbosity, ui)
+            table_for_ui_layout(ui_layout, ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .column(egui_extras::Column::auto())
@@ -173,7 +175,7 @@ impl DataUi for EntityLatestAtResults {
                             ctx.component_ui_registry.ui(
                                 ctx,
                                 ui,
-                                UiVerbosity::Small,
+                                UiLayout::List,
                                 query,
                                 db,
                                 &self.entity_path,

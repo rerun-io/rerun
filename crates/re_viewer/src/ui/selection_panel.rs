@@ -19,7 +19,7 @@ use re_ui::{icons, list_item::ListItem};
 use re_ui::{ReUi, SyntaxHighlighting as _};
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, ContainerId, Contents, DataQueryResult,
-    HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiVerbosity, ViewerContext,
+    HoverHighlight, Item, SpaceViewClass, SpaceViewId, UiLayout, ViewerContext,
 };
 use re_viewport::{
     contents_name_style, context_menu_ui_for_item, icon_for_container_kind,
@@ -118,10 +118,10 @@ impl SelectionPanel {
         ui.add_space(-ui.spacing().item_spacing.y);
 
         let selection = ctx.selection();
-        let multi_selection_verbosity = if selection.len() > 1 {
-            UiVerbosity::LimitHeight
+        let ui_layout = if selection.len() > 1 {
+            UiLayout::SelectionPanelLimitHeight
         } else {
-            UiVerbosity::Full
+            UiLayout::SelectionPanelFull
         };
         for (i, item) in selection.iter_items().enumerate() {
             ui.push_id(i, |ui| {
@@ -148,7 +148,7 @@ impl SelectionPanel {
                         } else {
                             (ctx.current_query(), ctx.recording())
                         };
-                        data_ui_item.data_ui(ctx, ui, multi_selection_verbosity, &query, db);
+                        data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
                     });
                 }
 

@@ -1,5 +1,5 @@
 use re_entity_db::InstancePath;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 
@@ -8,10 +8,10 @@ impl DataUi for re_entity_db::EntityPath {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
-        InstancePath::entity_all(self.clone()).data_ui(ctx, ui, verbosity, query, db);
+        InstancePath::entity_all(self.clone()).data_ui(ctx, ui, ui_layout, query, db);
     }
 }

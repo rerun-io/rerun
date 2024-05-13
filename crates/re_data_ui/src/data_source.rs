@@ -1,5 +1,5 @@
 use re_log_types::StoreKind;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
 
@@ -8,13 +8,13 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
         ui.label(self.to_string());
 
-        if verbosity == UiVerbosity::Small {
+        if ui_layout == UiLayout::List {
             return;
         }
 
@@ -73,7 +73,7 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
 
             // TODO(#6246): this test is needed because we're called in a context that may or may
             // not have a full span defined.
-            if verbosity == UiVerbosity::Reduced {
+            if ui_layout == UiLayout::Tooltip {
                 // This typically happens in tooltips, so a scope is needed
                 //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
                 re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);

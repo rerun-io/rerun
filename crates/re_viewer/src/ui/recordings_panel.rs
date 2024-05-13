@@ -6,7 +6,7 @@ use re_log_types::{ApplicationId, LogMsg, StoreKind};
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::icons;
 use re_viewer_context::{
-    Item, StoreHub, SystemCommand, SystemCommandSender, UiVerbosity, ViewerContext,
+    Item, StoreHub, SystemCommand, SystemCommandSender, UiLayout, ViewerContext,
 };
 
 use crate::app_state::WelcomeScreenState;
@@ -223,7 +223,7 @@ fn app_and_its_recordings_ui(
         app_id.data_ui(
             ctx,
             ui,
-            UiVerbosity::Reduced,
+            UiLayout::Tooltip,
             &ctx.current_query(), // unused
             ctx.recording(),      // unused
         );

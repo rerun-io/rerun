@@ -10,7 +10,7 @@ use re_types::{
     },
     Component, Loggable,
 };
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 // ----
 
@@ -18,7 +18,7 @@ use re_viewer_context::{UiVerbosity, ViewerContext};
 fn edit_color_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -61,7 +61,7 @@ fn default_color(
 fn edit_text_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -101,7 +101,7 @@ fn default_text(
 fn edit_name_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -142,7 +142,7 @@ fn default_name(
 fn edit_scatter_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -191,7 +191,7 @@ fn default_scatter(
 fn edit_radius_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -238,7 +238,7 @@ fn default_radius(
 fn edit_marker_shape_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -343,7 +343,7 @@ fn paint_marker(
 fn edit_stroke_width_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -390,7 +390,7 @@ fn default_stroke_width(
 fn edit_marker_size_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _verbosity: UiVerbosity,
+    _ui_layout: UiLayout,
     query: &LatestAtQuery,
     db: &EntityDb,
     entity_path: &EntityPath,
@@ -439,7 +439,7 @@ fn register_editor<'a, C>(
     edit: fn(
         &ViewerContext<'_>,
         &mut egui::Ui,
-        UiVerbosity,
+        UiLayout,
         &LatestAtQuery,
         &EntityDb,
         &EntityPath,

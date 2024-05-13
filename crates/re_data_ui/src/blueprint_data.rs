@@ -1,4 +1,4 @@
-use re_viewer_context::{BlueprintId, BlueprintIdRegistry, UiVerbosity, ViewerContext};
+use re_viewer_context::{BlueprintId, BlueprintIdRegistry, UiLayout, ViewerContext};
 
 use crate::{item_ui::entity_path_button_to, DataUi};
 
@@ -8,7 +8,7 @@ impl<T: BlueprintIdRegistry> DataUi for BlueprintId<T> {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {

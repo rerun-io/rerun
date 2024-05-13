@@ -39,7 +39,7 @@ pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
 };
-pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
+pub use component_ui_registry::{ComponentUiRegistry, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
 pub use item::Item;
 pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};

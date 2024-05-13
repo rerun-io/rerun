@@ -1,7 +1,7 @@
 use re_log_types::{
     ArrowMsg, BlueprintActivationCommand, DataTable, LogMsg, SetStoreInfo, StoreInfo,
 };
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 use crate::item_ui;
@@ -11,13 +11,13 @@ impl DataUi for LogMsg {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
         match self {
-            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query, db),
-            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query, db),
+            LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
+            LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, ui_layout, query, db),
             LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
                 blueprint_id,
                 make_active,
@@ -36,7 +36,7 @@ impl DataUi for SetStoreInfo {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
+        _ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
@@ -93,7 +93,7 @@ impl DataUi for ArrowMsg {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
@@ -118,11 +118,11 @@ impl DataUi for ArrowMsg {
                         ui.end_row();
 
                         ui.monospace("time_point:");
-                        row.timepoint().data_ui(ctx, ui, verbosity, query, db);
+                        row.timepoint().data_ui(ctx, ui, ui_layout, query, db);
                         ui.end_row();
 
                         ui.monospace("components:");
-                        row.cells().data_ui(ctx, ui, verbosity, query, db);
+                        row.cells().data_ui(ctx, ui, ui_layout, query, db);
                         ui.end_row();
                     });
                 }

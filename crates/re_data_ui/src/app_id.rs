@@ -2,7 +2,7 @@ use itertools::Itertools as _;
 
 use re_entity_db::EntityDb;
 use re_log_types::ApplicationId;
-use re_viewer_context::{SystemCommandSender as _, UiVerbosity, ViewerContext};
+use re_viewer_context::{SystemCommandSender as _, UiLayout, ViewerContext};
 
 use crate::item_ui::entity_db_button_ui;
 
@@ -11,9 +11,9 @@ impl crate::DataUi for ApplicationId {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
-        _db: &EntityDb,
+        _db: &re_entity_db::EntityDb,
     ) {
         egui::Grid::new("application_id")
             .num_columns(2)
@@ -26,7 +26,7 @@ impl crate::DataUi for ApplicationId {
                 ui.end_row();
             });
 
-        if verbosity == UiVerbosity::Small {
+        if ui_layout == UiLayout::List {
             return;
         }
 
@@ -56,7 +56,7 @@ impl crate::DataUi for ApplicationId {
             ui.scope(|ui| {
                 // TODO(#6246): this test is needed because we're called in a context that may or may
                 // not have a full span defined.
-                if verbosity == UiVerbosity::Reduced {
+                if ui_layout == UiLayout::Tooltip {
                     // This typically happens in tooltips, so a scope is needed
                     //TODO(ab): in the context of tooltips, ui.max_rect() doesn't provide the correct width
                     re_ui::full_span::full_span_scope(ui, ui.max_rect().x_range(), content_ui);
@@ -70,7 +70,7 @@ impl crate::DataUi for ApplicationId {
         // ---------------------------------------------------------------------
         // do not show UI code in tooltips
 
-        if verbosity != UiVerbosity::Reduced {
+        if ui_layout != UiLayout::Tooltip {
             ui.add_space(8.0);
 
             // ---------------------------------------------------------------------

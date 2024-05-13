@@ -11,7 +11,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 use re_data_ui::item_ui;
 use re_entity_db::TimeHistogram;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeReal};
-use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
 use crate::TimePanelItem;
 
@@ -544,7 +544,7 @@ fn show_row_ids_tooltip(
 
         let query = re_data_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max());
 
-        let verbosity = UiVerbosity::Reduced;
+        let ui_layout = UiLayout::Tooltip;
 
         let TimePanelItem {
             entity_path,
@@ -555,12 +555,12 @@ fn show_row_ids_tooltip(
             let component_path = ComponentPath::new(entity_path.clone(), *component_name);
             item_ui::component_path_button(ctx, ui, &component_path, db);
             ui.add_space(8.0);
-            component_path.data_ui(ctx, ui, verbosity, &query, db);
+            component_path.data_ui(ctx, ui, ui_layout, &query, db);
         } else {
             let instance_path = re_entity_db::InstancePath::entity_all(entity_path.clone());
             item_ui::instance_path_button(ctx, &query, db, ui, None, &instance_path);
             ui.add_space(8.0);
-            instance_path.data_ui(ctx, ui, verbosity, &query, db);
+            instance_path.data_ui(ctx, ui, ui_layout, &query, db);
         }
     });
 }

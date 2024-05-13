@@ -22,7 +22,7 @@ use re_log_types::{
 };
 use re_ui::list_item::{ListItem, WidthAllocationMode};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiVerbosity,
+    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
     ViewerContext,
 };
 use re_viewport::{context_menu_ui_for_item, SelectionUpdateBehavior, ViewportBlueprint};
@@ -787,8 +787,8 @@ impl TimePanel {
                                 *time_ctrl.timeline(),
                                 TimeInt::MAX,
                             );
-                            let verbosity = UiVerbosity::Reduced;
-                            component_path.data_ui(ctx, ui, verbosity, &query, entity_db);
+                            let ui_layout = UiLayout::Tooltip;
+                            component_path.data_ui(ctx, ui, ui_layout, &query, entity_db);
                         }
                     }
                 });

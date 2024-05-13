@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use re_log_types::ComponentPath;
-use re_viewer_context::{UiVerbosity, ViewerContext};
+use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
 
@@ -10,7 +10,7 @@ impl DataUi for ComponentPath {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
+        ui_layout: UiLayout,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
     ) {
@@ -33,7 +33,7 @@ impl DataUi for ComponentPath {
                     component_name: *component_name,
                     results: Arc::clone(results),
                 }
-                .data_ui(ctx, ui, verbosity, query, db);
+                .data_ui(ctx, ui, ui_layout, query, db);
             } else if let Some(entity_tree) = ctx.recording().tree().subtree(entity_path) {
                 if entity_tree.entity.components.contains_key(component_name) {
                     ui.label("<unset>");

@@ -14,8 +14,8 @@ use re_types::{
 use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
-    UiVerbosity, ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
@@ -602,7 +602,7 @@ pub fn picking(
                 instance_path.data_ui(
                     ctx,
                     ui,
-                    UiVerbosity::Reduced,
+                    UiLayout::Tooltip,
                     &ctx.current_query(),
                     ctx.recording(),
                 );
@@ -684,7 +684,7 @@ fn image_hover_ui(
         component_path.data_ui(
             ctx,
             ui,
-            UiVerbosity::Small,
+            UiLayout::List,
             &ctx.current_query(),
             ctx.recording(),
         );
@@ -693,7 +693,7 @@ fn image_hover_ui(
         instance_path.data_ui(
             ctx,
             ui,
-            UiVerbosity::Small,
+            UiLayout::List,
             &ctx.current_query(),
             ctx.recording(),
         );
