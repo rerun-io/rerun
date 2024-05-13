@@ -361,6 +361,7 @@ python = "=3.11"
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
+blueprint_stocks_timerange = { path = "examples/python/blueprint_stocks_timerange", editable = true }
 clock = { path = "examples/python/clock", editable = true }
 controlnet = { path = "examples/python/controlnet", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }

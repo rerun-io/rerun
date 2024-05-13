@@ -10,7 +10,7 @@ import rerun as rr
 try:
     import torch.multiprocessing as multiprocessing
 except ImportError:
-    import multiprocessing  # ignore[no-redef]
+    import multiprocessing  # type: ignore[no-redef]
 
 
 def task() -> None:
