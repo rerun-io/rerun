@@ -317,7 +317,7 @@ impl PyRecordingStream {
     /// Determine if this stream is operating in the context of a forked child process.
     ///
     /// This means the stream was created in the parent process. It now exists in the child
-    /// process by way of fork, but it is effectively a zombie since it's batcher and sink
+    /// process by way of fork, but it is effectively a zombie since its batcher and sink
     /// threads would not have been copied.
     ///
     /// Calling operations such as flush or set_sink will result in an error.
