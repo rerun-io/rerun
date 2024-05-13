@@ -96,10 +96,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, axis): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { axis, .. } = &**datum;
-                                    axis.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.axis.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -111,14 +108,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let axis_inner_data: Vec<_> = axis
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let axis_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -154,10 +144,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         let (somes, angle): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { angle, .. } = &**datum;
-                                    angle.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.angle.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

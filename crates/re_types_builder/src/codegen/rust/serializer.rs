@@ -64,10 +64,10 @@ pub fn quote_arrow_serializer(
         );
         let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
 
-        let quoted_binding = if is_tuple_struct {
-            quote!(Self(#quoted_data_dst))
+        let quoted_member_accessor = if is_tuple_struct {
+            quote!(0)
         } else {
-            quote!(Self { #quoted_data_dst })
+            quote!(#quoted_data_dst)
         };
 
         let datatype = &arrow_registry.get(&obj_field.fqname);
@@ -97,8 +97,7 @@ pub fn quote_arrow_serializer(
 
                     let datum = datum
                         .map(|datum| {
-                            let #quoted_binding = datum.into_owned();
-                            #quoted_data_dst
+                            datum.into_owned().#quoted_member_accessor
                         })
                         #quoted_flatten;
 
@@ -112,8 +111,6 @@ pub fn quote_arrow_serializer(
             #quoted_serializer
         }}
     } else {
-        let data_src = data_src.clone();
-
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(_) => {
@@ -148,8 +145,7 @@ pub fn quote_arrow_serializer(
                                 let datum = datum
                                     .as_ref()
                                     .map(|datum| {
-                                        let Self { #data_dst, .. } = &**datum;
-                                        #data_dst.clone()
+                                        datum.#data_dst.clone()
                                     })
                                     #quoted_flatten;
 
@@ -464,18 +460,10 @@ fn quote_arrow_field_serializer(
                 let inner_obj = inner_obj.as_ref().unwrap();
                 let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
-                let quoted_data_dst = format_ident!(
-                    "{}",
-                    if is_tuple_struct {
-                        "data0"
-                    } else {
-                        inner_obj.fields[0].name.as_str()
-                    }
-                );
-                let quoted_binding = if is_tuple_struct {
-                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                let quoted_member_accessor = if is_tuple_struct {
+                    quote!(0)
                 } else {
-                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                    quote!(#quoted_inner_obj_type)
                 };
 
                 if elements_are_nullable {
@@ -483,8 +471,7 @@ fn quote_arrow_field_serializer(
                         .map(|datum| {
                             datum
                                 .map(|datum| {
-                                    let #quoted_binding = datum;
-                                    #quoted_data_dst
+                                    datum.#quoted_member_accessor
                                 })
                                 .unwrap_or_default()
                         })
@@ -492,8 +479,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     quote! {
                         .map(|datum| {
-                            let #quoted_binding = datum;
-                            #quoted_data_dst
+                            datum.#quoted_member_accessor
                         })
                     }
                 }
@@ -547,7 +533,6 @@ fn quote_arrow_field_serializer(
             let (quoted_transparent_mapping, quoted_transparent_length) =
                 if inner_is_arrow_transparent {
                     let inner_obj = inner_obj.as_ref().unwrap();
-                    let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                     let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
                     let quoted_data_dst = format_ident!(
                         "{}",
@@ -557,24 +542,22 @@ fn quote_arrow_field_serializer(
                             inner_obj.fields[0].name.as_str()
                         }
                     );
-                    let quoted_binding = if is_tuple_struct {
-                        quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                    let quoted_member_accessor = if is_tuple_struct {
+                        quote!(0)
                     } else {
-                        quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                        quote!(#quoted_data_dst)
                     };
 
                     (
                         quote! {
                             .flat_map(|datum| {
-                                let #quoted_binding = datum;
                                 // NOTE: `Buffer::clone`, which is just a ref-count bump
-                                #quoted_data_dst .0.clone()
+                                datum.#quoted_member_accessor.0.clone()
                             })
                         },
                         quote! {
                             .map(|datum| {
-                                let #quoted_binding = datum;
-                                #quoted_data_dst.0.len()
+                                datum.#quoted_member_accessor.len()
                             })
                         },
                     )
@@ -585,7 +568,7 @@ fn quote_arrow_field_serializer(
                             .flat_map(|s| s.0.clone())
                         },
                         quote! {
-                            .map(|datum| datum.0.len())
+                            .map(|datum| datum.len())
                         },
                     )
                 };
@@ -667,7 +650,6 @@ fn quote_arrow_field_serializer(
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
-                let quoted_inner_obj_type = quote_fqname_as_type_path(&inner_obj.fqname);
                 let is_tuple_struct = is_tuple_struct_from_obj(inner_obj);
                 let quoted_data_dst = format_ident!(
                     "{}",
@@ -677,10 +659,10 @@ fn quote_arrow_field_serializer(
                         inner_obj.fields[0].name.as_str()
                     }
                 );
-                let quoted_binding = if is_tuple_struct {
-                    quote!(#quoted_inner_obj_type(#quoted_data_dst))
+                let quoted_member_accessor = if is_tuple_struct {
+                    quote!(0)
                 } else {
-                    quote!(#quoted_inner_obj_type { #quoted_data_dst })
+                    quote!(#quoted_data_dst)
                 };
 
                 if elements_are_nullable {
@@ -688,8 +670,7 @@ fn quote_arrow_field_serializer(
                         .map(|datum| {
                             datum
                                 .map(|datum| {
-                                    let #quoted_binding = datum;
-                                    #quoted_data_dst
+                                    datum.#quoted_member_accessor
                                 })
                                 .unwrap_or_default()
                         })
@@ -699,8 +680,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     quote! {
                         .map(|datum| {
-                            let #quoted_binding = datum.clone();
-                            #quoted_data_dst
+                            datum.#quoted_member_accessor.clone()
                         })
                         // NOTE: Flattening yet since we have to deconstruct the inner list.
                         .flatten()
@@ -777,7 +757,7 @@ fn quote_arrow_field_serializer(
                     quote! {}
                 } else {
                     let map_to_length = if elements_are_nullable {
-                        quote! { map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default()) }
+                        quote! { map(|opt| opt.as_ref().map_or(0, |datum| datum. #quoted_num_instances)) }
                     } else {
                         quote! { map(|datum| datum. #quoted_num_instances) }
                     };
@@ -848,7 +828,7 @@ fn quote_arrow_field_serializer(
                                 #quoted_transparent_mapping;
 
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                buffers.iter().map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default())
+                                buffers.iter().map(|opt| opt.as_ref().map_or(0, |buf| buf.len()))
                             ).unwrap().into();
 
                             #quoted_inner_bitmap

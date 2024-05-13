@@ -101,10 +101,7 @@ impl crate::Loggable for TimeRange {
                         let (somes, start): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { start, .. } = &**datum;
-                                    start.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.start.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -121,10 +118,7 @@ impl crate::Loggable for TimeRange {
                         let (somes, end): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { end, .. } = &**datum;
-                                    end.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.end.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

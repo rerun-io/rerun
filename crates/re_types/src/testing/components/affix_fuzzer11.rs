@@ -86,12 +86,7 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum
-                        .map(|datum| {
-                            let Self(data0) = datum.into_owned();
-                            data0
-                        })
-                        .flatten();
+                    let datum = datum.map(|datum| datum.into_owned().0).flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -109,14 +104,13 @@ impl ::re_types_core::Loggable for AffixFuzzer11 {
                     .concat()
                     .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                let offsets =
-                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
-                        opt.as_ref()
-                            .map(|datum| datum.num_instances())
-                            .unwrap_or_default()
-                    }))
-                    .unwrap()
-                    .into();
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                )
+                .unwrap()
+                .into();
                 ListArray::new(
                     Self::arrow_datatype(),
                     offsets,

@@ -100,10 +100,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, timeline): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { timeline, .. } = &**datum;
-                                    timeline.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.timeline.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -115,19 +112,11 @@ impl crate::Loggable for VisibleTimeRange {
                             let inner_data: arrow2::buffer::Buffer<u8> = timeline
                                 .iter()
                                 .flatten()
-                                .flat_map(|datum| {
-                                    let crate::datatypes::Utf8(data0) = datum;
-                                    data0.0.clone()
-                                })
+                                .flat_map(|datum| datum.0 .0.clone())
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 timeline.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::datatypes::Utf8(data0) = datum;
-                                            data0.0.len()
-                                        })
-                                        .unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
@@ -148,10 +137,7 @@ impl crate::Loggable for VisibleTimeRange {
                         let (somes, range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { range, .. } = &**datum;
-                                    range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

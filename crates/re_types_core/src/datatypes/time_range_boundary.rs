@@ -126,13 +126,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     let cursor_relative_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Int64,
-                        cursor_relative
-                            .into_iter()
-                            .map(|datum| {
-                                let crate::datatypes::TimeInt(data0) = datum;
-                                data0
-                            })
-                            .collect(),
+                        cursor_relative.into_iter().map(|datum| datum.0).collect(),
                         cursor_relative_bitmap,
                     )
                     .boxed()
@@ -148,13 +142,7 @@ impl crate::Loggable for TimeRangeBoundary {
                     let absolute_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
                         DataType::Int64,
-                        absolute
-                            .into_iter()
-                            .map(|datum| {
-                                let crate::datatypes::TimeInt(data0) = datum;
-                                data0
-                            })
-                            .collect(),
+                        absolute.into_iter().map(|datum| datum.0).collect(),
                         absolute_bitmap,
                     )
                     .boxed()

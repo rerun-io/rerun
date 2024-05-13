@@ -111,10 +111,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self { translation, .. } = &**datum;
-                                        translation.clone()
-                                    })
+                                    .map(|datum| datum.translation.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -127,14 +124,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -170,13 +160,8 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, mat3x3): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { mat3x3, .. } = &**datum;
-                                        mat3x3.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.mat3x3.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -188,14 +173,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let mat3x3_inner_data: Vec<_> = mat3x3
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Mat3x3(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let mat3x3_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -231,10 +209,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_parent, .. } = &**datum;
-                                    from_parent.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.from_parent.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

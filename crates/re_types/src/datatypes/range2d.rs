@@ -101,10 +101,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { x_range, .. } = &**datum;
-                                    x_range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.x_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -116,14 +113,7 @@ impl ::re_types_core::Loggable for Range2D {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let x_range_inner_data: Vec<_> = x_range
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Range1D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let x_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -159,10 +149,7 @@ impl ::re_types_core::Loggable for Range2D {
                         let (somes, y_range): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { y_range, .. } = &**datum;
-                                    y_range.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.y_range.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -174,14 +161,7 @@ impl ::re_types_core::Loggable for Range2D {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let y_range_inner_data: Vec<_> = y_range
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Range1D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let y_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

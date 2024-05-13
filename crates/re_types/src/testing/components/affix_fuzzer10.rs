@@ -82,12 +82,7 @@ impl ::re_types_core::Loggable for AffixFuzzer10 {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum
-                        .map(|datum| {
-                            let Self(data0) = datum.into_owned();
-                            data0
-                        })
-                        .flatten();
+                    let datum = datum.map(|datum| datum.into_owned().0).flatten();
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -101,7 +96,7 @@ impl ::re_types_core::Loggable for AffixFuzzer10 {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
                 )
                 .map_err(|err| std::sync::Arc::new(err))?
                 .into();

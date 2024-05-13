@@ -75,10 +75,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -106,7 +103,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     buffers
                         .iter()
-                        .map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default()),
+                        .map(|opt| opt.as_ref().map_or(0, |buf| buf.len())),
                 )
                 .unwrap()
                 .into();

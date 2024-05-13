@@ -100,10 +100,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                         let (somes, keypoint0): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { keypoint0, .. } = &**datum;
-                                    keypoint0.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.keypoint0.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -115,14 +112,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             DataType::UInt16,
                             keypoint0
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::KeypointId(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             keypoint0_bitmap,
                         )
@@ -132,10 +122,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                         let (somes, keypoint1): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { keypoint1, .. } = &**datum;
-                                    keypoint1.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.keypoint1.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -147,14 +134,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             DataType::UInt16,
                             keypoint1
                                 .into_iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::KeypointId(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .collect(),
                             keypoint1_bitmap,
                         )

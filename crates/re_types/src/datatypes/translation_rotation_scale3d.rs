@@ -119,10 +119,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                             .map(|datum| {
                                 let datum = datum
                                     .as_ref()
-                                    .map(|datum| {
-                                        let Self { translation, .. } = &**datum;
-                                        translation.clone()
-                                    })
+                                    .map(|datum| datum.translation.clone())
                                     .flatten();
                                 (datum.is_some(), datum)
                             })
@@ -135,14 +132,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
-                                .map(|datum| {
-                                    datum
-                                        .map(|datum| {
-                                            let crate::datatypes::Vec3D(data0) = datum;
-                                            data0
-                                        })
-                                        .unwrap_or_default()
-                                })
+                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
                             let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
@@ -178,13 +168,8 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         let (somes, rotation): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { rotation, .. } = &**datum;
-                                        rotation.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.rotation.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -201,13 +186,8 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         let (somes, scale): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum
-                                    .as_ref()
-                                    .map(|datum| {
-                                        let Self { scale, .. } = &**datum;
-                                        scale.clone()
-                                    })
-                                    .flatten();
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.scale.clone()).flatten();
                                 (datum.is_some(), datum)
                             })
                             .unzip();
@@ -224,10 +204,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         let (somes, from_parent): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| {
-                                    let Self { from_parent, .. } = &**datum;
-                                    from_parent.clone()
-                                });
+                                let datum = datum.as_ref().map(|datum| datum.from_parent.clone());
                                 (datum.is_some(), datum)
                             })
                             .unzip();

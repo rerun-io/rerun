@@ -101,10 +101,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                     let (somes, value): (Vec<_>, Vec<_>) = data
                         .iter()
                         .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self { value, .. } = &**datum;
-                                value.clone()
-                            });
+                            let datum = datum.as_ref().map(|datum| datum.value.clone());
                             (datum.is_some(), datum)
                         })
                         .unzip();

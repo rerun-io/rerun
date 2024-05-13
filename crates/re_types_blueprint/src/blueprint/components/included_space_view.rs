@@ -95,10 +95,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    let datum = datum.map(|datum| {
-                        let Self(data0) = datum.into_owned();
-                        data0
-                    });
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
@@ -110,14 +107,7 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
-                    .map(|datum| {
-                        datum
-                            .map(|datum| {
-                                let crate::datatypes::Uuid { bytes } = datum;
-                                bytes
-                            })
-                            .unwrap_or_default()
-                    })
+                    .map(|datum| datum.map(|datum| datum.bytes).unwrap_or_default())
                     .flatten()
                     .collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =

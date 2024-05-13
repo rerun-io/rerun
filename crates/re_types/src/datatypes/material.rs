@@ -115,10 +115,7 @@ impl ::re_types_core::Loggable for Material {
                         .map(|datum| {
                             let datum = datum
                                 .as_ref()
-                                .map(|datum| {
-                                    let Self { albedo_factor, .. } = &**datum;
-                                    albedo_factor.clone()
-                                })
+                                .map(|datum| datum.albedo_factor.clone())
                                 .flatten();
                             (datum.is_some(), datum)
                         })
@@ -131,14 +128,7 @@ impl ::re_types_core::Loggable for Material {
                         DataType::UInt32,
                         albedo_factor
                             .into_iter()
-                            .map(|datum| {
-                                datum
-                                    .map(|datum| {
-                                        let crate::datatypes::Rgba32(data0) = datum;
-                                        data0
-                                    })
-                                    .unwrap_or_default()
-                            })
+                            .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                             .collect(),
                         albedo_factor_bitmap,
                     )
