@@ -63,7 +63,7 @@ impl Caches {
             // and coarsly invalidates the whole cache in that case, to avoid the kind of bugs
             // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
             {
-                let time_range = cache.per_data_time.read_recursive().time_range();
+                let time_range = cache.per_data_time.read_recursive().pending_time_range();
                 if let Some(time_range) = time_range {
                     {
                         let hole_start = time_range.max();
@@ -373,7 +373,7 @@ impl RangeComponentResultsInner {
             });
         let pending_min = i64::min(pending_front_min, pending_back_min);
 
-        if let Some(time_range) = self.time_range() {
+        if let Some(time_range) = self.pending_time_range() {
             let time_range_min = i64::min(time_range.min().as_i64().saturating_sub(1), pending_min);
             reduced_query
                 .range
@@ -454,7 +454,7 @@ impl RangeComponentResultsInner {
             });
         let pending_max = i64::max(pending_back_max, pending_front_max);
 
-        if let Some(time_range) = self.time_range() {
+        if let Some(time_range) = self.pending_time_range() {
             let time_range_max = i64::max(time_range.max().as_i64().saturating_add(1), pending_max);
             reduced_query
                 .range

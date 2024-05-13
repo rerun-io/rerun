@@ -776,14 +776,22 @@ impl RangeComponentResultsInner {
         }
     }
 
-    /// Returns the time range covered by the cached data.
+    /// Returns the pending time range that will be covered by the cached data.
     ///
     /// Reminder: [`TimeInt::STATIC`] is never included in [`ResolvedTimeRange`]s.
     #[inline]
-    pub fn time_range(&self) -> Option<ResolvedTimeRange> {
-        let first_time = self.indices.front().map(|(t, _)| *t)?;
-        let last_time = self.indices.back().map(|(t, _)| *t)?;
-        Some(ResolvedTimeRange::new(first_time, last_time))
+    pub fn pending_time_range(&self) -> Option<ResolvedTimeRange> {
+        let pending_front_min = self.promises_front.first().map(|((t, _), _)| *t);
+        let pending_front_max = self.promises_front.last().map(|((t, _), _)| *t);
+        let pending_back_max = self.promises_back.last().map(|((t, _), _)| *t);
+
+        let first_time = self.indices.front().map(|(t, _)| *t);
+        let last_time = self.indices.back().map(|(t, _)| *t);
+
+        Some(ResolvedTimeRange::new(
+            pending_front_min.or(first_time)?,
+            pending_back_max.or(last_time).or(pending_front_max)?,
+        ))
     }
 
     #[inline]
@@ -801,7 +809,7 @@ impl RangeComponentResultsInner {
     pub fn truncate_at_time(&mut self, threshold: TimeInt) {
         re_tracing::profile_function!();
 
-        let time_range = self.time_range();
+        let time_range = self.pending_time_range();
 
         let Self {
             indices,
