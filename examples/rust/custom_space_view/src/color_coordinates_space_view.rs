@@ -9,8 +9,8 @@ use re_viewer::external::{
         HoverHighlight, IdentifiedViewSystem as _, Item, SelectionHighlight, SpaceViewClass,
         SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
         SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-        UiContext, ViewQuery, ViewerContext,
+        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
+        ViewQuery, ViewerContext,
     },
 };
 
@@ -278,7 +278,7 @@ fn color_space_ui(
                 instance.data_ui(
                     ctx,
                     ui,
-                    UiContext::Tooltip,
+                    UiLayout::Tooltip,
                     &ctx.current_query(),
                     ctx.recording(),
                 );

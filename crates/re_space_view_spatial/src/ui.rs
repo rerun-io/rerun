@@ -14,7 +14,7 @@ use re_types::{
 use re_types::{blueprint::components::BackgroundKind, tensor_data::TensorDataMeaning};
 use re_viewer_context::{
     HoverHighlight, Item, ItemSpaceContext, SelectionHighlight, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiContext,
+    SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, UiLayout,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizerCollection,
 };
 
@@ -602,7 +602,7 @@ pub fn picking(
                 instance_path.data_ui(
                     ctx,
                     ui,
-                    UiContext::Tooltip,
+                    UiLayout::Tooltip,
                     &ctx.current_query(),
                     ctx.recording(),
                 );
@@ -684,7 +684,7 @@ fn image_hover_ui(
         component_path.data_ui(
             ctx,
             ui,
-            UiContext::List,
+            UiLayout::List,
             &ctx.current_query(),
             ctx.recording(),
         );
@@ -693,7 +693,7 @@ fn image_hover_ui(
         instance_path.data_ui(
             ctx,
             ui,
-            UiContext::List,
+            UiLayout::List,
             &ctx.current_query(),
             ctx.recording(),
         );

@@ -8,7 +8,7 @@ use re_types::datatypes::{TensorBuffer, TensorData, TensorDimension};
 use re_types::tensor_data::{DecodedTensor, TensorDataMeaning, TensorElement};
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiContext,
+    gpu_bridge, Annotations, TensorDecodeCache, TensorStats, TensorStatsCache, UiLayout,
     ViewerContext,
 };
 
@@ -31,7 +31,7 @@ impl EntityDataUi for re_types::components::TensorData {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        ui_context: UiContext,
+        ui_layout: UiLayout,
         entity_path: &EntityPath,
         query: &re_data_store::LatestAtQuery,
         db: &re_entity_db::EntityDb,
@@ -55,7 +55,7 @@ impl EntityDataUi for re_types::components::TensorData {
                     query,
                     db,
                     ui,
-                    ui_context,
+                    ui_layout,
                     entity_path,
                     &annotations,
                     tensor_data_row_id,
@@ -76,7 +76,7 @@ pub fn tensor_ui(
     query: &re_data_store::LatestAtQuery,
     db: &re_entity_db::EntityDb,
     ui: &mut egui::Ui,
-    ui_context: UiContext,
+    ui_layout: UiLayout,
     entity_path: &re_entity_db::EntityPath,
     annotations: &Annotations,
     tensor_data_row_id: RowId,
@@ -112,8 +112,8 @@ pub fn tensor_ui(
     )
     .ok();
 
-    match ui_context {
-        UiContext::List => {
+    match ui_layout {
+        UiLayout::List => {
             ui.horizontal(|ui| {
                 if let Some(texture) = &texture_result {
                     // We want all preview images to take up the same amount of space,
@@ -172,9 +172,7 @@ pub fn tensor_ui(
             });
         }
 
-        UiContext::SelectionPanelFull
-        | UiContext::SelectionPanelLimitHeight
-        | UiContext::Tooltip => {
+        UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight | UiLayout::Tooltip => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
                 tensor_summary_ui(
