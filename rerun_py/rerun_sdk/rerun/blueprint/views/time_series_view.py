@@ -22,7 +22,7 @@ class TimeSeriesView(SpaceView):
 
     Example
     -------
-    ### Use a blueprint to customize a TimeSeriesView:
+    ### Use a blueprint to customize a TimeSeriesView.:
     ```python
     import math
 

@@ -29,7 +29,7 @@ The default visual time range depends on the type of view this property applies 
 
 ## Example
 
-### Use a blueprint to customize a Spatial3DView
+### Use a blueprint to customize a Spatial3DView.
 
 snippet: views/spatial3d
 

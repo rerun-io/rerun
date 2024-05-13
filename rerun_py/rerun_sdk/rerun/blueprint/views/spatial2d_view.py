@@ -22,7 +22,7 @@ class Spatial2DView(SpaceView):
 
     Example
     -------
-    ### Use a blueprint to customize a Spatial2DView:
+    ### Use a blueprint to customize a Spatial2DView.:
     ```python
     import rerun as rr
     import rerun.blueprint as rrb
