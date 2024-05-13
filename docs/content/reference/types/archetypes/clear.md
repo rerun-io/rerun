@@ -19,7 +19,7 @@ data (i.e. discontinuous lines).
 
 **Required**: [`ClearIsRecursive`](../components/clear_is_recursive.md)
 
-## Links
+## Api reference links
  * 🌊 [C++ API docs for `Clear`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Clear.html)
  * 🐍 [Python API docs for `Clear`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Clear)
  * 🦀 [Rust API docs for `Clear`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Clear.html)

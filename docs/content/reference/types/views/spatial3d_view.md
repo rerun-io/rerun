@@ -10,12 +10,20 @@ A Spatial 3D view.
 ### `background`
 Configuration for the background of the view.
 
-* kind: The type of the background. Defaults to BackgroundKind.GradientDark.
-* color: Color used for BackgroundKind.SolidColor.
+* `kind`: The type of the background. Defaults to BackgroundKind.GradientDark.
+* `color`: Color used for BackgroundKind.SolidColor.
+
+**Api reference links:**
+ * 🐍 [Python API docs for `Background`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Background)
+
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
-## Links
+**Api reference links:**
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisibleTimeRanges)
+
+
+## Api reference links
  * 🐍 [Python API docs for `Spatial3DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial3DView)
 
 ## Example

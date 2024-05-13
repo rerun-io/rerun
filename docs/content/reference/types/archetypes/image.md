@@ -26,7 +26,7 @@ Using these formats can save a lot of bandwidth and memory.
 
 **Optional**: [`DrawOrder`](../components/draw_order.md)
 
-## Links
+## Api reference links
  * 🌊 [C++ API docs for `Image`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Image.html)
  * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Image)
  * 🦀 [Rust API docs for `Image`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html)

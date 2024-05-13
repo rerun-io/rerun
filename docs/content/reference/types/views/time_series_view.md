@@ -10,17 +10,29 @@ A time series view.
 ### `axis_y`
 Configures the vertical axis of the plot.
 
-* range: The range of the axis.
-* lock_range_during_zoom: Whether to lock the range of the axis during zoom.
+* `range`: The range of the axis.
+* `lock_range_during_zoom`: Whether to lock the range of the axis during zoom.
+
+**Api reference links:**
+ * 🐍 [Python API docs for `ScalarAxis`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.ScalarAxis)
+
 ### `plot_legend`
 Configures the legend of the plot.
 
-* corner: To what corner the legend is aligned.
-* visible: Whether the legend is shown at all.
+* `corner`: To what corner the legend is aligned.
+* `visible`: Whether the legend is shown at all.
+
+**Api reference links:**
+ * 🐍 [Python API docs for `PlotLegend`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.PlotLegend)
+
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
-## Links
+**Api reference links:**
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisibleTimeRanges)
+
+
+## Api reference links
  * 🐍 [Python API docs for `TimeSeriesView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TimeSeriesView)
 
 ## Example
