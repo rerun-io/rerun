@@ -19,11 +19,10 @@ use super::EntityDataUi;
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
     const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
     let shapes = shape.iter().take(MAX_SHOWN).join(", ");
-    if shape.len() > MAX_SHOWN {
-        format!("{shapes}…")
-    } else {
-        shapes
-    }
+    format!(
+        "shape: {shapes}{}",
+        if shape.len() > MAX_SHOWN { ",…" } else { "" }
+    )
 }
 
 impl EntityDataUi for re_types::components::TensorData {
