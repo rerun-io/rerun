@@ -114,10 +114,9 @@ cargo run -p rerun -- --help
 ## Tools
 
 We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
-# TODO(andreas): This doesn't list tasks from the different environments. Asked [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475) if there's a way to do that.
+TODO(andreas): This doesn't list tasks from all pixi environments. There's no way to this so far, see also [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475).
 
-We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.
-
+We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
 
 Depending on the changes you made run `cargo test --all-targets --all-features`, `pixi run py-test` and `pixi run cpp-test` locally.
