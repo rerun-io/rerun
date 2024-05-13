@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A bar chart view.
+///
+/// \example views/bar_chart title="Use a blueprint to create a BarChartView."
 table BarChartView (
     "attr.rerun.view_identifier": "BarChart"
 ) {

@@ -36,5 +36,5 @@ The default visual time range depends on the type of view this property applies 
 
 ### Use a blueprint to customize a TimeSeriesView
 
-snippet: views/timeseriesview
+snippet: views/timeseries
 

@@ -4,7 +4,7 @@ namespace rerun.blueprint.views;
 
 /// A Spatial 2D view.
 ///
-/// \example views/spatial2dview title="Use a blueprint to customize a Spatial2DView"
+/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView"
 table Spatial2DView (
     "attr.rerun.view_identifier": "2D"
 ) {
