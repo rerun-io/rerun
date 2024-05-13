@@ -13,19 +13,16 @@ import pyarrow as pa
 from attrs import define, field
 
 from .._baseclasses import BaseBatch, BaseExtensionType
+from .time_int_ext import TimeIntExt
 
 __all__ = ["TimeInt", "TimeIntArrayLike", "TimeIntBatch", "TimeIntLike", "TimeIntType"]
 
 
 @define(init=False)
-class TimeInt:
+class TimeInt(TimeIntExt):
     """**Datatype**: A 64-bit number describing either nanoseconds OR sequence numbers."""
 
-    def __init__(self: Any, value: TimeIntLike):
-        """Create a new instance of the TimeInt datatype."""
-
-        # You can define your own __init__ function as a member of TimeIntExt in time_int_ext.py
-        self.__attrs_init__(value=value)
+    # __init__ can be found in time_int_ext.py
 
     value: int = field(converter=int)
 

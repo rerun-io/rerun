@@ -68,6 +68,7 @@ from .datatypes import (
     RotationAxisAngle,
     Scale3D,
     TensorData,
+    TimeInt,
     TimeRange,
     TimeRangeBoundary,
     TranslationAndMat3x3,
