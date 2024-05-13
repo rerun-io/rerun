@@ -29,7 +29,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 small_color_ui(ui, &class.info);
                 let mut text = format!("{}", self.0);
                 if let Some(label) = &class.info.label {
-                    text.push_str(" ");
+                    text.push(' ');
                     text.push_str(label.as_str());
                 }
                 label_for_ui_layout(ui, ui_layout, text);
@@ -75,7 +75,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
                 small_color_ui(ui, &info);
                 let mut text = format!("{}", self.0);
                 if let Some(label) = &info.label {
-                    text.push_str(" ");
+                    text.push(' ');
                     text.push_str(label.as_str());
                 }
 

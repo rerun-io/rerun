@@ -219,7 +219,7 @@ pub fn label_for_ui_layout(
     match ui_layout {
         UiLayout::List => label = label.truncate(true),
         UiLayout::Tooltip | UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
-            label = label.wrap(true)
+            label = label.wrap(true);
         }
     }
 
