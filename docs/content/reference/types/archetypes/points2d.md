@@ -13,6 +13,10 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 
 **Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md)
 
+## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md)
+ (if logged under a projection)
 ## Api reference links
  * 🌊 [C++ API docs for `Points2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Points2D.html)
  * 🐍 [Python API docs for `Points2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Points2D)

@@ -7,6 +7,7 @@ use crate::{
     codegen::{autogen_warning, common::ExampleInfo},
     objects::FieldKind,
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
+    ATTR_DOCS_VIEW_TYPES,
 };
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -454,6 +455,22 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     }
 }
 
+fn get_view_types_with_explanation(object: &Object) -> Vec<(String, Option<String>)> {
+    let Some(view_types) = object.try_get_attr::<String>(ATTR_DOCS_VIEW_TYPES) else {
+        return Vec::new();
+    };
+
+    view_types
+        .split(',')
+        .map(|view_type| {
+            let mut parts = view_type.splitn(2, ':');
+            let view_name = parts.next().unwrap().trim().to_owned();
+            let explanation = parts.next().map(|s| s.trim().to_owned());
+            (view_name, explanation)
+        })
+        .collect()
+}
+
 fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
     if object.fields.is_empty() {
         return;
@@ -498,6 +515,22 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
     if !optional.is_empty() {
         putln!(o);
         putln!(o, "**Optional**: {}", optional.join(", "));
+    }
+
+    let view_types = get_view_types_with_explanation(object);
+    if !view_types.is_empty() {
+        putln!(o);
+        putln!(o, "## Shown in");
+        for (view_type, explanation) in view_types {
+            putln!(
+                o,
+                "* [{view_type}](../views/{}.md)",
+                crate::to_snake_case(&view_type)
+            );
+            if let Some(explanation) = explanation {
+                o.push_str(&format!(" ({explanation})"));
+            }
+        }
     }
 }
 

@@ -13,7 +13,8 @@ namespace rerun.archetypes;
 /// \example archetypes/point3d_random title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
 table Points3D (
   "attr.rust.derive": "PartialEq",
-  "attr.docs.category": "Spatial 3D"
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   // --- Required ---
 

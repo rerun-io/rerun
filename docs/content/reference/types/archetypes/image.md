@@ -26,6 +26,10 @@ Using these formats can save a lot of bandwidth and memory.
 
 **Optional**: [`DrawOrder`](../components/draw_order.md)
 
+## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md)
+ (if logged under a projection)
 ## Api reference links
  * 🌊 [C++ API docs for `Image`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Image.html)
  * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Image)

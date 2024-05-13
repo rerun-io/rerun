@@ -9,6 +9,10 @@ A generic n-dimensional Tensor.
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
+## Shown in
+* [Tensor](../views/tensor.md)
+* [BarChart](../views/bar_chart.md)
+ (for 1D tensors)
 ## Api reference links
  * 🌊 [C++ API docs for `Tensor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Tensor.html)
  * 🐍 [Python API docs for `Tensor`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Tensor)

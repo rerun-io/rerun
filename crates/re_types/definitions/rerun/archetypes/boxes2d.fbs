@@ -16,7 +16,8 @@ table Boxes2D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
-  "attr.docs.category": "Spatial 2D"
+  "attr.docs.category": "Spatial 2D",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
 ) {
   // --- Required ---
 

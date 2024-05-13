@@ -13,6 +13,10 @@ A 3D point cloud with positions and optional colors, radii, labels, etc.
 
 **Optional**: [`Text`](../components/text.md), [`ClassId`](../components/class_id.md), [`KeypointId`](../components/keypoint_id.md)
 
+## Shown in
+* [Spatial3DView](../views/spatial3d_view.md)
+* [Spatial2DView](../views/spatial2d_view.md)
+ (if logged above active projection)
 ## Api reference links
  * 🌊 [C++ API docs for `Points3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Points3D.html)
  * 🐍 [Python API docs for `Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Points3D)

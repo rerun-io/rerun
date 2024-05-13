@@ -14,7 +14,8 @@ namespace rerun.archetypes;
 /// \example archetypes/line_strip3d_batch title="Many strips" image="https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/1200w.png"
 table LineStrips3D (
   "attr.rust.derive": "PartialEq",
-  "attr.docs.category": "Spatial 3D"
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   // --- Required ---
 

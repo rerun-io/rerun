@@ -13,6 +13,9 @@ Supports raw text and markdown.
 
 **Optional**: [`MediaType`](../components/media_type.md)
 
+## Shown in
+* [TextDocumentView](../views/text_document_view.md)
+
 ## Api reference links
  * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html)
  * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)

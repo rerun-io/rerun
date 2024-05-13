@@ -13,6 +13,10 @@ title: "LineStrips2D"
 
 **Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md)
 
+## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md)
+ (if logged under a projection)
 ## Api reference links
  * 🌊 [C++ API docs for `LineStrips2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1LineStrips2D.html)
  * 🐍 [Python API docs for `LineStrips2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.LineStrips2D)

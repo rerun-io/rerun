@@ -16,7 +16,8 @@ namespace rerun.archetypes;
 /// \example archetypes/asset3d_out_of_tree !api title="3D asset with out-of-tree transform"
 table Asset3D (
   "attr.rust.derive": "PartialEq",
-  "attr.docs.category": "Spatial 3D"
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   // --- Required ---
 

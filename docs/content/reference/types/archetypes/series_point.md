@@ -13,6 +13,9 @@ the `Scalar` archetype.
 
 **Optional**: [`Color`](../components/color.md), [`MarkerShape`](../components/marker_shape.md), [`Name`](../components/name.md), [`MarkerSize`](../components/marker_size.md)
 
+## Shown in
+* [TimeSeriesView](../views/time_series_view.md)
+
 ## Api reference links
  * 🌊 [C++ API docs for `SeriesPoint`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoint.html)
  * 🐍 [Python API docs for `SeriesPoint`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesPoint)

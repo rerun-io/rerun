@@ -14,6 +14,10 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 
 **Required**: [`DisconnectedSpace`](../components/disconnected_space.md)
 
+## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md)
+
 ## Api reference links
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1DisconnectedSpace.html)
  * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.DisconnectedSpace)

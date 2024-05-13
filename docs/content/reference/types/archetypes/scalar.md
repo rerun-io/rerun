@@ -17,6 +17,9 @@ the plot-specific archetypes through the blueprint.
 
 **Required**: [`Scalar`](../components/scalar.md)
 
+## Shown in
+* [TimeSeriesView](../views/time_series_view.md)
+
 ## Api reference links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalar.html)
  * 🐍 [Python API docs for `Scalar`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Scalar)
