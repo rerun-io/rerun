@@ -29,6 +29,9 @@ pub struct Spatial3DView {
     pub background: crate::blueprint::archetypes::Background,
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the latest state of each component.
+    /// If a timeline is specified more than once, the first entry will be used.
     pub time_ranges: crate::blueprint::archetypes::VisibleTimeRanges,
 }
 

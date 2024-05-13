@@ -49,7 +49,7 @@ class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     )
     # The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     #
-    # If a timeline is listed twice, the first entry will be used.
+    # If a timeline is specified more than once, the first entry will be used.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

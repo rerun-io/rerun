@@ -15,5 +15,8 @@ table TimeSeriesView (
     plot_legend: rerun.blueprint.archetypes.PlotLegend (order: 2000);
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the entire timeline.
+    /// If a timeline is specified more than once, the first entry will be used.
     time_ranges: rerun.blueprint.archetypes.VisibleTimeRanges (order: 10000);
 }
