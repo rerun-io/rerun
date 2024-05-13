@@ -1,4 +1,4 @@
-"""Create and log a bar chart."""
+"""Use a blueprint to show a tensor view."""
 
 import rerun as rr
 import rerun.blueprint as rrb
@@ -12,6 +12,6 @@ tensor_two = np.random.random_sample((10, 20, 30))
 rr.log("tensors/two", rr.Tensor(tensor_two))
 
 # Create a tensor view that displays both tensors (you can switch between them inside the view).
-blueprint = rrb.Blueprint(rrb.TensorView(origin="/tensors"))
+blueprint = rrb.Blueprint(rrb.TensorView(origin="/tensors", name="Tensors"))
 
 rr.send_blueprint(blueprint)

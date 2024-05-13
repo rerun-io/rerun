@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A text log view.
+///
+/// \example views/text_log title="Use a blueprint to show a TextLogView."
 table TextLogView (
     "attr.rerun.view_identifier": "TextLog"
 ) {

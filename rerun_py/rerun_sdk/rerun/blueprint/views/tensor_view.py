@@ -32,7 +32,7 @@ class TensorView(SpaceView):
     rr.log("tensors/two", rr.Tensor(tensor_two))
 
     # Create a tensor view that displays both tensors (you can switch between them inside the view).
-    blueprint = rrb.Blueprint(rrb.TensorView(origin="/tensors"))
+    blueprint = rrb.Blueprint(rrb.TensorView(origin="/tensors", name="Tensors"))
 
     rr.send_blueprint(blueprint)
     ```

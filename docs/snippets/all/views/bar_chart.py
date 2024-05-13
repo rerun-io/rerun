@@ -1,4 +1,4 @@
-"""Create and log a bar chart."""
+"""Use a blueprint to show a bar chart."""
 
 import rerun as rr
 import rerun.blueprint as rrb
@@ -9,6 +9,6 @@ rr.init("rerun_example_bar_chart", spawn=True)
 rr.log("tensor", rr.Tensor([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
 
 # Create a bar chart view to display the chart.
-blueprint = rrb.Blueprint(rrb.BarChartView(origin="/bar_chart"))
+blueprint = rrb.Blueprint(rrb.BarChartView(origin="/bar_chart", name="Bar Chart"))
 
 rr.send_blueprint(blueprint)

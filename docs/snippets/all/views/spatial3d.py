@@ -18,6 +18,7 @@ rr.log("points", rr.Points3D(positions, colors=colors, radii=radii))
 blueprint = rrb.Blueprint(
     rrb.Spatial3DView(
         origin="/points",
+        name="3D Points",
         background=[80, 80, 80],
     )
 )

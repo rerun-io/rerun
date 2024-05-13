@@ -42,6 +42,7 @@ class Spatial2DView(SpaceView):
     blueprint = rrb.Blueprint(
         rrb.Spatial2DView(
             origin="/points",
+            name="2D Points",
             # Set the background color to light blue.
             background=[100, 149, 237],
             # Note that this range is smaller than the range of the points,

@@ -42,6 +42,7 @@ class Spatial3DView(SpaceView):
     blueprint = rrb.Blueprint(
         rrb.Spatial3DView(
             origin="/points",
+            name="3D Points",
             background=[80, 80, 80],
         )
     )

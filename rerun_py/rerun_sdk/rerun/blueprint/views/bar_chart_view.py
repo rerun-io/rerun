@@ -29,7 +29,7 @@ class BarChartView(SpaceView):
     rr.log("tensor", rr.Tensor([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
 
     # Create a bar chart view to display the chart.
-    blueprint = rrb.Blueprint(rrb.BarChartView(origin="/bar_chart"))
+    blueprint = rrb.Blueprint(rrb.BarChartView(origin="/bar_chart", name="Bar Chart"))
 
     rr.send_blueprint(blueprint)
     ```
