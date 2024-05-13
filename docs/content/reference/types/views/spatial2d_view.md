@@ -31,3 +31,9 @@ The default visual time range depends on the type of view this property applies 
 ## Links
  * 🐍 [Python API docs for `Spatial2DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial2DView)
 
+## Example
+
+### Use a blueprint to customize a Spatial3DView
+
+snippet: views/spatial3dview
+
