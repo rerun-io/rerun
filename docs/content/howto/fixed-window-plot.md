@@ -41,9 +41,20 @@ rrb.TimeSeriesView(
 )
 ```
 
-### Full example
+## Full example
 For a complete working example, you can run the following code:
 
 snippet: tutorials/fixed_window_plot
 
-Or you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot?speculative-link).
+This should create a plot that only shows the last 5 seconds of data. If you select the view, you should
+see that the time range is configured as expected.
+
+<picture>
+  <img src="https://static.rerun.io/fixed_window_example/8fba3d4fc8002596a166a41d01c2f97df39d54a6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/fixed_window_example/8fba3d4fc8002596a166a41d01c2f97df39d54a6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/fixed_window_example/8fba3d4fc8002596a166a41d01c2f97df39d54a6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/fixed_window_example/8fba3d4fc8002596a166a41d01c2f97df39d54a6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/fixed_window_example/8fba3d4fc8002596a166a41d01c2f97df39d54a6/1200w.png">
+</picture>
+
+Alternatively, you can check out a more full-featured example with multiple plot windows [here](https://github.com/rerun-io/rerun/tree/latest/examples/python/live_scrolling_plot?speculative-link).
