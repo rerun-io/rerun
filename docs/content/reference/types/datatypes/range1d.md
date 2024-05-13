@@ -18,4 +18,4 @@ A 1D range, specifying a lower and upper bound.
 ## Used by
 
 * [`Range1D`](../components/range1d.md?speculative-link)
-* [`Range2D`](../datatypes/range2d.md)
+* [`Range2D`](../datatypes/range2d.md?speculative-link)
