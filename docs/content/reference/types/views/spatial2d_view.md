@@ -14,7 +14,7 @@ Configuration for the background of the view.
 * `color`: Color used for BackgroundKind.SolidColor.
 
 **Api reference links:**
- * 🐍 [Python API docs for `Background`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Background)
+ * 🐍 [Python API docs for `Background`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.Background)
 
 ### `visual_bounds`
 The visible parts of the scene, in the coordinate space of the scene.
@@ -23,13 +23,13 @@ Everything within these bounds are guaranteed to be visible.
 Somethings outside of these bounds may also be visible due to letterboxing.
 
 **Api reference links:**
- * 🐍 [Python API docs for `VisualBounds`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisualBounds)
+ * 🐍 [Python API docs for `VisualBounds`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.VisualBounds)
 
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
 **Api reference links:**
- * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisibleTimeRanges)
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.VisibleTimeRanges)
 
 
 ## Api reference links

@@ -14,13 +14,13 @@ Configuration for the background of the view.
 * `color`: Color used for BackgroundKind.SolidColor.
 
 **Api reference links:**
- * 🐍 [Python API docs for `Background`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Background)
+ * 🐍 [Python API docs for `Background`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.Background)
 
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
 **Api reference links:**
- * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisibleTimeRanges)
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.VisibleTimeRanges)
 
 
 ## Api reference links

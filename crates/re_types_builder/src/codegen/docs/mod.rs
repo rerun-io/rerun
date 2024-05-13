@@ -322,9 +322,9 @@ fn list_links(
                 page,
                 " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
                 object.name,
-                object.kind.plural_snake_case(),
+                object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
                 speculative_marker,
-                object.kind.plural_snake_case(),
+                object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
                 object.name
             );
         }

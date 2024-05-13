@@ -14,7 +14,7 @@ Configures the vertical axis of the plot.
 * `lock_range_during_zoom`: Whether to lock the range of the axis during zoom.
 
 **Api reference links:**
- * 🐍 [Python API docs for `ScalarAxis`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.ScalarAxis)
+ * 🐍 [Python API docs for `ScalarAxis`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.ScalarAxis)
 
 ### `plot_legend`
 Configures the legend of the plot.
@@ -23,13 +23,13 @@ Configures the legend of the plot.
 * `visible`: Whether the legend is shown at all.
 
 **Api reference links:**
- * 🐍 [Python API docs for `PlotLegend`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.PlotLegend)
+ * 🐍 [Python API docs for `PlotLegend`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.PlotLegend)
 
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
 **Api reference links:**
- * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VisibleTimeRanges)
+ * 🐍 [Python API docs for `VisibleTimeRanges`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes#rerun.blueprint.archetypes.VisibleTimeRanges)
 
 
 ## Api reference links
