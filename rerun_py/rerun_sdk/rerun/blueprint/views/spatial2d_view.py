@@ -103,7 +103,7 @@ class Spatial2DView(SpaceView):
 
             Defaults to true if not specified.
         background:
-            Configuration for the background of the space view.
+            Configuration for the background of the view.
         visual_bounds:
             The visible parts of the scene, in the coordinate space of the scene.
 

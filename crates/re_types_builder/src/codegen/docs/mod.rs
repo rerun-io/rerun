@@ -6,7 +6,7 @@ use itertools::Itertools;
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo},
     objects::FieldKind,
-    CodeGenerator, GeneratedFiles, Object, ObjectKind, Objects, Reporter, Type,
+    CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
 };
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -514,41 +514,35 @@ fn write_view_properties(
 
     // Each field in a view should be a property
     for field in &object.fields {
-        let Some(fqname) = field.typ.fqname() else {
-            continue;
-        };
-        let Some(ty) = object_map.get(fqname) else {
-            continue;
-        };
-        write_view_property(reporter, o, ty, object_map);
+        write_view_property(reporter, o, field, object_map);
     }
 }
 
 fn write_view_property(
     reporter: &Reporter,
     o: &mut String,
-    object: &Object,
-    _object_map: &ObjectMap,
+    field: &ObjectField,
+    object_map: &ObjectMap,
 ) {
-    putln!(o, "### `{}`", object.name);
+    putln!(o, "### `{}`", field.name);
 
-    let top_level_docs = object.docs.untagged();
+    // TODO: link to the datatype.
+
+    let top_level_docs = field.docs.untagged();
 
     if top_level_docs.is_empty() {
-        reporter.error(
-            &object.virtpath,
-            &object.fqname,
-            "Undocumented view property",
-        );
+        reporter.error(&field.virtpath, &field.fqname, "Undocumented view property");
     }
 
     for line in top_level_docs {
         putln!(o, "{line}");
     }
 
-    if object.fields.is_empty() {
+    // If there's more than one fields on this type, list them:
+    let Some(field_fqname) = field.typ.fqname() else {
         return;
-    }
+    };
+    let object = &object_map[field_fqname];
 
     let mut fields = Vec::new();
     for field in &object.fields {
@@ -559,7 +553,7 @@ fn write_view_property(
         ));
     }
 
-    if !fields.is_empty() {
+    if fields.len() > 1 {
         putln!(o);
         for field in fields {
             putln!(o, "{field}");

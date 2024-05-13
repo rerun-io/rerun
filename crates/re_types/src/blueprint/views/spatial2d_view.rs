@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A Spatial 2D view.
 #[derive(Clone, Debug)]
 pub struct Spatial2DView {
-    /// Configuration for the background of the space view.
+    /// Configuration for the background of the view.
     pub background: crate::blueprint::archetypes::Background,
 
     /// The visible parts of the scene, in the coordinate space of the scene.
