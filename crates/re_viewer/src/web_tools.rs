@@ -86,8 +86,13 @@ pub fn push_history(new_relative_url: &str) -> Option<()> {
             .history()
             .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
             .ok_or_log_error()?;
+        // Instead of setting state to `null`, try to preserve existing state.
+        // This helps with ensuring JS frameworks can perform client-side routing.
+        // If we ever need to store anything in `state`, we should rethink how
+        // we handle this.
+        let existing_state = history.state().unwrap_or(JsValue::NULL);
         history
-            .push_state_with_url(&JsValue::NULL, "", Some(new_relative_url))
+            .push_state_with_url(&existing_state, "", Some(new_relative_url))
             .map_err(|err| {
                 format!(
                     "Failed to push history state: {}",
@@ -105,9 +110,10 @@ pub fn replace_history(new_relative_url: &str) -> Option<()> {
         .history()
         .map_err(|err| format!("Failed to get History API: {}", string_from_js_value(err)))
         .ok_or_log_error()?;
-
+    // NOTE: See `existing_state` in `push_history` above for info on why this is here.
+    let existing_state = history.state().unwrap_or(JsValue::NULL);
     history
-        .replace_state_with_url(&JsValue::NULL, "", Some(new_relative_url))
+        .replace_state_with_url(&existing_state, "", Some(new_relative_url))
         .map_err(|err| {
             format!(
                 "Failed to push history state: {}",
