@@ -18,4 +18,4 @@ An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum
 
 ## Used by
 
-* [`Range2D`](../components/range2d.md)
+* [`Range2D`](../components/range2d.md?speculative-link)

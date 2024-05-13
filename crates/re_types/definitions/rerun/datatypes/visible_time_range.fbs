@@ -12,6 +12,7 @@ namespace rerun.datatypes;
 
 /// Left or right boundary of a time range.
 union TimeRangeBoundary (
+  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.override_crate": "re_types_core"
 ) {
@@ -28,6 +29,7 @@ union TimeRangeBoundary (
 /// Visible time range bounds for a specific timeline.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table TimeRange (
+  "attr.docs.unreleased",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_types_core"
 ) {
@@ -42,6 +44,7 @@ table TimeRange (
 /// Visible time range bounds for a specific timeline.
 // Has to be a table because flatbuffer doesn't support strings in structs.
 table VisibleTimeRange (
+  "attr.docs.unreleased",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_types_core"
 ) {

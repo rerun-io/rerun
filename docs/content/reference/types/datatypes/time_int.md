@@ -17,4 +17,4 @@ A 64-bit number describing either nanoseconds OR sequence numbers.
 
 ## Used by
 
-* [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+* [`TimeRangeBoundary`](../datatypes/time_range_boundary.md?speculative-link)
