@@ -145,6 +145,10 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (10, 10), dtype=np.uint8)),
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (10, 10, 3), dtype=np.uint8)),
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (5, 3, 6, 4), dtype=np.uint8)),
+            rr.datatypes.TensorData(
+                array=np.random.randint(0, 255, (5, 3, 6, 4), dtype=np.uint8),
+                dim_names=[None, "hello", None, "world", None],
+            ),
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (5, 3, 6, 4, 3), dtype=np.uint8)),
         ]
     ),

@@ -18,10 +18,33 @@ use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
     const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
-    let shapes = shape.iter().take(MAX_SHOWN).join(", ");
+    let labelled = shape.iter().any(|dim| dim.name.is_some());
+    let shapes = shape
+        .iter()
+        .take(MAX_SHOWN)
+        .map(|dim| {
+            format!(
+                "{}{}",
+                dim.size,
+                if let Some(name) = &dim.name {
+                    format!(" ({name})")
+                } else {
+                    String::new()
+                }
+            )
+        })
+        .join(if labelled { " x " } else { "x" });
     format!(
-        "shape: {shapes}{}",
-        if shape.len() > MAX_SHOWN { ",…" } else { "" }
+        "{shapes}{}",
+        if shape.len() > MAX_SHOWN {
+            if labelled {
+                " x …"
+            } else {
+                "x…"
+            }
+        } else {
+            ""
+        }
     )
 }
 
@@ -156,18 +179,22 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                label_for_ui_layout(ui, ui_layout, format_tensor_shape_single_line(&shape))
-                    .on_hover_ui(|ui| {
-                        tensor_summary_ui(
-                            ctx.re_ui,
-                            ui,
-                            original_tensor,
-                            tensor,
-                            meaning,
-                            meter,
-                            &tensor_stats,
-                        );
-                    });
+                let text = format!(
+                    "{}, {}",
+                    original_tensor.dtype(),
+                    format_tensor_shape_single_line(&shape)
+                );
+                label_for_ui_layout(ui, ui_layout, text).on_hover_ui(|ui| {
+                    tensor_summary_ui(
+                        ctx.re_ui,
+                        ui,
+                        original_tensor,
+                        tensor,
+                        meaning,
+                        meter,
+                        &tensor_stats,
+                    );
+                });
             });
         }
 
