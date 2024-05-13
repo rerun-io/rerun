@@ -442,7 +442,7 @@ impl<'a> ListItem<'a> {
 
         // we want to be able to select/hover the item across its full span, so we sense that and
         // update the response accordingly.
-        let full_span_response = ui.interact(bg_rect, response.id, sense);
+        let full_span_response = ui.interact(bg_rect, response.id.with("full_span_check"), sense);
         response.clicked = full_span_response.clicked;
         response.contains_pointer = full_span_response.contains_pointer;
         response.hovered = full_span_response.hovered;
