@@ -12,7 +12,9 @@ use crate::ViewerContext;
 pub enum UiLayout {
     /// Display a short summary. Used in lists.
     ///
-    /// Keep it small enough to fit on half a row. Text should truncate.
+    /// Keep it small enough to fit on half a row (i.e. the second column of a
+    /// [`re_ui::list_item2::ListItem`] with [`re_ui::list_item2::PropertyContent`]. Text should
+    /// truncate.
     List,
 
     /// Display as much information as possible in a compact way. Used for hovering/tooltips.
