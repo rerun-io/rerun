@@ -287,12 +287,12 @@ pub fn quote_arrow_serializer(
 
                     quote! {{
                         let #data_dst: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
+                            .iter()
+                            .filter_map(|datum| match datum.as_deref() {
+                                Some(#quoted_obj_name::#quoted_obj_field_name(v)) => Some(v.clone()),
+                                _ => None,
+                            })
+                            .collect();
 
                         let #bitmap_dst: Option<arrow2::bitmap::Bitmap> = None;
                         #quoted_serializer
@@ -495,8 +495,6 @@ fn quote_arrow_field_serializer(
                 quote! {
                     BooleanArray::new(
                         #quoted_datatype,
-                        // NOTE: We need values for all slots, regardless of what the bitmap says,
-                        // hence `unwrap_or_default`.
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #bitmap_src,
                     ).boxed()
@@ -551,8 +549,7 @@ fn quote_arrow_field_serializer(
                     (
                         quote! {
                             .flat_map(|datum| {
-                                // NOTE: `Buffer::clone`, which is just a ref-count bump
-                                datum.#quoted_member_accessor.0.clone()
+                                datum.#quoted_member_accessor.0
                             })
                         },
                         quote! {
@@ -564,8 +561,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     (
                         quote! {
-                            // NOTE: `Buffer::clone`, which is just a ref-count bump
-                            .flat_map(|s| s.0.clone())
+                            .flat_map(|s| s.0)
                         },
                         quote! {
                             .map(|datum| datum.len())
@@ -575,27 +571,27 @@ fn quote_arrow_field_serializer(
 
             let inner_data_and_offsets = if elements_are_nullable {
                 quote! {
-                    // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
-                    // about it while building the backing buffer since it's all offsets driven.
-                    let inner_data: arrow2::buffer::Buffer<u8> =
-                        #data_src.iter().flatten() #quoted_transparent_mapping.collect();
-
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     )
                     .map_err(|err| std::sync::Arc::new(err))?
                     .into();
+
+                    // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
+                    // about it while building the backing buffer since it's all offsets driven.
+                    let inner_data: arrow2::buffer::Buffer<u8> =
+                        #data_src.into_iter().flatten() #quoted_transparent_mapping.collect();
                 }
             } else {
                 quote! {
-                    let inner_data: arrow2::buffer::Buffer<u8> =
-                        #data_src.iter() #quoted_transparent_mapping.collect();
-
                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     )
                     .map_err(|err| std::sync::Arc::new(err))?
                     .into();
+
+                    let inner_data: arrow2::buffer::Buffer<u8> =
+                        #data_src.into_iter() #quoted_transparent_mapping.collect();
                 }
             };
 
@@ -667,6 +663,8 @@ fn quote_arrow_field_serializer(
 
                 if elements_are_nullable {
                     quote! {
+                        #data_src
+                        .into_iter()
                         .map(|datum| {
                             datum
                                 .map(|datum| {
@@ -679,8 +677,10 @@ fn quote_arrow_field_serializer(
                     }
                 } else {
                     quote! {
+                        #data_src
+                        .into_iter()
                         .map(|datum| {
-                            datum.#quoted_member_accessor.clone()
+                            datum.#quoted_member_accessor
                         })
                         // NOTE: Flattening yet since we have to deconstruct the inner list.
                         .flatten()
@@ -697,6 +697,8 @@ fn quote_arrow_field_serializer(
                     InnerRepr::ArrowBuffer => {
                         if serde_type.is_some() {
                             quote! {
+                                #data_src
+                                .into_iter()
                                 .map(|opt| {
                                     use ::re_types_core::SerializationError; // otherwise rustfmt breaks
                                     opt.as_ref().map(|b| {
@@ -710,12 +712,15 @@ fn quote_arrow_field_serializer(
                                 .collect::<SerializationResult<Vec<_>>>()?
                             }
                         } else {
+                            // TODO(emilk): this can probably be optimized
                             quote! {
+                                #data_src
+                                .iter()
                                 #flatten_if_needed
                                 .map(|b| b.as_slice())
                                 .collect::<Vec<_>>()
                                 .concat()
-                                .into();
+                                .into()
                             }
                         }
                     }
@@ -723,8 +728,10 @@ fn quote_arrow_field_serializer(
                         if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                             if elements_are_nullable {
                                 quote! {
+                                    #data_src
+                                    .into_iter()
                                     .flat_map(|v| match v {
-                                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                        Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
                                             std::iter::repeat(Default::default()).take(#count),
                                         ),
@@ -732,15 +739,18 @@ fn quote_arrow_field_serializer(
                                 }
                             } else {
                                 quote! {
-                                    .flatten().cloned()
+                                    #data_src
+                                    .into_iter()
+                                    .flatten()
                                 }
                             }
                         } else {
                             quote! {
+                                #data_src
+                                .into_iter()
                                 #flatten_if_needed
                                 // NOTE: Flattening yet again since we have to deconstruct the inner list.
                                 .flatten()
-                                .cloned()
                             }
                         }
                     }
@@ -752,7 +762,7 @@ fn quote_arrow_field_serializer(
                 InnerRepr::NativeIterable => quote!(len()),
             };
 
-            let quoted_create = if let DataType::List(_) = datatype {
+            let quoted_declare_offsets = if let DataType::List(_) = datatype {
                 if serde_type.is_some() {
                     quote! {}
                 } else {
@@ -766,7 +776,17 @@ fn quote_arrow_field_serializer(
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             #data_src.iter(). #map_to_length
                         ).unwrap().into();
+                    }
+                }
+            } else {
+                quote! {}
+            };
 
+            let quoted_create = if let DataType::List(_) = datatype {
+                if serde_type.is_some() {
+                    quote! {}
+                } else {
+                    quote! {
                         ListArray::new(
                             #quoted_datatype,
                             offsets,
@@ -823,9 +843,7 @@ fn quote_arrow_field_serializer(
                         quote! {{
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                            let buffers: Vec<Option<Vec<u8>>> = #data_src
-                                .iter()
-                                #quoted_transparent_mapping;
+                            let buffers: Vec<Option<Vec<u8>>> = #quoted_transparent_mapping;
 
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 buffers.iter().map(|opt| opt.as_ref().map_or(0, |buf| buf.len()))
@@ -846,9 +864,9 @@ fn quote_arrow_field_serializer(
                         quote! {{
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                            let #quoted_inner_data: Buffer<_> = #data_src
-                                .iter()
-                                #quoted_transparent_mapping
+                            #quoted_declare_offsets
+
+                            let #quoted_inner_data: Buffer<_> = #quoted_transparent_mapping;
 
                             #quoted_inner_bitmap
 
@@ -861,8 +879,9 @@ fn quote_arrow_field_serializer(
                     quote! {{
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                        let #quoted_inner_data: Vec<_> = #data_src
-                            .iter()
+                        #quoted_declare_offsets
+
+                        let #quoted_inner_data: Vec<_> =
                             #quoted_transparent_mapping
                             .collect();
 

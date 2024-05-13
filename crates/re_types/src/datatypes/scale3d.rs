@@ -112,11 +112,8 @@ impl ::re_types_core::Loggable for Scale3D {
                     let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let three_d_inner_data: Vec<_> = three_d
-                            .iter()
-                            .map(|datum| datum.0.clone())
-                            .flatten()
-                            .collect();
+                        let three_d_inner_data: Vec<_> =
+                            three_d.into_iter().map(|datum| datum.0).flatten().collect();
                         let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(

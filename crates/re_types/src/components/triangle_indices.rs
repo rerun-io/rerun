@@ -106,7 +106,7 @@ impl ::re_types_core::Loggable for TriangleIndices {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
-                    .iter()
+                    .into_iter()
                     .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                     .flatten()
                     .collect();

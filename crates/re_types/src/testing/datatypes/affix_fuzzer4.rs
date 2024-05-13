@@ -137,14 +137,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     let many_required_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let many_required_inner_data: Vec<_> =
-                            many_required.iter().flatten().cloned().collect();
-                        let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             many_required.iter().map(|datum| datum.len()),
                         )
                         .unwrap()
                         .into();
+                        let many_required_inner_data: Vec<_> =
+                            many_required.into_iter().flatten().collect();
+                        let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",

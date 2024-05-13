@@ -104,11 +104,6 @@ impl ::re_types_core::Loggable for MediaType {
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: arrow2::buffer::Buffer<u8> = data0
-                    .iter()
-                    .flatten()
-                    .flat_map(|datum| datum.0 .0.clone())
-                    .collect();
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
@@ -116,6 +111,11 @@ impl ::re_types_core::Loggable for MediaType {
                 )
                 .map_err(|err| std::sync::Arc::new(err))?
                 .into();
+                let inner_data: arrow2::buffer::Buffer<u8> = data0
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|datum| datum.0 .0)
+                    .collect();
 
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {

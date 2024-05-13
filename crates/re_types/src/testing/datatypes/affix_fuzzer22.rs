@@ -116,9 +116,9 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let fixed_sized_native_inner_data: Vec<_> = fixed_sized_native
-                            .iter()
+                            .into_iter()
                             .flat_map(|v| match v {
-                                Some(v) => itertools::Either::Left(v.iter().cloned()),
+                                Some(v) => itertools::Either::Left(v.into_iter()),
                                 None => itertools::Either::Right(
                                     std::iter::repeat(Default::default()).take(4usize),
                                 ),

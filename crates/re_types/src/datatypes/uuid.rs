@@ -101,9 +101,9 @@ impl ::re_types_core::Loggable for Uuid {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let bytes_inner_data: Vec<_> = bytes
-                    .iter()
+                    .into_iter()
                     .flat_map(|v| match v {
-                        Some(v) => itertools::Either::Left(v.iter().cloned()),
+                        Some(v) => itertools::Either::Left(v.into_iter()),
                         None => itertools::Either::Right(
                             std::iter::repeat(Default::default()).take(16usize),
                         ),

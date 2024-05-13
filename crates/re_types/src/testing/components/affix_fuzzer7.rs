@@ -90,8 +90,6 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let data0_inner_data: Vec<_> = data0.iter().flatten().flatten().cloned().collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     data0
                         .iter()
@@ -99,6 +97,8 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
                 )
                 .unwrap()
                 .into();
+                let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 ListArray::new(
                     Self::arrow_datatype(),
                     offsets,

@@ -131,7 +131,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
-                                .iter()
+                                .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
