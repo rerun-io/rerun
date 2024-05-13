@@ -1,7 +1,9 @@
-use egui::Vec2;
+use egui::{Ui, Vec2};
+use re_data_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, ViewCoordinates};
+use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, Range2D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::{label_for_ui_layout, table_for_ui_layout, DataUi};
@@ -175,6 +177,32 @@ impl DataUi for re_types::datatypes::UVec4D {
         ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
+    ) {
+        label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for Range1D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
+    ) {
+        label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for Range2D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
     ) {
         label_for_ui_layout(ui, ui_layout, self.to_string());
     }
