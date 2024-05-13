@@ -63,7 +63,7 @@ impl Caches {
             // and coarsly invalidates the whole cache in that case, to avoid the kind of bugs
             // showcased in <https://github.com/rerun-io/rerun/issues/5686>.
             {
-                let time_range = cache.per_data_time.read_recursive().time_range();
+                let time_range = cache.per_data_time.read_recursive().pending_time_range();
                 if let Some(time_range) = time_range {
                     {
                         let hole_start = time_range.max();
@@ -290,7 +290,12 @@ impl RangeCache {
             return;
         };
 
-        per_data_time.write().truncate_at_time(pending_invalidation);
+        // Invalidating data is tricky. Our results object may have been cloned and shared already.
+        // We can't just invalidate the data in-place without guaranteeing the post-invalidation query
+        // will return the same results as the pending pre-invalidation queries.
+        let mut new_inner = (*per_data_time.read()).clone();
+        new_inner.truncate_at_time(pending_invalidation);
+        per_data_time.inner = Arc::new(RwLock::new(new_inner));
     }
 }
 
@@ -326,14 +331,6 @@ impl RangeComponentResultsInner {
     pub fn compute_front_query(&self, query: &RangeQuery) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        // If nothing has been cached already, then we just want to query everything.
-        if self.indices.is_empty()
-            && self.promises_front.is_empty()
-            && self.promises_back.is_empty()
-        {
-            return Some(reduced_query);
-        }
-
         // If the cache contains static data, then there's no point in querying anything else since
         // static data overrides everything anyway.
         if self
@@ -354,29 +351,14 @@ impl RangeComponentResultsInner {
         // We check the back promises too just because I'm feeling overly cautious.
         // See `Concurrency edge-case` section below.
 
-        let pending_front_min = self
-            .promises_front
-            .first()
-            .map_or(TimeInt::MAX.as_i64(), |((t, _), _)| {
-                t.as_i64().saturating_sub(1)
-            });
-        let pending_back_min = self
-            .promises_back
-            .first()
-            .map_or(TimeInt::MAX.as_i64(), |((t, _), _)| {
-                t.as_i64().saturating_sub(1)
-            });
-        let pending_min = i64::min(pending_front_min, pending_back_min);
-
-        if let Some(time_range) = self.time_range() {
-            let time_range_min = i64::min(time_range.min().as_i64().saturating_sub(1), pending_min);
+        if let Some(time_range) = self.pending_time_range() {
+            let time_range_min = time_range.min().as_i64().saturating_sub(1);
             reduced_query
                 .range
                 .set_max(i64::min(reduced_query.range.max().as_i64(), time_range_min));
         } else {
-            reduced_query
-                .range
-                .set_max(i64::min(reduced_query.range.max().as_i64(), pending_min));
+            // If nothing has been cached already, then we just want to query everything.
+            return Some(reduced_query);
         }
 
         if reduced_query.range.max() < reduced_query.range.min() {
@@ -396,15 +378,6 @@ impl RangeComponentResultsInner {
     ) -> Option<RangeQuery> {
         let mut reduced_query = query.clone();
 
-        // If nothing has been cached already, then the front query is already going to take care
-        // of everything.
-        if self.indices.is_empty()
-            && self.promises_front.is_empty()
-            && self.promises_back.is_empty()
-        {
-            return None;
-        }
-
         // If the cache contains static data, then there's no point in querying anything else since
         // static data overrides everything anyway.
         if self
@@ -415,49 +388,22 @@ impl RangeComponentResultsInner {
             return None;
         }
 
-        // Otherwise, query for what's missing on the back-side of the cache, while making sure to
+        // Otherwise, query for what's missing on the back-side of the cache., while making sure to
         // take pending promises into account!
         //
         // Keep in mind: it is not possible for the cache to contain only part of a given
         // timestamp. All entries for a given timestamp are loaded and invalidated atomically,
         // whether it's promises or already resolved entries.
 
-        // # Concurrency edge-case
-        //
-        // We need to make sure to check for both front _and_ back promises here.
-        // If two or more threads are querying for the same entity path concurrently, it is possible
-        // that the first thread queues a bunch of promises to the front queue, but then relinquishes
-        // control to the second thread before ever resolving those promises.
-        //
-        // If that happens, the second thread would end up queuing the same exact promises in the
-        // back queue, yielding duplicated data.
-        // In most cases, duplicated data isn't noticeable (except for a performance drop), but if
-        // the duplication is only partial this can sometimes lead to visual glitches, depending on
-        // the visualizer used.
-
-        let pending_back_max = self
-            .promises_back
-            .last()
-            .map_or(TimeInt::MIN.as_i64(), |((t, _), _)| {
-                t.as_i64().saturating_add(1)
-            });
-        let pending_front_max = self
-            .promises_front
-            .last()
-            .map_or(TimeInt::MIN.as_i64(), |((t, _), _)| {
-                t.as_i64().saturating_add(1)
-            });
-        let pending_max = i64::max(pending_back_max, pending_front_max);
-
-        if let Some(time_range) = self.time_range() {
-            let time_range_max = i64::max(time_range.max().as_i64().saturating_add(1), pending_max);
+        if let Some(time_range) = self.pending_time_range() {
+            let time_range_max = time_range.max().as_i64().saturating_add(1);
             reduced_query
                 .range
                 .set_min(i64::max(reduced_query.range.min().as_i64(), time_range_max));
         } else {
-            reduced_query
-                .range
-                .set_min(i64::max(reduced_query.range.min().as_i64(), pending_max));
+            // If nothing has been cached already, then the front query is already going to take care
+            // of everything.
+            return None;
         }
 
         // Back query should never overlap with the front query.

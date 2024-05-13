@@ -83,7 +83,7 @@ impl Caches {
                     (
                         key.clone(),
                         (
-                            cache.time_range(),
+                            cache.pending_time_range(),
                             CachedComponentStats {
                                 total_indices: cache.indices.len() as _,
                                 total_instances: cache.num_instances(),
