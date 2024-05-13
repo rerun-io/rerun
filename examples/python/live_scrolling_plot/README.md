@@ -24,7 +24,7 @@ In order to only show a fixed window of data, this example creates a blueprint t
 the `time_ranges` parameter of the `TimeSeriesView` blueprint type.
 
 We dynamically create a `TimeSeriesView` for each plot we want to show, so that we can
-set the `time_ranges`.  The start of the visible time range is set to the current time
+set the `time_ranges`. The start of the visible time range is set to the current time
 minus the window size, and the end is set to the current time.
 
 ```python
