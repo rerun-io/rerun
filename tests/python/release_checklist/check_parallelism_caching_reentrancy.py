@@ -32,8 +32,8 @@ def blueprint() -> rrb.BlueprintLike:
                 origin="/plots",
                 time_ranges=rrb.VisibleTimeRange(
                     "frame_nr",
-                    start=rrb.TimeRangeBoundary.cursor_relative(50 - i * 10),
-                    end=rrb.TimeRangeBoundary.cursor_relative(50 - i * 10 + 10),
+                    start=rrb.TimeRangeBoundary.cursor_relative(seq=50 - i * 10),
+                    end=rrb.TimeRangeBoundary.cursor_relative(seq=50 - i * 10 + 10),
                 ),
             )
             for i in range(0, 10)
