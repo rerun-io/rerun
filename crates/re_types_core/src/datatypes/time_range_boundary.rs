@@ -96,6 +96,7 @@ impl crate::Loggable for TimeRangeBoundary {
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
+            // Dense Arrow union
             let data: Vec<_> = data
                 .into_iter()
                 .map(|datum| {

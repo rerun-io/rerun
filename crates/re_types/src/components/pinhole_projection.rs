@@ -133,7 +133,7 @@ impl ::re_types_core::Loggable for PinholeProjection {
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(9usize))
+                            .map(|b| std::iter::repeat(b).take(9usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()

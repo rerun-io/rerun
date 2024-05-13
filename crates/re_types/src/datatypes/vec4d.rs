@@ -113,7 +113,7 @@ impl ::re_types_core::Loggable for Vec4D {
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(4usize))
+                            .map(|b| std::iter::repeat(b).take(4usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()

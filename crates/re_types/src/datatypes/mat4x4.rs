@@ -125,7 +125,7 @@ impl ::re_types_core::Loggable for Mat4x4 {
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
-                            .map(|i| std::iter::repeat(i).take(16usize))
+                            .map(|b| std::iter::repeat(b).take(16usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
