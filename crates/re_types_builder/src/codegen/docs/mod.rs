@@ -16,16 +16,6 @@ macro_rules! putln {
     ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
 }
 
-flatbuffers::bitflags::bitflags! {
-    /// New schema language features that are not supported by old code generators.
-    #[derive(Default)]
-    struct SdkLanguages: u64 {
-        const CPP = 1;
-        const PYTHON = 2;
-        const RUST = 4;
-    }
-}
-
 pub struct DocsCodeGenerator {
     docs_dir: Utf8PathBuf,
 }
@@ -234,7 +224,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
 
     putln!(page);
     putln!(page, "## Api reference links");
-    list_links(is_unreleased, &mut page, object, SdkLanguages::all());
+    list_links(is_unreleased, &mut page, object);
 
     putln!(page);
     write_example_list(&mut page, &examples);
@@ -265,12 +255,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
     page
 }
 
-fn list_links(
-    is_unreleased: bool,
-    page: &mut String,
-    object: &Object,
-    included_languages: SdkLanguages,
-) {
+fn list_links(is_unreleased: bool, page: &mut String, object: &Object) {
     let speculative_marker = if is_unreleased {
         "?speculative-link"
     } else {
@@ -279,19 +264,17 @@ fn list_links(
 
     if object.kind == ObjectKind::View {
         // More complicated link due to scope
-        if included_languages.contains(SdkLanguages::PYTHON) {
-            putln!(
-                page,
-                " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}{}#rerun.{}.{}.{})",
-                object.name,
-                object.scope().unwrap_or_default(),
-                object.kind.plural_snake_case(),
-                speculative_marker,
-                object.scope().unwrap_or_default(),
-                object.kind.plural_snake_case(),
-                object.name
-            );
-        }
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}{}#rerun.{}.{}.{})",
+            object.name,
+            object.scope().unwrap_or_default(),
+            object.kind.plural_snake_case(),
+            speculative_marker,
+            object.scope().unwrap_or_default(),
+            object.kind.plural_snake_case(),
+            object.name
+        );
     } else {
         let cpp_link = if object.is_enum() {
             // Can't link to enums directly 🤷
@@ -310,35 +293,30 @@ fn list_links(
         };
 
         // In alphabetical order by language.
-        if included_languages.contains(SdkLanguages::CPP) {
-            putln!(
-                page,
-                " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
-                object.name,
-            );
-        }
-        if included_languages.contains(SdkLanguages::PYTHON) {
-            putln!(
-                page,
-                " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
-                object.name,
-                object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
-                speculative_marker,
-                object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
-                object.name
-            );
-        }
+        putln!(
+            page,
+            " * 🌊 [C++ API docs for `{}`]({cpp_link}{speculative_marker})",
+            object.name,
+        );
 
-        if included_languages.contains(SdkLanguages::RUST) {
-            putln!(
-                page,
-                " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
-                object.name,
-                object.kind.plural_snake_case(),
-                if object.is_struct() { "struct" } else { "enum" },
-                object.name,
-            );
-        }
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
+            object.name,
+            object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
+            speculative_marker,
+            object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
+            object.name
+        );
+
+        putln!(
+            page,
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+            object.name,
+            object.kind.plural_snake_case(),
+            if object.is_struct() { "struct" } else { "enum" },
+            object.name,
+        );
     }
 }
 
@@ -584,14 +562,7 @@ fn write_view_property(
         }
     }
 
-    // Link to the datatypes for all languages.
-    putln!(o);
-    putln!(o, "**Api reference links:**");
-    let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
-    // TODO(#5520): Support for C++ - the types exist but doesn't make sense to point to them yet.
-    // TODO(#5521): Support for Python - the types exist but doesn't make sense to point to them yet.
-    list_links(is_unreleased, o, object, SdkLanguages::PYTHON);
-    putln!(o);
+    // Note that we don't list links to reference docs for this type since this causes a lot of clutter.
 }
 
 fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
