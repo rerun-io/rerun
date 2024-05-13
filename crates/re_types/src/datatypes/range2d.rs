@@ -112,7 +112,7 @@ impl ::re_types_core::Loggable for Range2D {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let x_range_inner_data: Vec<_> = x_range
-                                .iter()
+                                .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
@@ -160,7 +160,7 @@ impl ::re_types_core::Loggable for Range2D {
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let y_range_inner_data: Vec<_> = y_range
-                                .iter()
+                                .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();

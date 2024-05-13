@@ -98,6 +98,13 @@ impl ::re_types_core::Loggable for Blob {
             };
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    data0
+                        .iter()
+                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
+                )
+                .unwrap()
+                .into();
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
@@ -106,13 +113,6 @@ impl ::re_types_core::Loggable for Blob {
                     .concat()
                     .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                    data0
-                        .iter()
-                        .map(|opt| opt.as_ref().map_or(0, |datum| datum.num_instances())),
-                )
-                .unwrap()
-                .into();
                 ListArray::new(
                     Self::arrow_datatype(),
                     offsets,

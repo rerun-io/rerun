@@ -162,14 +162,6 @@ impl ::re_types_core::Loggable for ClassDescription {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 keypoint_annotations
                                     .iter()
@@ -177,6 +169,13 @@ impl ::re_types_core::Loggable for ClassDescription {
                             )
                             .unwrap()
                             .into();
+                            let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -211,14 +210,6 @@ impl ::re_types_core::Loggable for ClassDescription {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let keypoint_connections_inner_data: Vec<_> = keypoint_connections
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 keypoint_connections
                                     .iter()
@@ -226,6 +217,13 @@ impl ::re_types_core::Loggable for ClassDescription {
                             )
                             .unwrap()
                             .into();
+                            let keypoint_connections_inner_data: Vec<_> = keypoint_connections
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",

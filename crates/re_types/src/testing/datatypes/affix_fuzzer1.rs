@@ -182,11 +182,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: arrow2::buffer::Buffer<u8> = single_string_required
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.0.clone())
-                                .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_required.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -194,7 +189,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
                             .into();
-
+                            let inner_data: arrow2::buffer::Buffer<u8> = single_string_required
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|s| s.0)
+                                .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -223,11 +222,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: arrow2::buffer::Buffer<u8> = single_string_optional
-                                .iter()
-                                .flatten()
-                                .flat_map(|s| s.0.clone())
-                                .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 single_string_optional.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
@@ -235,7 +229,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .map_err(|err| std::sync::Arc::new(err))?
                             .into();
-
+                            let inner_data: arrow2::buffer::Buffer<u8> = single_string_optional
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|s| s.0)
+                                .collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
@@ -265,6 +263,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                many_floats_optional.iter().map(|opt| {
+                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
+                                }),
+                            )
+                            .unwrap()
+                            .into();
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()
@@ -274,13 +279,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 .into();
                             let many_floats_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 None;
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                many_floats_optional.iter().map(|opt| {
-                                    opt.as_ref().map_or(0, |datum| datum.num_instances())
-                                }),
-                            )
-                            .unwrap()
-                            .into();
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -315,14 +313,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_required_inner_data: Vec<_> = many_strings_required
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_required
                                     .iter()
@@ -330,6 +320,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .unwrap()
                             .into();
+                            let many_strings_required_inner_data: Vec<_> = many_strings_required
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let many_strings_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -338,11 +335,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 ))),
                                 offsets,
                                 {
-                                    let inner_data: arrow2::buffer::Buffer<u8> =
-                                        many_strings_required_inner_data
-                                            .iter()
-                                            .flat_map(|s| s.0.clone())
-                                            .collect();
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_required_inner_data
                                             .iter()
@@ -350,6 +342,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     )
                                     .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
+                                    let inner_data: arrow2::buffer::Buffer<u8> =
+                                        many_strings_required_inner_data
+                                            .into_iter()
+                                            .flat_map(|s| s.0)
+                                            .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(
@@ -383,14 +380,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let many_strings_optional_inner_data: Vec<_> = many_strings_optional
-                                .iter()
-                                .flatten()
-                                .flatten()
-                                .cloned()
-                                .collect();
-                            let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 many_strings_optional
                                     .iter()
@@ -398,6 +387,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             )
                             .unwrap()
                             .into();
+                            let many_strings_optional_inner_data: Vec<_> = many_strings_optional
+                                .into_iter()
+                                .flatten()
+                                .flatten()
+                                .collect();
+                            let many_strings_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
                             ListArray::new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
@@ -406,11 +402,6 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                 ))),
                                 offsets,
                                 {
-                                    let inner_data: arrow2::buffer::Buffer<u8> =
-                                        many_strings_optional_inner_data
-                                            .iter()
-                                            .flat_map(|s| s.0.clone())
-                                            .collect();
                                     let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                         many_strings_optional_inner_data
                                             .iter()
@@ -418,6 +409,11 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                                     )
                                     .map_err(|err| std::sync::Arc::new(err))?
                                     .into();
+                                    let inner_data: arrow2::buffer::Buffer<u8> =
+                                        many_strings_optional_inner_data
+                                            .into_iter()
+                                            .flat_map(|s| s.0)
+                                            .collect();
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe {
                                         Utf8Array::<i32>::new_unchecked(

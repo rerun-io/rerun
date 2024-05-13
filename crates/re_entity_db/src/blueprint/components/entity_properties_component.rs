@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
             {
                 use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let buffers: Vec<Option<Vec<u8>>> = data0
-                    .iter()
+                    .into_iter()
                     .map(|opt| {
                         use ::re_types_core::SerializationError;
                         opt.as_ref()

@@ -149,14 +149,14 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let craziness_inner_data: Vec<_> =
-                            craziness.iter().flatten().cloned().collect();
-                        let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             craziness.iter().map(|datum| datum.len()),
                         )
                         .unwrap()
                         .into();
+                        let craziness_inner_data: Vec<_> =
+                            craziness.into_iter().flatten().collect();
+                        let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         ListArray::new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
@@ -187,7 +187,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let fixed_size_shenanigans_inner_data: Vec<_> =
-                            fixed_size_shenanigans.iter().flatten().cloned().collect();
+                            fixed_size_shenanigans.into_iter().flatten().collect();
                         let fixed_size_shenanigans_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                             None;
                         FixedSizeListArray::new(
