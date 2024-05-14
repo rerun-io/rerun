@@ -32,6 +32,7 @@ default = []
 serde = [
   "dep:serde",
   "dep:serde_bytes",
+  "re_build_info/serde",
   "re_string_interner/serde",
   "re_tuid/serde",
   "re_types_core/serde",
@@ -40,6 +41,7 @@ serde = [
 [dependencies]
 
 # Rerun
+re_build_info.workspace = true
 re_format.workspace = true
 re_format_arrow.workspace = true
 re_log.workspace = true

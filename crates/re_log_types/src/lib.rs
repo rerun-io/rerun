@@ -37,6 +37,8 @@ mod data_table_batcher;
 
 use std::sync::Arc;
 
+use re_build_info::CrateVersion;
+
 pub use self::arrow_msg::{ArrowChunkReleaseCallback, ArrowMsg};
 pub use self::data_cell::{DataCell, DataCellError, DataCellInner, DataCellResult};
 pub use self::data_row::{
@@ -361,6 +363,13 @@ pub struct StoreInfo {
     pub started: Time,
 
     pub store_source: StoreSource,
+
+    /// The Rerun version used to encoded the RRD data.
+    ///
+    // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
+    // would probably only lead to more issues down the line.
+    #[serde(skip, default = "Option::default")]
+    pub store_version: Option<CrateVersion>,
 }
 
 impl StoreInfo {
