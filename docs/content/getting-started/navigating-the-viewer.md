@@ -6,10 +6,10 @@ order: 500
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
 be comfortable with the following topics:
 
--   [Launching the demo](#launching-the-demo)
--   [The Viewer panels](#the-viewer-panels)
--   [Exploring data](#exploring-data)
--   [Navigating the timeline](#navigating-the-timeline)
+* [Launching the demo](#launching-the-demo)
+* [The Viewer panels](#the-viewer-panels)
+* [Exploring data](#exploring-data)
+* [Navigating the timeline](#navigating-the-timeline)
 
 Here is a preview of the dataset that we will be working with:
 
@@ -197,7 +197,7 @@ playback the Rerun data as you might with a video file.
 
 Try out the following:
 
--   Use the Arrow buttons (or Arrow keys on your keyboard) to step forward and backwards by a single frame
+-   Use the arrow buttons (or Arrow keys on your keyboard) to step forward and backwards by a single frame
 -   Click play to watch the data update on its own
 -   Hit space bar to stop and start the playback
 -   Hold shift and drag in the timeline to select a region

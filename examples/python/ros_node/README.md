@@ -80,7 +80,7 @@ As described in the nav demo, use the rviz window to initialize the pose estimat
 
 You can now connect to the running ROS system by running:
 ```bash
-python examples/python/ros_node/main.py ## run the example
+python examples/python/ros_node/main.py # run the example
 ```
 
 If you wish to customize it, or explore additional features, use the CLI with the `--help` option for guidance:
