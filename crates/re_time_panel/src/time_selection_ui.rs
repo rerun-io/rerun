@@ -1,21 +1,17 @@
 use egui::{CursorIcon, Id, NumExt as _, Rect};
 
-use re_entity_db::EntityDb;
 use re_log_types::{Duration, ResolvedTimeRangeF, TimeInt, TimeReal, TimeType};
 use re_viewer_context::{Looping, TimeControl};
 
-use super::{is_time_safe_to_show, time_ranges_ui::TimeRangesUi};
+use super::time_ranges_ui::TimeRangesUi;
 
 pub fn loop_selection_ui(
-    entity_db: &EntityDb,
     time_ctrl: &mut TimeControl,
     time_ranges_ui: &TimeRangesUi,
     ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
-    let timeline = *time_ctrl.timeline();
-
     if time_ctrl.loop_selection().is_none() && time_ctrl.looping() == Looping::Selection {
         // Helpfully select a time slice
         if let Some(selection) = initial_time_selection(time_ranges_ui, time_ctrl.time_type()) {
@@ -74,11 +70,7 @@ pub fn loop_selection_ui(
                 time_area_painter.rect_filled(rect, rounding, selection_color);
             }
 
-            if is_active
-                && !selected_range.is_empty()
-                && is_time_safe_to_show(entity_db, &timeline, selected_range.min)
-                && is_time_safe_to_show(entity_db, &timeline, selected_range.max)
-            {
+            if is_active && !selected_range.is_empty() {
                 paint_range_text(time_ctrl, selected_range, ui, time_area_painter, rect);
             }
 
@@ -302,7 +294,7 @@ fn paint_range_text(
 ) {
     use egui::{Pos2, Stroke};
 
-    if selected_range.min <= TimeInt::MIN_TIME_PANEL {
+    if selected_range.min <= TimeInt::MIN {
         return; // huge time selection, don't show a confusing times
     }
 

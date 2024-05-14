@@ -38,18 +38,6 @@ impl std::fmt::Debug for TimeInt {
 }
 
 impl TimeInt {
-    /// Hack.
-    ///
-    /// Special value used to represent timeless data in the time panel.
-    ///
-    /// The reason we don't use i64::MIN is because in the time panel we need
-    /// to be able to pan to before the [`TimeInt::MIN`], and so we need
-    /// a bit of leeway.
-    //
-    // TODO(#5264): remove this once we migrate to the new static UI
-    #[doc(hidden)]
-    pub const MIN_TIME_PANEL: Self = Self(NonMinI64::new(i64::MIN / 2));
-
     /// Special value used to represent static data.
     ///
     /// It is illegal to create a [`TimeInt`] with that value in a temporal context.
