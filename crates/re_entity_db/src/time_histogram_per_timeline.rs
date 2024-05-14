@@ -90,7 +90,7 @@ impl TimeHistogramPerTimeline {
                 .num_static_messages
                 .checked_sub(n as u64)
                 .unwrap_or_else(|| {
-                    // TODO(#4355): hitting this on plots demo
+                    // We used to hit this on plots demo, see https://github.com/rerun-io/rerun/issues/4355.
                     re_log::debug!(
                         current = self.num_static_messages,
                         removed = n,

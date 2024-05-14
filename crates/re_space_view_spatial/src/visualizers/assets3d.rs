@@ -62,7 +62,7 @@ impl Asset3DVisualizer {
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
-            // TODO(#3232): this is subtly wrong, the key should actually be a hash of everything that got
+            // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
             let mesh = ctx.cache.entry(|c: &mut MeshCache| {
                 c.entry(

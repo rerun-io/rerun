@@ -220,7 +220,9 @@ It can greatly improve performance (and readability) in such situations as it pr
 
         // Spawn time series data at the root if there's time series data either
         // directly at the root or one of its children.
-        // TODO(#4926): This seems to be unnecessarily complicated.
+        //
+        // This is the last hold out of "child of root" spawning, which we removed otherwise
+        // (see https://github.com/rerun-io/rerun/issues/4926)
         let subtree_of_root_entity = &ctx.recording().tree().children;
         if indicated_entities.contains(&EntityPath::root())
             || subtree_of_root_entity

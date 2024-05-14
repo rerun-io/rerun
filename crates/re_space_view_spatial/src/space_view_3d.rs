@@ -195,7 +195,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
         // from splitting the root space into several subspaces.
         //
-        // TODO(andreas)/TODO(#4926):
+        // TODO(andreas):
         // It's tempting to add a visualizer for view coordinates so that it's already picked up via `entities_with_indicator_for_visualizer_kind`.
         // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
         // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!

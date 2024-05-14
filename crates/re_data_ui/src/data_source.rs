@@ -50,7 +50,8 @@ impl crate::DataUi for re_smart_channel::SmartChannelSource {
         recordings.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
         blueprints.sort_by_key(|entity_db| entity_db.store_info().map(|info| info.started));
 
-        //TODO(#6245): we should _not_ use interactive UI in code used for hover tooltip!
+        // Using the same content ui also for tooltips even if it can't be interacted with.
+        // (still displays the content we want)
         let content_ui = |ui: &mut egui::Ui| {
             if !recordings.is_empty() {
                 ui.add_space(8.0);

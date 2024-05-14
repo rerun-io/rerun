@@ -335,7 +335,7 @@ fn create_entity_add_info(
                     already_added: query_result.contains_entity(entity_path),
                 }
             } else {
-                // TODO(#4826): This shouldn't necessarily prevent us from adding it.
+                // TODO(#6321): This shouldn't necessarily prevent us from adding it.
                 CanAddToSpaceView::No {
                     reason: format!(
                         "Entity can't be displayed by any of the available visualizers in this class of space view ({}).",

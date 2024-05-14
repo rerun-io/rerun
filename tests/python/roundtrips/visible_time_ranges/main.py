@@ -17,7 +17,6 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_visible_time_ranges")
 
-    # TODO(#6221): There's improvements pending for this api.
     rr.log(
         "visible_time_ranges",
         rrb.archetypes.VisibleTimeRanges([
