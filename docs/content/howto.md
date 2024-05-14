@@ -4,7 +4,7 @@ order: 1
 ---
 
 Guides for using Rerun in more advanced ways.
- - [Configure the viewer through code](howto/configure-viewer-through-code.md)
+ - [Configure the Viewer through code](howto/configure-viewer-through-code.md)
  - [Create a fixed-window plot](howto/fixed-window-plot.md)
  - [Limit memory usage](howto/limit-ram.md)
  - [Share recordings across multiple processes](howto/shared-recordings.md)

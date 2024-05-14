@@ -7,7 +7,7 @@ order: 3
 
 The Rerun SDK for Rust requires a working installation of Rust 1.76+.
 
-After you have [installed the viewer](../installing-viewer.md#installing-the-viewer) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](../installing-viewer.md#installing-the-viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand new Rust project:
 
@@ -57,7 +57,7 @@ Once everything finishes compiling, you will see the points in the Rerun Viewer:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/1200w.png">
 </picture>
 
-## Using the viewer
+## Using the Viewer
 
 Try out the following to interact with the viewer:
 

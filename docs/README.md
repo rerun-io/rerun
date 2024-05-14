@@ -1,4 +1,4 @@
-This is the high-level documentation for rerun that is hosted at https://www.rerun.io/docs
+This is the high-level documentation for Rerun that is hosted at https://www.rerun.io/docs
 
 ## Other documentation
 API-level documentation is built from source-code. Python lives at [rerun_py](https://github.com/rerun-io/rerun/tree/main/rerun_py) and Rust in the individual [crates](https://github.com/rerun-io/rerun/tree/main/crates).

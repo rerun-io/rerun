@@ -114,10 +114,9 @@ cargo run -p rerun -- --help
 ## Tools
 
 We use the [`pixi`](https://prefix.dev/) for managing dev-tool versioning, download and task running. To see available tasks, use `pixi task list`.
-# TODO(andreas): This doesn't list tasks from the different environments. Asked [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475) if there's a way to do that.
+TODO(andreas): This doesn't list tasks from all Pixi environments. There's no way to this so far, see also [here](https://discord.com/channels/1082332781146800168/1227563080934756475/1227563080934756475).
 
-We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`.
-
+We use [cargo deny](https://github.com/EmbarkStudios/cargo-deny) to check our dependency tree for copy-left licenses, duplicate dependencies and [rustsec advisories](https://rustsec.org/advisories). You can configure it in `deny.toml`. Usage: `cargo deny check`
 Configure your editor to run `cargo fmt` on save. Also configure it to strip trailing whitespace, and to end each file with a newline. Settings for VSCode can be found in the `.vscode` folder and should be applied automatically. If you are using another editor, consider adding good setting to this repository!
 
 Depending on the changes you made run `cargo test --all-targets --all-features`, `pixi run py-test` and `pixi run cpp-test` locally.
@@ -127,7 +126,7 @@ Prior to pushing changes to a PR, at a minimum, you should always run `pixi run 
 in a few seconds and should catch the more trivial issues to avoid wasting CI time.
 
 ### Hooks
-We recommend adding the rerun pre-push hook to your local checkout, which among other-things will run
+We recommend adding the Rerun pre-push hook to your local checkout, which among other-things will run
 `pixi run fast-lint` for you.
 
 To install the hooks, simply copy them into the `.git/hooks` directory of your local checkout.
@@ -141,7 +140,7 @@ git config core.hooksPath hooks
 ```
 
 ### Optional
-You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo clippy` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
+You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo clippy` each time you change a Rust file. See [`bacon.toml`](bacon.toml) for more.
 
 You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-compilation (e.g. when switching branches). You can control the size of the cache with `export SCCACHE_CACHE_SIZE="256G"`.
 

@@ -1,9 +1,9 @@
 ---
-title: Save and load viewer configuration files
+title: Save and load Viewer configuration files
 order: 2
 ---
 
-If you have made changes to the viewer and you would like to save or share them,
+If you have made changes to the Viewer and you would like to save or share them,
 you can do so by saving your blueprint to an `.rbl` file.
 
 ## Saving a blueprint

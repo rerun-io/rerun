@@ -1,5 +1,5 @@
 ---
-title: Configure the viewer through code
+title: Configure the Viewer through code
 order: 3
 ---
 
@@ -29,7 +29,7 @@ we will completely change the way the data is presented.
 We start by creating a new virtual environment and installing the Rerun SDK along with the dependencies
 we will use in this example.
 
-On linux or mac:
+On Linux or mac:
 
 ```bash
 mkdir stocks_example
@@ -356,7 +356,7 @@ When you run the script you will see that the data from the peaks subtree is no 
 
 ### Programmatic layouts
 
-Since these layouts are created by executing python code, they can also be generated programmatically.
+Since these layouts are created by executing Python code, they can also be generated programmatically.
 
 For example, we can create a create a separate view for every piece of data we were interested in.
 Setting this up by hand would be extremely tedious.

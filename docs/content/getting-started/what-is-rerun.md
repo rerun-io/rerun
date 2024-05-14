@@ -3,7 +3,7 @@ title: What is Rerun?
 order: 0
 ---
 
-Rerun is an SDK and viewer for visualizing and interacting with multimodal data streams.
+Rerun is an SDK and Viewer for visualizing and interacting with multimodal data streams.
 The SDK lets you send data from anywhere, and the viewer,
 which consists of an in-memory database and a visualization engine,
 collects the data and aligns it so that you can scroll back and forth in time to understand what happened.

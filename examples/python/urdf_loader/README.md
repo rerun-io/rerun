@@ -17,7 +17,7 @@ thumbnail_dimensions = [480, 480]
 
 ## Overview
 
-This is an example data-loader plugin that lets you view [URDF](https://wiki.ros.org/urdf) files. It uses the [external data loader mechanism](https://www.rerun.io/docs/reference/data-loaders/overview#external-dataloaders) to add this capability to the Rerun viewer without modifying the viewer itself.
+This is an example data-loader plugin that lets you view [URDF](https://wiki.ros.org/urdf) files. It uses the [external data loader mechanism](https://www.rerun.io/docs/reference/data-loaders/overview#external-dataloaders) to add this capability to the Rerun Viewer without modifying the Viewer itself.
 
 This example is written in Python, and uses [urdf_parser_py](https://github.com/ros/urdf_parser_py/tree/ros2) to read the files. ROS package-relative paths support both ROS 1 and ROS 2-based resolving.
 
@@ -39,7 +39,7 @@ To try the plug-in, first download the provided example URDF:
 curl -OL https://github.com/rerun-io/rerun-loader-python-example-urdf/raw/main/example.urdf
 ```
 
-Then you can open the viewer and open the file using drag-and-drop or the open dialog, or you can open it directly from the terminal:
+Then you can open the Viewer and open the file using drag-and-drop or the open dialog, or you can open it directly from the terminal:
 
 ```bash
 rerun example.urdf

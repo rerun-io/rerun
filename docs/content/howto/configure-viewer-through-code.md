@@ -1,5 +1,5 @@
 ---
-title: Configure the viewer through code
+title: Configure the Viewer through code
 order: 100
 ---
 
@@ -11,16 +11,16 @@ Future releases will add support for the full scope of blueprint. See issues: [#
 
 ## Blueprint API overview
 
-All blueprint APIs are in the [`rerun.blueprint`](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) namespace. In our python examples, we typically import this using the `rrb` alias:
+All blueprint APIs are in the [`rerun.blueprint`](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) namespace. In our Python examples, we typically import this using the `rrb` alias:
 
 ```python
 import rerun.blueprint as rrb
 ```
 
-The python blueprint API is declarative and object-centric. There are 3 main types of blueprint objects you will
+The Python blueprint API is declarative and object-centric. There are 3 main types of blueprint objects you will
 encounter:
 
--   `Blueprint`: The root object that represents the entire viewer layout.
+-   `Blueprint`: The root object that represents the entire Viewer layout.
 -   `Container`: A layout object that contains other containers or views.
 -   `SpaceView`: A view object that represents a single view of the data.
 
@@ -30,7 +30,7 @@ Both containers and spaceviews should be used via typed subclasses instead.:
 -   `SpaceView` has subclasses: `BarChartView`, `Spatial2DView`, `Spatial3DView`, `TensorView`,
     `TextDocumentView`, `TextLogView`, and `TimeSeriesView`.
 
-These paths can be combined hierarchically to create a complex viewer layout.
+These paths can be combined hierarchically to create a complex Viewer layout.
 
 For example:
 
@@ -46,7 +46,7 @@ my_blueprint = rrb.Blueprint(
 )
 ```
 
-## Sending the blueprint to the viewer
+## Sending the blueprint to the Viewer
 
 To provide a blueprint, simply pass it to either `init` or `connect` using the `default_blueprint`
 parameter.
@@ -73,7 +73,7 @@ rr.connect(default_blueprint=my_blueprint)
 
 ## Activating the default blueprint
 
-Just like the viewer can store many different recordings internally, it can also
+Just like the Viewer can store many different recordings internally, it can also
 store many different blueprints. For each `application_id` in the viewer, are two
 particularly important blueprints: the "default blueprint" and the "active blueprint".
 
@@ -253,12 +253,12 @@ rrb.Blueprint(
 
 The blueprint has two additional parameters that influence the behavior of the viewer:
 
--   `auto_space_views` controls whether the viewer will automatically create space views for entities that are not explicitly included in the blueprint.
--   `auto_layout` controls whether the viewer should automatically layout the containers when introducing new space-views.
+-   `auto_space_views` controls whether the Viewer will automatically create space views for entities that are not explicitly included in the blueprint.
+-   `auto_layout` controls whether the Viewer should automatically layout the containers when introducing new space-views.
 
 If you pass in your own `SpaceView` or `Container` objects, these will both default to `False` so that the Blueprint
 you get is exactly what you specify. Otherwise they will default to `True` so that you will still get content (this
-matches the default behavior of the viewer if no blueprint is provided).
+matches the default behavior of the Viewer if no blueprint is provided).
 
 This means that:
 

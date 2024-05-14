@@ -4,7 +4,7 @@ order: 600
 description: How to embed Rerun in notebooks like Jupyter or Colab
 ---
 
-Starting with version 0.15.1, Rerun has improved support for embedding the Rerun viewer directly within IPython-style
+Starting with version 0.15.1, Rerun has improved support for embedding the Rerun Viewer directly within IPython-style
 notebooks. This makes it easy to iterate on API calls as well as to share data with others.
 
 Rerun has been tested with:
@@ -20,7 +20,7 @@ When using the Rerun logging APIs, by default, the logged messages are buffered 
 you send them to a sink such as via `rr.connect()` or `rr.save()`. When using Rerun in a notebook,
 rather than using the other sinks, you have the option to use a helper method: [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show).
 This method takes any buffered messages and converts them into an HTML snipped including
-the inlined data along with an instance of the viewer in an iframe.
+the inlined data along with an instance of the Viewer in an iframe.
 
 ## The APIs
 
@@ -59,7 +59,7 @@ this memory buffer as the sink for future logging calls.
 
 Note that the output cell is essentially a fixed snapshot of the
 current state of the recording at the time that `notebook_show()` is called. Rerun does not yet
-support live incremental streaming from the jupyter kernel into the embedded viewer.
+support live incremental streaming from the Jupyter kernel into the embedded viewer.
 
 Messages will continue to be buffered incrementally, and each call to `notebook_show()` will
 display all messages that have been logged since the last call to `rr.init()`.
@@ -72,7 +72,7 @@ The `notebook_show()` method also takes optional arguments for specifying the wi
 rr.notebook_show(width=400, height=400)
 ```
 
-## Working with Blueprints
+## Working with blueprints
 
 [Blueprints](./configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
 parameter.
@@ -148,7 +148,7 @@ After running this cell you will need to restart the Runtime for the Rerun packa
 
 ## Sharing your notebook
 
-Because the Rerun viewer in the notebook is just an embedded HTML snippet it also works with
+Because the Rerun Viewer in the notebook is just an embedded HTML snippet it also works with
 tools like nbconvert.
 
 You can convert the notebook to HTML using the following command:

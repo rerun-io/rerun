@@ -2,11 +2,11 @@
 title: Use Rerun with ROS 2
 order: 500
 ogImageUrl: /docs-media/og-howto-ros.jpg
-description: Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun line up fairly well. In this guide, you will learn how to write a simple ROS 2 python node that subscribes to some common ROS topics and logs them to Rerun.
+description: Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun line up fairly well. In this guide, you will learn how to write a simple ROS 2 Python node that subscribes to some common ROS topics and logs them to Rerun.
 ---
 
 Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun
-line up fairly well. In this guide, you will learn how to write a simple ROS 2 python node
+line up fairly well. In this guide, you will learn how to write a simple ROS 2 Python node
 that subscribes to some common ROS topics and logs them to Rerun.
 
 For information on future plans to enable more native ROS support
@@ -60,7 +60,7 @@ running in the background for the remainder of the guide.
 
 ### Additional dependencies
 
-The code for this guide is in the `rerun` repository. If you do not already have rerun cloned,
+The code for this guide is in the `rerun` repository. If you do not already have Rerun cloned,
 you should do so now:
 
 ```bash
@@ -102,7 +102,7 @@ You should see a window similar to:
   <img src="https://static.rerun.io/ros2_launched/4274bbe19dbf163fddaea4d6c24d8ad3e040cecb/full.png" alt="Initial window layout of Rerun 3D view of ROS 2 turtlebot3 navigation demo">
 </picture>
 
-Use rviz to send a new navigation goal and confirm that rerun updates with new data as turtlebot drives around
+Use rviz to send a new navigation goal and confirm that Rerun updates with new data as turtlebot drives around
 the environment.
 
 ### Overview
@@ -287,15 +287,15 @@ def image_callback(self, img: Image) -> None:
 The ROS [PointCloud2](https://github.com/ros2/common_interfaces/blob/humble/sensor_msgs/msg/PointCloud2.msg) message
 is stored as a binary blob that needs to be reinterpreted using the details about its fields. Each field is
 a named collection of offsets into the data buffer, and datatypes. The `sensor_msgs_py` package includes a `point_cloud2`
-reader, which can be used to convert to a Rerun-compatible numpy array.
+reader, which can be used to convert to a Rerun-compatible Numpy array.
 
-These fields are initially returned as numpy structured arrays, whereas Rerun currently expects an unstructured
+These fields are initially returned as Numpy structured arrays, whereas Rerun currently expects an unstructured
 array of Nx3 floats.
 
 Color is extracted in a similar way, although the realsense gazebo driver does not provide the correct offsets for
 the r,g,b channels, requiring us to patch the field values.
 
-After extracting the positions and colors as numpy arrays, the entire cloud can be logged as a batch with `rr.Points3D`
+After extracting the positions and colors as Numpy arrays, the entire cloud can be logged as a batch with `rr.Points3D`
 
 ```python
 def points_callback(self, points: PointCloud2) -> None:
@@ -341,7 +341,7 @@ the sake of this demo, we wanted to instead log a laser scan as a bunch of lines
 in a similar fashion to how it is depicted in gazebo.
 
 We generate a second matching set of points for each ray projected out 0.3m from
-the origin and then interlace the two sets of points using numpy hstack and reshape.
+the origin and then interlace the two sets of points using Numpy hstack and reshape.
 This results in a set of alternating points defining rays from the origin to each
 laser scan result, which is the format expected by `rr.LineStrips3D`:
 
@@ -403,7 +403,7 @@ its scale applied to it. This seems like a bug in either `yourdfpy` or `pycollad
 not respecting the scale hint. To accommodate this, we manually re-scale the
 camera link.
 
-Once we have correctly re-scaled the camera component, we can send the whole scene to rerun with
+Once we have correctly re-scaled the camera component, we can send the whole scene to Rerun with
 `rerun_urdf.log_scene`.
 
 ```python

@@ -17,22 +17,22 @@ Visualize a sparse reconstruction by [COLMAP](https://colmap.github.io/index.htm
   <img src="https://static.rerun.io/structure_from_motion/b17f8824291fa1102a4dc2184d13c91f92d2279c/full.png" alt="Structure From Motion example screenshot">
 </picture>
 
-# Background
+## Background
 
 COLMAP is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline.
 In this example, a short video clip has been processed offline using the COLMAP pipeline.
 The processed data was then visualized using Rerun, which allowed for the visualization of individual camera frames, estimation of camera poses, and creation of point clouds over time.
 By using COLMAP in combination with Rerun, a highly-detailed reconstruction of the scene depicted in the video was generated.
 
-# Used Rerun types
+## Used Rerun types
 
 [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`SeriesLine`](https://www.rerun.io/docs/reference/types/archetypes/series_line), [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`TextDocument`](https://www.rerun.io/docs/reference/types/archetypes/text_document)
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
-## Timelines
+### Timelines
 
 All data logged using Rerun in the following sections is connected to a specific frame.
 Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
@@ -41,14 +41,14 @@ Rerun assigns a frame id to each piece of logged data, and these frame ids are a
 rr.set_time_sequence("frame", frame_idx)
  ```
 
-## Images
+### Images
 The images are logged through the [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image) to the `camera/image` entity.
 
 ```python
 rr.log("camera/image", rr.Image(rgb).compress(jpeg_quality=75))
 ```
 
-## Cameras
+### Cameras
 The images stem from pinhole cameras located in the 3D world. To visualize the images in 3D, the pinhole projection has
 to be logged and the camera pose (this is often referred to as the intrinsics and extrinsics of the camera,
 respectively).
@@ -72,7 +72,7 @@ rr.log(
 )
 ```
 
-## Reprojection error
+### Reprojection error
 For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes/scalar) archetype containing the average reprojection error of the keypoints is logged to the
 `plot/avg_reproj_err` entity.
 
@@ -80,7 +80,7 @@ For each image a [`Scalar`](https://www.rerun.io/docs/reference/types/archetypes
 rr.log("plot/avg_reproj_err", rr.Scalar(np.mean(point_errors)))
 ```
 
-## 2D points
+### 2D points
 The 2D image points that are used to triangulate the 3D points are visualized by logging as [`Points2D`](https://www.rerun.io/docs/reference/types/archetypes/points2d)
 to the `camera/image/keypoints` entity. Note that these keypoints are a child of the
 `camera/image` entity, since the points should show in the image plane.
@@ -89,16 +89,15 @@ to the `camera/image/keypoints` entity. Note that these keypoints are a child of
 rr.log("camera/image/keypoints", rr.Points2D(visible_xys, colors=[34, 138, 167]))
 ```
 
-## 3D points
+### 3D points
 The colored 3D points were added to the visualization by logging the [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype to the `points` entity.
 ```python
 rr.log("points", rr.Points3D(points, colors=point_colors), rr.AnyValues(error=point_errors))
 ```
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

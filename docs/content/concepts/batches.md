@@ -37,7 +37,7 @@ When using batched entities there are a few restrictions:
 
 Rerun lets you choose which components in an entity you want to log at any point in time. If you don't log to a
 component, then in general it is not updated. For example, if you log a point cloud with positions and colors and then
-later log just new positions, when the viewer displays that point cloud it will still look up the *last* colors that
+later log just new positions, when the Viewer displays that point cloud it will still look up the *last* colors that
 were logged (we refer to this as the *latest at* semantics).
 
 This can be quite convenient since updating different components at different times puts far fewer restrictions on the

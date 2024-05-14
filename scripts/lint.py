@@ -661,45 +661,115 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 
 # -----------------------------------------------------------------------------
 
+force_capitalized = [
+    "2D",
+    "3D",
+    "Apache",
+    "API",
+    "APIs",
+    "April",
+    "Bevy",
+    "C",
+    "C++",
+    "C++17,",  # easier than coding up a special case
+    "C++17",
+    "Colab",
+    "Google",
+    "Jupyter",
+    "Linux",
+    "Mac",
+    "Numpy",
+    "nuScenes",
+    "Pixi",
+    "Python",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Rerun",
+    "Rust",
+    "SAM",
+    "Wasm",
+    # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
+    # "Windows", # Consider "multiple plot windows"
+]
+
+allow_capitalized = [
+    "Viewer",  # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
+    "Arrow",  # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+]
+
+force_capitalized_as_lower = [word.lower() for word in force_capitalized]
+allow_capitalized_as_lower = [word.lower() for word in allow_capitalized]
+
 
 def fix_header_casing(s: str) -> str:
-    allowed_title_words = [
-        "Apache",
-        "APIs",
-        "Arrow",
-        "C",
-        "C++",
-        "Colab",
-        "Google",
-        "Jupyter",
-        "Linux",
-        "Numpy",
-        "Pixi",
-        "Python",
-        "Rerun",
-        "Rust",
-        "Wasm",
-        "Windows",
-    ]
-
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
 
-    new_words = []
+    new_words: list[str] = []
+    last_punctuation = None
+    inline_code_block = False
 
-    for i, word in enumerate(s.strip().split(" ")):
+    words = s.strip().split(" ")
+
+    for i, word in enumerate(words):
         if word == "":
             continue
-        if word.lower() in ("2d", "3d"):
-            word = word.upper()
-        elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
-            pass  # acroym, PascalCase, code, …
-        elif i == 0:
-            # First word:
+
+        if word.startswith("`"):
+            inline_code_block = True
+        if word.endswith("`"):
+            inline_code_block = False
+
+        if last_punctuation:
             word = word.capitalize()
-        else:
-            if word not in allowed_title_words:
+            last_punctuation = None
+        elif not inline_code_block and not word.startswith("`") and not word.startswith('"'):
+            try:
+                idx = force_capitalized_as_lower.index(word.lower())
+            except ValueError:
+                idx = None
+
+            if word.endswith("?") or word.endswith("!") or word.endswith("."):
+                last_punctuation = word[-1]
+                word = word[:-1]
+            elif idx is not None:
+                word = force_capitalized[idx]
+            elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
+                pass  # acroym, PascalCase, code, …
+            elif word.lower() in allow_capitalized_as_lower:
+                pass
+            elif i == 0:
+                # First word:
+                word = word.capitalize()
+            else:
                 word = word.lower()
+
+        new_words.append((word + last_punctuation) if last_punctuation else word)
+
+    return " ".join(new_words)
+
+
+def fix_enforced_upper_case(s: str) -> str:
+    new_words: list[str] = []
+    inline_code_block = False
+
+    for i, word in enumerate(s.split(" ")):
+        if word.startswith("`"):
+            inline_code_block = True
+        if word.endswith("`"):
+            inline_code_block = False
+
+        if word.strip() != "" and not inline_code_block and not word.startswith("`"):
+            try:
+                idx = force_capitalized_as_lower.index(word.lower())
+            except ValueError:
+                idx = None
+
+            if idx is not None:
+                word = force_capitalized[idx]
+
         new_words.append(word)
 
     return " ".join(new_words)
@@ -711,14 +781,23 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     errors = []
     lines_out = []
 
-    in_example_readme = "/examples/python/" in filepath and filepath.endswith("README.md")
+    in_example_readme = (
+        "/examples/python/" in filepath
+        and filepath.endswith("README.md")
+        and not filepath.endswith("/examples/python/README.md")
+    )
+    in_changelog = filepath.endswith("CHANGELOG.md")
+    in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
+
+    if in_code_of_conduct:
+        return errors, lines_in
 
     in_code_block = False
     in_frontmatter = False
     for line_nr, line in enumerate(lines_in):
         line_nr = line_nr + 1
 
-        if line.startswith("```"):
+        if line.strip().startswith("```"):
             in_code_block = not in_code_block
 
         if line.startswith("<!--[metadata]"):
@@ -726,26 +805,38 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         if in_frontmatter and line.startswith("-->"):
             in_frontmatter = False
 
-        # Check the casing on markdown headers
-        if m := re.match(r"(\#+ )(.*)", line):
-            new_header = fix_header_casing(m.group(2))
-            if new_header != m.group(2):
-                errors.append(f"{line_nr}: Markdown headers should NOT be title cased. This should be '{new_header}'.")
-                line = m.group(1) + new_header + "\n"
+        if not in_code_block:
+            # Check the casing on markdown headers
+            if not in_changelog and (m := re.match(r"(\#+ )(.*)", line)):
+                new_header = fix_header_casing(m.group(2))
+                if new_header != m.group(2):
+                    errors.append(
+                        f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                    )
+                    line = m.group(1) + new_header + "\n"
 
-        # Check the casing on `title = "…"` frontmatter
-        if m := re.match(r'title\s*\=\s*"(.*)"', line):
-            new_title = fix_header_casing(m.group(1))
-            if new_title != m.group(1):
-                errors.append(f"{line_nr}: Titles should NOT be title cased. This should be '{new_title}'.")
-                line = f'title = "{new_title}"\n'
+            # Check the casing on `title = "…"` frontmatter
+            elif m := re.match(r'title\s*\=\s*"(.*)"', line):
+                new_title = fix_header_casing(m.group(1))
+                if new_title != m.group(1):
+                    errors.append(
+                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'."
+                    )
+                    line = f'title = "{new_title}"\n'
 
-        if in_example_readme and not in_code_block and not in_frontmatter:
-            # Check that <h1> is not used in example READMEs
-            if line.startswith("#") and not line.startswith("##"):
-                errors.append(
-                    f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
-                )
+            # Enforce capitalization on certain words in the main text.
+            else:
+                new_line = fix_enforced_upper_case(line)
+                if new_line != line:
+                    errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
+                    line = new_line
+
+            if in_example_readme and not in_frontmatter:
+                # Check that <h1> is not used in example READMEs
+                if line.startswith("#") and not line.startswith("##"):
+                    errors.append(
+                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
+                    )
 
         lines_out.append(line)
 
@@ -936,7 +1027,7 @@ def lint_file(filepath: str, args: Any) -> int:
         if args.fix:
             source.rewrite(lines_out)
 
-    if filepath.endswith(".md") and args.extra:
+    if filepath.endswith(".md"):
         errors, lines_out = lint_markdown(filepath, source.lines)
 
         for error in errors:
@@ -1063,6 +1154,7 @@ def main() -> None:
 
     exclude_paths = (
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
+        "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
         "./examples/assets",
@@ -1073,6 +1165,7 @@ def main() -> None:
         "./rerun_cpp/docs/html",
         "./rerun_cpp/src/rerun/c/arrow_c_data_interface.h",  # Not our code
         "./rerun_cpp/src/rerun/third_party/cxxopts.hpp",  # vendored
+        "./rerun_py/.pytest_cache/",
         "./rerun_py/site/",  # is in `.gitignore` which this script doesn't fully respect
         "./run_wasm/README.md",  # Has a "2d" lowercase example in a code snippet
         "./scripts/lint.py",  # we contain all the patterns we are linting against

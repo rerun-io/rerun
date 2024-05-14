@@ -73,14 +73,6 @@ for i, label_info in enumerate(annotation["data"]):
         timeless=True,
     )
 ```
-<!--
-# Projecting 3D bounding boxes to 2D and logging the line segments
-```python
-for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
-    log_line_segments(f"{entity_id}/bbox-2D-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
-```
- -->
-
 
 ### Setting up the default blueprint
 
@@ -121,7 +113,6 @@ In particular, we want to reproject 3D annotations onto the 2D camera views. To 
 
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

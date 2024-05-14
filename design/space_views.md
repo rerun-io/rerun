@@ -92,8 +92,8 @@ First of all 3D data is only viewable in 2D if combined with a suitable projecti
 Second, the expectations around how to navigate a 2D visualization are quite different from how I expect to navigate a 3D visualization.
 
 ### Registering
-Registration happens on startup in the viewer owned `SpaceViewClassRegistry`.
-The viewer registers all builtin Space View Classes and users may add new types at any point in time.
+Registration happens on startup in the Viewer owned `SpaceViewClassRegistry`.
+The Viewer registers all builtin Space View Classes and users may add new types at any point in time.
 
 
 ### Systems

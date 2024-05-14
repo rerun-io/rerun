@@ -3,7 +3,7 @@ title = "Template"
 tags = ["Human case", "Comma", "Separated", "ACRONYM", "Respect brand names", "Hugging Face", "Coca-Cola"]
 thumbnail = "https://static.rerun.io/template/f53a939567970272cf7c740f1efe5c72f20de7ab/480w.png"
 thumbnail_dimensions = [480, 359]
-# channel = "main" # uncomment if this example can be run fast an easily
+# Channel = "main" # uncomment if this example can be run fast an easily
 -->
 
 This is an example template. It is not a real example. You can duplicate the directory and use it as a starting point for writing a real example.

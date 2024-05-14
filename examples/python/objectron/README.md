@@ -3,7 +3,7 @@ title = "Objectron"
 tags = ["2D", "3D", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
 thumbnail_dimensions = [480, 480]
-# channel = "release"  - Disabled because it sometimes have bad first-frame heuristics
+# Channel = "release" - disabled because it sometimes have bad first-frame heuristics
 build_args = ["--frames=150"]
 -->
 
@@ -109,7 +109,6 @@ In particular, we want to reproject the points and the 3D annotation box in the 
 ## Run the code
 To run this example, make sure you have Python version at least 3.9, the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Live Scrolling Plot"
+title = "Live scrolling plot"
 tags = ["Plots", "Live"]
 thumbnail = "https://static.rerun.io/live_scrolling_plot_thumbnail/73c6b11bd074af258b8d30092e15361e358d8069/480w.png"
 thumbnail_dimensions = [480, 384]

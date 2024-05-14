@@ -1,4 +1,4 @@
-# TUID: Time-based Unique Identifier
+# TUID: time-based unique identifier
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 

@@ -1,6 +1,6 @@
 # Python docs
 
-A high-level overview of writing and previewing the Rerun python documentation.
+A high-level overview of writing and previewing the Rerun Python documentation.
 
 ## Getting started with docs
 

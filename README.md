@@ -30,7 +30,7 @@ rr.connect()  # Connect to a remote viewer
 # rr.save("recording.rrd")  # Stream all logs to disk
 
 # Associate subsequent data with 42 on the “frame” timeline
-rr.set_time_sequence("frame", 42))
+rr.set_time_sequence("frame", 42)
 
 # Log colored 3D points to the entity at `path/to/points`
 rr.log("path/to/points", rr.Points3D(positions, colors=colors))
@@ -48,14 +48,14 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </p>
 
 ## Getting started
-* **C++**: [Guide](https://www.rerun.io/docs/getting-started/quick-start/cpp)
-* **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* **Rust**: `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/getting-started/quick-start/cpp)
+* [**Python**](https://www.rerun.io/docs/getting-started/quick-start/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/getting-started/quick-start/rust): `cargo add rerun`
 
-### Rerun Viewer binary
-Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
-
+### Installing the Rerun Viewer binary
+To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
 It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli`.
+Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
 You should now be able to run `rerun --help` in any terminal.
 
@@ -147,12 +147,12 @@ facilitates the tool's discovery by other researchers.
 
 # Development
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
-* [`BUILD.md`](BUILD.md)
-* [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CODE_STYLE.md`](CODE_STYLE.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
-* [`RELEASES.md`](RELEASES.md)
+* [`BUILD.md`](BUILD.md)
+* [`rerun_py/README.md`](rerun_py/README.md) - instructions for Python SDK
+* [`rerun_cpp/README.md`](rerun_cpp/README.md) - instructions for C++ SDK
 
 
 ## Installing a pre-release Python SDK
