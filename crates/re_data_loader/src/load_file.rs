@@ -113,6 +113,10 @@ pub(crate) fn prepare_store_info(
                 is_official_example: false,
                 started: re_log_types::Time::now(),
                 store_source,
+                // NOTE: Since this cannot be an RRD file, either the current process or an external data
+                // loader will have to do the logging.
+                // In both case we can assume that the protocol version is the local one.
+                store_version: Some(re_build_info::CrateVersion::LOCAL),
             },
         })
     })

@@ -4152,6 +4152,9 @@ dependencies = [
 [[package]]
 name = "re_build_info"
 version = "0.16.0-alpha.4"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "re_build_tools"
@@ -4188,6 +4191,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rayon",
+ "re_build_info",
  "re_build_tools",
  "re_log",
  "re_log_encoding",
@@ -4317,6 +4321,7 @@ dependencies = [
  "nohash-hasher",
  "parking_lot",
  "rand",
+ "re_build_info",
  "re_data_store",
  "re_format",
  "re_int_histogram",
@@ -4428,6 +4433,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "re_arrow2",
+ "re_build_info",
  "re_format",
  "re_format_arrow",
  "re_log",

@@ -555,6 +555,7 @@ impl RecordingStreamBuilder {
             is_official_example,
             started: Time::now(),
             store_source,
+            store_version: Some(re_build_info::CrateVersion::LOCAL),
         };
 
         let batcher_config =

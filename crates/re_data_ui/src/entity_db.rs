@@ -44,6 +44,7 @@ impl crate::DataUi for EntityDb {
                     is_official_example: _,
                     started,
                     store_source,
+                    store_version,
                 } = store_info;
 
                 if let Some(cloned_from) =  cloned_from {
@@ -59,6 +60,14 @@ impl crate::DataUi for EntityDb {
                 re_ui.grid_left_hand_label(ui, "Source");
                 ui.label(store_source.to_string());
                 ui.end_row();
+
+                if let Some(store_version) = store_version {
+                    re_ui.grid_left_hand_label(ui, "Protocol Version");
+                    ui.label(store_version.to_string());
+                    ui.end_row();
+                } else {
+                    re_log::debug_once!("store version is undefined for this recording, this is a bug");
+                }
 
                 re_ui.grid_left_hand_label(ui, "Kind");
                 ui.label(store_id.kind.to_string());
