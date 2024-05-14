@@ -15,6 +15,9 @@ Configuration for the background of the view.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
+If not specified, the default is to show the latest state of each component.
+If a timeline is specified more than once, the first entry will be used.
+
 ## Api reference links
  * 🐍 [Python API docs for `Spatial3DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.Spatial3DView)
 
