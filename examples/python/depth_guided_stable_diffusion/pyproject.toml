@@ -20,9 +20,6 @@ dependencies = [
 [project.scripts]
 depth_guided_stable_diffusion = "depth_guided_stable_diffusion.__main__:main"
 
-[tool.rerun-example]
-skip = true # TODO(#5976): controlnet has conflicting dependencies
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
