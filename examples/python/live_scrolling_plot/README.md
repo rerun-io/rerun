@@ -67,4 +67,3 @@ Then, simply execute the main Python script:
 ```bash
 python -m live_scrolling_plot
 ```
-ddd
