@@ -4122,6 +4122,7 @@ dependencies = [
  "sha2",
  "thiserror",
  "time",
+ "url",
  "uuid",
  "web-sys",
 ]

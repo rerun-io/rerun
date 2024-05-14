@@ -50,6 +50,7 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
+  "crates/re_analytics/src/event.rs",             # Contains test with malformed urls
   "scripts/lint.py",                              # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
 ]
