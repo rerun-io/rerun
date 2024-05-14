@@ -662,7 +662,6 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 # -----------------------------------------------------------------------------
 
 force_capitalized = [
-    # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     "2D",
     "3D",
     "Apache",
@@ -691,7 +690,8 @@ force_capitalized = [
     "Rust",
     "SAM",
     "Wasm",
-    "Windows",
+    # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
+    # "Windows", # Consider "multiple plot windows"
 ]
 
 allow_capitalized = [
