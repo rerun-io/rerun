@@ -44,20 +44,31 @@ pub fn open_recording(
     entity_db: &re_entity_db::EntityDb,
 ) -> OpenRecording {
     let store_info = entity_db.store_info().map(|store_info| {
-        let application_id = if store_info.is_official_example {
-            Id::Official(store_info.application_id.0.clone())
+        let re_log_types::StoreInfo {
+            application_id,
+            store_id,
+            is_official_example,
+            store_source,
+            store_version,
+
+            cloned_from: _,
+            started: _,
+        } = store_info;
+
+        let application_id_preprocessed = if *is_official_example {
+            Id::Official(application_id.0.clone())
         } else {
-            Id::Hashed(Property::from(store_info.application_id.0.clone()).hashed())
+            Id::Hashed(Property::from(application_id.0.clone()).hashed())
         };
 
-        let recording_id = if store_info.is_official_example {
-            Id::Official(store_info.store_id.to_string())
+        let recording_id_preprocessed = if *is_official_example {
+            Id::Official(store_id.to_string())
         } else {
-            Id::Hashed(Property::from(store_info.store_id.to_string()).hashed())
+            Id::Hashed(Property::from(store_id.to_string()).hashed())
         };
 
         use re_log_types::StoreSource as S;
-        let store_source = match &store_info.store_source {
+        let store_source_preprocessed = match &store_source {
             S::Unknown => "unknown".to_owned(),
             S::CSdk => "c_sdk".to_owned(),
             S::PythonSdk(_version) => "python_sdk".to_owned(),
@@ -72,43 +83,47 @@ pub fn open_recording(
             S::Other(other) => other.clone(),
         };
 
+        let store_version_preprocessed = if let Some(store_version) = store_version {
+            store_version.to_string()
+        } else {
+            re_log::debug_once!("store version is undefined for this recording, this is a bug");
+            "undefined".to_owned()
+        };
+
         // `rust+llvm` and `python` versions are mutually exclusive
-        let mut rust_version = None;
-        let mut llvm_version = None;
-        let mut python_version = None;
-        match &store_info.store_source {
+        let mut rust_version_preprocessed = None;
+        let mut llvm_version_preprocessed = None;
+        let mut python_version_preprocessed = None;
+        match &store_source {
             S::File { .. } => {
-                rust_version = Some(env!("RE_BUILD_RUSTC_VERSION").to_owned());
-                llvm_version = Some(env!("RE_BUILD_LLVM_VERSION").to_owned());
+                rust_version_preprocessed = Some(env!("RE_BUILD_RUSTC_VERSION").to_owned());
+                llvm_version_preprocessed = Some(env!("RE_BUILD_LLVM_VERSION").to_owned());
             }
             S::RustSdk {
                 rustc_version: rustc,
                 llvm_version: llvm,
             } => {
-                rust_version = Some(rustc.to_string());
-                llvm_version = Some(llvm.to_string());
+                rust_version_preprocessed = Some(rustc.to_string());
+                llvm_version_preprocessed = Some(llvm.to_string());
             }
             S::PythonSdk(version) => {
-                python_version = Some(version.to_string());
+                python_version_preprocessed = Some(version.to_string());
             }
             // TODO(andreas): Send C SDK version and set it.
             S::CSdk | S::Unknown | S::Viewer | S::Other(_) => {}
         }
 
-        let is_official_example = store_info.is_official_example;
-        let app_id_starts_with_rerun_example = store_info
-            .application_id
-            .as_str()
-            .starts_with("rerun_example");
+        let app_id_starts_with_rerun_example = application_id.as_str().starts_with("rerun_example");
 
         StoreInfo {
-            application_id,
-            recording_id,
-            store_source,
-            rust_version,
-            llvm_version,
-            python_version,
-            is_official_example,
+            application_id: application_id_preprocessed,
+            recording_id: recording_id_preprocessed,
+            store_source: store_source_preprocessed,
+            store_version: store_version_preprocessed,
+            rust_version: rust_version_preprocessed,
+            llvm_version: llvm_version_preprocessed,
+            python_version: python_version_preprocessed,
+            is_official_example: app_id_starts_with_rerun_example,
             app_id_starts_with_rerun_example,
         }
     });

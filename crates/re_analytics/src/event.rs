@@ -88,6 +88,9 @@ pub struct StoreInfo {
     /// Where data is being logged.
     pub store_source: String,
 
+    /// The Rerun version that was used to encode the RRD data.
+    pub store_version: String,
+
     // Various versions of the host environment.
     pub rust_version: Option<String>,
     pub llvm_version: Option<String>,
@@ -193,16 +196,29 @@ impl Properties for OpenRecording {
         event.insert("app_env", app_env);
 
         if let Some(store_info) = store_info {
-            event.insert("application_id", store_info.application_id);
-            event.insert("recording_id", store_info.recording_id);
-            event.insert("store_source", store_info.store_source);
-            event.insert_opt("rust_version", store_info.rust_version);
-            event.insert_opt("llvm_version", store_info.llvm_version);
-            event.insert_opt("python_version", store_info.python_version);
-            event.insert("is_official_example", store_info.is_official_example);
+            let StoreInfo {
+                application_id,
+                recording_id,
+                store_source,
+                store_version,
+                rust_version,
+                llvm_version,
+                python_version,
+                is_official_example,
+                app_id_starts_with_rerun_example,
+            } = store_info;
+
+            event.insert("application_id", application_id);
+            event.insert("recording_id", recording_id);
+            event.insert("store_source", store_source);
+            event.insert("store_version", store_version);
+            event.insert_opt("rust_version", rust_version);
+            event.insert_opt("llvm_version", llvm_version);
+            event.insert_opt("python_version", python_version);
+            event.insert("is_official_example", is_official_example);
             event.insert(
                 "app_id_starts_with_rerun_example",
-                store_info.app_id_starts_with_rerun_example,
+                app_id_starts_with_rerun_example,
             );
         }
 
