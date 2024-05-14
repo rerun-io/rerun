@@ -41,7 +41,8 @@ blueprint = rrb.Blueprint(
                 end=rrb.TimeRangeBoundary.infinite(),
             ),
         ],
-    )
+    ),
+    collapse_panels=True,
 )
 
 rr.send_blueprint(blueprint)

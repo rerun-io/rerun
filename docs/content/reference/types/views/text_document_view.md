@@ -8,3 +8,17 @@ A text document view.
 ## Links
  * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextDocumentView)
 
+## Example
+
+### Use a blueprint to show a text document.
+
+snippet: views/text_document
+
+<picture data-inline-viewer="snippets/text_document">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png">
+  <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png">
+</picture>
+

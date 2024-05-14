@@ -8,3 +8,17 @@ A text log view.
 ## Links
  * 🐍 [Python API docs for `TextLogView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextLogView)
 
+## Example
+
+### Use a blueprint to show a TextLogView.
+
+snippet: views/text_log
+
+<picture data-inline-viewer="snippets/text_log">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png">
+  <img src="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/full.png">
+</picture>
+

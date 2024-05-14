@@ -3,6 +3,8 @@ include "rerun/attributes.fbs";
 namespace rerun.blueprint.views;
 
 /// A Spatial 2D view.
+///
+/// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png"
 table Spatial2DView (
     "attr.rerun.view_identifier": "2D"
 ) {

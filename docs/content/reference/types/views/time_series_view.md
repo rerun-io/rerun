@@ -34,7 +34,15 @@ The default visual time range depends on the type of view this property applies 
 
 ## Example
 
-### Use a blueprint to customize a TimeSeriesView
+### Use a blueprint to customize a TimeSeriesView.
 
-snippet: views/timeseriesview
+snippet: views/timeseries
+
+<picture data-inline-viewer="snippets/timeseries">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png">
+  <img src="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/full.png">
+</picture>
 
