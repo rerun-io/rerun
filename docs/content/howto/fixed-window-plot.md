@@ -15,8 +15,7 @@ The `VisibleTimeRange` object takes three parameters:
 - `start`: The start of the visible time range.
 - `end`: The end of the visible time range.
 
-The `start` and `end` parameters are set using a `TimeRangeBoundary`. This object can be used to specify a boundary,
-either as an absolute time or as a cursor-relative time.
+The `start` and `end` parameters are set using a `TimeRangeBoundary`:
 - To specify an absolute time, you can use the `TimeRangeBoundary.absolute()` method.
 - To specify a cursor-relative time, you can use the `TimeRangeBoundary.cursor_relative()` method.
 - You can also specify `TimeRangeBoundary.infinite()` to indicate that the start or end of the time range should be unbounded.
