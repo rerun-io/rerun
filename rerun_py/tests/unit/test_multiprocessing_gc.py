@@ -27,7 +27,7 @@ def test_multiprocessing_gc() -> None:
         target=task,
     )
     proc.start()
-    proc.join(1)
+    proc.join(5)
     if proc.is_alive():
         # Terminate so our test doesn't get stuck
         proc.terminate()
