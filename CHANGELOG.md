@@ -218,7 +218,6 @@ This release is identical to 0.14.0 and merely fixes an issue in the build artif
 ## [0.14.0](https://github.com/rerun-io/rerun/compare/0.13.0...0.14.0) - "Unlimited" point clouds & lines, quality of life improvements, bugfixes - 2024-02-28
 
 ### ✨ Overview & highlights
-### ✨ Overview & highlights
 
 Originally, we planned to do only a bugfix release, but we got an unexpected amount of goodies amassed already.
 We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy these improvements in 0.14!
@@ -299,7 +298,6 @@ We're still ramping up for programmable blueprints (soon!), but meanwhile enjoy 
 
 ## [0.13.0](https://github.com/rerun-io/rerun/compare/0.12.1...0.13.0) - Fast time series, improved layout editing & UI overrides - 2024-02-12
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 This release focuses on scalar time series -- both from a performance and UI perspectives.
@@ -399,7 +397,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Integrate query caching with more primitives:
     - Cached 2D & 3D box clouds [#5000](https://github.com/rerun-io/rerun/pull/5000)
     - Cached 2D & 3D line clouds [#5083](https://github.com/rerun-io/rerun/pull/5083)
-    - Cached 2D & 3D Arrow clouds [#5088](https://github.com/rerun-io/rerun/pull/5088)
+    - Cached 2D & 3D arrow clouds [#5088](https://github.com/rerun-io/rerun/pull/5088)
 - Configurable dynamic plot aggregation based on zoom-level [#4865](https://github.com/rerun-io/rerun/pull/4865)
 - Improved automatic view creation heuristic, major speedup for scenes with many entities [#4874](https://github.com/rerun-io/rerun/pull/4874)
 - Optimize point clouds [#4932](https://github.com/rerun-io/rerun/pull/4932)
@@ -627,7 +625,7 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 - Time control is now behind a RwLock, making recording config access non-mutable everywhere [#4389](https://github.com/rerun-io/rerun/pull/4389)
 - Enable (selected) new cargo clippy lints [#4404](https://github.com/rerun-io/rerun/pull/4404)
 - Add lint for builder pattern functions and deref impls to be marked `#[inline]` [#4435](https://github.com/rerun-io/rerun/pull/4435)
-- Pass Viewer context always non-mutable [#4438](https://github.com/rerun-io/rerun/pull/4438)
+- Pass viewer context always non-mutable [#4438](https://github.com/rerun-io/rerun/pull/4438)
 - RenderContext usage cleanup [#4446](https://github.com/rerun-io/rerun/pull/4446)
 - Integrate re_tensor_ops crate into re_space_view_tensor [#4450](https://github.com/rerun-io/rerun/pull/4450)
 - Use TOML for example readme front-matter [#4553](https://github.com/rerun-io/rerun/pull/4553)
@@ -647,7 +645,6 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 ## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0) - C++ improvements & better Visible History - 2023-11-28
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 - 🌊 C++ SDK improvements
@@ -669,7 +666,6 @@ Check out our [migration guide](https://www.rerun.io/docs/reference/migration/mi
 
 Special thanks to @dvad & @dangush for contributing!
 
-### 🔎 Details
 ### 🔎 Details
 
 #### 🌊 C++ SDK
@@ -735,7 +731,6 @@ Special thanks to @dvad & @dangush for contributing!
 ## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1) - 2023-11-02
 
 ### ✨ Overview & highlights
-### ✨ Overview & highlights
 This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 #### 🌊 C++ SDK
@@ -759,7 +754,6 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 * The C++ SDK is finally here!
   ```cpp
@@ -848,7 +842,6 @@ Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 * Online demo: <https://app.rerun.io/version/0.9.1/>
 
 ### ✨ Overview & highlights
-### ✨ Overview & highlights
 - A bunch of bug fixes
 - Fix big performance regression when hovering images
 - The Rerun Viewer should now be visible to the system accessibility system
@@ -910,7 +903,6 @@ Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 * Online demo: <https://app.rerun.io/version/0.9.0/>
 
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 Rerun 0.9.0 is a big release, that introduces a brand new logging API.
 This API is code-generated from a common definition, meaning the Python and Rust SDKs are very similar now.
@@ -1018,7 +1010,7 @@ Other highlights:
 - Add (debug-only) style panel [#2914](https://github.com/rerun-io/rerun/pull/2914)
 - Add clip rect in panels and use them for large collapsing headers [#2936](https://github.com/rerun-io/rerun/pull/2936)
 - Add Recordings section to the left panel [#2938](https://github.com/rerun-io/rerun/pull/2938)
-- New triangle collapse Arrow for large collapsible header [#2920](https://github.com/rerun-io/rerun/pull/2920)
+- New triangle collapse arrow for large collapsible header [#2920](https://github.com/rerun-io/rerun/pull/2920)
 - Add support for tree to `ListItem` [#2968](https://github.com/rerun-io/rerun/pull/2968)
 - Add hierarchical display in recordings panel [#2971](https://github.com/rerun-io/rerun/pull/2971)
 - Add support to close a recording [#2972](https://github.com/rerun-io/rerun/pull/2972)
@@ -1141,7 +1133,6 @@ Other highlights:
 * Online demo: <https://demo.rerun.io/version/0.8.0/>
 
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
  - `log_pinhole` is now easier to use in simple cases and supports non-RDF camera coordinates. [#2614](https://github.com/rerun-io/rerun/pull/2614)
    - You only need to set focal length and optional principal point instead of setting the full 3x3 matrix.
@@ -1387,7 +1378,6 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 ## [0.7.0](https://github.com/rerun-io/rerun/compare/0.6.0...0.7.0) - improved transforms, better color mapping, bug & doc fixes - 2023-06-16
 
 ### ✨ Overview & highlights
-### ✨ Overview & highlights
 
 While we're working on significant updates around interfaces and customizability,
 here's a smaller release packed with useful improvements 🎉
@@ -1479,7 +1469,6 @@ here's a smaller release packed with useful improvements 🎉
 
 ## [0.6.0](https://github.com/rerun-io/rerun/compare/v0.5.1...0.6.0) - 3D in 2D and SDK batching - 2023-05-26
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 - You can now show 3D objects in 2D views connected by Pinhole transforms [#2008](https://github.com/rerun-io/rerun/pull/2008)
@@ -1679,7 +1668,6 @@ here's a smaller release packed with useful improvements 🎉
 ## [0.5.1](https://github.com/rerun-io/rerun/compare/v0.5.1...v0.5.0) - Patch Release - 2023-05-01
 
 ### ✨ Overview & highlights
-### ✨ Overview & highlights
 This Release fixes a few small bugs on top of the v0.5.0 release.
 
 ### In Detail
@@ -1692,7 +1680,6 @@ This Release fixes a few small bugs on top of the v0.5.0 release.
 
 ## [0.5.0](https://github.com/rerun-io/rerun/compare/v0.4.0...v0.5.0) - Jupyter MVP, GPU-based picking & colormapping, new datastore! - 2023-04-20
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 This new release adds MVP support for embedding Rerun in Jupyter notebooks, and brings significant performance improvements across all layers of the stack.
@@ -1866,7 +1853,6 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 
 https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9281-6d334a15ab04.mp4
 
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 * Lower memory use [#1535](https://github.com/rerun-io/rerun/pull/1535)
@@ -2045,7 +2031,6 @@ Remove potentially sensitive analytics, including path to Rerun source code on p
 
 
 ## [0.3.0](https://github.com/rerun-io/rerun/compare/v0.2.0...v0.3.0) - 2023-03-07
-### ✨ Overview & highlights
 ### ✨ Overview & highlights
 
 After a successful launch a couple of weeks ago, we're back with our second release!
