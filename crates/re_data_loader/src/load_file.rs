@@ -101,7 +101,8 @@ pub(crate) fn prepare_store_info(
     let app_id = re_log_types::ApplicationId(path.display().to_string());
     let store_source = re_log_types::StoreSource::File { file_source };
 
-    let is_rrd = crate::SUPPORTED_RERUN_EXTENSIONS.contains(&extension(path).as_str());
+    let ext = extension(path);
+    let is_rrd = crate::SUPPORTED_RERUN_EXTENSIONS.contains(&ext.as_str());
 
     (!is_rrd).then(|| {
         LogMsg::SetStoreInfo(SetStoreInfo {
@@ -113,6 +114,12 @@ pub(crate) fn prepare_store_info(
                 is_official_example: false,
                 started: re_log_types::Time::now(),
                 store_source,
+                // NOTE: If this is a natively supported file, it will go through one of the
+                // builtin dataloaders, i.e. the local version.
+                // Otherwise, it will go through an arbitrary external loader, at which point we
+                // have no certainty what the version is.
+                store_version: crate::is_supported_file_extension(ext.as_str())
+                    .then_some(re_build_info::CrateVersion::LOCAL),
             },
         })
     })

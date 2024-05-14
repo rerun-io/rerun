@@ -177,7 +177,10 @@ fn msg_encode(
 
                 let packet_msg = match &msg_msg {
                     MsgMsg::LogMsg(log_msg) => {
-                        match re_log_encoding::encoder::encode_to_bytes(encoding_options, std::iter::once(log_msg)) {
+                        match re_log_encoding::encoder::encode_to_bytes(
+                            re_build_info::CrateVersion::LOCAL,
+                            encoding_options, std::iter::once(log_msg),
+                        ) {
                             Ok(packet) => {
                                 re_log::trace!("Encoded message of size {}", packet.len());
                                 Some(PacketMsg::Packet(packet))

@@ -37,23 +37,22 @@ fn warn_on_version_mismatch(
         CrateVersion::from_bytes(encoded_version)
     };
 
-    const LOCAL_VERSION: CrateVersion = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
-
-    if encoded_version.is_compatible_with(LOCAL_VERSION) {
+    if encoded_version.is_compatible_with(CrateVersion::LOCAL) {
         Ok(())
     } else {
         match version_policy {
             VersionPolicy::Warn => {
                 re_log::warn_once!(
                     "Found log stream with Rerun version {encoded_version}, \
-                     which is incompatible with the local Rerun version {LOCAL_VERSION}. \
-                     Loading will try to continue, but might fail in subtle ways."
+                     which is incompatible with the local Rerun version {}. \
+                     Loading will try to continue, but might fail in subtle ways.",
+                    CrateVersion::LOCAL,
                 );
                 Ok(())
             }
             VersionPolicy::Error => Err(DecodeError::IncompatibleRerunVersion {
                 file: encoded_version,
-                local: LOCAL_VERSION,
+                local: CrateVersion::LOCAL,
             }),
         }
     }
@@ -109,7 +108,7 @@ pub fn decode_bytes(
 pub fn read_options(
     version_policy: VersionPolicy,
     bytes: &[u8],
-) -> Result<EncodingOptions, DecodeError> {
+) -> Result<(CrateVersion, EncodingOptions), DecodeError> {
     let mut read = std::io::Cursor::new(bytes);
 
     let FileHeader {
@@ -130,10 +129,11 @@ pub fn read_options(
         Serializer::MsgPack => {}
     }
 
-    Ok(options)
+    Ok((CrateVersion::from_bytes(version), options))
 }
 
 pub struct Decoder<R: std::io::Read> {
+    version: CrateVersion,
     compression: Compression,
     read: R,
     uncompressed: Vec<u8>, // scratch space
@@ -146,14 +146,23 @@ impl<R: std::io::Read> Decoder<R> {
 
         let mut data = [0_u8; FileHeader::SIZE];
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
-        let compression = read_options(version_policy, &data)?.compression;
+
+        let (version, options) = read_options(version_policy, &data)?;
+        let compression = options.compression;
 
         Ok(Self {
+            version,
             compression,
             read,
             uncompressed: vec![],
             compressed: vec![],
         })
+    }
+
+    /// Returns the Rerun version that was used to encode the data in the first place.
+    #[inline]
+    pub fn version(&self) -> CrateVersion {
+        self.version
     }
 }
 
@@ -211,6 +220,12 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
 
         re_tracing::profile_scope!("MsgPack deser");
         match rmp_serde::from_slice(&self.uncompressed[..uncompressed_len]) {
+            Ok(re_log_types::LogMsg::SetStoreInfo(mut msg)) => {
+                // Propagate the protocol version from the header into the `StoreInfo` so that all
+                // parts of the app can easily access it.
+                msg.info.store_version = Some(self.version());
+                Some(Ok(re_log_types::LogMsg::SetStoreInfo(msg)))
+            }
             Ok(msg) => Some(Ok(msg)),
             Err(err) => Some(Err(err.into())),
         }
@@ -227,6 +242,8 @@ fn test_encode_decode() {
         Time,
     };
 
+    let rrd_version = CrateVersion::LOCAL;
+
     let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: RowId::new(),
         info: StoreInfo {
@@ -239,6 +256,7 @@ fn test_encode_decode() {
                 rustc_version: String::new(),
                 llvm_version: String::new(),
             },
+            store_version: Some(rrd_version),
         },
     })];
 
@@ -255,7 +273,7 @@ fn test_encode_decode() {
 
     for options in options {
         let mut file = vec![];
-        crate::encoder::encode(options, messages.iter(), &mut file).unwrap();
+        crate::encoder::encode(rrd_version, options, messages.iter(), &mut file).unwrap();
 
         let decoded_messages = Decoder::new(VersionPolicy::Error, &mut file.as_slice())
             .unwrap()

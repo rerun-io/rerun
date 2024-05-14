@@ -28,12 +28,13 @@ pub enum EncodeError {
 // ----------------------------------------------------------------------------
 
 pub fn encode_to_bytes<'a>(
+    version: CrateVersion,
     options: EncodingOptions,
     msgs: impl IntoIterator<Item = &'a LogMsg>,
 ) -> Result<Vec<u8>, EncodeError> {
     let mut bytes: Vec<u8> = vec![];
     {
-        let mut encoder = Encoder::new(options, std::io::Cursor::new(&mut bytes))?;
+        let mut encoder = Encoder::new(version, options, std::io::Cursor::new(&mut bytes))?;
         for msg in msgs {
             encoder.append(msg)?;
         }
@@ -52,12 +53,14 @@ pub struct Encoder<W: std::io::Write> {
 }
 
 impl<W: std::io::Write> Encoder<W> {
-    pub fn new(options: EncodingOptions, mut write: W) -> Result<Self, EncodeError> {
-        const RERUN_VERSION: CrateVersion = CrateVersion::parse(env!("CARGO_PKG_VERSION"));
-
+    pub fn new(
+        version: CrateVersion,
+        options: EncodingOptions,
+        mut write: W,
+    ) -> Result<Self, EncodeError> {
         FileHeader {
             magic: *crate::RRD_HEADER,
-            version: RERUN_VERSION.to_bytes(),
+            version: version.to_bytes(),
             options,
         }
         .encode(&mut write)?;
@@ -117,12 +120,13 @@ impl<W: std::io::Write> Encoder<W> {
 }
 
 pub fn encode<'a>(
+    version: CrateVersion,
     options: EncodingOptions,
     messages: impl Iterator<Item = &'a LogMsg>,
     write: &mut impl std::io::Write,
 ) -> Result<(), EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = Encoder::new(options, write)?;
+    let mut encoder = Encoder::new(version, options, write)?;
     for message in messages {
         encoder.append(message)?;
     }
@@ -130,12 +134,13 @@ pub fn encode<'a>(
 }
 
 pub fn encode_as_bytes<'a>(
+    version: CrateVersion,
     options: EncodingOptions,
     messages: impl Iterator<Item = &'a LogMsg>,
 ) -> Result<Vec<u8>, EncodeError> {
     re_tracing::profile_function!();
     let mut bytes: Vec<u8> = vec![];
-    let mut encoder = Encoder::new(options, &mut bytes)?;
+    let mut encoder = Encoder::new(version, options, &mut bytes)?;
     for message in messages {
         encoder.append(message)?;
     }

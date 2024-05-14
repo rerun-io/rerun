@@ -75,7 +75,11 @@ impl FileSink {
 
         let file = std::fs::File::create(&path)
             .map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-        let encoder = crate::encoder::Encoder::new(encoding_options, file)?;
+        let encoder = crate::encoder::Encoder::new(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            file,
+        )?;
         let join_handle = spawn_and_stream(Some(&path), encoder, rx)?;
 
         Ok(Self {
@@ -93,7 +97,11 @@ impl FileSink {
 
         re_log::debug!("Writing to stdout…");
 
-        let encoder = crate::encoder::Encoder::new(encoding_options, std::io::stdout())?;
+        let encoder = crate::encoder::Encoder::new(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            std::io::stdout(),
+        )?;
         let join_handle = spawn_and_stream(None, encoder, rx)?;
 
         Ok(Self {

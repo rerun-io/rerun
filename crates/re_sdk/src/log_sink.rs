@@ -255,8 +255,11 @@ impl MemorySinkStorage {
 
         {
             let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-            let mut encoder =
-                re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
+            let mut encoder = re_log_encoding::encoder::Encoder::new(
+                re_build_info::CrateVersion::LOCAL,
+                encoding_options,
+                &mut buffer,
+            )?;
             for sink in sinks {
                 // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
                 // in this flush; it's just a matter of making the table batcher tick early.
@@ -285,8 +288,11 @@ impl MemorySinkStorage {
 
         {
             let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-            let mut encoder =
-                re_log_encoding::encoder::Encoder::new(encoding_options, &mut buffer)?;
+            let mut encoder = re_log_encoding::encoder::Encoder::new(
+                re_build_info::CrateVersion::LOCAL,
+                encoding_options,
+                &mut buffer,
+            )?;
 
             let mut inner = self.inner.lock();
             inner.has_been_used = true;

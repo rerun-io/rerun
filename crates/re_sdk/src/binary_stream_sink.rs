@@ -133,8 +133,11 @@ impl BinaryStreamSink {
 
         let (tx, rx) = std::sync::mpsc::channel();
 
-        let encoder =
-            re_log_encoding::encoder::Encoder::new(encoding_options, storage.inner.clone())?;
+        let encoder = re_log_encoding::encoder::Encoder::new(
+            re_build_info::CrateVersion::LOCAL,
+            encoding_options,
+            storage.inner.clone(),
+        )?;
 
         let join_handle = spawn_and_stream(encoder, rx)?;
 

@@ -28,6 +28,7 @@ server = ["rand", "re_log_encoding/decoder"]
 
 
 [dependencies]
+re_build_info.workspace = true
 re_log_encoding.workspace = true
 re_log_types = { workspace = true, features = ["serde"] }
 re_log.workspace = true

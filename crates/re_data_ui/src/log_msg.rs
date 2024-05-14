@@ -48,6 +48,7 @@ impl DataUi for SetStoreInfo {
             started,
             store_source,
             is_official_example,
+            store_version,
         } = info;
 
         let re_ui = &ctx.re_ui;
@@ -76,6 +77,14 @@ impl DataUi for SetStoreInfo {
             re_ui.grid_left_hand_label(ui, "store_source:");
             ui.label(format!("{store_source}"));
             ui.end_row();
+
+            if let Some(store_version) = store_version {
+                re_ui.grid_left_hand_label(ui, "store_version:");
+                ui.label(format!("{store_version}"));
+                ui.end_row();
+            } else {
+                re_log::debug_once!("store version is undefined for this recording, this is a bug");
+            }
 
             re_ui.grid_left_hand_label(ui, "is_official_example:");
             ui.label(format!("{is_official_example}"));

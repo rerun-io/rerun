@@ -527,6 +527,7 @@ impl PrintCommand {
         let rrd_file = std::fs::File::open(rrd_path)?;
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+        println!("Decoded RRD stream v{}\n---", decoder.version());
         for msg in decoder {
             let msg = msg.context("decode rrd message")?;
             match msg {
@@ -869,7 +870,11 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(encoding_options, file)?;
+    let mut encoder = re_log_encoding::encoder::Encoder::new(
+        re_build_info::CrateVersion::LOCAL,
+        encoding_options,
+        file,
+    )?;
 
     loop {
         match rx.recv() {

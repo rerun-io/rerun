@@ -61,6 +61,7 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn encode_to_file<'a>(
+    version: re_build_info::CrateVersion,
     path: &std::path::Path,
     messages: impl Iterator<Item = &'a re_log_types::LogMsg>,
 ) -> anyhow::Result<()> {
@@ -71,6 +72,6 @@ pub fn encode_to_file<'a>(
         .with_context(|| format!("Failed to create file at {path:?}"))?;
 
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
-    re_log_encoding::encoder::encode(encoding_options, messages, &mut file)
+    re_log_encoding::encoder::encode(version, encoding_options, messages, &mut file)
         .context("Message encode")
 }
