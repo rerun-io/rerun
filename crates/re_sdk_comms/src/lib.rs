@@ -21,7 +21,7 @@ pub use server::{serve, ConnectionError, ServerError, ServerOptions};
 
 pub const PROTOCOL_VERSION_0: u16 = 0;
 
-/// Added [`PROTOCOL_HEADER`].
+/// Added [`PROTOCOL_HEADER`]. Introduced for Rerun 0.16.
 pub const PROTOCOL_VERSION_1: u16 = 1;
 
 /// Comes after version.

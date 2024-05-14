@@ -221,6 +221,7 @@ fn run_client(
     // if the client sends version 0
     if client_version == crate::PROTOCOL_VERSION_0 {
         // Backwards compatibility mode: no protocol header, otherwise the same as version 1.
+        re_log::warn!("Client is using an old protocol version from before 0.16.");
     } else {
         // The protocol header was added in version 1
         let mut protocol_header = [0_u8; crate::PROTOCOL_HEADER.len()];
