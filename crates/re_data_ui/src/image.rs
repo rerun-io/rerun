@@ -18,10 +18,9 @@ use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
     const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
-    let labelled = shape.iter().any(|dim| dim.name.is_some());
-    let shapes = shape
-        .iter()
-        .take(MAX_SHOWN)
+    let iter = shape.iter().take(MAX_SHOWN);
+    let labelled = iter.clone().any(|dim| dim.name.is_some());
+    let shapes = iter
         .map(|dim| {
             format!(
                 "{}{}",
