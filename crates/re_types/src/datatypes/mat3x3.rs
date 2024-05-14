@@ -199,8 +199,9 @@ impl ::re_types_core::Loggable for Mat3x3 {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        array_init::from_iter(data)
-                            .ok_or(DeserializationError::array_init_underrun(9usize))
+
+                        #[allow(clippy::unwrap_used)]
+                        Ok(array_init::from_iter(data).unwrap())
                     })
                     .transpose()
                 })

@@ -29,7 +29,6 @@ pub fn default_server_addr() -> std::net::SocketAddr {
 }
 
 /// The default amount of time to wait for the TCP connection to resume during a flush
-#[allow(clippy::unnecessary_wraps)]
-pub fn default_flush_timeout() -> Option<std::time::Duration> {
-    Some(std::time::Duration::from_secs(2))
+pub fn default_flush_timeout() -> std::time::Duration {
+    std::time::Duration::from_secs(2)
 }

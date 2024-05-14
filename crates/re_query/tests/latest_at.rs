@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use re_data_store::{DataStore, LatestAtQuery, StoreSubscriber};
 use re_log_types::{
     build_frame_nr,

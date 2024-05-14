@@ -1,5 +1,8 @@
 //! Logs an `Image` archetype for roundtrip checks.
 
+// Allow unwrap() in tests (allow-unwrap-in-tests doesn't apply)
+#![allow(clippy::unwrap_used)]
+
 use half::f16;
 use image::{Rgb, RgbImage};
 use ndarray::{Array, ShapeBuilder};

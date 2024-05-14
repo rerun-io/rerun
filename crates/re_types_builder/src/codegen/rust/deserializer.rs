@@ -654,7 +654,8 @@ fn quote_arrow_field_deserializer(
                                 // .collect::<DeserializationResult<Vec<_>>>()?;
 
                                 // NOTE: Unwrapping cannot fail: the length must be correct.
-                                array_init::from_iter(data).ok_or(DeserializationError::array_init_underrun(#length))
+                                #[allow(clippy::unwrap_used)]
+                                Ok(array_init::from_iter(data).unwrap())
                             }).transpose()
                         )
                         #quoted_iter_transparency

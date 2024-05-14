@@ -1,3 +1,6 @@
+// Allow unwrap() in benchmarks
+#![allow(clippy::unwrap_used)]
+
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

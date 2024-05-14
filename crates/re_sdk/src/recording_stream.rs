@@ -311,7 +311,10 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout())
+        self.connect_opts(
+            crate::default_server_addr(),
+            Some(crate::default_flush_timeout()),
+        )
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -325,7 +328,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
+    ///     .connect_opts(re_sdk::default_server_addr(), Some(re_sdk::default_flush_timeout()))?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_opts(
@@ -422,7 +425,7 @@ impl RecordingStreamBuilder {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default(), Some(crate::default_flush_timeout()))
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
@@ -442,7 +445,7 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
+    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), Some(re_sdk::default_flush_timeout()))?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn spawn_opts(
@@ -1510,7 +1513,10 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self) {
-        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
+        self.connect_opts(
+            crate::default_server_addr(),
+            Some(crate::default_flush_timeout()),
+        );
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
@@ -1552,7 +1558,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn spawn(&self) -> RecordingStreamResult<()> {
-        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+        self.spawn_opts(&Default::default(), Some(crate::default_flush_timeout()))
     }
 
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the

@@ -331,8 +331,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    array_init::from_iter(data)
-                                        .ok_or(DeserializationError::array_init_underrun(3usize))
+
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })
@@ -412,8 +413,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    array_init::from_iter(data)
-                                        .ok_or(DeserializationError::array_init_underrun(9usize))
+
+                                    #[allow(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
                                 })
                                 .transpose()
                             })

@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use std::collections::BTreeSet;
 
 use re_data_store::GarbageCollectionOptions;

@@ -112,7 +112,7 @@ impl RerunArgs {
 
             RerunBehavior::Connect(addr) => Ok((
                 RecordingStreamBuilder::new(application_id)
-                    .connect_opts(addr, crate::default_flush_timeout())?,
+                    .connect_opts(addr, Some(crate::default_flush_timeout()))?,
                 Default::default(),
             )),
 

@@ -2,6 +2,9 @@
 //!
 //! Testing & demonstrating expected usage of the datastore APIs, no funny stuff.
 
+// https://github.com/rust-lang/rust-clippy/issues/10011
+#![cfg(test)]
+
 use itertools::Itertools;
 use rand::Rng;
 use re_data_store::{

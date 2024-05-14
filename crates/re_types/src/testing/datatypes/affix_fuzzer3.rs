@@ -454,8 +454,9 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                 .iter()
                                                 .cloned()
                                                 .map(Option::unwrap_or_default);
-                                            array_init::from_iter(data)
-                                                .ok_or(DeserializationError::array_init_underrun(3usize))
+
+                                            #[allow(clippy::unwrap_used)]
+                                            Ok(array_init::from_iter(data).unwrap())
                                         })
                                         .transpose()
                                 })
