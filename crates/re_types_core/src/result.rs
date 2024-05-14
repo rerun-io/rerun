@@ -118,6 +118,7 @@ impl From<arrow2::error::Error> for SerializationError {
 impl Deref for ArcArrowError {
     type Target = arrow2::error::Error;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.0.as_ref()
     }

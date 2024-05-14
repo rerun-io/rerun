@@ -77,7 +77,7 @@ fn main() {
         "flatc -o src/ --rust --gen-onefile --filename-suffix '' {FBS_REFLECTION_DEFINITION_PATH}"
     )
     .run()
-    .map_err(|e| eprintln!("flatc failed with error: {e:?}"))
+    .map_err(|err| eprintln!("flatc failed with error: {err}"))
     .unwrap();
 
     // NOTE: We're purposefully ignoring the error here.
