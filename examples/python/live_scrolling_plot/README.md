@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "Live Scrolling Plot"
 tags = ["Plots", "Live"]
-thumbnail = "https://static.rerun.io/live_scrolling_plot/9c9a9b3a4dd1d5e858ba58489f686b5d481cfb2e/480w.png"
-thumbnail_dimensions = [480, 270]
+thumbnail = "https://static.rerun.io/live_scrolling_plot_thumbnail/73c6b11bd074af258b8d30092e15361e358d8069/480w.png"
+thumbnail_dimensions = [480, 384]
 -->
 
 Visualize a live stream of several plots, scrolling horizontally to keep a fixed window of data.
