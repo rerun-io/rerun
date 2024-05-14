@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 
-import numpy as np
 import rerun as rr
 from numpy.random import default_rng
 
