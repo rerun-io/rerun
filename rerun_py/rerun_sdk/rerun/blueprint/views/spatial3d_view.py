@@ -32,17 +32,18 @@ class Spatial3DView(SpaceView):
 
     # Create some random points.
     rng = default_rng(12345)
-    positions = rng.uniform(-5, 5, size=[10, 3])
-    colors = rng.uniform(0, 255, size=[10, 3])
-    radii = rng.uniform(0, 1, size=[10])
+    positions = rng.uniform(-5, 5, size=[50, 3])
+    colors = rng.uniform(0, 255, size=[50, 3])
+    radii = rng.uniform(0.1, 0.5, size=[50])
 
     rr.log("points", rr.Points3D(positions, colors=colors, radii=radii))
+    rr.log("box", rr.Boxes3D(half_sizes=[5, 5, 5], colors=0))
 
     # Create a Spatial3D view to display the points.
     blueprint = rrb.Blueprint(
         rrb.Spatial3DView(
-            origin="/points",
-            name="3D Points",
+            origin="/",
+            name="3D Scene",
             # Set the background color to light blue.
             background=[100, 149, 237],
         ),
@@ -53,11 +54,11 @@ class Spatial3DView(SpaceView):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/1200w.png">
-      <img src="https://static.rerun.io/spatial3d_view/9f21738776c759e6c6ef2fd0732333509ecbbcc5/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1200w.png">
+      <img src="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/full.png" width="640">
     </picture>
     </center>
 

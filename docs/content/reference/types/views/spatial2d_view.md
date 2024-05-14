@@ -38,10 +38,10 @@ The default visual time range depends on the type of view this property applies 
 snippet: views/spatial2d
 
 <picture data-inline-viewer="snippets/spatial2d">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/1200w.png">
-  <img src="https://static.rerun.io/spatial2d_view/71cee4d17d570d42e0d2be56d3e074d1f60f044c/full.png">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png">
+  <img src="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/full.png">
 </picture>
 
