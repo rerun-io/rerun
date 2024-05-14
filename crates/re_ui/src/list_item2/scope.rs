@@ -51,6 +51,11 @@ struct LayoutStatistics {
     ///
     /// The width is calculated from [`LayoutInfo::left_x`] to the right edge of the item.
     max_item_width: Option<f32>,
+
+    /// `PropertyContent` only — max content width in the current scope.
+    ///
+    /// This value is measured from `left_x`.
+    property_content_max_width: Option<f32>,
 }
 
 impl LayoutStatistics {
@@ -116,6 +121,11 @@ pub struct LayoutInfo {
 
     /// Scope id, used to retrieve the corresponding [`LayoutStatistics`].
     scope_id: egui::Id,
+
+    /// `PropertyContent` only — last frame's max content width, to be used in `desired_width()`
+    ///
+    /// This value is measured from `left_x`.
+    pub(crate) property_content_max_width: Option<f32>,
 }
 
 impl Default for LayoutInfo {
@@ -125,6 +135,7 @@ impl Default for LayoutInfo {
             left_column_width: None,
             reserve_action_button_space: true,
             scope_id: egui::Id::NULL,
+            property_content_max_width: None,
         }
     }
 }
@@ -156,6 +167,16 @@ impl LayoutInfo {
     pub(crate) fn register_max_item_width(&self, ctx: &egui::Context, width: f32) {
         LayoutStatistics::update(ctx, self.scope_id, |stats| {
             stats.max_item_width = stats.max_item_width.map(|v| v.max(width)).or(Some(width));
+        });
+    }
+
+    /// `PropertyContent` only — register max content width in the current scope
+    pub(super) fn register_property_content_max_width(&self, ctx: &egui::Context, width: f32) {
+        LayoutStatistics::update(ctx, self.scope_id, |stats| {
+            stats.property_content_max_width = stats
+                .property_content_max_width
+                .map(|v| v.max(width))
+                .or(Some(width));
         });
     }
 }
@@ -255,10 +276,11 @@ pub fn list_item_scope<R>(
         left_column_width,
         reserve_action_button_space: layout_stats.is_action_button_used,
         scope_id,
+        property_content_max_width: layout_stats.property_content_max_width,
     };
 
     // push, run, pop
-    LayoutInfoStack::push(ui.ctx(), state);
+    LayoutInfoStack::push(ui.ctx(), state.clone());
     let result = ui
         .scope(|ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
