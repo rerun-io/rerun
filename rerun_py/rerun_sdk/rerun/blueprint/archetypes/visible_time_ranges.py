@@ -5,20 +5,17 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import Archetype
 from ...blueprint import components as blueprint_components
-from ...error_utils import catch_and_log_exceptions
+from .visible_time_ranges_ext import VisibleTimeRangesExt
 
 __all__ = ["VisibleTimeRanges"]
 
 
 @define(str=False, repr=False, init=False)
-class VisibleTimeRanges(Archetype):
+class VisibleTimeRanges(VisibleTimeRangesExt, Archetype):
     """
     **Archetype**: Configures what range of each timeline is shown on a view.
 
@@ -31,24 +28,7 @@ class VisibleTimeRanges(Archetype):
     - For any other view, the default is to apply latest-at semantics.
     """
 
-    def __init__(self: Any, ranges: datatypes.VisibleTimeRangeArrayLike):
-        """
-        Create a new instance of the VisibleTimeRanges archetype.
-
-        Parameters
-        ----------
-        ranges:
-            The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
-
-            If a timeline is listed twice, the first entry will be used.
-
-        """
-
-        # You can define your own __init__ function as a member of VisibleTimeRangesExt in visible_time_ranges_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(ranges=ranges)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in visible_time_ranges_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
@@ -69,7 +49,7 @@ class VisibleTimeRanges(Archetype):
     )
     # The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     #
-    # If a timeline is listed twice, the first entry will be used.
+    # If a timeline is specified more than once, the first entry will be used.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

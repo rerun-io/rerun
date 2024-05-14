@@ -112,6 +112,9 @@ class TimeSeriesView(SpaceView):
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
+            If not specified, the default is to show the entire timeline.
+            If a timeline is specified more than once, the first entry will be used.
+
         """
 
         properties: dict[str, AsComponents] = {}

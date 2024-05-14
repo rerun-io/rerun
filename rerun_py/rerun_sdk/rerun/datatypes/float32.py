@@ -36,6 +36,9 @@ class Float32:
     def __float__(self) -> float:
         return float(self.value)
 
+    def __hash__(self) -> int:
+        return hash(self.value)
+
 
 if TYPE_CHECKING:
     Float32Like = Union[Float32, float]

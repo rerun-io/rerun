@@ -47,6 +47,9 @@ class ColumnShare:
     def __float__(self) -> float:
         return float(self.share)
 
+    def __hash__(self) -> int:
+        return hash(self.share)
+
 
 if TYPE_CHECKING:
     ColumnShareLike = Union[ColumnShare, float]
