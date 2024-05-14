@@ -16,7 +16,7 @@ namespace rerun.archetypes;
 table Tensor (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Image & tensor",
-  "attr.docs.view_types": "Tensor, BarChart: for 1D tensors"
+  "attr.docs.view_types": "TensorView, BarChartView: for 1D tensors"
 ) {
   /// The tensor data
   data: rerun.components.TensorData ("attr.rerun.component_required", order: 1000);

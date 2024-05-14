@@ -5,7 +5,7 @@ thumbnail = "https://static.rerun.io/hand-tracking-and-gesture-recognition/56d09
 thumbnail_dimensions = [480, 480]
 -->
 
-Use the [MediaPipe](https://google.github.io/mediapipe/) Hand Landmark and Gesture Detection solutions to
+Use the [MediaPipe](https://github.com/google-ai-edge/mediapipe/) Hand Landmark and Gesture Detection solutions to
 track hands and recognize gestures in images, video, and camera stream.
 
 <picture>

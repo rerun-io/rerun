@@ -24,3 +24,7 @@ snippet: views/tensor
 </picture>
 
 
+## Visualized archetypes
+
+* [`Tensor`](../archetypes/tensor.md)
+

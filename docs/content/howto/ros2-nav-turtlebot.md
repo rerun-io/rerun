@@ -36,7 +36,7 @@ Other relevant tutorials:
 ### ROS 2 & navigation
 
 You will need to have installed [ROS 2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
-and the [turtlebot3 navigation getting-started example](https://navigation.ros.org/getting_started/index.html).
+and the [turtlebot3 navigation getting-started example](https://docs.nav2.org/getting_started/index.html).
 
 Installing ROS is outside the scope of this guide, but you will need the equivalent of the following packages:
 
@@ -46,7 +46,7 @@ $ sudo apt install ros-humble-desktop gazebo ros-humble-navigation2 ros-humble-t
 
 If you don't already have ROS installed, we recommend trying [RoboStack](https://robostack.github.io/) for setting up your installation.
 
-Before proceeding, you should follow the [navigation example](https://navigation.ros.org/getting_started/index.html)
+Before proceeding, you should follow the [navigation example](https://docs.nav2.org/getting_started/index.html)
 and confirm that you can successfully run:
 
 ```bash
