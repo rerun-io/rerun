@@ -30,7 +30,7 @@ impl DataUi for PinholeProjection {
                         format!("Focal length: {fl}, principal point: {pp}"),
                     )
                 } else {
-                    label_for_ui_layout(ui, ui_layout, "3x3 projection matrix")
+                    label_for_ui_layout(ui, ui_layout, "3×3 projection matrix")
                 }
                 .on_hover_ui(|ui| self.data_ui(ctx, ui, UiLayout::Tooltip, query, db));
             }
@@ -51,6 +51,6 @@ impl DataUi for Resolution {
         _db: &re_entity_db::EntityDb,
     ) {
         let [x, y] = self.0 .0;
-        label_for_ui_layout(ui, ui_layout, format!("{x}x{y}"));
+        label_for_ui_layout(ui, ui_layout, format!("{x}×{y}"));
     }
 }

@@ -32,14 +32,14 @@ pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
                 }
             )
         })
-        .join(if labelled { " x " } else { "x" });
+        .join(if labelled { " × " } else { "×" });
     format!(
         "{shapes}{}",
         if shape.len() > MAX_SHOWN {
             if labelled {
-                " x …"
+                " × …"
             } else {
-                "x…"
+                "×…"
             }
         } else {
             ""
