@@ -8,10 +8,10 @@ manipulation of the visible time range. This allows you to create a plot that on
 
 ## VisibleTimeRange
 
-To specify the visible time range, you must pass a `VisibleTimeRange` object to the `time_ranges` parameter of the `TimeSeriesView` blueprint type.
+To specify the visible time range, you must pass one or more `VisibleTimeRange` objects to the `time_ranges` parameter of the `TimeSeriesView` blueprint type. If your app only uses a single timeline, you can directly pass a single `VisibleTimeRange` object instead of wrapping it in a list.
 
 The `VisibleTimeRange` object takes three parameters:
-- `timeline`: The timeline to use for the time range. This must match the timeline used to log your data.
+- `timeline`: The timeline that the range will apply to. This must match the timeline used to log your data.
 - `start`: The start of the visible time range.
 - `end`: The end of the visible time range.
 

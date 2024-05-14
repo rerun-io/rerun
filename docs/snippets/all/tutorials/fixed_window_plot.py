@@ -14,13 +14,11 @@ rr.init("rerun_example_fixed_window_plot", spawn=True)
 rr.send_blueprint(
     rrb.TimeSeriesView(
         origin="random_walk",
-        time_ranges=[
-            rrb.VisibleTimeRange(
-                "time",
-                start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
-                end=rrb.TimeRangeBoundary.cursor_relative(),
-            )
-        ],
+        time_ranges=rrb.VisibleTimeRange(
+            "time",
+            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
+            end=rrb.TimeRangeBoundary.cursor_relative(),
+        ),
     )
 )
 
