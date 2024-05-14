@@ -89,7 +89,12 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             ),
         )
     ]),
-    "BlobBatch": TestCase(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09"),
+    "BlobBatch": TestCase(
+        alternatives=[
+            b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09",
+            np.random.randint(0, 255, (10, 10), dtype=np.uint8).tobytes(),
+        ]
+    ),
     "ClassIdBatch": TestCase(batch=[1, 2, 3, 6]),
     "ClearIsRecursiveBatch": TestCase(disabled=True),  # disabled because it messes with the logging
     "ColorBatch": TestCase(batch=[(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255)]),
@@ -140,6 +145,11 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (10, 10), dtype=np.uint8)),
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (10, 10, 3), dtype=np.uint8)),
             rr.datatypes.TensorData(array=np.random.randint(0, 255, (5, 3, 6, 4), dtype=np.uint8)),
+            rr.datatypes.TensorData(
+                array=np.random.randint(0, 255, (5, 3, 6, 4), dtype=np.uint8),
+                dim_names=[None, "hello", None, "world", None],
+            ),
+            rr.datatypes.TensorData(array=np.random.randint(0, 255, (5, 3, 6, 4, 3), dtype=np.uint8)),
         ]
     ),
     "Texcoord2DBatch": TestCase(batch=[(0, 0), (1, 1), (2, 2)]),

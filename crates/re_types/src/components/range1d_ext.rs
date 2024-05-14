@@ -1,4 +1,5 @@
 use crate::datatypes;
+use std::fmt::Display;
 
 use super::Range1D;
 
@@ -26,5 +27,11 @@ impl From<Range1D> for emath::Rangef {
     #[inline]
     fn from(range2d: Range1D) -> Self {
         Self::from(range2d.0)
+    }
+}
+
+impl Display for Range1D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}, {}]", self.start(), self.end(),)
     }
 }

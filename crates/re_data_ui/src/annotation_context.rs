@@ -7,7 +7,7 @@ use re_types::datatypes::{
 };
 use re_viewer_context::{auto_color, UiLayout, ViewerContext};
 
-use super::{table_for_ui_layout, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
@@ -27,10 +27,12 @@ impl crate::EntityDataUi for re_types::components::ClassId {
             let response = ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &class.info);
-                ui.label(format!("{}", self.0));
+                let mut text = format!("{}", self.0);
                 if let Some(label) = &class.info.label {
-                    ui.label(label.as_str());
+                    text.push(' ');
+                    text.push_str(label.as_str());
                 }
+                label_for_ui_layout(ui, ui_layout, text);
             });
 
             let id = self.0;
@@ -40,7 +42,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ctx, ui, ui_layout, class, id);
+                            class_description_ui(ctx, ui, UiLayout::Tooltip, class, id);
                         });
                     }
                 }
@@ -52,7 +54,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 }
             }
         } else {
-            ui.label(format!("{}", self.0));
+            label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
         }
     }
 }
@@ -62,7 +64,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         entity_path: &re_log_types::EntityPath,
         query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
@@ -71,13 +73,16 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
             ui.horizontal(|ui| {
                 // Color first, to keep subsequent rows of the same things aligned
                 small_color_ui(ui, &info);
-                ui.label(format!("{}", self.0));
+                let mut text = format!("{}", self.0);
                 if let Some(label) = &info.label {
-                    ui.label(label.as_str());
+                    text.push(' ');
+                    text.push_str(label.as_str());
                 }
+
+                data_label_for_ui_layout(ui, ui_layout, text);
             });
         } else {
-            ui.label(format!("{}", self.0));
+            data_label_for_ui_layout(ui, ui_layout, format!("{}", self.0));
         }
     }
 }
@@ -108,16 +113,18 @@ impl DataUi for AnnotationContext {
     ) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
-                if self.0.len() == 1 {
+                let text = if self.0.len() == 1 {
                     let descr = &self.0[0].class_description;
-                    ui.label(format!(
+
+                    format!(
                         "One class containing {} keypoints and {} connections",
                         descr.keypoint_annotations.len(),
                         descr.keypoint_connections.len()
-                    ));
+                    )
                 } else {
-                    ui.label(format!("{} classes", self.0.len()));
-                }
+                    format!("{} classes", self.0.len())
+                };
+                label_for_ui_layout(ui, ui_layout, text);
             }
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 ui.vertical(|ui| {

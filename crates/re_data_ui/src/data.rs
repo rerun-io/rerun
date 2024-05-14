@@ -1,10 +1,12 @@
-use egui::Vec2;
+use egui::{Ui, Vec2};
+use re_data_store::LatestAtQuery;
+use re_entity_db::EntityDb;
 
 use re_format::format_f32;
-use re_types::components::{Color, LineStrip2D, LineStrip3D, ViewCoordinates};
+use re_types::components::{Color, LineStrip2D, LineStrip3D, Range1D, Range2D, ViewCoordinates};
 use re_viewer_context::{UiLayout, ViewerContext};
 
-use super::{table_for_ui_layout, DataUi};
+use super::{data_label_for_ui_layout, label_for_ui_layout, table_for_ui_layout, DataUi};
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -62,13 +64,13 @@ impl DataUi for ViewCoordinates {
     ) {
         match ui_layout {
             UiLayout::List => {
-                ui.label(self.describe_short())
+                label_for_ui_layout(ui, ui_layout, self.describe_short())
                     .on_hover_text(self.describe());
             }
             UiLayout::SelectionPanelFull
             | UiLayout::SelectionPanelLimitHeight
             | UiLayout::Tooltip => {
-                ui.label(self.describe());
+                label_for_ui_layout(ui, ui_layout, self.describe());
             }
         }
     }
@@ -107,11 +109,11 @@ impl DataUi for re_types::datatypes::Vec2D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -120,11 +122,11 @@ impl DataUi for re_types::datatypes::Vec3D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -133,11 +135,11 @@ impl DataUi for re_types::datatypes::Vec4D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -146,11 +148,11 @@ impl DataUi for re_types::datatypes::UVec2D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -159,11 +161,11 @@ impl DataUi for re_types::datatypes::UVec3D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -172,11 +174,37 @@ impl DataUi for re_types::datatypes::UVec4D {
         &self,
         _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _ui_layout: UiLayout,
+        ui_layout: UiLayout,
         _query: &re_data_store::LatestAtQuery,
         _db: &re_entity_db::EntityDb,
     ) {
-        ui.label(self.to_string());
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for Range1D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
+    }
+}
+
+impl DataUi for Range2D {
+    fn data_ui(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        ui: &mut Ui,
+        ui_layout: UiLayout,
+        _query: &LatestAtQuery,
+        _db: &EntityDb,
+    ) {
+        data_label_for_ui_layout(ui, ui_layout, self.to_string());
     }
 }
 
@@ -191,7 +219,7 @@ impl DataUi for LineStrip2D {
     ) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
-                ui.label(format!("{} positions", self.0.len()));
+                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
             }
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => {
                 use egui_extras::Column;
@@ -238,7 +266,7 @@ impl DataUi for LineStrip3D {
     ) {
         match ui_layout {
             UiLayout::List | UiLayout::Tooltip => {
-                ui.label(format!("{} positions", self.0.len()));
+                label_for_ui_layout(ui, ui_layout, format!("{} positions", self.0.len()));
             }
             UiLayout::SelectionPanelFull | UiLayout::SelectionPanelLimitHeight => {
                 use egui_extras::Column;

@@ -12,18 +12,39 @@ use re_viewer_context::{
     ViewerContext,
 };
 
-use crate::image_meaning_for_entity;
+use crate::{image_meaning_for_entity, label_for_ui_layout};
 
 use super::EntityDataUi;
 
 pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
     const MAX_SHOWN: usize = 4; // should be enough for width/height/depth and then some!
-    let shapes = shape.iter().take(MAX_SHOWN).join(", ");
-    if shape.len() > MAX_SHOWN {
-        format!("{shapes}…")
-    } else {
-        shapes
-    }
+    let iter = shape.iter().take(MAX_SHOWN);
+    let labelled = iter.clone().any(|dim| dim.name.is_some());
+    let shapes = iter
+        .map(|dim| {
+            format!(
+                "{}{}",
+                dim.size,
+                if let Some(name) = &dim.name {
+                    format!(" ({name})")
+                } else {
+                    String::new()
+                }
+            )
+        })
+        .join(if labelled { " × " } else { "×" });
+    format!(
+        "{shapes}{}",
+        if shape.len() > MAX_SHOWN {
+            if labelled {
+                " × …"
+            } else {
+                "×…"
+            }
+        } else {
+            ""
+        }
+    )
 }
 
 impl EntityDataUi for re_types::components::TensorData {
@@ -64,7 +85,7 @@ impl EntityDataUi for re_types::components::TensorData {
                 );
             }
             Err(err) => {
-                ui.label(ctx.re_ui.error_text(err.to_string()));
+                label_for_ui_layout(ui, ui_layout, ctx.re_ui.error_text(err.to_string()));
             }
         }
     }
@@ -157,18 +178,22 @@ pub fn tensor_ui(
                     ],
                     None => tensor.shape.clone(),
                 };
-                ui.add(egui::Label::new(format_tensor_shape_single_line(&shape)).wrap(true))
-                    .on_hover_ui(|ui| {
-                        tensor_summary_ui(
-                            ctx.re_ui,
-                            ui,
-                            original_tensor,
-                            tensor,
-                            meaning,
-                            meter,
-                            &tensor_stats,
-                        );
-                    });
+                let text = format!(
+                    "{}, {}",
+                    original_tensor.dtype(),
+                    format_tensor_shape_single_line(&shape)
+                );
+                label_for_ui_layout(ui, ui_layout, text).on_hover_ui(|ui| {
+                    tensor_summary_ui(
+                        ctx.re_ui,
+                        ui,
+                        original_tensor,
+                        tensor,
+                        meaning,
+                        meter,
+                        &tensor_stats,
+                    );
+                });
             });
         }
 
