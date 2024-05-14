@@ -100,6 +100,14 @@ impl WebHandle {
         self.runner.panic_summary().map(|s| s.callstack())
     }
 
+    /// Add a new receiver streaming data from the given url.
+    ///
+    /// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream
+    /// in `Following` mode rather than `Playing` mode.
+    ///
+    /// Websocket streams are always opened in `Following` mode.
+    ///
+    /// It is an error to open a channel twice with the same id.
     #[wasm_bindgen]
     pub fn add_receiver(&self, url: &str, follow_if_http: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {

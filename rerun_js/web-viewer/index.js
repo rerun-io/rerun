@@ -88,7 +88,8 @@ export class WebViewer {
    * @see {WebViewer.start}
    *
    * @param {string | string[]} rrd URLs to `.rrd` files or WebSocket connections to our SDK.
-   * @param {boolean} [follow_if_http] Whether Rerun should enter "follow" mode when streaming from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
+   * @param {boolean} [follow_if_http] Whether Rerun should open the resource in "Following" mode when streaming
+   *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
   open(rrd, follow_if_http = false) {
     if (!this.#handle) {

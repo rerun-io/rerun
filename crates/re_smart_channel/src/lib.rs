@@ -25,6 +25,8 @@ pub enum SmartChannelSource {
     File(std::path::PathBuf),
 
     /// The channel was created in the context of loading an `.rrd` file over http.
+    ///
+    /// The `follow` flag indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
     RrdHttpStream { url: String, follow: bool },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`

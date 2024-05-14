@@ -11,6 +11,8 @@ use anyhow::Context as _;
 pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
+    /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
+    ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
     RrdHttpUrl { url: String, follow: bool },
 

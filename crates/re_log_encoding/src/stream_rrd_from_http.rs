@@ -5,6 +5,11 @@ use std::sync::Arc;
 use re_log::ResultExt as _;
 use re_log_types::LogMsg;
 
+/// Stream an rrd file from a HTTP server.
+///
+/// If `follow_if_http` is `true`, and the url is an HTTP source, the viewer will open the stream
+/// in `Following` mode rather than `Playing` mode.
+///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_rrd_from_http_to_channel(
     url: String,
