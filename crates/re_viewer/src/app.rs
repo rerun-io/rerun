@@ -2,7 +2,6 @@ use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
 use re_log_types::{ApplicationId, FileSource, LogMsg, StoreKind};
 use re_renderer::WgpuResourcePoolStatistics;
-use re_sdk_comms::ConnectionError;
 use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::{toasts, UICommand, UICommandSender};
 use re_viewer_context::{
@@ -964,14 +963,21 @@ impl App {
                     if let Some(err) = err {
                         let log_msg =
                             format!("Data source {} has left unexpectedly: {err}", msg.source);
+
+                        #[cfg(not(target_arch = "wasm32"))]
                         if err
-                            .downcast_ref::<ConnectionError>()
-                            .is_some_and(|e| matches!(e, ConnectionError::UnknownClient))
+                            .downcast_ref::<re_sdk_comms::ConnectionError>()
+                            .is_some_and(|e| {
+                                matches!(e, re_sdk_comms::ConnectionError::UnknownClient)
+                            })
                         {
+                            // An unknown client that probably stumbled onto the wrong port.
+                            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
                             re_log::debug!("{log_msg}");
-                        } else {
-                            re_log::warn!("{log_msg}");
+                            continue;
                         }
+
+                        re_log::warn!("{log_msg}");
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
                     }

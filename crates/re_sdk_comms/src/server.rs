@@ -196,6 +196,8 @@ fn spawn_client(
 
         let log_msg = format!("Closing connection to client at {addr_string}: {err}");
         if matches!(&err, ConnectionError::UnknownClient) {
+            // An unknown client that probably stumbled onto the wrong port.
+            // Don't log as an error (https://github.com/rerun-io/rerun/issues/5883).
             re_log::debug!("{log_msg}");
         } else {
             re_log::warn_once!("{log_msg}");
