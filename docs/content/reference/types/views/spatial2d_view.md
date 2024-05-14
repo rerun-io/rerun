@@ -37,3 +37,26 @@ snippet: views/spatial2d
   <img src="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/full.png">
 </picture>
 
+
+## Visualized archetypes
+
+* [`AnnotationContext`](../archetypes/annotation_context.md)
+* [`Arrows2D`](../archetypes/arrows2d.md)
+* [`Boxes2D`](../archetypes/boxes2d.md)
+* [`Clear`](../archetypes/clear.md)
+* [`DepthImage`](../archetypes/depth_image.md)
+* [`DisconnectedSpace`](../archetypes/disconnected_space.md)
+* [`Image`](../archetypes/image.md)
+* [`LineStrips2D`](../archetypes/line_strips2d.md)
+* [`Pinhole`](../archetypes/pinhole.md)
+* [`Pinhole`](../archetypes/pinhole.md)
+* [`Points2D`](../archetypes/points2d.md)
+* [`SegmentationImage`](../archetypes/segmentation_image.md)
+* [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
+* [`Asset3D`](../archetypes/asset3d.md) (if logged above active projection)
+* [`Boxes3D`](../archetypes/boxes3d.md) (if logged above active projection)
+* [`LineStrips3D`](../archetypes/line_strips3d.md) (if logged above active projection)
+* [`Mesh3D`](../archetypes/mesh3d.md) (if logged above active projection)
+* [`Points3D`](../archetypes/points3d.md) (if logged above active projection)
+* [`Transform3D`](../archetypes/transform3d.md) (if logged above active projection)
+

@@ -23,3 +23,8 @@ snippet: views/text_log
   <img src="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/full.png">
 </picture>
 
+
+## Visualized archetypes
+
+* [`TextLog`](../archetypes/text_log.md)
+

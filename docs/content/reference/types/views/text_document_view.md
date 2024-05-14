@@ -23,3 +23,8 @@ snippet: views/text_document
   <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png">
 </picture>
 
+
+## Visualized archetypes
+
+* [`TextDocument`](../archetypes/text_document.md)
+

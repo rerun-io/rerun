@@ -23,3 +23,8 @@ snippet: views/bar_chart
   <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png">
 </picture>
 
+
+## Visualized archetypes
+
+* [`BarChart`](../archetypes/bar_chart.md)
+

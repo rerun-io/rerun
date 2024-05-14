@@ -37,3 +37,11 @@ snippet: views/timeseries
   <img src="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/full.png">
 </picture>
 
+
+## Visualized archetypes
+
+* [`Clear`](../archetypes/clear.md)
+* [`Scalar`](../archetypes/scalar.md)
+* [`SeriesLine`](../archetypes/series_line.md)
+* [`SeriesPoint`](../archetypes/series_point.md)
+

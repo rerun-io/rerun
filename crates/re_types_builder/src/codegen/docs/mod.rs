@@ -1,4 +1,4 @@
-use std::fmt::Write;
+use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
 use itertools::Itertools;
@@ -10,7 +10,7 @@ use crate::{
     ATTR_DOCS_VIEW_TYPES,
 };
 
-type ObjectMap = std::collections::BTreeMap<String, Object>;
+type ObjectMap = BTreeMap<String, Object>;
 
 macro_rules! putln {
     ($o:ident) => ( writeln!($o).ok() );
@@ -29,6 +29,14 @@ impl DocsCodeGenerator {
     }
 }
 
+struct ViewReference {
+    /// Typename of the view. Not a fully qualified name, just the name as specified on the attribute.
+    view_name: String,
+    explanation: Option<String>,
+}
+
+type ViewsPerArchetype = BTreeMap<String, Vec<ViewReference>>;
+
 impl CodeGenerator for DocsCodeGenerator {
     fn generate(
         &mut self,
@@ -39,6 +47,9 @@ impl CodeGenerator for DocsCodeGenerator {
         re_tracing::profile_function!();
 
         let mut files_to_write = GeneratedFiles::default();
+
+        // Gather view type mapping per object.
+        let views_per_archetype = collect_view_types_per_archetype(objects);
 
         let (mut archetypes, mut components, mut datatypes, mut views) =
             (Vec::new(), Vec::new(), Vec::new(), Vec::new());
@@ -61,7 +72,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::View => views.push(object),
             }
 
-            let page = object_page(reporter, object, object_map);
+            let page = object_page(reporter, object, object_map, &views_per_archetype);
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.plural_snake_case(),
@@ -111,6 +122,31 @@ on [Entities and Components](../../concepts/entity-component.md).",
 
         files_to_write
     }
+}
+
+fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
+    let mut view_types_per_object = ViewsPerArchetype::new();
+    for object in objects.objects.values() {
+        let Some(view_types) = object.try_get_attr::<String>(ATTR_DOCS_VIEW_TYPES) else {
+            continue;
+        };
+
+        let view_types = view_types
+            .split(',')
+            .map(|view_type| {
+                let mut parts = view_type.splitn(2, ':');
+                let view_name = parts.next().unwrap().trim().to_owned();
+                let explanation = parts.next().map(|s| s.trim().to_owned());
+                ViewReference {
+                    view_name,
+                    explanation,
+                }
+            })
+            .collect();
+        view_types_per_object.insert(object.fqname.clone(), view_types);
+    }
+
+    view_types_per_object
 }
 
 fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) -> String {
@@ -172,7 +208,12 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
     page
 }
 
-fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
+fn object_page(
+    reporter: &Reporter,
+    object: &Object,
+    object_map: &ObjectMap,
+    views_per_archetype: &ViewsPerArchetype,
+) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
 
     let top_level_docs = object.docs.untagged();
@@ -216,9 +257,10 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         ObjectKind::Datatype | ObjectKind::Component => {
             write_fields(&mut page, object, object_map);
         }
-        ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
+        ObjectKind::Archetype => {
+            write_archetype_fields(&mut page, object, object_map, views_per_archetype);
+        }
         ObjectKind::View => {
-            // TODO(#6082): Views should include the archetypes they know how to show
             write_view_properties(reporter, &mut page, object, object_map);
         }
     }
@@ -249,7 +291,14 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             }
         }
         ObjectKind::View => {
-            // TODO(#6082): Implement view docs generation.
+            putln!(page);
+            write_visualized_archetypes(
+                reporter,
+                &mut page,
+                object,
+                object_map,
+                views_per_archetype,
+            );
         }
     }
 
@@ -455,23 +504,12 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     }
 }
 
-fn get_view_types_with_explanation(object: &Object) -> Vec<(String, Option<String>)> {
-    let Some(view_types) = object.try_get_attr::<String>(ATTR_DOCS_VIEW_TYPES) else {
-        return Vec::new();
-    };
-
-    view_types
-        .split(',')
-        .map(|view_type| {
-            let mut parts = view_type.splitn(2, ':');
-            let view_name = parts.next().unwrap().trim().to_owned();
-            let explanation = parts.next().map(|s| s.trim().to_owned());
-            (view_name, explanation)
-        })
-        .collect()
-}
-
-fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMap) {
+fn write_archetype_fields(
+    page: &mut String,
+    object: &Object,
+    object_map: &ObjectMap,
+    view_per_archetype: &ViewsPerArchetype,
+) {
     if object.fields.is_empty() {
         return;
     }
@@ -503,53 +541,102 @@ fn write_archetype_fields(o: &mut String, object: &Object, object_map: &ObjectMa
         return;
     }
 
-    putln!(o, "## Components");
+    putln!(page, "## Components");
     if !required.is_empty() {
-        putln!(o);
-        putln!(o, "**Required**: {}", required.join(", "));
+        putln!(page);
+        putln!(page, "**Required**: {}", required.join(", "));
     }
     if !recommended.is_empty() {
-        putln!(o);
-        putln!(o, "**Recommended**: {}", recommended.join(", "));
+        putln!(page);
+        putln!(page, "**Recommended**: {}", recommended.join(", "));
     }
     if !optional.is_empty() {
-        putln!(o);
-        putln!(o, "**Optional**: {}", optional.join(", "));
+        putln!(page);
+        putln!(page, "**Optional**: {}", optional.join(", "));
     }
 
-    let view_types = get_view_types_with_explanation(object);
-    if !view_types.is_empty() {
-        putln!(o);
-        putln!(o, "## Shown in");
-        for (view_type, explanation) in view_types {
-            putln!(
-                o,
-                "* [{view_type}](../views/{}.md)",
-                crate::to_snake_case(&view_type)
-            );
+    if let Some(view_types) = view_per_archetype.get(&object.fqname) {
+        putln!(page);
+        putln!(page, "## Shown in");
+        for ViewReference {
+            view_name,
+            explanation,
+        } in view_types
+        {
+            page.push_str(&format!(
+                "* [{view_name}](../views/{}.md)",
+                crate::to_snake_case(view_name)
+            ));
             if let Some(explanation) = explanation {
-                o.push_str(&format!(" ({explanation})"));
+                page.push_str(&format!(" ({explanation})"));
             }
+            putln!(page);
         }
     }
 }
 
-fn write_view_properties(
+fn write_visualized_archetypes(
     reporter: &Reporter,
-    o: &mut String,
-    object: &Object,
+    page: &mut String,
+    view: &Object,
     object_map: &ObjectMap,
+    views_per_archetype: &ViewsPerArchetype,
 ) {
-    if object.fields.is_empty() {
+    let mut archetype_fqnames = Vec::new();
+    for (fqname, reference) in views_per_archetype {
+        for ViewReference {
+            view_name,
+            explanation,
+        } in reference
+        {
+            if view_name == &view.name {
+                archetype_fqnames.push((fqname.clone(), explanation));
+            }
+        }
+    }
+
+    if archetype_fqnames.is_empty() {
+        reporter.error(&view.virtpath, &view.fqname, "No archetypes use this view.");
         return;
     }
 
-    putln!(o, "## Properties");
-    putln!(o);
+    // Put the archetypes in alphabetical order but put the ones with extra explanation last.
+    archetype_fqnames.sort_by_key(|(fqname, explanation)| (explanation.is_some(), fqname.clone()));
+
+    putln!(page, "## Visualized archetypes");
+    putln!(page);
+    for (fqname, explanation) in archetype_fqnames {
+        let object = &object_map[&fqname];
+        page.push_str(&format!(
+            "* [`{}`](../{}/{}.md)",
+            object.name,
+            object.kind.plural_snake_case(),
+            object.snake_case_name()
+        ));
+        if let Some(explanation) = explanation {
+            page.push_str(&format!(" ({explanation})"));
+        }
+        putln!(page);
+    }
+    putln!(page);
+}
+
+fn write_view_properties(
+    reporter: &Reporter,
+    page: &mut String,
+    view: &Object,
+    object_map: &ObjectMap,
+) {
+    if view.fields.is_empty() {
+        return;
+    }
+
+    putln!(page, "## Properties");
+    putln!(page);
 
     // Each field in a view should be a property
-    for field in &object.fields {
-        write_view_property(reporter, o, field, object_map);
+    for field in &view.fields {
+        write_view_property(reporter, page, field, object_map);
     }
 }
 
