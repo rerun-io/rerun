@@ -20,7 +20,8 @@ namespace rerun.archetypes;
 table DepthImage (
   "attr.rust.derive": "PartialEq",
   "attr.cpp.no_field_ctors",
-  "attr.docs.category": "Image & tensor"
+  "attr.docs.category": "Image & tensor",
+  "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
 ) {
   // --- Required ---
 

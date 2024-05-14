@@ -11,6 +11,7 @@ namespace rerun.components;
 
 /// An Axis-Aligned Bounding Box in 2D space.
 struct Range2D (
+  "attr.docs.unreleased",
   "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent"
 ) {

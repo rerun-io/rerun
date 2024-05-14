@@ -196,6 +196,7 @@ pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 
 pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
 pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
+pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
 
 // --- Entrypoints ---
 

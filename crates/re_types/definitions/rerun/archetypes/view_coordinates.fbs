@@ -19,7 +19,8 @@ namespace rerun.archetypes;
 table ViewCoordinates (
   "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.repr": "transparent",
-  "attr.docs.category": "Spatial 3D"
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView"
 ) {
   /// The directions of the [x, y, z] axes.
   xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", required, order: 1000);

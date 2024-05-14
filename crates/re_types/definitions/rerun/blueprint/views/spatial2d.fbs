@@ -6,9 +6,10 @@ namespace rerun.blueprint.views;
 ///
 /// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/spatial2d/074c0822870325d6502c9f51c165c1181a20e83f/1200w.png"
 table Spatial2DView (
+    "attr.docs.unreleased",
     "attr.rerun.view_identifier": "2D"
 ) {
-    /// Configuration for the background of the space view.
+    /// Configuration for the background of the view.
     background: rerun.blueprint.archetypes.Background (order: 1000);
 
     /// The visible parts of the scene, in the coordinate space of the scene.

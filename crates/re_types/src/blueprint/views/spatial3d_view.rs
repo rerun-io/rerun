@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A Spatial 3D view.
 #[derive(Clone, Debug)]
 pub struct Spatial3DView {
-    /// Configuration for the background of the space view.
+    /// Configuration for the background of the view.
     pub background: crate::blueprint::archetypes::Background,
 
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).

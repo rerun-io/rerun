@@ -9,3 +9,13 @@ attribute "attr.docs.unreleased";
 
 /// Apply to an archetype to set its category used in the docs.
 attribute "attr.docs.category";
+
+/// Apply to an archetype to document which viewer support showing it.
+///
+/// This is expected to be a comma separated list of viewer types names.
+/// If additional information about the circumstances under which a viewer supports the archetype is needed,
+/// add it after a colon.
+///
+/// E.g.:
+/// "attr.docs.view_types": "Spatial2DView, Spatial3DView: if logged under a projection"
+attribute "attr.docs.view_types";

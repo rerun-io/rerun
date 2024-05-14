@@ -10,6 +10,7 @@ namespace rerun.blueprint.archetypes;
 
 /// Controls the visual bounds of a 2D space view.
 table VisualBounds (
+    "attr.docs.unreleased",
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Copy"
 ) {

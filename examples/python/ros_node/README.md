@@ -39,7 +39,7 @@ For more information on future improved ROS support, see tracking issue: [#1527]
 in addition to the packages from requirements.txt.
 
 This example was developed and tested on top of [ROS2 Humble Hawksbill](https://docs.ros.org/en/humble/index.html)
-and the [turtlebot3 navigation example](https://navigation.ros.org/getting_started/index.html).
+and the [turtlebot3 navigation example](https://docs.nav2.org/getting_started/index.html).
 
 Installing ROS is outside the scope of this example, but you will need the equivalent of the following packages:
 ```

@@ -99,7 +99,7 @@ class Spatial3DView(SpaceView):
 
             Defaults to true if not specified.
         background:
-            Configuration for the background of the space view.
+            Configuration for the background of the view.
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

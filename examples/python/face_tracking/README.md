@@ -5,7 +5,7 @@ thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f3
 thumbnail_dimensions = [480, 480]
 -->
 
-Use the [MediaPipe](https://google.github.io/mediapipe/) Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream.
+Use the [MediaPipe](https://github.com/google-ai-edge/mediapipe) Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream.
 
 
 <picture>
