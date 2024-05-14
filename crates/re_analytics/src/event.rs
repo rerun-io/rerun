@@ -312,6 +312,16 @@ mod tests {
             Some("rerun.io".to_owned())
         );
 
+        // Local domains
+        assert_eq!(
+            extract_root_domain("http://localhost:9090/?url=ws://localhost:9877"),
+            None
+        );
+        assert_eq!(
+            extract_root_domain("http://127.0.0.1:9090/?url=ws://localhost:9877"),
+            None
+        );
+
         // Invalid urls
         assert_eq!(extract_root_domain("rerun.io"), None);
         assert_eq!(extract_root_domain("https:/rerun"), None);
