@@ -17,11 +17,11 @@ Generates a 3D colored cube and demonstrates how to log a point cloud.
 
 Straightforward example from the [Quick Start guide](https://www.rerun.io/docs/getting-started/quick-start/python) to generate a 3D colored cube and demonstrate how to log a point cloud.
 
-# Used Rerun types
+## Used Rerun types
 
 [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d)
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 
 The visualizations in this example were created with the following Rerun code:
 
@@ -46,10 +46,9 @@ rr.log(
 )
  ```
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun

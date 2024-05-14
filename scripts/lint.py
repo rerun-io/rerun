@@ -788,7 +788,11 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     errors = []
     lines_out = []
 
-    in_example_readme = "/examples/python/" in filepath and filepath.endswith("README.md")
+    in_example_readme = (
+        "/examples/python/" in filepath
+        and filepath.endswith("README.md")
+        and not filepath.endswith("/examples/python/README.md")
+    )
     in_changelog = filepath.endswith("CHANGELOG.md")
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
@@ -1030,7 +1034,7 @@ def lint_file(filepath: str, args: Any) -> int:
         if args.fix:
             source.rewrite(lines_out)
 
-    if filepath.endswith(".md") and args.extra:
+    if filepath.endswith(".md"):
         errors, lines_out = lint_markdown(filepath, source.lines)
 
         for error in errors:
@@ -1157,6 +1161,7 @@ def main() -> None:
 
     exclude_paths = (
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
+        "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
         "./examples/assets",
@@ -1167,6 +1172,7 @@ def main() -> None:
         "./rerun_cpp/docs/html",
         "./rerun_cpp/src/rerun/c/arrow_c_data_interface.h",  # Not our code
         "./rerun_cpp/src/rerun/third_party/cxxopts.hpp",  # vendored
+        "./rerun_py/.pytest_cache/",
         "./rerun_py/site/",  # is in `.gitignore` which this script doesn't fully respect
         "./run_wasm/README.md",  # Has a "2d" lowercase example in a code snippet
         "./scripts/lint.py",  # we contain all the patterns we are linting against

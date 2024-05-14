@@ -8,7 +8,7 @@ thumbnail_dimensions = [480, 480]
 
 This example project combines several popular computer vision methods and uses Rerun to visualize the results and how the pieces fit together.
 
-# Visual project walkthrough
+## Visual project walkthrough
 
 By combining MetaAI's [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything) and [Multiview Compressive Coding (MCC)](https://github.com/facebookresearch/MCC) we can get a 3D object from a single image.
 

@@ -1,4 +1,4 @@
-# Overview
+## Overview
 
 Rerun has limited support for direct embedding within a [Jupyter](https://jupyter.org/) notebook.
 Many additional environments beyond Jupyter are supported such as [Google Colab](https://colab.research.google.com/)
@@ -28,7 +28,7 @@ rec.log(...)
 rr.notebook_show(recording=rec)
 ```
 
-# Running in Jupyter
+## Running in Jupyter
 
 The easiest way to get a feel for working with notebooks is to use it:
 

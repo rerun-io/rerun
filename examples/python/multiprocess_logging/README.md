@@ -15,10 +15,10 @@ Demonstrates how Rerun can work with the Python `multiprocessing` library.
   <img src="https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/full.png" alt="">
 </picture>
 
-# Used Rerun types
+## Used Rerun types
 [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
-# Logging and visualizing with Rerun
+## Logging and visualizing with Rerun
 This example demonstrates how to use the Rerun SDK with `multiprocessing` to log data from multiple processes to the same Rerun viewer.
 It starts with the definition of the function for logging, the `task`, followed by typical usage of Python's `multiprocessing` library.
 
@@ -69,10 +69,9 @@ def main() -> None:
         p.join()
  ```
 
-# Run the code
+## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:
 ```bash
-# Setup
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository
 cd rerun
