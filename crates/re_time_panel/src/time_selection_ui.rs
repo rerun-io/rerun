@@ -294,10 +294,6 @@ fn paint_range_text(
 ) {
     use egui::{Pos2, Stroke};
 
-    if selected_range.min <= TimeInt::MIN {
-        return; // huge time selection, don't show a confusing times
-    }
-
     let text_color = ui.visuals().strong_text_color();
 
     let arrow_color = text_color.gamma_multiply(0.75);
