@@ -374,6 +374,7 @@ gesture_detection = { path = "examples/python/gesture_detection", editable = tru
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
 incremental_logging = { path = "examples/python/incremental_logging", editable = true }
 live_camera_edge_detection = { path = "examples/python/live_camera_edge_detection", editable = true }
+live_scrolling_plot = { path = "examples/python/live_scrolling_plot", editable = true }
 llm_embedding_ner = { path = "examples/python/llm_embedding_ner", editable = true }
 log_file = { path = "examples/python/log_file", editable = true }
 minimal = { path = "examples/python/minimal", editable = true }

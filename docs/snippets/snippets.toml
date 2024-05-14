@@ -37,7 +37,11 @@
   "rust",
   "py",
 ]
-
+"tutorials/fixed_window_plot" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+  "py",   # Doesn't terminate
+]
 
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",
