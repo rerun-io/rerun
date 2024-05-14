@@ -280,8 +280,6 @@ re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 /// ).unwrap();
 /// eprintln!("{row}");
 /// ```
-//
-// TODO(#5303): the Layout part will be outdated in the new key-less model
 #[derive(Debug, Clone)]
 pub struct DataRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's

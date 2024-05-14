@@ -409,7 +409,6 @@ impl TimePanel {
             full_y_range,
         );
         time_selection_ui::loop_selection_ui(
-            entity_db,
             time_ctrl,
             &self.time_ranges_ui,
             ui,
@@ -860,7 +859,7 @@ impl TimePanel {
                         ui,
                     );
 
-                    current_time_ui(ctx, entity_db, ui, time_ctrl);
+                    current_time_ui(ctx, ui, time_ctrl);
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         help_button(ui);
@@ -878,7 +877,7 @@ impl TimePanel {
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
-            current_time_ui(ctx, entity_db, ui, time_ctrl);
+            current_time_ui(ctx, ui, time_ctrl);
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
@@ -973,7 +972,7 @@ fn collapsed_time_marker_and_time(
         }
     }
 
-    current_time_ui(ctx, entity_db, ui, time_ctrl);
+    current_time_ui(ctx, ui, time_ctrl);
 }
 
 fn paint_range_highlight(
@@ -1012,52 +1011,10 @@ fn help_button(ui: &mut egui::Ui) {
     );
 }
 
-/// A user can drag the time slider to between the timeless data and the first real data.
-///
-/// The time interpolated there is really weird, as it goes from [`TimeInt::MIN_TIME_PANEL`]
-/// (which is extremely long time ago) to whatever tim the user logged.
-/// So we do not want to display these times to the user.
-///
-/// This functions returns `true` iff the given time is safe to show.
-//
-// TODO(#5264): remove time panel hack once we migrate to the new static UI
-fn is_time_safe_to_show(
-    entity_db: &re_entity_db::EntityDb,
-    timeline: &re_data_store::Timeline,
-    time: TimeReal,
-) -> bool {
-    if entity_db.num_static_messages() == 0 {
-        return true; // no timeless messages, no problem
-    }
-
-    if let Some(times) = entity_db.tree().subtree.time_histogram.get(timeline) {
-        if let Some(first_time) = times.min_key() {
-            let margin = match timeline.typ() {
-                re_data_store::TimeType::Time => TimeInt::from_seconds(10_000.try_into().unwrap()),
-                re_data_store::TimeType::Sequence => {
-                    TimeInt::from_sequence(1_000.try_into().unwrap())
-                }
-            };
-
-            return TimeInt::new_temporal(first_time) <= time + margin;
-        }
-    }
-
-    TimeInt::MIN_TIME_PANEL < time
-}
-
-fn current_time_ui(
-    ctx: &ViewerContext<'_>,
-    entity_db: &re_entity_db::EntityDb,
-    ui: &mut egui::Ui,
-    time_ctrl: &TimeControl,
-) {
+fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &TimeControl) {
     if let Some(time_int) = time_ctrl.time_int() {
-        let timeline = time_ctrl.timeline();
-        if is_time_safe_to_show(entity_db, timeline, time_int.into()) {
-            let time_type = time_ctrl.time_type();
-            ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
-        }
+        let time_type = time_ctrl.time_type();
+        ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
     }
 }
 

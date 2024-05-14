@@ -225,8 +225,6 @@ impl ViewportBlueprint {
     }
 
     /// Duplicates a space view and its entity property overrides.
-    ///
-    /// TODO(#4977): much more than just entity properties must be cloned: overrides, etc.
     pub fn duplicate_space_view(
         &self,
         space_view_id: &SpaceViewId,

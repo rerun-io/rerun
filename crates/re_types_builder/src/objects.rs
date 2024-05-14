@@ -66,7 +66,8 @@ impl Objects {
                 continue;
             }
 
-            let resolved_obj = Object::from_raw_object(include_dir_path, &enums, &objs, &obj);
+            let resolved_obj =
+                Object::from_raw_object(reporter, include_dir_path, &enums, &objs, &obj);
             resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
         }
 
@@ -331,6 +332,7 @@ impl Object {
     /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
     /// interpreted and manipulated.
     pub fn from_raw_object(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
@@ -369,7 +371,14 @@ impl Object {
                 .filter(|field| field.type_().base_type() != FbsBaseType::UType)
                 .filter(|field| field.type_().element() != FbsBaseType::UType)
                 .map(|field| {
-                    ObjectField::from_raw_object_field(include_dir_path, enums, objs, obj, &field)
+                    ObjectField::from_raw_object_field(
+                        reporter,
+                        include_dir_path,
+                        enums,
+                        objs,
+                        obj,
+                        &field,
+                    )
                 })
                 .collect();
 
@@ -647,12 +656,6 @@ pub struct ObjectField {
     /// Whether the field is nullable.
     pub is_nullable: bool,
 
-    /// Whether the field is deprecated.
-    //
-    // TODO(#2366): do something with this
-    // TODO(#2367): implement custom attr to specify deprecation reason
-    pub is_deprecated: bool,
-
     /// The Arrow datatype of this `ObjectField`.
     ///
     /// This is lazily computed when the parent object gets registered into the Arrow registry and
@@ -662,6 +665,7 @@ pub struct ObjectField {
 
 impl ObjectField {
     pub fn from_raw_object_field(
+        reporter: &Reporter,
         include_dir_path: impl AsRef<Utf8Path>,
         enums: &[FbsEnum<'_>],
         objs: &[FbsObject<'_>],
@@ -690,7 +694,17 @@ impl ObjectField {
         let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
 
         let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
-        let is_deprecated = field.deprecated();
+
+        if field.deprecated() {
+            reporter.warn(
+                &virtpath,
+                &fqname,
+                format!(
+                    "Use {} attribute for deprecation instead",
+                    crate::ATTR_RERUN_DEPRECATED
+                ),
+            );
+        }
 
         Self {
             virtpath,
@@ -703,7 +717,6 @@ impl ObjectField {
             attrs,
             order,
             is_nullable,
-            is_deprecated,
             datatype: None,
         }
     }
@@ -745,8 +758,6 @@ impl ObjectField {
             attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit // null type is always nullable
         };
 
-        let is_deprecated = false;
-
         if attrs.has(crate::ATTR_ORDER) {
             reporter.warn(
                 &virtpath,
@@ -766,7 +777,6 @@ impl ObjectField {
             attrs,
             order: 0, // no needed for enums
             is_nullable,
-            is_deprecated,
             datatype: None,
         }
     }

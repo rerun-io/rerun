@@ -33,10 +33,8 @@ use crate::{
 /// The deserializers are designed for maximum performance, assuming the incoming data is correct.
 /// If the data is not correct, the deserializers will return an error, but never panic or crash.
 ///
-/// In the future we should add some basic arrow datatype validation during data ingestion,
-/// so that changing the datatype between versions of the SDK will produce some helpful warnings
-/// instead of just silent bugs.
-/// TODO(#5291): add basic arrow datatype validation during data ingestion
+/// TODO(#5305): Currently we're doing a lot of checking for exact matches.
+/// We should instead assume data is correct and handle errors gracefully.
 ///
 /// ## Understanding datatypes
 ///

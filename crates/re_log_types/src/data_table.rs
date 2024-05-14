@@ -333,8 +333,6 @@ re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #
 /// # assert_eq!(table_in, table_out);
 /// ```
-//
-// TODO(#5303): the Layout part will be outdated in the new key-less model
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataTable {
     /// Auto-generated `TUID`, uniquely identifying this batch of data and keeping track of the

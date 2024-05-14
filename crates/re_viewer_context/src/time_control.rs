@@ -563,14 +563,11 @@ impl TimeControl {
 }
 
 fn min(values: &TimeCounts) -> TimeInt {
-    *values.keys().next().unwrap_or(&TimeInt::MIN_TIME_PANEL)
+    *values.keys().next().unwrap_or(&TimeInt::MIN)
 }
 
 fn max(values: &TimeCounts) -> TimeInt {
-    *values
-        .keys()
-        .next_back()
-        .unwrap_or(&TimeInt::MIN_TIME_PANEL)
+    *values.keys().next_back().unwrap_or(&TimeInt::MIN)
 }
 
 fn range(values: &TimeCounts) -> ResolvedTimeRange {

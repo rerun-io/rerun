@@ -49,9 +49,8 @@ int main() {
         rerun::TextDocument(README).with_media_type(rerun::components::MediaType::markdown())
     );
 
-    // TODO(#5264): just log one once clamp-to-edge semantics land.
-    std::vector<rerun::Color> colors(10, rerun::Color(255, 0, 0));
-    std::vector<rerun::Radius> radii(10, rerun::Radius(0.1f));
+    rerun::Collection<rerun::Color> colors = rerun::Color(255, 0, 0);
+    rerun::Collection<rerun::Radius> radii = rerun::Radius(0.1f);
 
     // Only log colors and radii once.
     rec.set_time_sequence("frame_nr", 0);

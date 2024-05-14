@@ -164,7 +164,7 @@ impl LatestAtComponentResults {
             }
 
             PromiseResult::Ready(data) => {
-                // TODO(#5303): Figure out if/how we'd like to integrate clamping semantics into the
+                // TODO(#5259): Figure out if/how we'd like to integrate clamping semantics into the
                 // selection panel.
                 //
                 // For now, we simply always clamp, which is the closest to the legacy behavior that the UI
@@ -216,7 +216,7 @@ impl LatestAtComponentResults {
             PromiseResult::Ready(cell) => {
                 let len = cell.num_instances() as usize;
 
-                // TODO(#5303): Figure out if/how we'd like to integrate clamping semantics into the
+                // TODO(#5259): Figure out if/how we'd like to integrate clamping semantics into the
                 // selection panel.
                 //
                 // For now, we simply always clamp, which is the closest to the legacy behavior that the UI

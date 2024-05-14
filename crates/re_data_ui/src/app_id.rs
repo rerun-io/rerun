@@ -41,7 +41,8 @@ impl crate::DataUi for ApplicationId {
             .sorted_by_key(|entity_db| entity_db.store_info().map(|info| info.started))
             .collect();
 
-        //TODO(#6245): we should _not_ use interactive UI in code used for hover tooltip!
+        // Using the same content ui also for tooltips even if it can't be interacted with.
+        // (still displays the content we want)
         if !recordings.is_empty() {
             let content_ui = |ui: &mut egui::Ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;

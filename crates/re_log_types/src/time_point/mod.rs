@@ -136,8 +136,7 @@ impl TimeType {
         let time_int = time_int.into();
         match time_int {
             TimeInt::STATIC => "<static>".into(),
-            // TODO(#5264): remove time panel hack once we migrate to the new static UI
-            TimeInt::MIN | TimeInt::MIN_TIME_PANEL => "-∞".into(),
+            TimeInt::MIN => "-∞".into(),
             TimeInt::MAX => "+∞".into(),
             _ => match self {
                 Self::Time => Time::from(time_int).format(time_zone_for_timestamps),

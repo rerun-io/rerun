@@ -39,7 +39,7 @@ fn main() {
 
                     let contents = fs::read_to_string(&path).unwrap();
 
-                    // TODO(#515): some snippets lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
+                    // TODO(#4047): some snippets lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
                     if contents.contains("fn main()") {
                         // Patch the source code so we can call into `main` and pass arguments to it:
                         let contents =
