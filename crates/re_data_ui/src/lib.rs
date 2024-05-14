@@ -234,7 +234,7 @@ pub fn label_for_ui_layout(
 ///
 /// Import: for data only, labels should use [`crate::label_for_ui_layout`] instead.
 // TODO(#6315): must be merged with `label_for_ui_layout` and have an improved API
-fn data_label_for_ui_layout(ui: &mut egui::Ui, ui_layout: UiLayout, string: impl AsRef<str>) {
+pub fn data_label_for_ui_layout(ui: &mut egui::Ui, ui_layout: UiLayout, string: impl AsRef<str>) {
     let string = string.as_ref();
     let font_id = egui::TextStyle::Monospace.resolve(ui.style());
     let color = ui.visuals().text_color();
