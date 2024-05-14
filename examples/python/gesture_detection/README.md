@@ -80,14 +80,14 @@ rr.log("Hand3D", rr.ViewCoordinates.LEFT_HAND_Y_DOWN, static=True)
 #### 2D points
 
 ```python
-# Log points to the image and hand entity
+# Log points to the image and Hand entity
 for log_key in ["Media/Points", "Hand/Points"]:
     rr.log(
       log_key,
       rr.Points2D(points, radii=10, colors=[255, 0, 0])
     )
 
-# Log connections to the image and hand entity [128, 128, 128]
+# Log connections to the image and Hand entity [128, 128, 128]
 for log_key in ["Media/Connections", "Hand/Connections"]:
     rr.log(
       log_key,
