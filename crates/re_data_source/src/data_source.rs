@@ -12,7 +12,7 @@ pub enum DataSource {
     /// A remote RRD file, served over http.
     ///
     /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    RrdHttpUrl(String),
+    RrdHttpUrl { url: String, follow: bool },
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
@@ -90,7 +90,10 @@ impl DataSource {
             || uri.starts_with("https://")
             || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
         {
-            DataSource::RrdHttpUrl(uri)
+            DataSource::RrdHttpUrl {
+                url: uri,
+                follow: false,
+            }
         } else if uri.starts_with("ws://") || uri.starts_with("wss://") {
             DataSource::WebSocketAddr(uri)
 
@@ -98,7 +101,10 @@ impl DataSource {
         } else if looks_like_a_file_path(&uri) {
             DataSource::FilePath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
-            DataSource::RrdHttpUrl(uri)
+            DataSource::RrdHttpUrl {
+                url: uri,
+                follow: false,
+            }
         } else {
             // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
             // We could/should connect and see what it is, but for now we just take a wild guess instead:
@@ -112,7 +118,7 @@ impl DataSource {
 
     pub fn file_name(&self) -> Option<String> {
         match self {
-            DataSource::RrdHttpUrl(url) => url.split('/').last().map(|r| r.to_owned()),
+            DataSource::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
             DataSource::FilePath(_, path) => {
                 path.file_name().map(|s| s.to_string_lossy().to_string())
@@ -140,8 +146,10 @@ impl DataSource {
     ) -> anyhow::Result<Receiver<LogMsg>> {
         re_tracing::profile_function!();
         match self {
-            DataSource::RrdHttpUrl(url) => Ok(
-                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(url, on_msg),
+            DataSource::RrdHttpUrl { url, follow } => Ok(
+                re_log_encoding::stream_rrd_from_http::stream_rrd_from_http_to_channel(
+                    url, follow, on_msg,
+                ),
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -256,7 +264,7 @@ fn test_data_source_from_uri() {
         assert!(
             matches!(
                 DataSource::from_uri(file_source, uri.to_owned()),
-                DataSource::RrdHttpUrl(_)
+                DataSource::RrdHttpUrl { .. }
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
         );

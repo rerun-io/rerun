@@ -25,7 +25,7 @@ pub enum SmartChannelSource {
     File(std::path::PathBuf),
 
     /// The channel was created in the context of loading an `.rrd` file over http.
-    RrdHttpStream { url: String },
+    RrdHttpStream { url: String, follow: bool },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`
     /// js event.
@@ -66,7 +66,7 @@ impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),

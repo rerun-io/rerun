@@ -510,11 +510,12 @@ fn recording_config_entry<'cfgs>(
                 // Play files from the start by default - it feels nice and alive.
                 // We assume the `RrdHttpStream` is a done recording.
                 re_smart_channel::SmartChannelSource::File(_)
-                | re_smart_channel::SmartChannelSource::RrdHttpStream { .. }
+                | re_smart_channel::SmartChannelSource::RrdHttpStream { follow: false, .. }
                 | re_smart_channel::SmartChannelSource::RrdWebEventListener => PlayState::Playing,
 
                 // Live data - follow it!
-                re_smart_channel::SmartChannelSource::Sdk
+                re_smart_channel::SmartChannelSource::RrdHttpStream { follow: true, .. }
+                | re_smart_channel::SmartChannelSource::Sdk
                 | re_smart_channel::SmartChannelSource::WsClient { .. }
                 | re_smart_channel::SmartChannelSource::TcpServer { .. }
                 | re_smart_channel::SmartChannelSource::Stdin

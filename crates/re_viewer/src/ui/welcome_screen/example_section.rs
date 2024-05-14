@@ -459,12 +459,16 @@ fn open_example_url(
         }
     }
 
-    let data_source = re_data_source::DataSource::RrdHttpUrl(rrd_url.to_owned());
+    let data_source = re_data_source::DataSource::RrdHttpUrl {
+        url: rrd_url.to_owned(),
+        follow: false,
+    };
 
     // If the user re-download an already open recording, clear it out first
     command_sender.send_system(SystemCommand::ClearSourceAndItsStores(
         re_smart_channel::SmartChannelSource::RrdHttpStream {
             url: rrd_url.to_owned(),
+            follow: false,
         },
     ));
 

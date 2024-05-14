@@ -8,11 +8,15 @@ use re_log_types::LogMsg;
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_rrd_from_http_to_channel(
     url: String,
+    follow: bool,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdHttpStream { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RrdHttpStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RrdHttpStream {
+            url: url.clone(),
+            follow,
+        },
     );
     stream_rrd_from_http(
         url.clone(),

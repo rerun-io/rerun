@@ -205,7 +205,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 format!("Loading {}…", path.display())
             }
             re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
-            re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => {
                 format!("Loading {url}…")
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener

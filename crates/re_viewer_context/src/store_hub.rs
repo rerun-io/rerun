@@ -605,7 +605,7 @@ impl StoreHub {
             // - aren't network sources
             // - don't point at the given `uri`
             match data_source {
-                re_smart_channel::SmartChannelSource::RrdHttpStream { url } => url != uri,
+                re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => url != uri,
                 re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
                     ws_server_url != uri
                 }
