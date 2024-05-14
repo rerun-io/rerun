@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A Quaternion represented by 4 real numbers.
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
-/// datastore as provided, when used in the viewer Quaternions will always be normalized.
+/// datastore as provided, when used in the Viewer Quaternions will always be normalized.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct Quaternion(pub [f32; 4usize]);
 
