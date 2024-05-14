@@ -47,9 +47,8 @@ rr.script_setup(args, "rerun_example_incremental_logging")
 
 rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
-# TODO(#5264): just log one once clamp-to-edge semantics land.
-colors = rr.components.ColorBatch(np.repeat(0xFF0000FF, 10))
-radii = rr.components.RadiusBatch(np.repeat(0.1, 10))
+colors = rr.components.ColorBatch(0xFF0000FF)
+radii = rr.components.RadiusBatch(0.1)
 
 # Only log colors and radii once.
 rr.set_time_sequence("frame_nr", 0)

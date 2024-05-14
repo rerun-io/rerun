@@ -58,9 +58,8 @@ Move the time cursor around, and notice how the colors and radii from frame 0 ar
 fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     rec.log_static("readme", &rerun::TextDocument::from_markdown(README))?;
 
-    // TODO(#5264): just log one once clamp-to-edge semantics land.
-    let colors = [rerun::Color::from_rgb(255, 0, 0); 10];
-    let radii = [rerun::Radius(0.1); 10];
+    let colors = [rerun::Color::from_rgb(255, 0, 0)];
+    let radii = [rerun::Radius(0.1)];
 
     // Only log colors and radii once.
     rec.set_time_sequence("frame_nr", 0);
