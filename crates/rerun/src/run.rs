@@ -527,6 +527,7 @@ impl PrintCommand {
         let rrd_file = std::fs::File::open(rrd_path)?;
         let version_policy = re_log_encoding::decoder::VersionPolicy::Warn;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+        println!("Decoded RRD stream v{}\n---", decoder.version());
         for msg in decoder {
             let msg = msg.context("decode rrd message")?;
             match msg {
