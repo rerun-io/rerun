@@ -368,7 +368,7 @@ pub struct StoreInfo {
     ///
     // NOTE: The version comes directly from the decoded RRD stream's header, duplicating it here
     // would probably only lead to more issues down the line.
-    #[serde(skip, default = "Option::default")]
+    #[serde(skip)]
     pub store_version: Option<CrateVersion>,
 }
 
