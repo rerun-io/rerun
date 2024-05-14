@@ -7,6 +7,7 @@ use itertools::Itertools;
 use re_data_store::{
     DataStore, DataStoreConfig, GarbageCollectionOptions, GarbageCollectionTarget,
 };
+use re_log::ResultExt;
 use re_log_types::{
     build_frame_nr, build_log_time, DataRow, DataTable, EntityPath, RowId, TableId, Time, TimePoint,
 };
@@ -156,8 +157,9 @@ where
     for _ in 0..NUM_ROWS_PER_ENTITY_PATH {
         #[allow(clippy::needless_range_loop)] // readability
         for i in 0..NUM_ENTITY_PATHS {
-            let row = rows_per_table[i].next().unwrap();
-            store.insert_row(&row.unwrap()).unwrap();
+            if let Some(Ok(row)) = rows_per_table[i].next() {
+                store.insert_row(&row).ok_or_log_error();
+            }
         }
     }
 
@@ -176,7 +178,7 @@ where
 {
     let mut table = DataTable::from_rows(
         TableId::ZERO,
-        (0..NUM_ROWS_PER_ENTITY_PATH).map(move |i| {
+        (0..NUM_ROWS_PER_ENTITY_PATH).filter_map(move |i| {
             DataRow::from_component_batches(
                 RowId::new(),
                 timegen(i),
@@ -186,14 +188,19 @@ where
                     .iter()
                     .map(|batch| batch as &dyn ComponentBatch),
             )
-            .unwrap()
+            .ok_or_log_error()
         }),
     );
 
     // Do a serialization roundtrip to pack everything in contiguous memory.
     if packed {
-        let (schema, columns) = table.serialize().unwrap();
-        table = DataTable::deserialize(TableId::ZERO, &schema, &columns).unwrap();
+        if let Some(t) = table
+            .serialize()
+            .and_then(|(schema, columns)| DataTable::deserialize(TableId::ZERO, &schema, &columns))
+            .ok_or_log_error()
+        {
+            table = t;
+        }
     }
 
     table.compute_all_size_bytes();

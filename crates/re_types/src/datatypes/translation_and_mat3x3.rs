@@ -331,8 +331,8 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                    array_init::from_iter(data)
+                                        .ok_or(DeserializationError::array_init_underrun(3usize))
                                 })
                                 .transpose()
                             })
@@ -412,8 +412,8 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                         arrow_data_inner.get_unchecked(start as usize..end as usize)
                                     };
                                     let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                    array_init::from_iter(data)
+                                        .ok_or(DeserializationError::array_init_underrun(9usize))
                                 })
                                 .transpose()
                             })

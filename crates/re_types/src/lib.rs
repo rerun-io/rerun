@@ -172,6 +172,7 @@
 //!
 
 #![warn(missing_docs)] // Let's keep the this crate well-documented!
+#![deny(clippy::unwrap_used)] // See #3408, remove once we remove all the unwrap's
 
 // ---
 

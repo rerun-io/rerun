@@ -131,13 +131,12 @@ impl ::re_types_core::Loggable for TensorData {
                                 shape
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let shape_inner_data: Vec<_> =
                                 shape.into_iter().flatten().flatten().collect();
                             let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::TensorDimension>::arrow_datatype(),
@@ -151,7 +150,7 @@ impl ::re_types_core::Loggable for TensorData {
                                     )?
                                 },
                                 shape_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },

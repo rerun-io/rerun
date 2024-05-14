@@ -190,8 +190,8 @@ impl ::re_types_core::Loggable for Quaternion {
                         let data =
                             unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
                         let data = data.iter().cloned().map(Option::unwrap_or_default);
-                        let arr = array_init::from_iter(data).unwrap();
-                        Ok(arr)
+                        array_init::from_iter(data)
+                            .ok_or(DeserializationError::array_init_underrun(4usize))
                     })
                     .transpose()
                 })

@@ -133,8 +133,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 many_halves.iter().map(|opt| {
                                     opt.as_ref().map_or(0, |datum| datum.num_instances())
                                 }),
-                            )
-                            .unwrap()
+                            )?
                             .into();
                             let many_halves_inner_data: Buffer<_> = many_halves
                                 .iter()
@@ -144,7 +143,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 .concat()
                                 .into();
                             let many_halves_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            ListArray::new(
+                            ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     DataType::Float16,
@@ -158,7 +157,7 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 )
                                 .boxed(),
                                 many_halves_bitmap,
-                            )
+                            )?
                             .boxed()
                         }
                     },

@@ -628,7 +628,9 @@ impl TensorData {
 
         let mut decoder = JpegDecoder::new(&jpeg_bytes);
         decoder.decode_headers()?;
-        let (w, h) = decoder.dimensions().unwrap(); // Can't fail after a successful decode_headers
+        let (w, h) = decoder
+            .dimensions()
+            .expect("can't fail after a successful decode_headers");
 
         Ok(Self {
             shape: vec![

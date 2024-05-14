@@ -100,19 +100,17 @@ impl ::re_types_core::Loggable for AffixFuzzer13 {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                )
-                .unwrap()
+                )?
                 .into();
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                             data0_inner_data.iter().map(|datum| datum.len()),
-                        )
-                        .map_err(|err| std::sync::Arc::new(err))?
+                        )?
                         .into();
                         let inner_data: arrow2::buffer::Buffer<u8> =
                             data0_inner_data.into_iter().flat_map(|s| s.0).collect();
@@ -129,7 +127,7 @@ impl ::re_types_core::Loggable for AffixFuzzer13 {
                         .boxed()
                     },
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })

@@ -15,7 +15,6 @@ version.workspace = true
 [lints]
 workspace = true
 
-
 [package.metadata.docs.rs]
 all-features = false
 no-default-features = true

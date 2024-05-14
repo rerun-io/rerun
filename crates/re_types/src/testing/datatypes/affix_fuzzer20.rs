@@ -131,14 +131,14 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 s.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
-                            )
-                            .map_err(|err| std::sync::Arc::new(err))?
+                            )?
                             .into();
                             let inner_data: arrow2::buffer::Buffer<u8> = s
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
                                 .collect();
+
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(

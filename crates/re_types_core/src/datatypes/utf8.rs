@@ -97,8 +97,7 @@ impl crate::Loggable for Utf8 {
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
-                )
-                .map_err(|err| std::sync::Arc::new(err))?
+                )?
                 .into();
                 let inner_data: arrow2::buffer::Buffer<u8> =
                     data0.into_iter().flatten().flat_map(|s| s.0).collect();

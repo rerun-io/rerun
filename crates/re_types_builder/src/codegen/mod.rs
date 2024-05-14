@@ -1,3 +1,6 @@
+// TODO(#3408): allow it just for code generation, but fix this eventually
+#![allow(clippy::unwrap_used)]
+
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].

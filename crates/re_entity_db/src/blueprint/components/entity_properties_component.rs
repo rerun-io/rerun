@@ -104,8 +104,7 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                     buffers
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |buf| buf.len())),
-                )
-                .unwrap()
+                )?
                 .into();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let data0_inner_data: Buffer<u8> = buffers
@@ -114,13 +113,13 @@ impl ::re_types_core::Loggable for EntityPropertiesComponent {
                     .collect::<Vec<_>>()
                     .concat()
                     .into();
-                ListArray::new(
+                ListArray::try_new(
                     Self::arrow_datatype(),
                     offsets,
                     PrimitiveArray::new(DataType::UInt8, data0_inner_data, data0_inner_bitmap)
                         .boxed(),
                     data0_bitmap,
-                )
+                )?
                 .boxed()
             }
         })
