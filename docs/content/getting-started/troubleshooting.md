@@ -76,7 +76,7 @@ The configuration we use for wgpu can be influenced in the following ways:
     Naturally, support depends on your OS. The default backend is `vulkan` everywhere except on Mac where we use `metal`.
     On the web we prefer WebGPU and fall back automatically to WebGL if no support for WebGPU was detected.
     -   For instance, you can try `rerun --renderer=gl` or for the web viewer respectively `rerun --web-viewer --renderer=webgl`.
-    -   Alternatively, for the native viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
+    -   Alternatively, for the native Viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
     -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl&speculative-link]
 -   `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 

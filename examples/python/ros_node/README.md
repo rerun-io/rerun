@@ -5,7 +5,7 @@ thumbnail = "https://static.rerun.io/ros-node/93169b35c17f5ec02d94150efb74c7ba06
 thumbnail_dimensions = [480, 480]
 -->
 
-A minimal example of creating a ROS node that subscribes to topics and converts the messages to rerun log calls.
+A minimal example of creating a ROS node that subscribes to topics and converts the messages to Rerun log calls.
 
 The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 

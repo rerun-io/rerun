@@ -146,7 +146,7 @@ def main() -> None:
     setup_logging() # setup logging
     track_objects(video_path, max_frame_count=args.max_frame) # start tracking
 ```
-In the viewer you can adjust the filter level and look at the messages time-synchronized with respect to other logged data.
+In the Viewer you can adjust the filter level and look at the messages time-synchronized with respect to other logged data.
 
 ## Run the code
 To run this example, make sure you have the Rerun repository checked out and the latest SDK installed:

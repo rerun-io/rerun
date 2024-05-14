@@ -353,7 +353,7 @@ For example, if you need to iterate through 100k values, you would need to run 1
 
 The current garbage collection mechanism was put together as a quick fix for the `MsgId`-mismatch issue, and it is largely unreliable.
 
-The algorithm works as follows: it finds the oldest component bucket based on the insertion order from the datastore, which doesn't make much semantic sense, and drops it. Then, it drops all component buckets that roughly cover the same time range. Finally, it returns all the `MsgId`s to the viewer so that it can in turn clear its own data structures.
+The algorithm works as follows: it finds the oldest component bucket based on the insertion order from the datastore, which doesn't make much semantic sense, and drops it. Then, it drops all component buckets that roughly cover the same time range. Finally, it returns all the `MsgId`s to the Viewer so that it can in turn clear its own data structures.
 This process is repeated in a loop until a sufficient amount of data has been dropped.
 
 Beyond these hacks, the logic in and of itself is fundamentally broken right now. Consider the following log calls:
@@ -400,7 +400,7 @@ The current terms `ComponentBundle` and `MsgBundle` are vague, so let's use more
 * `DataRow`: an event, a list of cells associated with an event ID, entity path, timepoint, and number of instances. Corresponds to a single SDK log call.
 * `DataTable`: a batch; a list of rows associated with a batch ID.
 
-Juggling between native and arrow data interchangeably can be a cumbersome task in our current implementation. While we have some helper functions to facilitate this, the process is not as smooth as it could be.
+Juggling between native and Arrow data interchangeably can be a cumbersome task in our current implementation. While we have some helper functions to facilitate this, the process is not as smooth as it could be.
 This is partly due to limitations in `arrow2-convert`, but also because some of our APIs are simply not optimized for this use case (yet).
 
 So, considering all the reasons above, here are all the new types involved.
@@ -559,7 +559,7 @@ Only when a `DataTable` gets transformed into a `ArrowMsg` does serialization ac
 
 ### Transport
 
-`ArrowMsg` stays roughly the same in spirit: it's the fully serialized arrow representation of a `DataTable`:
+`ArrowMsg` stays roughly the same in spirit: it's the fully serialized Arrow representation of a `DataTable`:
 ```rust
 pub struct ArrowMsg {
     /// Auto-generated [`TUID`], uniquely identifying this batch of data and keeping track of the
@@ -687,12 +687,12 @@ We already have `zstd` in place for that.
 
 ### Storage
 
-One of the major change storage-wise is the complete removal of component tables: index tables now reference the arrow data directly.
-With the new design, the arrow buffers now store multiple rows of data. To reference a specific row, each index row must point to _a unit-length slice_ in a shared batch of arrow data.
+One of the major change storage-wise is the complete removal of component tables: index tables now reference the Arrow data directly.
+With the new design, the Arrow buffers now store multiple rows of data. To reference a specific row, each index row must point to _a unit-length slice_ in a shared batch of Arrow data.
 
 That is the reason why sorting the batch on the client's end improves performance: it improves data locality in the store by making the shared batches follow the layout of the final buckets more closely.
 
-Assuming the following syntax for arrow slices: `ArrowSlice(<buffer_adrr, offset>)`, indices should now look roughly like the following, sorted by the timeline (`frame_nr`):
+Assuming the following syntax for Arrow slices: `ArrowSlice(<buffer_adrr, offset>)`, indices should now look roughly like the following, sorted by the timeline (`frame_nr`):
 ```
 IndexTable {
     timeline: frame_nr
@@ -741,7 +741,7 @@ IndexTable {
 
 Worth noticing:
 - `event_id` and `num_instances` are deserialized and stored natively, as they play a crucial role in many storage and query features.
-- In this example, `rerun.instance_key` consistently references the same slice of arrow data. This is because they are auto-generated in this case.
+- In this example, `rerun.instance_key` consistently references the same slice of Arrow data. This is because they are auto-generated in this case.
 
 In addition to storing the indices themselves, we also require a bunch of auxiliary datastructures.
 
@@ -758,10 +758,10 @@ Overall this is a much simpler design, and while it still isn't optimal for time
 
 ### Write path
 
-For each row in the batch, we create a bunch of unit-length arrow slices that point to the right place in the shared buffer, and then it's all pretty much the same as before.
+For each row in the batch, we create a bunch of unit-length Arrow slices that point to the right place in the shared buffer, and then it's all pretty much the same as before.
 
-The major difference is we now directly store arrow buffers (which are really arrow slices under the hood) rather than indices into component tables.
-Everything else is the same: get (or create) the appropriate index (`EntityPath` + `Timeline`), find the right bucket using a binsearch, and insert those arrow slices
+The major difference is we now directly store Arrow buffers (which are really Arrow slices under the hood) rather than indices into component tables.
+Everything else is the same: get (or create) the appropriate index (`EntityPath` + `Timeline`), find the right bucket using a binsearch, and insert those Arrow slices
 
 We also actually deserialize the `event_id` and `num_instances` columns into native types as we're going to need those for the store to function:
 - `event_id`s are needed to maintain our auxiliary datastructures (GC, save-to-file)
@@ -769,7 +769,7 @@ We also actually deserialize the `event_id` and `num_instances` columns into nat
 
 ### Read path
 
-The major difference is we now directly return arrow buffers (which are really arrow slices under the hood), which means `get` queries are gone… which means latest-at queries should get a bit faster and range queries should get much faster.
+The major difference is we now directly return Arrow buffers (which are really Arrow slices under the hood), which means `get` queries are gone… which means latest-at queries should get a bit faster and range queries should get much faster.
 
 Everything else is the same: grab the right index (`EntityPath` + `Timeline`), binsearch for the right bucket, walk backwards if you need to, and you're done.
 
@@ -791,8 +791,8 @@ We want to garbage collect in `event_id` order (reminder: `EventId` is a `TUID`,
 
 - We iterate over all `EventId`s in their natural order
 - For every one of them:
-    - Find all index rows that match this `event_id` and replace the arrow slice with a tombstone, this has 2 effects:
-        1. This decrements the internal refcount of the overall arrow buffer, which might deallocate it if this happens to be the last one standing
+    - Find all index rows that match this `event_id` and replace the Arrow slice with a tombstone, this has 2 effects:
+        1. This decrements the internal refcount of the overall Arrow buffer, which might deallocate it if this happens to be the last one standing
         2. This lets the read path knows it should ignore this row (and maybe not look any further?)
     - Check if the bucket now only contains tombstones, and drop it entirely if that's the case
     - Remove the freshly dropped `event_id` from all our auxiliary datastructures
@@ -835,7 +835,7 @@ We should already be 95% of the way there at this point.
 No actual batching features nor any kind of behavior changes of any sort: just define the new types and use them everywhere.
 
 1. Pass entity path as a column rather than as metadata
-Replace the current entity_path that is passed in the metadata map with an actual column instead. This will also requires us to make `EntityPath` a proper arrow datatype (..datatype, not component!!).
+Replace the current entity_path that is passed in the metadata map with an actual column instead. This will also requires us to make `EntityPath` a proper Arrow datatype (..datatype, not component!!).
 
 1. Implement explicit number of instances
 Introduce a new column for `num_instances`, integrate it in the store index and expose it in the store APIs.
@@ -867,7 +867,7 @@ Reminder: the timeline widget keeps track of timepoints directly, not events.
 
 1. Rebatch aggressively while dumping to disk
 
-1. Use arrow extension types to carry around component names
+1. Use Arrow extension types to carry around component names
 
 1. Drop `log_time`
 We currently store the logging time twice: once in the `MsgId` (soon `EventId`) and once injected by the SDK (and they don't even match!).
@@ -961,7 +961,7 @@ I.e. a GC request of the form `DropAfter(("frame_nr", 41))`, rather than the oth
 
 ### The DataStore is its own server
 
-The datastore won't run as part of the viewer forever.
+The datastore won't run as part of the Viewer forever.
 
 ### Data might be a reference to an external storage system
 
@@ -1012,7 +1012,7 @@ timepoint: Vec<TimePoint>,
 entity_path: Vec<EntityPath>,
 num_instances: Vec<u32>,
 ```
-None of these are components however, they are merely arrow datatypes.
+None of these are components however, they are merely Arrow datatypes.
 
 Everything else is just a component, and as such is passed as a `DataCell`.
 

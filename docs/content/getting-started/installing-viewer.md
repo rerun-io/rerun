@@ -24,7 +24,7 @@ You'll additionally need to install the Viewer, see [below](#installing-the-view
 -   `pip install rerun-sdk` via pip
 -   `conda install -c conda-forge rerun-sdk` via Conda
 
-Either way this includes both the SDK & the viewer and you're ready to go!
+Either way this includes both the SDK & the Viewer and you're ready to go!
 
 ### Rust
 

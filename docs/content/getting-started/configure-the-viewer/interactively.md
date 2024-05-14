@@ -1,5 +1,5 @@
 ---
-title: Configure the viewer interactively
+title: Configure the Viewer interactively
 order: 1
 ---
 
@@ -18,15 +18,15 @@ The Rerun Viewer is configurable directly through the UI itself.
 
 The central part is known as the viewport and contains the various views displaying the data.
 
-The left panel of the viewer is the "Blueprint Panel". It shows a visual tree view representing
+The left panel of the Viewer is the "Blueprint Panel". It shows a visual tree view representing
 the contents of the current blueprint.
 
-The right panel of the viewer is the "Selection Panel" this panel allows you to configure
+The right panel of the Viewer is the "Selection Panel" this panel allows you to configure
 specific blueprint properties of the currently selected element.
 
 The blueprint defines the structure, the type of views, and their content in the viewport. Changing the content of the viewport is done by editing the blueprint.
 
-After editing the viewer you may want to [save or share the blueprint](./save-and-load.md).
+After editing the Viewer you may want to [save or share the blueprint](./save-and-load.md).
 
 ## Configuring the view hierarchy
 

@@ -35,7 +35,7 @@ Put the following code to your `main.cpp`:
 ${EXAMPLE_CODE_CPP_CONNECT}
 ```
 
-Start the rerun viewer (`rerun`) and then build and run your C++ program.
+Start the Rerun Viewer (`rerun`) and then build and run your C++ program.
 
 You should see the points in this viewer:
 

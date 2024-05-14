@@ -75,7 +75,7 @@ more detail later in the [Viewer Walkthrough](../navigating-the-viewer.md)
 After exploring a built-in example, let's create some data ourselves. We will start with an
 extremely simplified version of this dataset that just logs 1 dimension of points instead of 3.
 
-Create a new python script with the following code:
+Create a new Python script with the following code:
 
 ```python
 import rerun as rr  # NOTE: `rerun`, not `rerun-sdk`!

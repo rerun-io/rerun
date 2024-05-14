@@ -21,8 +21,8 @@ $ npm i @rerun-io/web-viewer
 ```
 
 ℹ️ Note:
-The package version is equal to the supported rerun SDK version.
-This means that `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, websocket connection, etc.) that originates from a rerun SDK with version `0.10.0`!
+The package version is equal to the supported Rerun SDK version.
+This means that `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, websocket connection, etc.) that originates from a Rerun SDK with version `0.10.0`!
 
 ## Usage
 
@@ -44,7 +44,7 @@ The `rrd` in the snippet above should be a URL pointing to either:
 - A hosted `.rrd` file, such as <https://app.rerun.io/version/0.15.0/examples/dna.rrd>
 - A WebSocket connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk-operating-modes#serve) API
 
-If `rrd` is not set, the viewer will display the same welcome screen as <https://app.rerun.io>.
+If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
 
 For a full example, see https://github.com/rerun-io/web-viewer-example.
 You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-io/web-viewer-example

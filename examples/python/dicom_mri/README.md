@@ -32,7 +32,7 @@ rr.log("tensor", rr.Tensor(voxels_volume_u16, dim_names=["right", "back", "up"])
 A `numpy.array` named `voxels_volume_u16` representing volumetric MRI intensities with a shape of `(512, 512, 512)`.
 To visualize this data effectively in Rerun, we can log the `numpy.array` as [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor) to the `tensor` entity.
 
-In the Rerun viewer you can also inspect the data in detail. The `dim_names` provided in the above call to `rr.log` help to
+In the Rerun Viewer you can also inspect the data in detail. The `dim_names` provided in the above call to `rr.log` help to
 give semantic meaning to each axis. After selecting the tensor view, you can adjust various settings in the Blueprint
 settings on the right-hand side. For example, you can adjust the color map, the brightness, which dimensions to show as
 an image and which to select from, and more.

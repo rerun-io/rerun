@@ -29,7 +29,7 @@ And then to run it on Linux/Mac:
 ./build/example_dna
 ```
 
-and windows respectively:
+and Windows respectively:
 
 ```
 build\Debug\example_dna.exe
@@ -92,7 +92,7 @@ To get going we want to create a [`RecordingStream`](https://github.com/rerun-io
 When creating the `RecordingStream` we also need to specify the name of the application we're working on
 by setting it's `ApplicationId`.
 
-We then use the stream to spawn a new rerun viewer via [`spawn`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L151).
+We then use the stream to spawn a new Rerun Viewer via [`spawn`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L151).
 
 Add our initial `main` to `main.cpp`:
 
@@ -117,7 +117,7 @@ cmake --build build -j
 ./build/example_dna
 ```
 
-When everything finishes compiling, an empty Rerun viewer should be spawned:
+When everything finishes compiling, an empty Rerun Viewer should be spawned:
 
 <picture>
   <img src="https://static.rerun.io/rerun-welcome-screen-0.9/cc45a0700ccf02016fb942153106db4af0c224db/full.png" alt="">
@@ -184,7 +184,7 @@ Under the hood, the Rerun C++ SDK logs individual _components_ like positions, c
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
 cases, it's possible to add custom components to archetypes, or even log entirely custom sets of components, bypassing
 archetypes altogether.
-For more information on how the rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
+For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
 
 Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.

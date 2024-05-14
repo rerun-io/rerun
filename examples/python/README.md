@@ -21,7 +21,7 @@ pip install -e examples/python/minimal
 
 **Note**: it is import to install example in editable mode, which is done using the `-e` flag (short for `--editable`).
 
-Once installed, the example can be run as a regular python module:
+Once installed, the example can be run as a regular Python module:
 
 ```shell
 python -m minimal
@@ -45,9 +45,9 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Running examples with Pixi
 
-The Rerun project makes extensive use of [pixi](https://pixi.sh/latest/) for various developer tasks, and pixi can be used to run examples as well. For this, you need to install pixi as per the installation instructions on their website.
+The Rerun project makes extensive use of [pixi](https://pixi.sh/latest/) for various developer tasks, and Pixi can be used to run examples as well. For this, you need to install Pixi as per the installation instructions on their website.
 
-Then, install a suitable version of the Rerun SDK in the pixi environment. For the Rerun examples, the `examples` environment must be used, which is why the following commands all include `-e examples`.
+Then, install a suitable version of the Rerun SDK in the Pixi environment. For the Rerun examples, the `examples` environment must be used, which is why the following commands all include `-e examples`.
 
 For the released version of the SDK, use:
 ```shell

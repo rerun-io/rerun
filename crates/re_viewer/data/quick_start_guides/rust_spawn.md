@@ -2,7 +2,7 @@
 
 ## Installing Rerun
 
-After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand-new Rust project:
 
@@ -26,7 +26,7 @@ You can now run your application:
 cargo run
 ```
 
-Once everything finishes compiling, a new viewer will start displaying these points:
+Once everything finishes compiling, a new Viewer will start displaying these points:
 
 ![Demo recording](https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/768w.png)
 

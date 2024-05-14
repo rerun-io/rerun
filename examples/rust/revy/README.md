@@ -75,7 +75,7 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
 
 2. Add `revy` to your dependencies:
     ```toml
-    revy = "0.15"  # always matches the rerun version
+    revy = "0.15"  # always matches the Rerun version
     ```
 
 3. Initialize the `rerun` plugin:

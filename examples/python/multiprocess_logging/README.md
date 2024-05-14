@@ -5,7 +5,7 @@ thumbnail_dimensions = [480, 480]
 tags = ["API example"]
 -->
 
-Demonstrates how rerun can work with the python `multiprocessing` library.
+Demonstrates how Rerun can work with the Python `multiprocessing` library.
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/multiprocessing/72bcb7550d84f8e5ed5a39221093239e655f06de/480w.png">
@@ -51,7 +51,7 @@ def task(child_index: int) -> None:
         )
 ```
 
-The main function initializes rerun with a specific application ID and manages the multiprocessing processes for logging data to the Rerun viewer.
+The main function initializes Rerun with a specific application ID and manages the multiprocessing processes for logging data to the Rerun viewer.
 
 > Caution: Ensure that the `recording id` specified in the main function matches the one used in the logging functions
  ```python
@@ -59,7 +59,7 @@ def main() -> None:
     # … existing code …
 
     rr.init("rerun_example_multiprocessing")
-    rr.spawn(connect=False)  # this is the viewer that each child process will connect to
+    rr.spawn(connect=False)  # this is the Viewer that each child process will connect to
 
     task(0)
 

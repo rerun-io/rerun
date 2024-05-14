@@ -677,6 +677,7 @@ force_capitalized_words = [
     "Google",
     "Jupyter",
     "Linux",
+    "Mac",
     "Numpy",
     "nuScenes",
     "Pixi",
@@ -691,19 +692,7 @@ force_capitalized_words = [
     "Viewer",
     "Wasm",
     "Windows",
-    # Months
-    "January",
-    "February",
-    "March",
     "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
 ]
 
 force_capitalized_words_as_lower = [word.lower() for word in force_capitalized_words]
@@ -715,17 +704,21 @@ def fix_header_casing(s: str) -> str:
 
     new_words: list[str] = []
     last_punctuation = None
+    inline_code_block = False
 
     for i, word in enumerate(s.strip().split(" ")):
         if word == "":
             continue
 
-        if word.startswith("`") and word.endswith("`"):
-            pass  # code
+        if word.startswith("`"):
+            inline_code_block = True
+        if word.endswith("`"):
+            inline_code_block = False
+
         if last_punctuation:
             word = word.capitalize()
             last_punctuation = None
-        elif not word.startswith("`"):
+        elif not inline_code_block and not word.startswith("`"):
             try:
                 idx = force_capitalized_words_as_lower.index(word.lower())
             except ValueError:
@@ -757,6 +750,38 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
+def fix_enforced_upper_case(s: str) -> str:
+    new_words: list[str] = []
+    inline_code_block = False
+
+    for i, word in enumerate(s.split(" ")):
+        if word.startswith("`"):
+            inline_code_block = True
+        if word.endswith("`"):
+            inline_code_block = False
+
+        if word.strip() != "" and not inline_code_block and not word.startswith("`"):
+            try:
+                idx = force_capitalized_words_as_lower.index(word.lower())
+            except ValueError:
+                idx = None
+
+            # special case: don't capitalize "web viewer" and "VRS viewer" even though we capitalize "Viewer"
+            if (
+                word.lower() == "viewer"
+                and len(new_words) > 0
+                and (new_words[-1].lower() == "web" or new_words[-1].lower() == "vrs")
+            ):
+                idx = None
+
+            if idx is not None:
+                word = force_capitalized_words[idx]
+
+        new_words.append(word)
+
+    return " ".join(new_words)
+
+
 def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
@@ -775,7 +800,7 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     for line_nr, line in enumerate(lines_in):
         line_nr = line_nr + 1
 
-        if line.startswith("```"):
+        if line.strip().startswith("```"):
             in_code_block = not in_code_block
 
         if line.startswith("<!--[metadata]"):
@@ -801,6 +826,13 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
                         f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'."
                     )
                     line = f'title = "{new_title}"\n'
+
+            # Enforce capitalization on certain words in the main text.
+            else:
+                new_line = fix_enforced_upper_case(line)
+                if new_line != line:
+                    errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
+                    line = new_line
 
             if in_example_readme and not in_frontmatter:
                 # Check that <h1> is not used in example READMEs

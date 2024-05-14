@@ -20,8 +20,8 @@ We depend on a number of third party libraries, most notably:
 * [Apache Arrow](https://arrow.apache.org/) for our data store
 * [wgpu](https://wgpu.rs/) for rendering
 * [egui](https://github.com/emilk/egui) for UI
-* [PyO3](https://github.com/PyO3/pyo3) for python bindings
+* [PyO3](https://github.com/PyO3/pyo3) for Python bindings
 
-If you want to learn more about the different parts of the SDK & viewer and how they work, check out
+If you want to learn more about the different parts of the SDK & Viewer and how they work, check out
 [this architecture overview](https://github.com/rerun-io/rerun/blob/latest/ARCHITECTURE.md)
 for an introduction.

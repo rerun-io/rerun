@@ -25,7 +25,7 @@ For instance:
 
 ## Using the JavaScript package
 
-We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the viewer but requires a JavaScript web application setup with a bundler.
+We offer JavaScript bindings to the Rerun Viewer via NPM. This method provides control over the Viewer but requires a JavaScript web application setup with a bundler.
 
 Various packages are available:
 - [@rerun-io/web-viewer](https://www.npmjs.com/package/@rerun-io/web-viewer): Suitable for JS apps without a framework or frameworks without dedicated packages.
@@ -55,7 +55,7 @@ const viewer = new WebViewer();
 await viewer.start(rrdUrl, parentElement);
 ```
 
-The viewer creates a `<canvas>` on the provided `parentElement` and executes within it.
+The Viewer creates a `<canvas>` on the provided `parentElement` and executes within it.
 
 The first argument for `start` determines the recordings to open in the viewer. It can be:
 - `null` for an initially empty viewer
