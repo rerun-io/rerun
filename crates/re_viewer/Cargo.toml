@@ -56,6 +56,7 @@ re_log_types.workspace = true
 re_memory.workspace = true
 re_query.workspace = true
 re_renderer = { workspace = true, default-features = false }
+re_sdk_comms.workspace = true
 re_smart_channel.workspace = true
 re_space_view.workspace = true
 re_space_view_bar_chart.workspace = true
@@ -74,7 +75,6 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
-re_sdk_comms.workspace = true
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }

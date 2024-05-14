@@ -19,10 +19,13 @@ mod server;
 #[cfg(feature = "server")]
 pub use server::{serve, ConnectionError, ServerError, ServerOptions};
 
-pub const PROTOCOL_HEADER: &str = "rerun";
-
 pub const PROTOCOL_VERSION_0: u16 = 0;
+
+/// Added [`PROTOCOL_HEADER`].
 pub const PROTOCOL_VERSION_1: u16 = 1;
+
+/// Comes after version.
+pub const PROTOCOL_HEADER: &str = "rerun";
 
 pub const DEFAULT_SERVER_PORT: u16 = 9876;
 

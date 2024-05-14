@@ -1,7 +1,6 @@
 use std::{
     io::{ErrorKind, Read as _},
     net::{TcpListener, TcpStream},
-    str,
     time::Instant,
 };
 
@@ -197,9 +196,9 @@ fn spawn_client(
 
         let log_msg = format!("Closing connection to client at {addr_string}: {err}");
         if matches!(&err, ConnectionError::UnknownClient) {
-            re_log::debug!("{}", log_msg);
+            re_log::debug!("{log_msg}");
         } else {
-            re_log::warn_once!("{}", log_msg);
+            re_log::warn_once!("{log_msg}");
         }
 
         let err: Box<dyn std::error::Error + Send + Sync + 'static> = err.into();
@@ -220,38 +219,34 @@ fn run_client(
 
     // The server goes into a backward compat mode
     // if the client sends version 0
-    let server_version = if client_version == crate::PROTOCOL_VERSION_0 {
-        crate::PROTOCOL_VERSION_0 // Act like a version 0 server
+    if client_version == crate::PROTOCOL_VERSION_0 {
+        // Backwards compatibility mode: no protocol header, otherwise the same as version 1.
     } else {
-        crate::PROTOCOL_VERSION_1
-    };
-
-    // We do not look for protocol header in compat mode
-    // because old clients don't send it
-    if server_version > crate::PROTOCOL_VERSION_0 {
+        // The protocol header was added in version 1
         let mut protocol_header = [0_u8; crate::PROTOCOL_HEADER.len()];
         stream.read_exact(&mut protocol_header)?;
 
-        if !str::from_utf8(&protocol_header).is_ok_and(|header| header == crate::PROTOCOL_HEADER) {
+        if std::str::from_utf8(&protocol_header) != Ok(crate::PROTOCOL_HEADER) {
             return Err(ConnectionError::UnknownClient);
         }
-    }
 
-    match client_version.cmp(&server_version) {
-        std::cmp::Ordering::Less => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
-                client_version,
-                server_version,
-            }));
+        let server_version = crate::PROTOCOL_VERSION_1;
+        match client_version.cmp(&server_version) {
+            std::cmp::Ordering::Less => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsOlder {
+                    client_version,
+                    server_version,
+                }));
+            }
+            std::cmp::Ordering::Equal => {}
+            std::cmp::Ordering::Greater => {
+                return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
+                    client_version,
+                    server_version,
+                }));
+            }
         }
-        std::cmp::Ordering::Equal => {}
-        std::cmp::Ordering::Greater => {
-            return Err(ConnectionError::VersionError(VersionError::ClientIsNewer {
-                client_version,
-                server_version,
-            }));
-        }
-    }
+    };
 
     let mut congestion_manager = CongestionManager::new(options.max_latency_sec);
 

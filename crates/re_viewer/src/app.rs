@@ -968,9 +968,9 @@ impl App {
                             .downcast_ref::<ConnectionError>()
                             .is_some_and(|e| matches!(e, ConnectionError::UnknownClient))
                         {
-                            re_log::debug!("{}", log_msg);
+                            re_log::debug!("{log_msg}");
                         } else {
-                            re_log::warn!("{}", log_msg);
+                            re_log::warn!("{log_msg}");
                         }
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
