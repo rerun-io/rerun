@@ -4,7 +4,7 @@ order: 150
 ---
 
 As of Rerun 0.16, the [TimeSeriesView](../reference/types/views/time_series_view.md) now supports direct
-manipulation of visible time range. This allows you to create a plot that only shows a fixed window of data.
+manipulation of the visible time range. This allows you to create a plot that only shows a fixed window of data.
 
 ## VisibleTimeRange
 
