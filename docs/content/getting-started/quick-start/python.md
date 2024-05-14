@@ -15,7 +15,7 @@ $ pip3 install rerun-sdk
 
 You are now ready to start logging and visualizing data.
 
-## Trying out the viewer
+## Trying out the Viewer
 
 Rerun comes packaged with integrated examples to make it easy to explore the viewer. Launch it with:
 
@@ -55,7 +55,7 @@ would like._
 -   [open an issue](https://github.com/rerun-io/rerun/issues/new/choose).
 -   Or [join the Discord server](https://discord.gg/PXtCgFBSmH).
 
-## Using the viewer
+## Using the Viewer
 
 Try out the following to interact with the viewer:
 

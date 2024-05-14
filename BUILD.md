@@ -31,7 +31,7 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
 ```
 
-## Building and running the viewer
+## Building and running the Viewer
 
 Use this command for building and running the viewer:
 
@@ -62,7 +62,7 @@ If you want to build from source, you can do so easily in the pixi environment:
 * Then you can run examples from the repository, either by making the pixi shell active with  `pixi shell` and then running python or by using `pixi run`, e.g. `pixi run python examples/python/minimal/minimal.py`
 
 
-### Tests & Tooling
+### Tests & tooling
 
 ```sh
 # Run the unit tests
@@ -75,7 +75,7 @@ pixi run py-lint
 pixi run py-fmt
 ```
 
-### Building an installable Python Wheel
+### Building an installable Python wheel
 The `py-wheel` command builds a whl file:
 ```sh
 pixi run py-wheel --release

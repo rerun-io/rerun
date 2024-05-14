@@ -44,7 +44,7 @@ Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/python/
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/apps-and-recordings.md).
 
-## Starting the viewer
+## Starting the Viewer
 
 Next up, we want to spawn the [Rerun Viewer](../../reference/viewer/overview.md) itself.
 
@@ -81,7 +81,7 @@ Add the following to your file:
 ```python
 NUM_POINTS = 100
 
-# points and colors are both np.array((NUM_POINTS, 3))
+# Points and colors are both np.array((NUM_POINTS, 3))
 points1, colors1 = build_color_spiral(NUM_POINTS)
 points2, colors2 = build_color_spiral(NUM_POINTS, angular_offset=tau*0.5)
 

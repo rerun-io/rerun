@@ -57,7 +57,7 @@ Once everything finishes compiling, you will see the points in the Rerun Viewer:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/intro_rust_result/cc780eb9bf014d8b1a68fac174b654931f92e14f/1200w.png">
 </picture>
 
-## Using the viewer
+## Using the Viewer
 
 Try out the following to interact with the viewer:
 

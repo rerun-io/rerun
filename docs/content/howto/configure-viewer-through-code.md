@@ -46,7 +46,7 @@ my_blueprint = rrb.Blueprint(
 )
 ```
 
-## Sending the blueprint to the viewer
+## Sending the blueprint to the Viewer
 
 To provide a blueprint, simply pass it to either `init` or `connect` using the `default_blueprint`
 parameter.

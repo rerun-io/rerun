@@ -44,7 +44,7 @@ Consider the following example:
 -   The last rule matching `/world` is `- /world`, so it is excluded.
 -   The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
-## In the viewer
+## In the Viewer
 
 In the viewer, an entity query is typically displayed as a multi-line
 edit box, with each query expression shown on its own line. You can find the

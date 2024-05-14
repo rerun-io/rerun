@@ -75,7 +75,7 @@ Click on the "View Examples" button, and then chose the "Structure from Motion" 
 Depending on your display size, the panels may have a different arrangements. This does not yet look like the initial
 preview, but the remainder of this guide will walk you through how to configure the Viewer to meet your needs.
 
-## The viewer panels
+## The Viewer panels
 
 There are 4 main parts to this window:
 

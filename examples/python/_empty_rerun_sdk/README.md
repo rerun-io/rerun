@@ -1,4 +1,4 @@
-## "Fake" `rerun-sdk` package
+## "fake" `rerun-sdk` package
 
 This is fake, empty `rerun-sdk` package used as a (default) dependency in our `pixi.toml`.
 

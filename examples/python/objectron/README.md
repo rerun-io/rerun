@@ -3,7 +3,7 @@ title = "Objectron"
 tags = ["2D", "3D", "Object detection", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
 thumbnail_dimensions = [480, 480]
-# channel = "release"  - Disabled because it sometimes have bad first-frame heuristics
+# Channel = "release" - disabled because it sometimes have bad first-frame heuristics
 build_args = ["--frames=150"]
 -->
 

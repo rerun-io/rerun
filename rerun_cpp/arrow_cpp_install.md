@@ -2,7 +2,7 @@
 
 \tableofcontents
 
-## Automatically download & build arrow from source (default)
+## Automatically download & build Arrow from source (default)
 
 By default, the Rerun C++ SDK's CMake script (which is part of the SDK's zip artifact that can be fetched via `FetchContent`)
 will download a known compatible version of Arrow from GitHub and add it to the build.

@@ -661,46 +661,98 @@ def lint_workspace_lints(cargo_file_content: str) -> str | None:
 
 # -----------------------------------------------------------------------------
 
+force_capitalized_words = [
+    "2D",
+    "3D",
+    "Apache",
+    "API",
+    "APIs",
+    "Arrow",
+    "Bevy",
+    "C",
+    "C++",
+    "C++17,",  # easier than coding up a special case
+    "C++17",
+    "Colab",
+    "Google",
+    "Jupyter",
+    "Linux",
+    "Numpy",
+    "nuScenes",
+    "Pixi",
+    "Python",
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4",
+    "Rerun",
+    "Rust",
+    "SAM",
+    "Viewer",
+    "Wasm",
+    "Windows",
+    # Months
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+]
+
+force_capitalized_words_as_lower = [word.lower() for word in force_capitalized_words]
+
 
 def fix_header_casing(s: str) -> str:
-    allowed_title_words = [
-        "Apache",
-        "APIs",
-        "Arrow",
-        "C",
-        "C++",
-        "Colab",
-        "Google",
-        "Jupyter",
-        "Linux",
-        "Numpy",
-        "Pixi",
-        "Python",
-        "Rerun",
-        "Rust",
-        "Wasm",
-        "Windows",
-    ]
-
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
 
-    new_words = []
+    new_words: list[str] = []
+    last_punctuation = None
 
     for i, word in enumerate(s.strip().split(" ")):
         if word == "":
             continue
-        if word.lower() in ("2d", "3d"):
-            word = word.upper()
-        elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
-            pass  # acroym, PascalCase, code, …
-        elif i == 0:
-            # First word:
+
+        if word.startswith("`") and word.endswith("`"):
+            pass  # code
+        if last_punctuation:
             word = word.capitalize()
-        else:
-            if word not in allowed_title_words:
+            last_punctuation = None
+        elif not word.startswith("`"):
+            try:
+                idx = force_capitalized_words_as_lower.index(word.lower())
+            except ValueError:
+                idx = None
+
+            # special case: don't capitalize "web viewer" and "VRS viewer" even though we capitalize "Viewer"
+            if (
+                word.lower() == "viewer"
+                and len(new_words) > 0
+                and (new_words[-1].lower() == "web" or new_words[-1].lower() == "vrs")
+            ):
+                idx = None
+
+            if word.endswith("?") or word.endswith("!") or word.endswith("."):
+                last_punctuation = word[-1]
+                word = word[:-1]
+            elif idx is not None:
+                word = force_capitalized_words[idx]
+            elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
+                pass  # acroym, PascalCase, code, …
+            elif i == 0:
+                # First word:
+                word = word.capitalize()
+            else:
                 word = word.lower()
-        new_words.append(word)
+
+        new_words.append((word + last_punctuation) if last_punctuation else word)
 
     return " ".join(new_words)
 
@@ -712,6 +764,11 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     lines_out = []
 
     in_example_readme = "/examples/python/" in filepath and filepath.endswith("README.md")
+    in_changelog = filepath.endswith("CHANGELOG.md")
+    in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
+
+    if in_code_of_conduct:
+        return errors, lines_in
 
     in_code_block = False
     in_frontmatter = False
@@ -726,26 +783,31 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         if in_frontmatter and line.startswith("-->"):
             in_frontmatter = False
 
-        # Check the casing on markdown headers
-        if m := re.match(r"(\#+ )(.*)", line):
-            new_header = fix_header_casing(m.group(2))
-            if new_header != m.group(2):
-                errors.append(f"{line_nr}: Markdown headers should NOT be title cased. This should be '{new_header}'.")
-                line = m.group(1) + new_header + "\n"
+        if not in_code_block:
+            # Check the casing on markdown headers
+            if not in_changelog and (m := re.match(r"(\#+ )(.*)", line)):
+                new_header = fix_header_casing(m.group(2))
+                if new_header != m.group(2):
+                    errors.append(
+                        f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                    )
+                    line = m.group(1) + new_header + "\n"
 
-        # Check the casing on `title = "…"` frontmatter
-        if m := re.match(r'title\s*\=\s*"(.*)"', line):
-            new_title = fix_header_casing(m.group(1))
-            if new_title != m.group(1):
-                errors.append(f"{line_nr}: Titles should NOT be title cased. This should be '{new_title}'.")
-                line = f'title = "{new_title}"\n'
+            # Check the casing on `title = "…"` frontmatter
+            elif m := re.match(r'title\s*\=\s*"(.*)"', line):
+                new_title = fix_header_casing(m.group(1))
+                if new_title != m.group(1):
+                    errors.append(
+                        f"{line_nr}: Titles should NOT be title cased, except certain words which are always capitalized. This should be '{new_title}'."
+                    )
+                    line = f'title = "{new_title}"\n'
 
-        if in_example_readme and not in_code_block and not in_frontmatter:
-            # Check that <h1> is not used in example READMEs
-            if line.startswith("#") and not line.startswith("##"):
-                errors.append(
-                    f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
-                )
+            if in_example_readme and not in_frontmatter:
+                # Check that <h1> is not used in example READMEs
+                if line.startswith("#") and not line.startswith("##"):
+                    errors.append(
+                        f"{line_nr}: Do not use top-level headers in example READMEs, they are reserved for page title."
+                    )
 
         lines_out.append(line)
 

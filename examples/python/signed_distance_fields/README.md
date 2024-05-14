@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Signed Distance Fields"
+title = "Signed distance fields"
 tags = ["3D", "mesh", "tensor"]
 thumbnail = "https://static.rerun.io/signed_distance_fields/99f6a886ed6f41b6a8e9023ba917a98668eaee70/480w.png"
 thumbnail_dimensions = [480, 294]

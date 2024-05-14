@@ -72,7 +72,7 @@ The `notebook_show()` method also takes optional arguments for specifying the wi
 rr.notebook_show(width=400, height=400)
 ```
 
-## Working with Blueprints
+## Working with blueprints
 
 [Blueprints](./configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
 parameter.

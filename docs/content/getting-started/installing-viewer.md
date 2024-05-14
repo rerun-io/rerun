@@ -30,7 +30,7 @@ Either way this includes both the SDK & the viewer and you're ready to go!
 
 Add the [Rerun crate](https://crates.io/crates/rerun) using `cargo add rerun`. You'll additionally need to install the Viewer, see [below](#installing-the-viewer).
 
-## Installing the viewer
+## Installing the Viewer
 
 The [Viewer](../reference/viewer/overview.md) can be installed independent of the library language you're using.
 Make sure that your library version matches the version of the Viewer you're using.

@@ -16,12 +16,12 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Early April 2024: Release 0.15
+### Early April 2024: release 0.15
 - Layout and viewport content from code (blueprint part 1)
 - Data-loader plugins callable from the SDK
 - Linux ARM64 support in pre-built artifacts
 
-### Near term: Now - end of Q2 2024
+### Near term: now - end of Q2 2024
 - Property overrides from code (blueprint part 2)
     - Includes setting visible time range from code
 - Broader coverage of robotics and spatial computing data types
