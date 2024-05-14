@@ -62,7 +62,7 @@ impl crate::DataUi for EntityDb {
                 ui.end_row();
 
                 if let Some(store_version) = store_version {
-                    re_ui.grid_left_hand_label(ui, "Protocol Version");
+                    re_ui.grid_left_hand_label(ui, "Source RRD version");
                     ui.label(store_version.to_string());
                     ui.end_row();
                 } else {
