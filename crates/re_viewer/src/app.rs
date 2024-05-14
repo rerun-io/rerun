@@ -1792,7 +1792,7 @@ fn save_entity_db(
         let messages = to_log_messages()?;
 
         wasm_bindgen_futures::spawn_local(async move {
-            if let Err(err) = async_save_dialog(&file_name, &title, &messages).await {
+            if let Err(err) = async_save_dialog(rrd_version, &file_name, &title, &messages).await {
                 re_log::error!("File saving failed: {err}");
             }
         });
@@ -1822,6 +1822,7 @@ fn save_entity_db(
 
 #[cfg(target_arch = "wasm32")]
 async fn async_save_dialog(
+    rrd_version: CrateVersion,
     file_name: &str,
     title: &str,
     messages: &[LogMsg],
@@ -1839,6 +1840,7 @@ async fn async_save_dialog(
     };
 
     let bytes = re_log_encoding::encoder::encode_as_bytes(
+        rrd_version,
         re_log_encoding::EncodingOptions::COMPRESSED,
         messages.iter(),
     )?;
